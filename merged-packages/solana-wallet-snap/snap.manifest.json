@@ -1,27 +1,53 @@
 {
   "version": "0.1.0",
-  "description": "An example Snap written in TypeScript.",
-  "proposedName": "TypeScript Example",
+  "description": "Manage Solana using MetaMask",
+  "proposedName": "Solana",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/template-snap-monorepo.git"
+    "url": "https://github.com/MetaMask/snap-solana-wallet.git"
   },
   "source": {
-    "shasum": "X9pobn7XT2CgX4T9N6gcQP09HZhRlnDzNPN562ACt+k=",
+    "shasum": "wQJZMqTZf40xs+fLkMjgGAVZ8HttBF73dt7331UStvI=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
-        "packageName": "snap",
+        "iconPath": "images/icon.svg",
+        "packageName": "@metamask/solana-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
     }
   },
+  "initialConnections": {
+    "http://localhost:3000": {},
+    "https://portfolio.metamask.io": {},
+    "https://portfolio-builds.metafi-dev.codefi.network": {},
+    "https://dev.portfolio.metamask.io": {},
+    "https://ramps-dev.portfolio.metamask.io": {}
+  },
   "initialPermissions": {
-    "snap_dialog": {},
     "endowment:rpc": {
       "dapps": true,
       "snaps": false
-    }
+    },
+    "endowment:keyring": {
+      "allowedOrigins": [
+        "http://localhost:3000",
+        "https://portfolio.metamask.io",
+        "https://portfolio-builds.metafi-dev.codefi.network",
+        "https://dev.portfolio.metamask.io",
+        "https://ramps-dev.portfolio.metamask.io"
+      ]
+    },
+    "snap_getBip32Entropy": [
+      {
+        "path": ["m", "44'", "501'"],
+        "curve": "ed25519"
+      }
+    ],
+    "endowment:network-access": {},
+    "snap_manageAccounts": {},
+    "snap_manageState": {},
+    "snap_dialog": {}
   },
   "manifestVersion": "0.1"
 }

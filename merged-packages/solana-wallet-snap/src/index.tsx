@@ -1,5 +1,5 @@
 import type { OnRpcRequestHandler } from '@metamask/snaps-sdk';
-import { Box, Text, Bold } from '@metamask/snaps-sdk/jsx';
+import { Bold, Box, Text } from '@metamask/snaps-sdk/jsx';
 
 /**
  * Handle incoming JSON-RPC requests, sent through `wallet_invokeSnap`.

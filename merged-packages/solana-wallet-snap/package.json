@@ -1,10 +1,10 @@
 {
-  "name": "snap",
+  "name": "@metamask/solana-wallet-snap",
   "version": "0.1.0",
-  "description": "The 'Hello, world!' of MetaMask Snaps, now written in TypeScript.",
+  "description": "A Solana wallet Snap.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/template-snap-monorepo.git"
+    "url": "https://github.com/MetaMask/snap-solana-wallet.git"
   },
   "license": "(MIT-0 OR Apache-2.0)",
   "main": "./dist/bundle.js",
@@ -14,49 +14,36 @@
   ],
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
-    "build": "mm-snap build",
+    "build": "mm-snap build && yarn build-preinstalled-snap",
+    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
     "build:clean": "yarn clean && yarn build",
     "clean": "rimraf dist",
-    "lint": "yarn lint:eslint && yarn lint:misc --check",
-    "lint:eslint": "eslint . --cache --ext js,ts",
+    "lint": "yarn lint:eslint && yarn lint:misc && yarn lint:deps && yarn lint:types",
+    "lint:deps": "depcheck",
+    "lint:eslint": "eslint . --cache --ext js,jsx,ts,tsx",
     "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write",
-    "lint:misc": "prettier '**/*.json' '**/*.md' '!CHANGELOG.md' --ignore-path .gitignore",
+    "lint:misc": "prettier '**/*.json' '**/*.md' --check",
+    "lint:types": "tsc --noEmit",
     "prepublishOnly": "mm-snap manifest",
     "serve": "mm-snap serve",
     "start": "mm-snap watch",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@metamask/snaps-sdk": "^6.1.1",
+    "@metamask/snaps-sdk": "^6.9.0",
     "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
-    "@metamask/auto-changelog": "^3.4.4",
-    "@metamask/eslint-config": "^12.2.0",
-    "@metamask/eslint-config-jest": "^12.1.0",
-    "@metamask/eslint-config-nodejs": "^12.1.0",
-    "@metamask/eslint-config-typescript": "^12.1.0",
+    "@metamask/auto-changelog": "^4.0.0",
     "@metamask/snaps-cli": "^6.2.1",
-    "@metamask/snaps-jest": "^8.2.0",
+    "@metamask/snaps-jest": "8.2.0",
+    "@testing-library/jest-dom": "^6.6.2",
     "@types/react": "18.2.4",
     "@types/react-dom": "18.2.4",
-    "@typescript-eslint/eslint-plugin": "^5.42.1",
-    "@typescript-eslint/parser": "^5.42.1",
-    "eslint": "^8.45.0",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-import": "~2.26.0",
-    "eslint-plugin-jest": "^27.1.5",
-    "eslint-plugin-jsdoc": "^41.1.2",
-    "eslint-plugin-n": "^15.7.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-promise": "^6.1.1",
     "jest": "^29.5.0",
-    "prettier": "^2.7.1",
-    "prettier-plugin-packagejson": "^2.2.11",
-    "rimraf": "^3.0.2",
-    "ts-jest": "^29.1.0",
-    "typescript": "^4.7.4"
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.1.0"
   },
   "packageManager": "yarn@3.2.1",
   "engines": {
