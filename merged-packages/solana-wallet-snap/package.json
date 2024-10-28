@@ -14,17 +14,20 @@
   ],
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
-    "build": "mm-snap build",
+    "build": "mm-snap build && yarn build-preinstalled-snap",
+    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
     "build:clean": "yarn clean && yarn build",
     "clean": "rimraf dist",
-    "lint": "yarn lint:eslint && yarn lint:misc --check",
-    "lint:eslint": "eslint . --cache --ext js,ts",
+    "lint": "yarn lint:eslint && yarn lint:misc && yarn lint:deps && yarn lint:types",
+    "lint:deps": "depcheck",
+    "lint:eslint": "eslint . --cache --ext js,jsx,ts,tsx",
     "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write",
-    "lint:misc": "prettier '**/*.json' '**/*.md' '!CHANGELOG.md' --ignore-path .gitignore",
+    "lint:misc": "prettier '**/*.json' '**/*.md' --check",
+    "lint:types": "tsc --noEmit",
     "prepublishOnly": "mm-snap manifest",
     "serve": "mm-snap serve",
     "start": "mm-snap watch",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@metamask/snaps-sdk": "^6.1.1",
