@@ -9,10 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1]
 
+### Uncategorized
+
+- docs: add developer docs
+- ci: configs
+- fix: husky + jest/types
+- chore: upgrade versions
+- chore: update both README
+- chore: edit lint scripts for both site and snap
+- chore: adds CHANGELOG files
+- chore: adds correct info to packages json, snap manifest, adds sol logo, preinstall script, updates packages and adds utils package
+- Initial commit
+
 ### Added
 
 - feat: TBA
 - feat: init commit
 
-[Unreleased]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/MetaMask/snap-bitcoin-wallet/releases/tag/v0.1.1
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/MetaMask/snap-solana-wallet/releases/tag/v0.1.1
