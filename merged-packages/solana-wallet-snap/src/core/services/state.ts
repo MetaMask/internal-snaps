@@ -1,6 +1,7 @@
 import type { Json } from '@metamask/snaps-sdk';
 
 type StateValue = {
+  // TODO: this is a placeholder
   wallets: unknown[];
 };
 

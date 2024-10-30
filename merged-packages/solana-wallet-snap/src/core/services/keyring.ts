@@ -16,13 +16,13 @@ export class SolanaKeyring implements Keyring {
   }
 
   async listAccounts(): Promise<KeyringAccount[]> {
-    // TODO: Implement method
+    // TODO: Implement method, this is a placeholder
     return [];
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getAccount(id: string): Promise<KeyringAccount | undefined> {
-    // TODO: Implement method
+    // TODO: Implement method, this is a placeholder
     return {
       type: 'eip155:eoa',
       id: 'default-id',
@@ -36,7 +36,7 @@ export class SolanaKeyring implements Keyring {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: Record<string, Json>,
   ): Promise<KeyringAccount> {
-    // TODO: Implement method
+    // TODO: Implement method, this is a placeholder
     return {
       type: 'eip155:eoa',
       id: 'new-id',
@@ -53,16 +53,17 @@ export class SolanaKeyring implements Keyring {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateAccount(account: KeyringAccount): Promise<void> {
-    // TODO: Implement method
+    // TODO: Implement method, this is a placeholder
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async deleteAccount(id: string): Promise<void> {
-    // TODO: Implement method
+    // TODO: Implement method, this is a placeholder
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async submitRequest(request: KeyringRequest): Promise<KeyringResponse> {
+    // TODO: Implement method, this is a placeholder
     return { pending: true };
   }
 }
