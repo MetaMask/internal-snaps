@@ -10,7 +10,6 @@ import { SendForm } from './components/SendForm/SendForm';
 import { SendFormNames } from './types/form';
 import type { SendContext, SendState } from './types/send';
 import { validation } from './utils/validation';
-
 /**
  * Checks if the given event is a send event.
  *
@@ -42,10 +41,14 @@ export async function handleSendEvents({
   const state = (await getInterfaceState(id)) as SendState;
   const name = event.name as SendFormNames;
 
+  context.clearToField = false;
+
   switch (event.type) {
     case UserInputEventType.ButtonClickEvent:
+      context.clearToField = false;
+
       // eslint-disable-next-line @typescript-eslint/await-thenable
-      await handleButtonEvents({ id, name });
+      await handleButtonEvents({ id, name, context });
       break;
     case UserInputEventType.InputChangeEvent:
       await handleInputChangeEvents({
@@ -84,6 +87,7 @@ async function handleInputChangeEvents({
   const formState = state[SendFormNames.Form];
   const fieldName = name as SendFormNames;
   const fieldValue = formState[fieldName] as string;
+  const toAddress = state[SendFormNames.Form][SendFormNames.To];
 
   context.validation[fieldName] = validateField<SendFormNames>(
     fieldName,
@@ -99,6 +103,12 @@ async function handleInputChangeEvents({
 
       await updateInterface(id, <SendForm context={context} />, context);
       break;
+    case SendFormNames.To:
+      context.showClearButton = Boolean(toAddress);
+
+      await updateInterface(id, <SendForm context={context} />, context);
+
+      break;
     default:
       break;
   }
@@ -110,20 +120,29 @@ async function handleInputChangeEvents({
  * @param params - The parameters for the function.
  * @param params.id - The ID associated with the event.
  * @param [params.name] - The name of the button event.
+ * @param params.context - The context for the send event.
  * @returns Returns null after handling the event.
  */
 async function handleButtonEvents({
   id,
   name,
+  context,
 }: {
   id: string;
   name?: string | undefined;
+  context: SendContext;
 }): Promise<void | null> {
   switch (name) {
     case SendFormNames.Cancel:
     case SendFormNames.BackButton:
-      await resolveInterface(id, false);
-      return null;
+      return await resolveInterface(id, false);
+
+    case SendFormNames.Clear:
+      context.clearToField = true;
+      context.showClearButton = false;
+
+      return await updateInterface(id, <SendForm context={context} />, context);
+
     default:
       return null;
   }

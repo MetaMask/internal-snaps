@@ -22,6 +22,8 @@ export async function renderSend(params: StartSendTransactionFlowParams) {
     accounts: Object.values(currentState?.keyringAccounts ?? {}),
     selectedAccountId: params.account,
     validation: {},
+    clearToField: false,
+    showClearButton: false,
   };
 
   const id = await createInterface(<SendForm context={context} />, context);

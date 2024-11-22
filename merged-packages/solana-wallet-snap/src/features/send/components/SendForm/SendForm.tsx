@@ -4,13 +4,20 @@ import { Header } from '../../../../core/components/Header/Header';
 import { SendFormNames } from '../../types/form';
 import type { SendContext } from '../../types/send';
 import { AccountSelector } from '../AccountSelector/AccountSelector';
+import { ToAddressField } from '../ToAddressField/ToAddressField';
 
 type SendFormProps = {
   context: SendContext;
 };
 
 export const SendForm = ({
-  context: { accounts, selectedAccountId, validation },
+  context: {
+    accounts,
+    selectedAccountId,
+    validation,
+    clearToField,
+    showClearButton,
+  },
 }: SendFormProps) => {
   return (
     <Container>
@@ -21,6 +28,11 @@ export const SendForm = ({
             error={validation?.[SendFormNames.AccountSelector]?.message ?? ''}
             accounts={accounts}
             selectedAccountId={selectedAccountId}
+          />
+          <ToAddressField
+            validation={validation}
+            clearToField={clearToField}
+            showClearButton={showClearButton}
           />
         </Form>
       </Box>
