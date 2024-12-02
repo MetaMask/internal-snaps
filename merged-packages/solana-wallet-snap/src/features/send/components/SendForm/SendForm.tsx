@@ -10,6 +10,7 @@ import {
 import { Header } from '../../../../core/components/Header/Header';
 import { formatCurrency } from '../../../../core/utils/format-currency';
 import { formatTokens } from '../../../../core/utils/format-tokens';
+import { i18n } from '../../../../core/utils/i18n';
 import { tokenToFiat } from '../../../../core/utils/token-to-fiat';
 import { SendFormNames } from '../../types/form';
 import { SendCurrency, type SendContext } from '../../types/send';
@@ -34,8 +35,11 @@ export const SendForm = ({
     rates,
     maxBalance,
     canReview,
+    locale,
   },
 }: SendFormProps) => {
+  const translate = i18n(locale);
+
   const nativeBalance = balances[selectedAccountId]?.amount ?? '0';
   const currencyToMaxBalance: Record<SendCurrency, string> = {
     [SendCurrency.FIAT]: String(
@@ -75,7 +79,9 @@ export const SendForm = ({
           />
           <Box direction="horizontal" alignment="space-between" center>
             {balance ? (
-              <Text color="muted">{`Balance: ${balance}`}</Text>
+              <Text color="muted">{`${translate(
+                'send.balance',
+              )}: ${balance}`}</Text>
             ) : (
               <Box>{null}</Box>
             )}
