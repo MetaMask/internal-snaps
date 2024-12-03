@@ -6,8 +6,11 @@ import {
   resolveInterface,
   updateInterface,
 } from '../../../../core/utils/interface';
+import logger from '../../../../core/utils/logger';
 import { SendForm } from '../SendForm/SendForm';
 import { SendCurrency } from '../SendForm/types';
+import { TransactionResultDialog } from '../TransactionResultDialog/TransactionResultDialog';
+import type { TransactionResultDialogContext } from '../TransactionResultDialog/types';
 import { TransactionConfirmationNames } from './ConfirmationDialog';
 import type { ConfirmationDialogContext } from './types';
 
@@ -58,6 +61,7 @@ async function onConfirmButtonClick({
   context: ConfirmationDialogContext;
   snapContext: SnapExecutionContext;
 }) {
+  let signature: string | null = null;
   const amountInSol =
     context.currencySymbol === SendCurrency.SOL
       ? context.amount
@@ -65,20 +69,48 @@ async function onConfirmButtonClick({
           .dividedBy(BigNumber(context.rates?.conversionRate ?? '0'))
           .toString();
 
-  await snapContext.keyring.submitRequest({
-    // eslint-disable-next-line no-restricted-globals
-    id: crypto.randomUUID(),
-    account: context.fromAccountId,
-    scope: context.scope,
-    request: {
-      method: SolMethod.SendAndConfirmTransaction,
-      params: {
-        to: context.toAddress,
-        amount: Number(amountInSol),
+  try {
+    const response = await snapContext.keyring.submitRequest({
+      // eslint-disable-next-line no-restricted-globals
+      id: crypto.randomUUID(),
+      account: context.fromAccountId,
+      scope: context.scope,
+      request: {
+        method: SolMethod.SendAndConfirmTransaction,
+        params: {
+          to: context.toAddress,
+          amount: Number(amountInSol),
+        },
       },
-    },
-  });
-  await resolveInterface(id, false);
+    });
+
+    if (
+      !(
+        !response.pending &&
+        response.result &&
+        typeof response.result === 'object' &&
+        'signature' in response.result
+      )
+    ) {
+      throw new Error('Invalid transaction response');
+    }
+
+    signature = response.result.signature as string;
+  } catch (error) {
+    logger.error({ error }, 'Error submitting request');
+  }
+
+  const transactionResultContext: TransactionResultDialogContext = {
+    ...context,
+    transactionSuccess: signature !== null,
+    signature,
+  };
+
+  await updateInterface(
+    id,
+    <TransactionResultDialog context={transactionResultContext} />,
+    transactionResultContext,
+  );
 }
 
 export const eventHandlers = {
