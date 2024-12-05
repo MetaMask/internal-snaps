@@ -1,5 +1,4 @@
 import type { Balance } from '@metamask/keyring-api';
-import type { GetCurrencyRateResult } from '@metamask/snaps-sdk';
 import {
   Address,
   Card,
@@ -25,19 +24,19 @@ type AccountSelectorProps = {
   scope: SolanaCaip2Networks;
   accounts: SolanaKeyringAccount[];
   balances: Record<string, Balance>;
-  currencyRate: GetCurrencyRateResult;
+  price: number;
   selectedAccountId: string;
   locale: Locale;
   error?: string;
 };
 
 export const AccountSelector: SnapComponent<AccountSelectorProps> = ({
+  accounts,
+  balances,
+  price,
   name,
   scope,
-  accounts,
   selectedAccountId,
-  balances,
-  currencyRate,
   error,
   locale,
 }) => {
@@ -56,10 +55,7 @@ export const AccountSelector: SnapComponent<AccountSelectorProps> = ({
                   balances[account.id]?.unit ?? SendCurrency.SOL,
                 )}
                 extra={formatCurrency(
-                  tokenToFiat(
-                    balances[account.id]?.amount ?? '0',
-                    currencyRate?.conversionRate ?? 0,
-                  ),
+                  tokenToFiat(balances[account.id]?.amount ?? '0', price),
                 )}
                 description={truncateAddress(account.address)}
                 title={

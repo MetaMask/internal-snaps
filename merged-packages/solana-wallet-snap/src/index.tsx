@@ -1,53 +1,29 @@
 import { handleKeyringRequest } from '@metamask/keyring-api';
 import type {
   Json,
+  OnCronjobHandler,
   OnKeyringRequestHandler,
   OnUserInputHandler,
 } from '@metamask/snaps-sdk';
 import {
   MethodNotFoundError,
   SnapError,
-  UnauthorizedError,
   type OnRpcRequestHandler,
 } from '@metamask/snaps-sdk';
 
 import { SolanaInternalRpcMethods } from './core/constants/solana';
+import { handlers, OnCronjobMethods } from './core/handlers/onCronjob';
 import { install as installPolyfills } from './core/polyfills';
-import { SolanaConnection } from './core/services/connection';
-import { SolanaKeyring } from './core/services/keyring';
 import { isSnapRpcError } from './core/utils/errors';
 import logger from './core/utils/logger';
+import { validateOrigin } from './core/validation/validators';
 import { renderSend } from './features/send/render';
 import { eventHandlers as sendFormEvents } from './features/send/views/SendForm/events';
 import type { StartSendTransactionFlowParams } from './features/send/views/SendForm/types';
 import { eventHandlers as transactionConfirmationEvents } from './features/send/views/TransactionConfirmation/events';
-import { originPermissions } from './permissions';
-
-export type SnapExecutionContext = {
-  connection: SolanaConnection;
-  keyring: SolanaKeyring;
-};
+import snapContext, { keyring } from './snap-context';
 
 installPolyfills();
-
-const connection = new SolanaConnection();
-const keyring = new SolanaKeyring(connection);
-
-const snapContext = {
-  connection,
-  keyring,
-};
-
-export const validateOrigin = (origin: string, method: string): void => {
-  if (!origin) {
-    // eslint-disable-next-line @typescript-eslint/no-throw-literal
-    throw new UnauthorizedError('Origin not found');
-  }
-  if (!originPermissions.get(origin)?.has(method)) {
-    // eslint-disable-next-line @typescript-eslint/no-throw-literal
-    throw new UnauthorizedError(`Permission denied`);
-  }
-};
 
 /**
  * Handle incoming JSON-RPC requests, sent through `wallet_invokeSnap`.
@@ -160,4 +136,29 @@ export const onUserInput: OnUserInputHandler = async ({
   }
 
   await handler({ id, event, context, snapContext });
+};
+
+/**
+ * Handle incoming cronjob requests.
+ *
+ * @param args - The request handler args as object.
+ * @param args.request - A validated cronjob request object.
+ * @returns A promise that resolves to a JSON object.
+ * @throws If the request method is not valid for this snap.
+ * @see https://docs.metamask.io/snaps/reference/entry-points/#oncronjob
+ */
+export const onCronjob: OnCronjobHandler = async ({ request }) => {
+  const { method } = request;
+
+  const handler = handlers[method as OnCronjobMethods];
+
+  if (!handler) {
+    throw new MethodNotFoundError(
+      `Cronjob method ${method} not found. Available methods: ${Object.values(
+        OnCronjobMethods,
+      ).toString()}`,
+    ) as unknown as Error;
+  }
+
+  return handler({ request });
 };

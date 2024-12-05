@@ -1,8 +1,7 @@
 /* eslint-disable no-restricted-globals */
 export const SOL_SYMBOL = 'SOL';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const Networks = {
+export const Networks = {
   Mainnet: {
     id: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
     cluster: 'Mainnet',
@@ -56,12 +55,9 @@ export const NETWORK_TO_EXPLORER_CLUSTER = {
   [SolanaCaip2Networks.Localnet]: 'local',
 };
 
-export enum SolanaCaip19Tokens {
-  SOL = 'slip44:501',
-}
-
 export enum SolanaInternalRpcMethods {
   StartSendTransactionFlow = 'startSendTransactionFlow',
+  ShowTransactionConfirmation = 'showTransactionConfirmation',
 }
 
 export const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -72,3 +68,23 @@ export const SOLANA_NETWORK_TO_RPC_URLS: Record<SolanaCaip2Networks, string> = {
   [SolanaCaip2Networks.Testnet]: process.env.RPC_URL_TESTNET ?? '',
   [SolanaCaip2Networks.Localnet]: process.env.RPC_URL_LOCALNET ?? '',
 };
+
+export enum SolanaCaip19Tokens {
+  SOL = 'slip44:501',
+}
+
+export type TokenInfo = {
+  symbol: string;
+  caip19Id: SolanaCaip19Tokens;
+  address: string;
+  decimals: number; // TODO: Decide if we keep this
+};
+
+export const SolanaTokens = {
+  [SolanaCaip19Tokens.SOL]: {
+    symbol: 'SOL',
+    caip19Id: SolanaCaip19Tokens.SOL,
+    address: 'So11111111111111111111111111111111111111112',
+    decimals: 9,
+  },
+} as const satisfies Record<SolanaCaip19Tokens, TokenInfo>;

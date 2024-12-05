@@ -1,6 +1,7 @@
 import { installSnap } from '@metamask/snaps-jest';
 
 import {
+  SolanaCaip19Tokens,
   SolanaCaip2Networks,
   SolanaInternalRpcMethods,
 } from '../../core/constants/solana';
@@ -33,11 +34,14 @@ const mockContext: SendContext = {
       unit: SendCurrency.SOL,
     },
   },
-  rates: {
-    conversionDate: Date.now(),
-    conversionRate: 261,
-    currency: SendCurrency.FIAT,
-    usdConversionRate: 1,
+  tokenPrices: {
+    [SolanaCaip19Tokens.SOL]: {
+      symbol: 'SOL',
+      caip19Id: SolanaCaip19Tokens.SOL,
+      address: 'So11111111111111111111111111111111111111112',
+      decimals: 9,
+      price: 261,
+    },
   },
   locale: 'en',
   transaction: null,

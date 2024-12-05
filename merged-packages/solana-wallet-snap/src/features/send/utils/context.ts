@@ -1,13 +1,12 @@
 import type { Balance } from '@metamask/keyring-api';
 
-import { type SnapExecutionContext } from '../../..';
 import {
   SolanaCaip19Tokens,
   SolanaCaip2Networks,
 } from '../../../core/constants/solana';
 import { getPreferences } from '../../../core/utils/interface';
 import logger from '../../../core/utils/logger';
-// import { getRatesFromMetamask } from '../../../core/utils/interface';
+import { state, type SnapExecutionContext } from '../../../snap-context';
 import type { SendContext } from '../views/SendForm/types';
 import { SendCurrency } from '../views/SendForm/types';
 
@@ -25,6 +24,7 @@ export async function getSendContext(
   try {
     const scope = context?.scope ?? SolanaCaip2Networks.Mainnet;
     const token = `${scope}/${SolanaCaip19Tokens.SOL}`;
+    const stateValue = await state.get();
 
     const [accounts, preferences] = await Promise.all([
       snapContext.keyring.listAccounts(),
@@ -54,15 +54,6 @@ export async function getSendContext(
       {},
     );
 
-    // getRatesFromMetamask(SendCurrency.SOL),
-    // TODO: Remove this mock data when the rates are available to fetch.
-    const rates = {
-      conversionDate: Date.now(),
-      conversionRate: 261,
-      currency: SendCurrency.FIAT,
-      usdConversionRate: 1,
-    };
-
     return {
       scope,
       fromAccountId: context?.fromAccountId ?? accounts[0]?.id ?? '',
@@ -73,7 +64,7 @@ export async function getSendContext(
       currencySymbol: context?.currencySymbol ?? SendCurrency.SOL,
       validation: context.validation ?? {},
       balances,
-      rates,
+      tokenPrices: stateValue.tokenPrices,
       locale: preferences.locale,
       transaction: context.transaction ?? null,
       ...(context ?? {}),

@@ -2,7 +2,11 @@
 import { SolMethod } from '@metamask/keyring-api';
 import { MethodNotFoundError, type Json } from '@metamask/snaps-sdk';
 
-import { SolanaCaip19Tokens, SolanaCaip2Networks } from '../constants/solana';
+import {
+  SolanaCaip19Tokens,
+  SolanaCaip2Networks,
+  SolanaTokens,
+} from '../constants/solana';
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
@@ -52,6 +56,13 @@ describe('SolanaKeyring', () => {
         }),
         {},
       ),
+      mapInterfaceNameToId: {},
+      tokenPrices: {
+        [SolanaCaip19Tokens.SOL]: {
+          ...SolanaTokens[SolanaCaip19Tokens.SOL],
+          price: 0,
+        },
+      },
     };
 
     /**
@@ -74,10 +85,10 @@ describe('SolanaKeyring', () => {
                   case 'get':
                     return mockStateValue;
                   case 'update':
-                    mockStateValue = params.newState;
+                    mockStateValue = params.newState as StateValue;
                     return null;
                   case 'clear':
-                    mockStateValue = {};
+                    mockStateValue = {} as StateValue;
                     return null;
                   default:
                     throw new Error(`Unknown operation: ${params.operation}`);
@@ -145,7 +156,16 @@ describe('SolanaKeyring', () => {
 
   describe('createAccount', () => {
     it('creates new accounts with increasing indices', async () => {
-      mockStateValue = { keyringAccounts: {} };
+      mockStateValue = {
+        keyringAccounts: {},
+        mapInterfaceNameToId: {},
+        tokenPrices: {
+          [SolanaCaip19Tokens.SOL]: {
+            ...SolanaTokens[SolanaCaip19Tokens.SOL],
+            price: 0,
+          },
+        },
+      };
       const firstAccount = await keyring.createAccount();
       const secondAccount = await keyring.createAccount();
       const thirdAccount = await keyring.createAccount();
@@ -165,7 +185,16 @@ describe('SolanaKeyring', () => {
     });
 
     it('recreates accounts with missing indices, in order', async () => {
-      mockStateValue = { keyringAccounts: {} };
+      mockStateValue = {
+        keyringAccounts: {},
+        mapInterfaceNameToId: {},
+        tokenPrices: {
+          [SolanaCaip19Tokens.SOL]: {
+            ...SolanaTokens[SolanaCaip19Tokens.SOL],
+            price: 0,
+          },
+        },
+      };
 
       const firstAccount = await keyring.createAccount();
       const secondAccount = await keyring.createAccount();
