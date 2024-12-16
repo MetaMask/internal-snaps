@@ -19,6 +19,7 @@ import {
   showDialog,
   updateInterface,
 } from '../../utils/interface';
+import logger from '../../utils/logger';
 
 export const DEFAULT_SEND_CONTEXT: SendContext = {
   scope: SolanaCaip2Networks.Mainnet,
@@ -70,16 +71,15 @@ export const renderSend: OnRpcRequestHandler = async ({ request }) => {
       keyring
         .getAccountBalances(_account.id, [token])
         .then((response) => {
-          balances[_account.id] = response[token] ?? {
-            amount: '0',
-            unit: 'SOL',
-          };
+          if (response[token]) {
+            balances[_account.id] = response[token];
+          }
         })
-        .catch(() => {
-          balances[_account.id] = balances[_account.id] ?? {
-            amount: '0',
-            unit: 'SOL',
-          };
+        .catch((error) => {
+          logger.error(
+            { error },
+            `Could not fetch balances for account ${_account.id}`,
+          );
         }),
     );
     await Promise.all(promises);

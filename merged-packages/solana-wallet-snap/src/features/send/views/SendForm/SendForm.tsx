@@ -8,7 +8,7 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 import { isNullOrUndefined } from '@metamask/utils';
 
-import { Header } from '../../../../core/components/Header/Header';
+import { Navigation } from '../../../../core/components/Navigation/Navigation';
 import { SolanaCaip19Tokens } from '../../../../core/constants/solana';
 import { formatCurrency } from '../../../../core/utils/format-currency';
 import { formatTokens } from '../../../../core/utils/format-tokens';
@@ -38,15 +38,20 @@ export const SendForm = ({
   },
 }: SendFormProps) => {
   const translate = i18n(locale);
-
-  const nativeBalance = balances[fromAccountId]?.amount ?? '0';
+  const nativeBalance = balances[fromAccountId]?.amount;
+  const isNativeBalanceDefined = nativeBalance !== undefined;
 
   const { price } = tokenPrices[SolanaCaip19Tokens.SOL];
 
-  const currencyToBalance: Record<SendCurrency, string> = {
-    [SendCurrency.FIAT]: formatCurrency(tokenToFiat(nativeBalance, price)),
-    [SendCurrency.SOL]: formatTokens(nativeBalance, currencySymbol),
-  };
+  const currencyToBalance: Record<SendCurrency, string> = isNativeBalanceDefined
+    ? {
+        [SendCurrency.FIAT]: formatCurrency(tokenToFiat(nativeBalance, price)),
+        [SendCurrency.SOL]: formatTokens(nativeBalance, currencySymbol),
+      }
+    : {
+        [SendCurrency.FIAT]: '',
+        [SendCurrency.SOL]: '',
+      };
 
   const balance = currencyToBalance[currencySymbol];
 
@@ -60,11 +65,13 @@ export const SendForm = ({
     amount.length > 0 &&
     toAddress.length > 0 &&
     Object.values(validation).every(isNullOrUndefined);
+  // isNativeBalanceDefined && // @TODO: Bring this back in
+  // Boolean(price); // @TODO: Bring this back in
 
   return (
     <Container>
       <Box>
-        <Header
+        <Navigation
           title={translate('send.title')}
           backButtonName={SendFormNames.BackButton}
         />
