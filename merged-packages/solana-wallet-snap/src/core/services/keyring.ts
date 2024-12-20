@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/prefer-reduce-type-parameter */
 import {
   emitSnapKeyringEvent,
@@ -13,24 +14,14 @@ import {
   type Transaction,
 } from '@metamask/keyring-api';
 import { MethodNotFoundError, type Json } from '@metamask/snaps-sdk';
-import { getTransferSolInstruction } from '@solana-program/system';
-import type { Address, Blockhash, Signature } from '@solana/web3.js';
+import type { Address, Signature } from '@solana/web3.js';
 import {
-  appendTransactionMessageInstruction,
   address as asAddress,
   createKeyPairFromPrivateKeyBytes,
-  createKeyPairSignerFromPrivateKeyBytes,
-  createTransactionMessage,
   getAddressFromPublicKey,
-  getSignatureFromTransaction,
-  lamports,
-  pipe,
-  sendTransactionWithoutConfirmingFactory,
-  setTransactionMessageFeePayer,
-  setTransactionMessageLifetimeUsingBlockhash,
-  signTransactionMessageWithSigners,
 } from '@solana/web3.js';
-import { assert, type Struct } from 'superstruct';
+import type { Struct } from 'superstruct';
+import { assert } from 'superstruct';
 
 import type { SolanaCaip2Networks } from '../constants/solana';
 import {
@@ -39,10 +30,9 @@ import {
   SolanaCaip19Tokens,
 } from '../constants/solana';
 import { deriveSolanaPrivateKey } from '../utils/derive-solana-private-key';
-import { getClusterFromScope } from '../utils/get-cluster-from-scope';
 import { getLowestUnusedIndex } from '../utils/get-lowest-unused-index';
 import { getNetworkFromToken } from '../utils/get-network-from-token';
-import logger from '../utils/logger';
+import type { ILogger } from '../utils/logger';
 import { logMaybeSolanaError } from '../utils/logMaybeSolanaError';
 import type { TransferSolParams } from '../validation/structs';
 import {
@@ -54,6 +44,7 @@ import type { SolanaConnection } from './connection/SolanaConnection';
 import type { EncryptedSolanaState } from './encrypted-state';
 import type { SolanaState } from './state';
 import type { TransactionsService } from './transactions';
+import type { TransferSolHelper } from './TransferSolHelper/TransferSolHelper';
 /**
  * We need to store the index of the KeyringAccount in the state because
  * we want to be able to restore any account with a previously used index.
@@ -72,21 +63,31 @@ export class SolanaKeyring implements Keyring {
 
   readonly #transactionsService: TransactionsService;
 
+  readonly #transferSolHelper: TransferSolHelper;
+
+  readonly #logger: ILogger;
+
   constructor({
     state,
     encryptedState,
     connection,
     transactionsService,
+    transferSolHelper,
+    logger,
   }: {
     state: SolanaState;
     encryptedState: EncryptedSolanaState;
     connection: SolanaConnection;
     transactionsService: TransactionsService;
+    transferSolHelper: TransferSolHelper;
+    logger: ILogger;
   }) {
     this.#state = state;
     this.#encryptedState = encryptedState;
     this.#connection = connection;
     this.#transactionsService = transactionsService;
+    this.#transferSolHelper = transferSolHelper;
+    this.#logger = logger;
   }
 
   async listAccounts(): Promise<SolanaKeyringAccount[]> {
@@ -96,7 +97,7 @@ export class SolanaKeyring implements Keyring {
 
       return Object.values(keyringAccounts).sort((a, b) => a.index - b.index);
     } catch (error: any) {
-      logger.error({ error }, 'Error listing accounts');
+      this.#logger.error({ error }, 'Error listing accounts');
       throw new Error('Error listing accounts');
     }
   }
@@ -108,9 +109,17 @@ export class SolanaKeyring implements Keyring {
 
       return keyringAccounts?.[id];
     } catch (error: any) {
-      logger.error({ error }, 'Error getting account');
+      this.#logger.error({ error }, 'Error getting account');
       throw new Error('Error getting account');
     }
+  }
+
+  async getAccountOrThrow(id: string): Promise<SolanaKeyringAccount> {
+    const account = await this.getAccount(id);
+    if (!account) {
+      throw new Error('Account not found');
+    }
+    return account;
   }
 
   async createAccount(
@@ -183,12 +192,12 @@ export class SolanaKeyring implements Keyring {
           };
         });
       } catch (error: any) {
-        logger.error({ error }, 'Error fetching initial transactions');
+        this.#logger.error({ error }, 'Error fetching initial transactions');
       }
 
       return keyringAccount;
     } catch (error: any) {
-      logger.error({ error }, 'Error creating account');
+      this.#logger.error({ error }, 'Error creating account');
       throw new Error('Error creating account');
     }
   }
@@ -207,7 +216,7 @@ export class SolanaKeyring implements Keyring {
       ]);
       await this.#emitEvent(KeyringEvent.AccountDeleted, { id });
     } catch (error: any) {
-      logger.error({ error }, 'Error deleting account');
+      this.#logger.error({ error }, 'Error deleting account');
       throw new Error('Error deleting account');
     }
   }
@@ -250,7 +259,10 @@ export class SolanaKeyring implements Keyring {
             balances.set(asset, [SOL_SYMBOL, balance]);
           } else {
             // Tokens: unsuported
-            logger.log({ asset, network: currentNetwork }, 'Unsupported asset');
+            this.#logger.log(
+              { asset, network: currentNetwork },
+              'Unsupported asset',
+            );
           }
         }
       }
@@ -266,7 +278,7 @@ export class SolanaKeyring implements Keyring {
       return response;
     } catch (error: any) {
       logMaybeSolanaError(error);
-      logger.error({ error }, 'Error getting account balances');
+      this.#logger.error({ error }, 'Error getting account balances');
       throw new Error('Error getting account balances');
     }
   }
@@ -293,6 +305,7 @@ export class SolanaKeyring implements Keyring {
   async #handleSubmitRequest(request: KeyringRequest): Promise<Json> {
     const { scope, account: accountId } = request;
     const { method, params } = request.request;
+    const { to, amount } = params as TransferSolParams;
 
     const account = await this.getAccount(accountId);
     if (!account) {
@@ -301,9 +314,11 @@ export class SolanaKeyring implements Keyring {
 
     switch (method) {
       case SolMethod.SendAndConfirmTransaction: {
-        const signature = await this.#transferSol(
+        validateRequest(params, TransferSolParamsStruct as Struct<any>);
+        const signature = await this.#transferSolHelper.transferSol(
           account,
-          params as TransferSolParams,
+          to,
+          amount,
           scope as SolanaCaip2Networks,
         );
         return { signature };
@@ -311,145 +326,6 @@ export class SolanaKeyring implements Keyring {
 
       default:
         throw new MethodNotFoundError() as Error;
-    }
-  }
-
-  /**
-   * Transfer SOL from one account to another.
-   *
-   * @param account - The account from which the SOL will be transferred.
-   * @param params - The parameters for the transfer.
-   * @param network - The network on which to transfer the SOL.
-   * @returns The signature of the transaction.
-   * @see https://github.com/solana-labs/solana-web3.js/blob/master/examples/transfer-lamports/src/example.ts
-   */
-  async #transferSol(
-    account: SolanaKeyringAccount,
-    params: TransferSolParams,
-    network: SolanaCaip2Networks,
-  ): Promise<string> {
-    validateRequest(params, TransferSolParamsStruct as Struct<any>);
-
-    const { to, amount } = params;
-    const amountInLamports = lamports(BigInt(amount * LAMPORTS_PER_SOL));
-
-    const sendTransactionWithoutConfirming =
-      sendTransactionWithoutConfirmingFactory({
-        rpc: this.#connection.getRpc(network),
-      });
-
-    /**
-     * The source account from which the tokens will be transferred needs to sign the transaction. We need to
-     * create a `TransactionSigner` for it.
-     */
-    const from = await createKeyPairSignerFromPrivateKeyBytes(
-      Uint8Array.from(account.privateKeyBytesAsNum),
-    );
-
-    /**
-     * Since the account to which the tokens will be transferred does not need to sign the transaction
-     * to receive them, we only need an address.
-     */
-    const toAddress = asAddress(to);
-    const latestBlockhash = await this.#getLatestBlockhash(network);
-
-    /**
-     * Create the transaction message.
-     */
-    const transactionMessage = pipe(
-      createTransactionMessage({ version: 0 }),
-      // Every transaction must state from which account the transaction fee should be debited from,
-      // and that account must sign the transaction. Here, we'll make the source account pay the fee.
-      (tx) => setTransactionMessageFeePayer(from.address, tx),
-      // A transaction is valid for execution as long as it includes a valid lifetime constraint. Here
-      // we supply the hash of a recent block. The network will accept this transaction until it
-      // considers that hash to be 'expired' for the purpose of transaction execution.
-      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
-      // Every transaction needs at least one instruction. This instruction describes the transfer.
-      (tx) =>
-        appendTransactionMessageInstruction(
-          /**
-           * The system program has the exclusive right to transfer Lamports from one account to
-           * another. Here we use an instruction creator from the `@solana-program/system` package
-           * to create a transfer instruction for the system program.
-           */
-          getTransferSolInstruction({
-            amount: amountInLamports,
-            destination: toAddress,
-            /**
-             * By supplying a `TransactionSigner` here instead of just an address, we give this
-             * transaction message superpowers. Later the
-             * `signTransactionMessageWithSigners` method, in consideration of the fact that the
-             * source account must sign System program transfer instructions, will use this
-             * `TransactionSigner` to produce a transaction signed on behalf of
-             * `from.address`, without any further configuration.
-             */
-            source: from,
-          }),
-          tx,
-        ),
-    );
-
-    const signedTransaction = await signTransactionMessageWithSigners(
-      transactionMessage,
-    );
-
-    const signature = getSignatureFromTransaction(signedTransaction);
-
-    /**
-     * Send and confirm the transaction.
-     * Now that the transaction is signed, we send it to an RPC. The RPC will relay it to the Solana
-     * network for execution. The `sendAndConfirmTransaction` method will resolve when the transaction
-     * is reported to have been confirmed. It will reject in the event of an error (eg. a failure to
-     * simulate the transaction), or may timeout if the transaction lifetime is thought to have expired
-     * (eg. the network has progressed past the `lastValidBlockHeight` of the transaction's blockhash
-     * lifetime constraint).
-     */
-    const cluster = getClusterFromScope(network)?.toLowerCase() ?? 'mainnet';
-    logger.info(
-      `Sending transaction: https://explorer.solana.com/tx/${signature}?cluster=${cluster}`,
-    );
-
-    try {
-      await sendTransactionWithoutConfirming(signedTransaction, {
-        commitment: 'confirmed',
-      });
-      return signature;
-    } catch (error: any) {
-      logMaybeSolanaError(error, transactionMessage);
-      throw error;
-    }
-  }
-
-  /**
-   * Every transaction needs to specify a valid lifetime for it to be accepted for execution on the
-   * network. This utility method fetches the latest block's hash as proof that the
-   * transaction was prepared close in time to when we tried to execute it. The network will accept
-   * transactions which include this hash until it progresses past the block specified as
-   * `latestBlockhash.lastValidBlockHeight`.
-   *
-   * TIP: It is desirable for the program to fetch this block hash as late as possible before signing
-   * and sending the transaction so as to ensure that it's as 'fresh' as possible.
-   *
-   * @param network - The network on which to get the latest blockhash.
-   * @returns The latest blockhash and the last valid block height.
-   */
-  async #getLatestBlockhash(network: SolanaCaip2Networks): Promise<
-    Readonly<{
-      blockhash: Blockhash;
-      lastValidBlockHeight: bigint;
-    }>
-  > {
-    try {
-      const latestBlockhashResponse = await this.#connection
-        .getRpc(network)
-        .getLatestBlockhash()
-        .send();
-
-      return latestBlockhashResponse.value;
-    } catch (error: any) {
-      logMaybeSolanaError(error);
-      throw error;
     }
   }
 

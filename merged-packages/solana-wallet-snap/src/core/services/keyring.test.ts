@@ -27,6 +27,7 @@ import { SolanaKeyring } from './keyring';
 import { createMockConnection } from './mocks/mockConnection';
 import { SolanaState, type StateValue } from './state';
 import { TransactionsService } from './transactions';
+import type { TransferSolHelper } from './TransferSolHelper/TransferSolHelper';
 
 jest.mock('@metamask/keyring-api', () => ({
   ...jest.requireActual('@metamask/keyring-api'),
@@ -47,6 +48,7 @@ describe('SolanaKeyring', () => {
   let keyring: SolanaKeyring;
   let mockStateValue: StateValue & EncryptedStateValue;
   let mockConnection: SolanaConnection;
+  let mockTransferSolHelper: TransferSolHelper;
 
   beforeEach(() => {
     mockConnection = createMockConnection();
@@ -59,11 +61,21 @@ describe('SolanaKeyring', () => {
       connection: mockConnection,
     });
 
+    mockTransferSolHelper = {
+      transferSol: jest
+        .fn()
+        .mockResolvedValue(
+          '2ZXksbyHvhDqZJwEKbyJNPAUkqhNSoJnH9L3ceLxgBb6dh9WSjhCQy7UdDfEQ8ym7acKJAyKT3NniDx5HzTWeXHT',
+        ),
+    } as unknown as TransferSolHelper;
+
     keyring = new SolanaKeyring({
       state,
       encryptedState,
       connection: mockConnection,
       transactionsService,
+      transferSolHelper: mockTransferSolHelper,
+      logger,
     });
 
     // To simplify the mocking of individual tests, we initialize the state in happy path with all mock accounts
@@ -171,6 +183,14 @@ describe('SolanaKeyring', () => {
 
       await expect(keyring.getAccount('1')).rejects.toThrow(
         'Error getting account',
+      );
+    });
+  });
+
+  describe('getAccountOrThrow', () => {
+    it('throws an error if account is not found', async () => {
+      await expect(keyring.getAccountOrThrow('4124151')).rejects.toThrow(
+        'Account not found',
       );
     });
   });
@@ -287,7 +307,9 @@ describe('SolanaKeyring', () => {
     });
 
     it('throws an error if state fails to be retrieved', async () => {
-      (snap.request as jest.Mock).mockReturnValueOnce(null);
+      (snap.request as jest.Mock).mockRejectedValueOnce(
+        new Error('State error'),
+      );
 
       await expect(keyring.createAccount()).rejects.toThrow(
         'Error creating account',
@@ -370,7 +392,7 @@ describe('SolanaKeyring', () => {
         };
 
         await expect(keyring.submitRequest(request)).rejects.toThrow(
-          'Lamports value must be in the range [0, 2e64-1]',
+          'At path: amount -- Expected a positive number but received a negative number -1',
         );
       });
 

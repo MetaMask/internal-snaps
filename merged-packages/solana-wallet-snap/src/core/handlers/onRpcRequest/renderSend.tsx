@@ -8,10 +8,12 @@ import { SendCurrency } from '../../../features/send/types';
 import { StartSendTransactionFlowParamsStruct } from '../../../features/send/views/SendForm/validation';
 import { keyring, state, tokenPricesService } from '../../../snap-context';
 import {
+  SOL_TRANSFER_FEE_LAMPORTS,
   SolanaCaip19Tokens,
   SolanaCaip2Networks,
 } from '../../constants/solana';
 import { DEFAULT_TOKEN_PRICES } from '../../services/state';
+import { lamportsToSol } from '../../utils/conversion';
 import {
   createInterface,
   getInterfaceContext,
@@ -27,7 +29,8 @@ export const DEFAULT_SEND_CONTEXT: SendContext = {
   fromAccountId: '',
   amount: '',
   toAddress: '',
-  fee: '0.000005',
+  feeEstimatedInSol: lamportsToSol(SOL_TRANSFER_FEE_LAMPORTS).toString(),
+  feePaidInSol: '0',
   accounts: [],
   currencySymbol: SendCurrency.SOL,
   validation: {},

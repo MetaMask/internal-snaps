@@ -1,7 +1,14 @@
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 import BigNumber from 'bignumber.js';
 
-import { SolanaCaip19Tokens } from '../../../../core/constants/solana';
+import {
+  SOL_TRANSFER_FEE_LAMPORTS,
+  SolanaCaip19Tokens,
+} from '../../../../core/constants/solana';
+import {
+  lamportsToSol,
+  solToLamports,
+} from '../../../../core/utils/conversion';
 import {
   resolveInterface,
   updateInterface,
@@ -141,34 +148,54 @@ async function onMaxAmountButtonClick({
   id: string;
   context: SendContext;
 }) {
+  const { fromAccountId, currencySymbol, balances, tokenPrices } = context;
+  const contextToUpdate = { ...context };
+  const balanceInSol = balances[fromAccountId]?.amount ?? '0';
+
+  /**
+   * This is only valid for sending SOL specifically.
+   * We should adapt if this event ends up being used for other kinds of transactions, like sending SPL tokens.
+   * @see {@link TransactionHelper#calculateCostInLamports}
+   */
+  const costInLamports = SOL_TRANSFER_FEE_LAMPORTS;
+
+  const balanceInLamportsAfterCost =
+    solToLamports(balanceInSol).minus(costInLamports);
+
+  const balanceInSolAfterCost = lamportsToSol(balanceInLamportsAfterCost);
+
+  contextToUpdate.feeEstimatedInSol = lamportsToSol(costInLamports).toString();
+
   /**
    * If the currency we set is SOL, set the amount to the balance
    */
-  if (context.currencySymbol === SendCurrency.SOL) {
-    context.amount = context.balances[context.fromAccountId]?.amount ?? '0';
+  if (currencySymbol === SendCurrency.SOL) {
+    contextToUpdate.amount = balanceInSolAfterCost.toString();
   }
 
   /**
    * If the currency is USD, adjust the amount
    */
-  if (context.currencySymbol === SendCurrency.FIAT) {
-    const amount = BigNumber(
-      context.balances[context.fromAccountId]?.amount ?? '0',
-    );
-    const price = BigNumber(context.tokenPrices[SolanaCaip19Tokens.SOL].price);
-
-    context.amount = amount.multipliedBy(price).toString();
+  if (currencySymbol === SendCurrency.FIAT) {
+    const price = BigNumber(tokenPrices[SolanaCaip19Tokens.SOL].price);
+    contextToUpdate.amount = balanceInSolAfterCost
+      .multipliedBy(price)
+      .toString();
   }
 
-  context.validation[SendFormNames.AmountInput] =
-    context.validation[SendFormNames.AmountInput] ??
+  contextToUpdate.validation[SendFormNames.AmountInput] =
+    contextToUpdate.validation[SendFormNames.AmountInput] ??
     validateField<SendFormNames>(
       SendFormNames.AmountInput,
-      context.amount,
+      contextToUpdate.amount,
       validation,
     );
 
-  await updateInterface(id, <SendForm context={context} />, context);
+  await updateInterface(
+    id,
+    <SendForm context={contextToUpdate} />,
+    contextToUpdate,
+  );
 }
 
 /**

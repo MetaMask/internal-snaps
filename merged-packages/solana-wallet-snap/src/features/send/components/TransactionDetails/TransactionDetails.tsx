@@ -33,11 +33,12 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
     amount,
     toAddress,
     accounts,
-    fee,
+    feeEstimatedInSol,
     currencySymbol,
     tokenPrices,
     preferences: { locale, currency },
     transaction,
+    feePaidInSol,
   },
 }) => {
   const translate = i18n(locale);
@@ -67,9 +68,14 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
     tokenToFiat(amountInSol.toString(), price),
     currency,
   );
-  const feeInUserCurrency = formatCurrency(tokenToFiat(fee, price), currency);
 
-  const total = BigNumber(amountInSol).plus(BigNumber(fee)).toString();
+  const feeToDisplay = transaction ? feePaidInSol : feeEstimatedInSol;
+  const feeInUserCurrency = formatCurrency(
+    tokenToFiat(feeToDisplay, price),
+    currency,
+  );
+
+  const total = BigNumber(amountInSol).plus(BigNumber(feeToDisplay)).toString();
   const totalInUserCurrency = formatCurrency(
     tokenToFiat(total, price),
     currency,
@@ -110,7 +116,7 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
         <Row label={translate('confirmation.fee')}>
           <Value
             extra={feeInUserCurrency}
-            value={formatTokens(fee, currencySymbol)}
+            value={formatTokens(feeToDisplay, currencySymbol)}
           />
         </Row>
 

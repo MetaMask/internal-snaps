@@ -47,7 +47,8 @@ export type SendContext = {
   amount: string;
   toAddress: string;
   accounts: SolanaKeyringAccount[];
-  fee: string;
+  feeEstimatedInSol: string;
+  feePaidInSol: string;
   validation: Partial<Record<SendFormNames, FormFieldError>>;
   currencySymbol: SendCurrency;
   balances: Record<CaipAssetType, Balance>;
