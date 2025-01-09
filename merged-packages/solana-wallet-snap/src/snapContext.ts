@@ -5,6 +5,7 @@ import { ConfigProvider } from './core/services/config';
 import { SolanaConnection } from './core/services/connection/SolanaConnection';
 import { EncryptedSolanaState } from './core/services/encrypted-state/EncryptedState';
 import { SolanaKeyring } from './core/services/keyring/Keyring';
+import { SplTokenHelper } from './core/services/spl-token-helper/SplTokenHelper';
 import { SolanaState } from './core/services/state/State';
 import { TokenMetadataService } from './core/services/token-metadata/TokenMetadata';
 import { TokenPricesService } from './core/services/token-prices/TokenPricesService';
@@ -29,6 +30,7 @@ export type SnapExecutionContext = {
   transactionHelper: TransactionHelper;
   transactionsService: TransactionsService;
   transferSolHelper: TransferSolHelper;
+  splTokenHelper: SplTokenHelper;
 };
 
 const configProvider = new ConfigProvider();
@@ -36,9 +38,10 @@ const state = new SolanaState();
 const encryptedState = new EncryptedSolanaState();
 const connection = new SolanaConnection(configProvider);
 const transactionHelper = new TransactionHelper(connection, logger);
-const transferSolHelper = new TransferSolHelper(
-  transactionHelper,
+const transferSolHelper = new TransferSolHelper(transactionHelper, logger);
+const splTokenHelper = new SplTokenHelper(
   connection,
+  transactionHelper,
   logger,
 );
 const tokenMetadataClient = new TokenMetadataClient(configProvider);
@@ -62,9 +65,9 @@ const keyring = new SolanaKeyring({
   state,
   encryptedState,
   configProvider,
-  connection,
   transactionsService,
   transferSolHelper,
+  splTokenHelper,
   logger,
   assetsService,
   tokenMetadataService,
@@ -89,18 +92,20 @@ const snapContext: SnapExecutionContext = {
   transactionHelper,
   transactionsService,
   transferSolHelper,
+  splTokenHelper,
 };
 
 export {
+  assetsService,
   configProvider,
   connection,
   keyring,
   priceApiClient,
+  splTokenHelper,
   state,
   tokenPricesService,
   transactionHelper,
   transactionsService,
-  assetsService,
 };
 
 export default snapContext;

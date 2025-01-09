@@ -1,3 +1,4 @@
+import { SolMethod } from '@metamask/keyring-api';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 import BigNumber from 'bignumber.js';
 
@@ -14,6 +15,7 @@ import {
   updateInterface,
 } from '../../../../core/utils/interface';
 import { validateField } from '../../../../core/validation/form';
+import { keyring } from '../../../../snapContext';
 import { Send } from '../../Send';
 import { SendCurrency, SendFormNames, type SendContext } from '../../types';
 import { validateBalance } from '../../utils/balance';
@@ -277,6 +279,34 @@ async function onSendButtonClick({
   await updateInterface(id, <Send context={updatedContext} />, updatedContext);
 }
 
+/**
+ * Temporary handler to demo the transfer of USDC.
+ * @param params - The parameters for the function.
+ * @param params.id - The id of the interface.
+ * @param params.context - The send context.
+ */
+async function onTransferUsdcButtonClick({
+  id,
+  context,
+}: {
+  id: string;
+  context: SendContext;
+}) {
+  await keyring.handleSendAndConfirmTransaction({
+    id,
+    scope: context.scope,
+    account: context.fromAccountId,
+    request: {
+      method: SolMethod.SendAndConfirmTransaction,
+      params: {
+        to: 'BXT1K8kzYXWMi6ihg7m9UqiHW4iJbJ69zumELHE9oBLe',
+        mintAddress: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', // USDC mint address on Solana Devnet,
+        amount: 0.01,
+      },
+    },
+  });
+}
+
 export const eventHandlers = {
   [SendFormNames.BackButton]: onBackButtonClick,
   [SendFormNames.SourceAccountSelector]: onSourceAccountSelectorValueChange,
@@ -287,4 +317,5 @@ export const eventHandlers = {
   [SendFormNames.ClearButton]: onClearButtonClick,
   [SendFormNames.CancelButton]: onCancelButtonClick,
   [SendFormNames.SendButton]: onSendButtonClick,
+  [SendFormNames.TransferUsdcButton]: onTransferUsdcButtonClick,
 };

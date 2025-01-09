@@ -3,6 +3,7 @@ import {
   enums,
   number,
   object,
+  optional,
   pattern,
   record,
   refine,
@@ -41,9 +42,12 @@ export const GetAccounBalancesResponseStruct = record(
   }),
 );
 
-export const TransferSolParamsStruct = object({
+export const SendAndConfirmTransactionParamsStruct = object({
   to: string(),
+  mintAddress: optional(string()),
   amount: PositiveNumber,
 });
 
-export type TransferSolParams = Infer<typeof TransferSolParamsStruct>;
+export type SendAndConfirmTransactionParams = Infer<
+  typeof SendAndConfirmTransactionParamsStruct
+>;

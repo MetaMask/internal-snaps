@@ -1,3 +1,4 @@
+/* eslint-disable jest/prefer-strict-equal */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { SolMethod } from '@metamask/keyring-api';
 import { MethodNotFoundError, type Json } from '@metamask/snaps-sdk';
@@ -28,16 +29,12 @@ import { AssetsService } from '../assets/Assets';
 import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { SolanaConnection } from '../connection/SolanaConnection';
-import {
-  EncryptedSolanaState,
-  type StateValue as EncryptedStateValue,
-} from '../encrypted-state/EncryptedState';
+import type { EncryptedStateValue } from '../encrypted-state/EncryptedState';
+import { EncryptedSolanaState } from '../encrypted-state/EncryptedState';
 import { createMockConnection } from '../mocks/mockConnection';
-import {
-  DEFAULT_TOKEN_PRICES,
-  SolanaState,
-  type StateValue,
-} from '../state/State';
+import type { SplTokenHelper } from '../spl-token-helper/SplTokenHelper';
+import type { StateValue } from '../state/State';
+import { DEFAULT_TOKEN_PRICES, SolanaState } from '../state/State';
 import type { TokenMetadataService } from '../token-metadata/TokenMetadata';
 import { TransactionsService } from '../transactions/Transactions';
 import type { TransferSolHelper } from '../transfer-sol-helper/TransferSolHelper';
@@ -65,6 +62,7 @@ describe('SolanaKeyring', () => {
   let mockConnection: SolanaConnection;
   let mockTransferSolHelper: TransferSolHelper;
   let mockTokenMetadataService: TokenMetadataService;
+  let mockSplTokenHelper: SplTokenHelper;
 
   beforeEach(() => {
     mockConnection = createMockConnection();
@@ -102,15 +100,19 @@ describe('SolanaKeyring', () => {
         .mockResolvedValue(SOLANA_MOCK_TOKEN_METADATA),
     } as unknown as TokenMetadataService;
 
+    mockSplTokenHelper = {
+      transferSplToken: jest.fn(),
+    } as unknown as SplTokenHelper;
+
     keyring = new SolanaKeyring({
       state,
       encryptedState,
       configProvider: mockConfigProvider,
-      connection: mockConnection,
       transactionsService,
       assetsService,
       tokenMetadataService: mockTokenMetadataService,
       transferSolHelper: mockTransferSolHelper,
+      splTokenHelper: mockSplTokenHelper,
       logger,
     });
 
@@ -277,16 +279,19 @@ describe('SolanaKeyring', () => {
       const secondAccount = await keyring.createAccount();
       const thirdAccount = await keyring.createAccount();
 
-      expect(firstAccount).toStrictEqual({
+      expect(firstAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(secondAccount).toStrictEqual({
+      expect(secondAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_1,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(thirdAccount).toStrictEqual({
+      expect(thirdAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_2,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
     });
@@ -322,40 +327,48 @@ describe('SolanaKeyring', () => {
       /**
        * Accounts are created in order
        */
-      expect(firstAccount).toStrictEqual({
+      expect(firstAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(secondAccount).toStrictEqual({
+      expect(secondAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_1,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(thirdAccount).toStrictEqual({
+      expect(thirdAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_2,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(fourthAccount).toStrictEqual({
+      expect(fourthAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_3,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(fifthAccount).toStrictEqual({
+      expect(fifthAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_4,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(sixthAccount).toStrictEqual({
+      expect(sixthAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_5,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
 
       /**
        * Regenerated accounts should pick up the missing indices
        */
-      expect(regeneratedSecondAccount).toStrictEqual({
+      expect(regeneratedSecondAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_1,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
-      expect(regeneratedFourthAccount).toStrictEqual({
+      expect(regeneratedFourthAccount).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_3,
+        scopes: undefined, // TODO: Remove once we uncomment the scopes
         id: expect.any(String),
       });
     });
@@ -484,6 +497,10 @@ describe('SolanaKeyring', () => {
       });
 
       it('transfers SOL', async () => {
+        jest
+          .spyOn(keyring, 'getAccount')
+          .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_4);
+
         const request = {
           id: 'some-id',
           scope: Network.Devnet,
@@ -518,7 +535,11 @@ describe('SolanaKeyring', () => {
         account: 'non-existent-account',
         request: {
           method: SolMethod.SendAndConfirmTransaction,
-          params: {},
+          params: {
+            to: 'BXT1K8kzYXWMi6ihg7m9UqiHW4iJbJ69zumELHE9oBLe',
+            mintAddress: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+            amount: 0.01,
+          },
         },
       };
 

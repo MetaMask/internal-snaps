@@ -25,6 +25,7 @@ export enum SendFormNames {
   SendButton = 'send-submit-button',
   ClearButton = 'send-clear-button',
   CloseButton = 'send-close-button',
+  TransferUsdcButton = 'send-transfer-usdc-button',
 }
 
 export enum SendCurrency {

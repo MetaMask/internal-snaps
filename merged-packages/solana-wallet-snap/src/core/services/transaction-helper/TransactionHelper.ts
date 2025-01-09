@@ -1,18 +1,34 @@
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
-import type { Blockhash } from '@solana/web3.js';
 import {
   compileTransactionMessage,
   getBase64Decoder,
   getCompiledTransactionMessageEncoder,
   getComputeUnitEstimateForTransactionMessageFactory,
+  getSignatureFromTransaction,
   pipe,
   prependTransactionMessageInstructions,
+  sendTransactionWithoutConfirmingFactory,
+  signTransactionMessageWithSigners,
+  type Blockhash,
+  type IInstruction,
+  type ITransactionMessageWithFeePayer,
+  type TransactionMessageWithBlockhashLifetime,
 } from '@solana/web3.js';
 
 import type { Network } from '../../constants/solana';
+import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import type { ILogger } from '../../utils/logger';
-import { logMaybeSolanaError } from '../../utils/logMaybeSolanaError';
 import type { SolanaConnection } from '../connection';
+
+type TransactionMessage = TransactionMessageWithBlockhashLifetime &
+  ITransactionMessageWithFeePayer &
+  Omit<
+    Readonly<{
+      instructions: readonly IInstruction[];
+      version: 0;
+    }>,
+    'feePayer'
+  >;
 
 /**
  * Helper class for transaction related operations.
@@ -23,7 +39,7 @@ import type { SolanaConnection } from '../connection';
  *
  * @example
  * const transactionHelper = new TransactionHelper(connection, logger);
- * const transferSolHelper = new TransferSolHelper(transactionHelper, connection, logger);
+ * const transferSolHelper = new TransferSolHelper(transactionHelper, logger);
  */
 export class TransactionHelper {
   readonly #connection: SolanaConnection;
@@ -62,7 +78,6 @@ export class TransactionHelper {
 
       return latestBlockhashResponse.value;
     } catch (error: any) {
-      logMaybeSolanaError(error);
       this.#logger.error(error);
       throw error;
     }
@@ -131,7 +146,44 @@ export class TransactionHelper {
 
       return transactionCost.value as any;
     } catch (error: any) {
-      logMaybeSolanaError(error);
+      this.#logger.error(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a transaction message to the network.
+   *
+   * @param transactionMessage - The transaction message to send.
+   * @param network - The network on which to send the transaction.
+   * @returns The signature of the transaction.
+   */
+  async sendTransaction(
+    transactionMessage: TransactionMessage,
+    network: Network,
+  ): Promise<string> {
+    try {
+      const rpc = this.#connection.getRpc(network);
+
+      const sendTransactionWithoutConfirming =
+        sendTransactionWithoutConfirmingFactory({
+          rpc,
+        });
+
+      const signedTransaction = await signTransactionMessageWithSigners(
+        transactionMessage,
+      );
+
+      const signature = getSignatureFromTransaction(signedTransaction);
+
+      const explorerUrl = getSolanaExplorerUrl(network, 'tx', signature);
+      this.#logger.info(`Sending transaction: ${explorerUrl}`);
+
+      await sendTransactionWithoutConfirming(signedTransaction, {
+        commitment: 'confirmed',
+      });
+      return signature;
+    } catch (error: any) {
       this.#logger.error(error);
       throw error;
     }
