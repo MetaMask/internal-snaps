@@ -1,10 +1,11 @@
 import BigNumber from 'bignumber.js';
 
 import {
+  Caip19Id,
   LAMPORTS_PER_SOL,
+  Network,
   SOL_TRANSFER_FEE_LAMPORTS,
-  SolanaCaip19Tokens,
-  SolanaCaip2Networks,
+  TokenMetadata,
 } from '../../../../core/constants/solana';
 import { DEFAULT_TOKEN_PRICES } from '../../../../core/services/state';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../../core/test/mocks/solana-keyring-accounts';
@@ -34,10 +35,10 @@ describe('onMaxAmountButtonClick', () => {
     balances: {
       [mockAccount.id]: { amount: mockBalanceInSol, unit: 'SOL' },
     },
-    scope: SolanaCaip2Networks.Testnet,
+    scope: Network.Testnet,
     tokenPrices: {
-      [SolanaCaip19Tokens.SOL]: {
-        ...DEFAULT_TOKEN_PRICES[SolanaCaip19Tokens.SOL],
+      [Caip19Id.SolMainnet]: {
+        ...DEFAULT_TOKEN_PRICES[TokenMetadata[Caip19Id.SolMainnet].caip19Id],
         price: Number(mockSolPrice),
       },
     },
