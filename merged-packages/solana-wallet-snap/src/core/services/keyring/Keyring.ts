@@ -23,7 +23,8 @@ import {
   getAddressFromPublicKey,
 } from '@solana/web3.js';
 
-import { SOL_SYMBOL, type Network } from '../../constants/solana';
+import type { Network } from '../../constants/solana';
+import { SOL_SYMBOL } from '../../constants/solana';
 import { lamportsToSol } from '../../utils/conversion';
 import { deriveSolanaPrivateKey } from '../../utils/deriveSolanaPrivateKey';
 import { fromTokenUnits } from '../../utils/fromTokenUnit';
@@ -147,14 +148,25 @@ export class SolanaKeyring implements Keyring {
     return account;
   }
 
-  async createAccount(
-    options?: Record<string, Json>,
-  ): Promise<SolanaKeyringAccount> {
+  async createAccount(options?: {
+    importedAccount?: boolean;
+    index?: number;
+    [key: string]: Json | undefined;
+  }): Promise<SolanaKeyringAccount> {
     try {
       // eslint-disable-next-line no-restricted-globals
       const id = crypto.randomUUID();
-      const keyringAccounts = await this.listAccounts();
-      const index = getLowestUnusedIndex(keyringAccounts);
+
+      // Find the account index
+      let index: number;
+      if (options?.importedAccount && typeof options.index === 'number') {
+        // Use the provided index for imported accounts
+        index = options.index;
+      } else {
+        // Get the lowest unused index for new accounts
+        const keyringAccounts = await this.listAccounts();
+        index = getLowestUnusedIndex(keyringAccounts);
+      }
 
       const privateKeyBytes = await deriveSolanaPrivateKey(index);
       const privateKeyBytesAsNum = Array.from(privateKeyBytes);
@@ -162,14 +174,20 @@ export class SolanaKeyring implements Keyring {
       const keyPair = await createKeyPairFromPrivateKeyBytes(privateKeyBytes);
       const accountAddress = await getAddressFromPublicKey(keyPair.publicKey);
 
+      // Filter out our special properties from options
+      const { importedAccount, index: _, ...remainingOptions } = options ?? {};
+
       const keyringAccount: SolanaKeyringAccount = {
         id,
         index,
         privateKeyBytesAsNum,
         type: SolAccountType.DataAccount,
         address: accountAddress,
-        options: options ?? {},
         scopes: [SolScopes.Mainnet, SolScopes.Testnet, SolScopes.Devnet],
+        options: {
+          ...remainingOptions,
+          imported: importedAccount ?? false,
+        },
         methods: [SolMethod.SendAndConfirmTransaction],
       };
 
