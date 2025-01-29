@@ -10,7 +10,6 @@ import {
 import { isNullOrUndefined } from '@metamask/utils';
 
 import { Navigation } from '../../../../core/components/Navigation/Navigation';
-import { Networks } from '../../../../core/constants/solana';
 import { formatCurrency } from '../../../../core/utils/formatCurrency';
 import { formatTokens } from '../../../../core/utils/formatTokens';
 import { i18n } from '../../../../core/utils/i18n';
@@ -19,14 +18,15 @@ import { AccountSelector } from '../../components/AccountSelector/AccountSelecto
 import { AmountInput } from '../../components/AmountInput/AmountInput';
 import { AssetSelector } from '../../components/AssetsSelector/AssetsSelector';
 import { ToAddressField } from '../../components/ToAddressField/ToAddressField';
+import { getNativeTokenPrice, getSelectedTokenPrice } from '../../selectors';
 import { SendCurrencyType, SendFormNames, type SendContext } from '../../types';
 
 type SendFormProps = {
   context: SendContext;
 };
 
-export const SendForm = ({
-  context: {
+export const SendForm = ({ context }: SendFormProps) => {
+  const {
     accounts,
     fromAccountId,
     amount,
@@ -36,32 +36,29 @@ export const SendForm = ({
     tokenCaipId,
     scope,
     balances,
-    tokenPrices,
+    tokenPricesFetchStatus,
     tokenMetadata,
     buildingTransaction,
     error,
     preferences: { locale, currency },
-  },
-}: SendFormProps) => {
+  } = context;
   const translate = i18n(locale);
   const selectedToken = balances[fromAccountId]?.[tokenCaipId];
   const tokenBalance = selectedToken?.amount;
   const tokenSymbol = selectedToken?.unit ?? '';
   const isBalanceDefined = tokenBalance !== undefined;
-  const { price: nativePrice } = tokenPrices?.[
-    Networks[scope].nativeToken.caip19Id
-  ] ?? {
-    price: 0,
-  };
 
-  const { price: tokenPrice } = tokenPrices?.[tokenCaipId] ?? {
-    price: 0,
-  };
+  const nativePrice = getNativeTokenPrice(context);
+  const selectedTokenPrice = getSelectedTokenPrice(context);
+
+  const isSelectedTokenPriceUnavailable =
+    tokenPricesFetchStatus === 'error' ||
+    (tokenPricesFetchStatus === 'fetched' && selectedTokenPrice === undefined);
 
   const currencyToBalance: Record<SendCurrencyType, string> = isBalanceDefined
     ? {
         [SendCurrencyType.FIAT]: formatCurrency(
-          tokenToFiat(tokenBalance, tokenPrice),
+          tokenToFiat(tokenBalance, selectedTokenPrice ?? 0),
           currency,
         ),
         [SendCurrencyType.TOKEN]: formatTokens(
@@ -87,8 +84,7 @@ export const SendForm = ({
     amount.length > 0 &&
     toAddress.length > 0 &&
     Object.values(validation).every(isNullOrUndefined) &&
-    isBalanceDefined &&
-    Boolean(tokenPrice);
+    isBalanceDefined;
 
   return (
     <Container>
@@ -98,6 +94,15 @@ export const SendForm = ({
           backButtonName={SendFormNames.BackButton}
         />
         <Form name={SendFormNames.Form}>
+          {isSelectedTokenPriceUnavailable && (
+            <Banner title="" severity="info">
+              <Text>
+                {translate('send.selectedTokenPriceNotAvailable', {
+                  currency,
+                })}
+              </Text>
+            </Banner>
+          )}
           <Box>{null}</Box>
           <Box>{null}</Box>
           <Box>{null}</Box>
@@ -110,7 +115,7 @@ export const SendForm = ({
             accounts={accounts}
             selectedAccountId={fromAccountId}
             balances={balances}
-            price={nativePrice}
+            price={nativePrice ?? null}
             locale={locale}
             currency={currency}
           />
@@ -146,6 +151,7 @@ export const SendForm = ({
                   currency={currency}
                   value={amount}
                   locale={locale}
+                  swapCurrencyButtonDisabled={isSelectedTokenPriceUnavailable}
                 />
               </Box>
               <Box direction="horizontal" alignment="space-between" center>
