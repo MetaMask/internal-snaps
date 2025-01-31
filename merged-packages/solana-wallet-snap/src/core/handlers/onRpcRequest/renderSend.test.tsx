@@ -223,11 +223,14 @@ describe('Send', () => {
 
     await screen2.typeInField(SendFormNames.AmountInput, '0.001');
 
+    await screen2.waitForUpdate();
+
     const screen3 = await response.getInterface();
 
     const updatedContext3: SendContext = {
       ...updatedContext2,
       amount: '0.001',
+      transactionMessage: 'some-base64-encoded-message',
     };
 
     expect(screen3).toRender(<Send context={updatedContext3} />);
