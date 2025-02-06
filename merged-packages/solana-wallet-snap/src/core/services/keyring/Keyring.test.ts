@@ -4,7 +4,11 @@ import { SolMethod } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { type Json } from '@metamask/snaps-sdk';
 
-import { Caip19Id, Network, SolanaCaip19Tokens } from '../../constants/solana';
+import {
+  KnownCaip19Id,
+  Network,
+  SolanaCaip19Tokens,
+} from '../../constants/solana';
 import {
   SOLANA_MOCK_SPL_TOKENS,
   SOLANA_MOCK_TOKEN,
@@ -21,7 +25,7 @@ import {
 } from '../../test/mocks/solana-keyring-accounts';
 import { deriveSolanaPrivateKey } from '../../utils/deriveSolanaPrivateKey';
 import logger from '../../utils/logger';
-import { AssetsService } from '../assets/Assets';
+import { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { SolanaConnection } from '../connection/SolanaConnection';
@@ -434,10 +438,10 @@ describe('SolanaKeyring', () => {
     it('gets account balance', async () => {
       const accountBalance = await keyring.getAccountBalances(
         MOCK_SOLANA_KEYRING_ACCOUNT_1.id,
-        [Caip19Id.SolLocalnet],
+        [KnownCaip19Id.SolLocalnet],
       );
       expect(accountBalance).toStrictEqual({
-        [Caip19Id.SolLocalnet]: {
+        [KnownCaip19Id.SolLocalnet]: {
           amount: '0.123456789',
           unit: 'SOL',
         },
@@ -481,7 +485,7 @@ describe('SolanaKeyring', () => {
 
       await expect(
         keyring.getAccountBalances(MOCK_SOLANA_KEYRING_ACCOUNT_1.id, [
-          Caip19Id.SolMainnet,
+          KnownCaip19Id.SolMainnet,
         ]),
       ).rejects.toThrow('Error getting assets');
     });

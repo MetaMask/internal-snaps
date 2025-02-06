@@ -9,7 +9,7 @@ import {
 } from '../../../features/send/types';
 import { TransactionConfirmationNames } from '../../../features/send/views/TransactionConfirmation/TransactionConfirmation';
 import {
-  Caip19Id,
+  KnownCaip19Id,
   Network,
   SOL_IMAGE_URL,
   SOL_SYMBOL,
@@ -40,7 +40,7 @@ const solanaKeyringAccounts = [
 ];
 
 const solanaAccountBalances = {
-  [Caip19Id.SolLocalnet]: {
+  [KnownCaip19Id.SolLocalnet]: {
     amount: '0.123456789',
     unit: SOL_SYMBOL,
   },
@@ -60,9 +60,9 @@ const mockContext: SendContext = {
   fromAccountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
   scope: Network.Localnet,
   currencyType: SendCurrencyType.TOKEN,
-  tokenCaipId: Caip19Id.SolLocalnet,
+  tokenCaipId: KnownCaip19Id.SolLocalnet,
   assets: [
-    Caip19Id.SolLocalnet,
+    KnownCaip19Id.SolLocalnet,
     'solana:123456789abcdef/token:address1',
     'solana:123456789abcdef/token:address2',
   ],
@@ -71,7 +71,7 @@ const mockContext: SendContext = {
     [MOCK_SOLANA_KEYRING_ACCOUNT_1.id]: solanaAccountBalances,
   },
   tokenPrices: {
-    [Caip19Id.SolLocalnet]: {
+    [KnownCaip19Id.SolLocalnet]: {
       price: 200,
     },
     'solana:123456789abcdef/token:address1': {
@@ -82,7 +82,7 @@ const mockContext: SendContext = {
     },
   },
   tokenMetadata: {
-    [Caip19Id.SolLocalnet]: {
+    [KnownCaip19Id.SolLocalnet]: {
       name: 'Solana',
       symbol: 'SOL',
       iconUrl: SOL_IMAGE_URL,
@@ -117,7 +117,7 @@ describe('Send', () => {
     // FIXME: when we have a better way to handle external requests
     server?.get(`/v3/spot-prices`, (_: any, res: any) => {
       return res.json({
-        [Caip19Id.SolLocalnet]: {
+        [KnownCaip19Id.SolLocalnet]: {
           usd: 200,
         },
         'solana:123456789abcdef/token:address1': {
@@ -143,8 +143,8 @@ describe('Send', () => {
           [MOCK_SOLANA_KEYRING_ACCOUNT_1.id]: solanaAccountBalances,
         },
         metadata: {
-          [Caip19Id.SolLocalnet]: {
-            assetId: Caip19Id.SolLocalnet,
+          [KnownCaip19Id.SolLocalnet]: {
+            assetId: KnownCaip19Id.SolLocalnet,
             name: 'Solana',
             symbol: 'SOL',
             iconUrl: SOL_IMAGE_URL,
@@ -269,7 +269,7 @@ describe('Send', () => {
     expect(screen5).toRender(<Send context={updatedContext5} />);
   });
 
-  it('fails when wrong params are given', async () => {
+  it('fails when wrong scope', async () => {
     const { request } = await installSnap();
 
     const response = await request({
@@ -284,6 +284,25 @@ describe('Send', () => {
     expect(response).toRespondWithError({
       code: expect.any(Number),
       message: expect.stringMatching(/At path: scope/u),
+      stack: expect.any(String),
+    });
+  });
+
+  it('fails when account is not a uuid', async () => {
+    const { request } = await installSnap();
+
+    const response = await request({
+      origin: TEST_ORIGIN,
+      method: RpcRequestMethod.StartSendTransactionFlow,
+      params: {
+        scope: Network.Localnet,
+        account: 'not-a-uuid',
+      },
+    });
+
+    expect(response).toRespondWithError({
+      code: expect.any(Number),
+      message: expect.stringMatching(/At path: account/u),
       stack: expect.any(String),
     });
   });
