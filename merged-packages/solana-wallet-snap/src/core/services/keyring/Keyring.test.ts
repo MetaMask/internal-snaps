@@ -295,17 +295,24 @@ describe('SolanaKeyring', () => {
       const secondAccount = await keyring.createAccount();
       const thirdAccount = await keyring.createAccount();
 
-      expect(firstAccount).toEqual({
+      const accounts = Object.values(mockStateValue.keyringAccounts);
+      expect(accounts).toHaveLength(3);
+
+      const accountIndex0 = accounts.find((acc) => acc.index === 0);
+      const accountIndex1 = accounts.find((acc) => acc.index === 1);
+      const accountIndex2 = accounts.find((acc) => acc.index === 2);
+
+      expect(accountIndex0).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
-        id: expect.any(String),
+        id: firstAccount.id,
       });
-      expect(secondAccount).toEqual({
+      expect(accountIndex1).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_1,
-        id: expect.any(String),
+        id: secondAccount.id,
       });
-      expect(thirdAccount).toEqual({
+      expect(accountIndex2).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_2,
-        id: expect.any(String),
+        id: thirdAccount.id,
       });
     });
 
@@ -333,44 +340,41 @@ describe('SolanaKeyring', () => {
       const regeneratedFourthAccount = await keyring.createAccount();
       const sixthAccount = await keyring.createAccount();
 
-      /**
-       * Accounts are created in order
-       */
-      expect(firstAccount).toEqual({
+      const accounts = Object.values(mockStateValue.keyringAccounts);
+      expect(accounts).toHaveLength(6);
+
+      const accountIndex0 = accounts.find((acc) => acc.index === 0);
+      const accountIndex1 = accounts.find((acc) => acc.index === 1);
+      const accountIndex2 = accounts.find((acc) => acc.index === 2);
+      const accountIndex3 = accounts.find((acc) => acc.index === 3);
+      const accountIndex4 = accounts.find((acc) => acc.index === 4);
+      const accountIndex5 = accounts.find((acc) => acc.index === 5);
+
+      expect(accountIndex0).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
-        id: expect.any(String),
+        id: firstAccount.id,
       });
-      expect(secondAccount).toEqual({
-        ...MOCK_SOLANA_KEYRING_ACCOUNT_1,
-        id: expect.any(String),
-      });
-      expect(thirdAccount).toEqual({
+      expect(accountIndex2).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_2,
-        id: expect.any(String),
+        id: thirdAccount.id,
       });
-      expect(fourthAccount).toEqual({
-        ...MOCK_SOLANA_KEYRING_ACCOUNT_3,
-        id: expect.any(String),
-      });
-      expect(fifthAccount).toEqual({
+      expect(accountIndex4).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_4,
-        id: expect.any(String),
-      });
-      expect(sixthAccount).toEqual({
-        ...MOCK_SOLANA_KEYRING_ACCOUNT_5,
-        id: expect.any(String),
+        id: fifthAccount.id,
       });
 
-      /**
-       * Regenerated accounts should pick up the missing indices
-       */
-      expect(regeneratedSecondAccount).toEqual({
+      expect(accountIndex1).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_1,
-        id: expect.any(String),
+        id: regeneratedSecondAccount.id,
       });
-      expect(regeneratedFourthAccount).toEqual({
+      expect(accountIndex3).toEqual({
         ...MOCK_SOLANA_KEYRING_ACCOUNT_3,
-        id: expect.any(String),
+        id: regeneratedFourthAccount.id,
+      });
+
+      expect(accountIndex5).toEqual({
+        ...MOCK_SOLANA_KEYRING_ACCOUNT_5,
+        id: sixthAccount.id,
       });
     });
 

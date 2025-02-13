@@ -156,7 +156,7 @@ export class SolanaKeyring implements Keyring {
     importedAccount?: boolean;
     index?: number;
     [key: string]: Json | undefined;
-  }): Promise<SolanaKeyringAccount> {
+  }): Promise<KeyringAccount> {
     try {
       // eslint-disable-next-line no-restricted-globals
       const id = crypto.randomUUID();
@@ -180,7 +180,7 @@ export class SolanaKeyring implements Keyring {
       // Filter out our special properties from options
       const { importedAccount, index: _, ...remainingOptions } = options ?? {};
 
-      const keyringAccount: SolanaKeyringAccount = {
+      const solanaKeyringAccount: SolanaKeyringAccount = {
         id,
         index,
         type: SolAccountType.DataAccount,
@@ -197,23 +197,25 @@ export class SolanaKeyring implements Keyring {
         ...state,
         keyringAccounts: {
           ...(state?.keyringAccounts ?? {}),
-          [keyringAccount.id]: keyringAccount,
+          [solanaKeyringAccount.id]: solanaKeyringAccount,
         },
       }));
+
+      const keyringAccount: KeyringAccount = {
+        type: solanaKeyringAccount.type,
+        id: solanaKeyringAccount.id,
+        address: solanaKeyringAccount.address,
+        options: solanaKeyringAccount.options,
+        methods: solanaKeyringAccount.methods,
+        scopes: solanaKeyringAccount.scopes,
+      };
 
       await this.emitEvent(KeyringEvent.AccountCreated, {
         /**
          * We can't pass the `keyringAccount` object because it contains the index
          * and the snaps sdk does not allow extra properties.
          */
-        account: {
-          type: keyringAccount.type,
-          id: keyringAccount.id,
-          address: keyringAccount.address,
-          options: keyringAccount.options,
-          methods: keyringAccount.methods,
-          scopes: keyringAccount.scopes,
-        },
+        account: keyringAccount,
         accountNameSuggestion: `Solana Account ${index + 1}`,
       });
 
