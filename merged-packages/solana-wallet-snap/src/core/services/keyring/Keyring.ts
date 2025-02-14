@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/prefer-reduce-type-parameter */
-import type {
-  ResolvedAccountAddress,
-  Transaction,
-} from '@metamask/keyring-api';
 import {
   KeyringEvent,
   SolAccountType,
   SolMethod,
   SolScope,
+  type ResolvedAccountAddress,
+  type Transaction,
   type Balance,
   type CaipAssetType,
   type Keyring,
@@ -28,6 +26,11 @@ import {
   getAddressDecoder,
 } from '@solana/web3.js';
 
+import {
+  DEFAULT_CONFIRMATION_CONTEXT,
+  renderConfirmation,
+} from '../../../features/confirmation/renderConfirmation';
+import type { ConfirmationContext } from '../../../features/confirmation/types';
 import type { SolanaTokenMetadata } from '../../clients/token-metadata-client/types';
 import type { Network } from '../../constants/solana';
 import { SOL_SYMBOL, SolanaCaip19Tokens } from '../../constants/solana';
@@ -36,6 +39,7 @@ import { deriveSolanaPrivateKey } from '../../utils/deriveSolanaPrivateKey';
 import { fromTokenUnits } from '../../utils/fromTokenUnit';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { getNetworkFromToken } from '../../utils/getNetworkFromToken';
+import { parseInstructions } from '../../utils/instructions';
 import type { ILogger } from '../../utils/logger';
 import {
   DeleteAccountStruct,
@@ -56,6 +60,7 @@ import type { TransactionHelper } from '../execution/TransactionHelper';
 import type { TokenMetadataService } from '../token-metadata/TokenMetadata';
 import type { TransactionsService } from '../transactions/Transactions';
 import type { WalletStandardService } from '../wallet-standard/WalletStandardService';
+
 /**
  * We need to store the index of the KeyringAccount in the state because
  * we want to be able to restore any account with a previously used index.
@@ -436,33 +441,60 @@ export class SolanaKeyring implements Keyring {
 
   async handleSendAndConfirmTransaction(
     request: KeyringRequest,
-  ): Promise<{ signature: string }> {
+    showConfirmation = true,
+  ): Promise<{ signature: string } | null> {
     const { scope, account: accountId } = request;
-    const { params } = request.request;
+    const { params, method } = request.request;
 
     validateRequest(params, SendAndConfirmTransactionParamsStruct);
 
-    const { base64EncodedTransactionMessage } = params;
+    const { base64EncodedTransactionMessage: base64EncodedTransaction } =
+      params;
 
     const account = await this.getAccountOrThrow(accountId);
-    const { privateKeyBytes } = await deriveSolanaPrivateKey(account.index);
-    const signer = await createKeyPairSignerFromPrivateKeyBytes(
-      privateKeyBytes,
-    );
 
-    const decodedTransactionMessage =
-      await this.#transactionHelper.base64DecodeTransaction(
-        base64EncodedTransactionMessage,
+    try {
+      const decodedTransactionMessage =
+        await this.#transactionHelper.base64DecodeTransaction(
+          base64EncodedTransaction,
+          scope as Network,
+        );
+
+      if (showConfirmation) {
+        const confirmationContext: ConfirmationContext = {
+          ...DEFAULT_CONFIRMATION_CONTEXT,
+          scope: scope as Network,
+          method: method as SolMethod,
+          transaction: base64EncodedTransaction,
+          account,
+          advanced: {
+            shown: false,
+            instructions: parseInstructions(
+              decodedTransactionMessage.instructions,
+            ),
+          },
+        };
+
+        await renderConfirmation(confirmationContext);
+        return null;
+      }
+
+      const { privateKeyBytes } = await deriveSolanaPrivateKey(account.index);
+      const signer = await createKeyPairSignerFromPrivateKeyBytes(
+        privateKeyBytes,
+      );
+
+      const signature = await this.#transactionHelper.sendTransaction(
+        decodedTransactionMessage,
+        [signer],
         scope as Network,
       );
 
-    const signature = await this.#transactionHelper.sendTransaction(
-      decodedTransactionMessage,
-      [signer],
-      scope as Network,
-    );
-
-    return { signature };
+      return { signature };
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error sending and confirming transaction');
+      throw error;
+    }
   }
 
   /**
