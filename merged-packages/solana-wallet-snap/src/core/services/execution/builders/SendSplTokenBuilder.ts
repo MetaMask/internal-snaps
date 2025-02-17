@@ -24,17 +24,17 @@ import {
 } from '@solana/web3.js';
 import type BigNumber from 'bignumber.js';
 
-import type { Network } from '../../constants/solana';
-import { deriveSolanaPrivateKey } from '../../utils/deriveSolanaPrivateKey';
-import type { ILogger } from '../../utils/logger';
-import { retry } from '../../utils/retry';
-import { toTokenUnits } from '../../utils/toTokenUnit';
-import type { SolanaConnection } from '../connection';
-import type { SolanaKeyringAccount } from '../keyring/Keyring';
-import type { TransactionHelper } from './TransactionHelper';
-import type { ITransactionMessageBuilder } from './types';
+import type { Network } from '../../../constants/solana';
+import { deriveSolanaPrivateKey } from '../../../utils/deriveSolanaPrivateKey';
+import type { ILogger } from '../../../utils/logger';
+import { retry } from '../../../utils/retry';
+import { toTokenUnits } from '../../../utils/toTokenUnit';
+import type { SolanaConnection } from '../../connection';
+import type { SolanaKeyringAccount } from '../../keyring/Keyring';
+import type { TransactionHelper } from '../TransactionHelper';
+import type { ITransactionMessageBuilder } from './ITransactionMessageBuilder';
 
-export class SplTokenHelper implements ITransactionMessageBuilder {
+export class SendSplTokenBuilder implements ITransactionMessageBuilder {
   readonly #connection: SolanaConnection;
 
   readonly #transactionHelper: TransactionHelper;
@@ -49,50 +49,6 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
     this.#connection = connection;
     this.#transactionHelper = transactionHelper;
     this.#logger = logger;
-  }
-
-  /**
-   * Execute a transaction to transfer an SPL token from one account to another.
-   *
-   * @param from - The account from which the token will be transferred.
-   * @param to - The address to which the token will be transferred.
-   * @param mint - The mint address of the asset to transfer.
-   * @param amountInToken - The amount of the asset to transfer. For instance, 1 to transfer 1 USDC.
-   * @param network - The network on which to transfer the asset.
-   * @returns The signature of the transaction.
-   */
-  async transferSplToken(
-    from: SolanaKeyringAccount,
-    to: Address,
-    mint: Address,
-    amountInToken: string | number | bigint | BigNumber,
-    network: Network,
-  ): Promise<string> {
-    try {
-      this.#logger.log('Transfer SPL token');
-
-      const { privateKeyBytes } = await deriveSolanaPrivateKey(from.index);
-      const signer = await createKeyPairSignerFromPrivateKeyBytes(
-        privateKeyBytes,
-      );
-
-      const transactionMessage = await this.buildTransactionMessage(
-        from,
-        to,
-        mint,
-        amountInToken,
-        network,
-      );
-
-      return this.#transactionHelper.sendTransaction(
-        transactionMessage,
-        [signer],
-        network,
-      );
-    } catch (error) {
-      this.#logger.error({ error }, 'Error transferring SPL token');
-      throw error;
-    }
   }
 
   async buildTransactionMessage(
@@ -191,7 +147,7 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
     );
 
     try {
-      SplTokenHelper.assertAccountExists(associatedTokenAccount);
+      SendSplTokenBuilder.assertAccountExists(associatedTokenAccount);
       return associatedTokenAccount as (
         | MaybeAccount<TData>
         | MaybeEncodedAccount
@@ -245,7 +201,10 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
     network: Network,
   ): Promise<MaybeAccount<TData> | MaybeEncodedAccount> {
     const associatedTokenAccountAddress =
-      await SplTokenHelper.deriveAssociatedTokenAccountAddress(mint, owner);
+      await SendSplTokenBuilder.deriveAssociatedTokenAccountAddress(
+        mint,
+        owner,
+      );
 
     // Fetch the full account and return it if it exists
     const associatedTokenAccount = await this.getTokenAccount<TData>(
@@ -271,14 +230,19 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
     payer: KeyPairSigner,
   ): Promise<(MaybeAccount<TData> | MaybeEncodedAccount) & Exists> {
     const associatedTokenAccountAddress =
-      await SplTokenHelper.deriveAssociatedTokenAccountAddress(mint, owner);
+      await SendSplTokenBuilder.deriveAssociatedTokenAccountAddress(
+        mint,
+        owner,
+      );
 
     // Try to get the associated token account. It should not exist.
     const nonExistingAssociatedTokenAccount =
       await this.getAssociatedTokenAccount(mint, owner, network);
 
     // Throw an error if the associated token account already exists.
-    SplTokenHelper.assertAccountNotExists(nonExistingAssociatedTokenAccount);
+    SendSplTokenBuilder.assertAccountNotExists(
+      nonExistingAssociatedTokenAccount,
+    );
 
     const latestBlockhash = await this.#transactionHelper.getLatestBlockhash(
       network,
@@ -318,7 +282,7 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
         associatedTokenAccountAddress,
         network,
       );
-      SplTokenHelper.assertAccountExists(account);
+      SendSplTokenBuilder.assertAccountExists(account);
       return account;
     });
   }
@@ -349,8 +313,8 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
   getDecimals<TData extends Uint8Array | MaybeHasDecimals>(
     tokenAccount: MaybeAccount<TData> | MaybeEncodedAccount,
   ): number {
-    SplTokenHelper.assertAccountExists(tokenAccount);
-    SplTokenHelper.assertAccountDecoded(tokenAccount);
+    SendSplTokenBuilder.assertAccountExists(tokenAccount);
+    SendSplTokenBuilder.assertAccountDecoded(tokenAccount);
 
     const { decimals } = tokenAccount.data;
 
@@ -380,7 +344,7 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
     tokenAccount: MaybeAccount<TData> | MaybeEncodedAccount,
   ): asserts tokenAccount is (MaybeAccount<TData> | MaybeEncodedAccount) &
     Exists {
-    if (!SplTokenHelper.isAccountExists(tokenAccount)) {
+    if (!SendSplTokenBuilder.isAccountExists(tokenAccount)) {
       throw new Error('Token account does not exist');
     }
   }
@@ -393,7 +357,7 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
     tokenAccount: MaybeAccount<TData> | MaybeEncodedAccount,
   ): asserts tokenAccount is (MaybeAccount<TData> | MaybeEncodedAccount) &
     Exists {
-    if (SplTokenHelper.isAccountExists(tokenAccount)) {
+    if (SendSplTokenBuilder.isAccountExists(tokenAccount)) {
       throw new Error('Token account exists');
     }
   }
@@ -406,7 +370,7 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
   static isAccountDecoded<TData extends Uint8Array | object>(
     tokenAccount: MaybeAccount<TData> | MaybeEncodedAccount,
   ): boolean {
-    SplTokenHelper.assertAccountExists(tokenAccount);
+    SendSplTokenBuilder.assertAccountExists(tokenAccount);
     return !(tokenAccount.data instanceof Uint8Array);
   }
 
@@ -417,8 +381,8 @@ export class SplTokenHelper implements ITransactionMessageBuilder {
   static assertAccountDecoded<TData extends Uint8Array | object>(
     tokenAccount: MaybeAccount<TData> | MaybeEncodedAccount,
   ): asserts tokenAccount is Account<Exclude<TData, Uint8Array>> & Exists {
-    SplTokenHelper.assertAccountExists(tokenAccount);
-    if (!SplTokenHelper.isAccountDecoded(tokenAccount)) {
+    SendSplTokenBuilder.assertAccountExists(tokenAccount);
+    if (!SendSplTokenBuilder.isAccountDecoded(tokenAccount)) {
       throw new Error('Token account is encoded. Implement a decoder.');
     }
   }
