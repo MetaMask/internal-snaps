@@ -31,6 +31,7 @@ import {
 } from '../../test/mocks/solana-keyring-accounts';
 import type { MockSolanaRpc } from '../../test/mocks/startMockSolanaRpc';
 import { startMockSolanaRpc } from '../../test/mocks/startMockSolanaRpc';
+import { EXPECTED_NATIVE_SOL_TRANSFER_DATA } from '../../test/mocks/transactions-data/native-sol-transfer';
 import { TEST_ORIGIN } from '../../test/utils';
 import { DEFAULT_SEND_CONTEXT } from './renderSend';
 import { RpcRequestMethod } from './types';
@@ -163,6 +164,14 @@ describe('Send', () => {
       result: { locale: 'en', currency: 'usd' },
     });
 
+    mockJsonRpc({
+      method: 'snap_manageAccounts',
+      result: {
+        [MOCK_SOLANA_KEYRING_ACCOUNT_0.id]: MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        [MOCK_SOLANA_KEYRING_ACCOUNT_1.id]: MOCK_SOLANA_KEYRING_ACCOUNT_1,
+      },
+    });
+
     mockResolvedResult({
       method: 'getLatestBlockhash',
       result: MOCK_SOLANA_RPC_GET_LATEST_BLOCKHASH_RESPONSE.result,
@@ -196,6 +205,13 @@ describe('Send', () => {
     mockResolvedResult({
       method: 'getMultipleAccounts',
       result: MOCK_SOLANA_RPC_GET_MULTIPLE_ACCOUNTS_RESPONSE.result,
+    });
+
+    mockResolvedResult({
+      method: 'getTransaction',
+      result: {
+        transaction: EXPECTED_NATIVE_SOL_TRANSFER_DATA.transaction,
+      } as any,
     });
 
     const response = request({

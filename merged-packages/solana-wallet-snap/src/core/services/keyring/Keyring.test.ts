@@ -25,6 +25,7 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_5,
   MOCK_SOLANA_KEYRING_ACCOUNTS,
 } from '../../test/mocks/solana-keyring-accounts';
+import { EXPECTED_NATIVE_SOL_TRANSFER_DATA } from '../../test/mocks/transactions-data/native-sol-transfer';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { AssetsService } from '../assets/AssetsService';
@@ -33,6 +34,7 @@ import type { Config } from '../config/ConfigProvider';
 import type { SolanaConnection } from '../connection/SolanaConnection';
 import type { EncryptedStateValue } from '../encrypted-state/EncryptedState';
 import { EncryptedState } from '../encrypted-state/EncryptedState';
+import type { FromBase64EncodedBuilder } from '../execution/builders/FromBase64EncodedBuilder';
 import type { TransactionHelper } from '../execution/TransactionHelper';
 import { createMockConnection } from '../mocks/mockConnection';
 import type { TokenMetadataService } from '../token-metadata/TokenMetadata';
@@ -71,6 +73,7 @@ describe('SolanaKeyring', () => {
   let mockTransactionHelper: TransactionHelper;
   let mockTokenMetadataService: TokenMetadataService;
   let mockWalletStandardService: WalletStandardService;
+  let mockFromBase64EncodedBuilder: FromBase64EncodedBuilder;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -107,6 +110,7 @@ describe('SolanaKeyring', () => {
       sendTransaction: jest.fn(),
       base64DecodeTransaction: jest.fn(),
       getFeeForMessageInLamports: jest.fn(),
+      waitForTransactionCommitment: jest.fn(),
     } as unknown as TransactionHelper;
 
     mockTokenMetadataService = {
@@ -119,6 +123,10 @@ describe('SolanaKeyring', () => {
       resolveAccountAddress: jest.fn(),
     } as unknown as WalletStandardService;
 
+    mockFromBase64EncodedBuilder = {
+      buildTransactionMessage: jest.fn(),
+    } as unknown as FromBase64EncodedBuilder;
+
     keyring = new SolanaKeyring({
       state,
       logger,
@@ -128,6 +136,7 @@ describe('SolanaKeyring', () => {
       tokenMetadataService: mockTokenMetadataService,
       transactionHelper: mockTransactionHelper,
       walletStandardService: mockWalletStandardService,
+      fromBase64EncodedBuilder: mockFromBase64EncodedBuilder,
     });
 
     // To simplify the mocking of individual tests, we initialize the state in happy path with all mock accounts
@@ -536,6 +545,12 @@ describe('SolanaKeyring', () => {
         .spyOn(mockTransactionHelper, 'sendTransaction')
         .mockResolvedValue('someSignature');
 
+      jest
+        .spyOn(mockTransactionHelper, 'waitForTransactionCommitment')
+        .mockResolvedValue(EXPECTED_NATIVE_SOL_TRANSFER_DATA as any);
+
+      const emitEventSpy = jest.spyOn(keyring, 'emitEvent');
+
       const request = {
         id: 'some-id',
         scope: Network.Devnet,
@@ -557,6 +572,8 @@ describe('SolanaKeyring', () => {
       expect(response).toStrictEqual({
         signature: 'someSignature',
       });
+
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
     });
   });
 
