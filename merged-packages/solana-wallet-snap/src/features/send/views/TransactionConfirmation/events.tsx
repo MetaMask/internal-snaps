@@ -7,7 +7,7 @@ import {
 import logger from '../../../../core/utils/logger';
 import { type SnapExecutionContext } from '../../../../snapContext';
 import { Send } from '../../Send';
-import type { SendContext } from '../../types';
+import { type SendContext } from '../../types';
 import { TransactionConfirmationNames } from './TransactionConfirmation';
 
 /**
@@ -110,6 +110,9 @@ async function onConfirmButtonClick({
     logger.error({ error }, 'Error submitting request');
   }
 
+  /**
+   * Finally, update context
+   */
   const updatedContext: SendContext = {
     ...context,
     stage: signature ? 'transaction-success' : 'transaction-failure',
