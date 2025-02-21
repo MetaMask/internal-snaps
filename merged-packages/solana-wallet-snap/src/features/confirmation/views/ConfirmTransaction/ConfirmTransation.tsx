@@ -1,10 +1,10 @@
 import {
-  type SnapComponent,
   Box,
   Button,
   Container,
   Footer,
   Heading,
+  type SnapComponent,
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../core/constants/solana';

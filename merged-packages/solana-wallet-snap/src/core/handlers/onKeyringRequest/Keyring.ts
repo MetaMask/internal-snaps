@@ -1,7 +1,9 @@
+/* eslint-disable no-void */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/prefer-reduce-type-parameter */
 import {
   KeyringEvent,
+  ResolveAccountAddressRequestStruct,
   SolAccountType,
   SolMethod,
   SolScope,
@@ -18,6 +20,7 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { Json } from '@metamask/snaps-controllers';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
+import { assert, enums } from '@metamask/superstruct';
 import type { CaipChainId } from '@metamask/utils';
 import type { Signature } from '@solana/web3.js';
 import {
@@ -25,22 +28,29 @@ import {
   createKeyPairSignerFromPrivateKeyBytes,
   getAddressDecoder,
 } from '@solana/web3.js';
-import { assert, enums } from 'superstruct';
 
 import {
   DEFAULT_CONFIRMATION_CONTEXT,
   renderConfirmation,
 } from '../../../features/confirmation/renderConfirmation';
-import type { ConfirmationContext } from '../../../features/confirmation/types';
 import type { SolanaTokenMetadata } from '../../clients/token-metadata-client/types';
 import type { Network } from '../../constants/solana';
 import { SOL_SYMBOL, SolanaCaip19Tokens } from '../../constants/solana';
+import type { AssetsService } from '../../services/assets/AssetsService';
+import type { ConfigProvider } from '../../services/config';
+import type { EncryptedState } from '../../services/encrypted-state/EncryptedState';
+import type { FromBase64EncodedBuilder } from '../../services/execution/builders/FromBase64EncodedBuilder';
+import type { TransactionHelper } from '../../services/execution/TransactionHelper';
+import type { TokenMetadataService } from '../../services/token-metadata/TokenMetadata';
+import type { TransactionsService } from '../../services/transactions/Transactions';
+import { mapRpcTransaction } from '../../services/transactions/utils/mapRpcTransaction';
+import { SolanaWalletRequestStruct } from '../../services/wallet/structs';
+import type { WalletService } from '../../services/wallet/WalletService';
 import { lamportsToSol } from '../../utils/conversion';
 import { deriveSolanaPrivateKey } from '../../utils/deriveSolanaPrivateKey';
 import { fromTokenUnits } from '../../utils/fromTokenUnit';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { getNetworkFromToken } from '../../utils/getNetworkFromToken';
-import { parseInstructions } from '../../utils/instructions';
 import type { ILogger } from '../../utils/logger';
 import {
   DeleteAccountStruct,
@@ -52,19 +62,10 @@ import {
   ListAccountTransactionsStruct,
   NetworkStruct,
   SendAndConfirmTransactionParamsStruct,
-  SubmitRequestMethodStruct,
-  Uuid,
+  UuidStruct,
 } from '../../validation/structs';
 import { validateRequest, validateResponse } from '../../validation/validators';
-import type { AssetsService } from '../assets/AssetsService';
-import type { ConfigProvider } from '../config';
-import type { EncryptedState } from '../encrypted-state/EncryptedState';
-import type { FromBase64EncodedBuilder } from '../execution/builders/FromBase64EncodedBuilder';
-import type { TransactionHelper } from '../execution/TransactionHelper';
-import type { TokenMetadataService } from '../token-metadata/TokenMetadata';
-import type { TransactionsService } from '../transactions/Transactions';
-import { mapRpcTransaction } from '../transactions/utils/mapRpcTransaction';
-import type { WalletStandardService } from '../wallet-standard/WalletStandardService';
+import { SolanaKeyringRequestStruct } from './structs';
 
 /**
  * We need to store the index of the KeyringAccount in the state because
@@ -89,7 +90,7 @@ export class SolanaKeyring implements Keyring {
 
   readonly #transactionHelper: TransactionHelper;
 
-  readonly #walletStandardService: WalletStandardService;
+  readonly #walletService: WalletService;
 
   readonly #fromBase64EncodedBuilder: FromBase64EncodedBuilder;
 
@@ -101,7 +102,7 @@ export class SolanaKeyring implements Keyring {
     transactionHelper,
     assetsService,
     tokenMetadataService,
-    walletStandardService,
+    walletService,
     fromBase64EncodedBuilder,
   }: {
     state: EncryptedState;
@@ -111,7 +112,7 @@ export class SolanaKeyring implements Keyring {
     transactionHelper: TransactionHelper;
     assetsService: AssetsService;
     tokenMetadataService: TokenMetadataService;
-    walletStandardService: WalletStandardService;
+    walletService: WalletService;
     fromBase64EncodedBuilder: FromBase64EncodedBuilder;
   }) {
     this.#state = state;
@@ -121,7 +122,7 @@ export class SolanaKeyring implements Keyring {
     this.#transactionHelper = transactionHelper;
     this.#assetsService = assetsService;
     this.#tokenMetadataService = tokenMetadataService;
-    this.#walletStandardService = walletStandardService;
+    this.#walletService = walletService;
     this.#fromBase64EncodedBuilder = fromBase64EncodedBuilder;
   }
 
@@ -429,41 +430,45 @@ export class SolanaKeyring implements Keyring {
   }
 
   async #handleSubmitRequest(request: KeyringRequest): Promise<Json> {
-    assert(request.request.method, SubmitRequestMethodStruct);
+    assert(request, SolanaKeyringRequestStruct);
 
-    const { method } = request.request;
+    const {
+      request: { method, params },
+      scope,
+      account: accountId,
+    } = request;
+    const base64EncodedTransaction = (params as any).transaction ?? '';
 
-    const methodToHandler: Record<
-      SolMethod,
-      (request: KeyringRequest) => Promise<Json>
-    > = {
-      [SolMethod.SendAndConfirmTransaction]:
-        this.handleSendAndConfirmTransaction.bind(this),
-      [SolMethod.SignAndSendTransaction]:
-        this.#walletStandardService.signAndSendTransaction.bind(this),
-      [SolMethod.SignTransaction]:
-        this.#walletStandardService.signTransaction.bind(this),
-      [SolMethod.SignMessage]:
-        this.#walletStandardService.signMessage.bind(this),
-      [SolMethod.SignIn]: this.#walletStandardService.signIn.bind(this),
-    };
+    const account = await this.getAccountOrThrow(accountId);
 
-    if (!(method in methodToHandler)) {
-      throw new MethodNotFoundError(
-        `Unsupported method: ${method}`,
-      ) as unknown as Error;
+    const isConfirmed = await renderConfirmation({
+      ...DEFAULT_CONFIRMATION_CONTEXT,
+      scope,
+      method,
+      transaction: base64EncodedTransaction,
+      account,
+    });
+
+    if (!isConfirmed) {
+      return null;
     }
 
-    return methodToHandler[method as SolMethod](request);
+    switch (method) {
+      case SolMethod.SignAndSendTransaction:
+        return this.#walletService.signAndSendTransaction(account, request);
+      default:
+        throw new MethodNotFoundError(
+          `Unsupported method: ${method}`,
+        ) as unknown as Error;
+    }
   }
 
   async handleSendAndConfirmTransaction(
     request: KeyringRequest,
-    showConfirmation = true,
   ): Promise<{ signature: string } | null> {
     const { scope, account: accountId } = request;
     assert(scope, NetworkStruct);
-    assert(accountId, Uuid);
+    assert(accountId, UuidStruct);
 
     const { params, method } = request.request;
     validateRequest(params, SendAndConfirmTransactionParamsStruct);
@@ -480,23 +485,6 @@ export class SolanaKeyring implements Keyring {
           base64EncodedTransaction,
           scope,
         );
-
-      if (showConfirmation) {
-        const confirmationContext: ConfirmationContext = {
-          ...DEFAULT_CONFIRMATION_CONTEXT,
-          scope,
-          method,
-          transaction: base64EncodedTransaction,
-          account,
-          advanced: {
-            shown: false,
-            instructions: parseInstructions(transactionMessage.instructions),
-          },
-        };
-
-        await renderConfirmation(confirmationContext);
-        return null;
-      }
 
       const { privateKeyBytes } = await deriveSolanaPrivateKey(account.index);
       const signer = await createKeyPairSignerFromPrivateKeyBytes(
@@ -651,14 +639,20 @@ export class SolanaKeyring implements Keyring {
     request: JsonRpcRequest,
   ): Promise<ResolvedAccountAddress | null> {
     try {
+      assert(scope, NetworkStruct);
+      assert(request, ResolveAccountAddressRequestStruct);
+      const { method, params } = request.params.request;
+
+      const requestWithoutCommonHeader = { method, params };
+      assert(requestWithoutCommonHeader, SolanaWalletRequestStruct);
+
       const allAccounts = await this.listAccounts();
 
-      const caip10Address =
-        await this.#walletStandardService.resolveAccountAddress(
-          allAccounts,
-          scope,
-          request,
-        );
+      const caip10Address = await this.#walletService.resolveAccountAddress(
+        allAccounts,
+        scope,
+        requestWithoutCommonHeader,
+      );
 
       return { address: caip10Address };
     } catch (error: any) {

@@ -1,6 +1,6 @@
 import type { CaipAssetType } from '@metamask/keyring-api';
 import { type OnRpcRequestHandler } from '@metamask/snaps-sdk';
-import { assert } from 'superstruct';
+import { assert } from '@metamask/superstruct';
 
 import { KnownCaip19Id, Network, Networks } from '../../core/constants/solana';
 import {
