@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0]
+
+### Added
+
+- Pulg send flow to `signAndSendTransaction` ([#212](https://github.com/MetaMask/snap-solana-wallet/pull/212))
+- Add confirmation before submit request ([#209](https://github.com/MetaMask/snap-solana-wallet/pull/209))
+- Add estimated changes to confirmation ([#210](https://github.com/MetaMask/snap-solana-wallet/pull/210))
+
+### Fixed
+
+- Fiat fee in send confirmation ([#211](https://github.com/MetaMask/snap-solana-wallet/pull/211))
+- Multiple send bug fixes ([#200](https://github.com/MetaMask/snap-solana-wallet/pull/200))
+
 ## [1.7.0]
 
 ### Added
@@ -219,7 +232,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
 - Snap setup
 
-[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.4.0...v1.5.0
