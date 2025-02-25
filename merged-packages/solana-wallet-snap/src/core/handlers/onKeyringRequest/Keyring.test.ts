@@ -400,6 +400,18 @@ describe('SolanaKeyring', () => {
       });
     });
 
+    it('uses accountNameSuggestion if it is provided, and tells the client not to display the suggestion dialog', async () => {
+      const emitEventSpy = jest.spyOn(keyring, 'emitEvent');
+      const account = await keyring.createAccount({
+        accountNameSuggestion: 'My Cool Account Name',
+      });
+      expect(emitEventSpy).toHaveBeenCalledWith('notify:accountCreated', {
+        accountNameSuggestion: 'My Cool Account Name',
+        displayAccountNameSuggestion: false,
+        account,
+      });
+    });
+
     it('throws when deriving address fails', async () => {
       jest.mocked(getBip32Entropy).mockImplementationOnce(async () => {
         return Promise.reject(new Error('Error deriving address'));
