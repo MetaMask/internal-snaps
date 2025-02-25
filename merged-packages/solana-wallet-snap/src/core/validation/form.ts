@@ -4,6 +4,7 @@ import type { SendContext } from '../../features/send/types';
 import { SendFormNames } from '../../features/send/types';
 import { validateBalance } from '../../features/send/utils/validateBalance';
 import { validation } from '../../features/send/views/SendForm/validation';
+import { Networks } from '../constants/solana';
 import type {
   FieldValidationFunction,
   ValidationFunction,
@@ -43,7 +44,7 @@ export function validateField<FieldNames extends string | number | symbol>(
  * @returns True if all fields are valid, otherwise false.
  */
 export function sendFieldsAreValid(context: SendContext): boolean {
-  const allValidators = validation(context.preferences.locale);
+  const allValidators = validation(context);
 
   const values: Partial<Record<SendFormNames, string>> = {
     [SendFormNames.SourceAccountSelector]: context.fromAccountId,
@@ -115,23 +116,47 @@ export const address: ValidationFunction = (
 };
 
 /**
- * Validates that the given value is a number and meets the minimum value requirement using superstruct.
+ * Custom validation logic for the amount input field.
  *
- * @param message - The error message to return if validation fails.
- * @param locale - The locale of the message.
+ * It's invalid when:
+ * - The value parses to 0.
+ * - The user is sending SOL, and the amount is lower than the minimum balance for rent exemption.
+ *
+ * @param context - The send context, where values are read from.
  * @returns True if the value is valid, otherwise an object with the error message.
  */
-export const greatherThanZero: ValidationFunction = (
-  message: LocalizedMessage,
-  locale: Locale,
-) => {
+export const amountInput = (context: SendContext) => {
+  const {
+    minimumBalanceForRentExemptionSol,
+    preferences: { locale },
+    tokenCaipId,
+    scope,
+  } = context;
   const translate = i18n(locale);
 
   return (value: string) => {
-    const valueGreatherThanZero = parseFloat(value) > 0;
+    // If the value parses to 0, it's invalid but we don't want to show an error
+    if (parseFloat(value) === 0) {
+      return { message: '', value };
+    }
 
-    return valueGreatherThanZero
-      ? null
-      : { message: translate(message), value };
+    const valueLowerThanMinimum =
+      parseFloat(value) < parseFloat(minimumBalanceForRentExemptionSol);
+
+    const isNativeSol = tokenCaipId === Networks[scope].nativeToken.caip19Id;
+
+    if (valueLowerThanMinimum && isNativeSol) {
+      return {
+        message: translate(
+          'send.amountGreatherThanMinimumBalanceForRentExemptionError',
+          {
+            minimumValue: minimumBalanceForRentExemptionSol,
+          },
+        ),
+        value,
+      };
+    }
+
+    return null;
   };
 };
