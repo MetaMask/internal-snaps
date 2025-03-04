@@ -1,8 +1,10 @@
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
 import { TokenMetadataClient } from './core/clients/token-metadata-client/TokenMetadataClient';
+import { refreshAssets as refreshAssetsHandler } from './core/handlers/onCronjob/refreshAssets';
 import { SolanaKeyring } from './core/handlers/onKeyringRequest/Keyring';
 import { AssetsService } from './core/services/assets/AssetsService';
+import { BalancesService } from './core/services/balances/BalancesService';
 import { ConfigProvider } from './core/services/config';
 import { SolanaConnection } from './core/services/connection/SolanaConnection';
 import { EncryptedState } from './core/services/encrypted-state/EncryptedState';
@@ -36,6 +38,7 @@ export type SnapExecutionContext = {
   fromBase64EncodedBuilder: FromBase64EncodedBuilder;
   walletService: WalletService;
   transactionScanService: TransactionScanService;
+  balancesService: BalancesService;
 };
 
 const configProvider = new ConfigProvider();
@@ -70,9 +73,34 @@ const transactionsService = new TransactionsService({
   tokenMetadataService,
 });
 
+// Circular dependency fix:
+// There was a circular dependency between BalancesService.ts, refreshAssets.ts, and snapContext.ts
+// To solve it, we made refreshAssets an injectable dependency of the BalancesService class
+// And defined a type RefreshAssetsFunction to ensure type safety
+const refreshAssetsWrapper = async (params: {
+  request: {
+    params: {
+      accountId: string;
+    };
+    id: string;
+    method: string;
+    jsonrpc: string;
+  };
+}): Promise<void> => {
+  await refreshAssetsHandler(params as any);
+};
+
+const balancesService = new BalancesService(
+  assetsService,
+  tokenMetadataService,
+  state,
+  refreshAssetsWrapper,
+);
+
 const walletService = new WalletService(
   fromBase64EncodedBuilder,
   transactionHelper,
+  balancesService,
   logger,
 );
 
@@ -85,12 +113,10 @@ const keyring = new SolanaKeyring({
   state,
   configProvider,
   transactionsService,
-  transactionHelper,
   logger,
   assetsService,
-  tokenMetadataService,
+  balancesService,
   walletService,
-  fromBase64EncodedBuilder,
 });
 
 const tokenPricesService = new TokenPricesService(priceApiClient);
@@ -111,10 +137,12 @@ const snapContext: SnapExecutionContext = {
   fromBase64EncodedBuilder,
   walletService,
   transactionScanService,
+  balancesService,
 };
 
 export {
   assetsService,
+  balancesService,
   configProvider,
   connection,
   fromBase64EncodedBuilder,

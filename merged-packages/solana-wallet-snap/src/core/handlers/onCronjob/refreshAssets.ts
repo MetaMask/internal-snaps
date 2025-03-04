@@ -1,4 +1,5 @@
 import { KeyringEvent, type Balance } from '@metamask/keyring-api';
+import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { keyring, state } from '../../../snapContext';
 import { diffArrays } from '../../utils/diffArrays';
@@ -8,31 +9,39 @@ import logger from '../../utils/logger';
 /**
  * Refreshes assets for all accounts in the keyring.
  * Fetches current balances and emits events for any changes.
+ * @param args - The cronjob handler arguments.
  */
-export async function refreshAssets() {
+export const refreshAssets: OnCronjobHandler = async (args) => {
   logger.info('[refreshAssets] Cronjob triggered');
 
   try {
     const currentState = await state.get();
 
-    if (currentState.isFetchingAssets) {
-      logger.info('[refreshAssets] Assets already being fetched. Skipping.');
-      return;
-    }
+    /**
+     * If we receive a specific accountId, we only refresh the assets for that account.
+     */
+    const requestedAccountId =
+      args?.request?.params &&
+      typeof args.request.params === 'object' &&
+      !Array.isArray(args.request.params) &&
+      'accountId' in args.request.params
+        ? (args.request.params.accountId as string)
+        : undefined;
+    const requestedAccount =
+      requestedAccountId && currentState?.keyringAccounts[requestedAccountId];
 
-    const accounts = await keyring.listAccounts();
+    /**
+     * Otherwise, we refresh all accounts.
+     */
+    const accounts = requestedAccount
+      ? [requestedAccount]
+      : Object.values(currentState?.keyringAccounts ?? {});
 
     if (accounts.length === 0) {
       logger.info('[refreshAssets] No accounts found');
       return;
     }
-
     logger.log(`[refreshAssets] Found ${accounts.length} accounts in keyring`);
-
-    await state.set({
-      ...currentState,
-      isFetchingAssets: true,
-    });
 
     const accountToAssetsMap = new Map<string, Record<string, Balance>>();
 
@@ -107,18 +116,10 @@ export async function refreshAssets() {
     await state.set({
       ...currentState,
       assets: Object.fromEntries(accountToAssetsMap),
-      isFetchingAssets: false,
     });
 
     logger.info('[refreshAssets] Done refreshing assets');
   } catch (error) {
-    await state.update((oldState) => {
-      return {
-        ...oldState,
-        isFetchingAssets: false,
-      };
-    });
-
     logger.error({ error }, '[refreshAssets] Error refreshing assets');
   }
-}
+};
