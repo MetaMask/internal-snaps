@@ -1,5 +1,6 @@
 import { SolMethod } from '@metamask/keyring-api';
 
+import { ScheduleBackgroundEventMethod } from '../../../../core/handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import {
   resolveInterface,
   SEND_FORM_INTERFACE_NAME,
@@ -39,9 +40,34 @@ async function onBackButtonClick({
  *
  * @param params - The parameters for the function.
  * @param params.id - The id of the interface.
+ * @param params.context - The send context.
  * @returns A promise that resolves when the operation is complete.
  */
-async function onCancelButtonClick({ id }: { id: string }) {
+async function onCancelButtonClick({
+  id,
+  context,
+}: {
+  id: string;
+  context: SendContext;
+}) {
+  const { fromAccountId, transactionMessage, scope } = context;
+
+  // Trigger the side effects that need to happen when the transaction is rejected
+  await snap.request({
+    method: 'snap_scheduleBackgroundEvent',
+    params: {
+      duration: 'PT1S',
+      request: {
+        method: ScheduleBackgroundEventMethod.OnTransactionRejected,
+        params: {
+          accountId: fromAccountId,
+          base64EncodedTransaction: transactionMessage,
+          scope,
+        },
+      },
+    },
+  });
+
   await resolveInterface(id, false);
   await state.update((_state) => {
     delete _state?.mapInterfaceNameToId?.[SEND_FORM_INTERFACE_NAME];
@@ -77,6 +103,21 @@ async function onConfirmButtonClick({
     await updateInterface(id, <Send context={context} />, context);
     return;
   }
+
+  await snap.request({
+    method: 'snap_scheduleBackgroundEvent',
+    params: {
+      duration: 'PT1S',
+      request: {
+        method: ScheduleBackgroundEventMethod.OnTransactionApproved,
+        params: {
+          accountId: context.fromAccountId,
+          base64EncodedTransaction: context.transactionMessage,
+          scope: context.scope,
+        },
+      },
+    },
+  });
 
   // First, show the pending stage
   const contextPending: SendContext = {

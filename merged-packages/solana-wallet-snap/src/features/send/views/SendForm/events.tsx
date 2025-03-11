@@ -6,6 +6,7 @@ import {
   Networks,
   SOL_TRANSFER_FEE_LAMPORTS,
 } from '../../../../core/constants/solana';
+import { ScheduleBackgroundEventMethod } from '../../../../core/handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import {
   lamportsToSol,
   solToLamports,
@@ -320,6 +321,22 @@ async function onSendButtonClick({
   }
 
   await updateInterface(id, <Send context={updatedContext} />, updatedContext);
+
+  // Trigger the side effects that need to happen when the transaction is shown in confirmation UI
+  await snap.request({
+    method: 'snap_scheduleBackgroundEvent',
+    params: {
+      duration: 'PT1S',
+      request: {
+        method: ScheduleBackgroundEventMethod.OnTransactionAdded,
+        params: {
+          accountId: context.fromAccountId,
+          base64EncodedTransaction: context.transactionMessage,
+          scope: context.scope,
+        },
+      },
+    },
+  });
 }
 
 export const eventHandlers = {

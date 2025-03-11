@@ -1,14 +1,13 @@
-/* eslint-disable no-void */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/prefer-reduce-type-parameter */
 import {
   KeyringEvent,
+  ListAccountAssetsResponseStruct,
   ResolveAccountAddressRequestStruct,
   SolAccountType,
   SolMethod,
   SolScope,
   type Balance,
-  type CaipAssetType,
   type Keyring,
   type KeyringAccount,
   type KeyringRequest,
@@ -18,10 +17,10 @@ import {
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { Json } from '@metamask/snaps-controllers';
-import type { JsonRpcRequest } from '@metamask/snaps-sdk';
+import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import type { CaipChainId } from '@metamask/utils';
+import { type CaipChainId } from '@metamask/utils';
 import type { Signature } from '@solana/web3.js';
 import { address as asAddress, getAddressDecoder } from '@solana/web3.js';
 
@@ -30,10 +29,8 @@ import {
   renderConfirmation,
 } from '../../../features/confirmation/renderConfirmation';
 import type { AssetsService } from '../../services/assets/AssetsService';
-import type { BalancesService } from '../../services/balances/BalancesService';
-import type { ConfigProvider } from '../../services/config';
 import type { EncryptedState } from '../../services/encrypted-state/EncryptedState';
-import type { TransactionsService } from '../../services/transactions/Transactions';
+import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { SolanaWalletRequestStruct } from '../../services/wallet/structs';
 import type { WalletService } from '../../services/wallet/WalletService';
 import { deriveSolanaPrivateKey } from '../../utils/deriveSolanaPrivateKey';
@@ -44,12 +41,12 @@ import {
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
   GetAccountStruct,
-  ListAccountAssetsResponseStruct,
   ListAccountAssetsStruct,
   ListAccountTransactionsStruct,
   NetworkStruct,
 } from '../../validation/structs';
 import { validateRequest, validateResponse } from '../../validation/validators';
+import { ScheduleBackgroundEventMethod } from '../onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import { SolanaKeyringRequestStruct } from './structs';
 
 /**
@@ -63,41 +60,31 @@ export type SolanaKeyringAccount = {
 export class SolanaKeyring implements Keyring {
   readonly #state: EncryptedState;
 
-  readonly #configProvider: ConfigProvider;
-
   readonly #logger: ILogger;
 
   readonly #transactionsService: TransactionsService;
 
   readonly #assetsService: AssetsService;
 
-  readonly #balancesService: BalancesService;
-
   readonly #walletService: WalletService;
 
   constructor({
     state,
-    configProvider,
     logger,
     transactionsService,
     assetsService,
-    balancesService,
     walletService,
   }: {
     state: EncryptedState;
-    configProvider: ConfigProvider;
     logger: ILogger;
     transactionsService: TransactionsService;
     assetsService: AssetsService;
-    balancesService: BalancesService;
     walletService: WalletService;
   }) {
     this.#state = state;
-    this.#configProvider = configProvider;
     this.#logger = logger;
     this.#transactionsService = transactionsService;
     this.#assetsService = assetsService;
-    this.#balancesService = balancesService;
     this.#walletService = walletService;
   }
 
@@ -265,32 +252,9 @@ export class SolanaKeyring implements Keyring {
     try {
       validateRequest({ accountId }, ListAccountAssetsStruct);
 
-      const account = await this.getAccount(accountId);
-      if (!account) {
-        throw new Error('Account not found');
-      }
+      const account = await this.getAccountOrThrow(accountId);
 
-      const { activeNetworks } = this.#configProvider.get();
-
-      const nativeResponses = await Promise.all(
-        activeNetworks.map(async (network) =>
-          this.#assetsService.getNativeAsset(account.address, network),
-        ),
-      );
-
-      const tokensResponses = await Promise.all(
-        activeNetworks.map(async (network) =>
-          this.#assetsService.discoverTokens(account.address, network),
-        ),
-      );
-
-      const nativeAssets = nativeResponses.map((response) => response.address);
-
-      const tokenAssets = tokensResponses.flatMap((response) =>
-        response.map((token) => token.address),
-      );
-
-      const result = [...nativeAssets, ...tokenAssets] as CaipAssetType[];
+      const result = await this.#assetsService.listAccountAssets(account);
 
       validateResponse(result, ListAccountAssetsResponseStruct);
 
@@ -315,7 +279,7 @@ export class SolanaKeyring implements Keyring {
       validateRequest({ accountId, assets }, GetAccountBalancesStruct);
 
       const account = await this.getAccountOrThrow(accountId);
-      const result = await this.#balancesService.getAccountBalances(
+      const result = await this.#assetsService.getAccountBalances(
         account,
         assets,
       );
@@ -376,6 +340,22 @@ export class SolanaKeyring implements Keyring {
       );
     }
 
+    // Trigger the side effects that need to happen when the transaction is shown in confirmation UI
+    await snap.request({
+      method: 'snap_scheduleBackgroundEvent',
+      params: {
+        duration: 'PT1S',
+        request: {
+          method: ScheduleBackgroundEventMethod.OnTransactionAdded,
+          params: {
+            accountId,
+            base64EncodedTransaction,
+            scope,
+          },
+        },
+      },
+    });
+
     const isConfirmed = await renderConfirmation({
       ...DEFAULT_CONFIRMATION_CONTEXT,
       scope,
@@ -385,8 +365,40 @@ export class SolanaKeyring implements Keyring {
     });
 
     if (!isConfirmed) {
+      // Trigger the side effects that need to happen when the transaction is rejected
+      await snap.request({
+        method: 'snap_scheduleBackgroundEvent',
+        params: {
+          duration: 'PT1S',
+          request: {
+            method: ScheduleBackgroundEventMethod.OnTransactionRejected,
+            params: {
+              accountId,
+              base64EncodedTransaction,
+              scope,
+            },
+          },
+        },
+      });
+
       return null;
     }
+
+    // Trigger the side effects that need to happen when the transaction is approved
+    await snap.request({
+      method: 'snap_scheduleBackgroundEvent',
+      params: {
+        duration: 'PT1S',
+        request: {
+          method: ScheduleBackgroundEventMethod.OnTransactionApproved,
+          params: {
+            accountId,
+            base64EncodedTransaction,
+            scope,
+          },
+        },
+      },
+    });
 
     switch (method) {
       case SolMethod.SignAndSendTransaction:

@@ -1,18 +1,18 @@
 import type { CaipAssetType, OnCronjobHandler } from '@metamask/snaps-sdk';
 
-import { CronjobMethod } from '.';
-import { DEFAULT_SEND_CONTEXT } from '../../../features/send/render';
-import { Send } from '../../../features/send/Send';
-import type { SendContext } from '../../../features/send/types';
-import { state, tokenPricesService } from '../../../snapContext';
-import type { SpotPrices } from '../../clients/price-api/types';
+import { DEFAULT_SEND_CONTEXT } from '../../../../features/send/render';
+import { Send } from '../../../../features/send/Send';
+import type { SendContext } from '../../../../features/send/types';
+import { state, tokenPricesService } from '../../../../snapContext';
+import type { SpotPrices } from '../../../clients/price-api/types';
 import {
   getInterfaceContext,
   getPreferences,
   SEND_FORM_INTERFACE_NAME,
   updateInterface,
-} from '../../utils/interface';
-import logger from '../../utils/logger';
+} from '../../../utils/interface';
+import logger from '../../../utils/logger';
+import { CronjobMethod } from './CronjobMethod';
 
 export const refreshSend: OnCronjobHandler = async () => {
   const [stateValue, preferences] = await Promise.all([

@@ -1,20 +1,14 @@
 import { type OnCronjobHandler } from '@metamask/snaps-sdk';
 
-import { refreshAssets } from './refreshAssets';
-import { refreshConfirmationEstimation } from './refreshConfirmationEstimation';
-import { refreshSend } from './refreshSend';
-import { refreshTransactions } from './refreshTransactions';
+import { handlers as backgroundEventHandlers } from './backgroundEvents';
+import type { ScheduleBackgroundEventMethod } from './backgroundEvents/ScheduleBackgroundEventMethod';
+import { handlers as cronjobHandlers } from './cronjobs';
+import type { CronjobMethod } from './cronjobs/CronjobMethod';
 
-export enum CronjobMethod {
-  RefreshSend = 'refreshSend',
-  RefreshConfirmationEstimation = 'refreshConfirmationEstimation',
-  RefreshTransactions = 'refreshTransactions',
-  RefreshAssets = 'refreshAssets',
-}
-
-export const handlers: Record<CronjobMethod, OnCronjobHandler> = {
-  [CronjobMethod.RefreshSend]: refreshSend,
-  [CronjobMethod.RefreshConfirmationEstimation]: refreshConfirmationEstimation,
-  [CronjobMethod.RefreshTransactions]: refreshTransactions,
-  [CronjobMethod.RefreshAssets]: refreshAssets,
+export const handlers: Record<
+  CronjobMethod | ScheduleBackgroundEventMethod,
+  OnCronjobHandler
+> = {
+  ...cronjobHandlers,
+  ...backgroundEventHandlers,
 };
