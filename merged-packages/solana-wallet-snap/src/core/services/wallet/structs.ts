@@ -4,6 +4,7 @@ import {
   array,
   boolean,
   enums,
+  literal,
   number,
   object,
   optional,
@@ -13,6 +14,7 @@ import {
 } from '@metamask/superstruct';
 
 import { Network } from '../../constants/solana';
+import { Base58Struct, Base64Struct } from '../../validation/structs';
 
 /**
  * Defines all structs derived from types defined in the Solana Wallet Standard.
@@ -24,15 +26,11 @@ import { Network } from '../../constants/solana';
 
 const ScopeStringStruct = enums(Object.values(Network));
 
-const TransactionStruct = string();
-
-const MessageStruct = string();
-
 const WalletAccountStruct = type({
   address: string(),
 });
 
-const SolanaSignatureTypeStruct = enums(['ed25519']);
+const SolanaSignatureTypeStruct = literal('ed25519');
 
 const SolanaSignInInputStruct = type({
   domain: optional(string()),
@@ -51,7 +49,7 @@ const SolanaSignInInputStruct = type({
 
 const SolanaSignMessageInputStruct = type({
   account: WalletAccountStruct,
-  message: MessageStruct,
+  message: Base64Struct,
 });
 
 const SolanaTransactionCommitmentStruct = enums([
@@ -66,7 +64,7 @@ const SolanaSignTransactionOptionsStruct = type({
 
 const SolanaSignTransactionInputStruct = type({
   account: WalletAccountStruct,
-  transaction: TransactionStruct,
+  transaction: Base64Struct,
   scope: ScopeStringStruct,
   options: optional(SolanaSignTransactionOptionsStruct),
 });
@@ -119,7 +117,7 @@ export type SolanaSignTransactionRequest = Infer<
 >;
 
 export const SolanaSignAndSendTransactionResponseStruct = object({
-  signature: TransactionStruct,
+  signature: Base58Struct,
 });
 
 export type SolanaSignAndSendTransactionResponse = Infer<
@@ -127,7 +125,12 @@ export type SolanaSignAndSendTransactionResponse = Infer<
 >;
 
 export const SolanaSignTransactionResponseStruct = object({
-  signedTransaction: TransactionStruct,
+  /**
+   * The whole signed transaction object, encoded in base64. It is NOT the signature.
+   * Returning a transaction rather than signatures allows multisig wallets, program wallets, and other wallets that
+   * use meta-transactions to return a modified, signed transaction.
+   */
+  signedTransaction: Base64Struct,
 });
 
 export type SolanaSignTransactionResponse = Infer<
@@ -135,8 +138,8 @@ export type SolanaSignTransactionResponse = Infer<
 >;
 
 export const SolanaSignMessageResponseStruct = object({
-  signature: MessageStruct,
-  signedMessage: MessageStruct,
+  signature: Base58Struct,
+  signedMessage: Base64Struct,
   signatureType: SolanaSignatureTypeStruct,
 });
 

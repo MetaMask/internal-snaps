@@ -15,18 +15,18 @@ import {
 } from '../../test/mocks/solana-keyring-accounts';
 import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
-import { EncryptedState } from '../encrypted-state/EncryptedState';
+import type { SolanaConnection } from '../connection';
 import type { FromBase64EncodedBuilder } from '../execution/builders/FromBase64EncodedBuilder';
+import { MOCK_EXECUTION_SCENARIOS } from '../execution/mocks/scenarios';
 import type { TransactionHelper } from '../execution/TransactionHelper';
+import { createMockConnection } from '../mocks/mockConnection';
 import {
   MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST,
-  MOCK_SIGN_AND_SEND_TRANSACTION_RESPONSE,
   MOCK_SIGN_IN_REQUEST,
   MOCK_SIGN_IN_RESPONSE,
   MOCK_SIGN_MESSAGE_REQUEST,
   MOCK_SIGN_MESSAGE_RESPONSE,
   MOCK_SIGN_TRANSACTION_REQUEST,
-  MOCK_SIGN_TRANSACTION_RESPONSE,
   wrapKeyringRequest,
 } from './mocks';
 import type { SolanaWalletRequest } from './structs';
@@ -48,21 +48,23 @@ jest.mock('../../utils/getBip32Entropy', () => ({
 
 describe('WalletService', () => {
   let mockLogger: ILogger;
-  let mockState: EncryptedState;
+  let mockConnection: SolanaConnection;
   let mockTransactionHelper: TransactionHelper;
   let mockFromBase64EncodedBuilder: FromBase64EncodedBuilder;
   let service: WalletService;
-  const scope = Network.Testnet;
   const mockAccounts = [...MOCK_SOLANA_KEYRING_ACCOUNTS];
 
   beforeEach(() => {
     mockLogger = logger;
-    mockState = new EncryptedState();
+
+    mockConnection = createMockConnection();
 
     mockTransactionHelper = {
       getLatestBlockhash: jest.fn(),
       getComputeUnitEstimate: jest.fn(),
+      signTransaction: jest.fn(),
       sendTransaction: jest.fn(),
+      signAndSendTransaction: jest.fn(),
       base64DecodeTransaction: jest.fn(),
       getFeeForMessageInLamports: jest.fn(),
       waitForTransactionCommitment: jest.fn(),
@@ -73,6 +75,7 @@ describe('WalletService', () => {
     } as unknown as FromBase64EncodedBuilder;
 
     service = new WalletService(
+      mockConnection,
       mockFromBase64EncodedBuilder,
       mockTransactionHelper,
       mockLogger,
@@ -84,6 +87,8 @@ describe('WalletService', () => {
   });
 
   describe('resolveAccountAddress', () => {
+    const scope = Network.Testnet;
+
     it('rejects invalid requests', async () => {
       const request = {
         id: 1,
@@ -185,66 +190,99 @@ describe('WalletService', () => {
     });
   });
 
-  describe('signTransaction', () => {
-    it('returns the signed transaction', async () => {
-      const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
-      const request = wrapKeyringRequest(
-        MOCK_SIGN_TRANSACTION_REQUEST as unknown as JsonRpcRequest,
-      );
+  describe.each(MOCK_EXECUTION_SCENARIOS)(
+    'transaction scenarios',
+    (scenario) => {
+      const {
+        name,
+        scope,
+        fromAccount,
+        transactionMessage,
+        transactionMessageBase64Encoded,
+        signedTransactionBase64Encoded,
+        signature,
+      } = scenario;
 
-      const result = await service.signTransaction(account, request);
+      describe(`signTransaction`, () => {
+        it(`Scenario ${name}: returns the signed transaction`, async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignTransaction,
+            params: {
+              account: {
+                address: fromAccount.address,
+              },
+              transaction: transactionMessageBase64Encoded,
+              scope,
+            },
+          });
 
-      expect(result).toStrictEqual(MOCK_SIGN_TRANSACTION_RESPONSE);
-    });
+          jest
+            .spyOn(mockFromBase64EncodedBuilder, 'buildTransactionMessage')
+            .mockResolvedValue(transactionMessage);
 
-    it('rejects invalid requests', async () => {
-      const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
-      const request = wrapKeyringRequest({
-        ...MOCK_SIGN_TRANSACTION_REQUEST,
-        params: {},
-      } as unknown as JsonRpcRequest);
+          const result = await service.signTransaction(fromAccount, request);
 
-      await expect(service.signTransaction(account, request)).rejects.toThrow(
-        /At path/u,
-      );
-    });
-  });
+          expect(result).toStrictEqual({
+            signedTransaction: signedTransactionBase64Encoded,
+          });
+        });
 
-  describe('signAndSendTransaction', () => {
-    it('returns the signed transaction', async () => {
-      const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
-      const request = wrapKeyringRequest(
-        MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST as unknown as JsonRpcRequest,
-      );
-      const mockSignature = MOCK_SIGN_AND_SEND_TRANSACTION_RESPONSE.signature;
+        it(`Scenario ${name}: rejects invalid requests`, async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignTransaction,
+            params: {},
+          });
 
-      jest
-        .spyOn(mockTransactionHelper, 'sendTransaction')
-        .mockResolvedValue(mockSignature);
-
-      const result = await service.signAndSendTransaction(account, request);
-
-      expect(result).toStrictEqual({
-        signature: mockSignature,
+          await expect(
+            service.signTransaction(fromAccount, request),
+          ).rejects.toThrow(/At path/u);
+        });
       });
-    });
 
-    it('rejects invalid requests', async () => {
-      const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
-      const request = wrapKeyringRequest({
-        ...MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST,
-        params: {},
-      } as unknown as JsonRpcRequest);
+      describe(`Scenario ${name}: signAndSendTransaction`, () => {
+        it('returns the signed transaction', async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignAndSendTransaction,
+            params: {
+              account: {
+                address: fromAccount.address,
+              },
+              transaction: transactionMessageBase64Encoded,
+              scope,
+            },
+          });
 
-      await expect(
-        service.signAndSendTransaction(account, request),
-      ).rejects.toThrow(/At path/u);
-    });
-  });
+          jest
+            .spyOn(mockFromBase64EncodedBuilder, 'buildTransactionMessage')
+            .mockResolvedValue(transactionMessage);
+
+          const result = await service.signAndSendTransaction(
+            fromAccount,
+            request,
+          );
+
+          expect(result).toStrictEqual({
+            signature,
+          });
+        });
+
+        it('rejects invalid requests', async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignAndSendTransaction,
+            params: {},
+          });
+
+          await expect(
+            service.signAndSendTransaction(fromAccount, request),
+          ).rejects.toThrow(/At path/u);
+        });
+      });
+    },
+  );
 
   describe('signMessage', () => {
-    it('returns the signed message', async () => {
-      const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+    it('returns the signed message and is properly verified', async () => {
+      const account = MOCK_SOLANA_KEYRING_ACCOUNT_3;
       const request = wrapKeyringRequest(
         MOCK_SIGN_MESSAGE_REQUEST as unknown as JsonRpcRequest,
       );
@@ -252,6 +290,14 @@ describe('WalletService', () => {
       const result = await service.signMessage(account, request);
 
       expect(result).toStrictEqual(MOCK_SIGN_MESSAGE_RESPONSE);
+
+      const verified = await service.verifySignature(
+        account,
+        result.signature,
+        result.signedMessage,
+      );
+
+      expect(verified).toBe(true);
     });
 
     it('rejects invalid requests', async () => {
@@ -269,7 +315,7 @@ describe('WalletService', () => {
 
   describe('signIn', () => {
     it('returns the signed message', async () => {
-      const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+      const account = MOCK_SOLANA_KEYRING_ACCOUNT_2;
       const request = wrapKeyringRequest(
         MOCK_SIGN_IN_REQUEST as unknown as JsonRpcRequest,
       );
@@ -289,6 +335,20 @@ describe('WalletService', () => {
       await expect(service.signIn(account, request)).rejects.toThrow(
         /At path/u,
       );
+    });
+  });
+
+  describe('verifySignature', () => {
+    it('returns true for a valid signature', async () => {
+      const account = MOCK_SOLANA_KEYRING_ACCOUNT_3;
+
+      const result = await service.verifySignature(
+        account,
+        MOCK_SIGN_MESSAGE_RESPONSE.signature,
+        MOCK_SIGN_MESSAGE_RESPONSE.signedMessage,
+      );
+
+      expect(result).toBe(true);
     });
   });
 });
