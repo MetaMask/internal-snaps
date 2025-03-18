@@ -29,7 +29,9 @@ import { isSnapRpcError } from './core/utils/errors';
 import { getClientStatus, getInterfaceContext } from './core/utils/interface';
 import logger from './core/utils/logger';
 import { validateOrigin } from './core/validation/validators';
-import { eventHandlers as confirmationEvents } from './features/confirmation/views/ConfirmTransaction/events';
+import { eventHandlers as confirmSignAndSendTransactionEvents } from './features/confirmation/views/ConfirmSignAndSendTransaction/events';
+import { eventHandlers as confirmSignInEvents } from './features/confirmation/views/ConfirmSignIn/events';
+import { eventHandlers as confirmSignMessageEvents } from './features/confirmation/views/ConfirmSignMessage/events';
 import { eventHandlers as sendFormEvents } from './features/send/views/SendForm/events';
 import { eventHandlers as transactionConfirmationEvents } from './features/send/views/TransactionConfirmation/events';
 import snapContext, { keyring } from './snapContext';
@@ -145,7 +147,9 @@ export const onUserInput: OnUserInputHandler = async ({ id, event }) => {
   const uiEventHandlers: Record<string, (...args: any) => Promise<void>> = {
     ...sendFormEvents,
     ...transactionConfirmationEvents,
-    ...confirmationEvents,
+    ...confirmSignAndSendTransactionEvents,
+    ...confirmSignMessageEvents,
+    ...confirmSignInEvents,
   };
 
   const handler = uiEventHandlers[event.name];
