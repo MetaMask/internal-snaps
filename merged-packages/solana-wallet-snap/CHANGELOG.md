@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0]
+
+### Added
+
+- Use new snap MetaMask preferences ([#258](https://github.com/MetaMask/snap-solana-wallet/pull/258))
+
+### Changed
+
+- Move state to unencrypted ([#261](https://github.com/MetaMask/snap-solana-wallet/pull/261))
+- Upgrade `@solana/web3.js` to `@solana/kit` ([#259](https://github.com/MetaMask/snap-solana-wallet/pull/259))
+
+### Fixed
+
+- Transaction decoding for `Message` and `Transaction` ([#262](https://github.com/MetaMask/snap-solana-wallet/pull/262))
+
 ## [1.14.0]
 
 ### Added
@@ -317,7 +332,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
 - Snap setup
 
-[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.11.0...v1.12.0
