@@ -1,22 +1,22 @@
 /* eslint-disable no-restricted-globals */
 import type { CaipAssetType } from '@metamask/keyring-api';
 import { array, assert } from '@metamask/superstruct';
+import { CaipAssetTypeStruct, JsonStruct } from '@metamask/utils';
+import { mapValues } from 'lodash';
 
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
 import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
-import { Caip19Struct, UrlStruct } from '../../validation/structs';
+import { safeMerge } from '../../utils/safeMerge';
+import { UrlStruct } from '../../validation/structs';
+import type { SpotPrices, VsCurrencyParam } from './structs';
 import {
-  SpotPricesFromPriceApiWithoutMarketDataStruct,
+  SPOT_PRICE_NULL_OBJECT,
+  SpotPricesStruct,
   VsCurrencyParamStruct,
 } from './structs';
-import type {
-  ExchangeRate,
-  FiatTicker,
-  SpotPrices,
-  VsCurrencyParam,
-} from './types';
+import type { ExchangeRate, FiatTicker } from './types';
 
 export class PriceApiClient {
   readonly #fetch: typeof globalThis.fetch;
@@ -62,10 +62,10 @@ export class PriceApiClient {
 
   async getMultipleSpotPrices(
     tokenCaip19Ids: CaipAssetType[],
-    vsCurrency: VsCurrencyParam = 'usd',
+    vsCurrency: VsCurrencyParam | string = 'usd',
   ): Promise<SpotPrices> {
     try {
-      assert(tokenCaip19Ids, array(Caip19Struct));
+      assert(tokenCaip19Ids, array(CaipAssetTypeStruct));
       assert(vsCurrency, VsCurrencyParamStruct);
 
       if (tokenCaip19Ids.length === 0) {
@@ -87,7 +87,7 @@ export class PriceApiClient {
             queryParams: {
               vsCurrency,
               assetIds: chunk.join(','),
-              includeMarketData: 'false',
+              includeMarketData: 'true',
             },
           });
 
@@ -98,27 +98,9 @@ export class PriceApiClient {
           }
 
           const spotPricesResponse = await response.json();
-          assert(
-            spotPricesResponse,
-            SpotPricesFromPriceApiWithoutMarketDataStruct,
-          );
 
-          const result = Object.keys(spotPricesResponse).reduce(
-            (acc: SpotPrices, caip19Id) => {
-              const price =
-                spotPricesResponse?.[caip19Id as CaipAssetType]?.[vsCurrency];
-              if (!price) {
-                return acc;
-              }
-              acc[caip19Id as CaipAssetType] = {
-                price,
-              };
-              return acc;
-            },
-            {},
-          );
-
-          return result;
+          const spotPrices = this.#sanitizeSpotPrices(spotPricesResponse);
+          return spotPrices;
         }),
       );
 
@@ -128,5 +110,19 @@ export class PriceApiClient {
       this.#logger.error(error, 'Error fetching spot prices');
       throw error;
     }
+  }
+
+  #sanitizeSpotPrices(spotPricesResponse: object): SpotPrices {
+    /**
+     * Merge every spot price with the null object to ensure that we have the returned object is assignable to `Json` by having no undefined values, only nulls.
+     * This is important because the spot prices are then stored in a component context, that requires the object to be serializable to JSON.
+     */
+    const withNulls = mapValues(spotPricesResponse, (spotPrice) =>
+      spotPrice ? safeMerge(SPOT_PRICE_NULL_OBJECT, spotPrice) : null,
+    );
+
+    assert(withNulls, SpotPricesStruct);
+    assert(withNulls, JsonStruct);
+    return withNulls;
   }
 }

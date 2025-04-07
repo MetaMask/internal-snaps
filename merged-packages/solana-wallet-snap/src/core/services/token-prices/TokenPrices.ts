@@ -1,15 +1,14 @@
-import type { CaipAssetType } from '@metamask/keyring-api';
+import { type CaipAssetType } from '@metamask/keyring-api';
 import type { AssetConversion } from '@metamask/snaps-sdk';
-import { array, assert } from '@metamask/superstruct';
+import { parseCaipAssetType } from '@metamask/utils';
 import BigNumber from 'bignumber.js';
+import { pick } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import { VsCurrencyParamStruct } from '../../clients/price-api/structs';
-import type { FiatTicker, SpotPrices } from '../../clients/price-api/types';
-import { getCaip19Address } from '../../utils/getCaip19Address';
+import type { SpotPrice } from '../../clients/price-api/structs';
+import type { FiatTicker } from '../../clients/price-api/types';
 import { isFiat } from '../../utils/isFiat';
 import logger, { type ILogger } from '../../utils/logger';
-import { Caip19Struct } from '../../validation/structs';
 
 export class TokenPricesService {
   readonly #priceApiClient: PriceApiClient;
@@ -21,37 +20,26 @@ export class TokenPricesService {
     this.#logger = _logger;
   }
 
-  #fiatCaipIdToSymbol(caip19Id: CaipAssetType) {
-    const caip19Address = getCaip19Address(caip19Id);
-    return caip19Address.toLowerCase() as FiatTicker;
-  }
-
-  async getMultipleTokenPrices(
-    caip19Ids: CaipAssetType[],
-    currency?: string,
-  ): Promise<SpotPrices> {
-    assert(caip19Ids, array(Caip19Struct));
-    assert(currency, VsCurrencyParamStruct);
-
-    if (caip19Ids.length === 0) {
-      return {};
+  /**
+   * Extracts the ISO 4217 currency code (aka fiat ticker) from a fiat CAIP-19 asset type.
+   *
+   * @param caipAssetType - The CAIP-19 asset type.
+   * @returns The fiat ticker.
+   */
+  #extractFiatTicker(caipAssetType: CaipAssetType): FiatTicker {
+    if (!isFiat(caipAssetType)) {
+      throw new Error('Passed caipAssetType is not a fiat asset');
     }
 
-    try {
-      const tokenPrices = await this.#priceApiClient.getMultipleSpotPrices(
-        caip19Ids,
-        currency,
-      );
+    const fiatTicker =
+      parseCaipAssetType(caipAssetType).assetReference.toLowerCase();
 
-      return tokenPrices;
-    } catch (error) {
-      this.#logger.error(error, 'Error fetching token prices');
-      return {};
-    }
+    return fiatTicker as FiatTicker;
   }
 
   async getMultipleTokenConversions(
     conversions: { from: CaipAssetType; to: CaipAssetType }[],
+    includeMarketData = false,
   ): Promise<
     Record<CaipAssetType, Record<CaipAssetType, AssetConversion | null>>
   > {
@@ -112,7 +100,7 @@ export class TokenPricesService {
          * We need to invert the fiat exchange rate because exchange rate != spot price
          */
         const fiatExchangeRate =
-          fiatExchangeRates[this.#fiatCaipIdToSymbol(from)]?.value;
+          fiatExchangeRates[this.#extractFiatTicker(from)]?.value;
 
         if (!fiatExchangeRate) {
           result[from][to] = null;
@@ -130,7 +118,7 @@ export class TokenPricesService {
          * We need to invert the fiat exchange rate because exchange rate != spot price
          */
         const fiatExchangeRate =
-          fiatExchangeRates[this.#fiatCaipIdToSymbol(to)]?.value;
+          fiatExchangeRates[this.#extractFiatTicker(to)]?.value;
 
         if (!fiatExchangeRate) {
           result[from][to] = null;
@@ -149,12 +137,70 @@ export class TokenPricesService {
 
       const rate = fromUsdRate.dividedBy(toUsdRate).toString();
 
+      const marketData =
+        includeMarketData && cryptoPrices[from]
+          ? this.#computeMarketData(cryptoPrices[from], toUsdRate)
+          : undefined;
+
       result[from][to] = {
         rate,
         conversionTime: Date.now(),
+        // expirationTime: undefined, // TODO: Enable this when snaps SDK is updated
+        // marketData, // TODO: Enable this when snaps SDK is updated
       };
     });
 
     return result;
+  }
+
+  /**
+   * Computes the market data object in the target currency.
+   *
+   * TODO: Type the return with `AssetConversion['marketData']` when snap SDK is updated.
+   *
+   * @param spotPrice - The spot price of the asset in source currency.
+   * @param rate - The rate to convert the market data to from source currency to target currency.
+   * @returns The market data in the target currency.
+   */
+  #computeMarketData(spotPrice: SpotPrice, rate: BigNumber) {
+    const marketDataInUsd = pick(spotPrice, [
+      'marketCap',
+      'totalVolume',
+      'circulatingSupply',
+      'allTimeHigh',
+      'allTimeLow',
+      'pricePercentChange1h',
+      'pricePercentChange1d',
+      'pricePercentChange7d',
+      'pricePercentChange14d',
+      'pricePercentChange30d',
+      'pricePercentChange200d',
+      'pricePercentChange1y',
+    ]);
+
+    const toCurrency = (value: number | null | undefined) =>
+      value === null || value === undefined
+        ? null
+        : new BigNumber(value).dividedBy(rate).toString();
+
+    const marketDataInToCurrency = {
+      marketCap: toCurrency(marketDataInUsd.marketCap),
+      totalVolume: toCurrency(marketDataInUsd.totalVolume),
+      circulatingSupply: marketDataInUsd.circulatingSupply, // Circulating supply counts the number of tokens in circulation, so we don't convert
+      allTimeHigh: toCurrency(marketDataInUsd.allTimeHigh),
+      allTimeLow: toCurrency(marketDataInUsd.allTimeLow),
+      // Variations in percent don't need to be converted, they are independent of the currency
+      pricePercentChange: {
+        PT1H: marketDataInUsd.pricePercentChange1h,
+        P1D: marketDataInUsd.pricePercentChange1d,
+        P7D: marketDataInUsd.pricePercentChange7d,
+        P14D: marketDataInUsd.pricePercentChange14d,
+        P30D: marketDataInUsd.pricePercentChange30d,
+        P200D: marketDataInUsd.pricePercentChange200d,
+        P1Y: marketDataInUsd.pricePercentChange1y,
+      },
+    };
+
+    return marketDataInToCurrency;
   }
 }

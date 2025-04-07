@@ -6,7 +6,7 @@ import type { CaipAssetType } from '@metamask/utils';
 import BigNumber from 'bignumber.js';
 import { cloneDeepWith } from 'lodash';
 
-import type { SpotPrices } from '../../clients/price-api/types';
+import type { SpotPrices } from '../../clients/price-api/structs';
 import type { SolanaTokenMetadata } from '../../clients/token-metadata-client/types';
 import type { SolanaKeyringAccount } from '../../handlers/onKeyringRequest/Keyring';
 import { safeMerge } from '../../utils/safeMerge';

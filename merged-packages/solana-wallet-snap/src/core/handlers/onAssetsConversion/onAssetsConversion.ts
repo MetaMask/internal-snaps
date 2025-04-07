@@ -1,15 +1,31 @@
-import type { OnAssetsConversionHandler } from '@metamask/snaps-sdk';
+import {
+  InternalError,
+  type OnAssetsConversionHandler,
+} from '@metamask/snaps-sdk';
 
 import { tokenPricesService } from '../../../snapContext';
+import logger from '../../utils/logger';
 
 export const onAssetsConversion: OnAssetsConversionHandler = async (params) => {
-  const { conversions } = params;
+  try {
+    logger.log('[💱 onAssetsConversion]', params);
 
-  const result = await tokenPricesService.getMultipleTokenConversions(
-    conversions,
-  );
+    const { conversions } = params;
 
-  return {
-    conversionRates: result,
-  };
+    const includeMarketData = true;
+    //   const { conversions, includeMarketData } = params; // TODO: Enable this when snaps SDK is updated
+
+    const conversionRates =
+      await tokenPricesService.getMultipleTokenConversions(
+        conversions,
+        includeMarketData,
+      );
+
+    return {
+      conversionRates,
+    };
+  } catch (error: any) {
+    logger.error('[💱 onAssetsConversion]', error);
+    throw new InternalError(error) as Error;
+  }
 };
