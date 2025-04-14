@@ -1,23 +1,49 @@
-import { type CaipAssetType } from '@metamask/keyring-api';
-import type { AssetConversion, MarketData } from '@metamask/snaps-sdk';
-import { parseCaipAssetType } from '@metamask/utils';
+/* eslint-disable @typescript-eslint/naming-convention */
+import { CaipAssetTypeStruct, type CaipAssetType } from '@metamask/keyring-api';
+import type {
+  AssetConversion,
+  HistoricalPriceIntervals,
+  MarketData,
+} from '@metamask/snaps-sdk';
+import { assert } from '@metamask/superstruct';
+import { Duration, parseCaipAssetType } from '@metamask/utils';
 import BigNumber from 'bignumber.js';
 import { pick } from 'lodash';
 
+import type { ICache } from '../../caching/ICache';
+import { useCache } from '../../caching/useCache';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import type { SpotPrice } from '../../clients/price-api/structs';
-import type { FiatTicker } from '../../clients/price-api/types';
+import type { SpotPrice } from '../../clients/price-api/types';
+import {
+  GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
+  VsCurrencyParamStruct,
+  type FiatTicker,
+} from '../../clients/price-api/types';
+import type { Serializable } from '../../serialization/types';
 import { isFiat } from '../../utils/isFiat';
 import logger, { type ILogger } from '../../utils/logger';
+import type { HistoricalPrice } from './types';
 
 export class TokenPricesService {
   readonly #priceApiClient: PriceApiClient;
 
   readonly #logger: ILogger;
 
-  constructor(priceApiClient: PriceApiClient, _logger: ILogger = logger) {
+  readonly #cache: ICache<Serializable>;
+
+  readonly #cacheTtlsMilliseconds = {
+    historicalPrice: Duration.Hour,
+    tokenConversion: Duration.Hour,
+  };
+
+  constructor(
+    priceApiClient: PriceApiClient,
+    cache: ICache<Serializable>,
+    _logger: ILogger = logger,
+  ) {
     this.#priceApiClient = priceApiClient;
     this.#logger = _logger;
+    this.#cache = cache;
   }
 
   /**
@@ -37,7 +63,7 @@ export class TokenPricesService {
     return fiatTicker as FiatTicker;
   }
 
-  async getMultipleTokenConversions(
+  async #getMultipleTokenConversions_INTERNAL(
     conversions: { from: CaipAssetType; to: CaipAssetType }[],
     includeMarketData = false,
   ): Promise<
@@ -142,14 +168,33 @@ export class TokenPricesService {
           ? this.#computeMarketData(cryptoPrices[from], toUsdRate)
           : undefined;
 
+      const now = Date.now();
+
       result[from][to] = {
         rate,
-        conversionTime: Date.now(),
+        conversionTime: now,
+        expirationTime: now + this.#cacheTtlsMilliseconds.tokenConversion,
         ...(includeMarketData && marketData ? { marketData } : {}), // Convoluted syntax enforced by TS config 'exactOptionalPropertyTypes: true'
       };
     });
 
     return result;
+  }
+
+  async getMultipleTokenConversions(
+    conversions: { from: CaipAssetType; to: CaipAssetType }[],
+    includeMarketData = false,
+  ): Promise<
+    Record<CaipAssetType, Record<CaipAssetType, AssetConversion | null>>
+  > {
+    return useCache(
+      this.#getMultipleTokenConversions_INTERNAL.bind(this),
+      this.#cache,
+      {
+        functionName: 'TokenPricesService:getMultipleTokenConversions',
+        ttlMilliseconds: this.#cacheTtlsMilliseconds.tokenConversion,
+      },
+    )(conversions, includeMarketData);
   }
 
   /**
@@ -207,5 +252,89 @@ export class TokenPricesService {
     };
 
     return marketDataInToCurrency;
+  }
+
+  async #getHistoricalPrice_INTERNAL(
+    from: CaipAssetType,
+    to: CaipAssetType,
+  ): Promise<HistoricalPrice> {
+    assert(from, CaipAssetTypeStruct);
+    assert(to, CaipAssetTypeStruct);
+
+    const toTicker = parseCaipAssetType(to).assetReference.toLowerCase();
+    assert(toTicker, VsCurrencyParamStruct);
+
+    const timePeriodsToFetch = ['1d', '7d', '1m', '3m', '1y'];
+
+    // For each time period, call the Price API to fetch the historical prices
+    const promises = timePeriodsToFetch.map(async (timePeriod) =>
+      this.#priceApiClient
+        .getHistoricalPrices({
+          assetType: from,
+          timePeriod,
+          vsCurrency: toTicker,
+        })
+        // Wrap the response in an object with the time period and the response for easier reducing
+        .then((response) => ({
+          timePeriod,
+          response,
+        }))
+        // Gracefully handle individual errors to avoid breaking the entire operation
+        .catch((error) => {
+          this.#logger.warn(
+            `Error fetching historical prices for ${from} to ${to} with time period ${timePeriod}. Returning null object.`,
+            error,
+          );
+          return {
+            timePeriod,
+            response: GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
+          };
+        }),
+    );
+
+    const wrappedHistoricalPrices = await Promise.all(promises);
+
+    const intervals = wrappedHistoricalPrices.reduce<HistoricalPriceIntervals>(
+      (acc, { timePeriod, response }) => {
+        const iso8601Interval = `P${timePeriod.toUpperCase()}`;
+        acc[iso8601Interval] = response.prices.map((price) => [
+          price[0],
+          price[1].toString(),
+        ]);
+        return acc;
+      },
+      {},
+    );
+
+    const now = Date.now();
+
+    const result: HistoricalPrice = {
+      intervals,
+      updateTime: now,
+      expirationTime: now + this.#cacheTtlsMilliseconds.historicalPrice,
+    };
+
+    return result;
+  }
+
+  /**
+   * Get the historical price of an asset pair.
+   * It caches the results for 1 hour.
+   *
+   * @param from - The CAIP-19 ID of the asset to convert from.
+   * @param to - The CAIP-19 ID of the asset to convert to. Must be one of the supported Price API `vsCurrency` in endpoint [`getHistoricalPricesByCaipAssetId`](https://price.uat-api.cx.metamask.io/docs#/Historical%20Prices/PriceController_getHistoricalPricesByCaipAssetId).
+   * @returns The historical price of the asset pair.
+   * @throws If the `from` asset is not a valid CAIP-19 ID.
+   * @throws If the `to` asset is not a valid CAIP-19 ID.
+   * @throws If the `to` asset is not one of the supported Price API `vsCurrency`.
+   */
+  async getHistoricalPrice(
+    from: CaipAssetType,
+    to: CaipAssetType,
+  ): Promise<HistoricalPrice> {
+    return useCache(this.#getHistoricalPrice_INTERNAL.bind(this), this.#cache, {
+      functionName: 'TokenPricesService:getHistoricalPrice',
+      ttlMilliseconds: this.#cacheTtlsMilliseconds.historicalPrice,
+    })(from, to);
   }
 }

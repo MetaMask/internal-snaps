@@ -12,6 +12,7 @@ import type {
 import type { ScheduleBackgroundEventMethod } from '../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import { deserialize } from '../serialization/deserialize';
 import { serialize } from '../serialization/serialize';
+import type { Serializable } from '../serialization/types';
 import type { Preferences } from '../types/snap';
 
 export const SEND_FORM_INTERFACE_NAME = 'send-form';
@@ -27,7 +28,7 @@ export const CONFIRM_SIGN_IN_INTERFACE_NAME = 'confirm-sign-in';
  * @param context - The context for the interface.
  * @returns A promise that resolves to a string.
  */
-export async function createInterface<TContext extends object>(
+export async function createInterface<TContext extends Serializable>(
   ui: ComponentOrElement,
   context: TContext,
 ): Promise<string> {
@@ -49,7 +50,7 @@ export async function createInterface<TContext extends object>(
  * @param context - The context for the interface.
  * @returns A promise that resolves to a string.
  */
-export async function updateInterface<TContext extends object>(
+export async function updateInterface<TContext extends Serializable>(
   id: string,
   ui: ComponentOrElement,
   context: TContext,
@@ -134,7 +135,7 @@ export async function getPreferences(): Promise<Preferences> {
  * @param interfaceId - The ID for the interface to retrieve the context.
  * @returns An object containing the context of the interface.
  */
-export async function getInterfaceContext<TContext extends object>(
+export async function getInterfaceContext<TContext extends Serializable>(
   interfaceId: string,
 ): Promise<TContext | null> {
   const rawContext = await snap.request({
@@ -148,7 +149,24 @@ export async function getInterfaceContext<TContext extends object>(
     return null;
   }
 
-  return deserialize<TContext>(rawContext);
+  return deserialize(rawContext) as TContext;
+}
+
+/**
+ * Retrieves the context of an interactive interface by its ID.
+ *
+ * @param interfaceId - The ID for the interface to retrieve the context.
+ * @returns An object containing the context of the interface.
+ * @throws If the interface context is not found.
+ */
+export async function getInterfaceContextOrThrow<TContext extends Serializable>(
+  interfaceId: string,
+): Promise<TContext> {
+  const context = await getInterfaceContext<TContext>(interfaceId);
+  if (!context) {
+    throw new Error('Interface context not found');
+  }
+  return context;
 }
 
 /**
