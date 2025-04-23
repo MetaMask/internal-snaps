@@ -261,6 +261,82 @@ describe('WalletService', () => {
             service.signAndSendTransaction(fromAccount, request),
           ).rejects.toThrow(/At path/u);
         });
+
+        it('defaults commitment to "confirmed" if not provided', async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignAndSendTransaction,
+            params: {
+              account: {
+                address: fromAccount.address,
+              },
+              transaction: transactionMessageBase64Encoded,
+              scope,
+              options: {},
+            },
+          });
+
+          await service.signAndSendTransaction(fromAccount, request);
+
+          expect(
+            mockTransactionHelper.waitForTransactionCommitment,
+          ).toHaveBeenCalledWith(
+            expect.any(String),
+            'confirmed',
+            expect.any(String),
+          );
+        });
+
+        it('uses the provided commitment if provided', async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignAndSendTransaction,
+            params: {
+              account: {
+                address: fromAccount.address,
+              },
+              transaction: transactionMessageBase64Encoded,
+              scope,
+              options: {
+                commitment: 'finalized',
+              },
+            },
+          });
+
+          await service.signAndSendTransaction(fromAccount, request);
+
+          expect(
+            mockTransactionHelper.waitForTransactionCommitment,
+          ).toHaveBeenCalledWith(
+            expect.any(String),
+            'finalized',
+            expect.any(String),
+          );
+        });
+
+        it('defaults commitment to "confirmed" if "processed" is provided', async () => {
+          const request = wrapKeyringRequest({
+            method: SolMethod.SignAndSendTransaction,
+            params: {
+              account: {
+                address: fromAccount.address,
+              },
+              transaction: transactionMessageBase64Encoded,
+              scope,
+              options: {
+                commitment: 'processed',
+              },
+            },
+          });
+
+          await service.signAndSendTransaction(fromAccount, request);
+
+          expect(
+            mockTransactionHelper.waitForTransactionCommitment,
+          ).toHaveBeenCalledWith(
+            expect.any(String),
+            'confirmed',
+            expect.any(String),
+          );
+        });
       });
     },
   );
