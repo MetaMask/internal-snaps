@@ -68,11 +68,14 @@ async function onSourceAccountSelectorValueChange({
       validation(context),
     );
 
-  context.validation[SendFormNames.AmountInput] = validateField<SendFormNames>(
-    SendFormNames.AmountInput,
-    context.amount,
-    validation(context),
-  );
+  if (context.amount) {
+    context.validation[SendFormNames.AmountInput] =
+      validateField<SendFormNames>(
+        SendFormNames.AmountInput,
+        context.amount,
+        validation(context),
+      );
+  }
 
   await updateInterface(id, <Send context={context} />, context);
 
@@ -95,17 +98,42 @@ async function onAmountInputChange({
   event: InputChangeEvent;
   context: SendContext;
 }) {
-  context.amount = event.value as string;
-  context.error = null;
-  context.validation[SendFormNames.AmountInput] = validateField<SendFormNames>(
+  const updatedContext = { ...context };
+
+  updatedContext.amount = event.value as string;
+  updatedContext.error = null;
+
+  const amountFieldValidation = validateField<SendFormNames>(
     SendFormNames.AmountInput,
-    context.amount,
-    validation(context),
+    updatedContext.amount,
+    validation(updatedContext),
   );
 
-  await updateInterface(id, <Send context={context} />, context);
+  if (
+    amountFieldValidation &&
+    updatedContext.validation[SendFormNames.AmountInput]?.message !==
+      amountFieldValidation?.message
+  ) {
+    updatedContext.validation[SendFormNames.AmountInput] =
+      amountFieldValidation;
+    await updateInterface(
+      id,
+      <Send context={updatedContext} />,
+      updatedContext,
+    );
 
-  await buildTransactionMessageAndUpdateInterface(id, context);
+    return;
+  }
+
+  if (amountFieldValidation === null) {
+    updatedContext.validation[SendFormNames.AmountInput] = null;
+    await updateInterface(
+      id,
+      <Send context={updatedContext} />,
+      updatedContext,
+    );
+    await buildTransactionMessageAndUpdateInterface(id, updatedContext);
+  }
 }
 
 /**
@@ -174,7 +202,11 @@ async function onSwapCurrencyButtonClick({
     context.amount = currentAmount.multipliedBy(price).toString();
   }
 
-  await updateInterface(id, <Send context={context} />, context);
+  await updateInterface(
+    id,
+    <Send context={context} inputAmount={context.amount} />,
+    context,
+  );
 }
 
 /**
@@ -232,7 +264,11 @@ async function onMaxAmountButtonClick({
       validation(updatedContext),
     );
 
-  await updateInterface(id, <Send context={updatedContext} />, updatedContext);
+  await updateInterface(
+    id,
+    <Send context={updatedContext} inputAmount={updatedContext.amount} />,
+    updatedContext,
+  );
 
   await buildTransactionMessageAndUpdateInterface(id, updatedContext);
 }
@@ -253,18 +289,42 @@ async function onDestinationAccountInputValueChange({
   event: InputChangeEvent;
   context: SendContext;
 }) {
-  context.toAddress = event.value as string;
-  context.error = null;
-  context.validation[SendFormNames.DestinationAccountInput] =
-    validateField<SendFormNames>(
-      SendFormNames.DestinationAccountInput,
-      context.toAddress,
-      validation(context),
+  const updatedContext = { ...context };
+
+  updatedContext.toAddress = event.value as string;
+  updatedContext.error = null;
+
+  const toAddressValidation = validateField<SendFormNames>(
+    SendFormNames.DestinationAccountInput,
+    updatedContext.toAddress,
+    validation(updatedContext),
+  );
+
+  if (
+    toAddressValidation &&
+    updatedContext.validation[SendFormNames.DestinationAccountInput]
+      ?.message !== toAddressValidation?.message
+  ) {
+    updatedContext.validation[SendFormNames.DestinationAccountInput] =
+      toAddressValidation;
+    await updateInterface(
+      id,
+      <Send context={updatedContext} />,
+      updatedContext,
     );
 
-  await updateInterface(id, <Send context={context} />, context);
+    return;
+  }
 
-  await buildTransactionMessageAndUpdateInterface(id, context);
+  if (toAddressValidation === null) {
+    updatedContext.validation[SendFormNames.DestinationAccountInput] = null;
+    await updateInterface(
+      id,
+      <Send context={updatedContext} />,
+      updatedContext,
+    );
+    await buildTransactionMessageAndUpdateInterface(id, updatedContext);
+  }
 }
 
 /**
@@ -282,7 +342,11 @@ async function onClearButtonClick({
 }) {
   context.toAddress = '';
   context.error = null;
-  await updateInterface(id, <Send context={context} />, context);
+  await updateInterface(
+    id,
+    <Send context={context} inputToAddress={context.toAddress} />,
+    context,
+  );
 }
 
 /**
@@ -331,9 +395,12 @@ async function onSendButtonClick({
 
   if (tokenPrices) {
     updatedContext.tokenPrices = tokenPrices;
+    await updateInterface(
+      id,
+      <Send context={updatedContext} />,
+      updatedContext,
+    );
   }
-
-  await updateInterface(id, <Send context={updatedContext} />, updatedContext);
 
   // Trigger the side effects that need to happen when the transaction is shown in confirmation UI
   await snap.request({
