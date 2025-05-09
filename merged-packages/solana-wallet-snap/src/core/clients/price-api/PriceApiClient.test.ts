@@ -237,7 +237,7 @@ describe('PriceApiClient', () => {
           {
             key: 'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:usd',
             value: MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
-            ttlMilliseconds: 3600000,
+            ttlMilliseconds: 60000,
           },
         ]);
       });
@@ -312,7 +312,7 @@ describe('PriceApiClient', () => {
       await expect(
         client.getMultipleSpotPrices(
           [KnownCaip19Id.SolLocalnet],
-          'usd\x00\x1F' as VsCurrencyParam, // Adding null and unit separator characters
+          'usd\x00\x1F' as VsCurrencyParam,
         ),
       ).rejects.toThrow(/Expected/u);
     });
@@ -342,7 +342,7 @@ describe('PriceApiClient', () => {
         expect(cacheSetSpy).toHaveBeenCalledWith(
           'PriceApiClient:getHistoricalPrices:{"assetType":"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501","timePeriod":"5d","from":123,"to":456,"vsCurrency":"usd"}',
           MOCK_HISTORICAL_PRICES,
-          3600000,
+          60000,
         );
         expect(result).toStrictEqual(MOCK_HISTORICAL_PRICES);
       });
