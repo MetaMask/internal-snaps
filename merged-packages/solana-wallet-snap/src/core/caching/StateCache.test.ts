@@ -1,6 +1,6 @@
 /* eslint-disable jest/prefer-strict-equal */
 /* eslint-disable @typescript-eslint/naming-convention */
-import { InMemoryState } from '../services/state/mocks/InMemoryState';
+import { InMemoryState } from '../services/state/InMemoryState';
 import { StateCache } from './StateCache';
 
 describe('StateCache', () => {
@@ -25,7 +25,7 @@ describe('StateCache', () => {
   describe('get', () => {
     it('returns undefined if the cache is not initialized', async () => {
       const stateWithNoCache = new InMemoryState({
-        name: 'John', // State has some data this is not related to the cache
+        name: 'John', // State has some data that is not related to the cache
         // __cache__default: {}   // State has not been initialized with cached data
       });
       const cache = new StateCache(stateWithNoCache);
@@ -689,6 +689,35 @@ describe('StateCache', () => {
         someKey1: 'someValue1',
         someKey2: 'someValue2',
       });
+    });
+
+    it('no-ops if no entries are provided', async () => {
+      const stateWithCache = new InMemoryState({});
+      const cache = new StateCache(stateWithCache);
+      const updateSpy = jest.spyOn(stateWithCache, 'update');
+
+      await cache.mset([]);
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('defers to set if there is only one entry', async () => {
+      const stateWithCache = new InMemoryState({});
+      const cache = new StateCache(stateWithCache);
+      const setSpy = jest.spyOn(cache, 'set');
+
+      const singleEntry = {
+        key: 'someKey',
+        value: 'someValue',
+        ttlMilliseconds: 1000,
+      };
+      await cache.mset([singleEntry]);
+
+      expect(setSpy).toHaveBeenCalledWith(
+        singleEntry.key,
+        singleEntry.value,
+        singleEntry.ttlMilliseconds,
+      );
     });
   });
 

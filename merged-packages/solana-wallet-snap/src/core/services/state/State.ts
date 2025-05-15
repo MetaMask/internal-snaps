@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Balance, Transaction } from '@metamask/keyring-api';
 import type { CaipAssetType } from '@metamask/utils';
+import { unset } from 'lodash';
 
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SolanaKeyringAccount } from '../../handlers/onKeyringRequest/Keyring';
@@ -49,30 +50,24 @@ export type StateConfig<TValue extends Record<string, Serializable>> = {
  * - It  merges the default state with the underlying snap state to ensure that we always have default values,
  * letting us avoid a ton of null checks everywhere.
  */
-export class State<TValue extends Record<string, Serializable>>
-  implements IStateManager<TValue>
+export class State<TStateValue extends Record<string, Serializable>>
+  implements IStateManager<TStateValue>
 {
-  #config: StateConfig<TValue>;
+  #config: StateConfig<TStateValue>;
 
-  constructor(config: StateConfig<TValue>) {
+  constructor(config: StateConfig<TStateValue>) {
     this.#config = config;
   }
 
-  /**
-   * Gets the state of the snap.
-   *
-   * @returns The state of the snap.
-   */
-  async get(): Promise<TValue> {
+  async get(): Promise<TStateValue> {
     const state = await snap.request({
-      method: 'snap_manageState',
+      method: 'snap_getState',
       params: {
-        operation: 'get',
         encrypted: this.#config.encrypted,
       },
     });
 
-    const stateDeserialized = deserialize(state ?? {}) as TValue;
+    const stateDeserialized = deserialize(state ?? {}) as TStateValue;
 
     // Merge the default state with the underlying snap state
     // to ensure that we always have default values. It lets us avoid a ton of null checks everywhere.
@@ -84,15 +79,40 @@ export class State<TValue extends Record<string, Serializable>>
     return stateWithDefaults;
   }
 
-  /**
-   * Updates the state of the snap.
-   *
-   * @param callback - A function that returns the new state.
-   * @returns The new state.
-   */
-  async update(callback: (state: TValue) => TValue): Promise<TValue> {
+  async getKey<TResponse extends Serializable>(
+    key: string,
+  ): Promise<TResponse | undefined> {
+    const value = await snap.request({
+      method: 'snap_getState',
+      params: {
+        key,
+        encrypted: this.#config.encrypted,
+      },
+    });
+
+    if (value === null) {
+      return undefined;
+    }
+
+    return deserialize(value) as TResponse;
+  }
+
+  async setKey(key: string, value: Serializable): Promise<void> {
+    await snap.request({
+      method: 'snap_setState',
+      params: {
+        key,
+        value: serialize(value),
+        encrypted: this.#config.encrypted,
+      },
+    });
+  }
+
+  async update(
+    updaterFunction: (state: TStateValue) => TStateValue,
+  ): Promise<TStateValue> {
     return this.get().then(async (state) => {
-      const newState = callback(state);
+      const newState = updaterFunction(state);
 
       await snap.request({
         method: 'snap_manageState',
@@ -104,6 +124,14 @@ export class State<TValue extends Record<string, Serializable>>
       });
 
       return newState;
+    });
+  }
+
+  async deleteKey(key: string): Promise<void> {
+    await this.update((state) => {
+      // Using lodash's unset to leverage the json path capabilities
+      unset(state, key);
+      return state;
     });
   }
 }

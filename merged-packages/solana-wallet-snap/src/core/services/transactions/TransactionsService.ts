@@ -203,9 +203,12 @@ export class TransactionsService {
       }
 
       const scopes = this.#configProvider.get().activeNetworks;
-      const currentState = await this.#state.get();
 
-      const transactionsByAccount = currentState.transactions;
+      const transactionsByAccount =
+        (await this.#state.getKey<UnencryptedStateValue['transactions']>(
+          'transactions',
+        )) ?? {};
+
       const existingSignatures = this.#mapExistingSignaturesSet(
         transactionsByAccount,
       );
@@ -242,10 +245,7 @@ export class TransactionsService {
         newTransactionsByAccount,
       });
 
-      await this.#state.update((oldState) => ({
-        ...oldState,
-        transactions: updatedTransactionsByAccount,
-      }));
+      await this.#state.setKey('transactions', updatedTransactionsByAccount);
     } catch (error) {
       this.#logger.error(
         '[TransactionsService] Error. Releasing lock...',

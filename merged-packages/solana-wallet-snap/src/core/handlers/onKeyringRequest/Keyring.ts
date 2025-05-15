@@ -24,6 +24,7 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { CaipAssetType, Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   MethodNotFoundError,
+  SnapError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert, integer } from '@metamask/superstruct';
@@ -127,8 +128,10 @@ export class SolanaKeyring implements Keyring {
 
   async listAccounts(): Promise<SolanaKeyringAccount[]> {
     try {
-      const currentState = await this.#state.get();
-      const keyringAccounts = currentState?.keyringAccounts ?? {};
+      const keyringAccounts =
+        (await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
+          'keyringAccounts',
+        )) ?? {};
 
       return sortBy(Object.values(keyringAccounts), ['entropySource', 'index']);
     } catch (error: any) {
@@ -143,17 +146,14 @@ export class SolanaKeyring implements Keyring {
     try {
       validateRequest({ accountId }, GetAccountStruct);
 
-      const currentState = await this.#state.get();
-      const keyringAccounts = currentState?.keyringAccounts ?? {};
+      const account = await this.#state.getKey<SolanaKeyringAccount>(
+        `keyringAccounts.${accountId}`,
+      );
 
-      if (!keyringAccounts[accountId]) {
-        throw new Error(`Account "${accountId}" not found`);
-      }
-
-      return keyringAccounts?.[accountId];
+      return account;
     } catch (error: any) {
       this.#logger.error({ error }, 'Error getting account');
-      throw error;
+      throw new SnapError(error);
     }
   }
 
@@ -292,13 +292,10 @@ export class SolanaKeyring implements Keyring {
         ],
       };
 
-      await this.#state.update((state) => ({
-        ...state,
-        keyringAccounts: {
-          ...(state?.keyringAccounts ?? {}),
-          [solanaKeyringAccount.id]: solanaKeyringAccount,
-        },
-      }));
+      await this.#state.setKey(
+        `keyringAccounts.${solanaKeyringAccount.id}`,
+        solanaKeyringAccount,
+      );
 
       const keyringAccount: KeyringAccount =
         asStrictKeyringAccount(solanaKeyringAccount);
@@ -339,19 +336,9 @@ export class SolanaKeyring implements Keyring {
 
   async #deleteAccountFromState(accountId: string): Promise<void> {
     await Promise.all([
-      this.#state.update((state) => {
-        if (state?.keyringAccounts?.[accountId]) {
-          delete state?.keyringAccounts?.[accountId];
-        }
-
-        return state;
-      }),
-      this.#state.update((state) => {
-        delete state?.transactions?.[accountId];
-        delete state?.assets?.[accountId];
-
-        return state;
-      }),
+      this.#state.deleteKey(`keyringAccounts.${accountId}`),
+      this.#state.deleteKey(`transactions.${accountId}`),
+      this.#state.deleteKey(`assets.${accountId}`),
     ]);
   }
 
@@ -513,8 +500,10 @@ export class SolanaKeyring implements Keyring {
         throw new Error('Account not found');
       }
 
-      const currentState = await this.#state.get();
-      const allTransactions = currentState?.transactions?.[accountId] ?? [];
+      const allTransactions =
+        (await this.#state.getKey<Transaction[]>(
+          `transactions.${accountId}`,
+        )) ?? [];
 
       /**
        * If we don't have any transactions, we might need to bootstrap them as this may be the first call.
@@ -531,13 +520,10 @@ export class SolanaKeyring implements Keyring {
           account: keyringAccount.id,
         }));
 
-        await this.#state.update((state) => ({
-          ...state,
-          transactions: {
-            ...(state?.transactions ?? {}),
-            [keyringAccount.id]: transactions,
-          },
-        }));
+        await this.#state.setKey(
+          `transactions.${keyringAccount.id}`,
+          transactions,
+        );
 
         return {
           data: transactions,

@@ -238,15 +238,7 @@ export class AssetsService {
     }
     const result = Object.fromEntries(balances.entries());
 
-    await this.#state.update((state) => {
-      return {
-        ...state,
-        assets: {
-          ...(state?.assets ?? {}),
-          [account.id]: result,
-        },
-      };
-    });
+    await this.#state.setKey(`assets.${account.id}`, result);
 
     return result;
   }
@@ -265,14 +257,16 @@ export class AssetsService {
       `[AssetsService] Refreshing assets for ${accounts.length} accounts`,
     );
 
-    const currentState = await this.#state.get();
+    const assets =
+      (await this.#state.getKey<UnencryptedStateValue['assets']>('assets')) ??
+      {};
 
     for (const account of accounts) {
       this.#logger.log(
         `[AssetsService] Fetching all assets for ${account.address} in all networks`,
       );
       const accountAssets = await this.listAccountAssets(account);
-      const previousAssets = currentState.assets[account.id];
+      const previousAssets = assets[account.id];
       const previousCaip19Assets = Object.keys(previousAssets ?? {});
       const currentCaip19Assets = accountAssets ?? {};
 
@@ -304,7 +298,7 @@ export class AssetsService {
         accountAssets,
       );
 
-      const previousBalances = currentState.assets[account.id];
+      const previousBalances = assets[account.id];
 
       // Check if balances have changed
       const {
@@ -329,13 +323,7 @@ export class AssetsService {
           },
         });
 
-        await this.#state.update((_state) => ({
-          ..._state,
-          assets: {
-            ..._state.assets,
-            [account.id]: accountBalances,
-          },
-        }));
+        await this.#state.setKey(`assets.${account.id}`, accountBalances);
       }
     }
   }

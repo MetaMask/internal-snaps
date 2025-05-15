@@ -40,6 +40,7 @@ describe('State', () => {
       encrypted: false,
       defaultState: DEFAULT_STATE,
     });
+
     jest.clearAllMocks();
   });
 
@@ -55,8 +56,8 @@ describe('State', () => {
       const stateValue = await state.get();
 
       expect(snap.request).toHaveBeenCalledWith({
-        method: 'snap_manageState',
-        params: { operation: 'get', encrypted: false },
+        method: 'snap_getState',
+        params: { encrypted: false },
       });
       expect(stateValue).toStrictEqual(mockUnderlyingState);
     });
@@ -150,6 +151,43 @@ describe('State', () => {
     });
   });
 
+  describe('getKey', () => {
+    it('calls the snap_getState method with the correct parameters', async () => {
+      const mockUnderlyingState = DEFAULT_STATE;
+      snap.request.mockResolvedValue(mockUnderlyingState);
+
+      await state.getKey('users.1.name');
+
+      expect(snap.request).toHaveBeenCalledWith({
+        method: 'snap_getState',
+        params: { key: 'users.1.name', encrypted: false },
+      });
+    });
+
+    it('returns undefined if the key does not exist', async () => {
+      snap.request.mockResolvedValue(null);
+
+      const value = await state.getKey('users.1.name');
+
+      expect(value).toBeUndefined();
+    });
+  });
+
+  describe('setKey', () => {
+    it('sets the value of a key', async () => {
+      await state.setKey('users.1.name', 'Bob');
+
+      expect(snap.request).toHaveBeenCalledWith({
+        method: 'snap_setState',
+        params: {
+          key: 'users.1.name',
+          value: 'Bob',
+          encrypted: false,
+        },
+      });
+    });
+  });
+
   describe('update', () => {
     it('updates the state', async () => {
       await state.update((currentState) => ({
@@ -163,8 +201,8 @@ describe('State', () => {
       }));
 
       expect(snap.request).toHaveBeenCalledWith({
-        method: 'snap_manageState',
-        params: { operation: 'get', encrypted: false },
+        method: 'snap_getState',
+        params: { encrypted: false },
       });
 
       expect(snap.request).toHaveBeenCalledWith({
@@ -296,6 +334,44 @@ describe('State', () => {
             },
           },
         });
+      });
+    });
+  });
+
+  describe('deleteKey', () => {
+    it('deletes a key', async () => {
+      await state.deleteKey('users');
+
+      expect(snap.request).toHaveBeenCalledWith({
+        method: 'snap_manageState',
+        params: {
+          operation: 'update',
+          newState: {},
+          encrypted: false,
+        },
+      });
+    });
+
+    it('deletes a nested key', async () => {
+      await state.deleteKey('users[0].age');
+
+      expect(snap.request).toHaveBeenCalledWith({
+        method: 'snap_manageState',
+        params: {
+          operation: 'update',
+          newState: {
+            users: [
+              {
+                name: 'John',
+              },
+              {
+                name: 'Jane',
+                age: 25,
+              },
+            ],
+          },
+          encrypted: false,
+        },
       });
     });
   });
