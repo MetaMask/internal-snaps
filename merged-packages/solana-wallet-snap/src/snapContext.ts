@@ -3,6 +3,7 @@ import { StateCache } from './core/caching/StateCache';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
 import { TokenMetadataClient } from './core/clients/token-metadata-client/TokenMetadataClient';
+import { ClientRequestHandler } from './core/handlers/onClientRequest';
 import { SolanaKeyring } from './core/handlers/onKeyringRequest/Keyring';
 import type { Serializable } from './core/serialization/types';
 import { AnalyticsService } from './core/services/analytics/AnalyticsService';
@@ -46,6 +47,7 @@ export type SnapExecutionContext = {
   confirmationHandler: ConfirmationHandler;
   cache: ICache<Serializable>;
   nftService: NftService;
+  clientRequestHandler: ClientRequestHandler;
 };
 
 const configProvider = new ConfigProvider();
@@ -114,6 +116,12 @@ const tokenPricesService = new TokenPricesService(priceApiClient);
 
 const nftService = new NftService(connection, logger);
 
+const clientRequestHandler = new ClientRequestHandler(
+  keyring,
+  walletService,
+  logger,
+);
+
 const snapContext: SnapExecutionContext = {
   configProvider,
   connection,
@@ -133,11 +141,13 @@ const snapContext: SnapExecutionContext = {
   analyticsService,
   confirmationHandler,
   nftService,
+  clientRequestHandler,
 };
 
 export {
   analyticsService,
   assetsService,
+  clientRequestHandler,
   configProvider,
   confirmationHandler,
   connection,

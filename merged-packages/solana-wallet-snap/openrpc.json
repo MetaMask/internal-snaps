@@ -1,0 +1,187 @@
+{
+  "openrpc": "1.2.4",
+  "info": {
+    "title": "MetaMask Solana Wallet Snap",
+    "description": "JSON-RPC API of the MetaMask Solana Wallet Snap. This snap brings official Solana support to MetaMask. Create accounts, check balances, and use Solana dApps right from your MetaMask wallet. Simple, secure, and seamless.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "New Networks Team"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "name": "MetaMask Solana Wallet Snap",
+      "url": "snap://npm:@metamask/solana-wallet-snap"
+    }
+  ],
+  "methods": [
+    {
+      "name": "signAndSendTransactionWithoutConfirmation",
+      "summary": "Sign and send a transaction without showing a confirmation dialog",
+      "description": "Allows the client (MetaMask) to request the snap to sign and send a Solana transaction without showing a confirmation dialog to the user. This method validates the request parameters, finds the account in the keyring, signs the transaction, and sends it to the Solana network.",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "account",
+          "summary": "The account to use for signing the transaction",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/WalletAccount"
+          }
+        },
+        {
+          "name": "transaction",
+          "summary": "The base64-encoded transaction to sign and send",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Base64String"
+          }
+        },
+        {
+          "name": "scope",
+          "summary": "The Solana network to send the transaction to",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Network"
+          }
+        },
+        {
+          "name": "options",
+          "summary": "Optional transaction options",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/TransactionOptions"
+          }
+        }
+      ],
+      "result": {
+        "name": "SignAndSendTransactionResult",
+        "summary": "The result of signing and sending a transaction",
+        "schema": {
+          "$ref": "#/components/schemas/SignAndSendTransactionResult"
+        }
+      },
+      "examples": [
+        {
+          "name": "signAndSendTransactionExample",
+          "description": "Example of signing and sending a simple SOL transfer transaction",
+          "params": [
+            {
+              "name": "account",
+              "value": {
+                "address": "BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP"
+              }
+            },
+            {
+              "name": "transaction",
+              "value": "gAEAAgSZsAKPnZ6vMobike0KV4I/ucjxTM1cFYhLnVhPWfjfdN2zrulHQhiUvVcoUaPML7MFkgDu9PV2PudQFNTACzusAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAHWszLmyDo8VIk2P/sVmDUn34YE2+73fS1kNLCNojDEqAwMABQIsAQAAAwAJA+gDAAAAAAAAAgIAAQwCAAAAQEIPAAAAAAAA"
+            },
+            {
+              "name": "scope",
+              "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+            },
+            {
+              "name": "options",
+              "value": {
+                "commitment": "confirmed",
+                "skipPreflight": false,
+                "maxRetries": 3
+              }
+            }
+          ],
+          "result": {
+            "name": "signAndSendTransactionResult",
+            "value": {
+              "signature": "2jy9nsDuajiPgRRijs7Ku4JVvTFQ224Nhoc58fe72tRoy384JAF6zVWFV2SwTt9XXykxes6LkU6VLokn6wAXTocQ"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Base64String": {
+        "type": "string",
+        "description": "A base64-encoded string",
+        "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+      },
+      "Base58String": {
+        "type": "string",
+        "description": "A base58-encoded string",
+        "pattern": "^[1-9A-HJ-NP-Za-km-z]+$"
+      },
+      "WalletAccount": {
+        "type": "object",
+        "description": "A wallet account containing the address",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "The base58-encoded public key address of the account"
+          }
+        },
+        "required": ["address"],
+        "additionalProperties": false
+      },
+      "Network": {
+        "type": "string",
+        "description": "The Solana network identifier using CAIP-2 format",
+        "enum": [
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"
+        ]
+      },
+      "TransactionCommitment": {
+        "type": "string",
+        "description": "The commitment level for transaction confirmation",
+        "enum": ["processed", "confirmed", "finalized"],
+        "examples": ["processed", "confirmed", "finalized"]
+      },
+      "TransactionOptions": {
+        "type": "object",
+        "description": "Optional parameters for transaction processing",
+        "properties": {
+          "preflightCommitment": {
+            "$ref": "#/components/schemas/TransactionCommitment",
+            "description": "Preflight commitment level"
+          },
+          "minContextSlot": {
+            "type": "integer",
+            "description": "The minimum slot that the request can be evaluated at",
+            "minimum": 0
+          },
+          "commitment": {
+            "$ref": "#/components/schemas/TransactionCommitment",
+            "description": "Desired commitment level. If provided, confirm the transaction after sending"
+          },
+          "skipPreflight": {
+            "type": "boolean",
+            "description": "Disable transaction verification at the RPC"
+          },
+          "maxRetries": {
+            "type": "integer",
+            "description": "Maximum number of times for the RPC node to retry sending the transaction to the leader",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "SignAndSendTransactionResult": {
+        "type": "object",
+        "description": "Result of signing and sending a transaction",
+        "properties": {
+          "signature": {
+            "$ref": "#/components/schemas/Base58String",
+            "description": "The transaction signature returned after successful execution on Solana"
+          }
+        },
+        "required": ["signature"],
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -6,6 +6,7 @@ import type {
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
+  OnClientRequestHandler,
   OnCronjobHandler,
   OnKeyringRequestHandler,
   OnProtocolRequestHandler,
@@ -38,7 +39,11 @@ import { eventHandlers as confirmSignMessageEvents } from './features/confirmati
 import { eventHandlers as confirmSignAndSendTransactionEvents } from './features/confirmation/views/ConfirmTransactionRequest/events';
 import { eventHandlers as sendFormEvents } from './features/send/views/SendForm/events';
 import { eventHandlers as transactionConfirmationEvents } from './features/send/views/TransactionConfirmation/events';
-import snapContext, { keyring, state } from './snapContext';
+import snapContext, {
+  clientRequestHandler,
+  keyring,
+  state,
+} from './snapContext';
 
 installPolyfills();
 
@@ -255,3 +260,6 @@ export const onProtocolRequest: OnProtocolRequestHandler =
 
 export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler =
   onAssetHistoricalPriceHandler;
+
+export const onClientRequest: OnClientRequestHandler = async ({ request }) =>
+  clientRequestHandler.handle(request);
