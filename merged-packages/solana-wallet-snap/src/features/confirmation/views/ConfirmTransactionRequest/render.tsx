@@ -3,7 +3,6 @@ import { SolMethod } from '@metamask/keyring-api';
 import { Network, Networks } from '../../../../core/constants/solana';
 import { SOL_IMAGE_SVG } from '../../../../core/test/mocks/solana-image-svg';
 import { lamportsToSol } from '../../../../core/utils/conversion';
-import { parseInstructions } from '../../../../core/utils/instructions';
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
   createInterface,
@@ -11,7 +10,9 @@ import {
   showDialog,
   updateInterface,
 } from '../../../../core/utils/interface';
+import { extractInstructionsFromUnknownBase64String } from '../../../../entities';
 import {
+  connection,
   priceApiClient,
   state,
   transactionHelper,
@@ -76,13 +77,12 @@ export async function render(
       context.preferences = DEFAULT_CONFIRMATION_CONTEXT.preferences;
     });
 
-  const instructionsPromise = transactionHelper
-    .extractInstructionsFromUnknownBase64String(
-      context.transaction,
-      context.scope,
-    )
+  const instructionsPromise = extractInstructionsFromUnknownBase64String(
+    connection.getRpc(context.scope),
+    context.transaction,
+  )
     .then((instructions) => {
-      context.advanced.instructions = parseInstructions(instructions);
+      context.advanced.instructions = instructions;
     })
     .catch((error) => {
       console.error(error);
