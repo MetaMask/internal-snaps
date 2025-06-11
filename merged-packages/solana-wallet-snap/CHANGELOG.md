@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.33.0]
+
+### Added
+
+- `onClientRequest` implementation ([#405](https://github.com/MetaMask/snap-solana-wallet/pull/405))
+- Instructions improvements in confirmation screen ([#416](https://github.com/MetaMask/snap-solana-wallet/pull/416))
+- Cover `onAccountsRefresh` with unit tests ([#415](https://github.com/MetaMask/snap-solana-wallet/pull/415))
+
+### Changed
+
+- Move `polyfills` to `infrastructure` directory ([#414](https://github.com/MetaMask/snap-solana-wallet/pull/414))
+- Move Solana Keyring account to `domain` layer ([#412](https://github.com/MetaMask/snap-solana-wallet/pull/412))
+
 ## [1.32.0]
 
 ### Added
@@ -645,7 +658,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
 - Snap setup
 
-[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.32.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.0...HEAD
+[1.33.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.31.2...v1.32.0
 [1.31.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.31.1...v1.31.2
 [1.31.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.31.0...v1.31.1
