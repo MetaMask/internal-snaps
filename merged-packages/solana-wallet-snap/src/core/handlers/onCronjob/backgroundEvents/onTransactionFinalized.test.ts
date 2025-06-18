@@ -47,6 +47,7 @@ describe('onTransactionFinalized', () => {
 
   it('refreshes assets, balances and transactions for all accounts that are involved in the transaction', async () => {
     const mockAccountId = MOCK_SOLANA_KEYRING_ACCOUNT_0.id;
+    const mockOrigin = 'https://metamask.io';
 
     // A special transaction with multiple senders and recipients that are all owned by the keyring
     const mockTransaction: Transaction = {
@@ -117,6 +118,10 @@ describe('onTransactionFinalized', () => {
         params: {
           accountId: mockAccountId,
           transaction: mockTransaction,
+          metadata: {
+            scope: Network.Testnet,
+            origin: mockOrigin,
+          },
         },
       },
     });
@@ -144,6 +149,7 @@ describe('onTransactionFinalized', () => {
 
   it('refreshes balances and transactions for the sender only if it is the only account involved in the transaction', async () => {
     const mockAccountId = MOCK_SOLANA_KEYRING_ACCOUNT_0.id;
+    const mockOrigin = 'https://metamask.io';
 
     // Transaction with only one owned sender, and one non-owned recipient
     const mockTransaction: Transaction = {
@@ -187,6 +193,10 @@ describe('onTransactionFinalized', () => {
         params: {
           accountId: mockAccountId,
           transaction: mockTransaction,
+          metadata: {
+            scope: Network.Testnet,
+            origin: mockOrigin,
+          },
         },
       },
     });

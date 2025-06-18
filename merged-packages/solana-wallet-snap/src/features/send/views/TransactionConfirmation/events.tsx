@@ -1,3 +1,4 @@
+import { METAMASK_ORIGIN } from '../../../../core/constants/solana';
 import { ScheduleBackgroundEventMethod } from '../../../../core/handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import {
   resolveInterface,
@@ -68,7 +69,10 @@ async function onCancelButtonClick({
         params: {
           accountId: fromAccountId,
           base64EncodedTransaction: transactionMessage,
-          scope,
+          metadata: {
+            scope,
+            origin: METAMASK_ORIGIN,
+          },
         },
       },
     },
@@ -115,7 +119,10 @@ async function onConfirmButtonClick({
         params: {
           accountId: context.fromAccountId,
           base64EncodedTransaction: context.transactionMessage,
-          scope: context.scope,
+          metadata: {
+            scope: context.scope,
+            origin: METAMASK_ORIGIN,
+          },
         },
       },
     },
@@ -139,6 +146,7 @@ async function onConfirmButtonClick({
       account,
       transactionMessage,
       scope,
+      METAMASK_ORIGIN,
     );
 
     signature = response.signature;

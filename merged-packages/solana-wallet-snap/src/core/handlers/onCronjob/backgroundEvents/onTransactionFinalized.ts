@@ -1,6 +1,12 @@
 import { TransactionStruct } from '@metamask/keyring-api';
 import { InternalError, type OnCronjobHandler } from '@metamask/snaps-sdk';
-import { assert, literal, object, string } from '@metamask/superstruct';
+import {
+  assert,
+  literal,
+  nullable,
+  object,
+  string,
+} from '@metamask/superstruct';
 
 import {
   analyticsService,
@@ -9,7 +15,7 @@ import {
   transactionsService,
 } from '../../../../snapContext';
 import logger from '../../../utils/logger';
-import { UuidStruct } from '../../../validation/structs';
+import { NetworkStruct, UuidStruct } from '../../../validation/structs';
 import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
 
 export const OnTransactionFinalizedRequestStruct = object({
@@ -19,6 +25,10 @@ export const OnTransactionFinalizedRequestStruct = object({
   params: object({
     accountId: UuidStruct,
     transaction: TransactionStruct,
+    metadata: object({
+      scope: NetworkStruct,
+      origin: string(),
+    }),
   }),
 });
 
@@ -36,7 +46,7 @@ export const onTransactionFinalized: OnCronjobHandler = async ({ request }) => {
 
     assert(request, OnTransactionFinalizedRequestStruct);
 
-    const { accountId, transaction } = request.params;
+    const { accountId, transaction, metadata } = request.params;
 
     const account = await keyring.getAccountOrThrow(accountId);
 
@@ -64,6 +74,7 @@ export const onTransactionFinalized: OnCronjobHandler = async ({ request }) => {
     const trackEventPromise = analyticsService.trackEventTransactionFinalized(
       account,
       transaction,
+      metadata,
     );
 
     await Promise.all([

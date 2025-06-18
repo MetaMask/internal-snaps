@@ -209,6 +209,7 @@ export class WalletService {
    * @param account - The account to sign and send the transaction.
    * @param transactionMessageBase64Encoded - The transaction message base64 encoded.
    * @param scope - The scope of the transaction.
+   * @param origin - The origin of the transaction.
    * @param options - The options for the transaction.
    * @param options.minContextSlot - The minimum context slot.
    * @param options.preflightCommitment - The preflight commitment.
@@ -220,6 +221,7 @@ export class WalletService {
     account: SolanaKeyringAccount,
     transactionMessageBase64Encoded: string,
     scope: Network,
+    origin: string,
     options?: SolanaSignAndSendTransactionOptions,
   ): Promise<SolanaSignAndSendTransactionResponse> {
     const signConfig: DecompileTransactionMessageFetchingLookupTablesConfig =
@@ -284,7 +286,10 @@ export class WalletService {
             accountId: account.id,
             transactionMessageBase64Encoded,
             signature,
-            scope,
+            metadata: {
+              scope,
+              origin,
+            },
           },
         },
       },
@@ -340,6 +345,10 @@ export class WalletService {
           params: {
             accountId: account.id,
             transaction: mappedTransactionWithAccountId,
+            metadata: {
+              scope,
+              origin,
+            },
           },
         },
       },

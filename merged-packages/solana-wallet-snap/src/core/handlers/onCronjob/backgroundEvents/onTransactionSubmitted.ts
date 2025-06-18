@@ -1,5 +1,11 @@
 import { InternalError, type OnCronjobHandler } from '@metamask/snaps-sdk';
-import { assert, literal, object, string } from '@metamask/superstruct';
+import {
+  assert,
+  literal,
+  nullable,
+  object,
+  string,
+} from '@metamask/superstruct';
 
 import { analyticsService, keyring } from '../../../../snapContext';
 import logger from '../../../utils/logger';
@@ -19,7 +25,10 @@ export const OnTransactionSubmittedRequestStruct = object({
     /** The base64 encoded transaction message. */
     transactionMessageBase64Encoded: Base64Struct,
     signature: string(),
-    scope: NetworkStruct,
+    metadata: object({
+      scope: NetworkStruct,
+      origin: string(),
+    }),
   }),
 });
 
@@ -36,7 +45,7 @@ export const onTransactionSubmitted: OnCronjobHandler = async ({ request }) => {
 
     assert(request, OnTransactionSubmittedRequestStruct);
 
-    const { accountId, transactionMessageBase64Encoded, signature, scope } =
+    const { accountId, transactionMessageBase64Encoded, signature, metadata } =
       request.params;
 
     const account = await keyring.getAccountOrThrow(accountId);
@@ -45,7 +54,7 @@ export const onTransactionSubmitted: OnCronjobHandler = async ({ request }) => {
       account,
       transactionMessageBase64Encoded,
       signature,
-      scope,
+      metadata,
     );
   } catch (error) {
     logger.error(error);

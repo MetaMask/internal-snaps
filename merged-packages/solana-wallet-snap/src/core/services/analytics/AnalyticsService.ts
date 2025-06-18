@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type { Transaction } from '@metamask/keyring-api';
 import { assert } from '@metamask/superstruct';
 
 import type { SolanaKeyringAccount } from '../../../entities';
-import type { Network } from '../../constants/solana';
+import type { TransactionMetadata } from '../../constants/solana';
 import logger from '../../utils/logger';
 import { Base64Struct } from '../../validation/structs';
 
@@ -19,61 +20,144 @@ export class AnalyticsService {
   async trackEventTransactionAdded(
     account: SolanaKeyringAccount,
     base64EncodedTransaction: string,
-    scope: Network,
+    metadata: TransactionMetadata,
   ): Promise<void> {
     this.#logger.log(`[📣 AnalyticsService] Tracking event transaction added`);
 
     assert(base64EncodedTransaction, Base64Struct);
-    // TODO: Implement
+
+    await snap.request({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Transaction Added',
+          properties: {
+            message: 'Snap transaction added',
+            origin: metadata.origin,
+            account_id: account.id,
+            account_address: account.address,
+            account_type: account.type,
+            chain_id: metadata.scope,
+          },
+        },
+      },
+    });
   }
 
   async trackEventTransactionApproved(
     account: SolanaKeyringAccount,
     base64EncodedTransaction: string,
-    scope: Network,
+    metadata: TransactionMetadata,
   ): Promise<void> {
     this.#logger.log(
       `[📣 AnalyticsService] Tracking event transaction approved`,
     );
 
     assert(base64EncodedTransaction, Base64Struct);
-    // TODO: Implement
+
+    await snap.request({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Transaction Approved',
+          properties: {
+            message: 'Snap transaction approved',
+            origin: metadata.origin,
+            account_id: account.id,
+            account_address: account.address,
+            account_type: account.type,
+            chain_id: metadata.scope,
+          },
+        },
+      },
+    });
   }
 
   async trackEventTransactionSubmitted(
     account: SolanaKeyringAccount,
     transactionMessageBase64Encoded: string,
     signature: string,
-    scope: Network,
+    metadata: TransactionMetadata,
   ): Promise<void> {
     this.#logger.log(
       `[📣 AnalyticsService] Tracking event transaction submitted`,
     );
 
     assert(transactionMessageBase64Encoded, Base64Struct);
-    // TODO: Implement
+
+    await snap.request({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Transaction Submitted',
+          properties: {
+            message: 'Snap transaction submitted',
+            origin: metadata.origin,
+            account_id: account.id,
+            account_address: account.address,
+            account_type: account.type,
+            chain_id: metadata.scope,
+          },
+        },
+      },
+    });
   }
 
   async trackEventTransactionFinalized(
     account: SolanaKeyringAccount,
     transaction: Transaction,
+    metadata: TransactionMetadata,
   ): Promise<void> {
     this.#logger.log(
       `[📣 AnalyticsService] Tracking event transaction finalized`,
     );
-    // TODO: Implement
+
+    await snap.request({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Transaction Finalized',
+          properties: {
+            message: 'Snap transaction finalized',
+            origin: metadata.origin,
+            account_id: account.id,
+            account_address: account.address,
+            account_type: account.type,
+            chain_id: transaction.chain,
+            transaction_status: transaction.status,
+            transaction_type: transaction.type,
+          },
+        },
+      },
+    });
   }
 
   async trackEventTransactionRejected(
     account: SolanaKeyringAccount,
     base64EncodedTransaction: string,
-    scope: Network,
+    metadata: TransactionMetadata,
   ): Promise<void> {
     this.#logger.log(
       `[📣 AnalyticsService] Tracking event transaction rejected`,
     );
 
     assert(base64EncodedTransaction, Base64Struct);
-    // TODO: Implement
+
+    await snap.request({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Transaction Rejected',
+          properties: {
+            message: 'Snap transaction rejected',
+            origin: metadata.origin,
+            account_id: account.id,
+            account_address: account.address,
+            account_type: account.type,
+            chain_id: metadata.scope,
+          },
+        },
+      },
+    });
   }
 }
