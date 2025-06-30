@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.34.0]
+
+### Changed
+
+- Switch to duration cronjobs ([#435](https://github.com/MetaMask/snap-solana-wallet/pull/435))
+
+### Fixed
+
+- Validate same origin domain for `signIn` ([#434](https://github.com/MetaMask/snap-solana-wallet/pull/434))
+
 ## [1.33.4]
 
 ### Fixed
@@ -687,7 +697,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
 - Snap setup
 
-[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.4...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.34.0...HEAD
+[1.34.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.4...v1.34.0
 [1.33.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.3...v1.33.4
 [1.33.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.2...v1.33.3
 [1.33.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.1...v1.33.2
