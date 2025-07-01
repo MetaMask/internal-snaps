@@ -1,16 +1,19 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk';
 import type {
-  GetClientStatusResult,
   Json,
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
   OnClientRequestHandler,
   OnCronjobHandler,
+  OnInstallHandler,
   OnKeyringRequestHandler,
   OnProtocolRequestHandler,
+  OnStartHandler,
+  OnUpdateHandler,
   OnUserInputHandler,
+  OnWebSocketEventHandler,
 } from '@metamask/snaps-sdk';
 import {
   MethodNotFoundError,
@@ -37,9 +40,10 @@ import { eventHandlers as confirmSignMessageEvents } from './features/confirmati
 import { eventHandlers as confirmSignAndSendTransactionEvents } from './features/confirmation/views/ConfirmTransactionRequest/events';
 import { eventHandlers as sendFormEvents } from './features/send/views/SendForm/events';
 import { eventHandlers as transactionConfirmationEvents } from './features/send/views/TransactionConfirmation/events';
-import { installPolyfills } from './infrastructure';
+import { installPolyfills } from './polyfills';
 import snapContext, {
   clientRequestHandler,
+  eventEmitter,
   keyring,
   state,
 } from './snapContext';
@@ -264,3 +268,17 @@ export const onClientRequest: OnClientRequestHandler = async ({ request }) => {
   );
   return result ?? null;
 };
+
+export const onWebSocketEvent: OnWebSocketEventHandler = async ({ event }) =>
+  withCatchAndThrowSnapError(async () =>
+    eventEmitter.emitSync('onWebSocketEvent', event),
+  );
+
+export const onStart: OnStartHandler = async () =>
+  withCatchAndThrowSnapError(async () => eventEmitter.emitSync('onStart'));
+
+export const onUpdate: OnUpdateHandler = async () =>
+  withCatchAndThrowSnapError(async () => eventEmitter.emitSync('onUpdate'));
+
+export const onInstall: OnInstallHandler = async () =>
+  withCatchAndThrowSnapError(async () => eventEmitter.emitSync('onInstall'));
