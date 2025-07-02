@@ -119,6 +119,7 @@ const walletService = new WalletService(connection, transactionHelper, logger);
 const transactionScanService = new TransactionScanService(
   new SecurityAlertsApiClient(configProvider),
   tokenMetadataService,
+  analyticsService,
   logger,
 );
 
