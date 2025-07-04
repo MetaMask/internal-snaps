@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
+  KeyringEvent,
   type KeyringRequest,
   SolMethod,
-  type Transaction,
 } from '@metamask/keyring-api';
+import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
 import type { Commitment, SignatureBytes } from '@solana/kit';
@@ -36,9 +37,11 @@ import {
   Base64Struct,
   NetworkStruct,
 } from '../../validation/structs';
+import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
 import type { TransactionHelper } from '../execution/TransactionHelper';
-import { mapRpcTransaction } from '../transactions/utils/mapRpcTransaction';
+import type { SignatureMonitor } from '../subscriptions';
+import type { TransactionsService } from '../transactions/TransactionsService';
 import type {
   SolanaSignAndSendTransactionOptions,
   SolanaSignAndSendTransactionResponse,
@@ -59,19 +62,33 @@ import {
 } from './structs';
 
 export class WalletService {
+  readonly #transactionsService: TransactionsService;
+
+  readonly #analyticsService: AnalyticsService;
+
   readonly #connection: SolanaConnection;
 
   readonly #transactionHelper: TransactionHelper;
 
+  readonly #signatureMonitor: SignatureMonitor;
+
   readonly #logger: ILogger;
 
+  readonly #loggerPrefix = '[👛 WalletService]';
+
   constructor(
+    transactionsService: TransactionsService,
+    analyticsService: AnalyticsService,
     connection: SolanaConnection,
     transactionHelper: TransactionHelper,
+    signatureMonitor: SignatureMonitor,
     _logger = logger,
   ) {
+    this.#transactionsService = transactionsService;
+    this.#analyticsService = analyticsService;
     this.#connection = connection;
     this.#transactionHelper = transactionHelper;
+    this.#signatureMonitor = signatureMonitor;
     this.#logger = _logger;
   }
 
@@ -224,6 +241,12 @@ export class WalletService {
     origin: string,
     options?: SolanaSignAndSendTransactionOptions,
   ): Promise<SolanaSignAndSendTransactionResponse> {
+    this.#logger.log(
+      this.#loggerPrefix,
+      'Signing and sending transaction',
+      account,
+    );
+
     const signConfig: DecompileTransactionMessageFetchingLookupTablesConfig =
       options?.minContextSlot
         ? {
@@ -275,86 +298,113 @@ export class WalletService {
       sendConfig,
     );
 
-    // Trigger the side effects that need to happen when the transaction is submitted
-    await snap.request({
-      method: 'snap_scheduleBackgroundEvent',
-      params: {
-        duration: 'PT1S',
-        request: {
-          method: ScheduleBackgroundEventMethod.OnTransactionSubmitted,
-          params: {
-            accountId: account.id,
-            transactionMessageBase64Encoded,
-            signature,
-            metadata: {
-              scope,
-              origin,
-            },
-          },
-        },
+    await this.#handleTransactionSubmitted(
+      signature,
+      transactionMessageBase64Encoded,
+      account,
+      scope,
+      origin,
+    );
+
+    await this.#signatureMonitor.monitor({
+      network: scope,
+      signature,
+      commitment: options?.commitment ?? 'confirmed',
+      onCommitmentReached: async (params) => {
+        await this.#handleTransactionConfirmed(
+          params.signature,
+          account,
+          scope,
+          origin,
+        );
       },
     });
 
     const result = {
       signature,
     };
-
     assert(result, SolanaSignAndSendTransactionResponseStruct);
-
-    /**
-     * If the commitment is `processed`, we default to `confirmed`.
-     * This is because we poll the RPC with `getTransaction` to check if the
-     * transaction has been confirmed, and this method does not support
-     * `processed` as a commitment. A solution would have been to simply not
-     * wait when `processed` is provided, but this would prevents us from
-     * fetching the transaction, mapping it, and triggering all the related
-     * side effects.
-     *
-     * If the commitment is not provided, we default to `confirmed`.
-     */
-    const commitment =
-      !options?.commitment || options?.commitment === 'processed'
-        ? 'confirmed'
-        : options?.commitment;
-
-    const transaction =
-      await this.#transactionHelper.waitForTransactionCommitment(
-        signature,
-        commitment,
-        scope,
-      );
-
-    const mappedTransaction = mapRpcTransaction({
-      scope,
-      address: asAddress(account.address),
-      transactionData: transaction,
-    });
-
-    const mappedTransactionWithAccountId: Transaction = {
-      ...mappedTransaction,
-      account: account.id,
-    } as Transaction;
-
-    // Trigger the side effects that need to happen when the transaction is finalized (failed or confirmed)
-    await snap.request({
-      method: 'snap_scheduleBackgroundEvent',
-      params: {
-        duration: 'PT1S',
-        request: {
-          method: ScheduleBackgroundEventMethod.OnTransactionFinalized,
-          params: {
-            accountId: account.id,
-            transaction: mappedTransactionWithAccountId,
-            metadata: {
-              scope,
-              origin,
-            },
-          },
-        },
-      },
-    });
-
     return result;
+  }
+
+  async #handleTransactionSubmitted(
+    signature: string,
+    transactionMessageBase64Encoded: string,
+    account: SolanaKeyringAccount,
+    network: Network,
+    origin: string,
+  ): Promise<void> {
+    this.#logger.info(this.#loggerPrefix, 'Handling transaction submitted', {
+      signature,
+      transactionMessageBase64Encoded,
+      account,
+      network,
+      origin,
+    });
+
+    await this.#analyticsService.trackEventTransactionSubmitted(
+      account,
+      transactionMessageBase64Encoded,
+      signature,
+      {
+        scope: network,
+        origin,
+      },
+    );
+  }
+
+  /**
+   * Triggers the side effects that need to happen when a the user's transaction is finalized (failed or confirmed).
+   *
+   * @param signature - The signature of the transaction.
+   * @param account - The account that the transaction belongs to.
+   * @param network - The network of the transaction.
+   * @param origin - The origin of the transaction.
+   */
+  async #handleTransactionConfirmed(
+    signature: string,
+    account: SolanaKeyringAccount,
+    network: Network,
+    origin: string,
+  ): Promise<void> {
+    this.#logger.info(this.#loggerPrefix, 'Handling transaction confirmed', {
+      signature,
+      account,
+      network,
+      origin,
+    });
+
+    const transaction = await this.#transactionsService.fetchBySignature(
+      signature,
+      account,
+      network,
+    );
+
+    if (!transaction) {
+      throw new Error(
+        `Transaction with signature ${signature} not found on network ${network}`,
+      );
+    }
+
+    await this.#transactionsService.saveTransaction(transaction, account);
+
+    await Promise.allSettled([
+      // Bubble up the new transaction to the extension
+      emitSnapKeyringEvent(snap, KeyringEvent.AccountTransactionsUpdated, {
+        transactions: {
+          [account.id]: [transaction],
+        },
+      }),
+      // Track in analytics
+      this.#analyticsService.trackEventTransactionFinalized(
+        account,
+        transaction,
+        {
+          scope: network,
+          origin,
+        },
+      ),
+    ]);
   }
 
   /**
