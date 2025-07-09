@@ -10,9 +10,10 @@ import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import type { Address } from '@solana/kit';
 import { address as asAddress } from '@solana/kit';
-import { map, uniq } from 'lodash';
+import { get, map, uniq } from 'lodash';
 
 import type { SolanaKeyringAccount } from '../../../entities';
+import type { EventEmitter } from '../../../infrastructure/event-emitter/EventEmitter';
 import type { ICache } from '../../caching/ICache';
 import { useCache } from '../../caching/useCache';
 import type { NftApiClient } from '../../clients/nft-api/NftApiClient';
@@ -42,6 +43,11 @@ import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
 import type { IStateManager } from '../state/IStateManager';
 import type { UnencryptedStateValue } from '../state/State';
+import type {
+  AccountMonitor,
+  AccountMonitoringParams,
+  AccountNotification,
+} from '../subscriptions/AccountMonitor';
 import type { TokenMetadataService } from '../token-metadata/TokenMetadata';
 import type { TokenPricesService } from '../token-prices/TokenPrices';
 import type { AssetMetadata, NonFungibleAssetMetadata } from './type';
@@ -58,6 +64,8 @@ type TokenAccountWithMetadata =
 export class AssetsService {
   readonly #logger: ILogger;
 
+  readonly #loggerPrefix = '[🪙 AssetsService]';
+
   readonly #connection: SolanaConnection;
 
   readonly #configProvider: ConfigProvider;
@@ -71,6 +79,8 @@ export class AssetsService {
   readonly #cache: ICache<Serializable>;
 
   readonly #nftApiClient: NftApiClient;
+
+  readonly #accountMonitor: AccountMonitor;
 
   readonly #activeNetworks: Network[];
 
@@ -87,6 +97,8 @@ export class AssetsService {
     tokenPricesService,
     cache,
     nftApiClient,
+    accountMonitor,
+    eventEmitter,
   }: {
     connection: SolanaConnection;
     logger: ILogger;
@@ -96,6 +108,8 @@ export class AssetsService {
     tokenPricesService: TokenPricesService;
     cache: ICache<Serializable>;
     nftApiClient: NftApiClient;
+    accountMonitor: AccountMonitor;
+    eventEmitter: EventEmitter;
   }) {
     this.#logger = logger;
     this.#connection = connection;
@@ -104,8 +118,11 @@ export class AssetsService {
     this.#tokenMetadataService = tokenMetadataService;
     this.#tokenPricesService = tokenPricesService;
     this.#cache = cache;
+    this.#accountMonitor = accountMonitor;
     this.#nftApiClient = nftApiClient;
     this.#activeNetworks = configProvider.get().activeNetworks;
+
+    eventEmitter.on('onStart', this.#monitorAllAccountsAssets.bind(this));
   }
 
   async #listAddressNativeAssets(): Promise<NativeCaipAssetType[]> {
@@ -608,5 +625,243 @@ export class AssetsService {
     const marketData =
       await this.#tokenPricesService.getMultipleTokensMarketData(assets);
     return marketData;
+  }
+
+  /**
+   * Monitors all assets for all accounts in all active networks.
+   */
+  async #monitorAllAccountsAssets(): Promise<void> {
+    const accountsById =
+      (await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
+        'keyringAccounts',
+      )) ?? {};
+
+    const accounts = Object.values(accountsById);
+
+    await Promise.allSettled(
+      accounts.map(async (account) => {
+        await this.monitorAccountAssets(account);
+      }),
+    );
+  }
+
+  /**
+   * Monitors all assets for a single account across all active networks.
+   * @param account - The account to monitor the assets for.
+   */
+  async monitorAccountAssets(account: SolanaKeyringAccount): Promise<void> {
+    this.#logger.log(
+      this.#loggerPrefix,
+      'Starting to monitor all assets of account',
+      account,
+    );
+
+    const { activeNetworks } = this.#configProvider.get();
+
+    // Monitor native assets across all passed networks
+    await Promise.allSettled(
+      activeNetworks.map(async (network) => {
+        await this.#monitorAccountNativeAsset(account, network);
+      }),
+    );
+
+    // Monitor token assets across all passed networks
+    const tokenAccounts = await this.#getTokenAccountsByOwnerMultiple(
+      asAddress(account.address),
+      [TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS],
+      activeNetworks,
+    );
+
+    await Promise.allSettled(
+      tokenAccounts.map(async (tokenAccount) => {
+        await this.#monitorAccountTokenAsset(account, tokenAccount);
+      }),
+    );
+  }
+
+  /**
+   * Monitors the native asset (SOL) for the given account in the given network.
+   * @param account - The account to monitor the native asset for.
+   * @param network - The network to monitor the native asset for.
+   */
+  async #monitorAccountNativeAsset(
+    account: SolanaKeyringAccount,
+    network: Network,
+  ): Promise<void> {
+    this.#logger.log(this.#loggerPrefix, 'Monitoring native asset balance', {
+      account,
+      network,
+    });
+
+    // To monitor the native asset (SOL), we need to monitor the user's account
+    const { address } = account;
+
+    await this.#accountMonitor.monitor({
+      address,
+      commitment: 'confirmed',
+      network,
+      onAccountChanged: async (
+        notification: AccountNotification,
+        params: AccountMonitoringParams,
+      ) => await this.#handleNativeAssetChanged(account, notification, params),
+    });
+  }
+
+  /**
+   * Handles the notification when the account's native asset changed.
+   * @param account - The account that the native asset changed for.
+   * @param notification - The notification that triggered the event.
+   * @param params - The parameters for the event.
+   */
+  async #handleNativeAssetChanged(
+    account: SolanaKeyringAccount,
+    notification: AccountNotification,
+    params: AccountMonitoringParams,
+  ): Promise<void> {
+    this.#logger.log(this.#loggerPrefix, 'Native asset balance changed', {
+      account,
+      notification,
+      params,
+    });
+
+    const { id: accountId } = account;
+    const { network } = params;
+
+    const lamports = notification.value?.lamports;
+    if (!lamports) {
+      this.#logger.error(
+        this.#loggerPrefix,
+        'No balance found in account changed event',
+        {
+          notification,
+          params,
+        },
+      );
+      return;
+    }
+
+    const balance = {
+      amount: fromTokenUnits(lamports, 9),
+      unit: 'SOL',
+    };
+
+    const assetType = `${network}/${SolanaCaip19Tokens.SOL}`;
+
+    await Promise.allSettled([
+      // Update the state
+      this.#state.setKey(`assets.${accountId}.${assetType}`, balance),
+      // Notify the extension
+      emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
+        balances: {
+          [accountId]: {
+            [assetType]: balance,
+          },
+        },
+      }),
+    ]);
+  }
+
+  /**
+   * Monitors the token account owned by the given account in the given network.
+   * @param account - The account to monitor the token account for.
+   * @param tokenAccount - The token account to monitor.
+   */
+  async #monitorAccountTokenAsset(
+    account: SolanaKeyringAccount,
+    tokenAccount: TokenAccountWithMetadata,
+  ): Promise<void> {
+    this.#logger.log(this.#loggerPrefix, 'Monitoring token asset balance', {
+      account,
+      tokenAccount,
+    });
+
+    const { pubkey: address, scope: network } = tokenAccount;
+
+    await this.#accountMonitor.monitor({
+      address,
+      commitment: 'confirmed',
+      network,
+      onAccountChanged: async (
+        notification: AccountNotification,
+        params: AccountMonitoringParams,
+      ) => await this.#handleTokenAssetChanged(account, notification, params),
+    });
+  }
+
+  /**
+   * Handles the notification when the account's token account changed.
+   * @param account - The account that the token account changed for.
+   * @param notification - The notification that triggered the event.
+   * @param params - The parameters for the event.
+   */
+  async #handleTokenAssetChanged(
+    account: SolanaKeyringAccount,
+    notification: AccountNotification,
+    params: AccountMonitoringParams,
+  ): Promise<void> {
+    this.#logger.log(this.#loggerPrefix, 'Token asset changed', {
+      account,
+      notification,
+      params,
+    });
+
+    const { id: accountId } = account;
+    const { network } = params;
+
+    const mint = get(notification, 'value.data.parsed.info.mint');
+    if (!mint) {
+      this.#logger.error(
+        this.#loggerPrefix,
+        'No mint found in token account changed event',
+        { notification, params },
+      );
+      return;
+    }
+
+    const uiAmountString = get(
+      notification,
+      'value.data.parsed.info.tokenAmount.uiAmountString',
+    );
+    if (!uiAmountString) {
+      this.#logger.error(
+        this.#loggerPrefix,
+        'No amount found in token account changed event',
+        {
+          notification,
+          params,
+        },
+      );
+      return;
+    }
+
+    const assetType = tokenAddressToCaip19(network, mint);
+
+    const balance = {
+      amount: uiAmountString,
+      /**
+       * TODO: I think we can leave empty, because it looks like the extension is not using it.
+       * Which is convenient, because we don't have to fetch the token metadata.
+       *
+       * Either it's a design issue with the API of `KeyringEvent.AccountBalancesUpdated`,
+       * in that case it could be relaxed, and the field could become optional.
+       *
+       * Either it's an implementation issue on the extension side, and we're not using the field
+       * as we should.
+       */
+      unit: '',
+    };
+
+    await Promise.allSettled([
+      // Update the state
+      this.#state.setKey(`assets.${accountId}.${assetType}`, balance),
+      // Notify the extension
+      emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
+        balances: {
+          [accountId]: {
+            [assetType]: balance,
+          },
+        },
+      }),
+    ]);
   }
 }
