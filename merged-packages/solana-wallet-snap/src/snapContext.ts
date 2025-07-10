@@ -9,6 +9,8 @@ import { ClientRequestHandler } from './core/handlers/onClientRequest';
 import { SolanaKeyring } from './core/handlers/onKeyringRequest/Keyring';
 import type { Serializable } from './core/serialization/types';
 import {
+  AccountService,
+  KeyringAccountMonitor,
   SignatureMonitor,
   SubscriptionRepository,
   SubscriptionService,
@@ -26,7 +28,7 @@ import { NftService } from './core/services/nft/NftService';
 import type { IStateManager } from './core/services/state/IStateManager';
 import type { UnencryptedStateValue } from './core/services/state/State';
 import { DEFAULT_UNENCRYPTED_STATE, State } from './core/services/state/State';
-import { AccountMonitor } from './core/services/subscriptions/AccountMonitor';
+import { RpcAccountMonitor } from './core/services/subscriptions/RpcAccountMonitor';
 import { TokenMetadataService } from './core/services/token-metadata/TokenMetadata';
 import { TokenPricesService } from './core/services/token-prices/TokenPrices';
 import { TransactionScanService } from './core/services/transaction-scan/TransactionScan';
@@ -106,7 +108,7 @@ const signatureMonitor = new SignatureMonitor(
   logger,
 );
 
-const accountMonitor = new AccountMonitor(
+const rpcAcccountMonitor = new RpcAccountMonitor(
   subscriptionService,
   connection,
   logger,
@@ -144,8 +146,6 @@ const assetsService = new AssetsService({
   cache: inMemoryCache,
   tokenPricesService,
   nftApiClient,
-  accountMonitor,
-  eventEmitter,
 });
 
 const transactionsService = new TransactionsService({
@@ -177,6 +177,17 @@ const transactionScanService = new TransactionScanService(
 
 const confirmationHandler = new ConfirmationHandler();
 
+const accountService = new AccountService(state);
+
+const keyringAccountMonitor = new KeyringAccountMonitor(
+  rpcAcccountMonitor,
+  accountService,
+  assetsService,
+  configProvider,
+  eventEmitter,
+  logger,
+);
+
 const keyring = new SolanaKeyring({
   state,
   transactionsService,
@@ -184,6 +195,7 @@ const keyring = new SolanaKeyring({
   assetsService,
   walletService,
   confirmationHandler,
+  keyringAccountMonitor,
 });
 
 const nftService = new NftService(connection, logger);
