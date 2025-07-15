@@ -1,0 +1,65 @@
+{
+  "name": "@metamask/tron-wallet-snap",
+  "version": "0.1.0",
+  "description": "A Tron wallet Snap.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/snap-tron-wallet.git"
+  },
+  "license": "(MIT-0 OR Apache-2.0)",
+  "main": "./dist/bundle.js",
+  "files": [
+    "dist/",
+    "images/",
+    "snap.manifest.json",
+    "locales/"
+  ],
+  "scripts": {
+    "allow-scripts": "yarn workspace root allow-scripts",
+    "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build:clean": "yarn clean && yarn build:locale && yarn build",
+    "build:locale": "node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w",
+    "build:locale:watch": "npx nodemon --watch packages/snap/messages.json --exec \"node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w\"",
+    "clean": "rimraf dist",
+    "lint": "yarn lint:eslint && yarn lint:misc && yarn lint:deps && yarn lint:types",
+    "lint:deps": "depcheck",
+    "lint:eslint": "eslint . --cache --ext js,jsx,ts,tsx",
+    "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write",
+    "lint:misc": "prettier '**/*.json' '**/*.md' --check",
+    "lint:types": "tsc --noEmit",
+    "prepublishOnly": "mm-snap manifest",
+    "serve": "mm-snap serve",
+    "start": "concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
+    "test": "jest --passWithNoTests",
+    "test:integration": "./integration-test/run-integration.sh"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.0.3",
+    "@metamask/key-tree": "^10.1.1",
+    "@metamask/keyring-api": "^18.0.0",
+    "@metamask/keyring-snap-sdk": "^4.0.0",
+    "@metamask/slip44": "^4.2.0",
+    "@metamask/snaps-cli": "^8.1.0",
+    "@metamask/snaps-jest": "^9.2.0",
+    "@metamask/snaps-sdk": "^9.2.0",
+    "@metamask/superstruct": "^3.2.1",
+    "@metamask/utils": "^11.4.2",
+    "@types/jest": "^30.0.0",
+    "@types/lodash": "^4.17.20",
+    "bignumber.js": "^9.3.1",
+    "concurrently": "^9.2.0",
+    "dotenv": "^17.0.0",
+    "jest": "^30.0.3",
+    "jest-mock-extended": "^4.0.0",
+    "jest-transform-stub": "2.0.0",
+    "lodash": "^4.17.21",
+    "superstruct": "^2.0.2",
+    "ts-jest": "^29.4.0",
+    "uuid": "^11.1.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

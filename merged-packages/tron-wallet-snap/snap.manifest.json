@@ -1,0 +1,79 @@
+{
+  "version": "0.1.0",
+  "description": "Manage Tron using MetaMask",
+  "proposedName": "Tron",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/snap-tron-wallet.git"
+  },
+  "source": {
+    "shasum": "rwr8H8hRWo+jd8LfXglNcStMWVvlLn0iZbReS/pkBtc=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/icon.svg",
+        "packageName": "@metamask/tron-wallet-snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    },
+    "locales": [
+      "locales/en.json"
+    ]
+  },
+  "initialConnections": {
+    "https://portfolio.metamask.io": {},
+    "https://portfolio-builds.metafi-dev.codefi.network": {},
+    "https://dev.portfolio.metamask.io": {},
+    "https://ramps-dev.portfolio.metamask.io": {}
+  },
+  "initialPermissions": {
+    "endowment:rpc": {
+      "dapps": true,
+      "snaps": false
+    },
+    "endowment:keyring": {
+      "allowedOrigins": [
+        "https://portfolio.metamask.io",
+        "https://portfolio-builds.metafi-dev.codefi.network",
+        "https://dev.portfolio.metamask.io",
+        "https://ramps-dev.portfolio.metamask.io"
+      ]
+    },
+    "snap_getBip32Entropy": [
+      {
+        "path": [
+          "m",
+          "44'",
+          "195'"
+        ],
+        "curve": "secp256k1"
+      },
+    ],
+    "endowment:network-access": {},
+    "snap_manageAccounts": {},
+    "snap_manageState": {},
+    "snap_dialog": {},
+    "snap_getPreferences": {},
+    "endowment:cronjob": {
+      "jobs": [
+        {
+          "duration": "PT30S",
+          "request": {
+            "method": "synchronizeAccounts"
+          }
+        }
+      ]
+    },
+    "endowment:assets": {
+      "scopes": [
+        "bip122:000000000019d6689c085ae165831e93",
+        "bip122:000000000933ea01ad0ee984209779ba",
+        "bip122:00000000da84f2bafbbc53dee25a72ae",
+        "bip122:00000008819873e925422c1ff0f99f7c",
+        "bip122:regtest"
+      ]
+    }
+  },
+  "platformVersion": "9.0.0",
+  "manifestVersion": "0.1"
+}
