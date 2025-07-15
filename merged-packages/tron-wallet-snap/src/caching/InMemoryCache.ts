@@ -1,7 +1,7 @@
 import { assert } from '@metamask/utils';
 
-import type { Serializable } from '../serialization/types';
 import type { ILogger } from '../utils/logger';
+import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import type { CacheEntry } from './types';
 

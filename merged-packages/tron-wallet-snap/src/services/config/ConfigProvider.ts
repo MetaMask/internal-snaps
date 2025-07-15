@@ -6,7 +6,7 @@ import {
   create,
   enums,
   object,
-  string,
+  string
 } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 
@@ -33,14 +33,10 @@ const CommaSeparatedListOfStringsStruct = coerce(
 
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
-  RPC_URL_MAINNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_DEVNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_TESTNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LOCALNET_LIST: CommaSeparatedListOfStringsStruct,
-  RPC_WEB_SOCKET_URL_MAINNET: UrlStruct,
-  RPC_WEB_SOCKET_URL_DEVNET: UrlStruct,
-  RPC_WEB_SOCKET_URL_TESTNET: UrlStruct,
-  RPC_WEB_SOCKET_URL_LOCALNET: UrlStruct,
+  RPC_URL_LIST_MAINNET: CommaSeparatedListOfUrlsStruct,
+  RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
+  RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,
+  RPC_URL_LIST_LOCALNET: CommaSeparatedListOfStringsStruct,
   EXPLORER_BASE_URL: UrlStruct,
   PRICE_API_BASE_URL: UrlStruct,
   TOKEN_API_BASE_URL: UrlStruct,
@@ -54,7 +50,6 @@ export type Env = Infer<typeof EnvStruct>;
 
 export type NetworkConfig = (typeof Networks)[Network] & {
   rpcUrls: string[];
-  webSocketUrl: string;
 };
 
 export type Config = {
@@ -91,10 +86,6 @@ export type Config = {
       getNftMetadata: number;
     };
   };
-  subscription: {
-    maxReconnectAttempts: number;
-    reconnectDelayMilliseconds: number;
-  };
 };
 
 /**
@@ -118,22 +109,20 @@ export class ConfigProvider {
   #parseEnvironment() {
     const rawEnvironment = {
       ENVIRONMENT: process.env.ENVIRONMENT,
-      RPC_URL_MAINNET_LIST: process.env.RPC_URL_MAINNET_LIST,
-      RPC_URL_DEVNET_LIST: process.env.RPC_URL_DEVNET_LIST,
-      RPC_URL_TESTNET_LIST: process.env.RPC_URL_TESTNET_LIST,
-      RPC_URL_LOCALNET_LIST: process.env.RPC_URL_LOCALNET_LIST,
-      RPC_WEB_SOCKET_URL_MAINNET: process.env.RPC_WEB_SOCKET_URL_MAINNET,
-      RPC_WEB_SOCKET_URL_DEVNET: process.env.RPC_WEB_SOCKET_URL_DEVNET,
-      RPC_WEB_SOCKET_URL_TESTNET: process.env.RPC_WEB_SOCKET_URL_TESTNET,
-      RPC_WEB_SOCKET_URL_LOCALNET: process.env.RPC_WEB_SOCKET_URL_LOCALNET,
+      // RPC
+      RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET,
+      RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_NILE_LIST_TESTNET,
+      RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET,
+      RPC_URL_LIST_LOCALNET: process.env.RPC_URL_LIST_LOCALNET,
+      // Block explorer
       EXPLORER_BASE_URL: process.env.EXPLORER_BASE_URL,
+      // APIs
       PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL,
       TOKEN_API_BASE_URL: process.env.TOKEN_API_BASE_URL,
       STATIC_API_BASE_URL: process.env.STATIC_API_BASE_URL,
-      SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL, // Blockaid
-      LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
-      // NFT API
+      SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL,
       NFT_API_BASE_URL: process.env.NFT_API_BASE_URL,
+      LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
     };
 
     // Validate and parse them before returning
@@ -146,23 +135,19 @@ export class ConfigProvider {
       networks: [
         {
           ...Networks[Network.Mainnet],
-          rpcUrls: environment.RPC_URL_MAINNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_MAINNET,
+          rpcUrls: environment.RPC_URL_LIST_MAINNET,
         },
         {
           ...Networks[Network.Nile],
-          rpcUrls: environment.RPC_URL_DEVNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_DEVNET,
+          rpcUrls: environment.RPC_URL_LIST_NILE_TESTNET,
         },
         {
           ...Networks[Network.Shasta],
-          rpcUrls: environment.RPC_URL_TESTNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_TESTNET,
+          rpcUrls: environment.RPC_URL_LIST_SHASTA_TESTNET,
         },
         {
           ...Networks[Network.Localnet],
-          rpcUrls: environment.RPC_URL_LOCALNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_LOCALNET,
+          rpcUrls: environment.RPC_URL_LIST_LOCALNET,
         },
       ],
       explorerBaseUrl: environment.EXPLORER_BASE_URL,
@@ -207,10 +192,6 @@ export class ConfigProvider {
           listAddressSolanaNfts: Duration.Minute,
           getNftMetadata: Duration.Minute,
         },
-      },
-      subscription: {
-        maxReconnectAttempts: 5,
-        reconnectDelayMilliseconds: Duration.Second,
       },
     };
   }

@@ -30,6 +30,8 @@ import type {
   JsonRpcRequest,
 } from '@metamask/utils';
 
+import { SnapError } from '@metamask/snaps-sdk';
+import { sortBy } from 'lodash';
 import type { TronKeyringAccount } from '../entities';
 import { asStrictKeyringAccount } from '../entities/keyring-account';
 import { AssetsService } from '../services/assets/AssetsService';
@@ -77,11 +79,32 @@ export class KeyringHandler implements Keyring {
   }
 
   async listAccounts(): Promise<TronKeyringAccount[]> {
-    throw new Error('Method not implemented.');
+    try {
+      const keyringAccounts =
+        (await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
+          'keyringAccounts',
+        )) ?? {};
+
+      return sortBy(Object.values(keyringAccounts), ['entropySource', 'index']);
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error listing accounts');
+      throw new Error('Error listing accounts');
+    }
   }
 
-  async getAccount(id: string): Promise<TronKeyringAccount | undefined> {
-    throw new Error('Method not implemented.');
+  async getAccount(
+    accountId: string,
+  ): Promise<TronKeyringAccount | undefined> {
+    try {
+      const account = await this.#state.getKey<TronKeyringAccount>(
+        `keyringAccounts.${accountId}`,
+      );
+
+      return account;
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error getting account');
+      throw new SnapError(error);
+    }
   }
 
   #getLowestUnusedKeyringAccountIndex(

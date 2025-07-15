@@ -192,10 +192,9 @@ describe('StateCache', () => {
         __cache__default: {},
       });
       const cache = new StateCache(stateWithCache);
-      jest
+      const mockDateNow = jest
         .spyOn(Date, 'now')
-        .mockReturnValueOnce(1704067200000) // January 1, 2024
-        .mockReturnValueOnce(1704067200001); // January 1, 2024 + 1 millisecond
+        .mockReturnValue(1704067200000); // January 1, 2024
 
       await cache.set('someKey', 'someValue', 0);
       const stateValue = await stateWithCache.get();
@@ -209,8 +208,13 @@ describe('StateCache', () => {
         },
       });
 
+      // Change the mock to return a time after the expiration
+      mockDateNow.mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+
       const value = await cache.get('someKey'); // Should expire immediately
       expect(value).toBeUndefined();
+
+      mockDateNow.mockRestore();
     });
 
     it('throws an error if the ttl is not a number', async () => {
@@ -530,11 +534,18 @@ describe('StateCache', () => {
       });
       const cache = new StateCache(stateWithCache);
 
+      // Mock Date.now to return a time after the expiration
+      const mockDateNow = jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+
       const result = await cache.mget(['someKey']);
 
       expect(result).toEqual({
         someKey: undefined,
       });
+
+      mockDateNow.mockRestore();
     });
 
     it('returns an empty object if the cache is not initialized', async () => {
@@ -561,6 +572,11 @@ describe('StateCache', () => {
       });
       const cache = new StateCache(stateWithCache);
 
+      // Mock Date.now to return a time after the expiration
+      const mockDateNow = jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+
       await cache.mget(['someKey']);
       const stateValue = await stateWithCache.get();
 
@@ -572,6 +588,8 @@ describe('StateCache', () => {
           },
         },
       });
+
+      mockDateNow.mockRestore();
     });
   });
 

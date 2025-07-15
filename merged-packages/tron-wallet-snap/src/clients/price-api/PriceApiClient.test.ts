@@ -4,13 +4,12 @@ import { cloneDeep } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
-import { KnownCaip19Id } from '../../constants/solana';
-import type { Serializable } from '../../serialization/types';
+import { KnownCaip19Id } from '../../constants/tron';
 import type { ConfigProvider } from '../../services/config';
-import { mockLogger } from '../../services/mocks/logger';
-import { MOCK_EXCHANGE_RATES } from '../../test/mocks/price-api/exchange-rates';
+import { mockLogger } from '../../utils/mockLogger';
+import type { Serializable } from '../../utils/serialization/types';
+import { MOCK_EXCHANGE_RATES } from './mocks/exchange-rates';
 import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
-import { MOCK_SPOT_PRICES } from './mocks/spot-prices';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
 
@@ -64,8 +63,58 @@ describe('PriceApiClient', () => {
 
   describe('getMultipleSpotPrices', () => {
     const mockResponse: SpotPrices = {
-      [KnownCaip19Id.SolMainnet]: MOCK_SPOT_PRICES[KnownCaip19Id.SolMainnet]!,
-      [KnownCaip19Id.UsdcMainnet]: MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
+      [KnownCaip19Id.TrxMainnet]: {
+        id: 'tron',
+        price: 0.123456789,
+        marketCap: 1234567890.123456789,
+        allTimeHigh: 0.5,
+        allTimeLow: 0.01,
+        totalVolume: 123456789.123456789,
+        high1d: 0.13,
+        low1d: 0.12,
+        circulatingSupply: 1000000000,
+        dilutedMarketCap: 1234567890.123456789,
+        marketCapPercentChange1d: 1.5,
+        priceChange1d: 0.01,
+        pricePercentChange1h: 0.5,
+        pricePercentChange1d: 1.0,
+        pricePercentChange7d: -2.0,
+        pricePercentChange14d: 3.0,
+        pricePercentChange30d: -1.0,
+        pricePercentChange200d: 10.0,
+        pricePercentChange1y: 20.0,
+        bondingCurveProgressPercent: null,
+        liquidity: null,
+        totalSupply: null,
+        holderCount: null,
+        isMutable: null,
+      },
+      [KnownCaip19Id.UsdtMainnet]: {
+        id: 'tether',
+        price: 1.0,
+        marketCap: 1000000000.0,
+        allTimeHigh: 1.1,
+        allTimeLow: 0.9,
+        totalVolume: 50000000.0,
+        high1d: 1.01,
+        low1d: 0.99,
+        circulatingSupply: 1000000000,
+        dilutedMarketCap: 1000000000.0,
+        marketCapPercentChange1d: 0.1,
+        priceChange1d: 0.001,
+        pricePercentChange1h: 0.01,
+        pricePercentChange1d: 0.1,
+        pricePercentChange7d: 0.0,
+        pricePercentChange14d: 0.0,
+        pricePercentChange30d: 0.0,
+        pricePercentChange200d: 0.0,
+        pricePercentChange1y: 0.0,
+        bondingCurveProgressPercent: null,
+        liquidity: null,
+        totalSupply: null,
+        holderCount: null,
+        isMutable: null,
+      },
     };
 
     describe('when the data is not cached', () => {
@@ -76,12 +125,12 @@ describe('PriceApiClient', () => {
         });
 
         const result = await client.getMultipleSpotPrices([
-          KnownCaip19Id.SolMainnet,
-          KnownCaip19Id.UsdcMainnet,
+          KnownCaip19Id.TrxMainnet,
+          KnownCaip19Id.UsdtMainnet,
         ]);
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=solana%3A5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp%2Fslip44%3A501%2Csolana%3A5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp%2Ftoken%3AEPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&includeMarketData=true',
+          'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
         );
         expect(result).toStrictEqual(mockResponse);
       });
@@ -92,8 +141,8 @@ describe('PriceApiClient', () => {
 
         await expect(
           client.getMultipleSpotPrices([
-            KnownCaip19Id.SolLocalnet,
-            KnownCaip19Id.UsdcLocalnet,
+            KnownCaip19Id.TrxLocalnet,
+            KnownCaip19Id.UsdtMainnet,
           ]),
         ).rejects.toThrow('Fetch failed');
         expect(mockLogger.error).toHaveBeenCalledWith(
@@ -110,8 +159,8 @@ describe('PriceApiClient', () => {
 
         await expect(
           client.getMultipleSpotPrices([
-            KnownCaip19Id.SolLocalnet,
-            KnownCaip19Id.UsdcLocalnet,
+            KnownCaip19Id.TrxLocalnet,
+            KnownCaip19Id.UsdtMainnet,
           ]),
         ).rejects.toThrow('HTTP error! status: 404');
         expect(mockLogger.error).toHaveBeenCalledWith(
@@ -123,16 +172,16 @@ describe('PriceApiClient', () => {
       it('fetches spot price with custom vsCurrency', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce(MOCK_SPOT_PRICES),
+          json: jest.fn().mockResolvedValueOnce(mockResponse),
         });
 
         await client.getMultipleSpotPrices(
-          [KnownCaip19Id.SolMainnet, KnownCaip19Id.UsdcMainnet],
+          [KnownCaip19Id.TrxMainnet, KnownCaip19Id.UsdtMainnet],
           'eur',
         );
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=solana%3A5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp%2Fslip44%3A501%2Csolana%3A5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp%2Ftoken%3AEPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&includeMarketData=true',
+          'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
         );
       });
 
@@ -144,8 +193,8 @@ describe('PriceApiClient', () => {
 
         await expect(
           client.getMultipleSpotPrices([
-            KnownCaip19Id.SolLocalnet,
-            KnownCaip19Id.UsdcLocalnet,
+            KnownCaip19Id.TrxMainnet,
+            KnownCaip19Id.UsdtMainnet,
           ]),
         ).rejects.toThrow('Invalid JSON');
         expect(mockLogger.error).toHaveBeenCalledWith(
@@ -159,8 +208,8 @@ describe('PriceApiClient', () => {
 
         await expect(
           client.getMultipleSpotPrices([
-            KnownCaip19Id.SolLocalnet,
-            KnownCaip19Id.UsdcLocalnet,
+            KnownCaip19Id.TrxMainnet,
+            KnownCaip19Id.UsdtMainnet,
           ]),
         ).rejects.toThrow('Network timeout');
         expect(mockLogger.error).toHaveBeenCalledWith(
@@ -171,7 +220,7 @@ describe('PriceApiClient', () => {
 
       it('throws when malformed response from the Price API', async () => {
         const mockMalformedResponse = cloneDeep(mockResponse);
-        mockMalformedResponse[KnownCaip19Id.SolMainnet]!.price = -999; // Price must be a positive number
+        mockMalformedResponse[KnownCaip19Id.TrxMainnet]!.price = -999; // Price must be a positive number
 
         mockFetch.mockResolvedValueOnce({
           ok: true,
@@ -179,9 +228,9 @@ describe('PriceApiClient', () => {
         });
 
         await expect(
-          client.getMultipleSpotPrices([KnownCaip19Id.SolMainnet]),
+          client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]),
         ).rejects.toThrow(
-          'At path: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501.price -- Expected a number greater than or equal to 0 but received `-999`',
+          'At path: tron:728126428/slip44:195.price -- Expected a number greater than or equal to 0 but received `-999`',
         );
       });
     });
@@ -189,17 +238,17 @@ describe('PriceApiClient', () => {
     describe('when the data is fully cached', () => {
       it('returns the cached data', async () => {
         const cachedData = {
-          'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501:usd':
-            MOCK_SPOT_PRICES[KnownCaip19Id.SolMainnet]!,
-          'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:usd':
-            MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
+          'PriceApiClient:getMultipleSpotPrices:tron:728126428/slip44:195:usd':
+            mockResponse[KnownCaip19Id.TrxMainnet]!,
+          'PriceApiClient:getMultipleSpotPrices:tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:usd':
+            mockResponse[KnownCaip19Id.UsdtMainnet]!,
         };
         jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
         jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
 
         const result = await client.getMultipleSpotPrices([
-          KnownCaip19Id.SolMainnet,
-          KnownCaip19Id.UsdcMainnet,
+          KnownCaip19Id.TrxMainnet,
+          KnownCaip19Id.UsdtMainnet,
         ]);
 
         expect(result).toStrictEqual(mockResponse);
@@ -212,36 +261,36 @@ describe('PriceApiClient', () => {
       it('returns the cached data', async () => {
         // Only the first token is cached, we will need to fetch the second one
         const cachedData = {
-          'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501:usd':
-            MOCK_SPOT_PRICES[KnownCaip19Id.SolMainnet]!,
+          'PriceApiClient:getMultipleSpotPrices:tron:728126428/slip44:195:usd':
+            mockResponse[KnownCaip19Id.TrxMainnet]!,
         };
         jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
         jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
         mockFetch.mockResolvedValueOnce({
           ok: true,
           json: jest.fn().mockResolvedValueOnce({
-            [KnownCaip19Id.UsdcMainnet]:
-              MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
+            [KnownCaip19Id.UsdtMainnet]:
+              mockResponse[KnownCaip19Id.UsdtMainnet]!,
           }),
         });
 
         const result = await client.getMultipleSpotPrices([
-          KnownCaip19Id.SolMainnet,
-          KnownCaip19Id.UsdcMainnet,
+          KnownCaip19Id.TrxMainnet,
+          KnownCaip19Id.UsdtMainnet,
         ]);
 
         expect(result).toStrictEqual(mockResponse);
 
         // We should have fetched the second token only
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=solana%3A5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp%2Ftoken%3AEPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&includeMarketData=true',
+          'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
         );
 
         // The second token should be added to the cache
         expect(mockCache.mset).toHaveBeenCalledWith([
           {
-            key: 'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:usd',
-            value: MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
+            key: 'PriceApiClient:getMultipleSpotPrices:tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:usd',
+            value: mockResponse[KnownCaip19Id.UsdtMainnet]!,
             ttlMilliseconds: 0,
           },
         ]);
@@ -279,7 +328,7 @@ describe('PriceApiClient', () => {
     it('rejects tokenCaipAssetTypes that are invalid or that include malicious inputs', async () => {
       await expect(
         client.getMultipleSpotPrices([
-          KnownCaip19Id.SolLocalnet,
+          KnownCaip19Id.TrxLocalnet,
           'INVALID<script>alert(1)</script>' as CaipAssetType,
         ]),
       ).rejects.toThrow(
@@ -290,7 +339,7 @@ describe('PriceApiClient', () => {
     it('rejects vsCurrency parameters that are invalid or that include malicious inputs', async () => {
       await expect(
         client.getMultipleSpotPrices(
-          [KnownCaip19Id.SolLocalnet],
+          [KnownCaip19Id.TrxLocalnet],
           'INVALID<script>alert(1)</script>' as VsCurrencyParam,
         ),
       ).rejects.toThrow(/Expected/u);
@@ -302,7 +351,7 @@ describe('PriceApiClient', () => {
         json: jest.fn().mockResolvedValueOnce({}),
       });
 
-      await client.getMultipleSpotPrices([KnownCaip19Id.SolLocalnet]);
+      await client.getMultipleSpotPrices([KnownCaip19Id.TrxLocalnet]);
 
       // Verify URL is properly constructed with encoded parameters
       expect(mockFetch).toHaveBeenCalledWith(
@@ -320,7 +369,7 @@ describe('PriceApiClient', () => {
 
       await expect(
         client.getMultipleSpotPrices(
-          [KnownCaip19Id.SolLocalnet],
+          [KnownCaip19Id.TrxLocalnet],
           'usd\x00\x1F' as VsCurrencyParam,
         ),
       ).rejects.toThrow(/Expected/u);
@@ -338,7 +387,7 @@ describe('PriceApiClient', () => {
         const cacheSetSpy = jest.spyOn(mockCache, 'set');
 
         const result = await client.getHistoricalPrices({
-          assetType: KnownCaip19Id.SolMainnet,
+          assetType: KnownCaip19Id.TrxMainnet,
           timePeriod: '5d',
           from: 123,
           to: 456,
@@ -346,10 +395,10 @@ describe('PriceApiClient', () => {
         });
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/historical-prices/solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501?timePeriod=5d&from=123&to=456&vsCurrency=usd',
+          'https://some-mock-url.com/v3/historical-prices/tron:728126428/slip44:195?timePeriod=5d&from=123&to=456&vsCurrency=usd',
         );
         expect(cacheSetSpy).toHaveBeenCalledWith(
-          'PriceApiClient:getHistoricalPrices:{"assetType":"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501","timePeriod":"5d","from":123,"to":456,"vsCurrency":"usd"}',
+          'PriceApiClient:getHistoricalPrices:{"assetType":"tron:728126428/slip44:195","timePeriod":"5d","from":123,"to":456,"vsCurrency":"usd"}',
           MOCK_HISTORICAL_PRICES,
           0,
         );
@@ -367,7 +416,7 @@ describe('PriceApiClient', () => {
         const cacheSetSpy = jest.spyOn(mockCache, 'set');
 
         const result = await client.getHistoricalPrices({
-          assetType: KnownCaip19Id.SolMainnet,
+          assetType: KnownCaip19Id.TrxMainnet,
           timePeriod: '5d',
           from: 123,
           to: 456,

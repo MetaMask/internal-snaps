@@ -13,7 +13,7 @@ export type ILogger = {
   debug: (...args: any[]) => void;
 };
 
-const withSolanaErrorLogging =
+const withErrorLogging =
   (logFn: (...args: any[]) => void) =>
   (...args: any[]): void => {
     logFn(...args);
@@ -44,7 +44,7 @@ const logger: ILogger = {
   info: withNoopInProduction(console.info),
   warn: withNoopInProduction(console.warn),
   debug: withNoopInProduction(console.debug),
-  error: withNoopInProduction(withSolanaErrorLogging(console.error)),
+  error: withNoopInProduction(withErrorLogging(console.error)),
 };
 
 export default logger;

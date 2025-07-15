@@ -11,4 +11,4 @@ const config = {
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
 };
 
-export default config;
+module.exports = config;

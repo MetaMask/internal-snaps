@@ -12,6 +12,8 @@ export enum KnownCaip19Id {
   TrxNile = `${Network.Nile}/slip44:195`,
   TrxShasta = `${Network.Shasta}/slip44:195`,
   TrxLocalnet = `${Network.Localnet}/slip44:195`,
+
+  UsdtMainnet = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
 }
 
 export const TokenMetadata = {
