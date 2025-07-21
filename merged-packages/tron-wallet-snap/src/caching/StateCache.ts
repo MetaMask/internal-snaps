@@ -2,9 +2,9 @@
 
 import { assert } from '@metamask/utils';
 
-import type { Serializable } from '../serialization/types';
 import type { IStateManager } from '../services/state/IStateManager';
 import type { ILogger } from '../utils/logger';
+import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import type { CacheEntry } from './types';
 
@@ -165,7 +165,12 @@ export class StateCache implements ICache<Serializable | undefined> {
   ): Promise<Record<string, Serializable | undefined>> {
     const cacheStore = await this.#state.getKey(this.prefix);
 
-    const keysAndValues = Object.entries(cacheStore ?? {}).filter(([key]) =>
+    // If cache is not initialized, return empty object
+    if (!cacheStore) {
+      return {};
+    }
+
+    const keysAndValues = Object.entries(cacheStore).filter(([key]) =>
       keys.includes(key),
     );
 
@@ -175,25 +180,34 @@ export class StateCache implements ICache<Serializable | undefined> {
 
     await this.mdelete(expiredKeys.map(([key]) => key));
 
-    return keysAndValues.reduce<Record<string, Serializable | undefined>>(
-      (acc, [key, cacheEntry]) => {
-        if (cacheEntry === undefined) {
-          this.logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
-          return acc;
-        }
+    const result: Record<string, Serializable | undefined> = {};
 
-        if (cacheEntry.expiresAt < Date.now()) {
-          this.logger.info(`[StateCache] ⌛ Cache expired for key "${key}"`);
-          acc[key] = undefined;
-        } else {
-          this.logger.info(`[StateCache] 🎉 Cache hit for key "${key}"`);
-          acc[key] = cacheEntry.value;
-        }
+    // First, handle keys that exist in the cache
+    keysAndValues.forEach(([key, cacheEntry]) => {
+      if (cacheEntry === undefined) {
+        this.logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
+        result[key] = undefined;
+        return;
+      }
 
-        return acc;
-      },
-      {},
-    );
+      if (cacheEntry.expiresAt < Date.now()) {
+        this.logger.info(`[StateCache] ⌛ Cache expired for key "${key}"`);
+        result[key] = undefined;
+      } else {
+        this.logger.info(`[StateCache] 🎉 Cache hit for key "${key}"`);
+        result[key] = cacheEntry.value;
+      }
+    });
+
+    // Then, handle keys that don't exist in the cache
+    keys.forEach((key) => {
+      if (!(key in result)) {
+        this.logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
+        result[key] = undefined;
+      }
+    });
+
+    return result;
   }
 
   async mset(

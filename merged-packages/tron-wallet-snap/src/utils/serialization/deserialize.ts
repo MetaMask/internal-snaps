@@ -29,7 +29,7 @@ export const deserialize = (serializedValue: Json): Serializable =>
     }
 
     if (value.__type === 'Uint8Array') {
-      return Buffer.from(value.value, 'base64');  // Uses 'base64' encoding
+      return new Uint8Array(Buffer.from(value.value, 'base64'));
     }
 
     return value;

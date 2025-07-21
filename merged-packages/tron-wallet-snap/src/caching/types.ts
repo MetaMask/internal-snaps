@@ -1,4 +1,4 @@
-import type { Serializable } from '../serialization/types';
+import type { Serializable } from '../utils/serialization/types';
 
 export type TimestampMilliseconds = number;
 

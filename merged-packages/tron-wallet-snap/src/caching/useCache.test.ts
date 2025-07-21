@@ -1,4 +1,4 @@
-import type { Serializable } from '../serialization/types';
+import { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import { useCache, type CacheOptions } from './useCache';
 
