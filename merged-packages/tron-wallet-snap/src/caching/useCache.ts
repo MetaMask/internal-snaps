@@ -1,8 +1,8 @@
 /* eslint-disable no-void */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import type { ICache } from './ICache';
 import logger from '../utils/logger';
 import type { Serializable } from '../utils/serialization/types';
-import type { ICache } from './ICache';
 
 /**
  * Options for configuring the caching behavior of a function.

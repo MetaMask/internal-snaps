@@ -2,13 +2,13 @@ import type { Balance, Transaction } from '@metamask/keyring-api';
 import type { CaipAssetType } from '@metamask/utils';
 import { unset } from 'lodash';
 
+import type { IStateManager } from './IStateManager';
 import type { SpotPrices } from '../../clients/price-api/types';
-import { TronKeyringAccount } from '../../entities';
+import type { TronKeyringAccount } from '../../entities';
 import { safeMerge } from '../../utils/safeMerge';
 import { deserialize } from '../../utils/serialization/deserialize';
 import { serialize } from '../../utils/serialization/serialize';
 import type { Serializable } from '../../utils/serialization/types';
-import type { IStateManager } from './IStateManager';
 
 export type AccountId = string;
 

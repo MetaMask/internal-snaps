@@ -2,16 +2,16 @@
 import type { CaipAssetType } from '@metamask/keyring-api';
 import { cloneDeep } from 'lodash';
 
+import { MOCK_EXCHANGE_RATES } from './mocks/exchange-rates';
+import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
+import { PriceApiClient } from './PriceApiClient';
+import type { SpotPrices, VsCurrencyParam } from './types';
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants/tron';
 import type { ConfigProvider } from '../../services/config';
 import { mockLogger } from '../../utils/mockLogger';
 import type { Serializable } from '../../utils/serialization/types';
-import { MOCK_EXCHANGE_RATES } from './mocks/exchange-rates';
-import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
-import { PriceApiClient } from './PriceApiClient';
-import type { SpotPrices, VsCurrencyParam } from './types';
 
 describe('PriceApiClient', () => {
   let mockFetch: jest.Mock;

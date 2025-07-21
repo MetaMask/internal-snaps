@@ -1,7 +1,7 @@
 import { get, set, unset } from 'lodash';
 
-import type { Serializable } from '../../utils/serialization/types';
 import type { IStateManager } from './IStateManager';
+import type { Serializable } from '../../utils/serialization/types';
 
 /**
  * A simple implementation of the `IStateManager` interface that relies on an in memory state that can be used for testing purposes.

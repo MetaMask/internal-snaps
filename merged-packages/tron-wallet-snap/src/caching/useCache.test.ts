@@ -1,6 +1,6 @@
-import { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import { useCache, type CacheOptions } from './useCache';
+import type { Serializable } from '../utils/serialization/types';
 
 describe('useCache', () => {
   // Spy to check if the original function was executed or not

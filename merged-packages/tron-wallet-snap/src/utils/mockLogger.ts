@@ -1,4 +1,4 @@
-import { ILogger } from "./logger";
+import type { ILogger } from './logger';
 
 export const mockLogger = {
   log: jest.fn(),

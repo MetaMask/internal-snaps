@@ -6,7 +6,7 @@ import {
   create,
   enums,
   object,
-  string
+  string,
 } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 
@@ -99,7 +99,7 @@ export type Config = {
  * const network = configProvider.getNetworkBy('caip2Id', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
  */
 export class ConfigProvider {
-  #config: Config;
+  readonly #config: Config;
 
   constructor() {
     const environment = this.#parseEnvironment();
@@ -111,7 +111,7 @@ export class ConfigProvider {
       ENVIRONMENT: process.env.ENVIRONMENT,
       // RPC
       RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET,
-      RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_NILE_LIST_TESTNET,
+      RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_LIST_NILE_TESTNET,
       RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET,
       RPC_URL_LIST_LOCALNET: process.env.RPC_URL_LIST_LOCALNET,
       // Block explorer

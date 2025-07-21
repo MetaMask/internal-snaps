@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/only-throw-error */
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 
 const prodOrigins = ['https://portfolio.metamask.io'];
