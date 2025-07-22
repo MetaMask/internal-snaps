@@ -14,7 +14,7 @@ import logger from './utils/logger';
 /**
  * Services
  */
-const configProvider = new ConfigProvider();
+export const configProvider = new ConfigProvider();
 
 const state = new State({
   encrypted: false,

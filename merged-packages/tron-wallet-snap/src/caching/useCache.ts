@@ -30,7 +30,7 @@ export type CacheOptions = {
  * @param args - The arguments of the function call.
  * @returns The cache key.
  */
-const defaultGenerateCacheKey = (functionName: string, args: any[]) =>
+const defaultGenerateCacheKey = (functionName: string, args: any[]): string =>
   `${functionName}:${args.map((arg) => JSON.stringify(arg)).join(':')}`;
 
 /**

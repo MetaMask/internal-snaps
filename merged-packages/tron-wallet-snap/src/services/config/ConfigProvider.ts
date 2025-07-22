@@ -10,7 +10,7 @@ import {
 } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 
-import { Network, Networks } from '../../constants/tron';
+import { Network, Networks } from '../../constants';
 import { UrlStruct } from '../../validation/structs';
 
 const ENVIRONMENT_TO_ACTIVE_NETWORKS = {
@@ -37,7 +37,9 @@ const EnvStruct = object({
   RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_LOCALNET: CommaSeparatedListOfStringsStruct,
-  EXPLORER_BASE_URL: UrlStruct,
+  EXPLORER_MAINNET_BASE_URL: UrlStruct,
+  EXPLORER_NILE_BASE_URL: UrlStruct,
+  EXPLORER_SHASTA_BASE_URL: UrlStruct,
   PRICE_API_BASE_URL: UrlStruct,
   TOKEN_API_BASE_URL: UrlStruct,
   STATIC_API_BASE_URL: UrlStruct,
@@ -50,13 +52,13 @@ export type Env = Infer<typeof EnvStruct>;
 
 export type NetworkConfig = (typeof Networks)[Network] & {
   rpcUrls: string[];
+  explorerBaseUrl: string;
 };
 
 export type Config = {
   environment: string;
   networks: NetworkConfig[];
   activeNetworks: Network[];
-  explorerBaseUrl: string;
   priceApi: {
     baseUrl: string;
     chunkSize: number;
@@ -115,7 +117,9 @@ export class ConfigProvider {
       RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET,
       RPC_URL_LIST_LOCALNET: process.env.RPC_URL_LIST_LOCALNET,
       // Block explorer
-      EXPLORER_BASE_URL: process.env.EXPLORER_BASE_URL,
+      EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL,
+      EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL,
+      EXPLORER_SHASTA_BASE_URL: process.env.EXPLORER_SHASTA_BASE_URL,
       // APIs
       PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL,
       TOKEN_API_BASE_URL: process.env.TOKEN_API_BASE_URL,
@@ -136,21 +140,24 @@ export class ConfigProvider {
         {
           ...Networks[Network.Mainnet],
           rpcUrls: environment.RPC_URL_LIST_MAINNET,
+          explorerBaseUrl: environment.EXPLORER_MAINNET_BASE_URL,
         },
         {
           ...Networks[Network.Nile],
           rpcUrls: environment.RPC_URL_LIST_NILE_TESTNET,
+          explorerBaseUrl: environment.EXPLORER_NILE_BASE_URL,
         },
         {
           ...Networks[Network.Shasta],
           rpcUrls: environment.RPC_URL_LIST_SHASTA_TESTNET,
+          explorerBaseUrl: environment.EXPLORER_SHASTA_BASE_URL,
         },
         {
           ...Networks[Network.Localnet],
           rpcUrls: environment.RPC_URL_LIST_LOCALNET,
+          explorerBaseUrl: environment.EXPLORER_MAINNET_BASE_URL,
         },
       ],
-      explorerBaseUrl: environment.EXPLORER_BASE_URL,
       activeNetworks: ENVIRONMENT_TO_ACTIVE_NETWORKS[environment.ENVIRONMENT],
       priceApi: {
         baseUrl:
