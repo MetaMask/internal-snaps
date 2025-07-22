@@ -31,12 +31,9 @@ import {
   Base64Struct,
   NetworkStruct,
 } from '../../validation/structs';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
-import type { AssetsService } from '../assets/AssetsService';
 import type { SolanaConnection } from '../connection';
 import type { TransactionHelper } from '../execution/TransactionHelper';
 import type { SignatureMonitor } from '../subscriptions';
-import type { TransactionsService } from '../transactions/TransactionsService';
 import type {
   SolanaSignAndSendTransactionOptions,
   SolanaSignAndSendTransactionResponse,
@@ -57,12 +54,6 @@ import {
 } from './structs';
 
 export class WalletService {
-  readonly #transactionsService: TransactionsService;
-
-  readonly #assetsService: AssetsService;
-
-  readonly #analyticsService: AnalyticsService;
-
   readonly #connection: SolanaConnection;
 
   readonly #transactionHelper: TransactionHelper;
@@ -74,17 +65,11 @@ export class WalletService {
   readonly #loggerPrefix = '[👛 WalletService]';
 
   constructor(
-    transactionsService: TransactionsService,
-    assetsService: AssetsService,
-    analyticsService: AnalyticsService,
     connection: SolanaConnection,
     transactionHelper: TransactionHelper,
     signatureMonitor: SignatureMonitor,
     _logger = logger,
   ) {
-    this.#transactionsService = transactionsService;
-    this.#assetsService = assetsService;
-    this.#analyticsService = analyticsService;
     this.#connection = connection;
     this.#transactionHelper = transactionHelper;
     this.#signatureMonitor = signatureMonitor;
@@ -250,28 +235,13 @@ export class WalletService {
 
     const signature = getSignatureFromTransaction(partiallySignedTransaction);
 
-    // Send analytics and subscribe to the signature
-    await Promise.allSettled([
-      this.#signatureMonitor.monitor({
-        network: scope,
-        signature,
-        commitment: 'confirmed',
-        onCommitmentReached: async (params) => {
-          await this.#handleTransactionConfirmed(
-            params.signature,
-            account,
-            scope,
-            request.origin,
-          );
-        },
-      }),
-      // Do we do that?
-      //   this.#analyticsService.trackEventTransactionSubmitted(
-      //     account,
-      //     signedTransactionBase64,
-      //     signature,
-      //   ),
-    ]);
+    await this.#signatureMonitor.monitor(
+      signature,
+      account.id,
+      'confirmed',
+      scope,
+      request.origin,
+    );
 
     return result;
   }
@@ -354,105 +324,19 @@ export class WalletService {
       sendConfig,
     );
 
-    await this.#handleTransactionSubmitted(
+    await this.#signatureMonitor.monitor(
       signature,
-      transactionMessageBase64Encoded,
-      account,
+      account.id,
+      options?.commitment ?? 'confirmed',
       scope,
       origin,
     );
-
-    await this.#signatureMonitor.monitor({
-      network: scope,
-      signature,
-      commitment: options?.commitment ?? 'confirmed',
-      onCommitmentReached: async (params) => {
-        await this.#handleTransactionConfirmed(
-          params.signature,
-          account,
-          scope,
-          origin,
-        );
-      },
-    });
 
     const result = {
       signature,
     };
     assert(result, SolanaSignAndSendTransactionResponseStruct);
     return result;
-  }
-
-  async #handleTransactionSubmitted(
-    signature: string,
-    transactionMessageBase64Encoded: string,
-    account: SolanaKeyringAccount,
-    network: Network,
-    origin: string,
-  ): Promise<void> {
-    this.#logger.info(this.#loggerPrefix, 'Handling transaction submitted', {
-      signature,
-      transactionMessageBase64Encoded,
-      account,
-      network,
-      origin,
-    });
-
-    await this.#analyticsService.trackEventTransactionSubmitted(
-      account,
-      transactionMessageBase64Encoded,
-      signature,
-      {
-        scope: network,
-        origin,
-      },
-    );
-  }
-
-  /**
-   * Triggers the side effects that need to happen when a the user's transaction is finalized (failed or confirmed).
-   *
-   * @param signature - The signature of the transaction.
-   * @param account - The account that the transaction belongs to.
-   * @param network - The network of the transaction.
-   * @param origin - The origin of the transaction.
-   */
-  async #handleTransactionConfirmed(
-    signature: string,
-    account: SolanaKeyringAccount,
-    network: Network,
-    origin: string,
-  ): Promise<void> {
-    this.#logger.info(this.#loggerPrefix, 'Handling transaction confirmed', {
-      signature,
-      account,
-      network,
-      origin,
-    });
-
-    const transaction = await this.#transactionsService.fetchBySignature(
-      signature,
-      account,
-      network,
-    );
-
-    if (!transaction) {
-      throw new Error(
-        `Transaction with signature ${signature} not found on network ${network}`,
-      );
-    }
-
-    await this.#transactionsService.saveTransaction(transaction, account);
-
-    // Track in analytics
-    await this.#analyticsService.trackEventTransactionFinalized(
-      account,
-      transaction,
-      {
-        scope: network,
-        origin,
-      },
-    );
   }
 
   /**
