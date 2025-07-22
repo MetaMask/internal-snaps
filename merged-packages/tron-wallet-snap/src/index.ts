@@ -8,7 +8,14 @@ import type {
   OnRpcRequestHandler,
   OnUserInputHandler,
 } from '@metamask/snaps-sdk';
-import { assetsHandler, cronHandler, keyringHandler, rpcHandler, userInputHandler } from './context';
+
+import {
+  assetsHandler,
+  cronHandler,
+  keyringHandler,
+  rpcHandler,
+  userInputHandler,
+} from './context';
 
 /**
  * Register all handlers

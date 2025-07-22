@@ -1,5 +1,5 @@
-import { ILogger } from "../../utils/logger";
-import { State, UnencryptedStateValue } from "../state/State";
+import type { ILogger } from '../../utils/logger';
+import type { State, UnencryptedStateValue } from '../state/State';
 
 export class WalletService {
   readonly #logger: ILogger;
@@ -8,7 +8,13 @@ export class WalletService {
 
   readonly #state: State<UnencryptedStateValue>;
 
-  constructor({ logger, state }: { logger: ILogger, state: State<UnencryptedStateValue> }) {
+  constructor({
+    logger,
+    state,
+  }: {
+    logger: ILogger;
+    state: State<UnencryptedStateValue>;
+  }) {
     this.#logger = logger;
     this.#state = state;
   }
@@ -19,7 +25,12 @@ export class WalletService {
   }
 
   async verifyMessage(message: string, signature: string): Promise<boolean> {
-    this.#logger.log(this.#loggerPrefix, 'Verifying message...', message, signature);
+    this.#logger.log(
+      this.#loggerPrefix,
+      'Verifying message...',
+      message,
+      signature,
+    );
     return true; // TODO: Implement me
   }
 }

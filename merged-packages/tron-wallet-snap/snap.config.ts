@@ -17,12 +17,15 @@ const config: SnapConfig = {
     RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET ?? '',
     RPC_URL_LIST_LOCALNET: process.env.RPC_URL_LIST_LOCALNET ?? '',
     // Block explorer
-    EXPLORER_BASE_URL: process.env.EXPLORER_BASE_URL ?? '',
+    EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL ?? '',
+    EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL ?? '',
+    EXPLORER_SHASTA_BASE_URL: process.env.EXPLORER_SHASTA_BASE_URL ?? '',
     // APIs
     PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL ?? '',
     TOKEN_API_BASE_URL: process.env.TOKEN_API_BASE_URL ?? '',
     STATIC_API_BASE_URL: process.env.STATIC_API_BASE_URL ?? '',
-    SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL ?? '',
+    SECURITY_ALERTS_API_BASE_URL:
+      process.env.SECURITY_ALERTS_API_BASE_URL ?? '',
     NFT_API_BASE_URL: process.env.NFT_API_BASE_URL ?? '',
     LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL ?? '',
   },

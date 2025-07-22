@@ -1,11 +1,21 @@
-import { AssetMetadata, FungibleAssetMetadata, NonFungibleAssetMetadata } from "@metamask/snaps-sdk";
-import { CaipAssetType, parseCaipAssetType } from "@metamask/utils";
-import { uniq } from "lodash";
-import { TronKeyringAccount } from "../../entities";
-import { ILogger } from "../../utils/logger";
-import { ConfigProvider } from "../config";
-import { State, UnencryptedStateValue } from "../state/State";
-import { NativeCaipAssetType, NftCaipAssetType, TokenCaipAssetType } from "./types";
+import type {
+  AssetMetadata,
+  FungibleAssetMetadata,
+  NonFungibleAssetMetadata,
+} from '@metamask/snaps-sdk';
+import type { CaipAssetType } from '@metamask/utils';
+import { parseCaipAssetType } from '@metamask/utils';
+import { uniq } from 'lodash';
+
+import type { TronKeyringAccount } from '../../entities';
+import type { ILogger } from '../../utils/logger';
+import type { ConfigProvider } from '../config';
+import type {
+  NativeCaipAssetType,
+  NftCaipAssetType,
+  TokenCaipAssetType,
+} from './types';
+import type { State, UnencryptedStateValue } from '../state/State';
 
 export class AssetsService {
   readonly #logger: ILogger;
@@ -13,16 +23,26 @@ export class AssetsService {
   readonly #loggerPrefix = '[🪙 AssetsService]';
 
   readonly #configProvider: ConfigProvider;
-  
+
   readonly #state: State<UnencryptedStateValue>;
 
-  constructor({ logger, configProvider, state }: { logger: ILogger, configProvider: ConfigProvider, state: State<UnencryptedStateValue> }) {
+  constructor({
+    logger,
+    configProvider,
+    state,
+  }: {
+    logger: ILogger;
+    configProvider: ConfigProvider;
+    state: State<UnencryptedStateValue>;
+  }) {
     this.#logger = logger;
     this.#configProvider = configProvider;
     this.#state = state;
   }
 
-  async #listAddressNativeAssets(address: string): Promise<NativeCaipAssetType[]> {
+  async #listAddressNativeAssets(
+    address: string,
+  ): Promise<NativeCaipAssetType[]> {
     return []; // TODO: Implement me
   }
 
@@ -45,23 +65,15 @@ export class AssetsService {
       account,
     );
 
-    const accountAddress = account.address
+    const accountAddress = account.address;
 
-    const [
-      nativeAssetsIds,
-      tokenAssetsIds,
-      nftAssetsIds
-    ] = await Promise.all([
+    const [nativeAssetsIds, tokenAssetsIds, nftAssetsIds] = await Promise.all([
       this.#listAddressNativeAssets(accountAddress),
       this.#listAddressTokenAssets(accountAddress),
       this.#listAddressNftAssets(accountAddress),
     ]);
 
-    return uniq([
-      ...nativeAssetsIds,
-      ...tokenAssetsIds,
-      ...nftAssetsIds
-    ]);
+    return uniq([...nativeAssetsIds, ...tokenAssetsIds, ...nftAssetsIds]);
   }
 
   async getAssetsMetadata(
@@ -76,15 +88,12 @@ export class AssetsService {
     const { nativeAssetTypes, tokenAssetTypes, nftAssetTypes } =
       this.#splitAssetsByType(assetTypes);
 
-    const [
-      nativeTokensMetadata,
-      tokensMetadata,
-      nftMetadata,
-    ] = await Promise.all([
-      this.getNativeTokensMetadata(nativeAssetTypes),
-      this.getTokensMetadata(tokenAssetTypes),
-      this.getNftsMetadata(nftAssetTypes),
-    ]);
+    const [nativeTokensMetadata, tokensMetadata, nftMetadata] =
+      await Promise.all([
+        this.getNativeTokensMetadata(nativeAssetTypes),
+        this.getTokensMetadata(tokenAssetTypes),
+        this.getNftsMetadata(nftAssetTypes),
+      ]);
 
     return {
       ...nativeTokensMetadata,
@@ -97,8 +106,9 @@ export class AssetsService {
     const nativeAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('slip44:195'),
     ) as NativeCaipAssetType[];
-    const tokenAssetTypes = assetTypes.filter((assetType) =>
-      assetType.includes('/trc10:') || assetType.includes('/trc20:'),
+    const tokenAssetTypes = assetTypes.filter(
+      (assetType) =>
+        assetType.includes('/trc10:') || assetType.includes('/trc20:'),
     ) as TokenCaipAssetType[];
     const nftAssetTypes = assetTypes.filter((assetType) =>
       assetType.includes('/trc721'),

@@ -2,6 +2,12 @@ import type { JsonRpcRequest, JsonRpcResponse } from '@metamask/utils';
 
 import { validateOrigin } from '../validation/validators';
 
+export enum RpcRequestMethods {
+  OnStart = 'onStart',
+  OnInstall = 'onInstall',
+  OnUpdate = 'onUpdate',
+}
+
 export class RpcHandler {
   async handle(
     origin: string,

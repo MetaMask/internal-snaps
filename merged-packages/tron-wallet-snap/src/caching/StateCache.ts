@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { assert } from '@metamask/utils';
 
+import type { ICache } from './ICache';
+import type { CacheEntry } from './types';
 import type { IStateManager } from '../services/state/IStateManager';
 import type { ILogger } from '../utils/logger';
 import type { Serializable } from '../utils/serialization/types';
-import type { ICache } from './ICache';
-import type { CacheEntry } from './types';
 
 /**
  * The whole cache store.
@@ -72,7 +70,7 @@ export type StateValue = {
  * ```
  */
 export class StateCache implements ICache<Serializable | undefined> {
-  #state: IStateManager<StateValue>;
+  readonly #state: IStateManager<StateValue>;
 
   public readonly prefix: CachePrefix;
 

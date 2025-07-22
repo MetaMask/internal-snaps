@@ -1,7 +1,8 @@
-import { Transaction } from "@metamask/keyring-api";
-import { TronKeyringAccount } from "../../entities";
-import { ILogger } from "../../utils/logger";
-import { State, UnencryptedStateValue } from "../state/State";
+import type { Transaction } from '@metamask/keyring-api';
+
+import type { TronKeyringAccount } from '../../entities';
+import type { ILogger } from '../../utils/logger';
+import type { State, UnencryptedStateValue } from '../state/State';
 
 export class TransactionsService {
   readonly #logger: ILogger;
@@ -10,7 +11,13 @@ export class TransactionsService {
 
   readonly #state: State<UnencryptedStateValue>;
 
-  constructor({ logger, state }: { logger: ILogger, state: State<UnencryptedStateValue> }) {
+  constructor({
+    logger,
+    state,
+  }: {
+    logger: ILogger;
+    state: State<UnencryptedStateValue>;
+  }) {
     this.#logger = logger;
     this.#state = state;
   }

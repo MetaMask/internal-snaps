@@ -14,7 +14,7 @@ import {
   string,
 } from '@metamask/superstruct';
 
-import { Network } from '../constants/tron';
+import { Network } from '../constants';
 
 // create a uuid validation
 export const UuidStruct = pattern(

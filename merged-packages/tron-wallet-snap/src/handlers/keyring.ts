@@ -21,6 +21,7 @@ import {
   emitSnapKeyringEvent,
   handleKeyringRequest,
 } from '@metamask/keyring-snap-sdk';
+import { SnapError } from '@metamask/snaps-sdk';
 import { assert, integer } from '@metamask/superstruct';
 import type {
   CaipAssetType,
@@ -29,15 +30,14 @@ import type {
   Json,
   JsonRpcRequest,
 } from '@metamask/utils';
-
-import { SnapError } from '@metamask/snaps-sdk';
 import { sortBy } from 'lodash';
+
 import type { TronKeyringAccount } from '../entities';
 import { asStrictKeyringAccount } from '../entities/keyring-account';
-import { AssetsService } from '../services/assets/AssetsService';
-import { State, UnencryptedStateValue } from '../services/state/State';
-import { TransactionsService } from '../services/transactions/TransactionsService';
-import { WalletService } from '../services/wallet/WalletService';
+import type { AssetsService } from '../services/assets/AssetsService';
+import type { State, UnencryptedStateValue } from '../services/state/State';
+import type { TransactionsService } from '../services/transactions/TransactionsService';
+import type { WalletService } from '../services/wallet/WalletService';
 import { deriveTronKeypair } from '../utils/deriveTronKeypair';
 import { withCatchAndThrowSnapError } from '../utils/errors';
 import { getLowestUnusedIndex } from '../utils/getLowestUnusedIndex';
@@ -92,9 +92,7 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  async getAccount(
-    accountId: string,
-  ): Promise<TronKeyringAccount | undefined> {
+  async getAccount(accountId: string): Promise<TronKeyringAccount | undefined> {
     try {
       const account = await this.#state.getKey<TronKeyringAccount>(
         `keyringAccounts.${accountId}`,
