@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { Json } from '@metamask/snaps-sdk';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 import { cloneDeepWith } from 'lodash';
 
 import type { Serializable } from './types';
@@ -36,9 +36,14 @@ export const serialize = (value: Serializable): Record<string, Json> =>
     }
 
     if (val instanceof Uint8Array) {
+      // Convert Uint8Array to base64 string without using Buffer
+      let binaryString = '';
+      for (const byte of val) {
+        binaryString += String.fromCharCode(byte);
+      }
       return {
         __type: 'Uint8Array',
-        value: Buffer.from(val).toString('base64'),
+        value: btoa(binaryString),
       };
     }
 

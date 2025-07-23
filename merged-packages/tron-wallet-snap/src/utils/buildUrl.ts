@@ -24,7 +24,7 @@ export function buildUrl(params: BuildUrlParams): string {
 
   assert(baseUrl, UrlStruct);
 
-  const pathWithParams = path.replace(/\{(\w+)\}/gu, (_, key: string) => {
+  const pathWithParams = path.replace(/\{(\w+)\}/gu, (_match, key: string) => {
     const value = pathParams?.[key];
     if (value === undefined) {
       throw new Error(`Path parameter ${key} is undefined`);
@@ -39,8 +39,8 @@ export function buildUrl(params: BuildUrlParams): string {
 
   const url = new URL(cleanPath, baseUrl);
   Object.entries(queryParams ?? {})
-    .filter(([_, value]) => value !== undefined)
-    .filter(([_, value]) => value !== null)
+    .filter(([_key, value]) => value !== undefined)
+    .filter(([_key, value]) => value !== null)
     .forEach(([key, value]) => {
       if (value) {
         url.searchParams.append(key, value);

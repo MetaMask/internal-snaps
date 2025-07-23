@@ -11,7 +11,7 @@ import type {
 
 export class AssetsHandler {
   async onAssetHistoricalPrice(
-    params: OnAssetHistoricalPriceArguments,
+    _params: OnAssetHistoricalPriceArguments,
   ): Promise<OnAssetHistoricalPriceResponse> {
     return {
       historicalPrice: {
@@ -22,19 +22,19 @@ export class AssetsHandler {
   }
 
   async onAssetsConversion(
-    conversions: OnAssetsConversionArguments,
+    _conversions: OnAssetsConversionArguments,
   ): Promise<OnAssetsConversionResponse> {
     return { conversionRates: {} };
   }
 
   async onAssetsLookup(
-    params: OnAssetsLookupArguments,
+    _params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
     return { assets: {} };
   }
 
   async onAssetsMarketData(
-    assets: OnAssetsMarketDataArguments,
+    _assets: OnAssetsMarketDataArguments,
   ): Promise<OnAssetsMarketDataResponse> {
     return { marketData: {} };
   }

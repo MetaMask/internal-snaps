@@ -24,12 +24,10 @@ export class AssetsService {
 
   readonly #configProvider: ConfigProvider;
 
-  readonly #state: State<UnencryptedStateValue>;
-
   constructor({
     logger,
     configProvider,
-    state,
+    state: _state,
   }: {
     logger: ILogger;
     configProvider: ConfigProvider;
@@ -37,22 +35,22 @@ export class AssetsService {
   }) {
     this.#logger = logger;
     this.#configProvider = configProvider;
-    this.#state = state;
+    // TODO: Use state when implementing asset storage
   }
 
   async #listAddressNativeAssets(
-    address: string,
+    _address: string,
   ): Promise<NativeCaipAssetType[]> {
     return []; // TODO: Implement me
   }
 
   async #listAddressTokenAssets(
-    address: string,
+    _address: string,
   ): Promise<TokenCaipAssetType[]> {
     return []; // TODO: Implement me
   }
 
-  async #listAddressNftAssets(address: string): Promise<NftCaipAssetType[]> {
+  async #listAddressNftAssets(_address: string): Promise<NftCaipAssetType[]> {
     return []; // TODO: Implement me
   }
 
@@ -102,7 +100,11 @@ export class AssetsService {
     };
   }
 
-  #splitAssetsByType(assetTypes: CaipAssetType[]) {
+  #splitAssetsByType(assetTypes: CaipAssetType[]): {
+    nativeAssetTypes: NativeCaipAssetType[];
+    tokenAssetTypes: TokenCaipAssetType[];
+    nftAssetTypes: NftCaipAssetType[];
+  } {
     const nativeAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('slip44:195'),
     ) as NativeCaipAssetType[];
@@ -146,13 +148,13 @@ export class AssetsService {
   }
 
   async getTokensMetadata(
-    assetTypes: TokenCaipAssetType[],
+    _assetTypes: TokenCaipAssetType[],
   ): Promise<Record<TokenCaipAssetType, FungibleAssetMetadata | null>> {
     return {}; // TODO: Implement me
   }
 
   async getNftsMetadata(
-    assetTypes: NftCaipAssetType[],
+    _assetTypes: NftCaipAssetType[],
   ): Promise<Record<NftCaipAssetType, NonFungibleAssetMetadata | null>> {
     return {}; // TODO: Implement me
   }

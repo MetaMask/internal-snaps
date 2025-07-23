@@ -6,17 +6,15 @@ export class WalletService {
 
   readonly #loggerPrefix = '[👛 WalletService]';
 
-  readonly #state: State<UnencryptedStateValue>;
-
   constructor({
     logger,
-    state,
+    state: _state,
   }: {
     logger: ILogger;
     state: State<UnencryptedStateValue>;
   }) {
     this.#logger = logger;
-    this.#state = state;
+    // TODO: Use state when implementing wallet functionality
   }
 
   async signMessage(message: string): Promise<string> {

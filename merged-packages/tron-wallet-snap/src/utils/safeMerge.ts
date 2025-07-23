@@ -19,7 +19,7 @@ export const safeMerge = <TOverridee extends object, TOverrider extends object>(
   ...overridee,
   ...(Object.fromEntries(
     Object.entries(overrider).filter(
-      ([_, value]) =>
+      ([_key, value]) =>
         value !== undefined &&
         value !== null &&
         (!value || typeof value !== 'object' || Object.keys(value).length > 0),

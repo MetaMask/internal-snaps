@@ -173,7 +173,8 @@ export class StateCache implements ICache<Serializable | undefined> {
     );
 
     const expiredKeys = keysAndValues.filter(
-      ([_, cacheEntry]) => cacheEntry && cacheEntry.expiresAt < Date.now(),
+      ([_unused, cacheEntry]) =>
+        cacheEntry && cacheEntry.expiresAt < Date.now(),
     );
 
     await this.mdelete(expiredKeys.map(([key]) => key));

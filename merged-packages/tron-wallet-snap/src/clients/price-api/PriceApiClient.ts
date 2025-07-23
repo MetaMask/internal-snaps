@@ -107,11 +107,13 @@ export class PriceApiClient {
       // Split uniqueTokenCaipAssetTypes into chunks
       const chunks: CaipAssetType[][] = [];
       for (
-        let i = 0;
-        i < uniqueTokenCaipAssetTypes.length;
-        i += this.#chunkSize
+        let index = 0;
+        index < uniqueTokenCaipAssetTypes.length;
+        index += this.#chunkSize
       ) {
-        chunks.push(uniqueTokenCaipAssetTypes.slice(i, i + this.#chunkSize));
+        chunks.push(
+          uniqueTokenCaipAssetTypes.slice(index, index + this.#chunkSize),
+        );
       }
 
       // Make parallel requests for each chunk
@@ -181,11 +183,11 @@ export class PriceApiClient {
     const cacheKeyPrefix = 'PriceApiClient:getMultipleSpotPrices';
 
     // Shorthand method to generate the cache key
-    const toCacheKey = (tokenCaipAssetType: CaipAssetType) =>
+    const toCacheKey = (tokenCaipAssetType: CaipAssetType): string =>
       `${cacheKeyPrefix}:${tokenCaipAssetType}:${vsCurrency}`;
 
     // Parses back the cache key
-    const parseCacheKey = (key: string) => {
+    const parseCacheKey = (key: string): RegExpMatchArray => {
       const regex = new RegExp(`^${cacheKeyPrefix}:(.+):(.+)$`, 'u');
       const match = key.match(regex);
 
@@ -204,7 +206,7 @@ export class PriceApiClient {
     // Keys when read from the cache are the cache keys ("PriceApiClient:getMultipleSpotPrices:..."), not the token CAIP-19 IDs, so here we transform them back to the token CAIP-19 types.
     const cachedSpotPricesRecordWithParsedKeys = mapKeys(
       cachedSpotPricesRecord,
-      (_, key) => parseCacheKey(key)[1],
+      (_unused, key) => parseCacheKey(key)[1],
     );
 
     // We still need to fetch the spot prices for the tokens that are not cached

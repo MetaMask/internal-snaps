@@ -1,6 +1,6 @@
 /* eslint-disable jest/prefer-strict-equal */
 /* eslint-disable @typescript-eslint/naming-convention */
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { State } from './State';
 

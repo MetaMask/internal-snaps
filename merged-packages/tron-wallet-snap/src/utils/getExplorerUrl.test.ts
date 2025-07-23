@@ -7,9 +7,9 @@ describe('getExplorerUrl', () => {
     // eslint-disable-next-line no-restricted-globals
     process.env.EXPLORER_MAINNET_BASE_URL = 'https://tronscan.org';
     // eslint-disable-next-line no-restricted-globals
-    process.env.EXPLORER_NILE_BASE_URL = 'https://tronscan.org';
+    process.env.EXPLORER_NILE_BASE_URL = 'https://nile.tronscan.org';
     // eslint-disable-next-line no-restricted-globals
-    process.env.EXPLORER_SHASTA_BASE_URL = 'https://tronscan.org';
+    process.env.EXPLORER_SHASTA_BASE_URL = 'https://shasta.tronscan.org';
   });
 
   const mockAddress = 'TJRabPrwbZy45savqYt9XgVjvjQvQnQqQq';
@@ -23,12 +23,12 @@ describe('getExplorerUrl', () => {
 
   it('should generate nile URL for address with cluster param', () => {
     const url = getExplorerUrl(Network.Nile, 'address', mockAddress);
-    expect(url).toBe(`https://tronscan.org/#/address/${mockAddress}`);
+    expect(url).toBe(`https://nile.tronscan.org/#/address/${mockAddress}`);
   });
 
   it('should generate shasta URL for address with cluster param', () => {
     const url = getExplorerUrl(Network.Shasta, 'address', mockAddress);
-    expect(url).toBe(`https://tronscan.org/#/address/${mockAddress}`);
+    expect(url).toBe(`https://shasta.tronscan.org/#/address/${mockAddress}`);
   });
 
   it('should generate mainnet URL for transaction without cluster param', () => {
@@ -38,11 +38,11 @@ describe('getExplorerUrl', () => {
 
   it('should generate nile URL for transaction with cluster param', () => {
     const url = getExplorerUrl(Network.Nile, 'transaction', mockTx);
-    expect(url).toBe(`https://tronscan.org/#/transaction/${mockTx}`);
+    expect(url).toBe(`https://nile.tronscan.org/#/transaction/${mockTx}`);
   });
 
   it('should generate shasta URL for transaction with cluster param', () => {
     const url = getExplorerUrl(Network.Shasta, 'transaction', mockTx);
-    expect(url).toBe(`https://tronscan.org/#/transaction/${mockTx}`);
+    expect(url).toBe(`https://shasta.tronscan.org/#/transaction/${mockTx}`);
   });
 });

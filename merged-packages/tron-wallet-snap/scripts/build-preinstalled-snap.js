@@ -1,5 +1,4 @@
 // @ts-check
- 
 
 const { readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');

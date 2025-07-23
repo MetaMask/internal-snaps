@@ -13,24 +13,20 @@ export function getExplorerUrl(
   scope: Network,
   type: 'address' | 'transaction',
   value: string,
-) {
-  console.log(
-    'process.env.EXPLORER_MAINNET_BASE_URL',
-    process.env.EXPLORER_MAINNET_BASE_URL,
-  );
-
+): string {
+  // TODO: Get these URLs from configuration instead of environment variables
   const NETWORK_TO_EXPLORER_PATH = {
+    /* eslint-disable-next-line no-restricted-globals */
     [Network.Mainnet]: process.env.EXPLORER_MAINNET_BASE_URL as string,
+    /* eslint-disable-next-line no-restricted-globals */
     [Network.Nile]: process.env.EXPLORER_NILE_BASE_URL as string,
+    /* eslint-disable-next-line no-restricted-globals */
     [Network.Shasta]: process.env.EXPLORER_SHASTA_BASE_URL as string,
-    [Network.Localnet]: process.env.EXPLORER_MAINNET_BASE_URL as string,
+    /* eslint-disable-next-line no-restricted-globals */
+    [Network.Localnet]: process.env.EXPLORER_LOCALNET_BASE_URL as string,
   };
 
-  console.log('NETWORK_TO_EXPLORER_PATH', NETWORK_TO_EXPLORER_PATH);
-
   const baseUrl = NETWORK_TO_EXPLORER_PATH[scope];
-
-  console.log('baseUrl', baseUrl);
 
   const url = buildUrl({
     baseUrl,

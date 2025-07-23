@@ -117,7 +117,7 @@ export class KeyringHandler implements Keyring {
   }
 
   #getDefaultDerivationPath(index: number): `m/${string}` {
-    return `m/44'/195'/${index}'/0/0`;
+    return `m/44'/195'/0'/0/${index}`;
   }
 
   #getIndexFromDerivationPath(derivationPath: `m/${string}`): number {

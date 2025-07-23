@@ -108,7 +108,7 @@ export class ConfigProvider {
     this.#config = this.#buildConfig(environment);
   }
 
-  #parseEnvironment() {
+  #parseEnvironment(): Env {
     const rawEnvironment = {
       ENVIRONMENT: process.env.ENVIRONMENT,
       // RPC

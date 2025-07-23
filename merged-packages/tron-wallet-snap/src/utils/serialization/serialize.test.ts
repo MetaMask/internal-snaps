@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { serialize } from './serialize';
 

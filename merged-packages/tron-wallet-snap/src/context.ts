@@ -32,10 +32,7 @@ const assetsService = new AssetsService({
   state,
 });
 
-const transactionService = new TransactionsService({
-  logger,
-  state,
-});
+const transactionService = new TransactionsService();
 
 const walletService = new WalletService({
   logger,

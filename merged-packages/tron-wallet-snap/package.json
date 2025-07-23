@@ -35,11 +35,9 @@
     "test:integration": "./integration-test/run-integration.sh"
   },
   "devDependencies": {
-    "@jest/globals": "^30.0.3",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "patch:@metamask/keyring-api@npm%3A18.0.0#~/.yarn/patches/@metamask-keyring-api-npm-18.0.0-1987f8da30.patch",
     "@metamask/keyring-snap-sdk": "^4.0.0",
-    "@metamask/slip44": "^4.2.0",
     "@metamask/snaps-cli": "^8.1.0",
     "@metamask/snaps-jest": "^9.2.0",
     "@metamask/snaps-sdk": "^9.2.0",
@@ -51,13 +49,10 @@
     "concurrently": "^9.2.0",
     "dotenv": "^17.0.0",
     "jest": "^30.0.3",
-    "jest-mock-extended": "^4.0.0",
     "jest-transform-stub": "2.0.0",
     "lodash": "^4.17.21",
     "prettier": "^3.5.3",
-    "superstruct": "^2.0.2",
-    "ts-jest": "^29.4.0",
-    "uuid": "^11.1.0"
+    "ts-jest": "^29.4.0"
   },
   "publishConfig": {
     "access": "public",

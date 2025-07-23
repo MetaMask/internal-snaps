@@ -2,9 +2,9 @@ import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
 
 export class UserInputHandler {
   async handle({
-    id,
-    event,
-    context,
+    id: _id,
+    event: _event,
+    context: _context,
   }: {
     id: string;
     event: UserInputEvent;

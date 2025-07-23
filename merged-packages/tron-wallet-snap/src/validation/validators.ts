@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-throw-literal */
+/* eslint-disable @typescript-eslint/only-throw-error */
 import {
   InvalidParamsError,
   SnapError,
@@ -32,8 +32,8 @@ export function validateRequest<Params, TStruct extends Struct<any>>(
 ): asserts requestParams is Infer<TStruct> {
   try {
     assert(requestParams, struct);
-  } catch (error: any) {
-    throw new InvalidParamsError(error.message) as unknown as Error;
+  } catch (validationError: any) {
+    throw new InvalidParamsError(validationError.message);
   }
 }
 
@@ -51,7 +51,7 @@ export function validateResponse<Params, TStruct extends Struct<any>>(
 ): asserts response is Infer<TStruct> {
   try {
     assert(response, struct);
-  } catch (error) {
-    throw new SnapError('Invalid Response') as unknown as Error;
+  } catch {
+    throw new SnapError('Invalid Response');
   }
 }

@@ -23,7 +23,9 @@ export function getLowestUnusedIndex(items: WithIndex[]): number {
     return 0;
   }
 
-  const usedIndices = items.map((item) => item.index).sort((a, b) => a - b);
+  const usedIndices = items
+    .map((item) => item.index)
+    .sort((first, second) => first - second);
 
   let lowestUnusedIndex = 0;
 

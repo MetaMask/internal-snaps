@@ -1,5 +1,5 @@
 import type { Json } from '@metamask/snaps-sdk';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import type { Serializable } from './types';
 
@@ -29,7 +29,13 @@ export const deserialize = (serializedValue: Json): Serializable =>
     }
 
     if (value.__type === 'Uint8Array') {
-      return new Uint8Array(Buffer.from(value.value, 'base64'));
+      // Use TextEncoder to decode base64 string to Uint8Array
+      const binaryString = atob(value.value);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let index = 0; index < binaryString.length; index++) {
+        bytes[index] = binaryString.charCodeAt(index);
+      }
+      return bytes;
     }
 
     return value;

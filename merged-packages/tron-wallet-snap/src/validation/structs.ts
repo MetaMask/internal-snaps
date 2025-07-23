@@ -58,7 +58,7 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
     // Protocol check
     const supportedProtocols = ['http:', 'https:', 'wss:'];
     if (!supportedProtocols.includes(url.protocol)) {
-      return `URL must use one of the following protocols: ${supportedProtocols}`;
+      return `URL must use one of the following protocols: ${supportedProtocols.join(', ')}`;
     }
 
     // Validate URL format
@@ -133,8 +133,8 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
       /[?&](?:url|redirect|next|return_to|return_url|goto|destination|continue|redirect_uri)=%(?:[^&]*\/\/|https?:)/iu, // URL-encoded open redirect parameters
     ];
 
-    for (const patt of dangerousPatterns) {
-      if (patt.test(decodedValue)) {
+    for (const dangerousPattern of dangerousPatterns) {
+      if (dangerousPattern.test(decodedValue)) {
         return 'URL contains potentially malicious patterns';
       }
     }
@@ -145,7 +145,7 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
     }
 
     return true;
-  } catch (error) {
+  } catch {
     return 'Invalid URL format';
   }
 });
