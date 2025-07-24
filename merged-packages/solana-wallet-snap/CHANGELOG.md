@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0]
+
+### Added
+
+- Track inactive wss messages + removing account HTTP sync cronjobs ([#476](https://github.com/MetaMask/snap-solana-wallet/pull/476))
+- Update balances & transactions when new token is received ([#469](https://github.com/MetaMask/snap-solana-wallet/pull/469))
+- Overwrite `skipPreflight` if comes from request ([#463](https://github.com/MetaMask/snap-solana-wallet/pull/463))
+- Show SNS domains on UI ([#462](https://github.com/MetaMask/snap-solana-wallet/pull/462))
+- Detect WSS receive transactions ([#461](https://github.com/MetaMask/snap-solana-wallet/pull/461))
+- Adding `AccountSelector` component to send ([#445](https://github.com/MetaMask/snap-solana-wallet/pull/445))
+- WSS unsubscribe from deleted account ([#458](https://github.com/MetaMask/snap-solana-wallet/pull/458))
+- Migrate accounts sync from HTTP polling to Websockets ([#453](https://github.com/MetaMask/snap-solana-wallet/pull/453))
+- Support NFT assets ([#422](https://github.com/MetaMask/snap-solana-wallet/pull/422))
+
+### Changed
+
+- Rework Sync accounts ([#475](https://github.com/MetaMask/snap-solana-wallet/pull/475))
+- Replace `console` with `logger` ([#464](https://github.com/MetaMask/snap-solana-wallet/pull/464))
+- Move WSS monitoring logic out of `AssetsService` ([#460](https://github.com/MetaMask/snap-solana-wallet/pull/460))
+- Adds `errorTrackingTransport` ([#456](https://github.com/MetaMask/snap-solana-wallet/pull/456))
+- Populate asset units after mapping ([#459](https://github.com/MetaMask/snap-solana-wallet/pull/459))
+- Temporarily disable NFT assets fetching ([#457](https://github.com/MetaMask/snap-solana-wallet/pull/457))
+
+### Fixed
+
+- Adds check and throws error for `buildUrl` ([#471](https://github.com/MetaMask/snap-solana-wallet/pull/471))
+- Validate address for Signin ([#468](https://github.com/MetaMask/snap-solana-wallet/pull/468))
+- WSS disconnection handling ([#467](https://github.com/MetaMask/snap-solana-wallet/pull/467))
+- `buildUrl` function with potential vulnerability ([#466](https://github.com/MetaMask/snap-solana-wallet/pull/466))
+- Validate origin in method `onProtocolRequest` ([#465](https://github.com/MetaMask/snap-solana-wallet/pull/465))
+
 ## [1.36.0]
 
 ### Changed
@@ -733,7 +764,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
 - Snap setup
 
-[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.36.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.36.0...v2.0.0
 [1.36.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.2...v1.36.0
 [1.35.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.1...v1.35.2
 [1.35.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.0...v1.35.1
