@@ -15,9 +15,14 @@ import type {
 import { subscribeMethodToUnsubscribeMethod } from '../../../entities';
 import type { EventEmitter } from '../../../infrastructure';
 import type { Network } from '../../constants/solana';
+import { getClientStatus } from '../../utils/interface';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
-import { parseWebSocketMessage } from './parseWebSocketMessage';
+import {
+  type JsonRpcWebSocketMessage,
+  parseWebSocketMessage,
+} from './parseWebSocketMessage';
 import type { SubscriptionRepository } from './SubscriptionRepository';
 import type { WebSocketConnectionService } from './WebSocketConnectionService';
 
@@ -42,6 +47,8 @@ export class SubscriptionService {
 
   readonly #logger: ILogger;
 
+  readonly #analyticsService: AnalyticsService;
+
   readonly #notificationHandlers: Map<string, Set<NotificationHandler>> =
     new Map();
 
@@ -51,12 +58,14 @@ export class SubscriptionService {
     configProvider: ConfigProvider,
     eventEmitter: EventEmitter,
     logger: ILogger,
+    analyticsService: AnalyticsService,
   ) {
     this.#connectionService = connectionService;
     this.#subscriptionRepository = subscriptionRepository;
     this.#configProvider = configProvider;
     this.#eventEmitter = eventEmitter;
     this.#logger = createPrefixedLogger(logger, '[🔔 SubscriptionService]');
+    this.#analyticsService = analyticsService;
 
     this.#bindHandlers();
   }
@@ -229,6 +238,27 @@ export class SubscriptionService {
     return this.#subscriptionRepository.getAll();
   }
 
+  async #handleTrackInactiveWebSocketMessage(
+    message: JsonRpcWebSocketMessage<unknown>,
+  ): Promise<void> {
+    /**
+     * Track inactive web socket messages only when the client is not active.
+     */
+    try {
+      const { active } = await getClientStatus();
+
+      if (active) {
+        return;
+      }
+
+      await this.#analyticsService.trackInactiveWebSocketMessage(message);
+    } catch (error) {
+      this.#logger.warn('Error tracking inactive web socket message', {
+        error,
+      });
+    }
+  }
+
   async #handleWebSocketEvent(message: WebSocketEvent): Promise<void> {
     // We only care about actual messages, not open or close events, which are handled by the connection service.
     if (message.type !== 'message') {
@@ -263,6 +293,9 @@ export class SubscriptionService {
         }
         break;
     }
+
+    // Track inactive web socket messages only after handling the message.
+    await this.#handleTrackInactiveWebSocketMessage(parsedMessage);
   }
 
   async #routeNotification(
