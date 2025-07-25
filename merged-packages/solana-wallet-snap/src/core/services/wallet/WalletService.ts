@@ -27,6 +27,14 @@ import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
 import {
+  sanitizeDomain,
+  sanitizeSolanaAddress,
+  sanitizeUri,
+  sanitizeTimestamp,
+  sanitizeForSignInMessage,
+  sanitizeResources,
+} from '../../utils/sanitize';
+import {
   Base58Struct,
   Base64Struct,
   NetworkStruct,
@@ -556,8 +564,10 @@ export class WalletService {
       resources,
     } = signInParams;
 
-    let message = `${domain} wants you to sign in with your Solana account:\n`;
-    message += `${address}`;
+    // The inputs are already sanitized by the struct validation
+    // So there is no need to sanitize again here
+    let message = `${domain ?? ''} wants you to sign in with your Solana account:\n`;
+    message += `${address ?? ''}`;
 
     if (statement) {
       message += `\n\n${statement}`;
@@ -588,7 +598,7 @@ export class WalletService {
     if (requestId) {
       fields.push(`Request ID: ${requestId}`);
     }
-    if (resources) {
+    if (resources && resources.length > 0) {
       fields.push(`Resources:`);
       for (const resource of resources) {
         fields.push(`- ${resource}`);
