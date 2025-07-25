@@ -31,6 +31,7 @@ import { sortBy } from 'lodash';
 import type { TronKeyringAccount } from '../entities';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
+import type { AssetsService } from '../services/assets/AssetsService';
 import { withCatchAndThrowSnapError } from '../utils/errors';
 import type { ILogger } from '../utils/logger';
 import { DeleteAccountStruct } from '../validation/structs';
@@ -41,15 +42,20 @@ export class KeyringHandler implements Keyring {
 
   readonly #accountsService: AccountsService;
 
+  readonly #assetsService: AssetsService;
+
   constructor({
     logger,
     accountsService,
+    assetsService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
+    assetsService: AssetsService;
   }) {
     this.#logger = logger;
     this.#accountsService = accountsService;
+    this.#assetsService = assetsService;
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
@@ -111,8 +117,10 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  listAccountAssets?(id: string): Promise<CaipAssetTypeOrId[]> {
-    throw new Error('Method not implemented.');
+  async listAccountAssets(id: string): Promise<CaipAssetTypeOrId[]> {
+    const account = await this.#getAccountOrThrow(id);
+
+    return this.#assetsService.listAccountAssets(account);
   }
 
   listAccountTransactions?(
@@ -130,11 +138,12 @@ export class KeyringHandler implements Keyring {
     throw new Error('Method not implemented.');
   }
 
-  getAccountBalances?(
+  async getAccountBalances(
     id: string,
     assets: CaipAssetType[],
   ): Promise<Record<CaipAssetType, Balance>> {
-    throw new Error('Method not implemented.');
+    const account = await this.#getAccountOrThrow(id);
+    return this.#assetsService.getAccountBalances(account, assets);
   }
 
   resolveAccountAddress?(

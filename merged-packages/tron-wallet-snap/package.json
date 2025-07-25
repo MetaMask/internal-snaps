@@ -58,5 +58,8 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "tronweb": "^6.0.3"
   }
 }

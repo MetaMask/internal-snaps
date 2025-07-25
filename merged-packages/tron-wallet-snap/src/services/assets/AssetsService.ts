@@ -1,3 +1,4 @@
+import type { Balance } from '@metamask/keyring-api';
 import type {
   AssetMetadata,
   FungibleAssetMetadata,
@@ -7,6 +8,7 @@ import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { uniq } from 'lodash';
 
+import type { TronWebClient } from '../../clients/tronweb/TronWeb';
 import type { TronKeyringAccount } from '../../entities';
 import type { ILogger } from '../../utils/logger';
 import type { ConfigProvider } from '../config';
@@ -22,26 +24,37 @@ export class AssetsService {
 
   readonly #loggerPrefix = '[🪙 AssetsService]';
 
-  readonly #configProvider: ConfigProvider;
+  // readonly #configProvider: ConfigProvider;
+
+  // readonly #state: State<UnencryptedStateValue>;
+
+  readonly #tronWebClient: TronWebClient;
 
   constructor({
     logger,
-    configProvider,
-    state: _state,
+    // configProvider,
+    // state,
+    tronWebClient,
   }: {
     logger: ILogger;
     configProvider: ConfigProvider;
     state: State<UnencryptedStateValue>;
+    tronWebClient: TronWebClient;
   }) {
     this.#logger = logger;
-    this.#configProvider = configProvider;
-    // TODO: Use state when implementing asset storage
+    // this.#configProvider = configProvider;
+    // this.#state = state;
+    this.#tronWebClient = tronWebClient;
   }
 
   async #listAddressNativeAssets(
-    _address: string,
+    address: string,
   ): Promise<NativeCaipAssetType[]> {
-    return []; // TODO: Implement me
+    const result = await this.#tronWebClient.getAccount(address);
+
+    console.log('result', result.assetV2);
+
+    return ['tron:728126428/slip44:195'];
   }
 
   async #listAddressTokenAssets(
@@ -72,6 +85,18 @@ export class AssetsService {
     ]);
 
     return uniq([...nativeAssetsIds, ...tokenAssetsIds, ...nftAssetsIds]);
+  }
+
+  async getAccountBalances(
+    account: TronKeyringAccount,
+    assetTypes: CaipAssetType[],
+  ): Promise<Record<CaipAssetType, Balance>> {
+    return {
+      'tron:728126428/slip44:195': {
+        unit: 'TRX',
+        amount: '10000',
+      },
+    };
   }
 
   async getAssetsMetadata(
@@ -128,16 +153,18 @@ export class AssetsService {
     > = {};
 
     for (const assetType of assetTypes) {
-      const { chainId } = parseCaipAssetType(assetType);
+      // const { chainId } = parseCaipAssetType(assetType);
       nativeTokensMetadata[assetType] = {
         name: 'TRON',
         symbol: 'TRX',
-        fungible: true,
-        iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
+        fungible: true as const,
+        // iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
+        iconUrl:
+          'https://altcoinsbox.com/wp-content/uploads/2023/01/tron-coin-logo-300x300.webp',
         units: [
           {
             name: 'TRON',
-            symbol: 'SOL',
+            symbol: 'TRX',
             decimals: 9,
           },
         ],
@@ -148,9 +175,34 @@ export class AssetsService {
   }
 
   async getTokensMetadata(
-    _assetTypes: TokenCaipAssetType[],
+    assetTypes: TokenCaipAssetType[],
   ): Promise<Record<TokenCaipAssetType, FungibleAssetMetadata | null>> {
-    return {}; // TODO: Implement me
+    const metadata = await Promise.all(
+      assetTypes.map(async (assetType) => {
+        const { assetReference } = parseCaipAssetType(assetType);
+
+        const contract = await this.#tronWebClient.tronWeb
+          .contract()
+          .at(assetReference);
+        const name = await contract.name();
+        const symbol = await contract.symbol();
+        const decimals = await contract.decimals();
+
+        return {
+          [assetType]: {
+            name,
+            symbol,
+            fungible: true as const,
+            iconUrl: '',
+            units: [{ decimals, symbol }],
+          },
+        };
+      }),
+    );
+
+    return metadata.reduce((acc, curr) => {
+      return { ...acc, ...curr };
+    }, {});
   }
 
   async getNftsMetadata(

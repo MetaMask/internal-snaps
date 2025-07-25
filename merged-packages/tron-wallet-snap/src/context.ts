@@ -1,3 +1,4 @@
+import { TronWebClient } from './clients/tronweb/TronWeb';
 import { AssetsHandler } from './handlers/assets';
 import { CronHandler } from './handlers/cronjob';
 import { KeyringHandler } from './handlers/keyring';
@@ -28,10 +29,13 @@ const state = new State({
   },
 });
 
+const tronWebClient = new TronWebClient();
+
 const assetsService = new AssetsService({
   logger,
   configProvider,
   state,
+  tronWebClient,
 });
 
 const transactionService = new TransactionsService();
