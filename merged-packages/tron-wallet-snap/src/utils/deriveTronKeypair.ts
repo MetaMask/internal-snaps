@@ -1,6 +1,7 @@
 import type { EntropySourceId } from '@metamask/keyring-api';
 import { assert, pattern, string } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
+import { TronWeb } from 'tronweb';
 
 import { getBip32Entropy } from './getBip32Entropy';
 import logger from './logger';
@@ -12,28 +13,26 @@ const DERIVATION_PATH_REGEX = /^m\/44'\/195'/u;
 export const DerivationPathStruct = pattern(string(), DERIVATION_PATH_REGEX);
 
 /**
- * Elliptic curve
- *
- * See: https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ed25519/
+ * Elliptic curve for TRON (same as Ethereum)
  */
 const CURVE = 'secp256k1' as const;
 
 /**
- * Derives a Tron private and public key from a given index using BIP44 derivation path.
- * The derivation path follows Phantom wallet's standard: m/44'/501'/index'/0'.
+ * Derives a TRON private and public key from a given derivation path using BIP44.
+ * The derivation path follows the format: m/44'/195'/account'/change/index
+ * where 195 is TRON's coin type.
  *
- * @param params - The parameters for the Tron key derivation.
+ * @param params - The parameters for the TRON key derivation.
  * @param params.entropySource - The entropy source to use for key derivation.
  * @param params.derivationPath - The derivation path to use for key derivation.
- * @returns A Promise that resolves to a Uint8Array of the private key.
+ * @returns A Promise that resolves to the private key, public key, and address.
  * @throws {Error} If unable to derive private key or if derivation fails.
  * @example
  * ```typescript
- * const { privateKeyBytes, publicKeyBytes } = await deriveSolanaPrivateKey(0);
+ * const { privateKeyBytes, publicKeyBytes, address } = await deriveTronKeypair({
+ *   derivationPath: "m/44'/195'/0'/0/0"
+ * });
  * ```
- * @see {@link https://help.phantom.app/hc/en-us/articles/12988493966227-What-derivation-paths-does-Phantom-wallet-support} Phantom wallet derivation paths
- * @see {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki} BIP44 specification
- * @see {@link https://github.com/satoshilabs/slips/blob/master/slip-0044.md} SLIP-0044 for coin types.
  */
 export async function deriveTronKeypair({
   entropySource,
@@ -41,8 +40,12 @@ export async function deriveTronKeypair({
 }: {
   entropySource?: EntropySourceId | undefined;
   derivationPath: string;
-}): Promise<{ privateKeyBytes: Uint8Array; publicKeyBytes: Uint8Array }> {
-  logger.log({ derivationPath }, 'Generating solana wallet');
+}): Promise<{
+  privateKeyBytes: Uint8Array;
+  publicKeyBytes: Uint8Array;
+  address: string;
+}> {
+  logger.log({ derivationPath }, 'Generating TRON wallet');
 
   assert(derivationPath, DerivationPathStruct);
 
@@ -59,12 +62,22 @@ export async function deriveTronKeypair({
       throw new Error('Unable to derive private key');
     }
 
+    const privateKeyBytes = hexToBytes(node.privateKey);
+    const publicKeyBytes = hexToBytes(node.publicKey);
+
+    const address = TronWeb.address.fromPrivateKey(node.privateKey.slice(2));
+
+    if (!address) {
+      throw new Error('Unable to derive address');
+    }
+
     return {
-      privateKeyBytes: hexToBytes(node.privateKey),
-      publicKeyBytes: hexToBytes(node.publicKey),
+      privateKeyBytes,
+      publicKeyBytes,
+      address,
     };
   } catch (error: any) {
-    logger.error({ error }, 'Error deriving keypair');
-    throw new Error(error);
+    logger.error({ error: error.message }, 'Error deriving TRON keypair');
+    throw new Error(`Failed to derive TRON keypair: ${error.message}`);
   }
 }

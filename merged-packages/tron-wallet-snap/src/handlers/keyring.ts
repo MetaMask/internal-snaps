@@ -43,7 +43,8 @@ import { withCatchAndThrowSnapError } from '../utils/errors';
 import { getLowestUnusedIndex } from '../utils/getLowestUnusedIndex';
 import { listEntropySources } from '../utils/interface';
 import type { ILogger } from '../utils/logger';
-import { validateOrigin } from '../validation/validators';
+import { DeleteAccountStruct } from '../validation/structs';
+import { validateOrigin, validateRequest } from '../validation/validators';
 
 export class KeyringHandler implements Keyring {
   readonly #logger: ILogger;
@@ -103,6 +104,16 @@ export class KeyringHandler implements Keyring {
       this.#logger.error({ error }, 'Error getting account');
       throw new SnapError(error);
     }
+  }
+
+  async #getAccountOrThrow(accountId: string): Promise<TronKeyringAccount> {
+    const account = await this.getAccount(accountId);
+
+    if (!account) {
+      throw new Error(`Account "${accountId}" not found`);
+    }
+
+    return account;
   }
 
   #getLowestUnusedKeyringAccountIndex(
@@ -195,14 +206,11 @@ export class KeyringHandler implements Keyring {
         return asStrictKeyringAccount(sameAccount);
       }
 
-      const { publicKeyBytes } = await deriveTronKeypair({
+      const { address: accountAddress } = await deriveTronKeypair({
         entropySource,
         derivationPath,
       });
 
-      const accountAddress = 'TT2T17KZhoDu47i2E4FWxfG79zdkEWkU9N'; // TODO: Replace this mock
-
-      // Filter out our special properties from options
       const {
         importedAccount,
         accountNameSuggestion,
@@ -313,8 +321,21 @@ export class KeyringHandler implements Keyring {
     throw new Error('Method not implemented.');
   }
 
-  async deleteAccount(id: string): Promise<void> {
-    throw new Error('Method not implemented.');
+  async deleteAccount(accountId: string): Promise<void> {
+    try {
+      validateRequest({ accountId }, DeleteAccountStruct);
+
+      const account = await this.#getAccountOrThrow(accountId);
+
+      await emitSnapKeyringEvent(snap, KeyringEvent.AccountDeleted, {
+        id: accountId,
+      });
+
+      await this.#deleteAccountFromState(accountId);
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error deleting account');
+      throw error;
+    }
   }
 
   exportAccount?(id: string): Promise<KeyringAccountData> {
