@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   KeyringEvent,
-  TrxAccountType,
-  TrxScope,
   type Balance,
   type DiscoveredAccount,
   type EntropySourceId,
@@ -11,7 +9,6 @@ import {
   type KeyringAccountData,
   type KeyringRequest,
   type KeyringResponse,
-  type MetaMaskOptions,
   type Paginated,
   type Pagination,
   type ResolvedAccountAddress,
@@ -22,7 +19,6 @@ import {
   handleKeyringRequest,
 } from '@metamask/keyring-snap-sdk';
 import { SnapError } from '@metamask/snaps-sdk';
-import { assert, integer } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
@@ -33,15 +29,9 @@ import type {
 import { sortBy } from 'lodash';
 
 import type { TronKeyringAccount } from '../entities';
-import { asStrictKeyringAccount } from '../entities/keyring-account';
-import type { AssetsService } from '../services/assets/AssetsService';
-import type { State, UnencryptedStateValue } from '../services/state/State';
-import type { TransactionsService } from '../services/transactions/TransactionsService';
-import type { WalletService } from '../services/wallet/WalletService';
-import { deriveTronKeypair } from '../utils/deriveTronKeypair';
+import type { AccountsService } from '../services/accounts/AccountsService';
+import type { CreateAccountOptions } from '../services/accounts/types';
 import { withCatchAndThrowSnapError } from '../utils/errors';
-import { getLowestUnusedIndex } from '../utils/getLowestUnusedIndex';
-import { listEntropySources } from '../utils/interface';
 import type { ILogger } from '../utils/logger';
 import { DeleteAccountStruct } from '../validation/structs';
 import { validateOrigin, validateRequest } from '../validation/validators';
@@ -49,23 +39,17 @@ import { validateOrigin, validateRequest } from '../validation/validators';
 export class KeyringHandler implements Keyring {
   readonly #logger: ILogger;
 
-  readonly #state: State<UnencryptedStateValue>;
+  readonly #accountsService: AccountsService;
 
   constructor({
     logger,
-    state,
-    assetsService,
-    transactionService,
-    walletService,
+    accountsService,
   }: {
     logger: ILogger;
-    state: State<UnencryptedStateValue>;
-    assetsService: AssetsService;
-    transactionService: TransactionsService;
-    walletService: WalletService;
+    accountsService: AccountsService;
   }) {
     this.#logger = logger;
-    this.#state = state;
+    this.#accountsService = accountsService;
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
@@ -81,12 +65,9 @@ export class KeyringHandler implements Keyring {
 
   async listAccounts(): Promise<TronKeyringAccount[]> {
     try {
-      const keyringAccounts =
-        (await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
-          'keyringAccounts',
-        )) ?? {};
+      const keyringAccounts = await this.#accountsService.getAll();
 
-      return sortBy(Object.values(keyringAccounts), ['entropySource', 'index']);
+      return sortBy(keyringAccounts, ['entropySource', 'index']);
     } catch (error: any) {
       this.#logger.error({ error }, 'Error listing accounts');
       throw new Error('Error listing accounts');
@@ -95,9 +76,8 @@ export class KeyringHandler implements Keyring {
 
   async getAccount(accountId: string): Promise<TronKeyringAccount | undefined> {
     try {
-      const account = await this.#state.getKey<TronKeyringAccount>(
-        `keyringAccounts.${accountId}`,
-      );
+      const account =
+        (await this.#accountsService.findById(accountId)) ?? undefined;
 
       return account;
     } catch (error: any) {
@@ -116,165 +96,16 @@ export class KeyringHandler implements Keyring {
     return account;
   }
 
-  #getLowestUnusedKeyringAccountIndex(
-    accounts: TronKeyringAccount[],
-    entropySource: EntropySourceId,
-  ): number {
-    const accountsFilteredByEntropySourceId = accounts.filter(
-      (account) => account.entropySource === entropySource,
-    );
-
-    return getLowestUnusedIndex(accountsFilteredByEntropySourceId);
-  }
-
-  #getDefaultDerivationPath(index: number): `m/${string}` {
-    return `m/44'/195'/0'/0/${index}`;
-  }
-
-  #getIndexFromDerivationPath(derivationPath: `m/${string}`): number {
-    const levels = derivationPath.split('/');
-    const indexLevel = levels[3];
-
-    if (!indexLevel) {
-      throw new Error('Invalid derivation path');
-    }
-
-    const index = parseInt(indexLevel.replace("'", ''), 10);
-    assert(index, integer());
-
-    return index;
-  }
-
-  async #getDefaultEntropySource(): Promise<EntropySourceId> {
-    const entropySources = await listEntropySources();
-    const defaultEntropySource = entropySources.find(({ primary }) => primary);
-
-    if (!defaultEntropySource) {
-      throw new Error(
-        'No default entropy source found - this can never happen',
-      );
-    }
-
-    return defaultEntropySource.id;
-  }
-
-  async #deleteAccountFromState(accountId: string): Promise<void> {
-    await Promise.all([
-      this.#state.deleteKey(`keyringAccounts.${accountId}`),
-      this.#state.deleteKey(`transactions.${accountId}`),
-      this.#state.deleteKey(`assets.${accountId}`),
-    ]);
-  }
-
-  async createAccount(
-    options?: {
-      entropySource?: EntropySourceId;
-      derivationPath?: `m/${string}`;
-      accountNameSuggestion?: string;
-      [key: string]: Json | undefined;
-    } & MetaMaskOptions,
-  ): Promise<KeyringAccount> {
+  async createAccount(options?: CreateAccountOptions): Promise<KeyringAccount> {
     const id = globalThis.crypto.randomUUID();
 
     try {
-      const accounts = await this.listAccounts();
+      const account = await this.#accountsService.create(id, options);
 
-      const entropySource =
-        options?.entropySource ?? (await this.#getDefaultEntropySource());
-
-      const index = options?.derivationPath
-        ? this.#getIndexFromDerivationPath(options.derivationPath)
-        : this.#getLowestUnusedKeyringAccountIndex(accounts, entropySource);
-
-      const derivationPath =
-        options?.derivationPath ?? this.#getDefaultDerivationPath(index);
-
-      /**
-       * Now that we have the `entropySource` and `derivationPath` ready,
-       * we need to make sure that they do not correspond to an existing account already.
-       */
-      const sameAccount = accounts.find(
-        (account) =>
-          account.derivationPath === derivationPath &&
-          account.entropySource === entropySource,
-      );
-
-      if (sameAccount) {
-        this.#logger.warn(
-          '[🔑 Keyring] An account already exists with the same derivation path and entropy source. Skipping account creation.',
-        );
-        return asStrictKeyringAccount(sameAccount);
-      }
-
-      const { address: accountAddress } = await deriveTronKeypair({
-        entropySource,
-        derivationPath,
-      });
-
-      const {
-        importedAccount,
-        accountNameSuggestion,
-        metamask: metamaskOptions,
-        ...remainingOptions
-      } = options ?? {};
-
-      const solanaKeyringAccount: TronKeyringAccount = {
-        id,
-        entropySource,
-        derivationPath,
-        index,
-        type: TrxAccountType.Eoa,
-        address: accountAddress,
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
-        options: {
-          ...remainingOptions,
-          /**
-           * Make sure to save the `entropySource`, `derivationPath` and `index`
-           * in the keyring account options..
-           */
-          entropySource,
-          derivationPath,
-          index,
-        },
-        methods: ['signMessageV2', 'verifyMessageV2'],
-      };
-
-      await this.#state.setKey(
-        `keyringAccounts.${solanaKeyringAccount.id}`,
-        solanaKeyringAccount,
-      );
-
-      const keyringAccount = asStrictKeyringAccount(solanaKeyringAccount);
-
-      await emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
-        /**
-         * We can't pass the `keyringAccount` object because it contains the index
-         * and the snaps sdk does not allow extra properties.
-         */
-        account: keyringAccount,
-        accountNameSuggestion:
-          accountNameSuggestion ?? `Tron Account ${index + 1}`,
-        displayAccountNameSuggestion: !accountNameSuggestion,
-        /**
-         * Skip account creation confirmation dialogs to make it look like a native
-         * account creation flow.
-         */
-        displayConfirmation: false,
-        /**
-         * Internal options to MetaMask that includes a correlation ID. We need
-         * to also emit this ID to the Snap keyring.
-         */
-        ...(metamaskOptions
-          ? {
-              metamask: metamaskOptions,
-            }
-          : {}),
-      });
-
-      return keyringAccount;
+      return account;
     } catch (error: any) {
       this.#logger.error({ error }, 'Error creating account');
-      await this.#deleteAccountFromState(id);
+      await this.#accountsService.delete(id);
 
       throw new Error(`Error creating account: ${error.message}`);
     }
@@ -328,10 +159,10 @@ export class KeyringHandler implements Keyring {
       const account = await this.#getAccountOrThrow(accountId);
 
       await emitSnapKeyringEvent(snap, KeyringEvent.AccountDeleted, {
-        id: accountId,
+        id: account.id,
       });
 
-      await this.#deleteAccountFromState(accountId);
+      await this.#accountsService.delete(accountId);
     } catch (error: any) {
       this.#logger.error({ error }, 'Error deleting account');
       throw error;

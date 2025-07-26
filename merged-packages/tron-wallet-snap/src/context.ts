@@ -3,6 +3,8 @@ import { CronHandler } from './handlers/cronjob';
 import { KeyringHandler } from './handlers/keyring';
 import { RpcHandler } from './handlers/rpc';
 import { UserInputHandler } from './handlers/userInput';
+import { AccountsRepository } from './services/accounts/AccountsRepository';
+import { AccountsService } from './services/accounts/AccountsService';
 import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
 import type { UnencryptedStateValue } from './services/state/State';
@@ -39,6 +41,10 @@ const walletService = new WalletService({
   state,
 });
 
+const accountsRepository = new AccountsRepository(state);
+
+const accountsService = new AccountsService(accountsRepository, logger);
+
 /**
  * Handlers
  */
@@ -46,10 +52,7 @@ const assetsHandler = new AssetsHandler();
 const cronHandler = new CronHandler();
 const keyringHandler = new KeyringHandler({
   logger,
-  state,
-  assetsService,
-  transactionService,
-  walletService,
+  accountsService,
 });
 const rpcHandler = new RpcHandler();
 const userInputHandler = new UserInputHandler();
@@ -62,6 +65,7 @@ export type SnapExecutionContext = {
   assetsService: AssetsService;
   transactionService: TransactionsService;
   walletService: WalletService;
+  accountsService: AccountsService;
   /**
    * Handlers
    */
@@ -80,6 +84,7 @@ const snapContext: SnapExecutionContext = {
   assetsService,
   transactionService,
   walletService,
+  accountsService,
   /**
    * Handlers
    */
