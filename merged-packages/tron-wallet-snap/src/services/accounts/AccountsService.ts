@@ -2,9 +2,11 @@ import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { assert, integer } from '@metamask/superstruct';
+import type { Account } from 'tronweb/lib/esm/types';
 
 import type { AccountsRepository } from './AccountsRepository';
 import type { CreateAccountOptions } from './types';
+import type { Network } from '../../constants';
 import {
   asStrictKeyringAccount,
   type TronKeyringAccount,
@@ -12,16 +14,34 @@ import {
 import { deriveTronKeypair } from '../../utils/deriveTronKeypair';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { listEntropySources } from '../../utils/interface';
-import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import type { AssetsService } from '../assets/AssetsService';
+import type { ConfigProvider } from '../config';
+import type { Connection } from '../connection/Connection';
 
 export class AccountsService {
   readonly #accountsRepository: AccountsRepository;
 
+  readonly #configProvider: ConfigProvider;
+
   readonly #logger: ILogger;
 
-  constructor(accountsRepository: AccountsRepository, logger: ILogger) {
+  readonly #connection: Connection;
+
+  readonly #assetsService: AssetsService;
+
+  constructor(
+    accountsRepository: AccountsRepository,
+    configProvider: ConfigProvider,
+    logger: ILogger,
+    connection: Connection,
+    assetsService: AssetsService,
+  ) {
     this.#accountsRepository = accountsRepository;
-    this.#logger = logger;
+    this.#configProvider = configProvider;
+    this.#logger = createPrefixedLogger(logger, '[🔑 AccountsService]');
+    this.#connection = connection;
+    this.#assetsService = assetsService;
   }
 
   async create(
@@ -136,6 +156,36 @@ export class AccountsService {
 
   async delete(id: string): Promise<void> {
     return this.#accountsRepository.delete(id);
+  }
+
+  async fetch(account: KeyringAccount, scope: Network): Promise<Account> {
+    this.#logger.info('Fetching account', { address: account.address, scope });
+
+    const tronAccount = await this.#connection
+      .getConnection(scope)
+      .trx.getAccount(account.address);
+
+    return tronAccount;
+  }
+
+  async synchronize(accounts: KeyringAccount[]): Promise<void> {
+    const scopes = this.#configProvider.get().activeNetworks;
+    const combinations = accounts.flatMap((account) =>
+      scopes.map((scope) => ({ account, scope })),
+    );
+
+    await Promise.all(
+      combinations.map(async ({ account, scope }) => {
+        const tronAccount = await this.fetch(account, scope);
+        const assets = await this.#assetsService.fetchAssetsByAccount(
+          account,
+          scope,
+          tronAccount,
+        );
+
+        await this.#assetsService.saveMany(assets);
+      }),
+    );
   }
 
   #getLowestUnusedKeyringAccountIndex(

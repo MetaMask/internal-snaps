@@ -40,7 +40,7 @@ export class AssetsHandler {
   }
 
   async onAssetsLookup(
-    _params: OnAssetsLookupArguments,
+    params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
     const assets = await context.assetsService.getAssetsMetadata(params.assets);
 

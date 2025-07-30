@@ -1,3 +1,5 @@
+/* eslint-disable no-empty-function */
+
 /**
  * A simple logger utility that provides methods for logging messages at different levels.
  * For now, it's just a wrapper around console.
@@ -45,6 +47,31 @@ const logger: ILogger = {
   warn: withNoopInProduction(console.warn),
   debug: withNoopInProduction(console.debug),
   error: withNoopInProduction(withErrorLogging(console.error)),
+};
+
+export const noOpLogger: ILogger = {
+  log: () => {},
+  info: () => {},
+  warn: () => {},
+  debug: () => {},
+  error: () => {},
+};
+
+export const createPrefixedLogger = (
+  _logger: ILogger,
+  prefix: string,
+): ILogger => {
+  return new Proxy(_logger, {
+    get(target, prop: keyof ILogger): any {
+      const method = target[prop];
+      if (typeof method === 'function') {
+        return (message: string, ...args: any[]) => {
+          return method.call(target, prefix, message, ...args);
+        };
+      }
+      return method;
+    },
+  });
 };
 
 export default logger;

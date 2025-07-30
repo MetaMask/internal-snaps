@@ -1,4 +1,3 @@
-import { TronWebClient } from './clients/tronweb/TronWeb';
 import { AssetsHandler } from './handlers/assets';
 import { CronHandler } from './handlers/cronjob';
 import { KeyringHandler } from './handlers/keyring';
@@ -6,8 +5,10 @@ import { RpcHandler } from './handlers/rpc';
 import { UserInputHandler } from './handlers/userInput';
 import { AccountsRepository } from './services/accounts/AccountsRepository';
 import { AccountsService } from './services/accounts/AccountsService';
+import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
+import { Connection } from './services/connection/Connection';
 import type { UnencryptedStateValue } from './services/state/State';
 import { State } from './services/state/State';
 import { TransactionsService } from './services/transactions/TransactionsService';
@@ -29,13 +30,14 @@ const state = new State({
   },
 });
 
-const tronWebClient = new TronWebClient();
+const assetsRepository = new AssetsRepository(state);
+const connection = new Connection(configProvider);
 
 const assetsService = new AssetsService({
   logger,
-  configProvider,
   state,
-  tronWebClient,
+  assetsRepository,
+  connection,
 });
 
 const transactionService = new TransactionsService();
@@ -47,7 +49,13 @@ const walletService = new WalletService({
 
 const accountsRepository = new AccountsRepository(state);
 
-const accountsService = new AccountsService(accountsRepository, logger);
+const accountsService = new AccountsService(
+  accountsRepository,
+  configProvider,
+  logger,
+  connection,
+  assetsService,
+);
 
 /**
  * Handlers
@@ -57,6 +65,7 @@ const cronHandler = new CronHandler();
 const keyringHandler = new KeyringHandler({
   logger,
   accountsService,
+  assetsService,
 });
 const rpcHandler = new RpcHandler();
 const userInputHandler = new UserInputHandler();
