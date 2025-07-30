@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1]
+
+### Changed
+
+- Assets are now fetched and saved immediately when creating an account since they're needed by the client right away ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Transaction fetching has been moved to a background event since transactions aren't immediately needed by the client ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Added a 20-transaction limit to background transaction fetching to improve performance ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+
+### Fixes
+
+- Fix native asset extraction in `onAssetsLookup` ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Remove token assets with zero balance from `Keyring.listAccountAssets` and `Keyring.getAccountBalances` responses while preserving zero-balance native assets ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Ensure we always return at least the native asset with zero balance ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+
 ## [2.1.0]
 
 ### Changed
@@ -779,7 +793,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
 - Snap setup
 
-[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.36.0...v2.0.0
 [1.36.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.2...v1.36.0
