@@ -1,10 +1,10 @@
-import type { Balance, Transaction } from '@metamask/keyring-api';
-import type { CaipAssetType } from '@metamask/utils';
+import type { Transaction } from '@metamask/keyring-api';
 import { unset } from 'lodash';
 
 import type { IStateManager } from './IStateManager';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { TronKeyringAccount } from '../../entities';
+import type { AssetEntity } from '../../entities/assets';
 import { safeMerge } from '../../utils/safeMerge';
 import { deserialize } from '../../utils/serialization/deserialize';
 import { serialize } from '../../utils/serialization/serialize';
@@ -14,7 +14,7 @@ export type AccountId = string;
 
 export type UnencryptedStateValue = {
   keyringAccounts: Record<string, TronKeyringAccount>;
-  assets: Record<AccountId, Record<CaipAssetType, Balance>>;
+  assets: Record<AccountId, AssetEntity[]>;
   tokenPrices: SpotPrices;
   transactions: Record<AccountId, Transaction[]>;
 };

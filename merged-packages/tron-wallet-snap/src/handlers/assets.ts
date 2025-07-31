@@ -9,6 +9,8 @@ import type {
   OnAssetsMarketDataResponse,
 } from '@metamask/snaps-sdk';
 
+import context from '../context';
+
 export class AssetsHandler {
   async onAssetHistoricalPrice(
     _params: OnAssetHistoricalPriceArguments,
@@ -24,13 +26,27 @@ export class AssetsHandler {
   async onAssetsConversion(
     _conversions: OnAssetsConversionArguments,
   ): Promise<OnAssetsConversionResponse> {
-    return { conversionRates: {} };
+    return {
+      conversionRates: {
+        'tron:728126428/slip44:195': {
+          'swift:0/iso4217:USD': {
+            rate: '0.27',
+            conversionTime: Date.now(),
+            expirationTime: Date.now() + 1000 * 60 * 60 * 24,
+          },
+        },
+      },
+    };
   }
 
   async onAssetsLookup(
-    _params: OnAssetsLookupArguments,
+    params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
-    return { assets: {} };
+    const assets = await context.assetsService.getAssetsMetadata(params.assets);
+
+    return {
+      assets,
+    };
   }
 
   async onAssetsMarketData(

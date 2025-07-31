@@ -3,6 +3,8 @@ import type { IStateManager } from '../state/IStateManager';
 import type { UnencryptedStateValue } from '../state/State';
 
 export class AccountsRepository {
+  readonly #storageKey = 'keyringAccounts';
+
   readonly #state: IStateManager<UnencryptedStateValue>;
 
   constructor(state: IStateManager<UnencryptedStateValue>) {
@@ -15,10 +17,9 @@ export class AccountsRepository {
    * @returns All accounts from the state.
    */
   async getAll(): Promise<TronKeyringAccount[]> {
-    const accounts =
-      await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
-        'keyringAccounts',
-      );
+    const accounts = await this.#state.getKey<
+      UnencryptedStateValue['keyringAccounts']
+    >(this.#storageKey);
 
     return Object.values(accounts ?? {});
   }
@@ -35,14 +36,14 @@ export class AccountsRepository {
   }
 
   async create(account: TronKeyringAccount): Promise<TronKeyringAccount> {
-    await this.#state.setKey(`keyringAccounts.${account.id}`, account);
+    await this.#state.setKey(`${this.#storageKey}.${account.id}`, account);
 
     return account;
   }
 
   async delete(id: string): Promise<void> {
     await Promise.all([
-      this.#state.deleteKey(`keyringAccounts.${id}`),
+      this.#state.deleteKey(`${this.#storageKey}.${id}`),
       this.#state.deleteKey(`assets.${id}`),
       this.#state.deleteKey(`transactions.${id}`),
     ]);
