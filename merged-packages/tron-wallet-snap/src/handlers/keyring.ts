@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   KeyringEvent,
+  ListAccountAssetsResponseStruct,
   type Balance,
   type DiscoveredAccount,
   type EntropySourceId,
@@ -31,25 +32,40 @@ import { sortBy } from 'lodash';
 import type { TronKeyringAccount } from '../entities';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
+import type { AssetsService } from '../services/assets/AssetsService';
 import { withCatchAndThrowSnapError } from '../utils/errors';
-import type { ILogger } from '../utils/logger';
-import { DeleteAccountStruct } from '../validation/structs';
-import { validateOrigin, validateRequest } from '../validation/validators';
+import { createPrefixedLogger, type ILogger } from '../utils/logger';
+import {
+  DeleteAccountStruct,
+  GetAccounBalancesResponseStruct,
+  GetAccountBalancesStruct,
+  ListAccountAssetsStruct,
+} from '../validation/structs';
+import {
+  validateOrigin,
+  validateRequest,
+  validateResponse,
+} from '../validation/validators';
 
 export class KeyringHandler implements Keyring {
   readonly #logger: ILogger;
 
   readonly #accountsService: AccountsService;
 
+  readonly #assetsService: AssetsService;
+
   constructor({
     logger,
     accountsService,
+    assetsService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
+    assetsService: AssetsService;
   }) {
-    this.#logger = logger;
+    this.#logger = createPrefixedLogger(logger, '[🔑 KeyringHandler]');
     this.#accountsService = accountsService;
+    this.#assetsService = assetsService;
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
@@ -102,6 +118,8 @@ export class KeyringHandler implements Keyring {
     try {
       const account = await this.#accountsService.create(id, options);
 
+      await this.#accountsService.synchronize([account]);
+
       return account;
     } catch (error: any) {
       this.#logger.error({ error }, 'Error creating account');
@@ -111,30 +129,79 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  listAccountAssets?(id: string): Promise<CaipAssetTypeOrId[]> {
-    throw new Error('Method not implemented.');
+  async listAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
+    try {
+      validateRequest({ accountId }, ListAccountAssetsStruct);
+
+      await this.#getAccountOrThrow(accountId);
+
+      this.#logger.info('Listing account assets', { accountId });
+
+      const assets = await this.#assetsService.getByKeyringAccountId(accountId);
+
+      const result = assets.map((asset) => asset.assetType);
+
+      this.#logger.info('Account assets', { accountId, result });
+
+      validateResponse(result, ListAccountAssetsResponseStruct);
+      return result;
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error listing account assets');
+      throw error;
+    }
   }
 
-  listAccountTransactions?(
+  async listAccountTransactions?(
     id: string,
     pagination: Pagination,
   ): Promise<Paginated<Transaction>> {
-    throw new Error('Method not implemented.');
+    // TODO: Implement me
+    return {
+      data: [],
+      next: null,
+    };
   }
 
-  discoverAccounts?(
+  async discoverAccounts?(
     scopes: CaipChainId[],
     entropySource: EntropySourceId,
     groupIndex: number,
   ): Promise<DiscoveredAccount[]> {
-    throw new Error('Method not implemented.');
+    // TODO: Implement me
+    return [];
   }
 
-  getAccountBalances?(
-    id: string,
+  async getAccountBalances(
+    accountId: string,
     assets: CaipAssetType[],
   ): Promise<Record<CaipAssetType, Balance>> {
-    throw new Error('Method not implemented.');
+    try {
+      validateRequest({ accountId, assets }, GetAccountBalancesStruct);
+
+      await this.#getAccountOrThrow(accountId);
+
+      const assetsList =
+        await this.#assetsService.getByKeyringAccountId(accountId);
+      const assetsOnlyRequestedAssetTypes = assetsList.filter((asset) =>
+        assets.includes(asset.assetType),
+      );
+
+      const result = assetsOnlyRequestedAssetTypes.reduce<
+        Record<CaipAssetType, Balance>
+      >((acc, asset) => {
+        acc[asset.assetType] = {
+          unit: asset.symbol,
+          amount: asset.uiAmount,
+        };
+        return acc;
+      }, {});
+
+      validateResponse(result, GetAccounBalancesResponseStruct);
+      return result;
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error getting account balances');
+      throw error;
+    }
   }
 
   resolveAccountAddress?(

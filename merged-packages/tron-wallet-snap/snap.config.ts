@@ -28,6 +28,7 @@ const config: SnapConfig = {
       process.env.SECURITY_ALERTS_API_BASE_URL ?? '',
     NFT_API_BASE_URL: process.env.NFT_API_BASE_URL ?? '',
     LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL ?? '',
+    TRON_API_KEY: process.env.TRON_API_KEY ?? '',
   },
   polyfills: true,
 };
