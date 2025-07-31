@@ -25,7 +25,7 @@ export class Connection {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Headers': '*',
       'Access-Control-Allow-Origin': '*',
-      'TRON-PRO-API-KEY': '6e4cbe0c-0bfb-4ea0-bdf8-526c0664801a',
+      'TRON-PRO-API-KEY': this.#configProvider.get().tronApi.apiKey,
     };
 
     const connection = new TronWeb({

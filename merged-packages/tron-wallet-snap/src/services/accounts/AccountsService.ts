@@ -174,18 +174,22 @@ export class AccountsService {
       scopes.map((scope) => ({ account, scope })),
     );
 
-    await Promise.all(
+    const responses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
         const tronAccount = await this.fetch(account, scope);
-        const assets = await this.#assetsService.fetchAssetsByAccount(
+        return this.#assetsService.fetchAssetsByAccount(
           account,
           scope,
           tronAccount,
         );
-
-        await this.#assetsService.saveMany(assets);
       }),
     );
+
+    const assets = responses.flatMap((response) =>
+      response.status === 'fulfilled' ? response.value : [],
+    );
+
+    await this.#assetsService.saveMany(assets);
   }
 
   #getLowestUnusedKeyringAccountIndex(

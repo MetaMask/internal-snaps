@@ -85,7 +85,6 @@ export class AssetsService {
     };
 
     this.#logger.info('Resolved assets metadata', { assetTypes, result });
-    console.log('Resolved assets metadata', JSON.stringify(result, null, 2));
 
     return result;
   }
@@ -155,7 +154,6 @@ export class AssetsService {
     const metadata = await Promise.all(
       assetTypes.map(async (assetType) => {
         const { assetReference } = parseCaipAssetType(assetType);
-        console.log('assetReference', assetReference);
         const tokenMetadata = await connection.trx.getTokenByID(assetReference);
 
         return {
@@ -224,7 +222,7 @@ export class AssetsService {
     scope: Network,
     tronAccount: Account,
   ): Promise<AssetEntity[]> {
-    const [nativeAsset, trc10Assets] = await Promise.allSettled([
+    const [nativeAsset, trc10Assets, trc20Assets] = await Promise.allSettled([
       this.#getNativeAsset(account, scope, tronAccount),
       this.#fetchTRC10Assets(account, scope, tronAccount),
       this.#fetchTRC20Assets(account, scope),
@@ -233,6 +231,7 @@ export class AssetsService {
     return [
       ...(nativeAsset.status === 'fulfilled' ? [nativeAsset.value] : []),
       ...(trc10Assets.status === 'fulfilled' ? trc10Assets.value : []),
+      ...(trc20Assets.status === 'fulfilled' ? trc20Assets.value : []),
     ];
   }
 
@@ -456,10 +455,7 @@ export class AssetsService {
       this.#logger.info('Updating account balances', {
         balancesUpdatedPayload,
       });
-      console.log(
-        'balancesUpdatedPayload',
-        JSON.stringify(balancesUpdatedPayload, null, 2),
-      );
+
       await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
         balances: balancesUpdatedPayload,
       });

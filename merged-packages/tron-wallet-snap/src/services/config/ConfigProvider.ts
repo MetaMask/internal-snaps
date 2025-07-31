@@ -46,6 +46,7 @@ const EnvStruct = object({
   SECURITY_ALERTS_API_BASE_URL: UrlStruct,
   NFT_API_BASE_URL: UrlStruct,
   LOCAL_API_BASE_URL: string(),
+  TRON_API_KEY: string(),
 });
 
 export type Env = Infer<typeof EnvStruct>;
@@ -88,6 +89,9 @@ export type Config = {
       getNftMetadata: number;
     };
   };
+  tronApi: {
+    apiKey: string;
+  };
 };
 
 /**
@@ -127,6 +131,7 @@ export class ConfigProvider {
       SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL,
       NFT_API_BASE_URL: process.env.NFT_API_BASE_URL,
       LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
+      TRON_API_KEY: process.env.TRON_API_KEY,
     };
 
     // Validate and parse them before returning
@@ -199,6 +204,9 @@ export class ConfigProvider {
           listAddressSolanaNfts: Duration.Minute,
           getNftMetadata: Duration.Minute,
         },
+      },
+      tronApi: {
+        apiKey: environment.TRON_API_KEY,
       },
     };
   }
