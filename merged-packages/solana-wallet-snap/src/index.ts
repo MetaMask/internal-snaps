@@ -2,12 +2,14 @@ import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk';
 import type {
   Json,
+  OnActiveHandler,
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
   OnAssetsMarketDataHandler,
   OnClientRequestHandler,
   OnCronjobHandler,
+  OnInactiveHandler,
   OnInstallHandler,
   OnKeyringRequestHandler,
   OnNameLookupHandler,
@@ -37,7 +39,7 @@ import { handlers as onRpcRequestHandlers } from './core/handlers/onRpcRequest';
 import { RpcRequestMethod } from './core/handlers/onRpcRequest/types';
 import { withCatchAndThrowSnapError } from './core/utils/errors';
 import { getClientStatus } from './core/utils/interface';
-import logger from './core/utils/logger';
+import logger, { createPrefixedLogger } from './core/utils/logger';
 import { validateOrigin } from './core/validation/validators';
 import { eventHandlers as confirmSignInEvents } from './features/confirmation/views/ConfirmSignIn/events';
 import { eventHandlers as confirmSignMessageEvents } from './features/confirmation/views/ConfirmSignMessage/events';
@@ -49,7 +51,6 @@ import snapContext, {
   clientRequestHandler,
   eventEmitter,
   keyring,
-  state,
 } from './snapContext';
 
 installPolyfills();
@@ -180,7 +181,9 @@ export const onUserInput: OnUserInputHandler = async ({
  * @see https://docs.metamask.io/snaps/reference/entry-points/#oncronjob
  */
 export const onCronjob: OnCronjobHandler = async ({ request }) => {
-  logger.log('[⏱️ onCronjob]', request.method, request);
+  const _logger = createPrefixedLogger(logger, '[⏱️ onCronjob]');
+
+  _logger.log(request.method, request);
 
   const { method } = request;
   assert(
@@ -192,22 +195,32 @@ export const onCronjob: OnCronjobHandler = async ({ request }) => {
   );
 
   const result = await withCatchAndThrowSnapError(async () => {
-    /**
-     * Don't run cronjobs if client is locked or inactive
-     * - We don't want to call cronjobs if the client is locked
-     * - We don't want to call cronjobs if the client is inactive
-     */
+    // Don't run cronjobs if client is locked or inactive
     const { locked, active } = await getClientStatus();
 
-    logger.log('[🔑 onCronjob] Client status', { locked, active });
+    _logger.log('Client status', { locked, active });
 
     if (locked || !active) {
       return Promise.resolve();
     }
 
-    logger.log('[🔑 onCronjob] Running cronjob', { method });
+    _logger.log('Running cronjob', { method });
 
-    const handler = onCronjobHandlers[method];
+    const handler =
+      onCronjobHandlers[
+        method as CronjobMethod | ScheduleBackgroundEventMethod
+      ];
+
+    if (!handler) {
+      throw new MethodNotFoundError(
+        `Cronjob / ScheduleBackgroundEvent method ${method} not found. Available methods: ${Object.values(
+          [
+            ...Object.values(CronjobMethod),
+            ...Object.values(ScheduleBackgroundEventMethod),
+          ],
+        ).toString()}`,
+      ) as unknown as Error;
+    }
     return handler({ request });
   });
 
@@ -260,6 +273,10 @@ export const onWebSocketEvent: OnWebSocketEventHandler = async ({ event }) =>
     await eventEmitter.emitSync('onWebSocketEvent', event);
   });
 
+/*
+ * Lifecycle handlers
+ */
+
 export const onStart: OnStartHandler = async () =>
   withCatchAndThrowSnapError(async () => {
     await eventEmitter.emitSync('onStart');
@@ -274,6 +291,18 @@ export const onInstall: OnInstallHandler = async () =>
   withCatchAndThrowSnapError(async () => {
     await eventEmitter.emitSync('onInstall');
   });
+
+export const onActive: OnActiveHandler = async () => {
+  return withCatchAndThrowSnapError(async () => {
+    await eventEmitter.emitSync('onActive');
+  });
+};
+
+export const onInactive: OnInactiveHandler = async () => {
+  return withCatchAndThrowSnapError(async () => {
+    await eventEmitter.emitSync('onInactive');
+  });
+};
 
 export const onNameLookup: OnNameLookupHandler = async (request) => {
   const result = await withCatchAndThrowSnapError(async () =>
