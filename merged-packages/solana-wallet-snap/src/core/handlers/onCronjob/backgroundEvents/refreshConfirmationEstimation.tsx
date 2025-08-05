@@ -33,23 +33,14 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
     return;
   }
 
-  // Schedule the next run
-  await snap.request({
-    method: 'snap_scheduleBackgroundEvent',
-    params: {
-      duration: 'PT20S',
-      request: { method: 'refreshConfirmationEstimation' },
-    },
-  });
+  // Get the current context
+  const interfaceContext =
+    await getInterfaceContextOrThrow<ConfirmTransactionRequestContext>(
+      confirmationInterfaceId,
+    );
 
   // Update the interface context with the new rates.
   try {
-    // Get the current context
-    const interfaceContext =
-      await getInterfaceContextOrThrow<ConfirmTransactionRequestContext>(
-        confirmationInterfaceId,
-      );
-
     if (
       !interfaceContext.account?.address ||
       !interfaceContext.transaction ||
@@ -107,6 +98,15 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
     );
 
     logger.info(`Background event suceeded`);
+
+    // Schedule the next run
+    await snap.request({
+      method: 'snap_scheduleBackgroundEvent',
+      params: {
+        duration: 'PT20S',
+        request: { method: 'refreshConfirmationEstimation' },
+      },
+    });
   } catch (error) {
     const fetchedInterfaceContext =
       await getInterfaceContextOrThrow<ConfirmTransactionRequestContext>(
@@ -124,7 +124,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       fetchingConfirmationContext,
     );
 
-    logger.info(
+    logger.warn(
       { error },
       `Could not update the interface. But rolled back status to fetched.`,
     );

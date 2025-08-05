@@ -36,11 +36,9 @@ export const refreshSend: OnCronjobHandler = async () => {
     return;
   }
 
-  // Schedule the next run
-  await snap.request({
-    method: 'snap_scheduleBackgroundEvent',
-    params: { duration: 'PT30S', request: { method: 'refreshSend' } },
-  });
+  // Get the current context
+  const interfaceContext =
+    await getInterfaceContextOrThrow<SendContext>(sendFormInterfaceId);
 
   // First, fetch the token prices
   const tokenPrices = await priceApiClient.getMultipleSpotPrices(
@@ -50,21 +48,6 @@ export const refreshSend: OnCronjobHandler = async () => {
 
   // Save them in the state
   await state.setKey('tokenPrices', tokenPrices);
-
-  // Get the current context
-  const interfaceContext =
-    await getInterfaceContextOrThrow<SendContext>(sendFormInterfaceId);
-
-  // We only want to refresh the token prices when the user is in the transaction confirmation stage
-  if (interfaceContext.stage !== 'transaction-confirmation') {
-    logger.info(`❌ Not in transaction confirmation stage`);
-    return;
-  }
-
-  if (!interfaceContext.assets) {
-    logger.info(`❌ No assets found`);
-    return;
-  }
 
   // Update the current context with the new rates
   const updatedInterfaceContext = {
@@ -82,4 +65,10 @@ export const refreshSend: OnCronjobHandler = async () => {
   );
 
   logger.info(`✅ Background event suceeded`);
+
+  // Schedule the next run
+  await snap.request({
+    method: 'snap_scheduleBackgroundEvent',
+    params: { duration: 'PT30S', request: { method: 'refreshSend' } },
+  });
 };
