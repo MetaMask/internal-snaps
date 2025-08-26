@@ -28,6 +28,7 @@
     "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write",
     "lint:misc": "prettier '**/*.json' '**/*.md' --check",
     "lint:types": "tsc --noEmit",
+    "format": "prettier '**/*.ts' '**/*.tsx' --write",
     "prepublishOnly": "mm-snap manifest",
     "serve": "mm-snap serve",
     "start": "concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
@@ -40,7 +41,7 @@
     "@metamask/keyring-snap-sdk": "^4.0.0",
     "@metamask/snaps-cli": "^8.1.0",
     "@metamask/snaps-jest": "^9.2.0",
-    "@metamask/snaps-sdk": "^9.2.0",
+    "@metamask/snaps-sdk": "^9.3.0",
     "@metamask/superstruct": "^3.2.1",
     "@metamask/utils": "^11.4.2",
     "@types/jest": "^30.0.0",
@@ -52,14 +53,11 @@
     "jest-transform-stub": "2.0.0",
     "lodash": "^4.17.21",
     "prettier": "^3.5.3",
-    "tronweb": "6.0.3",
+    "tronweb": "patch:tronweb@npm%3A6.0.4#~/.yarn/patches/tronweb-npm-6.0.4-2b661b7651.patch",
     "ts-jest": "^29.4.0"
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
-  },
-  "dependencies": {
-    "tronweb": "^6.0.3"
   }
 }

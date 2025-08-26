@@ -1,4 +1,5 @@
 import type {
+  OnActiveHandler,
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
@@ -13,6 +14,7 @@ import {
   assetsHandler,
   cronHandler,
   keyringHandler,
+  lifecycleHandler,
   rpcHandler,
   userInputHandler,
 } from './context';
@@ -34,8 +36,8 @@ export const onAssetsLookup: OnAssetsLookupHandler = async (args) =>
 export const onAssetsMarketData: OnAssetsMarketDataHandler = async (args) =>
   assetsHandler.onAssetsMarketData(args);
 
-export const onCronjob: OnCronjobHandler = async (args) =>
-  cronHandler.handle(args);
+export const onCronjob: OnCronjobHandler = async ({ request }) =>
+  cronHandler.handle(request);
 
 export const onKeyringRequest: OnKeyringRequestHandler = async ({
   origin,
@@ -47,3 +49,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({ origin, request }) =>
 
 export const onUserInput: OnUserInputHandler = async (params) =>
   userInputHandler.handle(params);
+
+export const onActive: OnActiveHandler = async () => {
+  lifecycleHandler.onActive();
+};

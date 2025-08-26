@@ -1,8 +1,8 @@
 import type { Network } from '../constants';
 import type {
   NativeCaipAssetType,
-  TokenCaipAssetType,
   NftCaipAssetType,
+  TokenCaipAssetType,
 } from '../services/assets/types';
 
 export type NativeAsset = {

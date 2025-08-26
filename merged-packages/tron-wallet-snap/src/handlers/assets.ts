@@ -9,9 +9,26 @@ import type {
   OnAssetsMarketDataResponse,
 } from '@metamask/snaps-sdk';
 
-import context from '../context';
+import type { AssetsService } from '../services/assets/AssetsService';
+import type { ILogger } from '../utils/logger';
+import { createPrefixedLogger } from '../utils/logger';
 
 export class AssetsHandler {
+  readonly #logger: ILogger;
+
+  readonly #assetsService: AssetsService;
+
+  constructor({
+    logger,
+    assetsService,
+  }: {
+    logger: ILogger;
+    assetsService: AssetsService;
+  }) {
+    this.#logger = createPrefixedLogger(logger, '[🪙 AssetsHandler]');
+    this.#assetsService = assetsService;
+  }
+
   async onAssetHistoricalPrice(
     _params: OnAssetHistoricalPriceArguments,
   ): Promise<OnAssetHistoricalPriceResponse> {
@@ -24,34 +41,33 @@ export class AssetsHandler {
   }
 
   async onAssetsConversion(
-    _conversions: OnAssetsConversionArguments,
+    params: OnAssetsConversionArguments,
   ): Promise<OnAssetsConversionResponse> {
+    this.#logger.log('[💱 onAssetsConversion]');
+
+    const { conversions } = params;
+
+    const conversionRates =
+      await this.#assetsService.getMultipleTokenConversions(conversions);
+
     return {
-      conversionRates: {
-        'tron:728126428/slip44:195': {
-          'swift:0/iso4217:USD': {
-            rate: '0.27',
-            conversionTime: Date.now(),
-            expirationTime: Date.now() + 1000 * 60 * 60 * 24,
-          },
-        },
-      },
+      conversionRates,
     };
   }
 
   async onAssetsLookup(
     params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
-    const assets = await context.assetsService.getAssetsMetadata(params.assets);
-
-    return {
-      assets,
-    };
+    const assets = await this.#assetsService.getAssetsMetadata(params.assets);
+    return { assets };
   }
 
   async onAssetsMarketData(
-    _assets: OnAssetsMarketDataArguments,
+    params: OnAssetsMarketDataArguments,
   ): Promise<OnAssetsMarketDataResponse> {
-    return { marketData: {} };
+    const marketData = await this.#assetsService.getMultipleTokensMarketData(
+      params.assets,
+    );
+    return { marketData };
   }
 }

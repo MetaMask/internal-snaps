@@ -1,51 +1,50 @@
 import { assert } from '@metamask/superstruct';
-import { TronWeb, providers } from 'tronweb';
 
 import type { Network } from '../../constants';
 import { NetworkStruct } from '../../validation/structs';
 import type { ConfigProvider } from '../config';
 
+/**
+ * Simplified connection service that can be extended if needed
+ * Most functionality has been moved to specialized HTTP clients
+ */
 export class Connection {
-  readonly #networkCaip2IdToConnection: Map<Network, TronWeb> = new Map();
-
   readonly #configProvider: ConfigProvider;
 
   constructor(configProvider: ConfigProvider) {
     this.#configProvider = configProvider;
   }
 
-  #createConnection(network: Network): TronWeb {
-    const config = this.#configProvider.getNetworkBy('caip2Id', network);
-    const rpcUrl = config.rpcUrls[0] ?? '';
-    const fullNode = new providers.HttpProvider(rpcUrl);
-    const solidityNode = new providers.HttpProvider(rpcUrl);
-    const eventServer = new providers.HttpProvider(rpcUrl);
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Headers': '*',
-      'Access-Control-Allow-Origin': '*',
-      'TRON-PRO-API-KEY': this.#configProvider.get().tronApi.apiKey,
-    };
-
-    const connection = new TronWeb({
-      fullNode,
-      solidityNode,
-      eventServer,
-    });
-
-    connection.setHeader(headers);
-
-    this.#networkCaip2IdToConnection.set(network, connection);
-
-    return connection;
+  /**
+   * Get network configuration for a specific network
+   *
+   * @param network - The network to get configuration for
+   * @returns Network configuration
+   */
+  getNetworkConfig(network: Network) {
+    assert(network, NetworkStruct);
+    return this.#configProvider.getNetworkBy('caip2Id', network);
   }
 
-  getConnection(network: Network): TronWeb {
-    assert(network, NetworkStruct);
-    return (
-      this.#networkCaip2IdToConnection.get(network) ??
-      this.#createConnection(network)
-    );
+  /**
+   * Get RPC URLs for a specific network
+   *
+   * @param network - The network to get RPC URLs for
+   * @returns Array of RPC URLs
+   */
+  getRpcUrls(network: Network): string[] {
+    const config = this.getNetworkConfig(network);
+    return config.rpcUrls;
+  }
+
+  /**
+   * Get the primary RPC URL for a specific network
+   *
+   * @param network - The network to get the primary RPC URL for
+   * @returns Primary RPC URL or empty string if none available
+   */
+  getPrimaryRpcUrl(network: Network): string {
+    const rpcUrls = this.getRpcUrls(network);
+    return rpcUrls[0] ?? '';
   }
 }
