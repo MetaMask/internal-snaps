@@ -1,7 +1,4 @@
-import type {
-  TronAccount,
-  TrongridApiResponse,
-} from './types';
+import type { TronAccount, TrongridApiResponse } from './types';
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 
@@ -39,9 +36,8 @@ export class TrongridApiClient {
   /**
    * Get account information by address for a specific network
    *
-   * @param scope
+   * @param scope - The network to query (e.g., 'mainnet', 'shasta')
    * @param address - The TRON address to query
-   * @param network - The network to query
    * @returns Promise<TronAccount> - Account data in camelCase
    */
   async getAccountInfoByAddress(
@@ -62,8 +58,7 @@ export class TrongridApiClient {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const rawData: TrongridApiResponse<TronAccount> =
-      await response.json();
+    const rawData: TrongridApiResponse<TronAccount> = await response.json();
 
     if (!rawData.success) {
       throw new Error('API request failed');
@@ -74,7 +69,7 @@ export class TrongridApiClient {
     }
 
     const account = rawData.data[0];
-    
+
     if (!account) {
       throw new Error('No data');
     }

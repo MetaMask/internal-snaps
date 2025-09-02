@@ -2,7 +2,7 @@ import { assert } from '@metamask/superstruct';
 
 import type { Network } from '../../constants';
 import { NetworkStruct } from '../../validation/structs';
-import type { ConfigProvider } from '../config';
+import type { ConfigProvider, NetworkConfig } from '../config';
 
 /**
  * Simplified connection service that can be extended if needed
@@ -21,7 +21,7 @@ export class Connection {
    * @param network - The network to get configuration for
    * @returns Network configuration
    */
-  getNetworkConfig(network: Network) {
+  getNetworkConfig(network: Network): NetworkConfig {
     assert(network, NetworkStruct);
     return this.#configProvider.getNetworkBy('caip2Id', network);
   }

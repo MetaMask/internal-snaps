@@ -182,21 +182,22 @@ export class AssetsService {
   }): AssetEntity[] {
     const { assetV2 } = tronAccountInfo;
 
-    const trc10Assets = assetV2?.flatMap((tokenObject) => {
-      return Object.entries(tokenObject).map(([address, balance]) => {
-        return {
-          assetType: `${scope}/trc10:${address}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          mint: address,
-          pubkey: address,
-          symbol: '',
-          decimals: 0,
-          rawAmount: balance,
-          uiAmount: '0',
-        };
-      });
-    }) ?? [];
+    const trc10Assets =
+      assetV2?.flatMap((tokenObject) => {
+        return Object.entries(tokenObject).map(([address, balance]) => {
+          return {
+            assetType: `${scope}/trc10:${address}` as TokenCaipAssetType,
+            keyringAccountId: account.id,
+            network: scope,
+            mint: address,
+            pubkey: address,
+            symbol: '',
+            decimals: 0,
+            rawAmount: balance,
+            uiAmount: '0',
+          };
+        });
+      }) ?? [];
 
     return trc10Assets;
   }
@@ -212,21 +213,22 @@ export class AssetsService {
   }): AssetEntity[] {
     const { trc20 } = tronAccountInfo;
 
-    const trc20Assets = trc20?.flatMap((tokenObject) => {
-      return Object.entries(tokenObject).map(([address, balance]) => {
-        return {
-          assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          mint: address,
-          pubkey: address,
-          symbol: '',
-          decimals: 0,
-          rawAmount: balance,
-          uiAmount: '0',
-        };
-      });
-    }) ?? [];
+    const trc20Assets =
+      trc20?.flatMap((tokenObject) => {
+        return Object.entries(tokenObject).map(([address, balance]) => {
+          return {
+            assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
+            keyringAccountId: account.id,
+            network: scope,
+            mint: address,
+            pubkey: address,
+            symbol: '',
+            decimals: 0,
+            rawAmount: balance,
+            uiAmount: '0',
+          };
+        });
+      }) ?? [];
 
     return trc20Assets;
   }
@@ -580,7 +582,9 @@ export class AssetsService {
     fiatExchangeRates: Record<string, { value: number }>;
     cryptoPrices: Record<CaipAssetType, SpotPrice | null>;
   }> {
-    const cryptoAssets = allAssets.filter((asset) => !AssetsService.isFiat(asset));
+    const cryptoAssets = allAssets.filter(
+      (asset) => !AssetsService.isFiat(asset),
+    );
 
     const [fiatExchangeRates, cryptoPrices] = await Promise.all([
       this.#priceApiClient.getFiatExchangeRates(),
@@ -648,9 +652,7 @@ export class AssetsService {
     conversions.forEach((conversion) => {
       const { from, to } = conversion;
 
-      if (!result[from]) {
-        result[from] = {};
-      }
+      result[from] ??= {};
 
       let fromUsdRate: BigNumber;
       let toUsdRate: BigNumber;
@@ -836,9 +838,7 @@ export class AssetsService {
       }
 
       // Initialize the nested structure for the asset if it doesn't exist
-      if (!result[assetType]) {
-        result[assetType] = {};
-      }
+      result[assetType] ??= {};
 
       // Store the market data with the unit as the key
       result[assetType][unit] = this.#computeMarketData(

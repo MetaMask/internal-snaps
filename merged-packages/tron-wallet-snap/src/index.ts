@@ -51,5 +51,5 @@ export const onUserInput: OnUserInputHandler = async (params) =>
   userInputHandler.handle(params);
 
 export const onActive: OnActiveHandler = async () => {
-  lifecycleHandler.onActive();
+  await lifecycleHandler.onActive();
 };

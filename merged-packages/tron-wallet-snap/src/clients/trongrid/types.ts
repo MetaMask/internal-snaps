@@ -1,5 +1,3 @@
-import { Account } from "tronweb/lib/esm/types";
-
 /* eslint-disable @typescript-eslint/naming-convention */
 export type TrongridApiResponse<T> = {
   data: T[];
