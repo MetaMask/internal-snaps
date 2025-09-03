@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0]
+
+### Uncategorized
+
+- chore: lint fix
+- feat: fully support TRX + token assets balances
+- fix: comments
+- feat: list trx and trc10 assets
+- chore: mock assets
+- feat: refactor accounts service
+- feat: implement account derivation
+- chore: resolve linting problems
+- chore: more improvements to the test dApp
+- chore: lint all files
+- feat: add test dApp
+- feat: initial commit
+
 ## [0.17.0]
 
 ### Changed
@@ -395,33 +412,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: add CI for lint and test ([#2](https://github.com/MetaMask/bitcoin/pull/2))
 - feat: init commit
 
-[Unreleased]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.17.0...HEAD
-[0.17.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.16.1...v0.17.0
-[0.16.1]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.16.0...v0.16.1
-[0.16.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.15.0...v0.16.0
-[0.15.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.14.1...v0.15.0
-[0.14.1]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.14.0...v0.14.1
-[0.14.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.13.0...v0.14.0
-[0.13.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.12.1...v0.13.0
-[0.12.1]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.12.0...v0.12.1
-[0.12.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.11.0...v0.12.0
-[0.11.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.8.2...v0.9.0
-[0.8.2]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.8.1...v0.8.2
-[0.8.1]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.8.0...v0.8.1
-[0.8.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.6.1...v0.7.0
-[0.6.1]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.6.0...v0.6.1
-[0.6.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.2.5...v0.3.0
-[0.2.5]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.2.4...v0.2.5
-[0.2.4]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.2.3...v0.2.4
-[0.2.3]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.2.2...v0.2.3
-[0.2.2]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.1.2...v0.2.0
-[0.1.2]: https://github.com/MetaMask/snap-bitcoin-wallet/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/MetaMask/snap-bitcoin-wallet/releases/tag/v0.1.1
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.17.0...v1.0.0
+[0.17.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.14.1...v0.15.0
+[0.14.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.12.1...v0.13.0
+[0.12.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.8.2...v0.9.0
+[0.8.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.6.1...v0.7.0
+[0.6.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.2.5...v0.3.0
+[0.2.5]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.2.4...v0.2.5
+[0.2.4]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.1.2...v0.2.0
+[0.1.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/MetaMask/snap-tron-wallet/releases/tag/v0.1.1
