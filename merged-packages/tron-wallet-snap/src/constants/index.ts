@@ -1,5 +1,7 @@
 import { TrxScope } from '@metamask/keyring-api';
 
+export const NULL_ADDRESS = 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb';
+
 export enum Network {
   Mainnet = TrxScope.Mainnet,
   Nile = TrxScope.Nile,

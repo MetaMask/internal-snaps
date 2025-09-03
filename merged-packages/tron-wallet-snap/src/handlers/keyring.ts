@@ -10,7 +10,6 @@ import {
   type KeyringAccountData,
   type KeyringRequest,
   type KeyringResponse,
-  type Paginated,
   type Pagination,
   type ResolvedAccountAddress,
   type Transaction,
@@ -138,7 +137,6 @@ export class KeyringHandler implements Keyring {
       this.#logger.info('Listing account assets', { accountId });
 
       const assets = await this.#assetsService.getByKeyringAccountId(accountId);
-
       const result = assets.map((asset) => asset.assetType);
 
       this.#logger.info('Account assets', { accountId, result });
@@ -151,11 +149,13 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  async listAccountTransactions?(
-    id: string,
+  async listAccountTransactions(
+    accountId: string,
     pagination: Pagination,
-  ): Promise<Paginated<Transaction>> {
-    // TODO: Implement me
+  ): Promise<{
+    data: Transaction[];
+    next: string | null;
+  }> {
     return {
       data: [],
       next: null,
@@ -167,7 +167,6 @@ export class KeyringHandler implements Keyring {
     entropySource: EntropySourceId,
     groupIndex: number,
   ): Promise<DiscoveredAccount[]> {
-    // TODO: Implement me
     return [];
   }
 
@@ -182,6 +181,7 @@ export class KeyringHandler implements Keyring {
 
       const assetsList =
         await this.#assetsService.getByKeyringAccountId(accountId);
+
       const assetsOnlyRequestedAssetTypes = assetsList.filter((asset) =>
         assets.includes(asset.assetType),
       );
@@ -190,8 +190,8 @@ export class KeyringHandler implements Keyring {
         Record<CaipAssetType, Balance>
       >((acc, asset) => {
         acc[asset.assetType] = {
-          unit: asset.symbol,
-          amount: asset.uiAmount,
+          unit: asset.symbol ?? '',
+          amount: asset.uiAmount ?? '',
         };
         return acc;
       }, {});

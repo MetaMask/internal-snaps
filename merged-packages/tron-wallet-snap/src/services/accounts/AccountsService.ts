@@ -2,22 +2,19 @@ import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { assert, integer } from '@metamask/superstruct';
-import type { Account } from 'tronweb/lib/esm/types';
 
-import type { AccountsRepository } from './AccountsRepository';
-import type { CreateAccountOptions } from './types';
-import type { Network } from '../../constants';
+import type { SnapClient } from '../../clients/snap/SnapClient';
 import {
   asStrictKeyringAccount,
   type TronKeyringAccount,
 } from '../../entities';
 import { deriveTronKeypair } from '../../utils/deriveTronKeypair';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
-import { listEntropySources } from '../../utils/interface';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
-import type { Connection } from '../connection/Connection';
+import type { AccountsRepository } from './AccountsRepository';
+import type { CreateAccountOptions } from './types';
 
 export class AccountsService {
   readonly #accountsRepository: AccountsRepository;
@@ -26,22 +23,28 @@ export class AccountsService {
 
   readonly #logger: ILogger;
 
-  readonly #connection: Connection;
-
   readonly #assetsService: AssetsService;
 
-  constructor(
-    accountsRepository: AccountsRepository,
-    configProvider: ConfigProvider,
-    logger: ILogger,
-    connection: Connection,
-    assetsService: AssetsService,
-  ) {
-    this.#accountsRepository = accountsRepository;
-    this.#configProvider = configProvider;
+  readonly #snapClient: SnapClient;
+
+  constructor({
+    accountsRepository,
+    configProvider,
+    logger,
+    assetsService,
+    snapClient,
+  }: {
+    accountsRepository: AccountsRepository;
+    configProvider: ConfigProvider;
+    logger: ILogger;
+    assetsService: AssetsService;
+    snapClient: SnapClient;
+  }) {
     this.#logger = createPrefixedLogger(logger, '[🔑 AccountsService]');
-    this.#connection = connection;
+    this.#configProvider = configProvider;
+    this.#accountsRepository = accountsRepository;
     this.#assetsService = assetsService;
+    this.#snapClient = snapClient;
   }
 
   async create(
@@ -158,34 +161,52 @@ export class AccountsService {
     return this.#accountsRepository.delete(id);
   }
 
-  async fetch(account: KeyringAccount, scope: Network): Promise<Account> {
-    this.#logger.info('Fetching account', { address: account.address, scope });
-
-    const tronAccount = await this.#connection
-      .getConnection(scope)
-      .trx.getAccount(account.address);
-
-    return tronAccount;
-  }
-
   async synchronize(accounts: KeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );
 
-    const responses = await Promise.allSettled(
+    // Synchronize assets
+    const assetResponses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
-        const tronAccount = await this.fetch(account, scope);
-        return this.#assetsService.fetchAssetsByAccount(
-          account,
+        return this.#assetsService.fetchAssetsAndBalancesByAccount(
           scope,
-          tronAccount,
+          account,
         );
       }),
     );
 
-    const assets = responses.flatMap((response) =>
+    const assets = assetResponses.flatMap((response) =>
+      response.status === 'fulfilled' ? response.value : [],
+    );
+
+    await this.#assetsService.saveMany(assets);
+  }
+
+  /**
+   * Synchronizes only assets for the given accounts.
+   * This method can be called independently to sync assets without syncing transactions.
+   *
+   * @param accounts - The accounts to synchronize assets for.
+   */
+  async synchronizeAssets(accounts: KeyringAccount[]): Promise<void> {
+    const scopes = this.#configProvider.get().activeNetworks;
+    const combinations = accounts.flatMap((account) =>
+      scopes.map((scope) => ({ account, scope })),
+    );
+
+    // Synchronize assets only
+    const assetResponses = await Promise.allSettled(
+      combinations.map(async ({ account, scope }) => {
+        return this.#assetsService.fetchAssetsAndBalancesByAccount(
+          scope,
+          account,
+        );
+      }),
+    );
+
+    const assets = assetResponses.flatMap((response) =>
       response.status === 'fulfilled' ? response.value : [],
     );
 
@@ -222,7 +243,7 @@ export class AccountsService {
   }
 
   async #getDefaultEntropySource(): Promise<EntropySourceId> {
-    const entropySources = await listEntropySources();
+    const entropySources = await this.#snapClient.listEntropySources();
     const defaultEntropySource = entropySources.find(({ primary }) => primary);
 
     if (!defaultEntropySource) {

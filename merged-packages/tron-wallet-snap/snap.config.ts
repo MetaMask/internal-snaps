@@ -28,7 +28,17 @@ const config: SnapConfig = {
       process.env.SECURITY_ALERTS_API_BASE_URL ?? '',
     NFT_API_BASE_URL: process.env.NFT_API_BASE_URL ?? '',
     LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL ?? '',
-    TRON_API_KEY: process.env.TRON_API_KEY ?? '',
+    // TronGrid API
+    TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET ?? '',
+    TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE ?? '',
+    TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA ?? '',
+    TRONGRID_BASE_URL_LOCALNET: process.env.TRONGRID_BASE_URL_LOCALNET ?? '',
+    TRONGRID_API_KEY: process.env.TRONGRID_API_KEY ?? '',
+    // Tron HTTP API
+    TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET ?? '',
+    TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE ?? '',
+    TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA ?? '',
+    TRON_HTTP_BASE_URL_LOCALNET: process.env.TRON_HTTP_BASE_URL_LOCALNET ?? '',
   },
   polyfills: true,
 };

@@ -46,7 +46,15 @@ const EnvStruct = object({
   SECURITY_ALERTS_API_BASE_URL: UrlStruct,
   NFT_API_BASE_URL: UrlStruct,
   LOCAL_API_BASE_URL: string(),
-  TRON_API_KEY: string(),
+  TRONGRID_API_KEY: string(),
+  TRONGRID_BASE_URL_MAINNET: UrlStruct,
+  TRONGRID_BASE_URL_NILE: UrlStruct,
+  TRONGRID_BASE_URL_SHASTA: UrlStruct,
+  TRONGRID_BASE_URL_LOCALNET: UrlStruct,
+  TRON_HTTP_BASE_URL_MAINNET: UrlStruct,
+  TRON_HTTP_BASE_URL_NILE: UrlStruct,
+  TRON_HTTP_BASE_URL_SHASTA: UrlStruct,
+  TRON_HTTP_BASE_URL_LOCALNET: UrlStruct,
 });
 
 export type Env = Infer<typeof EnvStruct>;
@@ -89,8 +97,12 @@ export type Config = {
       getNftMetadata: number;
     };
   };
-  tronApi: {
+  trongridApi: {
     apiKey: string;
+    baseUrls: Record<Network, string>;
+  };
+  tronHttpApi: {
+    baseUrls: Record<Network, string>;
   };
 };
 
@@ -131,7 +143,17 @@ export class ConfigProvider {
       SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL,
       NFT_API_BASE_URL: process.env.NFT_API_BASE_URL,
       LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
-      TRON_API_KEY: process.env.TRON_API_KEY,
+      // // TronGrid API
+      TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET,
+      TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE,
+      TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA,
+      TRONGRID_BASE_URL_LOCALNET: process.env.TRONGRID_BASE_URL_LOCALNET,
+      TRONGRID_API_KEY: process.env.TRONGRID_API_KEY,
+      // // Tron HTTP API URLs
+      TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET,
+      TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE,
+      TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA,
+      TRON_HTTP_BASE_URL_LOCALNET: process.env.TRON_HTTP_BASE_URL_LOCALNET,
     };
 
     // Validate and parse them before returning
@@ -205,8 +227,22 @@ export class ConfigProvider {
           getNftMetadata: Duration.Minute,
         },
       },
-      tronApi: {
-        apiKey: environment.TRON_API_KEY,
+      trongridApi: {
+        apiKey: environment.TRONGRID_API_KEY,
+        baseUrls: {
+          [Network.Mainnet]: environment.TRONGRID_BASE_URL_MAINNET,
+          [Network.Nile]: environment.TRONGRID_BASE_URL_NILE,
+          [Network.Shasta]: environment.TRONGRID_BASE_URL_SHASTA,
+          [Network.Localnet]: environment.TRONGRID_BASE_URL_LOCALNET,
+        },
+      },
+      tronHttpApi: {
+        baseUrls: {
+          [Network.Mainnet]: environment.TRON_HTTP_BASE_URL_MAINNET,
+          [Network.Nile]: environment.TRON_HTTP_BASE_URL_NILE,
+          [Network.Shasta]: environment.TRON_HTTP_BASE_URL_SHASTA,
+          [Network.Localnet]: environment.TRON_HTTP_BASE_URL_LOCALNET,
+        },
       },
     };
   }
