@@ -9,23 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.1]
 
-### Uncategorized
+### Added
 
-- chore: prettier
-- chore: update changelogs
-- 1.0.0
-- chore: lint fix
-- feat: fully support TRX + token assets balances
-- fix: comments
-- feat: list trx and trc10 assets
-- chore: mock assets
-- feat: refactor accounts service
-- feat: implement account derivation
-- chore: resolve linting problems
-- chore: more improvements to the test dApp
-- chore: lint all files
-- feat: add test dApp
-- feat: initial commit
+- Enable corepack ([#17](https://github.com/MetaMask/snap-tron-wallet/pull/17))
 
 ## [1.0.0]
 
