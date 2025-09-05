@@ -296,7 +296,7 @@ export const Base64Struct = pattern(
 const DERIVATION_PATH_REGEX = /^m\/44'\/501'/u;
 
 /**
- * Validates a Solana derivation path following the format: m/44'/501'/...
+ * Validates a Tron derivation path following the format: m/44'/501'/...
  */
 export const DerivationPathStruct = pattern(string(), DERIVATION_PATH_REGEX);
 

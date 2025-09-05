@@ -1,4 +1,4 @@
-# Bitcoin Snap
+# Tron Snap
 
 ## Configuration
 

@@ -39,7 +39,7 @@ const withNoopInProduction =
   };
 
 /**
- * A basic logger that wraps the console, extending its functionality to properly log Solana errors.
+ * A basic logger that wraps the console, extending its functionality to properly log Tron errors.
  */
 const logger: ILogger = {
   log: withNoopInProduction(console.log),

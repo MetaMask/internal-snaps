@@ -4,7 +4,7 @@ import type { EntropySourceId } from '@metamask/keyring-api';
 /**
  * Retrieves a `SLIP10NodeInterface` object for the specified path and curve.
  *
- * @param params - The parameters for the Solana key derivation.
+ * @param params - The parameters for the Tron key derivation.
  * @param params.entropySource - The entropy source to use for key derivation.
  * @param params.path - The BIP32 derivation path for which to retrieve a `SLIP10NodeInterface`.
  * @param params.curve - The elliptic curve to use for key derivation.
