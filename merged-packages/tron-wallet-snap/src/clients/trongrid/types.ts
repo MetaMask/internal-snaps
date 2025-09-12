@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 export type TrongridApiResponse<T> = {
-  data: T[];
+  data: T;
   success: boolean;
   meta: {
     at: number;
@@ -61,56 +61,131 @@ export type RawTronVote = {
   vote_count: number;
 };
 
-// Mapped types (camelCase)
-// export type TronAccount = {
-//   ownerPermission: TronPermission;
-//   accountResource: TronAccountResource;
-//   activePermission: TronPermission[];
-//   address: string;
-//   createTime: number;
-//   latestOperationTime: number;
-//   frozenV2: TronFrozenV2[];
-//   unfrozenV2: TronUnfrozenV2[];
-//   balance: number;
-//   assetV2: Record<string, string>[];
-//   trc20: Record<string, string>[];
-//   latestConsumeFreeTime: number;
-//   votes: TronVote[];
-//   latestWithdrawTime: number;
-//   netWindowSize: number;
-//   netWindowOptimized: boolean;
-// };
+export type TransactionInfo = {
+  ret: TransactionResult[];
+  signature: string[];
+  txID: string;
+  net_usage: number;
+  raw_data_hex: string;
+  net_fee: number;
+  energy_usage: number;
+  blockNumber: number;
+  block_timestamp: number;
+  energy_fee: number;
+  energy_usage_total: number;
+  raw_data: RawTransactionData;
+  internal_transactions: InternalTransaction[];
+};
 
-// export type TronPermission = {
-//   keys: TronKey[];
-//   threshold: number;
-//   permissionName: string;
-//   operations?: string;
-//   id?: number;
-//   type?: string;
-// };
+export type TransactionResult = {
+  contractRet: string;
+  fee: number;
+};
 
-// export type TronKey = {
-//   address: string;
-//   weight: number;
-// };
+export type RawTransactionData = {
+  contract: ContractInfo[];
+  ref_block_bytes: string;
+  ref_block_hash: string;
+  expiration: number;
+  timestamp: number;
+  fee_limit?: number;
+};
 
-// export type TronAccountResource = {
-//   energyWindowOptimized: boolean;
-//   energyWindowSize: number;
-// };
+// Specific contract types
+export type TransferContractInfo = {
+  parameter: TransferContractParameter;
+  type: 'TransferContract';
+};
 
-// export type TronFrozenV2 = {
-//   amount?: number;
-//   type?: string;
-// };
+export type TransferContractParameter = {
+  value: TransferContractValue;
+  type_url: 'type.googleapis.com/protocol.TransferContract';
+};
 
-// export type TronUnfrozenV2 = {
-//   unfreezeAmount: number;
-//   unfreezeExpireTime: number;
-// };
+export type TransferContractValue = {
+  amount: number;
+  owner_address: string;
+  to_address: string;
+};
 
-// export type TronVote = {
-//   voteAddress: string;
-//   voteCount: number;
-// };
+export type TransferAssetContractInfo = {
+  parameter: TransferAssetContractParameter;
+  type: 'TransferAssetContract';
+};
+
+export type TransferAssetContractParameter = {
+  value: TransferAssetContractValue;
+  type_url: 'type.googleapis.com/protocol.TransferAssetContract';
+};
+
+export type TransferAssetContractValue = {
+  amount: number;
+  asset_name: string;
+  owner_address: string;
+  to_address: string;
+};
+
+// General contract type (catch-all)
+export type GeneralContractInfo = {
+  parameter: ContractParameter;
+  type: string;
+};
+
+// Union type for all contract types
+export type ContractInfo =
+  | TransferContractInfo
+  | TransferAssetContractInfo
+  | GeneralContractInfo;
+
+export type ContractParameter = {
+  value: ContractValue;
+  type_url: string;
+};
+
+export type ContractValue = {
+  owner_address?: string;
+  to_address?: string;
+  unfreeze_balance?: number;
+  votes?: ContractVote[];
+  frozen_balance?: number;
+  data?: string;
+  contract_address?: string;
+  call_value?: number;
+};
+
+export type ContractVote = {
+  vote_address: string;
+  vote_count: number;
+};
+
+export type InternalTransaction = {
+  internal_tx_id: string;
+  data: InternalTransactionData;
+  to_address: string;
+  from_address: string;
+};
+
+export type InternalTransactionData = {
+  note: string;
+  rejected: boolean;
+  call_value?: {
+    _: number;
+  };
+};
+
+export type ContractTransactionInfo = {
+  transaction_id: string;
+  token_info: TokenInfo;
+  block_timestamp: number;
+  from: string;
+  to: string;
+  type: string;
+  value: string;
+};
+
+export type TokenInfo = {
+  symbol: string;
+  address: string;
+  decimals: number;
+  name: string;
+};

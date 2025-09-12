@@ -29,9 +29,12 @@ import type {
 import { sortBy } from 'lodash';
 
 import type { TronKeyringAccount } from '../entities';
+import { BackgroundEventMethod } from './cronjob';
+import type { SnapClient } from '../clients/snap/SnapClient';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
+import type { TransactionsService } from '../services/transactions/TransactionsService';
 import { withCatchAndThrowSnapError } from '../utils/errors';
 import { createPrefixedLogger, type ILogger } from '../utils/logger';
 import {
@@ -49,22 +52,32 @@ import {
 export class KeyringHandler implements Keyring {
   readonly #logger: ILogger;
 
+  readonly #snapClient: SnapClient;
+
   readonly #accountsService: AccountsService;
 
   readonly #assetsService: AssetsService;
 
+  readonly #transactionsService: TransactionsService;
+
   constructor({
     logger,
+    snapClient,
     accountsService,
     assetsService,
+    transactionsService,
   }: {
     logger: ILogger;
+    snapClient: SnapClient;
     accountsService: AccountsService;
     assetsService: AssetsService;
+    transactionsService: TransactionsService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🔑 KeyringHandler]');
+    this.#snapClient = snapClient;
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
+    this.#transactionsService = transactionsService;
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
@@ -117,7 +130,15 @@ export class KeyringHandler implements Keyring {
     try {
       const account = await this.#accountsService.create(id, options);
 
-      await this.#accountsService.synchronize([account]);
+      /**
+       * For transactions we don't need to be in a hurry, so we schedule
+       * a background event to sync them right after.
+       */
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.SyncAccountTransactions,
+        params: { accountId: id },
+        duration: 'PT1S',
+      });
 
       return account;
     } catch (error: any) {
@@ -149,6 +170,15 @@ export class KeyringHandler implements Keyring {
     }
   }
 
+  /**
+   * Fetch transactions from the Snap's state.
+   *
+   * @param accountId - The id of the account.
+   * @param pagination - The pagination options.
+   * @param pagination.limit - The limit of the transactions to fetch.
+   * @param pagination.next - The next signature to fetch from.
+   * @returns The transactions for the given account.
+   */
   async listAccountTransactions(
     accountId: string,
     pagination: Pagination,
@@ -156,10 +186,45 @@ export class KeyringHandler implements Keyring {
     data: Transaction[];
     next: string | null;
   }> {
-    return {
-      data: [],
-      next: null,
-    };
+    try {
+      this.#logger.info('Listing account transactions...');
+      const { limit, next } = pagination;
+
+      const keyringAccount = await this.getAccount(accountId);
+
+      if (!keyringAccount) {
+        throw new Error('Account not found');
+      }
+
+      const transactions = await this.#transactionsService.findByAccounts([
+        keyringAccount,
+      ]);
+
+      // Find the starting index based on the 'next' signature
+      const startIndex = next
+        ? transactions.findIndex((tx) => tx.id === next)
+        : 0;
+
+      // Get transactions from startIndex to startIndex + limit
+      const accountTransactions = transactions.slice(
+        startIndex,
+        startIndex + limit,
+      );
+
+      // Determine the next signature for pagination
+      const hasMore = startIndex + pagination.limit < transactions.length;
+      const nextSignature = hasMore
+        ? (transactions[startIndex + pagination.limit]?.id ?? null)
+        : null;
+
+      return {
+        data: accountTransactions,
+        next: nextSignature,
+      };
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error listing account transactions');
+      throw error;
+    }
   }
 
   async discoverAccounts?(

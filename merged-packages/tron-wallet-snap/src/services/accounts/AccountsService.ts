@@ -2,6 +2,8 @@ import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { assert, integer, pattern, string } from '@metamask/superstruct';
+import { hexToBytes } from '@metamask/utils';
+import { TronWeb } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import {
@@ -14,8 +16,7 @@ import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { AccountsRepository } from './AccountsRepository';
 import type { CreateAccountOptions } from './types';
-import { hexToBytes } from '@metamask/utils';
-import { TronWeb } from 'tronweb';
+import type { TransactionsService } from '../transactions/TransactionsService';
 
 /**
  * Validates a Tron derivation path following the format: m/44'/195'/...
@@ -37,6 +38,8 @@ export class AccountsService {
 
   readonly #assetsService: AssetsService;
 
+  readonly #transactionsService: TransactionsService;
+
   readonly #snapClient: SnapClient;
 
   constructor({
@@ -45,17 +48,20 @@ export class AccountsService {
     logger,
     assetsService,
     snapClient,
+    transactionsService,
   }: {
     accountsRepository: AccountsRepository;
     configProvider: ConfigProvider;
     logger: ILogger;
     assetsService: AssetsService;
     snapClient: SnapClient;
+    transactionsService: TransactionsService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🔑 AccountsService]');
     this.#configProvider = configProvider;
     this.#accountsRepository = accountsRepository;
     this.#assetsService = assetsService;
+    this.#transactionsService = transactionsService;
     this.#snapClient = snapClient;
   }
 
@@ -93,30 +99,30 @@ export class AccountsService {
 
     const path = derivationPath.split('/');
 
-      const node = await this.#snapClient.getBip32Entropy({
-        entropySource,
-        path,
-        curve: CURVE,
-      });
+    const node = await this.#snapClient.getBip32Entropy({
+      entropySource,
+      path,
+      curve: CURVE,
+    });
 
-      if (!node.privateKey || !node.publicKey) {
-        throw new Error('Unable to derive private key');
-      }
+    if (!node.privateKey || !node.publicKey) {
+      throw new Error('Unable to derive private key');
+    }
 
-      const privateKeyBytes = hexToBytes(node.privateKey);
-      const publicKeyBytes = hexToBytes(node.publicKey);
+    const privateKeyBytes = hexToBytes(node.privateKey);
+    const publicKeyBytes = hexToBytes(node.publicKey);
 
-      const address = TronWeb.address.fromPrivateKey(node.privateKey.slice(2));
+    const address = TronWeb.address.fromPrivateKey(node.privateKey.slice(2));
 
-      if (!address) {
-        throw new Error('Unable to derive address');
-      }
+    if (!address) {
+      throw new Error('Unable to derive address');
+    }
 
-      return {
-        privateKeyBytes,
-        publicKeyBytes,
-        address,
-      };
+    return {
+      privateKeyBytes,
+      publicKeyBytes,
+      address,
+    };
   }
 
   async create(
@@ -189,6 +195,12 @@ export class AccountsService {
 
     const keyringAccount = asStrictKeyringAccount(tronKeyringAccount);
 
+    /**
+     * Fetch the account's assets before we send it to the UI so that
+     * it's loaded with data already in place.
+     */
+    await this.synchronizeAssets([keyringAccount]);
+
     await emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
       /**
        * We can't pass the `keyringAccount` object because it contains the index
@@ -233,16 +245,21 @@ export class AccountsService {
     return this.#accountsRepository.delete(id);
   }
 
-  async synchronize(accounts: KeyringAccount[]): Promise<void> {
+  /**
+   * Synchronizes only assets for the given accounts.
+   * This method can be called independently to sync assets without syncing transactions.
+   *
+   * @param accounts - The accounts to synchronize assets for.
+   */
+  async synchronizeAssets(accounts: KeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );
 
-    // Synchronize assets
     const assetResponses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
-        return this.#assetsService.fetchAssetsAndBalancesByAccount(
+        return this.#assetsService.fetchAssetsAndBalancesForAccount(
           scope,
           account,
         );
@@ -256,33 +273,33 @@ export class AccountsService {
     await this.#assetsService.saveMany(assets);
   }
 
-  /**
-   * Synchronizes only assets for the given accounts.
-   * This method can be called independently to sync assets without syncing transactions.
-   *
-   * @param accounts - The accounts to synchronize assets for.
-   */
-  async synchronizeAssets(accounts: KeyringAccount[]): Promise<void> {
+  async synchronizeTransactions(accounts: KeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );
 
-    // Synchronize assets only
-    const assetResponses = await Promise.allSettled(
+    const transactionResponses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
-        return this.#assetsService.fetchAssetsAndBalancesByAccount(
+        return this.#transactionsService.fetchTransactionsForAccount(
           scope,
           account,
         );
       }),
     );
 
-    const assets = assetResponses.flatMap((response) =>
+    const transactions = transactionResponses.flatMap((response) =>
       response.status === 'fulfilled' ? response.value : [],
     );
 
-    await this.#assetsService.saveMany(assets);
+    await this.#transactionsService.saveMany(transactions);
+  }
+
+  async synchronize(accounts: KeyringAccount[]): Promise<void> {
+    await Promise.all([
+      this.synchronizeAssets(accounts),
+      this.synchronizeTransactions(accounts),
+    ]);
   }
 
   #getLowestUnusedKeyringAccountIndex(

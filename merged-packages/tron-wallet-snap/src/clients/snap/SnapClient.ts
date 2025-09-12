@@ -1,3 +1,5 @@
+import type { JsonSLIP10Node } from '@metamask/key-tree';
+import type { EntropySourceId } from '@metamask/keyring-api';
 import type {
   DialogResult,
   EntropySource,
@@ -8,8 +10,6 @@ import type {
 } from '@metamask/snaps-sdk';
 
 import type { Preferences } from '../../types/snap';
-import { EntropySourceId } from '@metamask/keyring-api';
-import { JsonSLIP10Node } from '@metamask/key-tree';
 
 /**
  * Client for interacting with the Snap API.
@@ -42,7 +42,7 @@ export class SnapClient {
         ...(entropySource ? { source: entropySource } : {}),
       },
     });
-  
+
     return node;
   }
 

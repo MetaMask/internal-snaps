@@ -16,6 +16,8 @@ import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
 import type { UnencryptedStateValue } from './services/state/State';
 import { State } from './services/state/State';
+import { TransactionsRepository } from './services/transactions/TransactionsRepository';
+import { TransactionsService } from './services/transactions/TransactionsService';
 import { WalletService } from './services/wallet/WalletService';
 import logger, { noOpLogger } from './utils/logger';
 
@@ -43,7 +45,11 @@ const state = new State({
 const snapClient = new SnapClient();
 
 // Repositories - depend on State
+const accountsRepository = new AccountsRepository(state);
 const assetsRepository = new AssetsRepository(state);
+const transactionsRepository = new TransactionsRepository(state);
+
+// Clients
 const trongridApiClient = new TrongridApiClient({
   configProvider,
 });
@@ -65,19 +71,24 @@ const assetsService = new AssetsService({
   priceApiClient,
 });
 
+const transactionsService = new TransactionsService({
+  logger,
+  transactionsRepository,
+  trongridApiClient,
+});
+
 const walletService = new WalletService({
   logger,
   state,
 });
 
-const accountsRepository = new AccountsRepository(state);
-
 const accountsService = new AccountsService({
+  logger,
   accountsRepository,
   configProvider,
-  logger,
   assetsService,
   snapClient,
+  transactionsService,
 });
 
 /**
@@ -88,6 +99,7 @@ const assetsHandler = new AssetsHandler({
   assetsService,
 });
 const cronHandler = new CronHandler({
+  logger,
   accountsService,
   snapClient,
 });
@@ -98,8 +110,10 @@ const lifecycleHandler = new LifecycleHandler({
 });
 const keyringHandler = new KeyringHandler({
   logger,
+  snapClient,
   accountsService,
   assetsService,
+  transactionsService,
 });
 const rpcHandler = new RpcHandler();
 const userInputHandler = new UserInputHandler();
@@ -112,6 +126,7 @@ export type SnapExecutionContext = {
   assetsService: AssetsService;
   walletService: WalletService;
   accountsService: AccountsService;
+  transactionsService: TransactionsService;
   tronHttpClient: TronHttpClient;
   /**
    * Handlers
@@ -132,6 +147,7 @@ const snapContext: SnapExecutionContext = {
   assetsService,
   walletService,
   accountsService,
+  transactionsService,
   tronHttpClient,
   /**
    * Handlers

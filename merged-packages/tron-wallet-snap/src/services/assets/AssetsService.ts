@@ -78,7 +78,7 @@ export class AssetsService {
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
   }
 
-  async fetchAssetsAndBalancesByAccount(
+  async fetchAssetsAndBalancesForAccount(
     scope: Network,
     account: KeyringAccount,
   ): Promise<AssetEntity[]> {
