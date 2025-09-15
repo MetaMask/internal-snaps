@@ -7,10 +7,78 @@ import type {
   TransferContractInfo,
   TransferAssetContractInfo,
 } from '../../clients/trongrid/types';
-import type { Network } from '../../constants';
+import { Network, Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 
 export class TransactionMapper {
+  /**
+   * Calculate fees for Tron transactions including Energy and Bandwidth as separate assets.
+   * @param transactionInfo The raw transaction info.
+   * @param network The network configuration.
+   * @returns Array of fee objects.
+   */
+  static #calculateTronFees(
+    network: Network,
+    transactionInfo: TransactionInfo,
+  ): Transaction['fees'] {
+    const fees: Transaction['fees'] = [];
+
+    const tronAsset = Networks[network].nativeToken
+    const bandwidthAsset = Networks[network].bandwidth
+    const energyAsset = Networks[network].energy
+
+    // Base TRX fee calculation
+    const transactionFee = transactionInfo.ret.reduce(
+      (total, result) => total + (result.fee || 0),
+      0,
+    );
+    const netFeeTotal = 
+      transactionFee +
+      Number(transactionInfo.net_fee) +
+      Number(transactionInfo.energy_fee);
+
+    if (netFeeTotal > 0) {
+      fees.push({
+        type: 'base',
+        asset: {
+          type: tronAsset.id,
+          unit: tronAsset.symbol,
+          amount: netFeeTotal.toString(),
+          fungible: true,
+        },
+      });
+    }
+
+    // Bandwidth usage as separate asset
+    const netUsage = Number(transactionInfo.net_usage);
+    if (netUsage > 0) {
+      fees.push({
+        type: 'base',
+        asset: {
+          type: bandwidthAsset.id,
+          unit: bandwidthAsset.symbol,
+          amount: netUsage.toString(),
+          fungible: true,
+        },
+      });
+    }
+
+    // Energy usage as separate asset
+    const energyUsage = Number(transactionInfo.energy_usage_total);
+    if (energyUsage > 0) {
+      fees.push({
+        type: 'base',
+        asset: {
+          type: energyAsset.id,
+          unit: energyAsset.symbol,
+          amount: energyUsage.toString(),
+          fungible: true,
+        },
+      });
+    }
+
+    return fees;
+  }
   /**
    * Maps a TransferContract (native TRX transfer) transaction.
    *
@@ -38,9 +106,9 @@ export class TransactionMapper {
     // Convert from sun to TRX (divide by 10^6)
     const amountInSun = contractValue.amount;
     const amountInTrx = (amountInSun / 1_000_000).toString();
-    const fee = trongridTransaction.ret[0]?.fee?.toString() ?? '0';
-    // Convert fee from sun to TRX as well
-    const feeInTrx = (parseInt(fee, 10) / 1_000_000).toString();
+    
+    // Calculate comprehensive fees including Energy and Bandwidth
+    const fees = TransactionMapper.#calculateTronFees(scope, trongridTransaction);
 
     let type: 'send' | 'receive' | 'unknown';
 
@@ -52,6 +120,8 @@ export class TransactionMapper {
       type = 'unknown';
     }
 
+    const tronAsset = Networks[scope].nativeToken
+
     return {
       type,
       id: trongridTransaction.txID,
@@ -59,8 +129,8 @@ export class TransactionMapper {
         {
           address: from as any,
           asset: {
-            unit: 'TRX',
-            type: `${scope}/slip44:195`,
+            unit: tronAsset.symbol,
+            type: tronAsset.id,
             amount: amountInTrx,
             fungible: true,
           },
@@ -70,8 +140,8 @@ export class TransactionMapper {
         {
           address: to,
           asset: {
-            unit: 'TRX',
-            type: `${scope}/slip44:195`,
+            unit: tronAsset.symbol,
+            type: tronAsset.id,
             amount: amountInTrx,
             fungible: true,
           },
@@ -87,17 +157,7 @@ export class TransactionMapper {
       status: 'confirmed',
       account: account.id,
       timestamp: trongridTransaction.block_timestamp,
-      fees: [
-        {
-          type: 'base',
-          asset: {
-            unit: 'TRX',
-            type: `${scope}/slip44:195`,
-            amount: feeInTrx,
-            fungible: true,
-          },
-        },
-      ],
+      fees,
     };
   }
 
@@ -129,9 +189,9 @@ export class TransactionMapper {
     const amountInSmallestUnit = contractValue.amount;
     const amountInReadableUnit = (amountInSmallestUnit / 1_000_000).toString();
     const assetName = contractValue.asset_name;
-    const fee = trongridTransaction.ret[0]?.fee?.toString() ?? '0';
-    // Convert fee from sun to TRX
-    const feeInTrx = (parseInt(fee, 10) / 1_000_000).toString();
+    
+    // Calculate comprehensive fees including Energy and Bandwidth
+    const fees = TransactionMapper.#calculateTronFees(scope, trongridTransaction);
 
     let type: 'send' | 'receive' | 'unknown';
 
@@ -150,8 +210,8 @@ export class TransactionMapper {
         {
           address: from as any,
           asset: {
-            unit: assetName, // Using the actual TRC10 asset name
-            type: `${scope}/slip44:195`,
+            unit: 'UNKNOWN',
+            type: `${scope}/trc10:${assetName}`,
             amount: amountInReadableUnit,
             fungible: true,
           },
@@ -161,8 +221,8 @@ export class TransactionMapper {
         {
           address: to,
           asset: {
-            unit: assetName, // Using the actual TRC10 asset name
-            type: `${scope}/slip44:195`,
+            unit: 'UNKNOWN',
+            type: `${scope}/trc10:${assetName}`,
             amount: amountInReadableUnit,
             fungible: true,
           },
@@ -178,17 +238,7 @@ export class TransactionMapper {
       status: 'confirmed',
       account: account.id,
       timestamp: trongridTransaction.block_timestamp,
-      fees: [
-        {
-          type: 'base',
-          asset: {
-            unit: 'TRX',
-            type: `${scope}/slip44:195`,
-            amount: feeInTrx,
-            fungible: true,
-          },
-        },
-      ],
+      fees,
     };
   }
 
@@ -225,7 +275,7 @@ export class TransactionMapper {
 
     // Convert from smallest unit to human-readable amount using token decimals
     const valueInSmallestUnit = trc20AssistanceData.value;
-    const { decimals } = trc20AssistanceData.token_info;
+    const { decimals, address, symbol } = trc20AssistanceData.token_info;
     const divisor = Math.pow(10, decimals);
     const valueInReadableUnit = (
       parseFloat(valueInSmallestUnit) / divisor
@@ -240,12 +290,8 @@ export class TransactionMapper {
       type = 'unknown';
     }
 
-    // Calculate total fees from raw transaction data
-    const totalFee = trongridTransaction.ret[0]?.fee ?? 0;
-    const netFee = trongridTransaction.net_fee ?? 0;
-    const energyFee = trongridTransaction.energy_fee ?? 0;
-    const combinedFee = totalFee + netFee + energyFee;
-    const feeInTrx = (combinedFee / 1_000_000).toString();
+    // Calculate comprehensive fees including Energy and Bandwidth from raw transaction data
+    const fees = TransactionMapper.#calculateTronFees(scope, trongridTransaction);
 
     return {
       type,
@@ -254,8 +300,8 @@ export class TransactionMapper {
         {
           address: from as any,
           asset: {
-            unit: trc20AssistanceData.token_info.symbol,
-            type: `${scope}/slip44:195`,
+            unit: symbol,
+            type: `${scope}/trc20:${address}`,
             amount: valueInReadableUnit,
             fungible: true,
           },
@@ -265,8 +311,8 @@ export class TransactionMapper {
         {
           address: to,
           asset: {
-            unit: trc20AssistanceData.token_info.symbol,
-            type: `${scope}/slip44:195`,
+            unit: symbol,
+            type: `${scope}/trc20:${address}`,
             amount: valueInReadableUnit,
             fungible: true,
           },
@@ -282,17 +328,7 @@ export class TransactionMapper {
       status: 'confirmed',
       account: account.id,
       timestamp: trc20AssistanceData.block_timestamp,
-      fees: [
-        {
-          type: 'base',
-          asset: {
-            unit: 'TRX',
-            type: `${scope}/slip44:195`,
-            amount: feeInTrx,
-            fungible: true,
-          },
-        },
-      ],
+      fees,
     };
   }
 

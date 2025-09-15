@@ -34,7 +34,7 @@ export class SnapClient {
     path: string[];
     curve: 'secp256k1' | 'ed25519';
   }): Promise<JsonSLIP10Node> {
-    const node = await snap.request({
+    return snap.request({
       method: 'snap_getBip32Entropy',
       params: {
         path,
@@ -42,8 +42,6 @@ export class SnapClient {
         ...(entropySource ? { source: entropySource } : {}),
       },
     });
-
-    return node;
   }
 
   /**
@@ -113,7 +111,7 @@ export class SnapClient {
    * @returns An object containing the status.
    */
   async getClientStatus(): Promise<GetClientStatusResult> {
-    return await snap.request({
+    return snap.request({
       method: 'snap_getClientStatus',
     });
   }
@@ -136,7 +134,7 @@ export class SnapClient {
     params?: Record<string, Json>;
     duration: string;
   }): Promise<string> {
-    return await snap.request({
+    return snap.request({
       method: 'snap_scheduleBackgroundEvent',
       params: {
         duration,
@@ -154,7 +152,7 @@ export class SnapClient {
    * @returns An array of entropy sources.
    */
   async listEntropySources(): Promise<EntropySource[]> {
-    return await snap.request({
+    return snap.request({
       method: 'snap_listEntropySources',
     });
   }
