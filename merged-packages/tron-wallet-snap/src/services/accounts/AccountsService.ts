@@ -3,6 +3,7 @@ import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { assert, integer, pattern, string } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
+import type { Json } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -125,6 +126,48 @@ export class AccountsService {
     };
   }
 
+  async deriveAccount({
+    entropySource,
+    index,
+    derivationPath: customDerivationPath,
+  }: {
+    entropySource: EntropySourceId;
+    index?: number;
+    derivationPath?: `m/${string}`;
+  }): Promise<TronKeyringAccount> {
+    const derivationPath =
+      customDerivationPath ??
+      (index !== undefined ? this.#getDefaultDerivationPath(index) : undefined);
+
+    if (!derivationPath) {
+      throw new Error('Either index or derivationPath must be provided');
+    }
+
+    const accountIndex =
+      index ?? this.#getIndexFromDerivationPath(derivationPath);
+
+    const { address } = await this.deriveTronKeypair({
+      entropySource,
+      derivationPath,
+    });
+
+    return {
+      id: '',
+      entropySource,
+      derivationPath,
+      index: accountIndex,
+      type: TrxAccountType.Eoa,
+      address,
+      scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+      options: {
+        entropySource,
+        derivationPath,
+        index: accountIndex,
+      },
+      methods: ['signMessageV2', 'verifyMessageV2'],
+    };
+  }
+
   async create(
     id: string,
     options?: CreateAccountOptions,
@@ -158,8 +201,9 @@ export class AccountsService {
       return asStrictKeyringAccount(sameAccount);
     }
 
-    const { address: accountAddress } = await this.deriveTronKeypair({
+    const derivedAccount = await this.deriveAccount({
       entropySource,
+      index,
       derivationPath,
     });
 
@@ -171,24 +215,16 @@ export class AccountsService {
     } = options ?? {};
 
     const tronKeyringAccount: TronKeyringAccount = {
+      ...derivedAccount,
       id,
-      entropySource,
-      derivationPath,
-      index,
-      type: TrxAccountType.Eoa,
-      address: accountAddress,
-      scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
       options: {
-        ...remainingOptions,
-        /**
-         * Make sure to save the `entropySource`, `derivationPath` and `index`
-         * in the keyring account options..
-         */
-        entropySource,
-        derivationPath,
-        index,
+        ...derivedAccount.options,
+        ...(Object.fromEntries(
+          Object.entries(remainingOptions).filter(
+            ([, value]) => value !== undefined,
+          ),
+        ) as Record<string, Json>),
       },
-      methods: ['signMessageV2', 'verifyMessageV2'],
     };
 
     await this.#accountsRepository.create(tronKeyringAccount);

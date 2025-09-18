@@ -31,6 +31,7 @@ import { sortBy } from 'lodash';
 import type { TronKeyringAccount } from '../entities';
 import { BackgroundEventMethod } from './cronjob';
 import type { SnapClient } from '../clients/snap/SnapClient';
+import type { Network } from '../constants';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
@@ -126,7 +127,6 @@ export class KeyringHandler implements Keyring {
 
   async createAccount(options?: CreateAccountOptions): Promise<KeyringAccount> {
     const id = globalThis.crypto.randomUUID();
-
     try {
       const account = await this.#accountsService.create(id, options);
 
@@ -136,7 +136,7 @@ export class KeyringHandler implements Keyring {
        */
       await this.#snapClient.scheduleBackgroundEvent({
         method: BackgroundEventMethod.SyncAccountTransactions,
-        params: { accountId: id },
+        params: { accountId: account.id },
         duration: 'PT1S',
       });
 
@@ -232,7 +232,44 @@ export class KeyringHandler implements Keyring {
     entropySource: EntropySourceId,
     groupIndex: number,
   ): Promise<DiscoveredAccount[]> {
-    return [];
+    try {
+      const account = await this.#accountsService.deriveAccount({
+        entropySource,
+        index: groupIndex,
+      });
+
+      const activityChecksPromises = [];
+
+      for (const scope of scopes) {
+        activityChecksPromises.push(
+          this.#transactionsService.fetchTransactionsForAccount(
+            scope as Network,
+            account,
+          ),
+        );
+      }
+
+      const transactionsOnAllScopes = await Promise.all(activityChecksPromises);
+
+      const hasActivity = transactionsOnAllScopes.some(
+        (transactions) => transactions.length > 0,
+      );
+
+      if (!hasActivity) {
+        return [];
+      }
+
+      return [
+        {
+          type: 'bip44',
+          scopes,
+          derivationPath: account.derivationPath,
+        },
+      ];
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error discovering accounts');
+      throw error;
+    }
   }
 
   async getAccountBalances(

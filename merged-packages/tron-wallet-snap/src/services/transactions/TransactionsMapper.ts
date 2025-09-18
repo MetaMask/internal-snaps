@@ -1,4 +1,4 @@
-import type { Transaction } from '@metamask/keyring-api';
+import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
 import { TronWeb } from 'tronweb';
 
 import type {
@@ -7,12 +7,14 @@ import type {
   TransferContractInfo,
   TransferAssetContractInfo,
 } from '../../clients/trongrid/types';
-import { Network, Networks } from '../../constants';
+import type { Network } from '../../constants';
+import { Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 
 export class TransactionMapper {
   /**
    * Calculate fees for Tron transactions including Energy and Bandwidth as separate assets.
+   *
    * @param transactionInfo The raw transaction info.
    * @param network The network configuration.
    * @returns Array of fee objects.
@@ -23,62 +25,46 @@ export class TransactionMapper {
   ): Transaction['fees'] {
     const fees: Transaction['fees'] = [];
 
-    const tronAsset = Networks[network].nativeToken
-    const bandwidthAsset = Networks[network].bandwidth
-    const energyAsset = Networks[network].energy
+    const {
+      nativeToken: tronAsset,
+      bandwidth: bandwidthAsset,
+      energy: energyAsset,
+    } = Networks[network];
 
     // Base TRX fee calculation
     const transactionFee = transactionInfo.ret.reduce(
       (total, result) => total + (result.fee || 0),
       0,
     );
-    const netFeeTotal = 
+    const netFeeTotal =
       transactionFee +
       Number(transactionInfo.net_fee) +
       Number(transactionInfo.energy_fee);
 
-    if (netFeeTotal > 0) {
-      fees.push({
-        type: 'base',
-        asset: {
-          type: tronAsset.id,
-          unit: tronAsset.symbol,
-          amount: netFeeTotal.toString(),
-          fungible: true,
-        },
-      });
-    }
+    const setFeeIfPresent = (
+      amount: number,
+      asset: { id: CaipAssetType; symbol: string },
+    ) => {
+      if (amount > 0) {
+        fees.push({
+          type: 'base',
+          asset: {
+            type: asset.id,
+            unit: asset.symbol,
+            amount: amount.toString(),
+            fungible: true,
+          },
+        });
+      }
+    };
 
-    // Bandwidth usage as separate asset
-    const netUsage = Number(transactionInfo.net_usage);
-    if (netUsage > 0) {
-      fees.push({
-        type: 'base',
-        asset: {
-          type: bandwidthAsset.id,
-          unit: bandwidthAsset.symbol,
-          amount: netUsage.toString(),
-          fungible: true,
-        },
-      });
-    }
-
-    // Energy usage as separate asset
-    const energyUsage = Number(transactionInfo.energy_usage_total);
-    if (energyUsage > 0) {
-      fees.push({
-        type: 'base',
-        asset: {
-          type: energyAsset.id,
-          unit: energyAsset.symbol,
-          amount: energyUsage.toString(),
-          fungible: true,
-        },
-      });
-    }
+    setFeeIfPresent(transactionFee, tronAsset);
+    setFeeIfPresent(transactionInfo.net_usage, bandwidthAsset);
+    setFeeIfPresent(transactionInfo.energy_usage, energyAsset);
 
     return fees;
   }
+
   /**
    * Maps a TransferContract (native TRX transfer) transaction.
    *
@@ -106,9 +92,12 @@ export class TransactionMapper {
     // Convert from sun to TRX (divide by 10^6)
     const amountInSun = contractValue.amount;
     const amountInTrx = (amountInSun / 1_000_000).toString();
-    
+
     // Calculate comprehensive fees including Energy and Bandwidth
-    const fees = TransactionMapper.#calculateTronFees(scope, trongridTransaction);
+    const fees = TransactionMapper.#calculateTronFees(
+      scope,
+      trongridTransaction,
+    );
 
     let type: 'send' | 'receive' | 'unknown';
 
@@ -120,7 +109,7 @@ export class TransactionMapper {
       type = 'unknown';
     }
 
-    const tronAsset = Networks[scope].nativeToken
+    const tronAsset = Networks[scope].nativeToken;
 
     return {
       type,
@@ -189,9 +178,12 @@ export class TransactionMapper {
     const amountInSmallestUnit = contractValue.amount;
     const amountInReadableUnit = (amountInSmallestUnit / 1_000_000).toString();
     const assetName = contractValue.asset_name;
-    
+
     // Calculate comprehensive fees including Energy and Bandwidth
-    const fees = TransactionMapper.#calculateTronFees(scope, trongridTransaction);
+    const fees = TransactionMapper.#calculateTronFees(
+      scope,
+      trongridTransaction,
+    );
 
     let type: 'send' | 'receive' | 'unknown';
 
@@ -291,7 +283,10 @@ export class TransactionMapper {
     }
 
     // Calculate comprehensive fees including Energy and Bandwidth from raw transaction data
-    const fees = TransactionMapper.#calculateTronFees(scope, trongridTransaction);
+    const fees = TransactionMapper.#calculateTronFees(
+      scope,
+      trongridTransaction,
+    );
 
     return {
       type,
