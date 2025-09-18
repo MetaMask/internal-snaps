@@ -47,8 +47,18 @@ export class AssetsHandler {
 
     const { conversions } = params;
 
+    const filteredConversions = conversions.filter(
+      (conversion) =>
+        !conversion.from.endsWith('/slip44:energy') &&
+        !conversion.from.endsWith('/slip44:bandwidth') &&
+        !conversion.to.endsWith('/slip44:energy') &&
+        !conversion.to.endsWith('/slip44:bandwidth'),
+    );
+
     const conversionRates =
-      await this.#assetsService.getMultipleTokenConversions(conversions);
+      await this.#assetsService.getMultipleTokenConversions(
+        filteredConversions,
+      );
 
     return {
       conversionRates,

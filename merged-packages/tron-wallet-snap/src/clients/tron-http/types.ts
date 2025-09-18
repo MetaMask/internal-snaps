@@ -91,3 +91,15 @@ export type TRC10TokenMetadata = {
   symbol: string;
   decimals: number;
 };
+
+export type AccountResources = {
+  freeNetLimit: number;
+  NetLimit: number;
+  TotalNetLimit: number;
+  TotalNetWeight: number;
+  tronPowerUsed: number;
+  tronPowerLimit: number;
+  EnergyLimit: number;
+  TotalEnergyLimit: number;
+  TotalEnergyWeight: number;
+};

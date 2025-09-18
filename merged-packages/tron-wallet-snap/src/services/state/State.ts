@@ -130,4 +130,13 @@ export class State<TStateValue extends Record<string, Serializable>>
       return state;
     });
   }
+
+  async deleteKeys(keys: string[]): Promise<void> {
+    await this.update((state) => {
+      keys.forEach((key) => {
+        unset(state, key);
+      });
+      return state;
+    });
+  }
 }

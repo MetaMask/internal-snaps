@@ -1,3 +1,4 @@
+// eslint-disable-file @typescript-eslint/no-non-null-assertion
 import { TransactionMapper } from './TransactionsMapper';
 import type {
   TransactionInfo,
@@ -5,8 +6,6 @@ import type {
 } from '../../clients/trongrid/types';
 import { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
-
-// Import simplified mock data (each file now contains only one transaction)
 import contractInfoMock from './mocks/contract-info.json';
 import nativeTransferMock from './mocks/native-transfer.json';
 import trc10TransferMock from './mocks/trc10-transfer.json';
@@ -41,30 +40,55 @@ describe('TransactionMapper', () => {
           JSON.stringify(result, null, 2),
         );
 
-        expect(result).toBeDefined();
-        expect(result).not.toBeNull();
-        expect(result!.type).toBe('send');
-        expect(result!.id).toBe(
-          '8145535b24f71bc592b8ab2d94e91a30d12f74ab33fa4aab2ff2a27b767fc49b',
-        );
-        expect(result!.from).toHaveLength(1);
-        expect(result!.from[0]?.address).toBe(
-          'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-        );
-        expect((result!.from[0]?.asset as any)?.amount).toBe('0.01');
-        expect((result!.from[0]?.asset as any)?.unit).toBe('TRX');
-        expect((result!.from[0]?.asset as any)?.type).toBe(
-          'tron:728126428/slip44:195',
-        );
-        expect(result!.to).toHaveLength(1);
-        expect(result!.to[0]?.address).toBe(
-          'TEFik7dGm6r5Y1Af9mGwnELuJLa1jXDDUB',
-        );
-        expect(result!.chain).toBe('tron:728126428');
-        expect(result!.status).toBe('confirmed');
-        expect(result!.fees).toHaveLength(1);
-        expect((result!.fees[0]?.asset as any)?.amount).toBe('532000'); // Actual fee from mock
-        expect((result!.fees[0]?.asset as any)?.unit).toBe('TRX');
+        const expectedTransaction = {
+          account: 'test-account-id',
+          type: 'send',
+          id: '8145535b24f71bc592b8ab2d94e91a30d12f74ab33fa4aab2ff2a27b767fc49b',
+          from: [
+            {
+              address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+              asset: {
+                amount: '0.01',
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                fungible: true,
+              },
+            },
+          ],
+          to: [
+            {
+              address: 'TEFik7dGm6r5Y1Af9mGwnELuJLa1jXDDUB',
+              asset: {
+                amount: '0.01',
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                fungible: true,
+              },
+            },
+          ],
+          chain: 'tron:728126428',
+          status: 'confirmed',
+          timestamp: 1756914747000,
+          events: [
+            {
+              status: 'confirmed',
+              timestamp: 1756914747000,
+            },
+          ],
+          fees: [
+            {
+              asset: {
+                amount: '266000',
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                fungible: true,
+              },
+              type: 'base',
+            },
+          ],
+        };
+
+        expect(result).toStrictEqual(expectedTransaction);
       });
     });
 
@@ -90,27 +114,55 @@ describe('TransactionMapper', () => {
           JSON.stringify(result, null, 2),
         );
 
-        expect(result).toBeDefined();
-        expect(result).not.toBeNull();
-        expect(result!.type).toBe('send');
-        expect(result!.id).toBe(
-          'd8fc96d5b81fe600e055741e27135e22d5ae42584c9056758f797b1a20328818',
-        );
-        expect(result!.from).toHaveLength(1);
-        expect(result!.from[0]?.address).toBe(
-          'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw',
-        );
-        expect((result!.from[0]?.asset as any)?.amount).toBe('0.494');
-        expect((result!.from[0]?.asset as any)?.unit).toBe('UNKNOWN');
-        expect((result!.from[0]?.asset as any)?.type).toBe(
-          'tron:728126428/trc10:1002000',
-        );
-        expect(result!.to).toHaveLength(1);
-        expect(result!.chain).toBe('tron:728126428');
-        expect(result!.status).toBe('confirmed');
-        expect(result!.fees).toHaveLength(1);
-        expect((result!.fees[0]?.asset as any)?.amount).toBe('562000'); // Actual TRC10 fee
-        expect((result!.fees[0]?.asset as any)?.unit).toBe('TRX');
+        const expectedTransaction = {
+          account: 'test-trc10-account',
+          type: 'send',
+          id: 'd8fc96d5b81fe600e055741e27135e22d5ae42584c9056758f797b1a20328818',
+          from: [
+            {
+              address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw',
+              asset: {
+                amount: '0.494',
+                unit: 'UNKNOWN',
+                type: 'tron:728126428/trc10:1002000',
+                fungible: true,
+              },
+            },
+          ],
+          to: [
+            {
+              address: 'TKYT8YiiL58h8USHkmVEhCYpNfgSyiWPcW',
+              asset: {
+                amount: '0.494',
+                unit: 'UNKNOWN',
+                type: 'tron:728126428/trc10:1002000',
+                fungible: true,
+              },
+            },
+          ],
+          chain: 'tron:728126428',
+          status: 'confirmed',
+          timestamp: 1756870677000,
+          events: [
+            {
+              status: 'confirmed',
+              timestamp: 1756870677000,
+            },
+          ],
+          fees: [
+            {
+              asset: {
+                amount: '281000',
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                fungible: true,
+              },
+              type: 'base',
+            },
+          ],
+        };
+
+        expect(result).toStrictEqual(expectedTransaction);
       });
     });
 
@@ -132,35 +184,73 @@ describe('TransactionMapper', () => {
           JSON.stringify(result, null, 2),
         );
 
-        expect(result).toBeDefined();
-        expect(result).not.toBeNull();
-        expect(result!.type).toBe('send');
-        expect(result!.id).toBe(
-          '35f3dcfede12f943827809ddc18b891f78c38337e2b80912f50bd52a054497aa',
-        );
-        expect(result!.from).toHaveLength(1);
-        expect(result!.from[0]?.address).toBe(
-          'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-        );
-        expect((result!.from[0]?.asset as any)?.amount).toBe('0.01');
-        expect((result!.from[0]?.asset as any)?.unit).toBe('USDT');
-        expect((result!.from[0]?.asset as any)?.type).toBe(
-          'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-        );
-        expect(result!.to).toHaveLength(1);
-        expect(result!.to[0]?.address).toBe(
-          'TEFik7dGm6r5Y1Af9mGwnELuJLa1jXDDUB',
-        );
-        expect(result!.chain).toBe('tron:728126428');
-        expect(result!.status).toBe('confirmed');
-        // Comprehensive fee structure: TRX fee + Bandwidth + Energy
-        expect(result!.fees).toHaveLength(3);
-        expect((result!.fees[0]?.asset as any)?.amount).toBe('25975600'); // Actual TRC20 TRX fee
-        expect((result!.fees[0]?.asset as any)?.unit).toBe('TRX');
-        expect((result!.fees[1]?.asset as any)?.unit).toBe('BANDWIDTH');
-        expect((result!.fees[1]?.asset as any)?.amount).toBe('345');
-        expect((result!.fees[2]?.asset as any)?.unit).toBe('ENERGY');
-        expect((result!.fees[2]?.asset as any)?.amount).toBe('130285'); // Actual energy usage from console
+        const expectedTransaction = {
+          account: 'test-account-id',
+          type: 'send',
+          id: '35f3dcfede12f943827809ddc18b891f78c38337e2b80912f50bd52a054497aa',
+          from: [
+            {
+              address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+              asset: {
+                amount: '0.01',
+                unit: 'USDT',
+                type: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+                fungible: true,
+              },
+            },
+          ],
+          to: [
+            {
+              address: 'TEFik7dGm6r5Y1Af9mGwnELuJLa1jXDDUB',
+              asset: {
+                amount: '0.01',
+                unit: 'USDT',
+                type: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+                fungible: true,
+              },
+            },
+          ],
+          chain: 'tron:728126428',
+          status: 'confirmed',
+          timestamp: 1757590707000,
+          events: [
+            {
+              status: 'confirmed',
+              timestamp: 1757590707000,
+            },
+          ],
+          fees: [
+            {
+              asset: {
+                amount: '12987800',
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                fungible: true,
+              },
+              type: 'base',
+            },
+            {
+              asset: {
+                amount: '345',
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                fungible: true,
+              },
+              type: 'base',
+            },
+            {
+              asset: {
+                amount: '407',
+                unit: 'ENERGY',
+                type: 'tron:728126428/slip44:energy',
+                fungible: true,
+              },
+              type: 'base',
+            },
+          ],
+        };
+
+        expect(result).toStrictEqual(expectedTransaction);
       });
 
       it('should return null for TriggerSmartContract without assistance data', () => {
@@ -192,11 +282,20 @@ describe('TransactionMapper', () => {
         });
 
         console.log('Native TRX fees:', JSON.stringify(result?.fees, null, 2));
-        expect(result).not.toBeNull();
-        expect(result?.fees).toBeDefined();
-        expect(result?.fees).toHaveLength(1);
-        expect((result?.fees[0]?.asset as any)?.amount).toBe('532000'); // Actual net_fee from mock
-        expect((result?.fees[0]?.asset as any)?.unit).toBe('TRX');
+
+        const expectedFees = [
+          {
+            asset: {
+              amount: '266000',
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              fungible: true,
+            },
+            type: 'base',
+          },
+        ];
+
+        expect(result?.fees).toStrictEqual(expectedFees);
       });
 
       it('should calculate comprehensive fees for TRC20 transfers', () => {
@@ -215,20 +314,38 @@ describe('TransactionMapper', () => {
           'TRC20 comprehensive fees:',
           JSON.stringify(result?.fees, null, 2),
         );
-        expect(result).not.toBeNull();
-        expect(result?.fees).toBeDefined();
-        expect(result?.fees).toHaveLength(3);
 
-        // TRX fee
-        expect((result?.fees[0]?.asset as any)?.amount).toBe('25975600'); // Actual TRC20 fee
-        expect((result?.fees[0]?.asset as any)?.unit).toBe('TRX');
+        const expectedFees = [
+          {
+            asset: {
+              amount: '12987800',
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              fungible: true,
+            },
+            type: 'base',
+          },
+          {
+            asset: {
+              amount: '345',
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              fungible: true,
+            },
+            type: 'base',
+          },
+          {
+            asset: {
+              amount: '407',
+              unit: 'ENERGY',
+              type: 'tron:728126428/slip44:energy',
+              fungible: true,
+            },
+            type: 'base',
+          },
+        ];
 
-        // Bandwidth fee
-        expect((result?.fees[1]?.asset as any)?.amount).toBe('345');
-        expect((result?.fees[1]?.asset as any)?.unit).toBe('BANDWIDTH');
-
-        // Energy fee
-        expect((result?.fees[2]?.asset as any)?.amount).toBe('130285'); // Actual energy from console
+        expect(result?.fees).toStrictEqual(expectedFees);
       });
     });
   });
@@ -278,7 +395,7 @@ describe('TransactionMapper', () => {
       });
 
       console.log('Empty input result:', result);
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 
@@ -286,6 +403,7 @@ describe('TransactionMapper', () => {
     it('should handle transaction with missing contract data', () => {
       const malformedTransaction = {
         txID: 'test-tx-id',
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         raw_data: {
           contract: undefined,
         },
@@ -305,6 +423,7 @@ describe('TransactionMapper', () => {
       const mockRawData = nativeTransferMock?.raw_data;
       const rawTransaction = {
         ...nativeTransferMock,
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         raw_data: {
           ...mockRawData,
           contract: [
@@ -342,15 +461,55 @@ describe('TransactionMapper', () => {
         JSON.stringify(result, null, 2),
       );
 
-      expect(result).toBeDefined();
-      expect(result).not.toBeNull();
-      expect(result!.chain).toBe('tron:2494104990'); // Shasta chain ID
-      expect((result!.from[0]?.asset as any)?.type).toBe(
-        'tron:2494104990/slip44:195',
-      );
-      expect((result!.to[0]?.asset as any)?.type).toBe(
-        'tron:2494104990/slip44:195',
-      );
+      const expectedTransaction = {
+        account: 'test-account-id',
+        type: 'send',
+        id: '8145535b24f71bc592b8ab2d94e91a30d12f74ab33fa4aab2ff2a27b767fc49b',
+        from: [
+          {
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            asset: {
+              amount: '0.01',
+              unit: 'TRX',
+              type: 'tron:2494104990/slip44:195',
+              fungible: true,
+            },
+          },
+        ],
+        to: [
+          {
+            address: 'TEFik7dGm6r5Y1Af9mGwnELuJLa1jXDDUB',
+            asset: {
+              amount: '0.01',
+              unit: 'TRX',
+              type: 'tron:2494104990/slip44:195',
+              fungible: true,
+            },
+          },
+        ],
+        chain: 'tron:2494104990',
+        status: 'confirmed',
+        timestamp: 1756914747000,
+        events: [
+          {
+            status: 'confirmed',
+            timestamp: 1756914747000,
+          },
+        ],
+        fees: [
+          {
+            asset: {
+              amount: '266000',
+              unit: 'TRX',
+              type: 'tron:2494104990/slip44:195',
+              fungible: true,
+            },
+            type: 'base',
+          },
+        ],
+      };
+
+      expect(result).toStrictEqual(expectedTransaction);
     });
   });
 });

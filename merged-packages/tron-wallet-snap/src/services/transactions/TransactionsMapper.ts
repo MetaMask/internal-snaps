@@ -15,8 +15,8 @@ export class TransactionMapper {
   /**
    * Calculate fees for Tron transactions including Energy and Bandwidth as separate assets.
    *
-   * @param transactionInfo The raw transaction info.
    * @param network The network configuration.
+   * @param transactionInfo The raw transaction info.
    * @returns Array of fee objects.
    */
   static #calculateTronFees(
@@ -36,15 +36,11 @@ export class TransactionMapper {
       (total, result) => total + (result.fee || 0),
       0,
     );
-    const netFeeTotal =
-      transactionFee +
-      Number(transactionInfo.net_fee) +
-      Number(transactionInfo.energy_fee);
 
     const setFeeIfPresent = (
       amount: number,
       asset: { id: CaipAssetType; symbol: string },
-    ) => {
+    ): void => {
       if (amount > 0) {
         fees.push({
           type: 'base',
@@ -357,6 +353,7 @@ export class TransactionMapper {
      */
 
     // ASSUME: Only use the first contract to classify the transaction type.
+
     const firstContract = trongridTransaction.raw_data.contract?.[0];
     const contractType = firstContract?.type;
 

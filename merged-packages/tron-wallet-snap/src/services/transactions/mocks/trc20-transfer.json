@@ -1,41 +1,41 @@
 {
-    "ret": [
-        {
-            "contractRet": "SUCCESS",
-            "fee": 12987800
-        }
+  "ret": [
+    {
+      "contractRet": "SUCCESS",
+      "fee": 12987800
+    }
+  ],
+  "signature": [
+    "0d1a94c67125916037fe92b7f266cd595100803f5ceb21838c43f3e97a5346ee3798ee350cca88f3e04212baf984dc638a2c965fb42e31301d3556ebf04630101c"
+  ],
+  "txID": "35f3dcfede12f943827809ddc18b891f78c38337e2b80912f50bd52a054497aa",
+  "net_usage": 345,
+  "raw_data_hex": "0a023b08220868ca0d471db52d6f40e0f3cac493335aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541458437be39f3a8bfdbfee7bef93e2c5f632ceff4121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb0000000000000000000000002efffc7686e54ab669a1cdb1e2cc17cf4b4eca96000000000000000000000000000000000000000000000000000000000000271070809fc7c493339001c0f4a46b",
+  "net_fee": 0,
+  "energy_usage": 407,
+  "blockNumber": 75643657,
+  "block_timestamp": 1757590707000,
+  "energy_fee": 12987800,
+  "energy_usage_total": 130285,
+  "raw_data": {
+    "contract": [
+      {
+        "parameter": {
+          "value": {
+            "data": "a9059cbb0000000000000000000000002efffc7686e54ab669a1cdb1e2cc17cf4b4eca960000000000000000000000000000000000000000000000000000000000002710",
+            "owner_address": "41458437be39f3a8bfdbfee7bef93e2c5f632ceff4",
+            "contract_address": "41a614f803b6fd780986a42c78ec9c7f77e6ded13c"
+          },
+          "type_url": "type.googleapis.com/protocol.TriggerSmartContract"
+        },
+        "type": "TriggerSmartContract"
+      }
     ],
-    "signature": [
-        "0d1a94c67125916037fe92b7f266cd595100803f5ceb21838c43f3e97a5346ee3798ee350cca88f3e04212baf984dc638a2c965fb42e31301d3556ebf04630101c"
-    ],
-    "txID": "35f3dcfede12f943827809ddc18b891f78c38337e2b80912f50bd52a054497aa",
-    "net_usage": 345,
-    "raw_data_hex": "0a023b08220868ca0d471db52d6f40e0f3cac493335aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541458437be39f3a8bfdbfee7bef93e2c5f632ceff4121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb0000000000000000000000002efffc7686e54ab669a1cdb1e2cc17cf4b4eca96000000000000000000000000000000000000000000000000000000000000271070809fc7c493339001c0f4a46b",
-    "net_fee": 0,
-    "energy_usage": 407,
-    "blockNumber": 75643657,
-    "block_timestamp": 1757590707000,
-    "energy_fee": 12987800,
-    "energy_usage_total": 130285,
-    "raw_data": {
-        "contract": [
-            {
-                "parameter": {
-                    "value": {
-                        "data": "a9059cbb0000000000000000000000002efffc7686e54ab669a1cdb1e2cc17cf4b4eca960000000000000000000000000000000000000000000000000000000000002710",
-                        "owner_address": "41458437be39f3a8bfdbfee7bef93e2c5f632ceff4",
-                        "contract_address": "41a614f803b6fd780986a42c78ec9c7f77e6ded13c"
-                    },
-                    "type_url": "type.googleapis.com/protocol.TriggerSmartContract"
-                },
-                "type": "TriggerSmartContract"
-            }
-        ],
-        "ref_block_bytes": "3b08",
-        "ref_block_hash": "68ca0d471db52d6f",
-        "expiration": 1757590764000,
-        "fee_limit": 225000000,
-        "timestamp": 1757590704000
-    },
-    "internal_transactions": []
+    "ref_block_bytes": "3b08",
+    "ref_block_hash": "68ca0d471db52d6f",
+    "expiration": 1757590764000,
+    "fee_limit": 225000000,
+    "timestamp": 1757590704000
+  },
+  "internal_transactions": []
 }

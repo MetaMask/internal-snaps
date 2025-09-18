@@ -191,7 +191,7 @@ describe('TransactionsService', () => {
       );
 
       console.log('Empty API response result:', result);
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
       expect(true).toBe(true);
     });
 
@@ -316,7 +316,7 @@ describe('TransactionsService', () => {
       const result = await transactionsService.findByAccounts([]);
 
       console.log('Empty accounts result:', result);
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
       expect(mockTransactionsRepository.findByAccountId).not.toHaveBeenCalled();
       expect(true).toBe(true);
     });

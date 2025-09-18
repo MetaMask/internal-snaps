@@ -137,9 +137,9 @@ export class AccountsService {
   }): Promise<TronKeyringAccount> {
     const derivationPath =
       customDerivationPath ??
-      (index !== undefined ? this.#getDefaultDerivationPath(index) : undefined);
+      (index === undefined ? undefined : this.#getDefaultDerivationPath(index));
 
-    if (!derivationPath) {
+    if (derivationPath === undefined) {
       throw new Error('Either index or derivationPath must be provided');
     }
 

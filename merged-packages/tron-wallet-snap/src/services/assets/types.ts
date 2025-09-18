@@ -2,6 +2,8 @@ import type { TrxScope } from '@metamask/keyring-api';
 import { pattern, string } from '@metamask/superstruct';
 
 export type NativeCaipAssetType = `${TrxScope}/slip44:195`;
+export type ResourceCaipAssetType =
+  `${TrxScope}/slip44:${'energy' | 'bandwidth'}`;
 export type TokenCaipAssetType = `${TrxScope}/${'trc10' | 'trc20'}:${string}`;
 export type NftCaipAssetType = `${TrxScope}/trc721:${string}`;
 
@@ -11,6 +13,14 @@ export type NftCaipAssetType = `${TrxScope}/trc721:${string}`;
 export const NativeCaipAssetTypeStruct = pattern(
   string(),
   /^tron:(mainnet|nile|shasta)\/slip44:195$/u,
+);
+
+/**
+ * Validates a TRON native CAIP-19 ID for resources (e.g., "tron:mainnet/energy" or "tron:mainnet/bandwidth")
+ */
+export const ResourceCaipAssetTypeStruct = pattern(
+  string(),
+  /^tron:(mainnet|nile|shasta)\/slip44:(energy|bandwidth)$/u,
 );
 
 /**

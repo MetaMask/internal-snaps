@@ -39,4 +39,15 @@ export type NftAsset = {
   uiAmount: string; // With decimals
 };
 
-export type AssetEntity = NativeAsset | TokenAsset | NftAsset;
+export type ResourceAsset = {
+  assetType: `${Network}/slip44:energy` | `${Network}/slip44:bandwidth`;
+  keyringAccountId: string;
+  network: Network;
+  mint: string;
+  pubkey: string;
+  symbol: string;
+  rawAmount: string; // Without decimals
+  uiAmount: string; // With decimals
+};
+
+export type AssetEntity = NativeAsset | TokenAsset | NftAsset | ResourceAsset;

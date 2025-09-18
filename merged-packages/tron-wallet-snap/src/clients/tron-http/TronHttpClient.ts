@@ -1,4 +1,5 @@
 import type {
+  AccountResources,
   TRC10TokenInfo,
   TRC10TokenMetadata,
   TRC20TokenMetadata,
@@ -340,5 +341,44 @@ export class TronHttpClient {
     }
 
     return results;
+  }
+
+  /**
+   * Get account resources (Energy and Bandwidth)
+   *
+   * @see https://developers.tron.network/reference/getaccountresource
+   * @param network - Network to query
+   * @param accountAddress - Account address in base58 format
+   * @returns Promise<AccountResources> - Account resources
+   */
+  async getAccountResources(
+    network: Network,
+    accountAddress: string,
+  ): Promise<AccountResources> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = `${baseUrl}/wallet/getaccountresource`;
+
+    const body = JSON.stringify({
+      address: accountAddress,
+      visible: true,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const accountResources: AccountResources = await response.json();
+    return accountResources;
   }
 }

@@ -21,15 +21,17 @@ import type {
   NativeCaipAssetType,
   NftCaipAssetType,
   TokenCaipAssetType,
+  ResourceCaipAssetType,
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { FiatTicker, SpotPrice } from '../../clients/price-api/types';
+import type { AccountResources } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { TronAccount } from '../../clients/trongrid/types';
-import type { Network } from '../../constants';
+import { Networks, type Network } from '../../constants';
 import { configProvider } from '../../context';
-import type { AssetEntity } from '../../entities/assets';
+import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
 
@@ -87,16 +89,25 @@ export class AssetsService {
       scope,
     });
 
-    const tronAccountInfo =
-      await this.#trongridApiClient.getAccountInfoByAddress(
-        scope,
-        account.address,
-      );
+    const [tronAccountInfo, tronAccountResources] = await Promise.all([
+      this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
+      this.#tronHttpClient.getAccountResources(scope, account.address),
+    ]);
 
     const nativeAsset = this.#extractNativeAsset({
       account,
       scope,
       tronAccountInfo,
+    });
+    const energyAsset = this.#extractEnergy({
+      account,
+      scope,
+      tronAccountResources,
+    });
+    const bandwidthAsset = this.#extractBandwidth({
+      account,
+      scope,
+      tronAccountResources,
     });
     const trc10Assets = this.#extractTrc10Assets({
       account,
@@ -111,33 +122,42 @@ export class AssetsService {
 
     const assetTypes = [
       nativeAsset.assetType,
+      energyAsset.assetType,
+      bandwidthAsset.assetType,
       ...trc10Assets.map((tokenAsset) => tokenAsset.assetType),
       ...trc20Assets.map((tokenAsset) => tokenAsset.assetType),
     ];
     const assetsMetadata = await this.getAssetsMetadata(assetTypes);
 
-    const assets = [nativeAsset, ...trc10Assets, ...trc20Assets].map(
-      (asset) => {
-        const metadata = assetsMetadata[asset.assetType];
-        const mergedAsset = {
-          ...asset,
-          ...metadata,
-        } as any;
+    const assets = [
+      nativeAsset,
+      energyAsset,
+      bandwidthAsset,
+      ...trc10Assets,
+      ...trc20Assets,
+    ].map((asset) => {
+      const metadata = assetsMetadata[asset.assetType];
+      const mergedAsset = {
+        ...asset,
+        ...metadata,
+      } as any;
 
-        const unit = metadata?.fungible ? metadata.units?.[0] : undefined;
+      const unit = metadata?.fungible ? metadata.units?.[0] : undefined;
 
-        if (unit) {
-          const decimals = new BigNumber(mergedAsset.rawAmount).dividedBy(
-            new BigNumber(10).pow(unit.decimals),
-          );
-          mergedAsset.uiAmount = decimals.toString();
-        } else {
-          mergedAsset.uiAmount = '0';
-        }
+      if (unit) {
+        const decimals = new BigNumber(mergedAsset.rawAmount).dividedBy(
+          new BigNumber(10).pow(unit.decimals),
+        );
+        mergedAsset.uiAmount = decimals.toString();
+      } else {
+        mergedAsset.uiAmount = '0';
+      }
 
-        return mergedAsset;
-      },
-    );
+      return mergedAsset;
+    });
+
+    console.log('[AssetsService]Fetch assets and balances for account');
+    console.log(JSON.stringify(assets));
 
     return assets;
   }
@@ -166,6 +186,57 @@ export class AssetsService {
       uiAmount: new BigNumber(tronAccountInfo.balance)
         .dividedBy(10 ** 6)
         .toString(),
+    };
+
+    return asset;
+  }
+
+  #extractEnergy({
+    account,
+    scope,
+    tronAccountResources,
+  }: {
+    account: KeyringAccount;
+    scope: Network;
+    tronAccountResources: AccountResources;
+  }): AssetEntity {
+    const energy = tronAccountResources.EnergyLimit;
+
+    const asset: ResourceAsset = {
+      assetType: Networks[scope].energy.id,
+      keyringAccountId: account.id,
+      network: scope,
+      mint: '',
+      pubkey: '',
+      symbol: 'ENERGY',
+      rawAmount: energy.toString(),
+      uiAmount: energy.toString(),
+    };
+
+    return asset;
+  }
+
+  #extractBandwidth({
+    account,
+    scope,
+    tronAccountResources,
+  }: {
+    account: KeyringAccount;
+    scope: Network;
+    tronAccountResources: AccountResources;
+  }): AssetEntity {
+    const bandwidth =
+      tronAccountResources.freeNetLimit + tronAccountResources.NetLimit;
+
+    const asset: AssetEntity = {
+      assetType: Networks[scope].bandwidth.id,
+      keyringAccountId: account.id,
+      network: scope,
+      mint: '',
+      pubkey: '',
+      symbol: 'BANDWIDTH',
+      rawAmount: bandwidth.toString(),
+      uiAmount: bandwidth.toString(),
     };
 
     return asset;
@@ -238,18 +309,32 @@ export class AssetsService {
   ): Promise<Record<CaipAssetType, AssetMetadata | null>> {
     this.#logger.info('Fetching metadata for assets', assetTypes);
 
-    const { nativeAssetTypes, tokenTrc10AssetTypes, tokenTrc20AssetTypes } =
-      this.#splitAssetsByType(assetTypes);
+    const {
+      nativeAssetTypes,
+      energyAssetTypes,
+      bandwidthAssetTypes,
+      tokenTrc10AssetTypes,
+      tokenTrc20AssetTypes,
+    } = this.#splitAssetsByType(assetTypes);
 
-    const [nativeTokensMetadata, trc10TokensMetadata, trc20TokensMetadata] =
-      await Promise.all([
-        this.#getNativeTokensMetadata(nativeAssetTypes),
-        this.#getTRC10TokensMetadata(tokenTrc10AssetTypes),
-        this.#getTRC20TokensMetadata(tokenTrc20AssetTypes),
-      ]);
+    const [
+      nativeTokensMetadata,
+      energyTokensMetadata,
+      bandwidthTokensMetadata,
+      trc10TokensMetadata,
+      trc20TokensMetadata,
+    ] = await Promise.all([
+      this.#getNativeTokensMetadata(nativeAssetTypes),
+      this.#getEnergyMetadata(energyAssetTypes),
+      this.#getBandwidthMetadata(bandwidthAssetTypes),
+      this.#getTRC10TokensMetadata(tokenTrc10AssetTypes),
+      this.#getTRC20TokensMetadata(tokenTrc20AssetTypes),
+    ]);
 
     const result = {
       ...nativeTokensMetadata,
+      ...energyTokensMetadata,
+      ...bandwidthTokensMetadata,
       ...trc10TokensMetadata,
       ...trc20TokensMetadata,
     };
@@ -261,6 +346,8 @@ export class AssetsService {
 
   #splitAssetsByType(assetTypes: CaipAssetType[]): {
     nativeAssetTypes: NativeCaipAssetType[];
+    energyAssetTypes: ResourceCaipAssetType[];
+    bandwidthAssetTypes: ResourceCaipAssetType[];
     tokenTrc10AssetTypes: TokenCaipAssetType[];
     tokenTrc20AssetTypes: TokenCaipAssetType[];
     nftAssetTypes: NftCaipAssetType[];
@@ -268,6 +355,12 @@ export class AssetsService {
     const nativeAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:195'),
     ) as NativeCaipAssetType[];
+    const energyAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:energy'),
+    ) as ResourceCaipAssetType[];
+    const bandwidthAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:bandwidth'),
+    ) as ResourceCaipAssetType[];
     const tokenTrc10AssetTypes = assetTypes.filter((assetType) =>
       assetType.includes('/trc10:'),
     ) as TokenCaipAssetType[];
@@ -280,6 +373,8 @@ export class AssetsService {
 
     return {
       nativeAssetTypes,
+      energyAssetTypes,
+      bandwidthAssetTypes,
       tokenTrc10AssetTypes,
       tokenTrc20AssetTypes,
       nftAssetTypes,
@@ -314,6 +409,66 @@ export class AssetsService {
     }
 
     return nativeTokensMetadata;
+  }
+
+  #getEnergyMetadata(
+    assetTypes: ResourceCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const energyTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      // const { chainId } = parseCaipAssetType(assetType);
+      energyTokensMetadata[assetType] = {
+        name: 'Energy',
+        symbol: 'ENERGY',
+        fungible: true as const,
+        // iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
+        iconUrl:
+          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+        units: [
+          {
+            name: 'Energy',
+            symbol: 'ENERGY',
+            decimals: 0,
+          },
+        ],
+      };
+    }
+
+    return energyTokensMetadata;
+  }
+
+  #getBandwidthMetadata(
+    assetTypes: ResourceCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const bandwidthTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      // const { chainId } = parseCaipAssetType(assetType);
+      bandwidthTokensMetadata[assetType] = {
+        name: 'Bandwidth',
+        symbol: 'BANDWIDTH',
+        fungible: true as const,
+        // iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
+        iconUrl:
+          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+        units: [
+          {
+            name: 'Bandwidth',
+            symbol: 'BANDWIDTH',
+            decimals: 0,
+          },
+        ],
+      };
+    }
+
+    return bandwidthTokensMetadata;
   }
 
   async #getTRC10TokensMetadata(
@@ -420,14 +575,15 @@ export class AssetsService {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
+    const hasZeroAmount = (asset: AssetEntity): boolean =>
+      asset.rawAmount === '0' || asset.uiAmount === '0';
+    const hasNonZeroAmount = (asset: AssetEntity): boolean =>
+      !hasZeroAmount(asset);
+
     const savedAssets = await this.getAll();
 
-    this.#logger.info('Saved assets', { savedAssets });
-
-    const hasZeroRawAmount = (asset: AssetEntity): boolean =>
-      asset.rawAmount === '0';
-    const hasNonZeroRawAmount = (asset: AssetEntity): boolean =>
-      !hasZeroRawAmount(asset);
+    // Save assets using repository
+    await this.#assetsRepository.saveMany(assets);
 
     // Notify the extension about the new assets in a single event
     const isNew = (asset: AssetEntity): boolean =>
@@ -437,15 +593,20 @@ export class AssetsService {
           item.assetType === asset.assetType,
       );
 
-    const wasSavedWithZeroRawAmount = (asset: AssetEntity): boolean => {
+    const wasSavedWithZeroAmount = (
+      asset: AssetEntity,
+    ): boolean | undefined => {
       const savedAsset = savedAssets.find(
         (item) =>
           item.keyringAccountId === asset.keyringAccountId &&
           item.assetType === asset.assetType,
       );
 
-      return savedAsset !== undefined && hasZeroRawAmount(savedAsset);
+      return savedAsset && hasZeroAmount(savedAsset);
     };
+
+    const isNativeAsset = (asset: AssetEntity): boolean =>
+      asset.assetType.includes('/slip44:195');
 
     const assetListUpdatedPayload = assets.reduce<
       AccountAssetListUpdatedEvent['params']['assets']
@@ -455,42 +616,32 @@ export class AssetsService {
         [asset.keyringAccountId]: {
           added: [
             ...(acc[asset.keyringAccountId]?.added ?? []),
-            ...((isNew(asset) || wasSavedWithZeroRawAmount(asset)) &&
-            hasNonZeroRawAmount(asset)
+            ...((isNew(asset) || wasSavedWithZeroAmount(asset)) &&
+            hasNonZeroAmount(asset)
               ? [asset.assetType]
               : []),
           ],
           removed: [
             ...(acc[asset.keyringAccountId]?.removed ?? []),
-            ...(hasZeroRawAmount(asset) ? [asset.assetType] : []),
+            ...(hasZeroAmount(asset) && !isNativeAsset(asset) // Never remove native assets from the account asset list
+              ? [asset.assetType]
+              : []),
           ],
         },
       }),
       {},
     );
 
+    // If no assets were added or removed, don't emit the event.
     const isEmptyAccountAssetListUpdatedPayload = Object.values(
       assetListUpdatedPayload,
     )
       .map((item) => item.added.length + item.removed.length)
       .every((item) => item === 0);
 
-    if (isEmptyAccountAssetListUpdatedPayload) {
-      this.#logger.info('No account asset list updated', {
-        assetListUpdatedPayload,
-      });
-    } else {
-      this.#logger.info('Updating account asset list', {
-        isEmptyAccountAssetListUpdatedPayload,
-        assetListUpdatedPayload,
-      });
-
+    if (!isEmptyAccountAssetListUpdatedPayload) {
       await emitSnapKeyringEvent(snap, KeyringEvent.AccountAssetListUpdated, {
         assets: assetListUpdatedPayload,
-      });
-
-      this.#logger.info('Account asset list updated', {
-        assetListUpdatedPayload,
       });
     }
 
@@ -499,8 +650,32 @@ export class AssetsService {
     const hasChanged = (asset: AssetEntity): boolean =>
       AssetsService.hasChanged(asset, savedAssets);
 
+    /**
+     * Build the event payload for snap keyring event `AccountBalancesUpdated`.
+     *
+     * @example
+     * {
+     *   "balances": {
+     *     "keyringAccountId0": {
+     *       "assetType00": {
+     *         "unit": "XYZ",
+     *         "amount": "1234"
+     *       },
+     *       "assetType01": {
+     *         "unit": "ABC",
+     *         "amount": "5678"
+     *       }
+     *     },
+     *     "keyringAccountId1": {
+     *       "assetType10": {
+     *         "unit": "XYZ",
+     *         "amount": "42"
+     *       }
+     *     }
+     *   }
+     * }
+     */
     const balancesUpdatedPayload = assets
-      .filter(hasNonZeroRawAmount)
       .filter(hasChanged)
       .reduce<AccountBalancesUpdatedEvent['params']['balances']>(
         (acc, asset) => ({
@@ -515,27 +690,16 @@ export class AssetsService {
         }),
         {},
       );
-    const isEmptyAccountBalancesUpdatedPayload = Object.values(
-      balancesUpdatedPayload,
-    )
-      .map((item) => Object.keys(item).length)
-      .every((item) => item === 0);
 
-    if (isEmptyAccountBalancesUpdatedPayload) {
-      this.#logger.info('No account balances updated', {
-        balancesUpdatedPayload,
-      });
-    } else {
-      this.#logger.info('Updating account balances', {
-        balancesUpdatedPayload,
-      });
+    // Traverse the balancesUpdatedPayload object to check if we have at least 1 account that has at least 1 balance updated.
+    const isSomeBalanceChanged = Object.values(balancesUpdatedPayload)
+      .map((accountAssets) => Object.keys(accountAssets).length) // To each accountAssets object, map the number of assetTypes
+      .some((count) => count > 0);
 
+    // Only emit the event if some balance was changed.
+    if (isSomeBalanceChanged) {
       await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
         balances: balancesUpdatedPayload,
-      });
-
-      this.#logger.info('Account balances updated', {
-        balancesUpdatedPayload,
       });
     }
   }
