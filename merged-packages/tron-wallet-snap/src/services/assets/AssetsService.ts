@@ -22,6 +22,7 @@ import type {
   NftCaipAssetType,
   TokenCaipAssetType,
   ResourceCaipAssetType,
+  StakedCaipAssetType,
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { FiatTicker, SpotPrice } from '../../clients/price-api/types';
@@ -99,6 +100,11 @@ export class AssetsService {
       scope,
       tronAccountInfo,
     });
+    const stakedNativeAssets = this.#extractStakedNativeAssets({
+      account,
+      scope,
+      tronAccountInfo,
+    });
     const energyAsset = this.#extractEnergy({
       account,
       scope,
@@ -122,6 +128,7 @@ export class AssetsService {
 
     const assetTypes = [
       nativeAsset.assetType,
+      ...stakedNativeAssets.map((stakedAsset) => stakedAsset.assetType),
       energyAsset.assetType,
       bandwidthAsset.assetType,
       ...trc10Assets.map((tokenAsset) => tokenAsset.assetType),
@@ -131,6 +138,7 @@ export class AssetsService {
 
     const assets = [
       nativeAsset,
+      ...stakedNativeAssets,
       energyAsset,
       bandwidthAsset,
       ...trc10Assets,
@@ -179,7 +187,6 @@ export class AssetsService {
       assetType: `${scope}/slip44:195` as NativeCaipAssetType,
       keyringAccountId: account.id,
       network: scope,
-      address: account.address,
       symbol: 'TRX',
       decimals: 6,
       rawAmount: tronAccountInfo.balance.toString(),
@@ -189,6 +196,68 @@ export class AssetsService {
     };
 
     return asset;
+  }
+
+  #extractStakedNativeAssets({
+    account,
+    scope,
+    tronAccountInfo,
+  }: {
+    account: KeyringAccount;
+    scope: Network;
+    tronAccountInfo: TronAccount;
+  }): AssetEntity[] {
+    const assets: AssetEntity[] = [];
+
+    // Calculate staked amounts by type
+    let stakedEnergyAmount = 0;
+    let stakedBandwidthAmount = 0;
+
+    tronAccountInfo.frozenV2?.forEach((frozen) => {
+      const amount = frozen.amount ?? 0;
+
+      if (frozen.type === 'ENERGY') {
+        stakedEnergyAmount += amount;
+      } else if (!frozen.type) {
+        // Item without type is for bandwidth
+        stakedBandwidthAmount += amount;
+      }
+    });
+
+    // Create staked energy asset if there's any staked energy
+    if (stakedEnergyAmount > 0) {
+      const stakedEnergyAsset: AssetEntity = {
+        assetType: `${scope}/slip44:195-staked-for-energy` as const,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: 'sTRX-ENERGY',
+        decimals: 6,
+        rawAmount: stakedEnergyAmount.toString(),
+        uiAmount: new BigNumber(stakedEnergyAmount)
+          .dividedBy(10 ** 6)
+          .toString(),
+      };
+      assets.push(stakedEnergyAsset);
+    }
+
+    // Create staked bandwidth asset if there's any staked bandwidth
+    if (stakedBandwidthAmount > 0) {
+      const stakedBandwidthAsset: AssetEntity = {
+        assetType:
+          `${scope}/slip44:195-staked-for-bandwidth` as NativeCaipAssetType,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: 'sTRX-BANDWIDTH',
+        decimals: 6,
+        rawAmount: stakedBandwidthAmount.toString(),
+        uiAmount: new BigNumber(stakedBandwidthAmount)
+          .dividedBy(10 ** 6)
+          .toString(),
+      };
+      assets.push(stakedBandwidthAsset);
+    }
+
+    return assets;
   }
 
   #extractEnergy({
@@ -206,9 +275,8 @@ export class AssetsService {
       assetType: Networks[scope].energy.id,
       keyringAccountId: account.id,
       network: scope,
-      mint: '',
-      pubkey: '',
       symbol: 'ENERGY',
+      decimals: 0,
       rawAmount: energy.toString(),
       uiAmount: energy.toString(),
     };
@@ -228,13 +296,12 @@ export class AssetsService {
     const bandwidth =
       tronAccountResources.freeNetLimit + tronAccountResources.NetLimit;
 
-    const asset: AssetEntity = {
+    const asset: ResourceAsset = {
       assetType: Networks[scope].bandwidth.id,
       keyringAccountId: account.id,
       network: scope,
-      mint: '',
-      pubkey: '',
       symbol: 'BANDWIDTH',
+      decimals: 0,
       rawAmount: bandwidth.toString(),
       uiAmount: bandwidth.toString(),
     };
@@ -260,8 +327,6 @@ export class AssetsService {
             assetType: `${scope}/trc10:${address}` as TokenCaipAssetType,
             keyringAccountId: account.id,
             network: scope,
-            mint: address,
-            pubkey: address,
             symbol: '',
             decimals: 0,
             rawAmount: balance,
@@ -291,8 +356,6 @@ export class AssetsService {
             assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
             keyringAccountId: account.id,
             network: scope,
-            mint: address,
-            pubkey: address,
             symbol: '',
             decimals: 0,
             rawAmount: balance,
@@ -311,6 +374,7 @@ export class AssetsService {
 
     const {
       nativeAssetTypes,
+      stakedNativeAssetTypes,
       energyAssetTypes,
       bandwidthAssetTypes,
       tokenTrc10AssetTypes,
@@ -319,12 +383,14 @@ export class AssetsService {
 
     const [
       nativeTokensMetadata,
+      stakedTokensMetadata,
       energyTokensMetadata,
       bandwidthTokensMetadata,
       trc10TokensMetadata,
       trc20TokensMetadata,
     ] = await Promise.all([
       this.#getNativeTokensMetadata(nativeAssetTypes),
+      this.#getStakedTokensMetadata(stakedNativeAssetTypes),
       this.#getEnergyMetadata(energyAssetTypes),
       this.#getBandwidthMetadata(bandwidthAssetTypes),
       this.#getTRC10TokensMetadata(tokenTrc10AssetTypes),
@@ -333,6 +399,7 @@ export class AssetsService {
 
     const result = {
       ...nativeTokensMetadata,
+      ...stakedTokensMetadata,
       ...energyTokensMetadata,
       ...bandwidthTokensMetadata,
       ...trc10TokensMetadata,
@@ -346,6 +413,7 @@ export class AssetsService {
 
   #splitAssetsByType(assetTypes: CaipAssetType[]): {
     nativeAssetTypes: NativeCaipAssetType[];
+    stakedNativeAssetTypes: StakedCaipAssetType[];
     energyAssetTypes: ResourceCaipAssetType[];
     bandwidthAssetTypes: ResourceCaipAssetType[];
     tokenTrc10AssetTypes: TokenCaipAssetType[];
@@ -355,6 +423,9 @@ export class AssetsService {
     const nativeAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:195'),
     ) as NativeCaipAssetType[];
+    const stakedNativeAssetTypes = assetTypes.filter((assetType) =>
+      assetType.includes('/slip44:195-staked-for-'),
+    ) as StakedCaipAssetType[];
     const energyAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:energy'),
     ) as ResourceCaipAssetType[];
@@ -373,6 +444,7 @@ export class AssetsService {
 
     return {
       nativeAssetTypes,
+      stakedNativeAssetTypes,
       energyAssetTypes,
       bandwidthAssetTypes,
       tokenTrc10AssetTypes,
@@ -411,6 +483,58 @@ export class AssetsService {
     return nativeTokensMetadata;
   }
 
+  #getStakedTokensMetadata(
+    assetTypes: StakedCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    // Can either be Staked for Energy or Staked for Bandwidth
+    const stakedTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      const isForEnergy = assetType.endsWith('staked-for-energy');
+
+      if (isForEnergy) {
+        stakedTokensMetadata[assetType] = {
+          name: 'Staked for Energy',
+          symbol: 'sTRX-ENERGY',
+          fungible: true as const,
+          iconUrl:
+            'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+          units: [
+            {
+              name: 'sTRX-ENERGY',
+              symbol: 'sTRX-ENERGY',
+              decimals: 6,
+            },
+          ],
+        };
+      }
+
+      const isForBandwdidth = assetType.endsWith('staked-for-bandwidth');
+
+      if (isForBandwdidth) {
+        stakedTokensMetadata[assetType] = {
+          name: 'Staked for Bandwidth',
+          symbol: 'sTRX-BANDWIDTH',
+          fungible: true as const,
+          iconUrl:
+            'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+          units: [
+            {
+              name: 'sTRX-BANDWIDTH',
+              symbol: 'sTRX-BANDWIDTH',
+              decimals: 6,
+            },
+          ],
+        };
+      }
+    }
+
+    return stakedTokensMetadata;
+  }
+
   #getEnergyMetadata(
     assetTypes: ResourceCaipAssetType[],
   ): Record<CaipAssetType, FungibleAssetMetadata | null> {
@@ -420,12 +544,10 @@ export class AssetsService {
     > = {};
 
     for (const assetType of assetTypes) {
-      // const { chainId } = parseCaipAssetType(assetType);
       energyTokensMetadata[assetType] = {
         name: 'Energy',
         symbol: 'ENERGY',
         fungible: true as const,
-        // iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
         iconUrl:
           'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
         units: [
@@ -450,12 +572,10 @@ export class AssetsService {
     > = {};
 
     for (const assetType of assetTypes) {
-      // const { chainId } = parseCaipAssetType(assetType);
       bandwidthTokensMetadata[assetType] = {
         name: 'Bandwidth',
         symbol: 'BANDWIDTH',
         fungible: true as const,
-        // iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
         iconUrl:
           'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
         units: [
