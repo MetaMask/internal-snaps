@@ -4,6 +4,7 @@ import type {
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
   OnAssetsMarketDataHandler,
+  OnClientRequestHandler,
   OnCronjobHandler,
   OnKeyringRequestHandler,
   OnRpcRequestHandler,
@@ -12,6 +13,7 @@ import type {
 
 import {
   assetsHandler,
+  clientRequestHandler,
   cronHandler,
   keyringHandler,
   lifecycleHandler,
@@ -35,6 +37,9 @@ export const onAssetsLookup: OnAssetsLookupHandler = async (args) =>
 
 export const onAssetsMarketData: OnAssetsMarketDataHandler = async (args) =>
   assetsHandler.onAssetsMarketData(args);
+
+export const onClientRequest: OnClientRequestHandler = async ({ request }) =>
+  clientRequestHandler.handle(request);
 
 export const onCronjob: OnCronjobHandler = async ({ request }) =>
   cronHandler.handle(request);

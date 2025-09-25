@@ -47,12 +47,19 @@ export class AssetsHandler {
 
     const { conversions } = params;
 
+    const excludedAssetSuffixes = [
+      '/slip44:energy',
+      '/slip44:bandwidth',
+      '/slip44:195-staked-for-energy',
+      '/slip44:195-staked-for-bandwidth',
+    ];
+
     const filteredConversions = conversions.filter(
       (conversion) =>
-        !conversion.from.endsWith('/slip44:energy') &&
-        !conversion.from.endsWith('/slip44:bandwidth') &&
-        !conversion.to.endsWith('/slip44:energy') &&
-        !conversion.to.endsWith('/slip44:bandwidth'),
+        !excludedAssetSuffixes.some((suffix) =>
+          conversion.from.endsWith(suffix),
+        ) &&
+        !excludedAssetSuffixes.some((suffix) => conversion.to.endsWith(suffix)),
     );
 
     const conversionRates =

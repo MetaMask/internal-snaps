@@ -13,6 +13,7 @@ import {
   refine,
   string,
 } from '@metamask/superstruct';
+import { TronWeb } from 'tronweb';
 
 import { Network } from '../constants';
 
@@ -133,8 +134,8 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
       /[?&](?:url|redirect|next|return_to|return_url|goto|destination|continue|redirect_uri)=%(?:[^&]*\/\/|https?:)/iu, // URL-encoded open redirect parameters
     ];
 
-    for (const dangerousPattern of dangerousPatterns) {
-      if (dangerousPattern.test(decodedValue)) {
+    for (const patt of dangerousPatterns) {
+      if (patt.test(decodedValue)) {
         return 'URL contains potentially malicious patterns';
       }
     }
@@ -145,7 +146,8 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
     }
 
     return true;
-  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (error) {
     return 'Invalid URL format';
   }
 });
@@ -293,10 +295,12 @@ export const Base64Struct = pattern(
   /^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u,
 );
 
-const DERIVATION_PATH_REGEX = /^m\/44'\/501'/u;
+const DERIVATION_PATH_REGEX = /^m\/44'\/195'/u;
+
+export const ScopeStringStruct = enums(Object.values(Network));
 
 /**
- * Validates a Tron derivation path following the format: m/44'/501'/...
+ * Validates a Tron derivation path following the format: m/44'/195'/...
  */
 export const DerivationPathStruct = pattern(string(), DERIVATION_PATH_REGEX);
 
@@ -306,4 +310,22 @@ export const DerivationPathStruct = pattern(string(), DERIVATION_PATH_REGEX);
 export const Iso8601Struct = pattern(
   string(),
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/u,
+);
+
+export const TronAddressStruct: Struct<string, null> = define(
+  'TronAddress',
+  (value) => {
+    if (typeof value !== 'string') {
+      return `Expected a string, but received: ${typeof value}`;
+    }
+
+    // Use TronWeb's built-in address validation
+    const isValidAddress = TronWeb.isAddress(value);
+
+    if (!isValidAddress) {
+      return 'Invalid Tron address format';
+    }
+
+    return true;
+  },
 );
