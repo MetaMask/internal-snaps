@@ -3,7 +3,7 @@ import { array, assert, type Infer } from '@metamask/superstruct';
 import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 
 import { TokenMetadataResponseStruct } from './structs';
-import { Network } from '../../constants';
+import { EXCLUDED_ASSET_SUFFIXES, Network } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
@@ -89,17 +89,22 @@ export class TokenApiClient {
     try {
       assert(assetTypes, array(CaipAssetTypeStruct));
 
-      // The Token API only supports the networks in TokenApiClient.supportedNetworks
+      /**
+       * Exclude TRON resource tokens (energy and bandwidth), staked tokens, and tokens not from supported networks.
+       */
       const supportedAssetTypes = assetTypes.filter((assetType) => {
+        if (
+          EXCLUDED_ASSET_SUFFIXES.some((suffix) => assetType.endsWith(suffix))
+        ) {
+          return false;
+        }
         const { chainId } = parseCaipAssetType(assetType);
         return TokenApiClient.supportedNetworks.includes(chainId as Network);
       });
 
       if (supportedAssetTypes.length !== assetTypes.length) {
         this.#logger.warn(
-          `[TokenApiClient] Received some asset types on networks that the Token API doesn't support. They will be ignored. Supported networks: ${TokenApiClient.supportedNetworks.join(
-            ', ',
-          )}`,
+          `[TokenApiClient] Received some asset types that are either not supported by the Token API or are excluded resource/staked tokens. They will be ignored. Supported networks: ${TokenApiClient.supportedNetworks.join(', ')}`,
         );
       }
 

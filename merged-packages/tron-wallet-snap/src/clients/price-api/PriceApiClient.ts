@@ -21,6 +21,7 @@ import {
 } from './types';
 import type { ICache } from '../../caching/ICache';
 import { useCache } from '../../caching/useCache';
+import { EXCLUDED_ASSET_SUFFIXES } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
 import type { ILogger } from '../../utils/logger';
@@ -254,7 +255,12 @@ export class PriceApiClient {
     tokenCaip19Types: CaipAssetType[],
     vsCurrency: VsCurrencyParam | string = 'usd',
   ): Promise<SpotPrices> {
-    return this.#getMultipleSpotPrices_CACHE(tokenCaip19Types, vsCurrency);
+    const filteredTokens = tokenCaip19Types.filter(
+      (token) =>
+        !EXCLUDED_ASSET_SUFFIXES.some((suffix) => token.endsWith(suffix)),
+    );
+
+    return this.#getMultipleSpotPrices_CACHE(filteredTokens, vsCurrency);
   }
 
   /**

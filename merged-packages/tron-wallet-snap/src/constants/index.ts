@@ -140,3 +140,10 @@ export const Networks = {
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthLocalnet],
   },
 } as const;
+
+export const EXCLUDED_ASSET_SUFFIXES = [
+  '/slip44:energy',
+  '/slip44:bandwidth',
+  '/slip44:195-staked-for-energy',
+  '/slip44:195-staked-for-bandwidth',
+];

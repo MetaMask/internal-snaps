@@ -47,25 +47,8 @@ export class AssetsHandler {
 
     const { conversions } = params;
 
-    const excludedAssetSuffixes = [
-      '/slip44:energy',
-      '/slip44:bandwidth',
-      '/slip44:195-staked-for-energy',
-      '/slip44:195-staked-for-bandwidth',
-    ];
-
-    const filteredConversions = conversions.filter(
-      (conversion) =>
-        !excludedAssetSuffixes.some((suffix) =>
-          conversion.from.endsWith(suffix),
-        ) &&
-        !excludedAssetSuffixes.some((suffix) => conversion.to.endsWith(suffix)),
-    );
-
     const conversionRates =
-      await this.#assetsService.getMultipleTokenConversions(
-        filteredConversions,
-      );
+      await this.#assetsService.getMultipleTokenConversions(conversions);
 
     return {
       conversionRates,
@@ -76,6 +59,7 @@ export class AssetsHandler {
     params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
     const assets = await this.#assetsService.getAssetsMetadata(params.assets);
+
     return { assets };
   }
 
@@ -85,6 +69,7 @@ export class AssetsHandler {
     const marketData = await this.#assetsService.getMultipleTokensMarketData(
       params.assets,
     );
+
     return { marketData };
   }
 }
