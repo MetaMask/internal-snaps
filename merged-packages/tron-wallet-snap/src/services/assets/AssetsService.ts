@@ -26,6 +26,7 @@ import type {
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { FiatTicker, SpotPrice } from '../../clients/price-api/types';
+import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
@@ -49,6 +50,8 @@ export class AssetsService {
 
   readonly #priceApiClient: PriceApiClient;
 
+  readonly #tokenApiClient: TokenApiClient;
+
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -62,6 +65,7 @@ export class AssetsService {
     trongridApiClient,
     tronHttpClient,
     priceApiClient,
+    tokenApiClient,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -69,6 +73,7 @@ export class AssetsService {
     trongridApiClient: TrongridApiClient;
     tronHttpClient: TronHttpClient;
     priceApiClient: PriceApiClient;
+    tokenApiClient: TokenApiClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 AssetsService]');
     this.#assetsRepository = assetsRepository;
@@ -76,6 +81,7 @@ export class AssetsService {
     this.#trongridApiClient = trongridApiClient;
     this.#tronHttpClient = tronHttpClient;
     this.#priceApiClient = priceApiClient;
+    this.#tokenApiClient = tokenApiClient;
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
@@ -386,15 +392,16 @@ export class AssetsService {
       stakedTokensMetadata,
       energyTokensMetadata,
       bandwidthTokensMetadata,
-      trc10TokensMetadata,
-      trc20TokensMetadata,
+      tokensMetadata,
     ] = await Promise.all([
       this.#getNativeTokensMetadata(nativeAssetTypes),
       this.#getStakedTokensMetadata(stakedNativeAssetTypes),
       this.#getEnergyMetadata(energyAssetTypes),
       this.#getBandwidthMetadata(bandwidthAssetTypes),
-      this.#getTRC10TokensMetadata(tokenTrc10AssetTypes),
-      this.#getTRC20TokensMetadata(tokenTrc20AssetTypes),
+      this.#getTokensMetadata([
+        ...tokenTrc10AssetTypes,
+        ...tokenTrc20AssetTypes,
+      ]),
     ]);
 
     const result = {
@@ -402,8 +409,7 @@ export class AssetsService {
       ...stakedTokensMetadata,
       ...energyTokensMetadata,
       ...bandwidthTokensMetadata,
-      ...trc10TokensMetadata,
-      ...trc20TokensMetadata,
+      ...tokensMetadata,
     };
 
     this.#logger.info('Resolved assets metadata', { assetTypes, result });
@@ -591,84 +597,10 @@ export class AssetsService {
     return bandwidthTokensMetadata;
   }
 
-  async #getTRC10TokensMetadata(
+  async #getTokensMetadata(
     assetTypes: TokenCaipAssetType[],
   ): Promise<Record<TokenCaipAssetType, FungibleAssetMetadata | null>> {
-    const metadata = await Promise.all(
-      assetTypes.map(async (assetType) => {
-        const { chainId, assetReference } = parseCaipAssetType(assetType);
-
-        const tokenMetadata = await this.#tronHttpClient.getTRC10TokenMetadata(
-          assetReference,
-          chainId as Network,
-        );
-
-        return {
-          [assetType]: {
-            name: tokenMetadata.name,
-            symbol: tokenMetadata.symbol,
-            fungible: true as const,
-            iconUrl: `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/${assetReference}/logo.png`,
-            units: [
-              {
-                name: tokenMetadata.name,
-                symbol: tokenMetadata.symbol,
-                decimals: tokenMetadata.decimals,
-              },
-            ],
-          },
-        };
-      }),
-    );
-
-    return metadata.reduce((acc, curr) => {
-      return { ...acc, ...curr };
-    }, {});
-  }
-
-  async #getTRC20TokensMetadata(
-    assetTypes: TokenCaipAssetType[],
-  ): Promise<Record<TokenCaipAssetType, FungibleAssetMetadata | null>> {
-    const metadata = await Promise.all(
-      assetTypes.map(async (assetType) => {
-        const { assetReference } = parseCaipAssetType(assetType);
-        const { name, symbol, decimals } =
-          await this.#getTrc20TokenMetadata(assetType);
-
-        return {
-          [assetType]: {
-            name,
-            symbol,
-            fungible: true as const,
-            iconUrl: `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/${assetReference}/logo.png`,
-            units: [{ name, symbol, decimals }],
-          },
-        };
-      }),
-    );
-
-    return metadata.reduce((acc, curr) => {
-      return { ...acc, ...curr };
-    }, {});
-  }
-
-  async #getTrc20TokenMetadata(assetType: TokenCaipAssetType): Promise<{
-    name: string;
-    symbol: string;
-    decimals: number;
-  }> {
-    const { chainId, assetReference } = parseCaipAssetType(assetType);
-
-    const tokenMetadata = await this.#tronHttpClient.getTRC20TokenMetadata(
-      assetReference,
-      chainId as Network,
-    );
-
-    return {
-      name: tokenMetadata.name,
-      symbol: tokenMetadata.symbol,
-      decimals: tokenMetadata.decimals,
-    };
+    return this.#tokenApiClient.getTokensMetadata(assetTypes);
   }
 
   /**

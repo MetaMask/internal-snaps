@@ -1,6 +1,7 @@
 import { InMemoryCache } from './caching/InMemoryCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
 import { SnapClient } from './clients/snap/SnapClient';
+import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
 import { TrongridApiClient } from './clients/trongrid/TrongridApiClient';
 import { TronWebFactory } from './clients/tronweb/TronWebFactory';
@@ -66,6 +67,9 @@ const tronWebFactory = new TronWebFactory({
 const priceCache = new InMemoryCache(noOpLogger);
 const priceApiClient = new PriceApiClient(configProvider, priceCache);
 
+// Token API client
+const tokenApiClient = new TokenApiClient(configProvider);
+
 // Business Services - depend on Repositories, State and other Services
 const assetsService = new AssetsService({
   logger,
@@ -74,6 +78,7 @@ const assetsService = new AssetsService({
   trongridApiClient,
   tronHttpClient,
   priceApiClient,
+  tokenApiClient,
 });
 
 const transactionsService = new TransactionsService({

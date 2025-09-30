@@ -18,7 +18,7 @@ describe('TransactionMapper', () => {
     type: 'eip155:eoa',
     options: {},
     methods: [],
-    scopes: ['tron:mainnet'],
+    scopes: ['tron:728126428'],
     entropySource: 'test-entropy',
     derivationPath: 'm/0/0',
     index: 0,
