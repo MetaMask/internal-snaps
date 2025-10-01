@@ -12,7 +12,9 @@ import {
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
+  SignAndSendTransactionRequestStruct,
 } from './validation';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Networks } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -29,21 +31,26 @@ export class ClientRequestHandler {
 
   readonly #sendService: SendService;
 
+  readonly #tronWebFactory: TronWebFactory;
+
   constructor({
     logger,
     accountsService,
     assetsService,
     sendService,
+    tronWebFactory,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
     assetsService: AssetsService;
     sendService: SendService;
+    tronWebFactory: TronWebFactory;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#sendService = sendService;
+    this.#tronWebFactory = tronWebFactory;
   }
 
   /**
@@ -62,6 +69,8 @@ export class ClientRequestHandler {
     const { method } = request;
 
     switch (method as ClientRequestMethod) {
+      case ClientRequestMethod.SignAndSendTransaction:
+        return this.#handleSignAndSendTransaction(request);
       case ClientRequestMethod.ConfirmSend:
         return this.#handleConfirmSend(request);
       case ClientRequestMethod.ComputeFee:
@@ -73,6 +82,46 @@ export class ClientRequestHandler {
       default:
         throw new MethodNotFoundError() as Error;
     }
+  }
+
+  /**
+   * Handles the signing and sending of a transaction.
+   *
+   * @param request - The JSON-RPC request containing transaction details.
+   * @returns The transaction result with hash and status.
+   */
+  async #handleSignAndSendTransaction(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, SignAndSendTransactionRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const { transaction, accountId, scope } = request.params;
+
+    const account = await this.#accountsService.findById(accountId);
+
+    if (!account) {
+      throw new Error(`Account with ID ${accountId} not found`);
+    }
+
+    const keypair = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    // eslint-disable-next-line no-restricted-globals
+    const privateKeyHex = Buffer.from(keypair.privateKeyBytes).toString('hex');
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    const signedTx = await tronWeb.trx.sign(transaction);
+    const result = await tronWeb.trx.sendHexTransaction(signedTx);
+
+    return {
+      transactionId: result.txid,
+    };
   }
 
   /**

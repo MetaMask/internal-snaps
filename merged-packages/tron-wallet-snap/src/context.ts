@@ -114,6 +114,7 @@ const clientRequestHandler = new ClientRequestHandler({
   accountsService,
   assetsService,
   sendService,
+  tronWebFactory,
 });
 const cronHandler = new CronHandler({
   logger,

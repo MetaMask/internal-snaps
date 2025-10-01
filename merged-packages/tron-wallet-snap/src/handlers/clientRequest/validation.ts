@@ -18,6 +18,22 @@ import {
 } from '../../validation/structs';
 
 /**
+ * signAndSendTransaction request/response validation.
+ */
+export const SignAndSendTransactionRequestParamsStruct = object({
+  transaction: Base64Struct,
+  accountId: UuidStruct,
+  scope: ScopeStringStruct,
+});
+
+export const SignAndSendTransactionRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignAndSendTransaction),
+  params: SignAndSendTransactionRequestParamsStruct,
+});
+
+/**
  * onConfirmSend request/response validation.
  */
 export const OnConfirmSendRequestParamsStruct = object({

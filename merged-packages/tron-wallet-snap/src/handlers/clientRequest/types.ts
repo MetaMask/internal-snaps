@@ -3,6 +3,7 @@ export enum ClientRequestMethod {
   ComputeFee = 'computeFee',
   OnAddressInput = 'onAddressInput',
   OnAmountInput = 'onAmountInput',
+  SignAndSendTransaction = 'signAndSendTransaction',
 }
 
 export enum SendErrorCodes {
