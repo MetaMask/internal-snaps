@@ -17,6 +17,7 @@ import { AccountsService } from './services/accounts/AccountsService';
 import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
+import { FeeCalculatorService } from './services/send/FeeCalculatorService';
 import { SendService } from './services/send/SendService';
 import type { UnencryptedStateValue } from './services/state/State';
 import { State } from './services/state/State';
@@ -96,6 +97,12 @@ const accountsService = new AccountsService({
   transactionsService,
 });
 
+const feeCalculatorService = new FeeCalculatorService({
+  logger,
+  tronWebFactory,
+  trongridApiClient,
+});
+
 const sendService = new SendService({
   logger,
   accountsService,
@@ -115,6 +122,7 @@ const clientRequestHandler = new ClientRequestHandler({
   assetsService,
   sendService,
   tronWebFactory,
+  feeCalculatorService,
 });
 const cronHandler = new CronHandler({
   logger,

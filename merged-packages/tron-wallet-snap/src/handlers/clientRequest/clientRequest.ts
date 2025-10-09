@@ -1,11 +1,10 @@
-import { FeeType, TransactionStatus } from '@metamask/keyring-api';
+import { TransactionStatus } from '@metamask/keyring-api';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 
 import { ClientRequestMethod, SendErrorCodes } from './types';
-import type { ComputeFeeResponse } from './validation';
 import {
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
@@ -18,9 +17,10 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Networks } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
+import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;
@@ -33,23 +33,28 @@ export class ClientRequestHandler {
 
   readonly #tronWebFactory: TronWebFactory;
 
+  readonly #feeCalculatorService: FeeCalculatorService;
+
   constructor({
     logger,
     accountsService,
     assetsService,
     sendService,
+    feeCalculatorService,
     tronWebFactory,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
     assetsService: AssetsService;
     sendService: SendService;
+    feeCalculatorService: FeeCalculatorService;
     tronWebFactory: TronWebFactory;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#sendService = sendService;
+    this.#feeCalculatorService = feeCalculatorService;
     this.#tronWebFactory = tronWebFactory;
   }
 
@@ -242,10 +247,11 @@ export class ClientRequestHandler {
   }
 
   /**
-   * Handles the computation of a fee for a transaction.
+   * Handles the computation of a fee for a TRON transaction.
+   * Returns used energy, used bandwidth, and the additional TRX cost breakdown for overages.
    *
    * @param request - The JSON-RPC request containing the method and parameters.
-   * @returns The response to the JSON-RPC request.
+   * @returns The response to the JSON-RPC request with the detailed fee breakdown.
    * @throws {InvalidParamsError} If the params are invalid.
    */
   async #handleComputeFee(request: JsonRpcRequest): Promise<Json> {
@@ -258,35 +264,43 @@ export class ClientRequestHandler {
     }
 
     const {
-      params: { scope },
+      params: { scope, transaction, accountId },
     } = request;
 
-    // TODO: Implement actual fee computation logic here.
-    const { baseFee, priorityFee } = { baseFee: '0', priorityFee: '0' };
+    const account = await this.#accountsService.findById(accountId);
 
-    const units = Networks[scope].nativeToken.symbol;
-    const type = Networks[scope].nativeToken.id;
+    if (!account) {
+      throw new Error(`Account with ID ${accountId} not found`);
+    }
 
-    const result: ComputeFeeResponse = [
-      {
-        type: FeeType.Base,
-        asset: {
-          unit: units,
-          type,
-          amount: baseFee,
-          fungible: true,
-        },
-      },
-      {
-        type: FeeType.Priority,
-        asset: {
-          unit: units,
-          type,
-          amount: priorityFee,
-          fungible: true,
-        },
-      },
-    ];
+    const assets = await this.#assetsService.getAssetsByAccountId(accountId);
+
+    /**
+     * Get available Energy and Bandwidth from account assets.
+     */
+    const energyAsset = assets.find(
+      (asset) => asset.assetType === Networks[scope].energy.id,
+    );
+    const bandwidthAsset = assets.find(
+      (asset) => asset.assetType === Networks[scope].bandwidth.id,
+    );
+
+    const availableEnergy = energyAsset
+      ? BigNumber(energyAsset.rawAmount)
+      : BigNumber(0);
+    const availableBandwidth = bandwidthAsset
+      ? BigNumber(bandwidthAsset.rawAmount)
+      : BigNumber(0);
+
+    /**
+     * Calculate complete fee breakdown using the service.
+     */
+    const result = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy,
+      availableBandwidth,
+    });
 
     assert(result, ComputeFeeResponseStruct);
 

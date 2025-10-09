@@ -20,9 +20,9 @@ import type { AssetsRepository } from './AssetsRepository';
 import type {
   NativeCaipAssetType,
   NftCaipAssetType,
-  TokenCaipAssetType,
   ResourceCaipAssetType,
   StakedCaipAssetType,
+  TokenCaipAssetType,
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { FiatTicker, SpotPrice } from '../../clients/price-api/types';
@@ -85,6 +85,14 @@ export class AssetsService {
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
+  }
+
+  static isFiat(caipAssetId: CaipAssetType): boolean {
+    return caipAssetId.includes('swift:0/iso4217:');
+  }
+
+  async getAssetsByAccountId(accountId: string): Promise<AssetEntity[]> {
+    return this.#assetsRepository.getByAccountId(accountId);
   }
 
   async fetchAssetsAndBalancesForAccount(
@@ -170,14 +178,7 @@ export class AssetsService {
       return mergedAsset;
     });
 
-    console.log('[AssetsService]Fetch assets and balances for account');
-    console.log(JSON.stringify(assets));
-
     return assets;
-  }
-
-  static isFiat(caipAssetId: CaipAssetType): boolean {
-    return caipAssetId.includes('swift:0/iso4217:');
   }
 
   #extractNativeAsset({
@@ -215,7 +216,6 @@ export class AssetsService {
   }): AssetEntity[] {
     const assets: AssetEntity[] = [];
 
-    // Calculate staked amounts by type
     let stakedEnergyAmount = 0;
     let stakedBandwidthAmount = 0;
 
@@ -230,7 +230,6 @@ export class AssetsService {
       }
     });
 
-    // Create staked energy asset if there's any staked energy
     if (stakedEnergyAmount > 0) {
       const stakedEnergyAsset: AssetEntity = {
         assetType: `${scope}/slip44:195-staked-for-energy` as const,
@@ -246,7 +245,6 @@ export class AssetsService {
       assets.push(stakedEnergyAsset);
     }
 
-    // Create staked bandwidth asset if there's any staked bandwidth
     if (stakedBandwidthAmount > 0) {
       const stakedBandwidthAsset: AssetEntity = {
         assetType:

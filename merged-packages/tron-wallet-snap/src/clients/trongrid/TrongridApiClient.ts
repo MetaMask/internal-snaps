@@ -1,8 +1,9 @@
 import type {
+  ChainParameter,
+  ContractTransactionInfo,
+  TransactionInfo,
   TronAccount,
   TrongridApiResponse,
-  TransactionInfo,
-  ContractTransactionInfo,
 } from './types';
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
@@ -161,5 +162,36 @@ export class TrongridApiClient {
     }
 
     return rawData.data;
+  }
+
+  /**
+   * Get chain parameters for a specific network.
+   *
+   * @see https://api.trongrid.io/wallet/getchainparameters
+   * @param scope - The network to query (e.g., 'mainnet', 'shasta')
+   * @returns Promise<ChainParameter> - Chain parameters data
+   */
+  async getChainParameters(scope: Network): Promise<ChainParameter[]> {
+    const client = this.#clients.get(scope);
+    if (!client) {
+      throw new Error(`No client configured for network: ${scope}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = `${baseUrl}/wallet/getchainparameters`;
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const rawData = await response.json();
+
+    if (!rawData.chainParameter) {
+      throw new Error('No chain parameters found');
+    }
+
+    return rawData.chainParameter;
   }
 }

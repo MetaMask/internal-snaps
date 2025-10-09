@@ -189,3 +189,8 @@ export type TokenInfo = {
   decimals: number;
   name: string;
 };
+
+export type ChainParameter = {
+  key: string;
+  value?: number;
+};
