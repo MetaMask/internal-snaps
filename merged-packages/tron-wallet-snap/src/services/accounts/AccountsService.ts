@@ -2,10 +2,12 @@ import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { assert, integer, pattern, string } from '@metamask/superstruct';
-import { hexToBytes } from '@metamask/utils';
 import type { Json } from '@metamask/utils';
+import { hexToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
 
+import type { AccountsRepository } from './AccountsRepository';
+import type { CreateAccountOptions } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import {
   asStrictKeyringAccount,
@@ -15,8 +17,6 @@ import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
-import type { AccountsRepository } from './AccountsRepository';
-import type { CreateAccountOptions } from './types';
 import type { TransactionsService } from '../transactions/TransactionsService';
 
 /**
@@ -160,9 +160,13 @@ export class AccountsService {
       address,
       scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
       options: {
-        entropySource,
-        derivationPath,
-        index: accountIndex,
+        entropy: {
+          type: 'mnemonic',
+          id: entropySource,
+          derivationPath,
+          groupIndex: accountIndex,
+        },
+        exportable: false,
       },
       methods: ['signMessageV2', 'verifyMessageV2'],
     };

@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@metamask/key-tree": "^10.1.1",
-    "@metamask/keyring-api": "patch:@metamask/keyring-api@npm%3A18.0.0#~/.yarn/patches/@metamask-keyring-api-npm-18.0.0-1987f8da30.patch",
+    "@metamask/keyring-api": "^21.1.0",
     "@metamask/keyring-snap-sdk": "^4.0.0",
     "@metamask/snaps-cli": "^8.1.0",
     "@metamask/snaps-jest": "^9.2.0",

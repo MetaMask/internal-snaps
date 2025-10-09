@@ -96,12 +96,8 @@ export class TransactionsService {
 
     const transactionsByAccountId = groupBy(transactions, 'account');
 
-    await emitSnapKeyringEvent(
-      snap as any,
-      KeyringEvent.AccountTransactionsUpdated,
-      {
-        transactions: transactionsByAccountId,
-      },
-    );
+    await emitSnapKeyringEvent(snap, KeyringEvent.AccountTransactionsUpdated, {
+      transactions: transactionsByAccountId,
+    });
   }
 }
