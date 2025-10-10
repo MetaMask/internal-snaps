@@ -107,6 +107,7 @@ const sendService = new SendService({
   logger,
   accountsService,
   tronWebFactory,
+  snapClient,
 });
 
 /**
@@ -123,6 +124,7 @@ const clientRequestHandler = new ClientRequestHandler({
   sendService,
   tronWebFactory,
   feeCalculatorService,
+  snapClient,
 });
 const cronHandler = new CronHandler({
   logger,

@@ -4,6 +4,16 @@ import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+import { Networks } from '../../constants';
+import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { AssetsService } from '../../services/assets/AssetsService';
+import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
+import type { SendService } from '../../services/send/SendService';
+import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import { BackgroundEventMethod } from '../cronjob';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
   ComputeFeeRequestStruct,
@@ -13,14 +23,6 @@ import {
   OnConfirmSendRequestStruct,
   SignAndSendTransactionRequestStruct,
 } from './validation';
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Networks } from '../../constants';
-import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { AssetsService } from '../../services/assets/AssetsService';
-import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
-import type { SendService } from '../../services/send/SendService';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;
@@ -35,6 +37,8 @@ export class ClientRequestHandler {
 
   readonly #feeCalculatorService: FeeCalculatorService;
 
+  readonly #snapClient: SnapClient;
+
   constructor({
     logger,
     accountsService,
@@ -42,6 +46,7 @@ export class ClientRequestHandler {
     sendService,
     feeCalculatorService,
     tronWebFactory,
+    snapClient,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
@@ -49,6 +54,7 @@ export class ClientRequestHandler {
     sendService: SendService;
     feeCalculatorService: FeeCalculatorService;
     tronWebFactory: TronWebFactory;
+    snapClient: SnapClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
@@ -56,6 +62,7 @@ export class ClientRequestHandler {
     this.#sendService = sendService;
     this.#feeCalculatorService = feeCalculatorService;
     this.#tronWebFactory = tronWebFactory;
+    this.#snapClient = snapClient;
   }
 
   /**
@@ -124,6 +131,15 @@ export class ClientRequestHandler {
     const signedTx = await tronWeb.trx.sign(transaction);
     const result = await tronWeb.trx.sendHexTransaction(signedTx);
 
+    /**
+     * Sync account after a transaction
+     */
+    await this.#snapClient.scheduleBackgroundEvent({
+      method: BackgroundEventMethod.SynchronizeAccount,
+      params: { accountId },
+      duration: 'PT5S',
+    });
+
     return {
       transactionId: result.txid,
     };
@@ -153,6 +169,15 @@ export class ClientRequestHandler {
       assetId,
     });
 
+    /**
+     * Sync account after a transaction
+     */
+    await this.#snapClient.scheduleBackgroundEvent({
+      method: BackgroundEventMethod.SynchronizeAccount,
+      params: { accountId: fromAccountId },
+      duration: 'PT5S',
+    });
+
     return {
       transactionId: transaction.txId,
       status: TransactionStatus.Submitted,
@@ -175,7 +200,9 @@ export class ClientRequestHandler {
       throw errorToThrow;
     }
 
-    // If we reach this point, the address is valid (validated by TronAddressStruct)
+    /**
+     * If we reach this point, the address is valid (validated by TronAddressStruct)
+     */
     return {
       valid: true,
       errors: [],

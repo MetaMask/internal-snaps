@@ -5,12 +5,10 @@ import type { AccountsService } from '../services/accounts/AccountsService';
 import type { ILogger } from '../utils/logger';
 import { createPrefixedLogger } from '../utils/logger';
 
-export enum CronMethod {
-  SynchronizeAccounts = 'scheduleRefreshAccounts',
-}
-
 export enum BackgroundEventMethod {
-  SyncAccountTransactions = 'onSyncAccountTransactions',
+  ContinuouslySynchronizeAccounts = 'onContinuouslySynchronizeAccounts',
+  SynchronizeAccounts = 'onSynchronizeAccounts',
+  SynchronizeAccount = 'onSynchronizeAccount',
 }
 
 export class CronHandler {
@@ -42,14 +40,15 @@ export class CronHandler {
       return;
     }
 
-    switch (method as CronMethod | BackgroundEventMethod) {
-      case CronMethod.SynchronizeAccounts:
+    switch (method as BackgroundEventMethod) {
+      case BackgroundEventMethod.ContinuouslySynchronizeAccounts:
+        await this.continuouslySynchronizeAccounts();
+        break;
+      case BackgroundEventMethod.SynchronizeAccounts:
         await this.synchronizeAccounts();
         break;
-      case BackgroundEventMethod.SyncAccountTransactions:
-        await this.synchronizeAccountTransactions(
-          (params as { accountId: string })?.accountId,
-        );
+      case BackgroundEventMethod.SynchronizeAccount:
+        await this.synchronizeAccount(params as { accountId: string });
         break;
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
@@ -57,11 +56,28 @@ export class CronHandler {
   }
 
   /**
-   * Synchronizes all accounts (assets and transactions).
-   * This can be called by cron jobs to keep data fresh.
+   * A background job that continuosly synchronizes all accounts.
+   * It schedules itself while the extension is active to make sure the data is fresh.
    */
+  async continuouslySynchronizeAccounts(): Promise<void> {
+    this.#logger.info('[Tick] Continuously synchronizing accounts...');
+
+    const { active } = await this.#snapClient.getClientStatus();
+
+    if (!active) {
+      return;
+    }
+
+    await this.synchronizeAccounts();
+
+    await this.#snapClient.scheduleBackgroundEvent({
+      method: BackgroundEventMethod.ContinuouslySynchronizeAccounts,
+      duration: '30s',
+    });
+  }
+
   async synchronizeAccounts(): Promise<void> {
-    this.#logger.info('Synchronizing accounts...');
+    this.#logger.info('Synchronizing all accounts...');
 
     const { active } = await this.#snapClient.getClientStatus();
 
@@ -71,15 +87,20 @@ export class CronHandler {
 
     const accounts = await this.#accountsService.getAll();
     await this.#accountsService.synchronize(accounts);
-
-    await this.#snapClient.scheduleBackgroundEvent({
-      method: CronMethod.SynchronizeAccounts,
-      duration: '30s',
-    });
   }
 
-  async synchronizeAccountTransactions(accountId: string): Promise<void> {
-    this.#logger.info(`Synchronizing transactions for account ${accountId}...`);
+  async synchronizeAccount({
+    accountId,
+  }: {
+    accountId: string;
+  }): Promise<void> {
+    this.#logger.info(`Synchronizing account ${accountId}...`);
+
+    const { active } = await this.#snapClient.getClientStatus();
+
+    if (!active) {
+      return;
+    }
 
     const account = await this.#accountsService.findById(accountId);
 
@@ -87,6 +108,6 @@ export class CronHandler {
       return;
     }
 
-    await this.#accountsService.synchronizeTransactions([account]);
+    await this.#accountsService.synchronize([account]);
   }
 }

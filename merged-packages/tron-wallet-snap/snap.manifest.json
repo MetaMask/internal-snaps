@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/snap-tron-wallet.git"
   },
   "source": {
-    "shasum": "+qcPpY/fpSa/cDgxrnOJt3P2fxut1WCwmjSIR55ugpk=",
+    "shasum": "o4qZgOlGwPQS+Oxy9KRan3hLaxGLtVwv5mhnl93s+JM=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -44,6 +44,7 @@
         "curve": "secp256k1"
       }
     ],
+    "endowment:lifecycle-hooks": {},
     "endowment:network-access": {},
     "snap_manageAccounts": {},
     "snap_manageState": {},

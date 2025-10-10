@@ -1,8 +1,10 @@
 import { parseCaipAssetType } from '@metamask/utils';
 
 import type { TransactionResult } from './types';
+import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
+import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 
@@ -13,18 +15,23 @@ export class SendService {
 
   readonly #logger: ILogger;
 
+  readonly #snapClient: SnapClient;
+
   constructor({
     accountsService,
     tronWebFactory,
     logger,
+    snapClient,
   }: {
     accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
     logger: ILogger;
+    snapClient: SnapClient;
   }) {
     this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
     this.#logger = createPrefixedLogger(logger, '[💸 SendService]');
+    this.#snapClient = snapClient;
   }
 
   async sendAsset({
@@ -130,6 +137,25 @@ export class SendService {
         'TRX transaction sent successfully',
       );
 
+      /**
+       * Check if the transaction's destination address is also managed by the snap.
+       * If so, sync the account. Otherwise, only sync the source account.
+       */
+      const accountIdsToSync = [fromAccountId];
+
+      const destinationAccount =
+        await this.#accountsService.findByAddress(toAddress);
+
+      if (destinationAccount) {
+        accountIdsToSync.push(destinationAccount.id);
+      }
+
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.SynchronizeAccounts,
+        params: { accountIds: accountIdsToSync },
+        duration: 'PT5S', // Wait 5 seconds before syncing to allow transaction to be processed
+      });
+
       return {
         success: true,
         txId: result.txid,
@@ -190,6 +216,25 @@ export class SendService {
         { txId: result.txid },
         'TRC10 transaction sent successfully',
       );
+
+      /**
+       * Check if the transaction's destination address is also managed by the snap.
+       * If so, sync the account. Otherwise, only sync the source account.
+       */
+      const accountIdsToSync = [fromAccountId];
+
+      const destinationAccount =
+        await this.#accountsService.findByAddress(toAddress);
+
+      if (destinationAccount) {
+        accountIdsToSync.push(destinationAccount.id);
+      }
+
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.SynchronizeAccounts,
+        params: { accountIds: accountIdsToSync },
+        duration: 'PT5S', // Wait 5 seconds before syncing to allow transaction to be processed
+      });
 
       return {
         success: true,
@@ -264,6 +309,25 @@ export class SendService {
         { txId: result.txid },
         'TRC20 transaction sent successfully',
       );
+
+      /**
+       * Check if the transaction's destination address is also managed by the snap.
+       * If so, sync the account. Otherwise, only sync the source account.
+       */
+      const accountIdsToSync = [fromAccountId];
+
+      const destinationAccount =
+        await this.#accountsService.findByAddress(toAddress);
+
+      if (destinationAccount) {
+        accountIdsToSync.push(destinationAccount.id);
+      }
+
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.SynchronizeAccounts,
+        params: { accountIds: accountIdsToSync },
+        duration: 'PT5S', // Wait 5 seconds before syncing to allow transaction to be processed
+      });
 
       return {
         success: true,
