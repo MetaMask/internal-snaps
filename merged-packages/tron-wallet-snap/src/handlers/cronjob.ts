@@ -9,6 +9,7 @@ export enum BackgroundEventMethod {
   ContinuouslySynchronizeAccounts = 'onContinuouslySynchronizeAccounts',
   SynchronizeAccounts = 'onSynchronizeAccounts',
   SynchronizeAccount = 'onSynchronizeAccount',
+  SynchronizeAccountTransactions = 'onSynchronizeAccountTransactions',
 }
 
 export class CronHandler {
@@ -50,6 +51,11 @@ export class CronHandler {
       case BackgroundEventMethod.SynchronizeAccount:
         await this.synchronizeAccount(params as { accountId: string });
         break;
+      case BackgroundEventMethod.SynchronizeAccountTransactions:
+        await this.synchronizeAccountTransactions(
+          params as { accountId: string },
+        );
+        break;
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
     }
@@ -62,12 +68,6 @@ export class CronHandler {
   async continuouslySynchronizeAccounts(): Promise<void> {
     this.#logger.info('[Tick] Continuously synchronizing accounts...');
 
-    const { active } = await this.#snapClient.getClientStatus();
-
-    if (!active) {
-      return;
-    }
-
     await this.synchronizeAccounts();
 
     await this.#snapClient.scheduleBackgroundEvent({
@@ -79,13 +79,8 @@ export class CronHandler {
   async synchronizeAccounts(): Promise<void> {
     this.#logger.info('Synchronizing all accounts...');
 
-    const { active } = await this.#snapClient.getClientStatus();
-
-    if (!active) {
-      return;
-    }
-
     const accounts = await this.#accountsService.getAll();
+
     await this.#accountsService.synchronize(accounts);
   }
 
@@ -96,12 +91,6 @@ export class CronHandler {
   }): Promise<void> {
     this.#logger.info(`Synchronizing account ${accountId}...`);
 
-    const { active } = await this.#snapClient.getClientStatus();
-
-    if (!active) {
-      return;
-    }
-
     const account = await this.#accountsService.findById(accountId);
 
     if (!account) {
@@ -109,5 +98,21 @@ export class CronHandler {
     }
 
     await this.#accountsService.synchronize([account]);
+  }
+
+  async synchronizeAccountTransactions({
+    accountId,
+  }: {
+    accountId: string;
+  }): Promise<void> {
+    this.#logger.info(`Synchronizing account transactions ${accountId}...`);
+
+    const account = await this.#accountsService.findById(accountId);
+
+    if (!account) {
+      return;
+    }
+
+    await this.#accountsService.synchronizeTransactions([account]);
   }
 }

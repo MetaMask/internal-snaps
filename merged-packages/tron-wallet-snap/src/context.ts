@@ -133,7 +133,6 @@ const cronHandler = new CronHandler({
 });
 const lifecycleHandler = new LifecycleHandler({
   logger,
-  accountsService,
   snapClient,
 });
 const keyringHandler = new KeyringHandler({
