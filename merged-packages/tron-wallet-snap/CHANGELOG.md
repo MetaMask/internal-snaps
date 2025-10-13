@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0]
+
+### Added
+
+- Add missing "sync transactions" background event ([#44](https://github.com/MetaMask/snap-tron-wallet/pull/44))
+- Implement account synchronization when transactions happen ([#38](https://github.com/MetaMask/snap-tron-wallet/pull/38))
+- Add new required fields to KeyringAccount objects ([#41](https://github.com/MetaMask/snap-tron-wallet/pull/41))
+- Implement `computeFee` handler ([#40](https://github.com/MetaMask/snap-tron-wallet/pull/40))
+
 ## [1.2.0]
 
 ### Added
@@ -59,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.0.3...v1.1.0
