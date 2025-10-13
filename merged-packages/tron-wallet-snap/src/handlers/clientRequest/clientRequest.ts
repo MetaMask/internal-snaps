@@ -243,7 +243,14 @@ export class ClientRequestHandler {
 
     const accountAssets =
       await this.#assetsService.getByKeyringAccountId(accountId);
+
+    /**
+     * Typescript is not smart enough to infer that the validation above
+     * guarantees that assetId is a valid TronCaipAssetTypeStruct and the
+     * unsafe enum comparison is irrelevant.
+     */
     const asset = accountAssets.find(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       (assetItem) => assetItem.assetType === assetId,
     );
 

@@ -31,9 +31,17 @@ import type { AccountResources } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { TronAccount } from '../../clients/trongrid/types';
-import { Networks, type Network } from '../../constants';
+import {
+  BANDWIDTH_METADATA,
+  ENERGY_METADATA,
+  Networks,
+  TRX_METADATA,
+  TRX_STAKED_FOR_BANDWIDTH_METADATA,
+  TRX_STAKED_FOR_ENERGY_METADATA,
+  type Network,
+} from '../../constants';
 import { configProvider } from '../../context';
-import type { AssetEntity, ResourceAsset } from '../../entities/assets';
+import type { AssetEntity } from '../../entities/assets';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
 
@@ -119,12 +127,12 @@ export class AssetsService {
       scope,
       tronAccountInfo,
     });
-    const energyAsset = this.#extractEnergy({
+    const bandwidthAssets = this.#extractBandwidth({
       account,
       scope,
       tronAccountResources,
     });
-    const bandwidthAsset = this.#extractBandwidth({
+    const energyAssets = this.#extractEnergy({
       account,
       scope,
       tronAccountResources,
@@ -142,19 +150,19 @@ export class AssetsService {
 
     const assetTypes = [
       nativeAsset.assetType,
-      ...stakedNativeAssets.map((stakedAsset) => stakedAsset.assetType),
-      energyAsset.assetType,
-      bandwidthAsset.assetType,
-      ...trc10Assets.map((tokenAsset) => tokenAsset.assetType),
-      ...trc20Assets.map((tokenAsset) => tokenAsset.assetType),
+      ...stakedNativeAssets.map((assets) => assets.assetType),
+      ...bandwidthAssets.map((assets) => assets.assetType),
+      ...energyAssets.map((assets) => assets.assetType),
+      ...trc10Assets.map((assets) => assets.assetType),
+      ...trc20Assets.map((assets) => assets.assetType),
     ];
     const assetsMetadata = await this.getAssetsMetadata(assetTypes);
 
     const assets = [
       nativeAsset,
       ...stakedNativeAssets,
-      energyAsset,
-      bandwidthAsset,
+      ...bandwidthAssets,
+      ...energyAssets,
       ...trc10Assets,
       ...trc20Assets,
     ].map((asset) => {
@@ -191,14 +199,14 @@ export class AssetsService {
     tronAccountInfo: TronAccount;
   }): AssetEntity {
     const asset: AssetEntity = {
-      assetType: `${scope}/slip44:195` as NativeCaipAssetType,
+      assetType: Networks[scope].nativeToken.id,
       keyringAccountId: account.id,
       network: scope,
-      symbol: 'TRX',
-      decimals: 6,
+      symbol: Networks[scope].nativeToken.symbol,
+      decimals: Networks[scope].nativeToken.decimals,
       rawAmount: tronAccountInfo.balance.toString(),
       uiAmount: new BigNumber(tronAccountInfo.balance)
-        .dividedBy(10 ** 6)
+        .dividedBy(10 ** Networks[scope].nativeToken.decimals)
         .toString(),
     };
 
@@ -216,8 +224,8 @@ export class AssetsService {
   }): AssetEntity[] {
     const assets: AssetEntity[] = [];
 
-    let stakedEnergyAmount = 0;
     let stakedBandwidthAmount = 0;
+    let stakedEnergyAmount = 0;
 
     tronAccountInfo.frozenV2?.forEach((frozen) => {
       const amount = frozen.amount ?? 0;
@@ -230,62 +238,37 @@ export class AssetsService {
       }
     });
 
-    if (stakedEnergyAmount > 0) {
-      const stakedEnergyAsset: AssetEntity = {
-        assetType: `${scope}/slip44:195-staked-for-energy` as const,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: 'sTRX-ENERGY',
-        decimals: 6,
-        rawAmount: stakedEnergyAmount.toString(),
-        uiAmount: new BigNumber(stakedEnergyAmount)
-          .dividedBy(10 ** 6)
-          .toString(),
-      };
-      assets.push(stakedEnergyAsset);
-    }
-
     if (stakedBandwidthAmount > 0) {
       const stakedBandwidthAsset: AssetEntity = {
-        assetType:
-          `${scope}/slip44:195-staked-for-bandwidth` as NativeCaipAssetType,
+        assetType: Networks[scope].stakedForBandwidth.id,
         keyringAccountId: account.id,
         network: scope,
-        symbol: 'sTRX-BANDWIDTH',
-        decimals: 6,
+        symbol: Networks[scope].stakedForBandwidth.symbol,
+        decimals: Networks[scope].stakedForBandwidth.decimals,
         rawAmount: stakedBandwidthAmount.toString(),
         uiAmount: new BigNumber(stakedBandwidthAmount)
-          .dividedBy(10 ** 6)
+          .dividedBy(10 ** Networks[scope].stakedForBandwidth.decimals)
           .toString(),
       };
       assets.push(stakedBandwidthAsset);
     }
 
+    if (stakedEnergyAmount > 0) {
+      const stakedEnergyAsset: AssetEntity = {
+        assetType: Networks[scope].stakedForEnergy.id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: Networks[scope].stakedForEnergy.symbol,
+        decimals: Networks[scope].stakedForEnergy.decimals,
+        rawAmount: stakedEnergyAmount.toString(),
+        uiAmount: new BigNumber(stakedEnergyAmount)
+          .dividedBy(10 ** Networks[scope].stakedForBandwidth.decimals)
+          .toString(),
+      };
+      assets.push(stakedEnergyAsset);
+    }
+
     return assets;
-  }
-
-  #extractEnergy({
-    account,
-    scope,
-    tronAccountResources,
-  }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountResources: AccountResources;
-  }): AssetEntity {
-    const energy = tronAccountResources.EnergyLimit;
-
-    const asset: ResourceAsset = {
-      assetType: Networks[scope].energy.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: 'ENERGY',
-      decimals: 0,
-      rawAmount: energy.toString(),
-      uiAmount: energy.toString(),
-    };
-
-    return asset;
   }
 
   #extractBandwidth({
@@ -296,21 +279,65 @@ export class AssetsService {
     account: KeyringAccount;
     scope: Network;
     tronAccountResources: AccountResources;
-  }): AssetEntity {
+  }): AssetEntity[] {
     const bandwidth =
       tronAccountResources.freeNetLimit + tronAccountResources.NetLimit;
+    const maximumBandwidth = tronAccountResources.TotalNetLimit;
 
-    const asset: ResourceAsset = {
-      assetType: Networks[scope].bandwidth.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: 'BANDWIDTH',
-      decimals: 0,
-      rawAmount: bandwidth.toString(),
-      uiAmount: bandwidth.toString(),
-    };
+    return [
+      {
+        assetType: Networks[scope].bandwidth.id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: Networks[scope].bandwidth.id,
+        decimals: Networks[scope].bandwidth.decimals,
+        rawAmount: bandwidth.toString(),
+        uiAmount: bandwidth.toString(),
+      },
+      {
+        assetType: Networks[scope].maximumBandwidth.id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: Networks[scope].maximumBandwidth.id,
+        decimals: Networks[scope].maximumBandwidth.decimals,
+        rawAmount: maximumBandwidth.toString(),
+        uiAmount: maximumBandwidth.toString(),
+      },
+    ];
+  }
 
-    return asset;
+  #extractEnergy({
+    account,
+    scope,
+    tronAccountResources,
+  }: {
+    account: KeyringAccount;
+    scope: Network;
+    tronAccountResources: AccountResources;
+  }): AssetEntity[] {
+    const energy = tronAccountResources.EnergyLimit;
+    const maximumEnergy = tronAccountResources.TotalEnergyLimit;
+
+    return [
+      {
+        assetType: Networks[scope].energy.id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: Networks[scope].energy.symbol,
+        decimals: Networks[scope].energy.decimals,
+        rawAmount: energy.toString(),
+        uiAmount: energy.toString(),
+      },
+      {
+        assetType: Networks[scope].energy.id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol: Networks[scope].maximumEnergy.symbol,
+        decimals: Networks[scope].maximumEnergy.decimals,
+        rawAmount: maximumEnergy.toString(),
+        uiAmount: maximumEnergy.toString(),
+      },
+    ];
   }
 
   #extractTrc10Assets({
@@ -466,22 +493,7 @@ export class AssetsService {
     > = {};
 
     for (const assetType of assetTypes) {
-      // const { chainId } = parseCaipAssetType(assetType);
-      nativeTokensMetadata[assetType] = {
-        name: 'Tron',
-        symbol: 'TRX',
-        fungible: true as const,
-        // iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/tron/${chainId}/slip44/195.png`,
-        iconUrl:
-          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-        units: [
-          {
-            name: 'Tron',
-            symbol: 'TRX',
-            decimals: 6,
-          },
-        ],
-      };
+      nativeTokensMetadata[assetType] = TRX_METADATA;
     }
 
     return nativeTokensMetadata;
@@ -490,81 +502,27 @@ export class AssetsService {
   #getStakedTokensMetadata(
     assetTypes: StakedCaipAssetType[],
   ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    // Can either be Staked for Energy or Staked for Bandwidth
+    // Can either be Staked for Bandwidth or Staked for Energy
     const stakedTokensMetadata: Record<
       CaipAssetType,
       FungibleAssetMetadata | null
     > = {};
 
     for (const assetType of assetTypes) {
-      const isForEnergy = assetType.endsWith('staked-for-energy');
-
-      if (isForEnergy) {
-        stakedTokensMetadata[assetType] = {
-          name: 'Staked for Energy',
-          symbol: 'sTRX-ENERGY',
-          fungible: true as const,
-          iconUrl:
-            'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-          units: [
-            {
-              name: 'sTRX-ENERGY',
-              symbol: 'sTRX-ENERGY',
-              decimals: 6,
-            },
-          ],
-        };
-      }
-
       const isForBandwdidth = assetType.endsWith('staked-for-bandwidth');
 
       if (isForBandwdidth) {
-        stakedTokensMetadata[assetType] = {
-          name: 'Staked for Bandwidth',
-          symbol: 'sTRX-BANDWIDTH',
-          fungible: true as const,
-          iconUrl:
-            'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-          units: [
-            {
-              name: 'sTRX-BANDWIDTH',
-              symbol: 'sTRX-BANDWIDTH',
-              decimals: 6,
-            },
-          ],
-        };
+        stakedTokensMetadata[assetType] = TRX_STAKED_FOR_BANDWIDTH_METADATA;
+      }
+
+      const isForEnergy = assetType.endsWith('staked-for-energy');
+
+      if (isForEnergy) {
+        stakedTokensMetadata[assetType] = TRX_STAKED_FOR_ENERGY_METADATA;
       }
     }
 
     return stakedTokensMetadata;
-  }
-
-  #getEnergyMetadata(
-    assetTypes: ResourceCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const energyTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      energyTokensMetadata[assetType] = {
-        name: 'Energy',
-        symbol: 'ENERGY',
-        fungible: true as const,
-        iconUrl:
-          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-        units: [
-          {
-            name: 'Energy',
-            symbol: 'ENERGY',
-            decimals: 0,
-          },
-        ],
-      };
-    }
-
-    return energyTokensMetadata;
   }
 
   #getBandwidthMetadata(
@@ -576,23 +534,25 @@ export class AssetsService {
     > = {};
 
     for (const assetType of assetTypes) {
-      bandwidthTokensMetadata[assetType] = {
-        name: 'Bandwidth',
-        symbol: 'BANDWIDTH',
-        fungible: true as const,
-        iconUrl:
-          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-        units: [
-          {
-            name: 'Bandwidth',
-            symbol: 'BANDWIDTH',
-            decimals: 0,
-          },
-        ],
-      };
+      bandwidthTokensMetadata[assetType] = BANDWIDTH_METADATA;
     }
 
     return bandwidthTokensMetadata;
+  }
+
+  #getEnergyMetadata(
+    assetTypes: ResourceCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const energyTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      energyTokensMetadata[assetType] = ENERGY_METADATA;
+    }
+
+    return energyTokensMetadata;
   }
 
   async #getTokensMetadata(

@@ -1,4 +1,4 @@
-import type { Network } from '../constants';
+import type { KnownCaip19Id, Network } from '../constants';
 import type {
   NativeCaipAssetType,
   NftCaipAssetType,
@@ -24,7 +24,27 @@ export type StakedAsset = BaseAsset & {
 };
 
 export type ResourceAsset = BaseAsset & {
-  assetType: `${Network}/slip44:energy` | `${Network}/slip44:bandwidth`;
+  assetType:
+    | KnownCaip19Id.EnergyMainnet
+    | KnownCaip19Id.EnergyNile
+    | KnownCaip19Id.EnergyShasta
+    | KnownCaip19Id.EnergyLocalnet
+    | KnownCaip19Id.BandwidthMainnet
+    | KnownCaip19Id.BandwidthNile
+    | KnownCaip19Id.BandwidthShasta
+    | KnownCaip19Id.BandwidthLocalnet;
+};
+
+export type MaximumResourceAsset = BaseAsset & {
+  assetType:
+    | KnownCaip19Id.MaximumEnergyMainnet
+    | KnownCaip19Id.MaximumEnergyNile
+    | KnownCaip19Id.MaximumEnergyShasta
+    | KnownCaip19Id.MaximumEnergyLocalnet
+    | KnownCaip19Id.MaximumBandwidthMainnet
+    | KnownCaip19Id.MaximumBandwidthNile
+    | KnownCaip19Id.MaximumBandwidthShasta
+    | KnownCaip19Id.MaximumBandwidthLocalnet;
 };
 
 export type TokenAsset = BaseAsset & {
@@ -40,4 +60,5 @@ export type AssetEntity =
   | StakedAsset
   | TokenAsset
   | NftAsset
-  | ResourceAsset;
+  | ResourceAsset
+  | MaximumResourceAsset;

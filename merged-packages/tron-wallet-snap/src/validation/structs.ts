@@ -12,10 +12,19 @@ import {
   record,
   refine,
   string,
+  union,
 } from '@metamask/superstruct';
 import { TronWeb } from 'tronweb';
 
 import { Network } from '../constants';
+import {
+  MaximumResourceCaipAssetTypeStruct,
+  NativeCaipAssetTypeStruct,
+  NftCaipAssetTypeStruct,
+  ResourceCaipAssetTypeStruct,
+  StakedCaipAssetTypeStruct,
+  TokenCaipAssetTypeStruct,
+} from '../services/assets/types';
 
 // create a uuid validation
 export const UuidStruct = pattern(
@@ -329,3 +338,12 @@ export const TronAddressStruct: Struct<string, null> = define(
     return true;
   },
 );
+
+export const TronCaipAssetTypeStruct: Struct<string, null> = union([
+  NativeCaipAssetTypeStruct,
+  StakedCaipAssetTypeStruct,
+  TokenCaipAssetTypeStruct,
+  NftCaipAssetTypeStruct,
+  ResourceCaipAssetTypeStruct,
+  MaximumResourceCaipAssetTypeStruct,
+]);

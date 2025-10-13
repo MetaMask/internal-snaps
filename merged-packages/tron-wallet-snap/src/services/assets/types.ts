@@ -1,7 +1,9 @@
 import type { TrxScope } from '@metamask/keyring-api';
 import { pattern, string } from '@metamask/superstruct';
 
-export type NativeCaipAssetType = `${TrxScope}/slip44:195`;
+import type { Network } from '../../constants';
+
+export type NativeCaipAssetType = `${Network}/slip44:195`;
 export type StakedCaipAssetType =
   `${TrxScope}/slip44:195-staked-for-${'energy' | 'bandwidth'}`;
 export type ResourceCaipAssetType =
@@ -14,7 +16,7 @@ export type NftCaipAssetType = `${TrxScope}/trc721:${string}`;
  */
 export const NativeCaipAssetTypeStruct = pattern(
   string(),
-  /^tron:(728126428|3448148188|2494104990)\/slip44:195$/u,
+  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:195$/u,
 );
 
 /**
@@ -22,7 +24,7 @@ export const NativeCaipAssetTypeStruct = pattern(
  */
 export const StakedCaipAssetTypeStruct = pattern(
   string(),
-  /^tron:(728126428|3448148188|2494104990)\/slip44:195-staked-for-(energy|bandwidth)$/u,
+  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:195-staked-for-(energy|bandwidth)$/u,
 );
 
 /**
@@ -30,7 +32,15 @@ export const StakedCaipAssetTypeStruct = pattern(
  */
 export const ResourceCaipAssetTypeStruct = pattern(
   string(),
-  /^tron:(728126428|3448148188|2494104990)\/slip44:(energy|bandwidth)$/u,
+  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:(energy|bandwidth)$/u,
+);
+
+/**
+ * Validates a TRON maximum resource CAIP-19 ID (e.g., "tron:728126428/slip44:maximum-energy")
+ */
+export const MaximumResourceCaipAssetTypeStruct = pattern(
+  string(),
+  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:maximum-(energy|bandwidth)$/u,
 );
 
 /**
@@ -38,7 +48,7 @@ export const ResourceCaipAssetTypeStruct = pattern(
  */
 export const TokenCaipAssetTypeStruct = pattern(
   string(),
-  /^tron:(728126428|3448148188|2494104990)\/(trc10|trc20):[a-zA-Z0-9]+$/u,
+  /^tron:(728126428|3448148188|2494104990|localnet)\/(trc10|trc20):[a-zA-Z0-9]+$/u,
 );
 
 /**
@@ -46,5 +56,5 @@ export const TokenCaipAssetTypeStruct = pattern(
  */
 export const NftCaipAssetTypeStruct = pattern(
   string(),
-  /^tron:(728126428|3448148188|2494104990)\/trc721:[a-zA-Z0-9]+$/u,
+  /^tron:(728126428|3448148188|2494104990|localnet)\/trc721:[a-zA-Z0-9]+$/u,
 );

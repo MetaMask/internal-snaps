@@ -14,6 +14,7 @@ import {
   PositiveNumberStringStruct,
   ScopeStringStruct,
   TronAddressStruct,
+  TronCaipAssetTypeStruct,
   UuidStruct,
 } from '../../validation/structs';
 
@@ -70,7 +71,7 @@ export const OnAddressInputRequestStruct = object({
 export const OnAmountInputRequestParamsStruct = object({
   value: PositiveNumberStringStruct,
   accountId: UuidStruct,
-  assetId: CaipAssetTypeStruct,
+  assetId: TronCaipAssetTypeStruct,
 });
 
 export const OnAmountInputRequestStruct = object({

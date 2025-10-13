@@ -17,92 +17,285 @@ export enum KnownCaip19Id {
 
   UsdtMainnet = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
 
-  // Tron Resource Assets
+  /**
+   * Staked Tron
+   */
+  TrxStakedForBandwidthMainnet = `${Network.Mainnet}/slip44:195-staked-for-bandwidth`,
+  TrxStakedForBandwidthNile = `${Network.Nile}/slip44:195-staked-for-bandwidth`,
+  TrxStakedForBandwidthShasta = `${Network.Shasta}/slip44:195-staked-for-bandwidth`,
+  TrxStakedForBandwidthLocalnet = `${Network.Localnet}/slip44:195-staked-for-bandwidth`,
+
+  TrxStakedForEnergyMainnet = `${Network.Mainnet}/slip44:195-staked-for-energy`,
+  TrxStakedForEnergyNile = `${Network.Nile}/slip44:195-staked-for-energy`,
+  TrxStakedForEnergyShasta = `${Network.Shasta}/slip44:195-staked-for-energy`,
+  TrxStakedForEnergyLocalnet = `${Network.Localnet}/slip44:195-staked-for-energy`,
+
+  /**
+   * Tron Resource Assets
+   */
   EnergyMainnet = `${Network.Mainnet}/slip44:energy`,
   EnergyNile = `${Network.Nile}/slip44:energy`,
   EnergyShasta = `${Network.Shasta}/slip44:energy`,
   EnergyLocalnet = `${Network.Localnet}/slip44:energy`,
 
+  MaximumEnergyMainnet = `${Network.Mainnet}/slip44:maximum-energy`,
+  MaximumEnergyNile = `${Network.Nile}/slip44:maximum-energy`,
+  MaximumEnergyShasta = `${Network.Shasta}/slip44:maximum-energy`,
+  MaximumEnergyLocalnet = `${Network.Localnet}/slip44:maximum-energy`,
+
   BandwidthMainnet = `${Network.Mainnet}/slip44:bandwidth`,
   BandwidthNile = `${Network.Nile}/slip44:bandwidth`,
   BandwidthShasta = `${Network.Shasta}/slip44:bandwidth`,
   BandwidthLocalnet = `${Network.Localnet}/slip44:bandwidth`,
+
+  MaximumBandwidthMainnet = `${Network.Mainnet}/slip44:maximum-bandwidth`,
+  MaximumBandwidthNile = `${Network.Nile}/slip44:maximum-bandwidth`,
+  MaximumBandwidthShasta = `${Network.Shasta}/slip44:maximum-bandwidth`,
+  MaximumBandwidthLocalnet = `${Network.Localnet}/slip44:maximum-bandwidth`,
 }
+
+export const TRX_METADATA = {
+  fungible: true as const,
+  name: 'Tron',
+  symbol: 'TRX',
+  decimals: 6,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'Tron',
+      symbol: 'TRX',
+      decimals: 6,
+    },
+  ],
+};
+
+export const TRX_STAKED_FOR_BANDWIDTH_METADATA = {
+  name: 'Staked for Bandwidth',
+  symbol: 'sTRX-BANDWIDTH',
+  fungible: true as const,
+  decimals: 6,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'sTRX-BANDWIDTH',
+      symbol: 'sTRX-BANDWIDTH',
+      decimals: 6,
+    },
+  ],
+};
+
+export const TRX_STAKED_FOR_ENERGY_METADATA = {
+  name: 'Staked for Energy',
+  symbol: 'sTRX-ENERGY',
+  fungible: true as const,
+  decimals: 6,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'sTRX-ENERGY',
+      symbol: 'sTRX-ENERGY',
+      decimals: 6,
+    },
+  ],
+};
+
+export const BANDWIDTH_METADATA = {
+  name: 'Bandwidth',
+  symbol: 'BANDWIDTH',
+  fungible: true as const,
+  decimals: 0,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'Bandwidth',
+      symbol: 'BANDWIDTH',
+      decimals: 0,
+    },
+  ],
+};
+
+export const MAX_BANDWIDTH_METADATA = {
+  name: 'Max Bandwidth',
+  symbol: 'MAX-BANDWIDTH',
+  fungible: true as const,
+  decimals: 0,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'Max Bandwidth',
+      symbol: 'MAX-BANDWIDTH',
+      decimals: 0,
+    },
+  ],
+};
+
+export const ENERGY_METADATA = {
+  name: 'Energy',
+  symbol: 'ENERGY',
+  fungible: true as const,
+  decimals: 0,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'Energy',
+      symbol: 'ENERGY',
+      decimals: 0,
+    },
+  ],
+};
+
+export const MAX_ENERGY_METADATA = {
+  name: 'Max Energy',
+  symbol: 'MAX-ENERGY',
+  fungible: true as const,
+  decimals: 0,
+  iconUrl:
+    'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
+  units: [
+    {
+      name: 'Max Energy',
+      symbol: 'MAX-ENERGY',
+      decimals: 0,
+    },
+  ],
+};
 
 export const TokenMetadata = {
   [KnownCaip19Id.TrxMainnet]: {
     id: KnownCaip19Id.TrxMainnet,
-    name: 'Tron',
-    symbol: 'TRX',
-    decimals: 6,
+    ...TRX_METADATA,
   },
   [KnownCaip19Id.TrxNile]: {
     id: KnownCaip19Id.TrxNile,
-    name: 'Tron',
-    symbol: 'TRX',
-    decimals: 6,
+    ...TRX_METADATA,
   },
   [KnownCaip19Id.TrxShasta]: {
     id: KnownCaip19Id.TrxShasta,
-    name: 'Tron',
-    symbol: 'TRX',
-    decimals: 6,
+    ...TRX_METADATA,
   },
   [KnownCaip19Id.TrxLocalnet]: {
     id: KnownCaip19Id.TrxLocalnet,
-    name: 'Tron',
-    symbol: 'TRX',
-    decimals: 6,
+    ...TRX_METADATA,
   },
-  // Energy resource metadata
-  [KnownCaip19Id.EnergyMainnet]: {
-    id: KnownCaip19Id.EnergyMainnet,
-    name: 'Tron Energy',
-    symbol: 'ENERGY',
-    decimals: 0,
+  /**
+   * Tron Staked for Bandwidth Metadata
+   */
+  [KnownCaip19Id.TrxStakedForBandwidthMainnet]: {
+    id: KnownCaip19Id.TrxStakedForBandwidthMainnet,
+    ...TRX_STAKED_FOR_BANDWIDTH_METADATA,
   },
-  [KnownCaip19Id.EnergyNile]: {
-    id: KnownCaip19Id.EnergyNile,
-    name: 'Tron Energy',
-    symbol: 'ENERGY',
-    decimals: 0,
+  [KnownCaip19Id.TrxStakedForBandwidthNile]: {
+    id: KnownCaip19Id.TrxStakedForBandwidthNile,
+    ...TRX_STAKED_FOR_BANDWIDTH_METADATA,
   },
-  [KnownCaip19Id.EnergyShasta]: {
-    id: KnownCaip19Id.EnergyShasta,
-    name: 'Tron Energy',
-    symbol: 'ENERGY',
-    decimals: 0,
+  [KnownCaip19Id.TrxStakedForBandwidthShasta]: {
+    id: KnownCaip19Id.TrxStakedForBandwidthShasta,
+    ...TRX_STAKED_FOR_BANDWIDTH_METADATA,
   },
-  [KnownCaip19Id.EnergyLocalnet]: {
-    id: KnownCaip19Id.EnergyLocalnet,
-    name: 'Tron Energy',
-    symbol: 'ENERGY',
-    decimals: 0,
+  [KnownCaip19Id.TrxStakedForBandwidthLocalnet]: {
+    id: KnownCaip19Id.TrxStakedForBandwidthLocalnet,
+    ...TRX_STAKED_FOR_BANDWIDTH_METADATA,
   },
-  // Bandwidth resource metadata
+  /**
+   * Tron Staked for Energy Metadata
+   */
+  [KnownCaip19Id.TrxStakedForEnergyMainnet]: {
+    id: KnownCaip19Id.TrxStakedForEnergyMainnet,
+    ...TRX_STAKED_FOR_ENERGY_METADATA,
+  },
+  [KnownCaip19Id.TrxStakedForEnergyNile]: {
+    id: KnownCaip19Id.TrxStakedForEnergyNile,
+    ...TRX_STAKED_FOR_ENERGY_METADATA,
+  },
+  [KnownCaip19Id.TrxStakedForEnergyShasta]: {
+    id: KnownCaip19Id.TrxStakedForEnergyShasta,
+    ...TRX_STAKED_FOR_ENERGY_METADATA,
+  },
+  [KnownCaip19Id.TrxStakedForEnergyLocalnet]: {
+    id: KnownCaip19Id.TrxStakedForEnergyLocalnet,
+    ...TRX_STAKED_FOR_ENERGY_METADATA,
+  },
+  /**
+   * Bandwidth Resource Metadata
+   */
   [KnownCaip19Id.BandwidthMainnet]: {
     id: KnownCaip19Id.BandwidthMainnet,
-    name: 'Tron Bandwidth',
-    symbol: 'BANDWIDTH',
-    decimals: 0,
+    ...BANDWIDTH_METADATA,
   },
   [KnownCaip19Id.BandwidthNile]: {
     id: KnownCaip19Id.BandwidthNile,
-    name: 'Tron Bandwidth',
-    symbol: 'BANDWIDTH',
-    decimals: 0,
+    ...BANDWIDTH_METADATA,
   },
   [KnownCaip19Id.BandwidthShasta]: {
     id: KnownCaip19Id.BandwidthShasta,
-    name: 'Tron Bandwidth',
-    symbol: 'BANDWIDTH',
-    decimals: 0,
+    ...BANDWIDTH_METADATA,
   },
   [KnownCaip19Id.BandwidthLocalnet]: {
     id: KnownCaip19Id.BandwidthLocalnet,
-    name: 'Tron Bandwidth',
-    symbol: 'BANDWIDTH',
-    decimals: 0,
+    ...BANDWIDTH_METADATA,
+  },
+  /**
+   * Max Bandwidth Metadata
+   */
+  [KnownCaip19Id.MaximumBandwidthMainnet]: {
+    id: KnownCaip19Id.MaximumBandwidthMainnet,
+    ...MAX_BANDWIDTH_METADATA,
+  },
+  [KnownCaip19Id.MaximumBandwidthNile]: {
+    id: KnownCaip19Id.MaximumBandwidthNile,
+    ...MAX_BANDWIDTH_METADATA,
+  },
+  [KnownCaip19Id.MaximumBandwidthShasta]: {
+    id: KnownCaip19Id.MaximumBandwidthShasta,
+    ...MAX_BANDWIDTH_METADATA,
+  },
+  [KnownCaip19Id.MaximumBandwidthLocalnet]: {
+    id: KnownCaip19Id.MaximumBandwidthLocalnet,
+    ...MAX_BANDWIDTH_METADATA,
+  },
+  /**
+   * Energy Resource Metadata
+   */
+  [KnownCaip19Id.EnergyMainnet]: {
+    id: KnownCaip19Id.EnergyMainnet,
+    ...ENERGY_METADATA,
+  },
+  [KnownCaip19Id.EnergyNile]: {
+    id: KnownCaip19Id.EnergyNile,
+    ...ENERGY_METADATA,
+  },
+  [KnownCaip19Id.EnergyShasta]: {
+    id: KnownCaip19Id.EnergyShasta,
+    ...ENERGY_METADATA,
+  },
+  [KnownCaip19Id.EnergyLocalnet]: {
+    id: KnownCaip19Id.EnergyLocalnet,
+    ...ENERGY_METADATA,
+  },
+  /**
+   * Max Energy Metadata
+   */
+  [KnownCaip19Id.MaximumEnergyMainnet]: {
+    id: KnownCaip19Id.MaximumEnergyMainnet,
+    ...MAX_ENERGY_METADATA,
+  },
+  [KnownCaip19Id.MaximumEnergyNile]: {
+    id: KnownCaip19Id.MaximumEnergyNile,
+    ...MAX_ENERGY_METADATA,
+  },
+  [KnownCaip19Id.MaximumEnergyShasta]: {
+    id: KnownCaip19Id.EnergyShasta,
+    ...MAX_ENERGY_METADATA,
+  },
+  [KnownCaip19Id.MaximumEnergyLocalnet]: {
+    id: KnownCaip19Id.EnergyLocalnet,
+    ...MAX_ENERGY_METADATA,
   },
 } as const;
 
@@ -112,38 +305,77 @@ export const Networks = {
     cluster: 'mainnet',
     name: 'Tron Mainnet',
     nativeToken: TokenMetadata[KnownCaip19Id.TrxMainnet],
-    energy: TokenMetadata[KnownCaip19Id.EnergyMainnet],
+    stakedForBandwidth:
+      TokenMetadata[KnownCaip19Id.TrxStakedForBandwidthMainnet],
+    stakedForEnergy: TokenMetadata[KnownCaip19Id.TrxStakedForEnergyMainnet],
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthMainnet],
+    maximumBandwidth: TokenMetadata[KnownCaip19Id.MaximumBandwidthMainnet],
+    energy: TokenMetadata[KnownCaip19Id.EnergyMainnet],
+    maximumEnergy: TokenMetadata[KnownCaip19Id.MaximumEnergyMainnet],
   },
   [Network.Nile]: {
     caip2Id: Network.Nile,
     cluster: 'devnet',
     name: 'Tron Nile',
     nativeToken: TokenMetadata[KnownCaip19Id.TrxNile],
-    energy: TokenMetadata[KnownCaip19Id.EnergyNile],
+    stakedForBandwidth: TokenMetadata[KnownCaip19Id.TrxStakedForBandwidthNile],
+    stakedForEnergy: TokenMetadata[KnownCaip19Id.TrxStakedForEnergyNile],
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthNile],
+    maximumBandwidth: TokenMetadata[KnownCaip19Id.MaximumBandwidthNile],
+    energy: TokenMetadata[KnownCaip19Id.EnergyNile],
+    maximumEnergy: TokenMetadata[KnownCaip19Id.MaximumEnergyNile],
   },
   [Network.Shasta]: {
     caip2Id: Network.Shasta,
     cluster: 'testnet',
     name: 'Tron Shasta',
     nativeToken: TokenMetadata[KnownCaip19Id.TrxShasta],
-    energy: TokenMetadata[KnownCaip19Id.EnergyShasta],
+    stakedForBandwidth:
+      TokenMetadata[KnownCaip19Id.TrxStakedForBandwidthShasta],
+    stakedForEnergy: TokenMetadata[KnownCaip19Id.TrxStakedForEnergyShasta],
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthShasta],
+    maximumBandwidth: TokenMetadata[KnownCaip19Id.BandwidthShasta],
+    energy: TokenMetadata[KnownCaip19Id.EnergyShasta],
+    maximumEnergy: TokenMetadata[KnownCaip19Id.MaximumEnergyShasta],
   },
   [Network.Localnet]: {
     caip2Id: Network.Localnet,
     cluster: 'local',
     name: 'Tron Localnet',
     nativeToken: TokenMetadata[KnownCaip19Id.TrxLocalnet],
-    energy: TokenMetadata[KnownCaip19Id.EnergyLocalnet],
+    stakedForBandwidth:
+      TokenMetadata[KnownCaip19Id.TrxStakedForBandwidthLocalnet],
+    stakedForEnergy: TokenMetadata[KnownCaip19Id.TrxStakedForEnergyLocalnet],
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthLocalnet],
+    maximumBandwidth: TokenMetadata[KnownCaip19Id.BandwidthLocalnet],
+    energy: TokenMetadata[KnownCaip19Id.EnergyLocalnet],
+    maximumEnergy: TokenMetadata[KnownCaip19Id.MaximumEnergyLocalnet],
   },
 } as const;
 
-export const EXCLUDED_ASSET_SUFFIXES = [
-  '/slip44:energy',
-  '/slip44:bandwidth',
-  '/slip44:195-staked-for-energy',
-  '/slip44:195-staked-for-bandwidth',
+export const SPECIAL_ASSETS: string[] = [
+  KnownCaip19Id.TrxStakedForBandwidthMainnet,
+  KnownCaip19Id.TrxStakedForBandwidthNile,
+  KnownCaip19Id.TrxStakedForBandwidthShasta,
+  KnownCaip19Id.TrxStakedForBandwidthLocalnet,
+  KnownCaip19Id.TrxStakedForEnergyMainnet,
+  KnownCaip19Id.TrxStakedForEnergyNile,
+  KnownCaip19Id.TrxStakedForEnergyShasta,
+  KnownCaip19Id.TrxStakedForEnergyLocalnet,
+  KnownCaip19Id.BandwidthMainnet,
+  KnownCaip19Id.BandwidthNile,
+  KnownCaip19Id.BandwidthShasta,
+  KnownCaip19Id.BandwidthLocalnet,
+  KnownCaip19Id.MaximumBandwidthMainnet,
+  KnownCaip19Id.MaximumBandwidthNile,
+  KnownCaip19Id.MaximumBandwidthShasta,
+  KnownCaip19Id.MaximumBandwidthLocalnet,
+  KnownCaip19Id.EnergyMainnet,
+  KnownCaip19Id.EnergyNile,
+  KnownCaip19Id.EnergyShasta,
+  KnownCaip19Id.EnergyLocalnet,
+  KnownCaip19Id.MaximumEnergyMainnet,
+  KnownCaip19Id.MaximumEnergyNile,
+  KnownCaip19Id.MaximumEnergyShasta,
+  KnownCaip19Id.MaximumEnergyLocalnet,
 ];

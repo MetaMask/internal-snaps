@@ -3,7 +3,7 @@ import { array, assert, type Infer } from '@metamask/superstruct';
 import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 
 import { TokenMetadataResponseStruct } from './structs';
-import { EXCLUDED_ASSET_SUFFIXES, Network } from '../../constants';
+import { Network, SPECIAL_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
@@ -93,9 +93,7 @@ export class TokenApiClient {
        * Exclude TRON resource tokens (energy and bandwidth), staked tokens, and tokens not from supported networks.
        */
       const supportedAssetTypes = assetTypes.filter((assetType) => {
-        if (
-          EXCLUDED_ASSET_SUFFIXES.some((suffix) => assetType.endsWith(suffix))
-        ) {
+        if (SPECIAL_ASSETS.includes(assetType)) {
           return false;
         }
         const { chainId } = parseCaipAssetType(assetType);

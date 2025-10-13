@@ -166,7 +166,7 @@ export class AccountsService {
           derivationPath,
           groupIndex: accountIndex,
         },
-        exportable: false,
+        exportable: true,
       },
       methods: ['signMessageV2', 'verifyMessageV2'],
     };

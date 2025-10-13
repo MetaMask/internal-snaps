@@ -177,7 +177,7 @@ describe('TokenApiClient', () => {
       });
 
       await expect(client.getTokensMetadata(tokenAddresses)).rejects.toThrow(
-        'At path: 0.assetId -- Expected a string matching `/^tron:(728126428|3448148188|2494104990)\\/(trc10|trc20):[a-zA-Z0-9]+$/` but received "bad-asset-id"',
+        'At path: 0.assetId -- Expected a string matching `/^tron:(728126428|3448148188|2494104990|localnet)\\/(trc10|trc20):[a-zA-Z0-9]+$/` but received "bad-asset-id"',
       );
     });
 
