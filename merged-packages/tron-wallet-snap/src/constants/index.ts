@@ -61,13 +61,6 @@ export const TRX_METADATA = {
   decimals: 6,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'Tron',
-      symbol: 'TRX',
-      decimals: 6,
-    },
-  ],
 };
 
 export const TRX_STAKED_FOR_BANDWIDTH_METADATA = {
@@ -77,13 +70,6 @@ export const TRX_STAKED_FOR_BANDWIDTH_METADATA = {
   decimals: 6,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'sTRX-BANDWIDTH',
-      symbol: 'sTRX-BANDWIDTH',
-      decimals: 6,
-    },
-  ],
 };
 
 export const TRX_STAKED_FOR_ENERGY_METADATA = {
@@ -93,13 +79,6 @@ export const TRX_STAKED_FOR_ENERGY_METADATA = {
   decimals: 6,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'sTRX-ENERGY',
-      symbol: 'sTRX-ENERGY',
-      decimals: 6,
-    },
-  ],
 };
 
 export const BANDWIDTH_METADATA = {
@@ -109,13 +88,6 @@ export const BANDWIDTH_METADATA = {
   decimals: 0,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'Bandwidth',
-      symbol: 'BANDWIDTH',
-      decimals: 0,
-    },
-  ],
 };
 
 export const MAX_BANDWIDTH_METADATA = {
@@ -125,13 +97,6 @@ export const MAX_BANDWIDTH_METADATA = {
   decimals: 0,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'Max Bandwidth',
-      symbol: 'MAX-BANDWIDTH',
-      decimals: 0,
-    },
-  ],
 };
 
 export const ENERGY_METADATA = {
@@ -141,13 +106,6 @@ export const ENERGY_METADATA = {
   decimals: 0,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'Energy',
-      symbol: 'ENERGY',
-      decimals: 0,
-    },
-  ],
 };
 
 export const MAX_ENERGY_METADATA = {
@@ -157,13 +115,6 @@ export const MAX_ENERGY_METADATA = {
   decimals: 0,
   iconUrl:
     'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-  units: [
-    {
-      name: 'Max Energy',
-      symbol: 'MAX-ENERGY',
-      decimals: 0,
-    },
-  ],
 };
 
 export const TokenMetadata = {
@@ -290,11 +241,11 @@ export const TokenMetadata = {
     ...MAX_ENERGY_METADATA,
   },
   [KnownCaip19Id.MaximumEnergyShasta]: {
-    id: KnownCaip19Id.EnergyShasta,
+    id: KnownCaip19Id.MaximumEnergyShasta,
     ...MAX_ENERGY_METADATA,
   },
   [KnownCaip19Id.MaximumEnergyLocalnet]: {
-    id: KnownCaip19Id.EnergyLocalnet,
+    id: KnownCaip19Id.MaximumEnergyLocalnet,
     ...MAX_ENERGY_METADATA,
   },
 } as const;
@@ -334,7 +285,7 @@ export const Networks = {
       TokenMetadata[KnownCaip19Id.TrxStakedForBandwidthShasta],
     stakedForEnergy: TokenMetadata[KnownCaip19Id.TrxStakedForEnergyShasta],
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthShasta],
-    maximumBandwidth: TokenMetadata[KnownCaip19Id.BandwidthShasta],
+    maximumBandwidth: TokenMetadata[KnownCaip19Id.MaximumBandwidthShasta],
     energy: TokenMetadata[KnownCaip19Id.EnergyShasta],
     maximumEnergy: TokenMetadata[KnownCaip19Id.MaximumEnergyShasta],
   },
@@ -347,7 +298,7 @@ export const Networks = {
       TokenMetadata[KnownCaip19Id.TrxStakedForBandwidthLocalnet],
     stakedForEnergy: TokenMetadata[KnownCaip19Id.TrxStakedForEnergyLocalnet],
     bandwidth: TokenMetadata[KnownCaip19Id.BandwidthLocalnet],
-    maximumBandwidth: TokenMetadata[KnownCaip19Id.BandwidthLocalnet],
+    maximumBandwidth: TokenMetadata[KnownCaip19Id.MaximumBandwidthLocalnet],
     energy: TokenMetadata[KnownCaip19Id.EnergyLocalnet],
     maximumEnergy: TokenMetadata[KnownCaip19Id.MaximumEnergyLocalnet],
   },
