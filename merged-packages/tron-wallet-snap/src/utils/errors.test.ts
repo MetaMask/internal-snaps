@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { SnapError } from '@metamask/snaps-sdk';
 
 import { withCatchAndThrowSnapError } from './errors';
@@ -45,7 +44,7 @@ describe('errors', () => {
 
       try {
         await withCatchAndThrowSnapError(mockFn);
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -154,7 +153,7 @@ describe('errors', () => {
 
       try {
         await withCatchAndThrowSnapError(mockFn);
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

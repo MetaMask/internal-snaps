@@ -19,6 +19,15 @@ export class AssetsRepository {
     return assets ?? [];
   }
 
+  async getByAccountIdAndAssetType(
+    keyringAccountId: string,
+    assetType: string,
+  ): Promise<AssetEntity | null> {
+    const assets = await this.getByAccountId(keyringAccountId);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+    return assets.find((asset) => asset.assetType === assetType) ?? null;
+  }
+
   async getAll(): Promise<AssetEntity[]> {
     const assetsByAccount =
       (await this.#state.getKey<UnencryptedStateValue['assets']>('assets')) ??

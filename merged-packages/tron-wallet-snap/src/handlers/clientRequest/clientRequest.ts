@@ -16,6 +16,7 @@ import type {
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
 import type { StakingService } from '../../services/staking/StakingService';
+import { assertOrThrow } from '../../utils/assertOrThrow';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
@@ -94,6 +95,9 @@ export class ClientRequestHandler {
     const { method } = request;
 
     switch (method as ClientRequestMethod) {
+      /**
+       * Wallet Standard
+       */
       case ClientRequestMethod.SignAndSendTransaction:
         return this.#handleSignAndSendTransaction(request);
       /**
@@ -130,13 +134,11 @@ export class ClientRequestHandler {
    * @returns The transaction result with hash and status.
    */
   async #handleSignAndSendTransaction(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, SignAndSendTransactionRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(
+      request,
+      SignAndSendTransactionRequestStruct,
+      new InvalidParamsError(),
+    );
 
     const { transaction, accountId, scope } = request.params;
 
@@ -169,19 +171,95 @@ export class ClientRequestHandler {
   }
 
   /**
+   * Handles the input of an address.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleOnAddressInput(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, OnAddressInputRequestStruct);
+      return {
+        valid: true,
+        errors: [],
+      };
+    } catch {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.Invalid],
+      };
+    }
+  }
+
+  /**
+   * Handles amount input validation and balance checking.
+   *
+   * @param request - The JSON-RPC request containing amount and asset details.
+   * @returns Validation result with balance and sufficiency status.
+   */
+  async #handleOnAmountInput(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, OnAmountInputRequestStruct);
+
+      /**
+       * Check if the user has enough of the asset
+       */
+      const { accountId, assetId, value } = request.params;
+      const account = await this.#accountsService.findById(accountId);
+
+      /**
+       * The account does not exist...
+       */
+      if (!account) {
+        return {
+          valid: false,
+          errors: [SendErrorCodes.Invalid],
+        };
+      }
+
+      const asset = await this.#assetsService.getAssetByAccountId(
+        accountId,
+        assetId,
+      );
+
+      /**
+       * If the account doesn't have this asset, treat it as having zero balance
+       */
+      const balance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
+      const amount = BigNumber(value);
+
+      if (amount.isGreaterThan(balance)) {
+        return {
+          valid: false,
+          errors: [SendErrorCodes.InsufficientBalance],
+        };
+      }
+
+      return {
+        valid: true,
+        errors: [],
+      };
+    } catch (error) {
+      this.#logger.error('Error in #handleOnAmountInput:', error);
+      return {
+        valid: false,
+        errors: [SendErrorCodes.Invalid],
+      };
+    }
+  }
+
+  /**
    * Handles the confirmation and sending of a transaction.
    *
    * @param request - The JSON-RPC request containing transaction details.
    * @returns The transaction result with hash and status.
    */
   async #handleConfirmSend(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnConfirmSendRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(
+      request,
+      OnConfirmSendRequestStruct,
+      new InvalidParamsError(),
+    );
 
     const { fromAccountId, toAddress, amount, assetId } = request.params;
 
@@ -199,102 +277,6 @@ export class ClientRequestHandler {
   }
 
   /**
-   * Handles the input of an address.
-   *
-   * @param request - The JSON-RPC request containing the method and parameters.
-   * @returns The response to the JSON-RPC request.
-   * @throws {InvalidParamsError} If the params are invalid.
-   */
-  async #handleOnAddressInput(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnAddressInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
-
-    /**
-     * If we reach this point, the address is valid (validated by TronAddressStruct)
-     */
-    return {
-      valid: true,
-      errors: [],
-    };
-  }
-
-  /**
-   * Handles amount input validation and balance checking.
-   *
-   * @param request - The JSON-RPC request containing amount and asset details.
-   * @returns Validation result with balance and sufficiency status.
-   */
-  async #handleOnAmountInput(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnAmountInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
-
-    /**
-     * Check if the user has enough of the asset
-     */
-    const { accountId, assetId, value } = request.params;
-
-    const account = await this.#accountsService.findById(accountId);
-
-    /**
-     * The account does not exist...
-     */
-    if (!account) {
-      return {
-        valid: false,
-        errors: [SendErrorCodes.Invalid],
-      };
-    }
-
-    const accountAssets =
-      await this.#assetsService.getByKeyringAccountId(accountId);
-
-    /**
-     * Typescript is not smart enough to infer that the validation above
-     * guarantees that assetId is a valid TronCaipAssetTypeStruct and the
-     * unsafe enum comparison is irrelevant.
-     */
-    const asset = accountAssets.find(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-      (assetItem) => assetItem.assetType === assetId,
-    );
-
-    /**
-     * The account does not have this asset...
-     */
-    if (!asset) {
-      return {
-        valid: false,
-        errors: [SendErrorCodes.Invalid],
-      };
-    }
-
-    const balance = BigNumber(asset.uiAmount);
-    const amount = BigNumber(value);
-
-    if (amount.isGreaterThan(balance)) {
-      return {
-        valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
-      };
-    }
-
-    return {
-      valid: true,
-      errors: [],
-    };
-  }
-
-  /**
    * Handles the computation of a fee for a TRON transaction.
    * Returns used energy, used bandwidth, and the additional TRX cost breakdown for overages.
    *
@@ -303,13 +285,7 @@ export class ClientRequestHandler {
    * @throws {InvalidParamsError} If the params are invalid.
    */
   async #handleComputeFee(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, ComputeFeeRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(request, ComputeFeeRequestStruct, new InvalidParamsError());
 
     const {
       params: { scope, transaction, accountId },
@@ -317,16 +293,16 @@ export class ClientRequestHandler {
 
     await this.#accountsService.findByIdOrThrow(accountId);
 
-    const assets = await this.#assetsService.getAssetsByAccountId(accountId);
-
     /**
      * Get available Energy and Bandwidth from account assets.
      */
-    const energyAsset = assets.find(
-      (asset) => asset.assetType === Networks[scope].energy.id,
+    const energyAsset = await this.#assetsService.getAssetByAccountId(
+      accountId,
+      Networks[scope].energy.id,
     );
-    const bandwidthAsset = assets.find(
-      (asset) => asset.assetType === Networks[scope].bandwidth.id,
+    const bandwidthAsset = await this.#assetsService.getAssetByAccountId(
+      accountId,
+      Networks[scope].bandwidth.id,
     );
 
     const availableEnergy = energyAsset
@@ -359,20 +335,24 @@ export class ClientRequestHandler {
    * @returns The response to the JSON-RPC request.
    */
   async #handleOnStakeAmountInput(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnStakeAmountInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(
+      request,
+      OnStakeAmountInputRequestStruct,
+      new InvalidParamsError(),
+    );
 
     const { accountId, assetId, value } = request.params;
 
     await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAssetOrThrow(accountId, assetId);
+    const asset = await this.#assetsService.getAssetByAccountId(
+      accountId,
+      assetId,
+    );
 
-    const accountBalance = BigNumber(asset.uiAmount);
+    /**
+     * If the account doesn't have this asset, treat it as having zero balance
+     */
+    const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
 
     if (requestBalance.isGreaterThan(accountBalance)) {
@@ -396,13 +376,11 @@ export class ClientRequestHandler {
    * @returns The response to the JSON-RPC request.
    */
   async #handleConfirmStake(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnConfirmStakeRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(
+      request,
+      OnConfirmStakeRequestStruct,
+      new InvalidParamsError(),
+    );
 
     const {
       fromAccountId,
@@ -412,22 +390,12 @@ export class ClientRequestHandler {
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
-    const asset = await this.#assetsService.getAssetOrThrow(
+    const asset = await this.#assetsService.getAssetByAccountId(
       fromAccountId,
       assetId,
     );
 
-    /**
-     * Check if account has the asset...
-     */
-    if (!asset) {
-      return {
-        valid: false,
-        errors: [SendErrorCodes.Invalid],
-      };
-    }
-
-    const accountBalance = BigNumber(asset.uiAmount);
+    const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
 
     /**
@@ -464,20 +432,21 @@ export class ClientRequestHandler {
    * @returns The response to the JSON-RPC request.
    */
   async #handleOnUnstakeAmountInput(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnUnstakeAmountInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(
+      request,
+      OnUnstakeAmountInputRequestStruct,
+      new InvalidParamsError(),
+    );
 
     const { accountId, assetId, value } = request.params;
 
     await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAssetOrThrow(accountId, assetId);
+    const asset = await this.#assetsService.getAssetByAccountId(
+      accountId,
+      assetId,
+    );
 
-    const accountBalance = BigNumber(asset.uiAmount);
+    const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
 
     /**
@@ -504,20 +473,21 @@ export class ClientRequestHandler {
    * @returns The response to the JSON-RPC request.
    */
   async #handleConfirmUnstake(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnUnstakeAmountInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
+    assertOrThrow(
+      request,
+      OnUnstakeAmountInputRequestStruct,
+      new InvalidParamsError(),
+    );
 
     const { accountId, assetId, value } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAssetOrThrow(accountId, assetId);
+    const asset = await this.#assetsService.getAssetByAccountId(
+      accountId,
+      assetId,
+    );
 
-    const accountBalance = BigNumber(asset.uiAmount);
+    const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
 
     /**

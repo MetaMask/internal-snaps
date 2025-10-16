@@ -20,6 +20,7 @@ import {
   rpcHandler,
   userInputHandler,
 } from './context';
+import { withCatchAndThrowSnapError } from './utils/errors';
 
 /**
  * Register all handlers
@@ -27,34 +28,44 @@ import {
 
 export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async (
   args,
-) => assetsHandler.onAssetHistoricalPrice(args);
+) =>
+  withCatchAndThrowSnapError(async () =>
+    assetsHandler.onAssetHistoricalPrice(args),
+  );
 
 export const onAssetsConversion: OnAssetsConversionHandler = async (args) =>
-  assetsHandler.onAssetsConversion(args);
+  withCatchAndThrowSnapError(async () =>
+    assetsHandler.onAssetsConversion(args),
+  );
 
 export const onAssetsLookup: OnAssetsLookupHandler = async (args) =>
-  assetsHandler.onAssetsLookup(args);
+  withCatchAndThrowSnapError(async () => assetsHandler.onAssetsLookup(args));
 
 export const onAssetsMarketData: OnAssetsMarketDataHandler = async (args) =>
-  assetsHandler.onAssetsMarketData(args);
+  withCatchAndThrowSnapError(async () =>
+    assetsHandler.onAssetsMarketData(args),
+  );
 
 export const onClientRequest: OnClientRequestHandler = async ({ request }) =>
-  clientRequestHandler.handle(request);
+  withCatchAndThrowSnapError(async () => clientRequestHandler.handle(request));
 
 export const onCronjob: OnCronjobHandler = async ({ request }) =>
-  cronHandler.handle(request);
+  withCatchAndThrowSnapError(async () => cronHandler.handle(request));
 
 export const onKeyringRequest: OnKeyringRequestHandler = async ({
   origin,
   request,
-}) => keyringHandler.handle(origin, request);
+}) =>
+  withCatchAndThrowSnapError(async () =>
+    keyringHandler.handle(origin, request),
+  );
 
 export const onRpcRequest: OnRpcRequestHandler = async ({ origin, request }) =>
-  rpcHandler.handle(origin, request);
+  withCatchAndThrowSnapError(async () => rpcHandler.handle(origin, request));
 
 export const onUserInput: OnUserInputHandler = async (params) =>
-  userInputHandler.handle(params);
+  withCatchAndThrowSnapError(async () => userInputHandler.handle(params));
 
 export const onActive: OnActiveHandler = async () => {
-  await lifecycleHandler.onActive();
+  await withCatchAndThrowSnapError(async () => lifecycleHandler.onActive());
 };
