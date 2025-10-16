@@ -102,11 +102,7 @@ export class SendService {
     toAddress: string;
     amount: number;
   }): Promise<TransactionResult> {
-    const account = await this.#accountsService.findById(fromAccountId);
-
-    if (!account) {
-      throw new Error(`Account with ID ${fromAccountId} not found`);
-    }
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const keypair = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,
@@ -182,11 +178,7 @@ export class SendService {
     amount: number;
     tokenId: string;
   }): Promise<TransactionResult> {
-    const account = await this.#accountsService.findById(fromAccountId);
-
-    if (!account) {
-      throw new Error(`Account with ID ${fromAccountId} not found`);
-    }
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const keypair = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,
@@ -262,11 +254,7 @@ export class SendService {
     amount: number;
     contractAddress: string;
   }): Promise<TransactionResult> {
-    const account = await this.#accountsService.findById(fromAccountId);
-
-    if (!account) {
-      throw new Error(`Account with ID ${fromAccountId} not found`);
-    }
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const keypair = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,

@@ -818,6 +818,30 @@ export class AssetsService {
   }
 
   /**
+   * Retrieves a specific asset for an account and throws an error if not found.
+   * This is a convenience method that combines getByKeyringAccountId with asset filtering and validation.
+   *
+   * @param accountId - The account ID to retrieve the asset for.
+   * @param assetType - The asset type to retrieve.
+   * @returns The asset if found.
+   * @throws {Error} If the asset is not found.
+   */
+  async getAssetOrThrow(
+    accountId: string,
+    assetType: string,
+  ): Promise<AssetEntity> {
+    const assets = await this.getByKeyringAccountId(accountId);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+    const asset = assets.find((assetItem) => assetItem.assetType === assetType);
+
+    if (!asset) {
+      throw new Error(`Asset ${assetType} not found for account ${accountId}`);
+    }
+
+    return asset;
+  }
+
+  /**
    * Extracts the ISO 4217 currency code (aka fiat ticker) from a fiat CAIP-19 asset type.
    *
    * @param caipAssetType - The CAIP-19 asset type.

@@ -339,11 +339,11 @@ export const TronAddressStruct: Struct<string, null> = define(
   },
 );
 
-export const TronCaipAssetTypeStruct: Struct<string, null> = union([
+export const TronCaipAssetTypeStruct = union([
   NativeCaipAssetTypeStruct,
   StakedCaipAssetTypeStruct,
   TokenCaipAssetTypeStruct,
   NftCaipAssetTypeStruct,
   ResourceCaipAssetTypeStruct,
   MaximumResourceCaipAssetTypeStruct,
-]);
+]) as Struct<string, null>;

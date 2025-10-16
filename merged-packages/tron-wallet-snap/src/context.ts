@@ -19,6 +19,7 @@ import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
 import { FeeCalculatorService } from './services/send/FeeCalculatorService';
 import { SendService } from './services/send/SendService';
+import { StakingService } from './services/staking/StakingService';
 import type { UnencryptedStateValue } from './services/state/State';
 import { State } from './services/state/State';
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
@@ -110,6 +111,13 @@ const sendService = new SendService({
   snapClient,
 });
 
+const stakingService = new StakingService({
+  logger,
+  accountsService,
+  tronWebFactory,
+  snapClient,
+});
+
 /**
  * Handlers
  */
@@ -125,6 +133,7 @@ const clientRequestHandler = new ClientRequestHandler({
   tronWebFactory,
   feeCalculatorService,
   snapClient,
+  stakingService,
 });
 const cronHandler = new CronHandler({
   logger,

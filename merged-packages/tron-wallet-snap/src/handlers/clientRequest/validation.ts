@@ -10,11 +10,14 @@ import {
 
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
+  NativeCaipAssetTypeStruct,
+  StakedCaipAssetTypeStruct,
+} from '../../services/assets/types';
+import {
   Base64Struct,
   PositiveNumberStringStruct,
   ScopeStringStruct,
   TronAddressStruct,
-  TronCaipAssetTypeStruct,
   UuidStruct,
 } from '../../validation/structs';
 
@@ -69,9 +72,9 @@ export const OnAddressInputRequestStruct = object({
  * onAmountInput request/response validation.
  */
 export const OnAmountInputRequestParamsStruct = object({
-  value: PositiveNumberStringStruct,
   accountId: UuidStruct,
-  assetId: TronCaipAssetTypeStruct,
+  assetId: CaipAssetTypeStruct,
+  value: PositiveNumberStringStruct,
 });
 
 export const OnAmountInputRequestStruct = object({
@@ -116,3 +119,58 @@ export const ComputeFeeResponseStruct = array(
 );
 
 export type ComputeFeeResponse = Infer<typeof ComputeFeeResponseStruct>;
+
+export const OnStakeAmountInputRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: NativeCaipAssetTypeStruct,
+  value: PositiveNumberStringStruct,
+});
+
+export const OnStakeAmountInputRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.OnStakeAmountInput),
+  params: OnStakeAmountInputRequestParamsStruct,
+});
+
+export const OnConfirmStakeRequestParamsStruct = object({
+  fromAccountId: UuidStruct,
+  assetId: NativeCaipAssetTypeStruct,
+  value: PositiveNumberStringStruct,
+  options: object({
+    purpose: enums(['ENERGY', 'BANDWIDTH']),
+  }),
+});
+
+export const OnConfirmStakeRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.ConfirmStake),
+  params: OnConfirmStakeRequestParamsStruct,
+});
+
+export const OnUnstakeAmountInputRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: StakedCaipAssetTypeStruct,
+  value: PositiveNumberStringStruct,
+});
+
+export const OnUnstakeAmountInputRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.OnUnstakeAmountInput),
+  params: OnUnstakeAmountInputRequestParamsStruct,
+});
+
+export const OnConfirmUnstakeRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: StakedCaipAssetTypeStruct,
+  value: PositiveNumberStringStruct,
+});
+
+export const OnConfirmUnstakeRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.ConfirmUnstake),
+  params: OnConfirmUnstakeRequestParamsStruct,
+});

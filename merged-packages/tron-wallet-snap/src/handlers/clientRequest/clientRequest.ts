@@ -9,8 +9,13 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Networks } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
+import type {
+  NativeCaipAssetType,
+  StakedCaipAssetType,
+} from '../../services/assets/types';
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
+import type { StakingService } from '../../services/staking/StakingService';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
@@ -21,6 +26,9 @@ import {
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
+  OnConfirmStakeRequestStruct,
+  OnStakeAmountInputRequestStruct,
+  OnUnstakeAmountInputRequestStruct,
   SignAndSendTransactionRequestStruct,
 } from './validation';
 
@@ -39,6 +47,8 @@ export class ClientRequestHandler {
 
   readonly #snapClient: SnapClient;
 
+  readonly #stakingService: StakingService;
+
   constructor({
     logger,
     accountsService,
@@ -47,6 +57,7 @@ export class ClientRequestHandler {
     feeCalculatorService,
     tronWebFactory,
     snapClient,
+    stakingService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
@@ -55,6 +66,7 @@ export class ClientRequestHandler {
     feeCalculatorService: FeeCalculatorService;
     tronWebFactory: TronWebFactory;
     snapClient: SnapClient;
+    stakingService: StakingService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
@@ -63,6 +75,7 @@ export class ClientRequestHandler {
     this.#feeCalculatorService = feeCalculatorService;
     this.#tronWebFactory = tronWebFactory;
     this.#snapClient = snapClient;
+    this.#stakingService = stakingService;
   }
 
   /**
@@ -83,14 +96,28 @@ export class ClientRequestHandler {
     switch (method as ClientRequestMethod) {
       case ClientRequestMethod.SignAndSendTransaction:
         return this.#handleSignAndSendTransaction(request);
-      case ClientRequestMethod.ConfirmSend:
-        return this.#handleConfirmSend(request);
-      case ClientRequestMethod.ComputeFee:
-        return this.#handleComputeFee(request);
+      /**
+       * Unified non-EVM Send
+       */
       case ClientRequestMethod.OnAddressInput:
         return this.#handleOnAddressInput(request);
       case ClientRequestMethod.OnAmountInput:
         return this.#handleOnAmountInput(request);
+      case ClientRequestMethod.ConfirmSend:
+        return this.#handleConfirmSend(request);
+      case ClientRequestMethod.ComputeFee:
+        return this.#handleComputeFee(request);
+      /**
+       * Staking
+       */
+      case ClientRequestMethod.OnStakeAmountInput:
+        return this.#handleOnStakeAmountInput(request);
+      case ClientRequestMethod.ConfirmStake:
+        return this.#handleConfirmStake(request);
+      case ClientRequestMethod.OnUnstakeAmountInput:
+        return this.#handleOnUnstakeAmountInput(request);
+      case ClientRequestMethod.ConfirmUnstake:
+        return this.#handleConfirmUnstake(request);
       default:
         throw new MethodNotFoundError() as Error;
     }
@@ -113,11 +140,7 @@ export class ClientRequestHandler {
 
     const { transaction, accountId, scope } = request.params;
 
-    const account = await this.#accountsService.findById(accountId);
-
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
 
     const keypair = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,
@@ -167,15 +190,6 @@ export class ClientRequestHandler {
       toAddress,
       amount: BigNumber(amount).toNumber(),
       assetId,
-    });
-
-    /**
-     * Sync account after a transaction
-     */
-    await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.SynchronizeAccount,
-      params: { accountId: fromAccountId },
-      duration: 'PT5S',
     });
 
     return {
@@ -301,11 +315,7 @@ export class ClientRequestHandler {
       params: { scope, transaction, accountId },
     } = request;
 
-    const account = await this.#accountsService.findById(accountId);
-
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    await this.#accountsService.findByIdOrThrow(accountId);
 
     const assets = await this.#assetsService.getAssetsByAccountId(accountId);
 
@@ -339,5 +349,199 @@ export class ClientRequestHandler {
     assert(result, ComputeFeeResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Handles the input of a stake amount. Checks if the user has enough of the asset
+   * to do the stake.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleOnStakeAmountInput(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, OnStakeAmountInputRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const { accountId, assetId, value } = request.params;
+
+    await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getAssetOrThrow(accountId, assetId);
+
+    const accountBalance = BigNumber(asset.uiAmount);
+    const requestBalance = BigNumber(value);
+
+    if (requestBalance.isGreaterThan(accountBalance)) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.InsufficientBalance],
+      };
+    }
+
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
+
+  /**
+   * Handles the confirmation of a stake. Checks if the user has enough of the asset
+   * to do the stake and then stakes the asset.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleConfirmStake(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, OnConfirmStakeRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const {
+      fromAccountId,
+      assetId,
+      value,
+      options: { purpose },
+    } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+    const asset = await this.#assetsService.getAssetOrThrow(
+      fromAccountId,
+      assetId,
+    );
+
+    /**
+     * Check if account has the asset...
+     */
+    if (!asset) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.Invalid],
+      };
+    }
+
+    const accountBalance = BigNumber(asset.uiAmount);
+    const requestBalance = BigNumber(value);
+
+    /**
+     * Check if account has enough of the asset...
+     */
+    if (requestBalance.isGreaterThan(accountBalance)) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.InsufficientBalance],
+      };
+    }
+
+    /**
+     * All good. Let's stake.
+     */
+    await this.#stakingService.stake({
+      account,
+      assetId: assetId as NativeCaipAssetType,
+      amount: requestBalance,
+      purpose,
+    });
+
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
+
+  /**
+   * Check if we have enough of the asset to unstake. Keep in mind
+   * that you can unstake TRX that is allocated for Bandwidth or for Energy.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleOnUnstakeAmountInput(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, OnUnstakeAmountInputRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const { accountId, assetId, value } = request.params;
+
+    await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getAssetOrThrow(accountId, assetId);
+
+    const accountBalance = BigNumber(asset.uiAmount);
+    const requestBalance = BigNumber(value);
+
+    /**
+     * Check if account has enough of the asset...
+     */
+    if (requestBalance.isGreaterThan(accountBalance)) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.InsufficientBalance],
+      };
+    }
+
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
+
+  /**
+   * Handles the confirmation of an unstake. Checks if the user has enough of the asset
+   * to do the unstake.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleConfirmUnstake(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, OnUnstakeAmountInputRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const { accountId, assetId, value } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getAssetOrThrow(accountId, assetId);
+
+    const accountBalance = BigNumber(asset.uiAmount);
+    const requestBalance = BigNumber(value);
+
+    /**
+     * Check if account has enough of the asset...
+     */
+    if (requestBalance.isGreaterThan(accountBalance)) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.InsufficientBalance],
+      };
+    }
+
+    /**
+     * All good. Let's unstake.
+     */
+    await this.#stakingService.unstake({
+      account,
+      assetId: assetId as StakedCaipAssetType,
+      amount: requestBalance,
+    });
+
+    return {
+      valid: true,
+      errors: [],
+    };
   }
 }

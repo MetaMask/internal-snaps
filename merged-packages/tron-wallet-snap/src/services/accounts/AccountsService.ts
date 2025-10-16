@@ -92,6 +92,7 @@ export class AccountsService {
   }): Promise<{
     privateKeyBytes: Uint8Array;
     publicKeyBytes: Uint8Array;
+    privateKeyHex: string;
     address: string;
   }> {
     this.#logger.log({ derivationPath }, 'Generating TRON wallet');
@@ -122,6 +123,7 @@ export class AccountsService {
     return {
       privateKeyBytes,
       publicKeyBytes,
+      privateKeyHex: node.privateKey,
       address,
     };
   }
@@ -275,6 +277,24 @@ export class AccountsService {
 
   async findById(id: string): Promise<TronKeyringAccount | null> {
     return this.#accountsRepository.findById(id);
+  }
+
+  /**
+   * Retrieves an account by ID and throws an error if not found.
+   * This is a convenience method that combines findById with validation.
+   *
+   * @param id - The account ID to retrieve.
+   * @returns The account if found.
+   * @throws {Error} If the account is not found.
+   */
+  async findByIdOrThrow(id: string): Promise<TronKeyringAccount> {
+    const account = await this.#accountsRepository.findById(id);
+
+    if (!account) {
+      throw new Error(`Account with ID ${id} not found`);
+    }
+
+    return account;
   }
 
   async findByAddress(address: string): Promise<TronKeyringAccount | null> {
