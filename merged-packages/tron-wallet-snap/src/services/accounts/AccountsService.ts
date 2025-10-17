@@ -1,7 +1,7 @@
 import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import { assert, integer, pattern, string } from '@metamask/superstruct';
+import { assert, pattern, string } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 import { hexToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
@@ -131,23 +131,11 @@ export class AccountsService {
   async deriveAccount({
     entropySource,
     index,
-    derivationPath: customDerivationPath,
   }: {
     entropySource: EntropySourceId;
-    index?: number;
-    derivationPath?: `m/${string}`;
+    index: number;
   }): Promise<TronKeyringAccount> {
-    const derivationPath =
-      customDerivationPath ??
-      (index === undefined ? undefined : this.#getDefaultDerivationPath(index));
-
-    if (derivationPath === undefined) {
-      throw new Error('Either index or derivationPath must be provided');
-    }
-
-    const accountIndex =
-      index ?? this.#getIndexFromDerivationPath(derivationPath);
-
+    const derivationPath = AccountsService.getDefaultDerivationPath(index);
     const { address } = await this.deriveTronKeypair({
       entropySource,
       derivationPath,
@@ -157,7 +145,7 @@ export class AccountsService {
       id: '',
       entropySource,
       derivationPath,
-      index: accountIndex,
+      index,
       type: TrxAccountType.Eoa,
       address,
       scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
@@ -166,7 +154,7 @@ export class AccountsService {
           type: 'mnemonic',
           id: entropySource,
           derivationPath,
-          groupIndex: accountIndex,
+          groupIndex: index,
         },
         exportable: true,
       },
@@ -182,13 +170,9 @@ export class AccountsService {
 
     const entropySource =
       options?.entropySource ?? (await this.#getDefaultEntropySource());
-
-    const index = options?.derivationPath
-      ? this.#getIndexFromDerivationPath(options.derivationPath)
-      : this.#getLowestUnusedKeyringAccountIndex(accounts, entropySource);
-
-    const derivationPath =
-      options?.derivationPath ?? this.#getDefaultDerivationPath(index);
+    const index =
+      options?.groupIndex ??
+      this.#getLowestUnusedKeyringAccountIndex(accounts, entropySource);
 
     /**
      * Now that we have the `entropySource` and `derivationPath` ready,
@@ -196,8 +180,7 @@ export class AccountsService {
      */
     const sameAccount = accounts.find(
       (account) =>
-        account.derivationPath === derivationPath &&
-        account.entropySource === entropySource,
+        account.index === index && account.entropySource === entropySource,
     );
 
     if (sameAccount) {
@@ -210,15 +193,9 @@ export class AccountsService {
     const derivedAccount = await this.deriveAccount({
       entropySource,
       index,
-      derivationPath,
     });
 
-    const {
-      importedAccount,
-      accountNameSuggestion,
-      metamask: metamaskOptions,
-      ...remainingOptions
-    } = options ?? {};
+    const { metamask: metamaskOptions, ...remainingOptions } = options ?? {};
 
     const tronKeyringAccount: TronKeyringAccount = {
       ...derivedAccount,
@@ -249,9 +226,6 @@ export class AccountsService {
        * and the snaps sdk does not allow extra properties.
        */
       account: keyringAccount,
-      accountNameSuggestion:
-        accountNameSuggestion ?? `Tron Account ${index + 1}`,
-      displayAccountNameSuggestion: !accountNameSuggestion,
       /**
        * Skip account creation confirmation dialogs to make it look like a native
        * account creation flow.
@@ -373,22 +347,8 @@ export class AccountsService {
     return getLowestUnusedIndex(accountsFilteredByEntropySourceId);
   }
 
-  #getDefaultDerivationPath(index: number): `m/${string}` {
+  static getDefaultDerivationPath(index: number): `m/${string}` {
     return `m/44'/195'/0'/0/${index}`;
-  }
-
-  #getIndexFromDerivationPath(derivationPath: `m/${string}`): number {
-    const levels = derivationPath.split('/');
-    const indexLevel = levels[3];
-
-    if (!indexLevel) {
-      throw new Error('Invalid derivation path');
-    }
-
-    const index = parseInt(indexLevel.replace("'", ''), 10);
-    assert(index, integer());
-
-    return index;
   }
 
   async #getDefaultEntropySource(): Promise<EntropySourceId> {

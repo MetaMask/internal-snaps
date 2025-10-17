@@ -28,10 +28,10 @@ import type {
 } from '@metamask/utils';
 import { sortBy } from 'lodash';
 
-import type { TronKeyringAccount } from '../entities';
-import { BackgroundEventMethod } from './cronjob';
 import type { SnapClient } from '../clients/snap/SnapClient';
 import type { Network } from '../constants';
+import type { TronKeyringAccount } from '../entities';
+import { BackgroundEventMethod } from './cronjob';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
@@ -127,6 +127,7 @@ export class KeyringHandler implements Keyring {
 
   async createAccount(options?: CreateAccountOptions): Promise<KeyringAccount> {
     const id = globalThis.crypto.randomUUID();
+
     try {
       const account = await this.#accountsService.create(id, options);
 
