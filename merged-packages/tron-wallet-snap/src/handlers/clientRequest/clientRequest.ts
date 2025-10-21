@@ -140,7 +140,10 @@ export class ClientRequestHandler {
       new InvalidParamsError(),
     );
 
-    const { transaction, accountId, scope } = request.params;
+    /**
+     * Transaction here is in base64 format.
+     */
+    const { transaction: transactionBase64, accountId, scope } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
@@ -153,7 +156,14 @@ export class ClientRequestHandler {
     const privateKeyHex = Buffer.from(keypair.privateKeyBytes).toString('hex');
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
-    const signedTx = await tronWeb.trx.sign(transaction);
+    /**
+     * `sign` expects either a Transaction object or a hex string.
+     */
+    // eslint-disable-next-line no-restricted-globals
+    const transactionHex = Buffer.from(transactionBase64, 'base64').toString(
+      'hex',
+    );
+    const signedTx = await tronWeb.trx.sign(transactionHex);
     const result = await tronWeb.trx.sendHexTransaction(signedTx);
 
     /**
