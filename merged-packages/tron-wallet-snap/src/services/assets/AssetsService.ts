@@ -34,6 +34,8 @@ import type { TronAccount } from '../../clients/trongrid/types';
 import {
   BANDWIDTH_METADATA,
   ENERGY_METADATA,
+  MAX_ENERGY_METADATA,
+  MAX_BANDWIDTH_METADATA,
   Networks,
   TRX_METADATA,
   TRX_STAKED_FOR_BANDWIDTH_METADATA,
@@ -446,7 +448,9 @@ export class AssetsService {
       nativeAssetTypes,
       stakedNativeAssetTypes,
       energyAssetTypes,
+      maximunEnergyAssetTypes,
       bandwidthAssetTypes,
+      maximunBandwidthAssetTypes,
       tokenTrc10AssetTypes,
       tokenTrc20AssetTypes,
     } = this.#splitAssetsByType(assetTypes);
@@ -455,13 +459,17 @@ export class AssetsService {
       nativeTokensMetadata,
       stakedTokensMetadata,
       energyTokensMetadata,
+      maximunEnergyTokensMetadata,
       bandwidthTokensMetadata,
+      maximunBandwidthTokensMetadata,
       tokensMetadata,
     ] = await Promise.all([
       this.#getNativeTokensMetadata(nativeAssetTypes),
       this.#getStakedTokensMetadata(stakedNativeAssetTypes),
       this.#getEnergyMetadata(energyAssetTypes),
+      this.#getMaximunEnergyMetadata(maximunEnergyAssetTypes),
       this.#getBandwidthMetadata(bandwidthAssetTypes),
+      this.#getMaximunBandwidthMetadata(maximunBandwidthAssetTypes),
       this.#getTokensMetadata([
         ...tokenTrc10AssetTypes,
         ...tokenTrc20AssetTypes,
@@ -472,7 +480,9 @@ export class AssetsService {
       ...nativeTokensMetadata,
       ...stakedTokensMetadata,
       ...energyTokensMetadata,
+      ...maximunEnergyTokensMetadata,
       ...bandwidthTokensMetadata,
+      ...maximunBandwidthTokensMetadata,
       ...tokensMetadata,
     };
 
@@ -485,7 +495,9 @@ export class AssetsService {
     nativeAssetTypes: NativeCaipAssetType[];
     stakedNativeAssetTypes: StakedCaipAssetType[];
     energyAssetTypes: ResourceCaipAssetType[];
+    maximunEnergyAssetTypes: ResourceCaipAssetType[];
     bandwidthAssetTypes: ResourceCaipAssetType[];
+    maximunBandwidthAssetTypes: ResourceCaipAssetType[];
     tokenTrc10AssetTypes: TokenCaipAssetType[];
     tokenTrc20AssetTypes: TokenCaipAssetType[];
     nftAssetTypes: NftCaipAssetType[];
@@ -499,8 +511,14 @@ export class AssetsService {
     const energyAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:energy'),
     ) as ResourceCaipAssetType[];
+    const maximunEnergyAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:maximum-energy'),
+    ) as ResourceCaipAssetType[];
     const bandwidthAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:bandwidth'),
+    ) as ResourceCaipAssetType[];
+    const maximunBandwidthAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:maximum-bandwidth'),
     ) as ResourceCaipAssetType[];
     const tokenTrc10AssetTypes = assetTypes.filter((assetType) =>
       assetType.includes('/trc10:'),
@@ -516,7 +534,9 @@ export class AssetsService {
       nativeAssetTypes,
       stakedNativeAssetTypes,
       energyAssetTypes,
+      maximunEnergyAssetTypes,
       bandwidthAssetTypes,
+      maximunBandwidthAssetTypes,
       tokenTrc10AssetTypes,
       tokenTrc20AssetTypes,
       nftAssetTypes,
@@ -627,6 +647,33 @@ export class AssetsService {
     return bandwidthTokensMetadata;
   }
 
+  #getMaximunBandwidthMetadata(
+    assetTypes: ResourceCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const maximunBandwidthTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      maximunBandwidthTokensMetadata[assetType] = {
+        fungible: MAX_BANDWIDTH_METADATA.fungible,
+        name: MAX_BANDWIDTH_METADATA.name,
+        symbol: MAX_BANDWIDTH_METADATA.symbol,
+        iconUrl: MAX_BANDWIDTH_METADATA.iconUrl,
+        units: [
+          {
+            decimals: MAX_BANDWIDTH_METADATA.decimals,
+            symbol: MAX_BANDWIDTH_METADATA.symbol,
+            name: MAX_BANDWIDTH_METADATA.name,
+          },
+        ],
+      };
+    }
+
+    return maximunBandwidthTokensMetadata;
+  }
+
   #getEnergyMetadata(
     assetTypes: ResourceCaipAssetType[],
   ): Record<CaipAssetType, FungibleAssetMetadata | null> {
@@ -652,6 +699,33 @@ export class AssetsService {
     }
 
     return energyTokensMetadata;
+  }
+
+  #getMaximunEnergyMetadata(
+    assetTypes: ResourceCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const maximunEnergyTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      maximunEnergyTokensMetadata[assetType] = {
+        fungible: MAX_ENERGY_METADATA.fungible,
+        name: MAX_ENERGY_METADATA.name,
+        symbol: MAX_ENERGY_METADATA.symbol,
+        iconUrl: MAX_ENERGY_METADATA.iconUrl,
+        units: [
+          {
+            decimals: MAX_ENERGY_METADATA.decimals,
+            symbol: MAX_ENERGY_METADATA.symbol,
+            name: MAX_ENERGY_METADATA.name,
+          },
+        ],
+      };
+    }
+
+    return maximunEnergyTokensMetadata;
   }
 
   async #getTokensMetadata(
