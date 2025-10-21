@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1]
+
+### Changed
+
+- Send the metadata for the max bandwidth and energy values ([#55](https://github.com/MetaMask/snap-tron-wallet/pull/55))
+- Modify `signAndSendTransaction` to properly handle base64 transactions ([#54](https://github.com/MetaMask/snap-tron-wallet/pull/54))
+
 ## [1.5.0]
 
 ### Added
@@ -86,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.2.0...v1.3.0
