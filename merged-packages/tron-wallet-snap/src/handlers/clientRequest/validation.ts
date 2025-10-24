@@ -1,7 +1,7 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
 import { literal } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
-import { array, boolean, enums, object } from '@metamask/superstruct';
+import { array, boolean, enums, object, string } from '@metamask/superstruct';
 import {
   CaipAssetTypeStruct,
   JsonRpcIdStruct,
@@ -28,6 +28,9 @@ export const SignAndSendTransactionRequestParamsStruct = object({
   transaction: Base64Struct,
   accountId: UuidStruct,
   scope: ScopeStringStruct,
+  options: object({
+    type: string(),
+  }),
 });
 
 export const SignAndSendTransactionRequestStruct = object({

@@ -3,6 +3,7 @@ import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
+import { sha256 } from 'ethers';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -143,7 +144,12 @@ export class ClientRequestHandler {
     /**
      * Transaction here is in base64 format.
      */
-    const { transaction: transactionBase64, accountId, scope } = request.params;
+    const {
+      transaction: transactionBase64,
+      accountId,
+      scope,
+      options: { type },
+    } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
@@ -157,14 +163,25 @@ export class ClientRequestHandler {
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     /**
-     * `sign` expects either a Transaction object or a hex string.
+     * We need to rebuild the transaction due to some extra fields
      */
     // eslint-disable-next-line no-restricted-globals
-    const transactionHex = Buffer.from(transactionBase64, 'base64').toString(
-      'hex',
+    const rawDataHex = Buffer.from(transactionBase64, 'base64').toString('hex');
+    const rawData = tronWeb.utils.transaction.DeserializeTransaction(
+      type,
+      rawDataHex,
     );
-    const signedTx = await tronWeb.trx.sign(transactionHex);
-    const result = await tronWeb.trx.sendHexTransaction(signedTx);
+    const txID = sha256(`0x${rawDataHex}`).slice(2);
+    const transaction = {
+      txID,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data: rawData,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data_hex: rawDataHex,
+      visible: true,
+    };
+    const signedTx = await tronWeb.trx.sign(transaction);
+    const result = await tronWeb.trx.sendRawTransaction(signedTx);
 
     /**
      * Sync account after a transaction
