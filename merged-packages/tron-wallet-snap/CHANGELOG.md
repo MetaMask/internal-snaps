@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2]
+
+### Fixed
+
+- Add missing fields on `signAndSendTransaction`'s payload for Tron ([#57](https://github.com/MetaMask/snap-tron-wallet/pull/57))
+
 ## [1.5.1]
 
 ### Changed
@@ -93,7 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.3.0...v1.4.0
