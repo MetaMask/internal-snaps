@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.3]
+
+### Fixed
+
+- Make field `visible` configurable by caller on the `signAndSendTransaction` handler ([#59](https://github.com/MetaMask/snap-tron-wallet/pull/59))
+
 ## [1.5.2]
 
 ### Fixed
@@ -99,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.3...HEAD
+[1.5.3]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.2...v1.5.3
 [1.5.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.4.0...v1.5.0

@@ -1,5 +1,5 @@
 {
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Manage Tron using MetaMask",
   "proposedName": "Tron",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/snap-tron-wallet.git"
   },
   "source": {
-    "shasum": "t1+i6NF+TuK+pWYc0gEHj5zRzjSldELpy3KQ8PkpSAQ=",
+    "shasum": "knbps5UEsd5DdZnXjInGWPOjOH9Rc/SQSkX25yGFdQ4=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
