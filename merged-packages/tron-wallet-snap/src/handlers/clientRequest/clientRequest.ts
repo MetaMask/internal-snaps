@@ -148,7 +148,7 @@ export class ClientRequestHandler {
       transaction: transactionBase64,
       accountId,
       scope,
-      options: { type },
+      options: { visible, type },
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
@@ -178,7 +178,7 @@ export class ClientRequestHandler {
       raw_data: rawData,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data_hex: rawDataHex,
-      visible: true,
+      visible,
     };
     const signedTx = await tronWeb.trx.sign(transaction);
     const result = await tronWeb.trx.sendRawTransaction(signedTx);

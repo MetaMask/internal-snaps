@@ -29,6 +29,7 @@ export const SignAndSendTransactionRequestParamsStruct = object({
   accountId: UuidStruct,
   scope: ScopeStringStruct,
   options: object({
+    visible: boolean(),
     type: string(),
   }),
 });
