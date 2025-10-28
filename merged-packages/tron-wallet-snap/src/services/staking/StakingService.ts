@@ -55,14 +55,14 @@ export class StakingService {
 
     const { chainId } = parseCaipAssetType(assetId);
 
-    const keypair = await this.#accountsService.deriveTronKeypair({
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,
       derivationPath: account.derivationPath,
     });
 
     const tronWeb = this.#tronWebFactory.createClient(
       chainId as Network,
-      keypair.privateKeyHex,
+      privateKeyHex,
     );
 
     const transaction = await tronWeb.transactionBuilder.freezeBalanceV2(
@@ -98,14 +98,14 @@ export class StakingService {
 
     const { chainId } = parseCaipAssetType(assetId);
 
-    const keypair = await this.#accountsService.deriveTronKeypair({
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,
       derivationPath: account.derivationPath,
     });
 
     const tronWeb = this.#tronWebFactory.createClient(
       chainId as Network,
-      keypair.privateKeyHex,
+      privateKeyHex,
     );
 
     /**

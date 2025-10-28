@@ -30,7 +30,7 @@ describe('StakingService', () => {
 
   const mockKeypair = {
     privateKeyHex:
-      '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
     // eslint-disable-next-line no-restricted-globals
     privateKeyBytes: Buffer.from(
       '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',

@@ -153,13 +153,11 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const keypair = await this.#accountsService.deriveTronKeypair({
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
       entropySource: account.entropySource,
       derivationPath: account.derivationPath,
     });
 
-    // eslint-disable-next-line no-restricted-globals
-    const privateKeyHex = Buffer.from(keypair.privateKeyBytes).toString('hex');
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     /**
@@ -173,12 +171,12 @@ export class ClientRequestHandler {
     );
     const txID = sha256(`0x${rawDataHex}`).slice(2);
     const transaction = {
+      visible,
       txID,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data: rawData,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data_hex: rawDataHex,
-      visible,
     };
     const signedTx = await tronWeb.trx.sign(transaction);
     const result = await tronWeb.trx.sendRawTransaction(signedTx);

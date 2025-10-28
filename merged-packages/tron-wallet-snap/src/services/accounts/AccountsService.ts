@@ -74,14 +74,8 @@ export class AccountsService {
    * @param params - The parameters for the TRON key derivation.
    * @param params.entropySource - The entropy source to use for key derivation.
    * @param params.derivationPath - The derivation path to use for key derivation.
-   * @returns A Promise that resolves to the private key, public key, and address.
+   * @returns A Promise that resolves to the private key bytes, public key bytes, private key hex WITHOUT the `0x` prefix, and address.
    * @throws {Error} If unable to derive private key or if derivation fails.
-   * @example
-   * ```typescript
-   * const { privateKeyBytes, publicKeyBytes, address } = await deriveTronKeypair({
-   *   derivationPath: "m/44'/195'/0'/0/0"
-   * });
-   * ```
    */
   async deriveTronKeypair({
     entropySource,
@@ -113,8 +107,9 @@ export class AccountsService {
 
     const privateKeyBytes = hexToBytes(node.privateKey);
     const publicKeyBytes = hexToBytes(node.publicKey);
+    const privateKeyHex = node.privateKey.slice(2);
 
-    const address = TronWeb.address.fromPrivateKey(node.privateKey.slice(2));
+    const address = TronWeb.address.fromPrivateKey(privateKeyHex);
 
     if (!address) {
       throw new Error('Unable to derive address');
@@ -123,7 +118,7 @@ export class AccountsService {
     return {
       privateKeyBytes,
       publicKeyBytes,
-      privateKeyHex: node.privateKey,
+      privateKeyHex,
       address,
     };
   }
