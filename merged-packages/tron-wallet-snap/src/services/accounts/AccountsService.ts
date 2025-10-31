@@ -1,6 +1,9 @@
 import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import {
+  emitSnapKeyringEvent,
+  getSelectedAccounts,
+} from '@metamask/keyring-snap-sdk';
 import { assert, pattern, string } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 import { hexToBytes } from '@metamask/utils';
@@ -170,7 +173,7 @@ export class AccountsService {
       this.#getLowestUnusedKeyringAccountIndex(accounts, entropySource);
 
     /**
-     * Now that we have the `entropySource` and `derivationPath` ready,
+     * Now that we have the `entropySource` and `index` ready,
      * we need to make sure that they do not correspond to an existing account already.
      */
     const sameAccount = accounts.find(
@@ -244,6 +247,17 @@ export class AccountsService {
     return this.#accountsRepository.getAll();
   }
 
+  async getAllSelected(): Promise<TronKeyringAccount[]> {
+    const [allAccounts, selectedAccountIds] = await Promise.all([
+      this.#accountsRepository.getAll(),
+      getSelectedAccounts(snap),
+    ]);
+
+    return allAccounts.filter((account) =>
+      selectedAccountIds.includes(account.id),
+    );
+  }
+
   async findById(id: string): Promise<TronKeyringAccount | null> {
     return this.#accountsRepository.findById(id);
   }
@@ -264,6 +278,16 @@ export class AccountsService {
     }
 
     return account;
+  }
+
+  async findByIds(ids: string[]): Promise<TronKeyringAccount[] | null> {
+    const accounts = await this.#accountsRepository.findByIds(ids);
+
+    if (!accounts || ids.length !== accounts.length) {
+      this.#logger.error('[findByIds] Some accounts not found');
+    }
+
+    return accounts;
   }
 
   async findByAddress(address: string): Promise<TronKeyringAccount | null> {

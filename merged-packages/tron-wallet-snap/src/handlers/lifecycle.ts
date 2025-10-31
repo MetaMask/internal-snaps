@@ -26,7 +26,7 @@ export class LifecycleHandler {
     this.#logger.log('[🔋 onActive]');
 
     await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.ContinuouslySynchronizeAccounts,
+      method: BackgroundEventMethod.ContinuouslySynchronizeSelectedAccounts,
       duration: '1s',
     });
   }

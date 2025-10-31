@@ -29,6 +29,11 @@ export class AccountsRepository {
     return accounts.find((account) => account.id === id) ?? null;
   }
 
+  async findByIds(ids: string[]): Promise<TronKeyringAccount[] | null> {
+    const accounts = await this.getAll();
+    return accounts.filter((account) => ids.includes(account.id)) ?? null;
+  }
+
   async findByAddress(address: string): Promise<TronKeyringAccount | null> {
     const accounts = await this.getAll();
 

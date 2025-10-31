@@ -1,5 +1,7 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 
+import { ClientRequestMethod } from './handlers/clientRequest/types';
+
 const prodOrigins = ['https://portfolio.metamask.io'];
 
 const isDev = true; // TODO: Change me when we have a config provider
@@ -33,6 +35,17 @@ const metamaskPermissions = new Set([
   KeyringRpcMethod.ListAccountTransactions,
   KeyringRpcMethod.ListAccountAssets,
   KeyringRpcMethod.ResolveAccountAddress,
+  KeyringRpcMethod.SetSelectedAccounts,
+  // Client request
+  ClientRequestMethod.SignAndSendTransaction,
+  ClientRequestMethod.ConfirmSend,
+  ClientRequestMethod.ComputeFee,
+  ClientRequestMethod.OnAddressInput,
+  ClientRequestMethod.OnAmountInput,
+  ClientRequestMethod.OnStakeAmountInput,
+  ClientRequestMethod.ConfirmStake,
+  ClientRequestMethod.OnUnstakeAmountInput,
+  ClientRequestMethod.ConfirmUnstake,
 ]);
 
 const metamask = 'metamask';

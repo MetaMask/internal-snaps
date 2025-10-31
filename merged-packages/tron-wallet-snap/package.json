@@ -38,7 +38,7 @@
   "devDependencies": {
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^21.1.0",
-    "@metamask/keyring-snap-sdk": "^4.0.0",
+    "@metamask/keyring-snap-sdk": "^7.1.0",
     "@metamask/snaps-cli": "^8.1.0",
     "@metamask/snaps-jest": "^9.2.0",
     "@metamask/snaps-sdk": "^9.3.0",

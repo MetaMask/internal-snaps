@@ -6,7 +6,8 @@ import type { ILogger } from '../utils/logger';
 import { createPrefixedLogger } from '../utils/logger';
 
 export enum BackgroundEventMethod {
-  ContinuouslySynchronizeAccounts = 'onContinuouslySynchronizeAccounts',
+  ContinuouslySynchronizeSelectedAccounts = 'onContinuouslySynchronizeAccounts',
+  SynchronizeSelectedAccounts = 'onSynchronizeSelectedAccounts',
   SynchronizeAccounts = 'onSynchronizeAccounts',
   SynchronizeAccount = 'onSynchronizeAccount',
   SynchronizeAccountTransactions = 'onSynchronizeAccountTransactions',
@@ -42,11 +43,14 @@ export class CronHandler {
     }
 
     switch (method as BackgroundEventMethod) {
-      case BackgroundEventMethod.ContinuouslySynchronizeAccounts:
-        await this.continuouslySynchronizeAccounts();
+      case BackgroundEventMethod.ContinuouslySynchronizeSelectedAccounts:
+        await this.continuouslySynchronizeSelectedAccounts();
+        break;
+      case BackgroundEventMethod.SynchronizeSelectedAccounts:
+        await this.synchronizeSelectedAccounts();
         break;
       case BackgroundEventMethod.SynchronizeAccounts:
-        await this.synchronizeAccounts();
+        await this.synchronizeAccounts(params as { accountIds: string[] });
         break;
       case BackgroundEventMethod.SynchronizeAccount:
         await this.synchronizeAccount(params as { accountId: string });
@@ -62,24 +66,40 @@ export class CronHandler {
   }
 
   /**
-   * A background job that continuosly synchronizes all accounts.
+   * A background job that continuously synchronizes selected accounts.
    * It schedules itself while the extension is active to make sure the data is fresh.
    */
-  async continuouslySynchronizeAccounts(): Promise<void> {
-    this.#logger.info('[Tick] Continuously synchronizing accounts...');
+  async continuouslySynchronizeSelectedAccounts(): Promise<void> {
+    this.#logger.info('[Tick] Continuously synchronizing selected accounts...');
 
-    await this.synchronizeAccounts();
+    await this.synchronizeSelectedAccounts();
 
     await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.ContinuouslySynchronizeAccounts,
+      method: BackgroundEventMethod.ContinuouslySynchronizeSelectedAccounts,
       duration: '30s',
     });
   }
 
-  async synchronizeAccounts(): Promise<void> {
-    this.#logger.info('Synchronizing all accounts...');
+  async synchronizeSelectedAccounts(): Promise<void> {
+    this.#logger.info('Synchronizing selected accounts...');
 
-    const accounts = await this.#accountsService.getAll();
+    const accounts = await this.#accountsService.getAllSelected();
+
+    await this.#accountsService.synchronize(accounts);
+  }
+
+  async synchronizeAccounts({
+    accountIds,
+  }: {
+    accountIds: string[];
+  }): Promise<void> {
+    this.#logger.info(`Synchronizing accounts ${accountIds.join(', ')}...`);
+
+    const accounts = await this.#accountsService.findByIds(accountIds);
+
+    if (!accounts) {
+      return;
+    }
 
     await this.#accountsService.synchronize(accounts);
   }

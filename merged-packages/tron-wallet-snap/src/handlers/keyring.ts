@@ -19,6 +19,7 @@ import {
   handleKeyringRequest,
 } from '@metamask/keyring-snap-sdk';
 import { SnapError } from '@metamask/snaps-sdk';
+import { array } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
@@ -43,6 +44,7 @@ import {
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
   ListAccountAssetsStruct,
+  UuidStruct,
 } from '../validation/structs';
 import {
   validateOrigin,
@@ -361,5 +363,20 @@ export class KeyringHandler implements Keyring {
 
   rejectRequest?(id: string): Promise<void> {
     throw new Error('Method not implemented.');
+  }
+
+  /**
+   * Endpoint that the client can use to inform the snap that certain accounts are selected.
+   *
+   * @param accountIds - The IDs of the accounts to set as selected.
+   */
+  async setSelectedAccounts(accountIds: string[]): Promise<void> {
+    validateRequest(accountIds, array(UuidStruct));
+
+    await this.#snapClient.scheduleBackgroundEvent({
+      method: BackgroundEventMethod.SynchronizeSelectedAccounts,
+      params: { accountIds },
+      duration: 'PT1S',
+    });
   }
 }
