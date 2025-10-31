@@ -222,7 +222,7 @@ describe('TransactionsService', () => {
           account: mockAccount.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: mockAccount.address,
@@ -257,7 +257,7 @@ describe('TransactionsService', () => {
           account: mockAccount2.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: 'other-address',
@@ -330,7 +330,7 @@ describe('TransactionsService', () => {
         account: mockAccount.id,
         chain: Network.Mainnet,
         status: 'confirmed',
-        timestamp: Date.now(),
+        timestamp: Math.floor(Date.now() / 1000),
         from: [
           {
             address: mockAccount.address,
@@ -376,7 +376,7 @@ describe('TransactionsService', () => {
           account: mockAccount.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: mockAccount.address,
@@ -408,7 +408,7 @@ describe('TransactionsService', () => {
           account: mockAccount.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: 'other-address',
@@ -469,7 +469,7 @@ describe('TransactionsService', () => {
           account: mockAccount.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: mockAccount.address,
@@ -501,7 +501,7 @@ describe('TransactionsService', () => {
           account: mockAccount.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: 'other-address',
@@ -533,7 +533,7 @@ describe('TransactionsService', () => {
           account: mockAccount2.id,
           chain: Network.Mainnet,
           status: 'confirmed',
-          timestamp: Date.now(),
+          timestamp: Math.floor(Date.now() / 1000),
           from: [
             {
               address: mockAccount2.address,

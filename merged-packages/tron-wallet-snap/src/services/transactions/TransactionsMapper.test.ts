@@ -68,11 +68,11 @@ describe('TransactionMapper', () => {
           ],
           chain: 'tron:728126428',
           status: 'confirmed',
-          timestamp: 1756914747000,
+          timestamp: 1756914747,
           events: [
             {
               status: 'confirmed',
-              timestamp: 1756914747000,
+              timestamp: 1756914747,
             },
           ],
           fees: [
@@ -142,11 +142,11 @@ describe('TransactionMapper', () => {
           ],
           chain: 'tron:728126428',
           status: 'confirmed',
-          timestamp: 1756870677000,
+          timestamp: 1756870677,
           events: [
             {
               status: 'confirmed',
-              timestamp: 1756870677000,
+              timestamp: 1756870677,
             },
           ],
           fees: [
@@ -212,11 +212,11 @@ describe('TransactionMapper', () => {
           ],
           chain: 'tron:728126428',
           status: 'confirmed',
-          timestamp: 1757590707000,
+          timestamp: 1757590707,
           events: [
             {
               status: 'confirmed',
-              timestamp: 1757590707000,
+              timestamp: 1757590707,
             },
           ],
           fees: [
@@ -489,11 +489,11 @@ describe('TransactionMapper', () => {
         ],
         chain: 'tron:2494104990',
         status: 'confirmed',
-        timestamp: 1756914747000,
+        timestamp: 1756914747,
         events: [
           {
             status: 'confirmed',
-            timestamp: 1756914747000,
+            timestamp: 1756914747,
           },
         ],
         fees: [

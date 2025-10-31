@@ -85,6 +85,8 @@ export class TransactionMapper {
 
     const from = TronWeb.address.fromHex(contractValue.owner_address);
     const to = TronWeb.address.fromHex(contractValue.to_address);
+    const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
+
     // Convert from sun to TRX (divide by 10^6)
     const amountInSun = contractValue.amount;
     const amountInTrx = (amountInSun / 1_000_000).toString();
@@ -135,13 +137,13 @@ export class TransactionMapper {
       events: [
         {
           status: 'confirmed',
-          timestamp: trongridTransaction.block_timestamp,
+          timestamp,
         },
       ],
       chain: scope,
       status: 'confirmed',
       account: account.id,
-      timestamp: trongridTransaction.block_timestamp,
+      timestamp,
       fees,
     };
   }
@@ -170,6 +172,8 @@ export class TransactionMapper {
 
     const from = TronWeb.address.fromHex(contractValue.owner_address);
     const to = TronWeb.address.fromHex(contractValue.to_address);
+    const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
+
     // Convert from smallest unit to human-readable amount (TRC10 typically uses 6 decimals)
     const amountInSmallestUnit = contractValue.amount;
     const amountInReadableUnit = (amountInSmallestUnit / 1_000_000).toString();
@@ -219,13 +223,13 @@ export class TransactionMapper {
       events: [
         {
           status: 'confirmed',
-          timestamp: trongridTransaction.block_timestamp,
+          timestamp,
         },
       ],
       chain: scope,
       status: 'confirmed',
       account: account.id,
-      timestamp: trongridTransaction.block_timestamp,
+      timestamp,
       fees,
     };
   }
@@ -312,13 +316,13 @@ export class TransactionMapper {
       events: [
         {
           status: 'confirmed',
-          timestamp: trc20AssistanceData.block_timestamp,
+          timestamp: Math.floor(trc20AssistanceData.block_timestamp / 1000),
         },
       ],
       chain: scope,
       status: 'confirmed',
       account: account.id,
-      timestamp: trc20AssistanceData.block_timestamp,
+      timestamp: Math.floor(trc20AssistanceData.block_timestamp / 1000),
       fees,
     };
   }
