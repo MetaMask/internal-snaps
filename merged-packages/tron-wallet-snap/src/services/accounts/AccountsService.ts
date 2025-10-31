@@ -169,7 +169,7 @@ export class AccountsService {
     const entropySource =
       options?.entropySource ?? (await this.#getDefaultEntropySource());
     const index =
-      options?.groupIndex ??
+      options?.index ??
       this.#getLowestUnusedKeyringAccountIndex(accounts, entropySource);
 
     /**
@@ -205,6 +205,7 @@ export class AccountsService {
             ([, value]) => value !== undefined,
           ),
         ) as Record<string, Json>),
+        groupIndex: index,
       },
     };
 

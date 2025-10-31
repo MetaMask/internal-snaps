@@ -6,6 +6,10 @@ import { groupBy } from 'lodash';
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import type {
+  ContractTransactionInfo,
+  TransactionInfo,
+} from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 import type { ILogger } from '../../utils/logger';
@@ -43,16 +47,34 @@ export class TransactionsService {
      * Raw transactions are the primary source containing complete transaction history
      * TRC20 transactions provide assistance data for enhanced smart contract parsing
      */
-    const [tronRawTransactions, tronTrc20Transactions] = await Promise.all([
-      this.#trongridApiClient.getTransactionInfoByAddress(
-        scope,
-        account.address,
-      ),
-      this.#trongridApiClient.getContractTransactionInfoByAddress(
-        scope,
-        account.address,
-      ),
-    ]);
+    let tronRawTransactions: TransactionInfo[] = [];
+    let tronTrc20Transactions: ContractTransactionInfo[] = [];
+
+    const [tronRawTransactionsRequest, tronTrc20TransactionsRequest] =
+      await Promise.allSettled([
+        this.#trongridApiClient.getTransactionInfoByAddress(
+          scope,
+          account.address,
+        ),
+        this.#trongridApiClient.getContractTransactionInfoByAddress(
+          scope,
+          account.address,
+        ),
+      ]);
+
+    if (tronRawTransactionsRequest.status === 'rejected') {
+      this.#logger.error('Failed to fetch raw transactions');
+      tronRawTransactions = [];
+    } else {
+      tronRawTransactions = tronRawTransactionsRequest.value;
+    }
+
+    if (tronTrc20TransactionsRequest.status === 'rejected') {
+      this.#logger.error('Failed to fetch TRC20 transactions');
+      tronTrc20Transactions = [];
+    } else {
+      tronTrc20Transactions = tronTrc20TransactionsRequest.value;
+    }
 
     this.#logger.info(
       `Fetched ${tronRawTransactions.length} raw transactions and ${tronTrc20Transactions.length} TRC20 assistance data for account ${account.address} on network ${scope}.`,

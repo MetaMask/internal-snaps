@@ -34,8 +34,8 @@ import type { TronAccount } from '../../clients/trongrid/types';
 import {
   BANDWIDTH_METADATA,
   ENERGY_METADATA,
-  MAX_ENERGY_METADATA,
   MAX_BANDWIDTH_METADATA,
+  MAX_ENERGY_METADATA,
   Networks,
   TRX_METADATA,
   TRX_STAKED_FOR_BANDWIDTH_METADATA,
@@ -134,6 +134,9 @@ export class AssetsService {
       tronAccountInfoRequest.status === 'rejected' ||
       tronAccountResourcesRequest.status === 'rejected'
     ) {
+      this.#logger.error(
+        `Failed to fetch account info or account resources for ${account.address} on network ${scope}`,
+      );
       return [
         {
           symbol: Networks[scope].nativeToken.symbol,
@@ -455,25 +458,23 @@ export class AssetsService {
       tokenTrc20AssetTypes,
     } = this.#splitAssetsByType(assetTypes);
 
-    const [
-      nativeTokensMetadata,
-      stakedTokensMetadata,
-      energyTokensMetadata,
-      maximunEnergyTokensMetadata,
-      bandwidthTokensMetadata,
-      maximunBandwidthTokensMetadata,
-      tokensMetadata,
-    ] = await Promise.all([
-      this.#getNativeTokensMetadata(nativeAssetTypes),
-      this.#getStakedTokensMetadata(stakedNativeAssetTypes),
-      this.#getEnergyMetadata(energyAssetTypes),
-      this.#getMaximunEnergyMetadata(maximunEnergyAssetTypes),
-      this.#getBandwidthMetadata(bandwidthAssetTypes),
-      this.#getMaximunBandwidthMetadata(maximunBandwidthAssetTypes),
-      this.#getTokensMetadata([
-        ...tokenTrc10AssetTypes,
-        ...tokenTrc20AssetTypes,
-      ]),
+    const nativeTokensMetadata =
+      this.#getNativeTokensMetadata(nativeAssetTypes);
+    const stakedTokensMetadata = this.#getStakedTokensMetadata(
+      stakedNativeAssetTypes,
+    );
+    const energyTokensMetadata = this.#getEnergyMetadata(energyAssetTypes);
+    const maximunEnergyTokensMetadata = this.#getMaximunEnergyMetadata(
+      maximunEnergyAssetTypes,
+    );
+    const bandwidthTokensMetadata =
+      this.#getBandwidthMetadata(bandwidthAssetTypes);
+    const maximunBandwidthTokensMetadata = this.#getMaximunBandwidthMetadata(
+      maximunBandwidthAssetTypes,
+    );
+    const tokensMetadata = await this.#getTokensMetadata([
+      ...tokenTrc10AssetTypes,
+      ...tokenTrc20AssetTypes,
     ]);
 
     const result = {

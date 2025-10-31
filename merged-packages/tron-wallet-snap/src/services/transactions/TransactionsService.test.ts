@@ -1,18 +1,18 @@
 import type { Transaction } from '@metamask/keyring-api';
 
+import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import type {
+  ContractTransactionInfo,
+  TransactionInfo,
+} from '../../clients/trongrid/types';
+import { KnownCaip19Id, Network } from '../../constants';
+import type { TronKeyringAccount } from '../../entities';
 import contractInfoMock from './mocks/contract-info.json';
 import nativeTransferMock from './mocks/native-transfer.json';
 import trc10TransferMock from './mocks/trc10-transfer.json';
 import trc20TransferMock from './mocks/trc20-transfer.json';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
-import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type {
-  TransactionInfo,
-  ContractTransactionInfo,
-} from '../../clients/trongrid/types';
-import { Network, KnownCaip19Id } from '../../constants';
-import type { TronKeyringAccount } from '../../entities';
 import type { ILogger } from '../../utils/logger';
 
 // Import simplified mock data (each file now contains only one transaction)
@@ -201,14 +201,24 @@ describe('TransactionsService', () => {
       mockTrongridApiClient.getTransactionInfoByAddress.mockRejectedValue(
         apiError,
       );
+      mockTrongridApiClient.getContractTransactionInfoByAddress.mockRejectedValue(
+        apiError,
+      );
 
-      await expect(
-        transactionsService.fetchTransactionsForAccount(
-          Network.Mainnet,
-          mockAccount,
-        ),
-      ).rejects.toThrow('API request failed');
+      const result = await transactionsService.fetchTransactionsForAccount(
+        Network.Mainnet,
+        mockAccount,
+      );
 
+      expect(result).toStrictEqual([]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        '[🧾 TransactionsService]',
+        'Failed to fetch raw transactions',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        '[🧾 TransactionsService]',
+        'Failed to fetch TRC20 transactions',
+      );
       expect(true).toBe(true);
     });
   });

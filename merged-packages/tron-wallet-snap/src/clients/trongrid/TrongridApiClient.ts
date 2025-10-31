@@ -113,12 +113,8 @@ export class TrongridApiClient {
     const rawData: TrongridApiResponse<TransactionInfo[]> =
       await response.json();
 
-    if (!rawData.success) {
+    if (!rawData.success || !rawData.data) {
       throw new Error('API request failed');
-    }
-
-    if (!rawData.data || rawData.data.length === 0) {
-      throw new Error('No transactions found');
     }
 
     return rawData.data;
@@ -153,12 +149,8 @@ export class TrongridApiClient {
     const rawData: TrongridApiResponse<ContractTransactionInfo[]> =
       await response.json();
 
-    if (!rawData.success) {
+    if (!rawData.success || !rawData.data) {
       throw new Error('API request failed');
-    }
-
-    if (!rawData.data || rawData.data.length === 0) {
-      throw new Error('No transactions found');
     }
 
     return rawData.data;

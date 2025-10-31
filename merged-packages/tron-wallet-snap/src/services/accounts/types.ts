@@ -3,6 +3,6 @@ import type { Json } from '@metamask/utils';
 
 export type CreateAccountOptions = {
   entropySource?: EntropySourceId;
-  groupIndex?: number;
+  index?: number;
   [key: string]: Json | undefined;
 } & MetaMaskOptions;
