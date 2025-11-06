@@ -367,11 +367,19 @@ export class ClientRequestHandler {
     );
 
     const { accountId, assetId, value } = request.params;
+    console.log(
+      `[debug] [handleOnStakeAmountInput] All params`,
+      JSON.stringify({ accountId, assetId, value }),
+    );
 
     await this.#accountsService.findByIdOrThrow(accountId);
     const asset = await this.#assetsService.getAssetByAccountId(
       accountId,
       assetId,
+    );
+    console.log(
+      `[debug] [handleOnStakeAmountInput] Asset`,
+      JSON.stringify(asset),
     );
 
     /**
@@ -379,6 +387,10 @@ export class ClientRequestHandler {
      */
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
+    console.log(
+      `[debug] [handleOnStakeAmountInput] Account balance`,
+      JSON.stringify({ accountBalance, requestBalance }),
+    );
 
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
@@ -413,16 +425,29 @@ export class ClientRequestHandler {
       value,
       options: { purpose },
     } = request.params;
+    console.log(
+      `[debug] [handleConfirmStake] All params`,
+      JSON.stringify({ fromAccountId, assetId, value, purpose }),
+    );
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+    console.log(
+      `[debug] [handleConfirmStake] Account`,
+      JSON.stringify(account),
+    );
+
     const asset = await this.#assetsService.getAssetByAccountId(
       fromAccountId,
       assetId,
     );
+    console.log(`[debug] [handleConfirmStake] Asset`, JSON.stringify(asset));
 
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
-
+    console.log(
+      `[debug] [handleConfirmStake] Account balance`,
+      JSON.stringify({ accountBalance, requestBalance }),
+    );
     /**
      * Check if account has enough of the asset...
      */
@@ -442,6 +467,7 @@ export class ClientRequestHandler {
       amount: requestBalance,
       purpose,
     });
+    console.log(`[debug] [handleConfirmStake] Stake worked`);
 
     return {
       valid: true,
@@ -463,16 +489,39 @@ export class ClientRequestHandler {
       new InvalidParamsError(),
     );
 
-    const { accountId, assetId, value } = request.params;
+    const {
+      accountId,
+      assetId,
+      value,
+      options: { purpose },
+    } = request.params;
+    console.log(
+      `[debug] [handleOnUnstakeAmountInput] All params`,
+      JSON.stringify({ accountId, assetId, value, purpose }),
+    );
+
+    /**
+     * We convert the `slip44:195` to `slip44:195-staked-for-bandwidth` or `slip44:195-staked-for-energy`
+     * depending on the purpose.
+     */
+    const stakedAssetId = `${assetId}-staked-for-${purpose.toLowerCase()}`;
 
     await this.#accountsService.findByIdOrThrow(accountId);
     const asset = await this.#assetsService.getAssetByAccountId(
       accountId,
-      assetId,
+      stakedAssetId,
+    );
+    console.log(
+      `[debug] [handleOnUnstakeAmountInput] Asset`,
+      JSON.stringify(asset),
     );
 
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
+    console.log(
+      `[debug] [handleOnUnstakeAmountInput] Account balance`,
+      JSON.stringify({ accountBalance, requestBalance }),
+    );
 
     /**
      * Check if account has enough of the asset...
@@ -504,16 +553,46 @@ export class ClientRequestHandler {
       new InvalidParamsError(),
     );
 
-    const { accountId, assetId, value } = request.params;
-
-    const account = await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const {
       accountId,
       assetId,
+      value,
+      options: { purpose },
+    } = request.params;
+    console.log(
+      `[debug] [handleConfirmUnstake] All params`,
+      JSON.stringify({ accountId, assetId, value, purpose }),
     );
+
+    /**
+     * We convert the `slip44:195-staked-for-bandwidth` or `slip44:195-staked-for-energy` to `slip44:195`
+     * depending on the purpose.
+     */
+    const stakedAssetId =
+      `${assetId}-staked-for-${purpose.toLowerCase()}` as StakedCaipAssetType;
+    console.log(
+      `[debug] [handleConfirmUnstake] Staked asset ID`,
+      JSON.stringify(stakedAssetId),
+    );
+
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    console.log(
+      `[debug] [handleConfirmUnstake] Account`,
+      JSON.stringify(account),
+    );
+
+    const asset = await this.#assetsService.getAssetByAccountId(
+      accountId,
+      stakedAssetId,
+    );
+    console.log(`[debug] [handleConfirmUnstake] Asset`, JSON.stringify(asset));
 
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
+    console.log(
+      `[debug] [handleConfirmUnstake] Account balance`,
+      JSON.stringify({ accountBalance, requestBalance }),
+    );
 
     /**
      * Check if account has enough of the asset...
@@ -530,9 +609,10 @@ export class ClientRequestHandler {
      */
     await this.#stakingService.unstake({
       account,
-      assetId: assetId as StakedCaipAssetType,
+      assetId: stakedAssetId,
       amount: requestBalance,
     });
+    console.log(`[debug] [handleConfirmUnstake] Unstake worked`);
 
     return {
       valid: true,

@@ -64,6 +64,10 @@ export const withCatchAndThrowSnapError = async <ResponseT>(
       { error },
       `[SnapError] ${JSON.stringify(error.toJSON(), null, 2)}`,
     );
+    console.log(
+      `[debug] [withCatchAndThrowSnapError] Error`,
+      JSON.stringify(error),
+    );
 
     throw error;
   }

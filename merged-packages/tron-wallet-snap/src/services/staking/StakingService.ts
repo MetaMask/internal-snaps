@@ -52,6 +52,10 @@ export class StakingService {
     this.#logger.info(
       `Staking ${amount.toString()} ${assetId} from ${account.address} for ${purpose}...`,
     );
+    console.log(
+      `[debug] [stake] All params`,
+      JSON.stringify({ account, assetId, amount, purpose }),
+    );
 
     const { chainId } = parseCaipAssetType(assetId);
 
@@ -70,8 +74,13 @@ export class StakingService {
       purpose,
       account.address,
     );
+    console.log(`[debug] [stake] Transaction`, JSON.stringify(transaction));
+
     const signedTx = await tronWeb.trx.sign(transaction);
-    await tronWeb.trx.sendRawTransaction(signedTx);
+    console.log(`[debug] [stake] Transaction`, JSON.stringify(transaction));
+
+    const result = await tronWeb.trx.sendRawTransaction(signedTx);
+    console.log(`[debug] [stake] Result`, JSON.stringify(result));
 
     /**
      * Sync account after the transaction happens
@@ -94,6 +103,10 @@ export class StakingService {
   }): Promise<void> {
     this.#logger.info(
       `Unstaking ${amount.toString()} ${assetId} from ${account.address}...`,
+    );
+    console.log(
+      `[debug] [unstake] All params`,
+      JSON.stringify({ account, assetId, amount }),
     );
 
     const { chainId } = parseCaipAssetType(assetId);
@@ -135,6 +148,8 @@ export class StakingService {
       purpose = 'ENERGY';
     }
 
+    console.log(`[debug] [unstake] Purpose`, JSON.stringify(purpose));
+
     if (!purpose) {
       throw new Error('Invalid asset ID');
     }
@@ -144,8 +159,16 @@ export class StakingService {
       purpose,
       account.address,
     );
+    console.log(`[debug] [unstake] Transaction`, JSON.stringify(transaction));
+
     const signedTx = await tronWeb.trx.sign(transaction);
-    await tronWeb.trx.sendRawTransaction(signedTx);
+    console.log(
+      `[debug] [unstake] Signed transaction`,
+      JSON.stringify(signedTx),
+    );
+
+    const result = await tronWeb.trx.sendRawTransaction(signedTx);
+    console.log(`[debug] [unstake] Result`, JSON.stringify(result));
 
     /**
      * Sync account after the transaction happens

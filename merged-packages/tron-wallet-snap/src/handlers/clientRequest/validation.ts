@@ -9,10 +9,7 @@ import {
 } from '@metamask/utils';
 
 import { ClientRequestMethod, SendErrorCodes } from './types';
-import {
-  NativeCaipAssetTypeStruct,
-  StakedCaipAssetTypeStruct,
-} from '../../services/assets/types';
+import { NativeCaipAssetTypeStruct } from '../../services/assets/types';
 import {
   Base64Struct,
   PositiveNumberStringStruct,
@@ -155,7 +152,10 @@ export const OnConfirmStakeRequestStruct = object({
 
 export const OnUnstakeAmountInputRequestParamsStruct = object({
   accountId: UuidStruct,
-  assetId: StakedCaipAssetTypeStruct,
+  assetId: NativeCaipAssetTypeStruct,
+  options: object({
+    purpose: enums(['ENERGY', 'BANDWIDTH']),
+  }),
   value: PositiveNumberStringStruct,
 });
 
@@ -168,7 +168,10 @@ export const OnUnstakeAmountInputRequestStruct = object({
 
 export const OnConfirmUnstakeRequestParamsStruct = object({
   accountId: UuidStruct,
-  assetId: StakedCaipAssetTypeStruct,
+  assetId: NativeCaipAssetTypeStruct,
+  options: object({
+    purpose: enums(['ENERGY', 'BANDWIDTH']),
+  }),
   value: PositiveNumberStringStruct,
 });
 
