@@ -213,12 +213,6 @@ export class AccountsService {
 
     const keyringAccount = asStrictKeyringAccount(tronKeyringAccount);
 
-    /**
-     * Fetch the account's assets before we send it to the UI so that
-     * it's loaded with data already in place.
-     */
-    await this.synchronizeAssets([keyringAccount]);
-
     await emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
       /**
        * We can't pass the `keyringAccount` object because it contains the index

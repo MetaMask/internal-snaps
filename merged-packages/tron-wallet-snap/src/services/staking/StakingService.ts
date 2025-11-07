@@ -132,7 +132,6 @@ export class StakingService {
         KnownCaip19Id.TrxStakedForBandwidthMainnet,
         KnownCaip19Id.TrxStakedForBandwidthNile,
         KnownCaip19Id.TrxStakedForBandwidthShasta,
-        KnownCaip19Id.TrxStakedForBandwidthLocalnet,
       ].includes(assetId as KnownCaip19Id)
     ) {
       purpose = 'BANDWIDTH';
@@ -143,7 +142,6 @@ export class StakingService {
         KnownCaip19Id.TrxStakedForEnergyMainnet,
         KnownCaip19Id.TrxStakedForEnergyNile,
         KnownCaip19Id.TrxStakedForEnergyShasta,
-        KnownCaip19Id.TrxStakedForEnergyLocalnet,
       ].includes(assetId as KnownCaip19Id)
     ) {
       purpose = 'ENERGY';

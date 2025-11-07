@@ -181,10 +181,6 @@ describe('StakingService', () => {
         { assetId: KnownCaip19Id.TrxMainnet, expectedNetwork: Network.Mainnet },
         { assetId: KnownCaip19Id.TrxNile, expectedNetwork: Network.Nile },
         { assetId: KnownCaip19Id.TrxShasta, expectedNetwork: Network.Shasta },
-        {
-          assetId: KnownCaip19Id.TrxLocalnet,
-          expectedNetwork: Network.Localnet,
-        },
       ];
 
       for (const testCase of testCases) {
@@ -310,10 +306,6 @@ describe('StakingService', () => {
           assetId: KnownCaip19Id.TrxStakedForBandwidthShasta,
           expectedNetwork: Network.Shasta,
         },
-        {
-          assetId: KnownCaip19Id.TrxStakedForBandwidthLocalnet,
-          expectedNetwork: Network.Localnet,
-        },
       ];
 
       for (const testCase of testCases) {
@@ -349,10 +341,6 @@ describe('StakingService', () => {
         {
           assetId: KnownCaip19Id.TrxStakedForEnergyShasta,
           expectedNetwork: Network.Shasta,
-        },
-        {
-          assetId: KnownCaip19Id.TrxStakedForEnergyLocalnet,
-          expectedNetwork: Network.Localnet,
         },
       ];
 

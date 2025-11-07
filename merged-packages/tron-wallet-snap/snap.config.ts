@@ -15,7 +15,6 @@ const config: SnapConfig = {
     RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET ?? '',
     RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_LIST_NILE_TESTNET ?? '',
     RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET ?? '',
-    RPC_URL_LIST_LOCALNET: process.env.RPC_URL_LIST_LOCALNET ?? '',
     // Block explorer
     EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL ?? '',
     EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL ?? '',
@@ -32,13 +31,11 @@ const config: SnapConfig = {
     TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET ?? '',
     TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE ?? '',
     TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA ?? '',
-    TRONGRID_BASE_URL_LOCALNET: process.env.TRONGRID_BASE_URL_LOCALNET ?? '',
     TRONGRID_API_KEY: process.env.TRONGRID_API_KEY ?? '',
     // Tron HTTP API
     TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET ?? '',
     TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE ?? '',
     TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA ?? '',
-    TRON_HTTP_BASE_URL_LOCALNET: process.env.TRON_HTTP_BASE_URL_LOCALNET ?? '',
   },
   polyfills: true,
 };

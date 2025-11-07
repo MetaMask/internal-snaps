@@ -22,8 +22,6 @@ export function getExplorerUrl(
     [Network.Nile]: process.env.EXPLORER_NILE_BASE_URL as string,
     /* eslint-disable-next-line no-restricted-globals */
     [Network.Shasta]: process.env.EXPLORER_SHASTA_BASE_URL as string,
-    /* eslint-disable-next-line no-restricted-globals */
-    [Network.Localnet]: process.env.EXPLORER_LOCALNET_BASE_URL as string,
   };
 
   const baseUrl = NETWORK_TO_EXPLORER_PATH[scope];

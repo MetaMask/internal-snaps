@@ -183,9 +183,9 @@ describe('TokenApiClient', () => {
 
     it('returns default metadata if the asset type is not supported by the Token API', async () => {
       const supportedAssetType =
-        `${Networks[Network.Localnet].caip2Id}/trc10:1GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr` as TokenCaipAssetType;
+        `${Networks[Network.Mainnet].caip2Id}/trc10:1GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr` as TokenCaipAssetType;
       const unsupportedAssetType =
-        `${Networks[Network.Localnet].caip2Id}/trc10:address1` as TokenCaipAssetType;
+        `${Networks[Network.Mainnet].caip2Id}/trc10:address1` as TokenCaipAssetType;
 
       const tokenAddresses = [supportedAssetType, unsupportedAssetType];
       mockFetch.mockResolvedValueOnce({

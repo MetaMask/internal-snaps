@@ -44,6 +44,9 @@ export type RawTronKey = {
 export type RawTronAccountResource = {
   energy_window_optimized: boolean;
   energy_window_size: number;
+
+  delegated_frozenV2_balance_for_energy?: number;
+  delegated_frozenV2_balance_for_bandwidth?: number;
 };
 
 export type RawTronFrozenV2 = {

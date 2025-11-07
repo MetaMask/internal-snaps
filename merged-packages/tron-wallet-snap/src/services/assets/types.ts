@@ -16,7 +16,7 @@ export type NftCaipAssetType = `${TrxScope}/trc721:${string}`;
  */
 export const NativeCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
-  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:195$/u,
+  /^tron:(728126428|3448148188|2494104990)\/slip44:195$/u,
 );
 
 /**
@@ -24,7 +24,7 @@ export const NativeCaipAssetTypeStruct = pattern(
  */
 export const StakedCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
-  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:195-staked-for-(energy|bandwidth)$/u,
+  /^tron:(728126428|3448148188|2494104990)\/slip44:195-staked-for-(energy|bandwidth)$/u,
 );
 
 /**
@@ -32,7 +32,7 @@ export const StakedCaipAssetTypeStruct = pattern(
  */
 export const ResourceCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
-  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:(energy|bandwidth)$/u,
+  /^tron:(728126428|3448148188|2494104990)\/slip44:(energy|bandwidth)$/u,
 );
 
 /**
@@ -40,7 +40,7 @@ export const ResourceCaipAssetTypeStruct = pattern(
  */
 export const MaximumResourceCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
-  /^tron:(728126428|3448148188|2494104990|localnet)\/slip44:maximum-(energy|bandwidth)$/u,
+  /^tron:(728126428|3448148188|2494104990)\/slip44:maximum-(energy|bandwidth)$/u,
 );
 
 /**
@@ -48,7 +48,7 @@ export const MaximumResourceCaipAssetTypeStruct = pattern(
  */
 export const TokenCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
-  /^tron:(728126428|3448148188|2494104990|localnet)\/(trc10|trc20):[a-zA-Z0-9]+$/u,
+  /^tron:(728126428|3448148188|2494104990)\/(trc10|trc20):[a-zA-Z0-9]+$/u,
 );
 
 /**
@@ -56,5 +56,5 @@ export const TokenCaipAssetTypeStruct = pattern(
  */
 export const NftCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
-  /^tron:(728126428|3448148188|2494104990|localnet)\/trc721:[a-zA-Z0-9]+$/u,
+  /^tron:(728126428|3448148188|2494104990)\/trc721:[a-zA-Z0-9]+$/u,
 );

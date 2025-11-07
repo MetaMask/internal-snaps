@@ -30,7 +30,7 @@ import type {
 import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
-import type { Network } from '../constants';
+import { ESSENTIAL_ASSETS, type Network } from '../constants';
 import type { TronKeyringAccount } from '../entities';
 import { BackgroundEventMethod } from './cronjob';
 import type { AccountsService } from '../services/accounts/AccountsService';
@@ -160,8 +160,15 @@ export class KeyringHandler implements Keyring {
 
       this.#logger.info('Listing account assets', { accountId });
 
-      const assets = await this.#assetsService.getByKeyringAccountId(accountId);
-      const result = assets.map((asset) => asset.assetType);
+      const assetEntities =
+        await this.#assetsService.getByKeyringAccountId(accountId);
+      const result = assetEntities
+        .filter(
+          (asset) =>
+            ESSENTIAL_ASSETS.includes(asset.assetType) ||
+            Number(asset.rawAmount) > 0,
+        )
+        .map((asset) => asset.assetType);
 
       this.#logger.info('Account assets', { accountId, result });
 
@@ -282,24 +289,34 @@ export class KeyringHandler implements Keyring {
     try {
       validateRequest({ accountId, assets }, GetAccountBalancesStruct);
 
+      this.#logger.info('Getting account balances', { accountId, assets });
+
       await this.#getAccountOrThrow(accountId);
 
       const assetsList =
         await this.#assetsService.getByKeyringAccountId(accountId);
 
-      const assetsOnlyRequestedAssetTypes = assetsList.filter((asset) =>
-        assets.includes(asset.assetType),
+      const assetsToUse = assetsList
+        .filter((asset) => assets.includes(asset.assetType))
+        // Remove token assets with zero balance
+        .filter(
+          (asset) =>
+            ESSENTIAL_ASSETS.includes(asset.assetType) ||
+            Number(asset.rawAmount) > 0,
+        );
+
+      const result = assetsToUse.reduce<Record<CaipAssetType, Balance>>(
+        (acc, asset) => {
+          acc[asset.assetType] = {
+            unit: asset.symbol,
+            amount: asset.uiAmount,
+          };
+          return acc;
+        },
+        {},
       );
 
-      const result = assetsOnlyRequestedAssetTypes.reduce<
-        Record<CaipAssetType, Balance>
-      >((acc, asset) => {
-        acc[asset.assetType] = {
-          unit: asset.symbol ?? '',
-          amount: asset.uiAmount ?? '',
-        };
-        return acc;
-      }, {});
+      this.#logger.info('Account balances', { accountId, result });
 
       validateResponse(result, GetAccounBalancesResponseStruct);
       return result;

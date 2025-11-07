@@ -16,17 +16,11 @@ import { UrlStruct } from '../../validation/structs';
 const ENVIRONMENT_TO_ACTIVE_NETWORKS = {
   production: [Network.Mainnet],
   local: [Network.Mainnet],
-  test: [Network.Localnet],
+  test: [Network.Mainnet],
 };
 
 const CommaSeparatedListOfUrlsStruct = coerce(
   array(UrlStruct),
-  string(),
-  (value: string) => value.split(','),
-);
-
-const CommaSeparatedListOfStringsStruct = coerce(
-  array(string()),
   string(),
   (value: string) => value.split(','),
 );
@@ -36,7 +30,6 @@ const EnvStruct = object({
   RPC_URL_LIST_MAINNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LIST_LOCALNET: CommaSeparatedListOfStringsStruct,
   EXPLORER_MAINNET_BASE_URL: UrlStruct,
   EXPLORER_NILE_BASE_URL: UrlStruct,
   EXPLORER_SHASTA_BASE_URL: UrlStruct,
@@ -50,11 +43,9 @@ const EnvStruct = object({
   TRONGRID_BASE_URL_MAINNET: UrlStruct,
   TRONGRID_BASE_URL_NILE: UrlStruct,
   TRONGRID_BASE_URL_SHASTA: UrlStruct,
-  TRONGRID_BASE_URL_LOCALNET: UrlStruct,
   TRON_HTTP_BASE_URL_MAINNET: UrlStruct,
   TRON_HTTP_BASE_URL_NILE: UrlStruct,
   TRON_HTTP_BASE_URL_SHASTA: UrlStruct,
-  TRON_HTTP_BASE_URL_LOCALNET: UrlStruct,
 });
 
 export type Env = Infer<typeof EnvStruct>;
@@ -131,7 +122,6 @@ export class ConfigProvider {
       RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET,
       RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_LIST_NILE_TESTNET,
       RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET,
-      RPC_URL_LIST_LOCALNET: process.env.RPC_URL_LIST_LOCALNET,
       // Block explorer
       EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL,
       EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL,
@@ -147,13 +137,11 @@ export class ConfigProvider {
       TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET,
       TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE,
       TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA,
-      TRONGRID_BASE_URL_LOCALNET: process.env.TRONGRID_BASE_URL_LOCALNET,
       TRONGRID_API_KEY: process.env.TRONGRID_API_KEY,
       // // Tron HTTP API URLs
       TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET,
       TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE,
       TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA,
-      TRON_HTTP_BASE_URL_LOCALNET: process.env.TRON_HTTP_BASE_URL_LOCALNET,
     };
 
     // Validate and parse them before returning
@@ -178,11 +166,6 @@ export class ConfigProvider {
           ...Networks[Network.Shasta],
           rpcUrls: environment.RPC_URL_LIST_SHASTA_TESTNET,
           explorerBaseUrl: environment.EXPLORER_SHASTA_BASE_URL,
-        },
-        {
-          ...Networks[Network.Localnet],
-          rpcUrls: environment.RPC_URL_LIST_LOCALNET,
-          explorerBaseUrl: environment.EXPLORER_MAINNET_BASE_URL,
         },
       ],
       activeNetworks: ENVIRONMENT_TO_ACTIVE_NETWORKS[environment.ENVIRONMENT],
@@ -233,7 +216,6 @@ export class ConfigProvider {
           [Network.Mainnet]: environment.TRONGRID_BASE_URL_MAINNET,
           [Network.Nile]: environment.TRONGRID_BASE_URL_NILE,
           [Network.Shasta]: environment.TRONGRID_BASE_URL_SHASTA,
-          [Network.Localnet]: environment.TRONGRID_BASE_URL_LOCALNET,
         },
       },
       tronHttpApi: {
@@ -241,7 +223,6 @@ export class ConfigProvider {
           [Network.Mainnet]: environment.TRON_HTTP_BASE_URL_MAINNET,
           [Network.Nile]: environment.TRON_HTTP_BASE_URL_NILE,
           [Network.Shasta]: environment.TRON_HTTP_BASE_URL_SHASTA,
-          [Network.Localnet]: environment.TRON_HTTP_BASE_URL_LOCALNET,
         },
       },
     };

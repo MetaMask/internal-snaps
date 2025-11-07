@@ -28,11 +28,9 @@ export type ResourceAsset = BaseAsset & {
     | KnownCaip19Id.EnergyMainnet
     | KnownCaip19Id.EnergyNile
     | KnownCaip19Id.EnergyShasta
-    | KnownCaip19Id.EnergyLocalnet
     | KnownCaip19Id.BandwidthMainnet
     | KnownCaip19Id.BandwidthNile
-    | KnownCaip19Id.BandwidthShasta
-    | KnownCaip19Id.BandwidthLocalnet;
+    | KnownCaip19Id.BandwidthShasta;
 };
 
 export type MaximumResourceAsset = BaseAsset & {
@@ -40,11 +38,9 @@ export type MaximumResourceAsset = BaseAsset & {
     | KnownCaip19Id.MaximumEnergyMainnet
     | KnownCaip19Id.MaximumEnergyNile
     | KnownCaip19Id.MaximumEnergyShasta
-    | KnownCaip19Id.MaximumEnergyLocalnet
     | KnownCaip19Id.MaximumBandwidthMainnet
     | KnownCaip19Id.MaximumBandwidthNile
-    | KnownCaip19Id.MaximumBandwidthShasta
-    | KnownCaip19Id.MaximumBandwidthLocalnet;
+    | KnownCaip19Id.MaximumBandwidthShasta;
 };
 
 export type TokenAsset = BaseAsset & {

@@ -141,7 +141,7 @@ describe('PriceApiClient', () => {
 
         await expect(
           client.getMultipleSpotPrices([
-            KnownCaip19Id.TrxLocalnet,
+            KnownCaip19Id.TrxMainnet,
             KnownCaip19Id.UsdtMainnet,
           ]),
         ).rejects.toThrow('Fetch failed');
@@ -159,7 +159,7 @@ describe('PriceApiClient', () => {
 
         await expect(
           client.getMultipleSpotPrices([
-            KnownCaip19Id.TrxLocalnet,
+            KnownCaip19Id.TrxMainnet,
             KnownCaip19Id.UsdtMainnet,
           ]),
         ).rejects.toThrow('HTTP error! status: 404');
@@ -328,7 +328,7 @@ describe('PriceApiClient', () => {
     it('rejects tokenCaipAssetTypes that are invalid or that include malicious inputs', async () => {
       await expect(
         client.getMultipleSpotPrices([
-          KnownCaip19Id.TrxLocalnet,
+          KnownCaip19Id.TrxMainnet,
           'INVALID<script>alert(1)</script>' as CaipAssetType,
         ]),
       ).rejects.toThrow(
@@ -339,7 +339,7 @@ describe('PriceApiClient', () => {
     it('rejects vsCurrency parameters that are invalid or that include malicious inputs', async () => {
       await expect(
         client.getMultipleSpotPrices(
-          [KnownCaip19Id.TrxLocalnet],
+          [KnownCaip19Id.TrxMainnet],
           'INVALID<script>alert(1)</script>' as VsCurrencyParam,
         ),
       ).rejects.toThrow(/Expected/u);
@@ -351,7 +351,7 @@ describe('PriceApiClient', () => {
         json: jest.fn().mockResolvedValueOnce({}),
       });
 
-      await client.getMultipleSpotPrices([KnownCaip19Id.TrxLocalnet]);
+      await client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]);
 
       // Verify URL is properly constructed with encoded parameters
       expect(mockFetch).toHaveBeenCalledWith(
@@ -369,7 +369,7 @@ describe('PriceApiClient', () => {
 
       await expect(
         client.getMultipleSpotPrices(
-          [KnownCaip19Id.TrxLocalnet],
+          [KnownCaip19Id.TrxMainnet],
           'usd\x00\x1F' as VsCurrencyParam,
         ),
       ).rejects.toThrow(/Expected/u);
