@@ -69,8 +69,9 @@ export class StakingService {
       privateKeyHex,
     );
 
+    const amountInSun = amount.multipliedBy(10 ** 6).toNumber();
     const transaction = await tronWeb.transactionBuilder.freezeBalanceV2(
-      amount.toNumber(),
+      amountInSun,
       purpose,
       account.address,
     );
@@ -154,8 +155,9 @@ export class StakingService {
       throw new Error('Invalid asset ID');
     }
 
+    const amountInSun = amount.multipliedBy(10 ** 6).toNumber();
     const transaction = await tronWeb.transactionBuilder.unfreezeBalanceV2(
-      amount.toNumber(),
+      amountInSun,
       purpose,
       account.address,
     );

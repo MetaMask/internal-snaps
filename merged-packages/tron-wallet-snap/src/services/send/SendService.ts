@@ -260,6 +260,7 @@ export class SendService {
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     try {
+      // TODO: We need to fetch the decimals and adjust the amount accordingly
       const functionSelector = 'transfer(address,uint256)';
       const parameter = [
         { type: 'address', value: toAddress },
