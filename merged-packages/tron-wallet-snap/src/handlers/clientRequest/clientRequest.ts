@@ -288,11 +288,23 @@ export class ClientRequestHandler {
 
     const { fromAccountId, toAddress, amount, assetId } = request.params;
 
+    const asset = await this.#assetsService.getAssetByAccountId(
+      fromAccountId,
+      assetId,
+    );
+
+    if (!asset) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.InsufficientBalance],
+      };
+    }
+
     const transaction = await this.#sendService.sendAsset({
       fromAccountId,
       toAddress,
+      asset,
       amount: BigNumber(amount).toNumber(),
-      assetId,
     });
 
     return {

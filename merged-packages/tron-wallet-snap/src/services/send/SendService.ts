@@ -4,6 +4,7 @@ import type { TransactionResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
+import type { AssetEntity } from '../../entities/assets';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -37,16 +38,16 @@ export class SendService {
   async sendAsset({
     fromAccountId,
     toAddress,
+    asset,
     amount,
-    assetId,
   }: {
     fromAccountId: string;
     toAddress: string;
+    asset: AssetEntity;
     amount: number;
-    assetId: string;
   }): Promise<TransactionResult> {
     const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
-      assetId as `${string}:${string}/${string}:${string}`,
+      asset.assetType,
     );
 
     try {
@@ -76,8 +77,9 @@ export class SendService {
             scope: chainId as Network,
             fromAccountId,
             toAddress,
-            amount,
             contractAddress: assetReference,
+            amount,
+            decimals: asset.decimals,
           });
 
         default:
@@ -241,14 +243,16 @@ export class SendService {
     scope,
     fromAccountId,
     toAddress,
-    amount,
     contractAddress,
+    amount,
+    decimals,
   }: {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
-    amount: number;
     contractAddress: string;
+    amount: number;
+    decimals: number;
   }): Promise<TransactionResult> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -260,11 +264,11 @@ export class SendService {
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     try {
-      // TODO: We need to fetch the decimals and adjust the amount accordingly
       const functionSelector = 'transfer(address,uint256)';
+      const decimalsAdjustedAmount = amount * 10 ** decimals;
       const parameter = [
         { type: 'address', value: toAddress },
-        { type: 'uint256', value: amount },
+        { type: 'uint256', value: decimalsAdjustedAmount },
       ];
 
       const contractResult =
