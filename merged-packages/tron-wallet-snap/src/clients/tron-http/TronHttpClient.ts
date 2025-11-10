@@ -16,8 +16,6 @@ import type { ConfigProvider } from '../../services/config';
  * Handles contract interactions, constant contract calls, etc.
  */
 export class TronHttpClient {
-  readonly #apiKey?: string;
-
   readonly #clients: Map<
     Network,
     {
@@ -27,9 +25,7 @@ export class TronHttpClient {
   > = new Map();
 
   constructor({ configProvider }: { configProvider: ConfigProvider }) {
-    const { apiKey } = configProvider.get().trongridApi;
     const { baseUrls } = configProvider.get().tronHttpApi;
-    this.#apiKey = apiKey;
 
     // Initialize clients for all networks
     Object.entries(baseUrls).forEach(([network, baseUrl]) => {
@@ -38,10 +34,6 @@ export class TronHttpClient {
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Allow-Origin': '*',
       };
-
-      if (this.#apiKey) {
-        headers['TRON-PRO-API-KEY'] = this.#apiKey;
-      }
 
       this.#clients.set(network as Network, { baseUrl, headers });
     });

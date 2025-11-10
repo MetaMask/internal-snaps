@@ -31,7 +31,6 @@ const config: SnapConfig = {
     TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET ?? '',
     TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE ?? '',
     TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA ?? '',
-    TRONGRID_API_KEY: process.env.TRONGRID_API_KEY ?? '',
     // Tron HTTP API
     TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET ?? '',
     TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE ?? '',

@@ -30,18 +30,15 @@ export class TronWebFactory {
    */
   createClient(network: Network, privateKey?: string): TronWeb {
     const config = this.#configProvider.get();
-    const { apiKey, baseUrls } = config.trongridApi;
+    const { baseUrls } = config.trongridApi;
 
     const fullHost = baseUrls[network];
     if (!fullHost) {
       throw new Error(`No configuration found for network: ${network}`);
     }
 
-    const headers = apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {};
-
     const tronWebConfig = {
       fullHost,
-      headers,
       ...(privateKey && { privateKey }),
     };
 

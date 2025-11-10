@@ -9,8 +9,6 @@ import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 
 export class TrongridApiClient {
-  readonly #apiKey?: string;
-
   readonly #clients: Map<
     Network,
     {
@@ -20,8 +18,7 @@ export class TrongridApiClient {
   > = new Map();
 
   constructor({ configProvider }: { configProvider: ConfigProvider }) {
-    const { apiKey, baseUrls } = configProvider.get().trongridApi;
-    this.#apiKey = apiKey;
+    const { baseUrls } = configProvider.get().trongridApi;
 
     // Initialize clients for all networks
     Object.entries(baseUrls).forEach(([network, baseUrl]) => {
@@ -30,10 +27,6 @@ export class TrongridApiClient {
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Allow-Origin': '*',
       };
-
-      if (this.#apiKey) {
-        headers['TRON-PRO-API-KEY'] = this.#apiKey;
-      }
 
       this.#clients.set(network as Network, { baseUrl, headers });
     });

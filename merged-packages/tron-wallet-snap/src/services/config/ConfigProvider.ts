@@ -39,7 +39,6 @@ const EnvStruct = object({
   SECURITY_ALERTS_API_BASE_URL: UrlStruct,
   NFT_API_BASE_URL: UrlStruct,
   LOCAL_API_BASE_URL: string(),
-  TRONGRID_API_KEY: string(),
   TRONGRID_BASE_URL_MAINNET: UrlStruct,
   TRONGRID_BASE_URL_NILE: UrlStruct,
   TRONGRID_BASE_URL_SHASTA: UrlStruct,
@@ -89,7 +88,6 @@ export type Config = {
     };
   };
   trongridApi: {
-    apiKey: string;
     baseUrls: Record<Network, string>;
   };
   tronHttpApi: {
@@ -137,7 +135,6 @@ export class ConfigProvider {
       TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET,
       TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE,
       TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA,
-      TRONGRID_API_KEY: process.env.TRONGRID_API_KEY,
       // // Tron HTTP API URLs
       TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET,
       TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE,
@@ -211,7 +208,6 @@ export class ConfigProvider {
         },
       },
       trongridApi: {
-        apiKey: environment.TRONGRID_API_KEY,
         baseUrls: {
           [Network.Mainnet]: environment.TRONGRID_BASE_URL_MAINNET,
           [Network.Nile]: environment.TRONGRID_BASE_URL_NILE,
