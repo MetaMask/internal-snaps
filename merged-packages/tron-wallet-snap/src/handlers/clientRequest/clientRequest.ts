@@ -157,7 +157,6 @@ export class ClientRequestHandler {
       entropySource: account.entropySource,
       derivationPath: account.derivationPath,
     });
-
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     /**
@@ -325,22 +324,50 @@ export class ClientRequestHandler {
     assertOrThrow(request, ComputeFeeRequestStruct, new InvalidParamsError());
 
     const {
-      params: { scope, transaction, accountId },
+      params: {
+        scope,
+        transaction: transactionBase64,
+        accountId,
+        options: { visible, type },
+      },
     } = request;
 
-    await this.#accountsService.findByIdOrThrow(accountId);
+    /**
+     * Start by recreating the transaction object with the missing fields
+     * just like we do for `signAndSendTransaction`
+     */
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    // eslint-disable-next-line no-restricted-globals
+    const rawDataHex = Buffer.from(transactionBase64, 'base64').toString('hex');
+    const rawData = tronWeb.utils.transaction.DeserializeTransaction(
+      type,
+      rawDataHex,
+    );
+    const txID = sha256(`0x${rawDataHex}`).slice(2);
+    const transaction = {
+      visible,
+      txID,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data: rawData,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data_hex: rawDataHex,
+    };
 
     /**
      * Get available Energy and Bandwidth from account assets.
      */
-    const energyAsset = await this.#assetsService.getAssetByAccountId(
-      accountId,
-      Networks[scope].energy.id,
-    );
-    const bandwidthAsset = await this.#assetsService.getAssetByAccountId(
-      accountId,
-      Networks[scope].bandwidth.id,
-    );
+    const [bandwidthAsset, energyAsset] =
+      await this.#assetsService.getAssetsByAccountId(accountId, [
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     const availableEnergy = energyAsset
       ? BigNumber(energyAsset.rawAmount)

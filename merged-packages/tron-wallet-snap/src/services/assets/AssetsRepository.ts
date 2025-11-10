@@ -28,6 +28,32 @@ export class AssetsRepository {
     return assets.find((asset) => asset.assetType === assetType) ?? null;
   }
 
+  /**
+   * Get assets by account ID and asset types.
+   *
+   * @param keyringAccountId - The keyring account ID.
+   * @param assetTypes - The asset types to filter by.
+   * @returns An array of assets matching the criteria.
+   */
+  async getByAccountIdAndAssetTypes(
+    keyringAccountId: string,
+    assetTypes: string[],
+  ): Promise<(AssetEntity | null)[]> {
+    const assets = await this.getByAccountId(keyringAccountId);
+    const result: (AssetEntity | null)[] = [];
+
+    // We iterate through the assetTypes to preserve the order
+    for (const assetType of assetTypes) {
+      const asset = assets.find(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+        (currAsset) => currAsset.assetType === assetType,
+      );
+      result.push(asset ?? null);
+    }
+
+    return result;
+  }
+
   async getAll(): Promise<AssetEntity[]> {
     const assetsByAccount =
       (await this.#state.getKey<UnencryptedStateValue['assets']>('assets')) ??

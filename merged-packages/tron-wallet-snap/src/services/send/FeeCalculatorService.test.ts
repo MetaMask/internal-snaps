@@ -5,6 +5,9 @@ import { BigNumber } from 'bignumber.js';
 import { FeeCalculatorService } from './FeeCalculatorService';
 import { Network } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
+import nativeTransferMock from '../transactions/mocks/native-transfer.json';
+import trc10TransferMock from '../transactions/mocks/trc10-transfer.json';
+import trc20TransferMock from '../transactions/mocks/trc20-transfer.json';
 
 const mockTronWebFactory = {
   createClient: jest.fn(),
@@ -14,21 +17,57 @@ const mockTrongridApiClient = {
   getChainParameters: jest.fn(),
 } as any;
 
-const createBase64Transaction = (contractType: string, data: any = {}) => {
-  const transaction = {
+// Helper to get transaction examples in the expected format
+const getTransactionExample = (type: 'native' | 'trc10' | 'trc20'): any => {
+  let mockData;
+  switch (type) {
+    case 'native':
+      mockData = nativeTransferMock;
+      break;
+    case 'trc10':
+      mockData = trc10TransferMock;
+      break;
+    case 'trc20':
+      mockData = trc20TransferMock;
+      break;
+    default:
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Unknown transaction type: ${type}`);
+  }
+
+  // Extract the transaction structure that matches the expected Transaction type
+  return {
+    visible: false,
+    txID: mockData.txID,
+    raw_data_hex: mockData.raw_data_hex,
+    raw_data: mockData.raw_data,
+  };
+};
+
+// Helper to create a large transaction by modifying the TRC20 example
+const createLargeTransaction = (): any => {
+  const baseTransaction = getTransactionExample('trc20');
+  // Modify the data field to be much larger to simulate bandwidth issues
+  const largeData = 'b'.repeat(2000);
+
+  return {
+    ...baseTransaction,
     raw_data: {
+      ...baseTransaction.raw_data,
       contract: [
         {
-          type: contractType,
+          ...baseTransaction.raw_data.contract[0],
           parameter: {
-            value: data,
+            ...baseTransaction.raw_data.contract[0].parameter,
+            value: {
+              ...baseTransaction.raw_data.contract[0].parameter.value,
+              data: largeData,
+            },
           },
         },
       ],
     },
   };
-  // eslint-disable-next-line no-restricted-globals
-  return Buffer.from(JSON.stringify(transaction)).toString('base64');
 };
 
 describe('FeeCalculatorService', () => {
@@ -70,7 +109,7 @@ describe('FeeCalculatorService', () => {
 
     describe('TransferContract scenarios (no energy needed)', () => {
       it('has enough bandwidth', async () => {
-        const transaction = createBase64Transaction('TransferContract');
+        const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(0);
         const availableBandwidth = BigNumber(1000000); // More than needed
 
@@ -88,7 +127,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '80000',
+              amount: '758000',
               fungible: true,
             },
           },
@@ -96,7 +135,7 @@ describe('FeeCalculatorService', () => {
       });
 
       it('not enough bandwidth', async () => {
-        const transaction = createBase64Transaction('TransferContract');
+        const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(0);
         const availableBandwidth = BigNumber(1000); // Less than needed
 
@@ -114,7 +153,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '80.000000',
+              amount: '758.000000',
               fungible: true,
             },
           },
@@ -133,17 +172,10 @@ describe('FeeCalculatorService', () => {
       });
 
       it('has enough bandwidth + has enough energy', async () => {
-        const transaction = createBase64Transaction('TriggerSmartContract', {
-          contract_address: 'a'.repeat(64),
-          data: '0xa9059cbb000000000000000000000000',
-
-          owner_address: 'b'.repeat(64),
-
-          call_value: 0,
-        });
+        const transaction = getTransactionExample('trc20');
 
         const availableEnergy = BigNumber(100000); // More than needed (55001)
-        const availableBandwidth = BigNumber(1000000); // More than needed
+        const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -168,7 +200,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '311000',
+              amount: '1083000',
               fungible: true,
             },
           },
@@ -176,17 +208,10 @@ describe('FeeCalculatorService', () => {
       });
 
       it('has enough bandwidth + not enough energy', async () => {
-        const transaction = createBase64Transaction('TriggerSmartContract', {
-          contract_address: 'a'.repeat(64),
-          data: '0xa9059cbb000000000000000000000000',
-
-          owner_address: 'b'.repeat(64),
-
-          call_value: 0,
-        });
+        const transaction = getTransactionExample('trc20');
 
         const availableEnergy = BigNumber(30000); // Less than needed (55001)
-        const availableBandwidth = BigNumber(1000000); // More than needed
+        const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -211,7 +236,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '311000',
+              amount: '1083000',
               fungible: true,
             },
           },
@@ -228,15 +253,7 @@ describe('FeeCalculatorService', () => {
       });
 
       it('not enough bandwidth + has enough energy', async () => {
-        const largeTransaction = createBase64Transaction(
-          'TriggerSmartContract',
-          {
-            contract_address: 'a'.repeat(64),
-            data: 'b'.repeat(2000), // Large data to increase bandwidth
-            owner_address: 'c'.repeat(64),
-            call_value: 0,
-          },
-        );
+        const largeTransaction = createLargeTransaction();
 
         const availableEnergy = BigNumber(100000); // More than needed (55001)
         const availableBandwidth = BigNumber(1000); // Less than needed
@@ -264,7 +281,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '2277.000000',
+              amount: '2947.000000',
               fungible: true,
             },
           },
@@ -272,15 +289,7 @@ describe('FeeCalculatorService', () => {
       });
 
       it('not enough bandwidth + not enough energy', async () => {
-        const largeTransaction = createBase64Transaction(
-          'TriggerSmartContract',
-          {
-            contract_address: 'a'.repeat(64),
-            data: 'b'.repeat(2000), // Large data to increase bandwidth
-            owner_address: 'c'.repeat(64),
-            call_value: 0,
-          },
-        );
+        const largeTransaction = createLargeTransaction();
 
         const availableEnergy = BigNumber(30000); // Less than needed (55001)
         const availableBandwidth = BigNumber(1000); // Less than needed
@@ -309,7 +318,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '2279.500100',
+              amount: '2949.500100',
               fungible: true,
             },
           },
@@ -319,7 +328,7 @@ describe('FeeCalculatorService', () => {
 
     describe('Edge cases and error handling', () => {
       it('should filter out zero amount fees', async () => {
-        const transaction = createBase64Transaction('TransferContract');
+        const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(0);
         const availableBandwidth = BigNumber(0);
 
@@ -337,7 +346,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '80.000000',
+              amount: '758.000000',
               fungible: true,
             },
           },
@@ -345,7 +354,7 @@ describe('FeeCalculatorService', () => {
       });
 
       it('should handle different networks correctly', async () => {
-        const transaction = createBase64Transaction('TransferContract');
+        const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(100000);
         const availableBandwidth = BigNumber(1000000);
 
@@ -362,7 +371,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:2494104990/slip44:bandwidth',
-              amount: '80000',
+              amount: '758000',
               fungible: true,
             },
           },
@@ -372,12 +381,7 @@ describe('FeeCalculatorService', () => {
       it('should use fallback values when chain parameters are missing', async () => {
         mockTrongridApiClient.getChainParameters.mockResolvedValue([]);
 
-        const transaction = createBase64Transaction('TriggerSmartContract', {
-          contract_address: 'a'.repeat(64),
-          data: '0xa9059cbb000000000000000000000000',
-          owner_address: 'b'.repeat(64),
-          call_value: 0,
-        });
+        const transaction = getTransactionExample('trc20');
 
         mockTronWebClient.transactionBuilder.triggerConstantContract.mockResolvedValue(
           {
@@ -386,7 +390,7 @@ describe('FeeCalculatorService', () => {
         );
 
         const availableEnergy = BigNumber(100000);
-        const availableBandwidth = BigNumber(1000000);
+        const availableBandwidth = BigNumber(2000000); // Ensure enough bandwidth
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -411,7 +415,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '311000',
+              amount: '1083000',
               fungible: true,
             },
           },
@@ -428,17 +432,10 @@ describe('FeeCalculatorService', () => {
       });
 
       it('should handle very large transactions', async () => {
-        const veryLargeTransaction = createBase64Transaction(
-          'TriggerSmartContract',
-          {
-            contract_address: 'a'.repeat(64),
-            data: 'b'.repeat(10000), // Very large data
-
-            owner_address: 'c'.repeat(64),
-
-            call_value: 0,
-          },
-        );
+        const veryLargeTransaction = createLargeTransaction();
+        // Make it even larger for this test
+        veryLargeTransaction.raw_data.contract[0].parameter.value.data =
+          'b'.repeat(10000);
 
         mockTronWebClient.transactionBuilder.triggerConstantContract.mockResolvedValue(
           {
@@ -471,7 +468,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '10277.000000',
+              amount: '10947.000000',
               fungible: true,
             },
           },
@@ -479,9 +476,9 @@ describe('FeeCalculatorService', () => {
       });
 
       it('should handle exact resource matches', async () => {
-        const transaction = createBase64Transaction('TransferContract');
+        const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(80000);
+        const availableBandwidth = BigNumber(758000); // Exact match for native transaction
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -496,7 +493,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '80000',
+              amount: '758000',
               fungible: true,
             },
           },

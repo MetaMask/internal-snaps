@@ -78,7 +78,7 @@ describe('TransactionMapper', () => {
           fees: [
             {
               asset: {
-                amount: '266000',
+                amount: '0.266',
                 unit: 'TRX',
                 type: 'tron:728126428/slip44:195',
                 fungible: true,
@@ -152,7 +152,7 @@ describe('TransactionMapper', () => {
           fees: [
             {
               asset: {
-                amount: '281000',
+                amount: '0.281',
                 unit: 'TRX',
                 type: 'tron:728126428/slip44:195',
                 fungible: true,
@@ -222,7 +222,7 @@ describe('TransactionMapper', () => {
           fees: [
             {
               asset: {
-                amount: '12987800',
+                amount: '12.9878',
                 unit: 'TRX',
                 type: 'tron:728126428/slip44:195',
                 fungible: true,
@@ -286,7 +286,7 @@ describe('TransactionMapper', () => {
         const expectedFees = [
           {
             asset: {
-              amount: '266000',
+              amount: '0.266',
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
               fungible: true,
@@ -318,7 +318,7 @@ describe('TransactionMapper', () => {
         const expectedFees = [
           {
             asset: {
-              amount: '12987800',
+              amount: '12.9878',
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
               fungible: true,
@@ -499,7 +499,7 @@ describe('TransactionMapper', () => {
         fees: [
           {
             asset: {
-              amount: '266000',
+              amount: '0.266',
               unit: 'TRX',
               type: 'tron:2494104990/slip44:195',
               fungible: true,

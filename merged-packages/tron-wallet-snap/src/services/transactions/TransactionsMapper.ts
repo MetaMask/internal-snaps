@@ -32,10 +32,11 @@ export class TransactionMapper {
     } = Networks[network];
 
     // Base TRX fee calculation
-    const transactionFee = transactionInfo.ret.reduce(
+    const transactionFeeInSun = transactionInfo.ret.reduce(
       (total, result) => total + (result.fee || 0),
       0,
     );
+    const transactionFee = transactionFeeInSun / 1_000_000;
 
     const setFeeIfPresent = (
       amount: number,

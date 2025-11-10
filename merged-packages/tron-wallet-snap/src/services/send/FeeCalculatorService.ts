@@ -1,6 +1,10 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-import type { Contract } from 'tronweb';
+import type {
+  Transaction,
+  TransactionContract,
+  TriggerSmartContract,
+} from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
@@ -40,27 +44,18 @@ export class FeeCalculatorService {
    */
   async #calculateEnergy(
     scope: Network,
-    transaction: string,
+    transaction: Transaction,
   ): Promise<BigNumber> {
     try {
-      // Decode the transaction from base64
-      let txObj: any = null;
+      const contract = transaction.raw_data.contract[0];
 
-      try {
-        // eslint-disable-next-line no-restricted-globals
-        txObj = JSON.parse(Buffer.from(transaction, 'base64').toString());
-      } catch (parseError) {
-        this.#logger.warn({ error: parseError }, 'Failed to parse transaction');
-        throw new Error('Invalid transaction format');
+      if (!contract) {
+        throw new Error(
+          'Cannot calculate energy: No contract found in transaction',
+        );
       }
 
-      if (!txObj?.raw_data?.contract?.[0]) {
-        throw new Error('Invalid transaction structure');
-      }
-
-      const contract = txObj.raw_data.contract[0];
-      const contractType = contract.type;
-
+      const contractType = contract.type as string;
       this.#logger.log(`Calculating energy for contract type: ${contractType}`);
 
       switch (contractType) {
@@ -75,7 +70,10 @@ export class FeeCalculatorService {
         case 'TriggerSmartContract': {
           // For smart contracts, try to estimate energy using triggerconstantcontract
           return BigNumber(
-            await this.#estimateSmartContractEnergy(scope, contract),
+            await this.#estimateSmartContractEnergy(
+              scope,
+              contract as TransactionContract<TriggerSmartContract>,
+            ),
           );
         }
 
@@ -98,10 +96,9 @@ export class FeeCalculatorService {
    * @param transaction - The base64 encoded transaction
    * @returns number - The calculated bandwidth in SUN
    */
-  #calculateBandwidth(transaction: string): BigNumber {
+  #calculateBandwidth(transaction: Transaction): BigNumber {
     // eslint-disable-next-line no-restricted-globals
-    const decodedBytes = Buffer.from(transaction, 'base64');
-    const byteSize = decodedBytes.length;
+    const byteSize = Buffer.byteLength(JSON.stringify(transaction));
     return BigNumber(byteSize * 1000);
   }
 
@@ -115,7 +112,7 @@ export class FeeCalculatorService {
    */
   async #estimateSmartContractEnergy(
     scope: Network,
-    contract: Contract,
+    contract: TransactionContract<TriggerSmartContract>,
   ): Promise<number> {
     try {
       this.#logger.log(
@@ -125,10 +122,28 @@ export class FeeCalculatorService {
 
       const tronWeb = this.#tronWebFactory.createClient(scope);
 
+      // Example TriggerSmartContract structure:
+      // "contract": [
+      //   {
+      //     "parameter": {
+      //       "value": {
+      //         "data": "a9059cbb0000000000000000000000007c7ec04a5297bb92305ebcf776e59876be0ca53b00000000000000000000000000000000000000000000000002c68af0bb140000",
+      //           "owner_address": "413986cff58bc3066e62f43f2e32f603d026a43726",
+      //           "contract_address": "41e91a7411e56ce79e83570570f49b9fc35b7727c5"
+      //         },
+      //       "type_url": "type.googleapis.com/protocol.TriggerSmartContract"
+      //     },
+      //     "type": "TriggerSmartContract"
+      //   }
+      // ]
       const contractAddress = contract.parameter.value.contract_address;
       const functionSelector = contract.parameter.value.data;
       const ownerAddress = contract.parameter.value.owner_address;
       const callValue = contract.parameter.value.call_value ?? 0;
+
+      if (!functionSelector) {
+        throw new Error('Cannot estimate energy: No function selector found');
+      }
 
       // Convert addresses from hex to base58 if needed
       const contractAddressBase58 = tronWeb.address.fromHex(
@@ -199,7 +214,7 @@ export class FeeCalculatorService {
     availableBandwidth,
   }: {
     scope: Network;
-    transaction: string;
+    transaction: Transaction;
     availableEnergy: BigNumber;
     availableBandwidth: BigNumber;
   }): Promise<ComputeFeeResult> {

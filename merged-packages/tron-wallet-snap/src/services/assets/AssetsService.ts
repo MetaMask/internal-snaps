@@ -103,8 +103,18 @@ export class AssetsService {
     return caipAssetId.includes('swift:0/iso4217:');
   }
 
-  async getAssetsByAccountId(accountId: string): Promise<AssetEntity[]> {
+  async getAllAssetsByAccountId(accountId: string): Promise<AssetEntity[]> {
     return this.#assetsRepository.getByAccountId(accountId);
+  }
+
+  async getAssetsByAccountId(
+    accountId: string,
+    assetTypes: string[],
+  ): Promise<(AssetEntity | null)[]> {
+    return this.#assetsRepository.getByAccountIdAndAssetTypes(
+      accountId,
+      assetTypes,
+    );
   }
 
   async getAssetByAccountId(

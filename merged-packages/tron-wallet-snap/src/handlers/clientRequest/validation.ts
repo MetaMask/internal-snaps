@@ -103,6 +103,10 @@ export const ComputeFeeRequestParamsStruct = object({
   transaction: Base64Struct,
   accountId: UuidStruct,
   scope: ScopeStringStruct,
+  options: object({
+    visible: boolean(),
+    type: string(),
+  }),
 });
 
 export const ComputeFeeRequestStruct = object({
