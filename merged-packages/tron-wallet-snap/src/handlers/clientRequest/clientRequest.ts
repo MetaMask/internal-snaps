@@ -29,6 +29,7 @@ import {
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
   OnConfirmStakeRequestStruct,
+  OnConfirmUnstakeRequestStruct,
   OnStakeAmountInputRequestStruct,
   OnUnstakeAmountInputRequestStruct,
   SignAndSendTransactionRequestStruct,
@@ -588,7 +589,7 @@ export class ClientRequestHandler {
   async #handleConfirmUnstake(request: JsonRpcRequest): Promise<Json> {
     assertOrThrow(
       request,
-      OnUnstakeAmountInputRequestStruct,
+      OnConfirmUnstakeRequestStruct,
       new InvalidParamsError(),
     );
 
