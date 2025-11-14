@@ -13,6 +13,8 @@ type BaseAsset = {
   decimals: number;
   rawAmount: string; // Without decimals
   uiAmount: string; // With decimals
+  iconUrl: string; // Asset icon URL
+  imageSvg?: string; // Converted SVG for Snaps UI display
 };
 
 export type NativeAsset = BaseAsset & {

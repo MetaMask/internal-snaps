@@ -2,46 +2,46 @@
   "locale": "en",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "Yêu cầu giao dịch"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "Thay đổi ước tính"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "Thay đổi ước tính là những gì có thể xảy ra nếu bạn thực hiện giao dịch này. Đây chỉ là dự đoán, không phải là đảm bảo."
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "Bạn gửi"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "Băng thông đã sử dụng"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "Bạn nhận được"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "Yêu cầu từ"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "Tài khoản"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "Người nhận"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "Mạng"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "Phí mạng"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "Xác nhận"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "Hủy"
     }
   }
 }

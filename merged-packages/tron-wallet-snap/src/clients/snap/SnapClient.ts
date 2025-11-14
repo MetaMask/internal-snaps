@@ -7,6 +7,7 @@ import type {
   GetInterfaceStateResult,
   Json,
   ResolveInterfaceResult,
+  UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
 
 import type { Preferences } from '../../types/snap';
@@ -40,6 +41,49 @@ export class SnapClient {
         path,
         curve,
         ...(entropySource ? { source: entropySource } : {}),
+      },
+    });
+  }
+
+  /**
+   * Create a UI interface with the provided UI component and context.
+   *
+   * @param ui - The UI component to render.
+   * @param context - The initial context object to associate with the interface.
+   * @returns The created interface id.
+   */
+  async createInterface<TContext>(
+    ui: any,
+    context: TContext & Record<string, Json>,
+  ): Promise<string> {
+    return snap.request({
+      method: 'snap_createInterface',
+      params: {
+        ui,
+        context,
+      },
+    });
+  }
+
+  /**
+   * Update an existing UI interface with a new UI component and context.
+   *
+   * @param id - The interface id returned from createInterface.
+   * @param ui - The new UI component to render.
+   * @param context - The updated context object to associate with the interface.
+   * @returns The update interface result.
+   */
+  async updateInterface<TContext>(
+    id: string,
+    ui: any,
+    context: TContext & Record<string, Json>,
+  ): Promise<UpdateInterfaceResult> {
+    return snap.request({
+      method: 'snap_updateInterface',
+      params: {
+        id,
+        ui,
+        context,
       },
     });
   }

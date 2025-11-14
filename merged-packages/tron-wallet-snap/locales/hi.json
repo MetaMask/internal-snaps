@@ -1,0 +1,47 @@
+{
+  "locale": "hi",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "ट्रांसेक्शन रिक्वेस्ट"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "अनुमानित बदलाव"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "अगर आप यह ट्रांसेक्शन करते हैं तो अनुमानित परिवर्तन हो सकते हैं। यह सिर्फ एक प्रेडिक्शन है, कोई गारंटी नहीं।"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "आप भेजते हैं"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "खपत की गई बैंडविड्थ"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "आप प्राप्त करते हैं"
+    },
+    "confirmation.origin": {
+      "message": "इनसे मिला अनुरोध"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.account": {
+      "message": "अकाउंट"
+    },
+    "confirmation.recipient": {
+      "message": "द्वारा प्राप्त किया गया"
+    },
+    "confirmation.network": {
+      "message": "नेटवर्क"
+    },
+    "confirmation.transactionFee": {
+      "message": "नेटवर्क फीस"
+    },
+    "confirmation.confirmButton": {
+      "message": "कन्फर्म करें"
+    },
+    "confirmation.cancelButton": {
+      "message": "कैंसिल करें"
+    }
+  }
+}

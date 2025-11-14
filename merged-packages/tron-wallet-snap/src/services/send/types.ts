@@ -6,12 +6,15 @@ export type TransactionResult = {
   transaction: any;
 };
 
+export type FeeAsset = {
+  unit: string;
+  type: string;
+  amount: string;
+  fungible: true;
+  imageSvg: string;
+};
+
 export type ComputeFeeResult = {
   type: FeeType;
-  asset: {
-    unit: string;
-    type: string;
-    amount: string;
-    fungible: true;
-  };
+  asset: FeeAsset;
 }[];

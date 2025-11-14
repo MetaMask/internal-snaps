@@ -1,47 +1,47 @@
 {
-  "locale": "en",
+  "locale": "es",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "Solicitud de transacción"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "Cambios estimados"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "Los cambios estimados son los que podrían producirse si sigue adelante con esta transacción. Esto es solo una predicción, no una garantía."
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "Usted envía"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "Ancho de banda consumido"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "Usted recibe"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "Solicitud de"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "Cuenta"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "Destinatario"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "Red"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "Tarifa de red"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "Confirmar"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "Cancelar"
     }
   }
 }

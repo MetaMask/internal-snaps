@@ -1,47 +1,47 @@
 {
-  "locale": "en",
+  "locale": "id",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "Permintaan transaksi"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "Estimasi perubahan"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "Estimasi perubahan merupakan hal yang mungkin terjadi jika Anda melakukan transaksi ini. Ini hanyalah prediksi, bukan jaminan."
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "Anda mengirim"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "Bandwidth yang digunakan"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "Anda menerima"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "Permintaan dari"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "Akun"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "Penerima"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "Jaringan"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "Biaya jaringan"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "Konfirmasikan"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "Batal"
     }
   }
 }

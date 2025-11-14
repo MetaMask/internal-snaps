@@ -1,47 +1,47 @@
 {
-  "locale": "en",
+  "locale": "fr",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "Demande de transaction"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "Changements estimés"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "Les changements estimés représentent ce qui pourrait se produire si vous effectuez cette transaction. Il s’agit juste d’une estimation fournie à titre d’information."
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "Vous envoyez"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "Bande passante utilisée"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "Vous recevez"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "Demande de la part de"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "Compte"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "Destinataire"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "Réseau"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "Frais de réseau"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "Confirmer"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "Annuler"
     }
   }
 }

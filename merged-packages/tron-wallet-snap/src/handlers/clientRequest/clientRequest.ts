@@ -1,26 +1,15 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
+import {
+  InvalidParamsError,
+  MethodNotFoundError,
+  UserRejectedRequestError,
+} from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
+import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import { sha256 } from 'ethers';
 
-import type { SnapClient } from '../../clients/snap/SnapClient';
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Networks } from '../../constants';
-import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { AssetsService } from '../../services/assets/AssetsService';
-import type {
-  NativeCaipAssetType,
-  StakedCaipAssetType,
-} from '../../services/assets/types';
-import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
-import type { SendService } from '../../services/send/SendService';
-import type { StakingService } from '../../services/staking/StakingService';
-import { assertOrThrow } from '../../utils/assertOrThrow';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
-import { BackgroundEventMethod } from '../cronjob';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
   ComputeFeeRequestStruct,
@@ -34,6 +23,24 @@ import {
   OnUnstakeAmountInputRequestStruct,
   SignAndSendTransactionRequestStruct,
 } from './validation';
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+import { Networks } from '../../constants';
+import type { Network } from '../../constants';
+import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { AssetsService } from '../../services/assets/AssetsService';
+import type {
+  NativeCaipAssetType,
+  StakedCaipAssetType,
+} from '../../services/assets/types';
+import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
+import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
+import type { SendService } from '../../services/send/SendService';
+import type { StakingService } from '../../services/staking/StakingService';
+import { assertOrThrow } from '../../utils/assertOrThrow';
+import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import { BackgroundEventMethod } from '../cronjob';
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;
@@ -52,6 +59,8 @@ export class ClientRequestHandler {
 
   readonly #stakingService: StakingService;
 
+  readonly #confirmationHandler: ConfirmationHandler;
+
   constructor({
     logger,
     accountsService,
@@ -61,6 +70,7 @@ export class ClientRequestHandler {
     tronWebFactory,
     snapClient,
     stakingService,
+    confirmationHandler,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
@@ -70,6 +80,7 @@ export class ClientRequestHandler {
     tronWebFactory: TronWebFactory;
     snapClient: SnapClient;
     stakingService: StakingService;
+    confirmationHandler: ConfirmationHandler;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
@@ -79,6 +90,7 @@ export class ClientRequestHandler {
     this.#tronWebFactory = tronWebFactory;
     this.#snapClient = snapClient;
     this.#stakingService = stakingService;
+    this.#confirmationHandler = confirmationHandler;
   }
 
   /**
@@ -288,6 +300,15 @@ export class ClientRequestHandler {
 
     const { fromAccountId, toAddress, amount, assetId } = request.params;
 
+    const account = await this.#accountsService.findById(fromAccountId);
+
+    if (!account) {
+      return {
+        valid: false,
+        errors: [SendErrorCodes.Invalid],
+      };
+    }
+
     const asset = await this.#assetsService.getAssetByAccountId(
       fromAccountId,
       assetId,
@@ -300,15 +321,76 @@ export class ClientRequestHandler {
       };
     }
 
-    const transaction = await this.#sendService.sendAsset({
+    const { chainId } = parseCaipAssetType(assetId);
+    const scope = chainId as Network;
+
+    /**
+     * Get available Energy and Bandwidth from account assets.
+     */
+    const assetsPromise = this.#assetsService.getAssetsByAccountId(
+      fromAccountId,
+      [Networks[scope].bandwidth.id, Networks[scope].energy.id],
+    );
+
+    /**
+     * Build the transaction that will be sent
+     */
+    const transactionPromise = this.#sendService.buildTransaction({
       fromAccountId,
       toAddress,
       asset,
       amount: BigNumber(amount).toNumber(),
     });
 
+    // wait for both
+    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
+      assetsPromise,
+      transactionPromise,
+    ]);
+
+    const availableEnergy = energyAsset
+      ? BigNumber(energyAsset.rawAmount)
+      : BigNumber(0);
+    const availableBandwidth = bandwidthAsset
+      ? BigNumber(bandwidthAsset.rawAmount)
+      : BigNumber(0);
+
+    const fees = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy,
+      availableBandwidth,
+    });
+
+    /**
+     * Show the confirmation UI
+     */
+    const confirmed = await this.#confirmationHandler.confirmTransactionRequest(
+      {
+        scope,
+        fromAddress: account.address,
+        toAddress,
+        amount,
+        fees,
+        asset,
+      },
+    );
+
+    if (!confirmed) {
+      throw new UserRejectedRequestError() as unknown as Error;
+    }
+
+    /**
+     * Sign and send the built transaction
+     */
+    const result = await this.#sendService.signAndSendTransaction({
+      scope,
+      fromAccountId,
+      transaction,
+    });
+
     return {
-      transactionId: transaction.txId,
+      transactionId: result.txid,
       status: TransactionStatus.Submitted,
     };
   }
@@ -407,19 +489,11 @@ export class ClientRequestHandler {
     );
 
     const { accountId, assetId, value } = request.params;
-    console.log(
-      `[debug] [handleOnStakeAmountInput] All params`,
-      JSON.stringify({ accountId, assetId, value }),
-    );
 
     await this.#accountsService.findByIdOrThrow(accountId);
     const asset = await this.#assetsService.getAssetByAccountId(
       accountId,
       assetId,
-    );
-    console.log(
-      `[debug] [handleOnStakeAmountInput] Asset`,
-      JSON.stringify(asset),
     );
 
     /**
@@ -427,10 +501,6 @@ export class ClientRequestHandler {
      */
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
-    console.log(
-      `[debug] [handleOnStakeAmountInput] Account balance`,
-      JSON.stringify({ accountBalance, requestBalance }),
-    );
 
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
@@ -465,29 +535,16 @@ export class ClientRequestHandler {
       value,
       options: { purpose },
     } = request.params;
-    console.log(
-      `[debug] [handleConfirmStake] All params`,
-      JSON.stringify({ fromAccountId, assetId, value, purpose }),
-    );
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
-    console.log(
-      `[debug] [handleConfirmStake] Account`,
-      JSON.stringify(account),
-    );
 
     const asset = await this.#assetsService.getAssetByAccountId(
       fromAccountId,
       assetId,
     );
-    console.log(`[debug] [handleConfirmStake] Asset`, JSON.stringify(asset));
 
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
-    console.log(
-      `[debug] [handleConfirmStake] Account balance`,
-      JSON.stringify({ accountBalance, requestBalance }),
-    );
     /**
      * Check if account has enough of the asset...
      */
@@ -507,7 +564,6 @@ export class ClientRequestHandler {
       amount: requestBalance,
       purpose,
     });
-    console.log(`[debug] [handleConfirmStake] Stake worked`);
 
     return {
       valid: true,
@@ -535,10 +591,6 @@ export class ClientRequestHandler {
       value,
       options: { purpose },
     } = request.params;
-    console.log(
-      `[debug] [handleOnUnstakeAmountInput] All params`,
-      JSON.stringify({ accountId, assetId, value, purpose }),
-    );
 
     /**
      * We convert the `slip44:195` to `slip44:195-staked-for-bandwidth` or `slip44:195-staked-for-energy`
@@ -551,17 +603,9 @@ export class ClientRequestHandler {
       accountId,
       stakedAssetId,
     );
-    console.log(
-      `[debug] [handleOnUnstakeAmountInput] Asset`,
-      JSON.stringify(asset),
-    );
 
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
-    console.log(
-      `[debug] [handleOnUnstakeAmountInput] Account balance`,
-      JSON.stringify({ accountBalance, requestBalance }),
-    );
 
     /**
      * Check if account has enough of the asset...
@@ -599,10 +643,6 @@ export class ClientRequestHandler {
       value,
       options: { purpose },
     } = request.params;
-    console.log(
-      `[debug] [handleConfirmUnstake] All params`,
-      JSON.stringify({ accountId, assetId, value, purpose }),
-    );
 
     /**
      * We convert the `slip44:195-staked-for-bandwidth` or `slip44:195-staked-for-energy` to `slip44:195`
@@ -610,29 +650,16 @@ export class ClientRequestHandler {
      */
     const stakedAssetId =
       `${assetId}-staked-for-${purpose.toLowerCase()}` as StakedCaipAssetType;
-    console.log(
-      `[debug] [handleConfirmUnstake] Staked asset ID`,
-      JSON.stringify(stakedAssetId),
-    );
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
-    console.log(
-      `[debug] [handleConfirmUnstake] Account`,
-      JSON.stringify(account),
-    );
 
     const asset = await this.#assetsService.getAssetByAccountId(
       accountId,
       stakedAssetId,
     );
-    console.log(`[debug] [handleConfirmUnstake] Asset`, JSON.stringify(asset));
 
     const accountBalance = asset ? BigNumber(asset.uiAmount) : BigNumber(0);
     const requestBalance = BigNumber(value);
-    console.log(
-      `[debug] [handleConfirmUnstake] Account balance`,
-      JSON.stringify({ accountBalance, requestBalance }),
-    );
 
     /**
      * Check if account has enough of the asset...
@@ -652,7 +679,6 @@ export class ClientRequestHandler {
       assetId: stakedAssetId,
       amount: requestBalance,
     });
-    console.log(`[debug] [handleConfirmUnstake] Unstake worked`);
 
     return {
       valid: true,

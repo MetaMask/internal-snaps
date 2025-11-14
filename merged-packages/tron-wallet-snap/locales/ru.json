@@ -1,0 +1,47 @@
+{
+  "locale": "ru",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Запрос транзакции"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Прогнозируемые изменения"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Прогнозируемые изменения — это то, что может произойти, если вы завершите эту транзакцию. Это всего лишь прогноз, а не гарантия."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Вы отправляете"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Использованная пропускная способность"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Вы получаете"
+    },
+    "confirmation.origin": {
+      "message": "Запрос от"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.account": {
+      "message": "Счет"
+    },
+    "confirmation.recipient": {
+      "message": "Получатель"
+    },
+    "confirmation.network": {
+      "message": "Сеть"
+    },
+    "confirmation.transactionFee": {
+      "message": "Комиссия сети"
+    },
+    "confirmation.confirmButton": {
+      "message": "Подтвердить"
+    },
+    "confirmation.cancelButton": {
+      "message": "Отмена"
+    }
+  }
+}

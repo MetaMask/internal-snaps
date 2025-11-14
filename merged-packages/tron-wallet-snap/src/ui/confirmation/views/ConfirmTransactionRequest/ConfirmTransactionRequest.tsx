@@ -1,0 +1,143 @@
+import type { ComponentOrElement } from '@metamask/snaps-sdk';
+import {
+  Address,
+  Box,
+  Button,
+  Container,
+  Footer,
+  Heading,
+  Icon,
+  Image,
+  Section,
+  Text as SnapText,
+  Tooltip,
+} from '@metamask/snaps-sdk/jsx';
+
+import { ConfirmSignAndSendTransactionFormNames } from './events';
+import { type ConfirmTransactionRequestContext } from './types';
+import { Networks } from '../../../../constants';
+import { i18n } from '../../../../utils/i18n';
+import { Asset } from '../../components/Asset/Asset';
+import { Fees } from '../../components/Fees';
+
+export const ConfirmTransactionRequest = ({
+  context: {
+    origin,
+    scope,
+    fromAddress,
+    toAddress,
+    asset,
+    amount,
+    fees,
+    preferences,
+    networkImage,
+  },
+}: {
+  context: ConfirmTransactionRequestContext;
+}): ComponentOrElement => {
+  const translate = i18n(preferences.locale);
+
+  return (
+    <Container>
+      <Box>
+        {/* Header */}
+        <Box alignment="center" center>
+          <Box>{null}</Box>
+          <Heading size="lg">
+            {translate(`confirmation.transaction.title`)}
+          </Heading>
+          <Box>{null}</Box>
+        </Box>
+        {/* Estimated Changes */}
+        <Section>
+          {/* Header + Tooltip */}
+          <Box direction="horizontal" center>
+            <SnapText fontWeight="medium">
+              {translate('confirmation.estimatedChanges.title')}
+            </SnapText>
+            <Tooltip
+              content={translate('confirmation.estimatedChanges.tooltip')}
+            >
+              <Icon name="info" />
+            </Tooltip>
+          </Box>
+          <Box alignment="space-between" direction="horizontal">
+            <Box alignment="space-between" direction="horizontal" center>
+              <SnapText fontWeight="medium" color="alternative">
+                {translate('confirmation.estimatedChanges.send')}
+              </SnapText>
+            </Box>
+            <Asset
+              amount={amount ?? ''}
+              symbol={asset.symbol}
+              iconSvg={asset.imageSvg ?? ''}
+            />
+          </Box>
+        </Section>
+
+        {/* Additional Details */}
+        <Section>
+          {/* Request from */}
+          <Box alignment="space-between" direction="horizontal">
+            <Box alignment="space-between" direction="horizontal" center>
+              <SnapText fontWeight="medium" color="alternative">
+                {translate('confirmation.origin')}
+              </SnapText>
+              <Tooltip content={translate('confirmation.origin.tooltip')}>
+                <Icon name="question" color="muted" />
+              </Tooltip>
+            </Box>
+            <SnapText>{origin}</SnapText>
+          </Box>
+          <Box>{null}</Box>
+          {/* Account */}
+          <Box alignment="space-between" direction="horizontal">
+            <SnapText fontWeight="medium" color="alternative">
+              {translate('confirmation.account')}
+            </SnapText>
+            <Address
+              address={`${scope}:${fromAddress}`}
+              truncate
+              displayName
+              avatar
+            />
+          </Box>
+          <Box>{null}</Box>
+          {/* Recipient */}
+          {toAddress && (
+            <Box alignment="space-between" direction="horizontal">
+              <SnapText fontWeight="medium" color="alternative">
+                {translate('confirmation.recipient')}
+              </SnapText>
+              <Address address={`${scope}:${toAddress}`} truncate />
+            </Box>
+          )}
+          <Box>{null}</Box>
+          {/* Network */}
+          <Box alignment="space-between" direction="horizontal">
+            <SnapText fontWeight="medium" color="alternative">
+              {translate('confirmation.network')}
+            </SnapText>
+            <Box direction="horizontal" alignment="center">
+              <Box alignment="center" center>
+                <Image borderRadius="medium" src={networkImage ?? ''} />
+              </Box>
+              <SnapText>{Networks[scope].name}</SnapText>
+            </Box>
+          </Box>
+          <Box>{null}</Box>
+          {/* Fee Breakdown */}
+          <Fees fees={fees} preferences={preferences} />
+        </Section>
+      </Box>
+      <Footer>
+        <Button name={ConfirmSignAndSendTransactionFormNames.Cancel}>
+          {translate(`confirmation.cancelButton`)}
+        </Button>
+        <Button name={ConfirmSignAndSendTransactionFormNames.Confirm}>
+          {translate(`confirmation.confirmButton`)}
+        </Button>
+      </Footer>
+    </Container>
+  );
+};

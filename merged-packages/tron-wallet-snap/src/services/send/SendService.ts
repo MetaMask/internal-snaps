@@ -1,4 +1,11 @@
 import { parseCaipAssetType } from '@metamask/utils';
+import type {
+  BroadcastReturn,
+  Transaction,
+  TransferAssetContract,
+  TransferContract,
+  TriggerSmartContract,
+} from 'tronweb/lib/esm/types';
 
 import type { TransactionResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -33,6 +40,196 @@ export class SendService {
     this.#tronWebFactory = tronWebFactory;
     this.#logger = createPrefixedLogger(logger, '[💸 SendService]');
     this.#snapClient = snapClient;
+  }
+
+  async buildTransaction({
+    fromAccountId,
+    toAddress,
+    asset,
+    amount,
+  }: {
+    fromAccountId: string;
+    toAddress: string;
+    asset: AssetEntity;
+    amount: number;
+  }): Promise<any> {
+    const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
+      asset.assetType,
+    );
+
+    try {
+      switch (assetNamespace) {
+        case 'slip44':
+          this.#logger.log('Sending TRX transaction');
+          return this.buildSendTrxTransaction({
+            scope: chainId as Network,
+            fromAccountId,
+            toAddress,
+            amount,
+          });
+
+        case 'trc10':
+          this.#logger.log(`Sending TRC10 token: ${assetReference}`);
+          return this.buildSendTrc10Transaction({
+            scope: chainId as Network,
+            fromAccountId,
+            toAddress,
+            amount,
+            tokenId: assetReference,
+          });
+
+        case 'trc20':
+          this.#logger.log(`Sending TRC20 token: ${assetReference}`);
+          return this.buildSendTrc20Transaction({
+            scope: chainId as Network,
+            fromAccountId,
+            toAddress,
+            contractAddress: assetReference,
+            amount,
+            decimals: asset.decimals,
+          });
+
+        default:
+          throw new Error(`Unsupported asset namespace: ${assetNamespace}`);
+      }
+    } catch (error) {
+      this.#logger.error({ error }, 'Failed to send asset');
+      throw new Error(
+        `Failed to send asset: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  async buildSendTrxTransaction({
+    scope,
+    fromAccountId,
+    toAddress,
+    amount,
+  }: {
+    scope: Network;
+    fromAccountId: string;
+    toAddress: string;
+    amount: number;
+  }): Promise<Transaction<TransferContract>> {
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    const amountInSun = amount * 1e6; // Convert TRX to sun
+    const transaction = await tronWeb.transactionBuilder.sendTrx(
+      toAddress,
+      amountInSun,
+    );
+
+    return transaction;
+  }
+
+  async buildSendTrc10Transaction({
+    scope,
+    fromAccountId,
+    toAddress,
+    amount,
+    tokenId,
+  }: {
+    scope: Network;
+    fromAccountId: string;
+    toAddress: string;
+    amount: number;
+    tokenId: string;
+  }): Promise<Transaction<TransferAssetContract>> {
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    const transaction = await tronWeb.transactionBuilder.sendToken(
+      toAddress,
+      amount,
+      tokenId,
+    );
+    return transaction;
+  }
+
+  async buildSendTrc20Transaction({
+    scope,
+    fromAccountId,
+    toAddress,
+    contractAddress,
+    amount,
+    decimals,
+  }: {
+    scope: Network;
+    fromAccountId: string;
+    toAddress: string;
+    contractAddress: string;
+    amount: number;
+    decimals: number;
+  }): Promise<Transaction<TriggerSmartContract>> {
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    const functionSelector = 'transfer(address,uint256)';
+    const decimalsAdjustedAmount = amount * 10 ** decimals;
+    const parameter = [
+      { type: 'address', value: toAddress },
+      { type: 'uint256', value: decimalsAdjustedAmount },
+    ];
+
+    const contractResult =
+      await tronWeb.transactionBuilder.triggerSmartContract(
+        contractAddress,
+        functionSelector,
+        {},
+        parameter,
+      );
+
+    return contractResult.transaction;
+  }
+
+  async signAndSendTransaction({
+    scope,
+    fromAccountId,
+    transaction,
+  }: {
+    scope: Network;
+    fromAccountId: string;
+    transaction:
+      | Transaction<TransferContract>
+      | Transaction<TransferAssetContract>
+      | Transaction<TriggerSmartContract>;
+  }): Promise<BroadcastReturn<any>> {
+    /**
+     * Initialize TronWeb client with the account's private key
+     */
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    /**
+     * Sign and send the transaction
+     */
+    const signedTx = await tronWeb.trx.sign(transaction);
+    const result = await tronWeb.trx.sendRawTransaction(signedTx);
+
+    return result;
   }
 
   async sendAsset({

@@ -2,46 +2,46 @@
   "locale": "en",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "交易请求"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "预计变化"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "预期变化是指您完成该交易可能发生的变化。这只是预测，而不是保证。"
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "您发送"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "已用带宽"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "您收到"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "请求来自"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "账户"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "接收者"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "网络"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "网络费"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "确认"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "取消"
     }
   }
 }

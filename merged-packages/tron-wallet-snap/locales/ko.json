@@ -1,47 +1,47 @@
 {
-  "locale": "en",
+  "locale": "ko",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "트랜잭션 요청"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "예상 변동 사항"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "예상 변동 사항은 이 트랜잭션을 진행할 경우 발생하는 결과를 예측한 것입니다. 이는 예측일 뿐 결과를 보장하지는 않습니다."
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "전송:"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "소모된 대역폭"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "받음:"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "요청자:"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "계정"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "수신자"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "네트워크"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "네트워크 수수료"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "컨펌"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "취소"
     }
   }
 }

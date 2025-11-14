@@ -1,26 +1,26 @@
 {
-  "locale": "en",
+  "locale": "tl",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "Hiling na transaksyon"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "Tinatayang mga pagbabago"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "Ang tinatayang mga pagbabago ay ang maaaring mangyari kung magpapatuloy ka sa transaksyong ito. Ito ay isang hula lamang, hindi isang garantiya."
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "Nagpadala ka ng"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "Ginamit na bandwidth"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "Nakatanggap ka ng"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "Kahilingan mula sa/kay"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
@@ -29,19 +29,19 @@
       "message": "Account"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "Tatanggap"
     },
     "confirmation.network": {
       "message": "Network"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "Bayad sa network"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "Kumpirmahin"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "Kanselahin"
     }
   }
 }

@@ -1,47 +1,47 @@
 {
-  "locale": "en",
+  "locale": "ja",
   "messages": {
     "confirmation.transaction.title": {
-      "message": "Transaction request"
+      "message": "トランザクションリクエスト"
     },
     "confirmation.estimatedChanges.title": {
-      "message": "Estimated changes"
+      "message": "予測される増減額"
     },
     "confirmation.estimatedChanges.tooltip": {
-      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+      "message": "予測される増減額は、このトランザクションを実行すると発生する可能性がある増減額です。これは単に予測に過ぎず、保証されたものではありません。"
     },
     "confirmation.estimatedChanges.send": {
-      "message": "You send"
+      "message": "送金額"
     },
     "confirmation.bandwidthConsumed": {
-      "message": "Bandwidth consumed"
+      "message": "消費された帯域幅"
     },
     "confirmation.estimatedChanges.receive": {
-      "message": "You receive"
+      "message": "受取額"
     },
     "confirmation.origin": {
-      "message": "Request from"
+      "message": "要求元"
     },
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
     "confirmation.account": {
-      "message": "Account"
+      "message": "アカウント"
     },
     "confirmation.recipient": {
-      "message": "Recipient"
+      "message": "受取人"
     },
     "confirmation.network": {
-      "message": "Network"
+      "message": "ネットワーク"
     },
     "confirmation.transactionFee": {
-      "message": "Network fee"
+      "message": "ネットワーク手数料"
     },
     "confirmation.confirmButton": {
-      "message": "Confirm"
+      "message": "確定"
     },
     "confirmation.cancelButton": {
-      "message": "Cancel"
+      "message": "キャンセル"
     }
   }
 }

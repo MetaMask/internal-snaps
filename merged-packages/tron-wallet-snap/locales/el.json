@@ -1,0 +1,47 @@
+{
+  "locale": "el",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Αίτημα συναλλαγής"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Εκτιμώμενες αλλαγές"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Οι εκτιμώμενες αλλαγές είναι αυτές που μπορεί να συμβούν αν προχωρήσετε σε αυτή τη συναλλαγή. Πρόκειται απλώς για μια πρόβλεψη, δεν αποτελεί εγγύηση."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Θα στείλετε"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Καταναλωμένο εύρος ζώνης"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Θα λάβετε"
+    },
+    "confirmation.origin": {
+      "message": "Ζητήθηκε από"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.account": {
+      "message": "Λογαριασμός"
+    },
+    "confirmation.recipient": {
+      "message": "Παραλήπτης"
+    },
+    "confirmation.network": {
+      "message": "Δίκτυο"
+    },
+    "confirmation.transactionFee": {
+      "message": "Τέλη δικτύου"
+    },
+    "confirmation.confirmButton": {
+      "message": "Επιβεβαίωση"
+    },
+    "confirmation.cancelButton": {
+      "message": "Άκυρο"
+    }
+  }
+}

@@ -17,6 +17,7 @@ import { AccountsService } from './services/accounts/AccountsService';
 import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
+import { ConfirmationHandler } from './services/confirmation/ConfirmationHandler';
 import { FeeCalculatorService } from './services/send/FeeCalculatorService';
 import { SendService } from './services/send/SendService';
 import { StakingService } from './services/staking/StakingService';
@@ -91,10 +92,10 @@ const transactionsService = new TransactionsService({
 
 const accountsService = new AccountsService({
   logger,
+  snapClient,
   accountsRepository,
   configProvider,
   assetsService,
-  snapClient,
   transactionsService,
 });
 
@@ -106,15 +107,19 @@ const feeCalculatorService = new FeeCalculatorService({
 
 const sendService = new SendService({
   logger,
+  snapClient,
   accountsService,
   tronWebFactory,
-  snapClient,
 });
 
 const stakingService = new StakingService({
   logger,
+  snapClient,
   accountsService,
   tronWebFactory,
+});
+
+const confirmationHandler = new ConfirmationHandler({
   snapClient,
 });
 
@@ -127,18 +132,19 @@ const assetsHandler = new AssetsHandler({
 });
 const clientRequestHandler = new ClientRequestHandler({
   logger,
+  snapClient,
   accountsService,
   assetsService,
   sendService,
   tronWebFactory,
   feeCalculatorService,
-  snapClient,
   stakingService,
+  confirmationHandler,
 });
 const cronHandler = new CronHandler({
   logger,
-  accountsService,
   snapClient,
+  accountsService,
 });
 const lifecycleHandler = new LifecycleHandler({
   logger,
@@ -152,19 +158,25 @@ const keyringHandler = new KeyringHandler({
   transactionsService,
 });
 const rpcHandler = new RpcHandler();
-const userInputHandler = new UserInputHandler();
+const userInputHandler = new UserInputHandler({
+  logger,
+  snapClient,
+});
 
 export type SnapExecutionContext = {
   /**
    * Services
    */
   state: State<UnencryptedStateValue>;
+  priceApiClient: PriceApiClient;
+  feeCalculatorService: FeeCalculatorService;
   assetsService: AssetsService;
   accountsService: AccountsService;
   transactionsService: TransactionsService;
   sendService: SendService;
   tronHttpClient: TronHttpClient;
   tronWebFactory: TronWebFactory;
+  confirmationHandler: ConfirmationHandler;
   /**
    * Handlers
    */
@@ -182,12 +194,15 @@ const snapContext: SnapExecutionContext = {
    * Services
    */
   state,
+  priceApiClient,
+  feeCalculatorService,
   assetsService,
   accountsService,
   transactionsService,
   sendService,
   tronHttpClient,
   tronWebFactory,
+  confirmationHandler,
   /**
    * Handlers
    */

@@ -30,13 +30,19 @@ export class AssetsHandler {
   }
 
   async onAssetHistoricalPrice(
-    _params: OnAssetHistoricalPriceArguments,
+    params: OnAssetHistoricalPriceArguments,
   ): Promise<OnAssetHistoricalPriceResponse> {
+    this.#logger.log('[📈 onAssetHistoricalPrice]', params);
+
+    const { from, to } = params;
+
+    const historicalPrice = await this.#assetsService.getHistoricalPrice(
+      from,
+      to,
+    );
+
     return {
-      historicalPrice: {
-        intervals: {},
-        updateTime: Date.now(),
-      },
+      historicalPrice,
     };
   }
 
