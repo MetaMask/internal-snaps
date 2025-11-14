@@ -3,12 +3,22 @@ import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import type { ComputeFeeResult } from '../send/types';
+import type { State, UnencryptedStateValue } from '../state/State';
 
 export class ConfirmationHandler {
   readonly #snapClient: SnapClient;
 
-  constructor({ snapClient }: { snapClient: SnapClient }) {
+  readonly #state: State<UnencryptedStateValue>;
+
+  constructor({
+    snapClient,
+    state,
+  }: {
+    snapClient: SnapClient;
+    state: State<UnencryptedStateValue>;
+  }) {
     this.#snapClient = snapClient;
+    this.#state = state;
   }
 
   async confirmTransactionRequest({
@@ -37,15 +47,19 @@ export class ConfirmationHandler {
       chainIdCaip: scope,
     });
 
-    const result = await renderConfirmTransactionRequest(this.#snapClient, {
-      scope,
-      fromAddress,
-      toAddress,
-      amount,
-      fees,
-      asset,
-      origin,
-    });
+    const result = await renderConfirmTransactionRequest(
+      this.#snapClient,
+      this.#state,
+      {
+        scope,
+        fromAddress,
+        toAddress,
+        amount,
+        fees,
+        asset,
+        origin: 'MetaMask',
+      },
+    );
 
     // Track Transaction Rejected event if user rejects
     if (result === true) {

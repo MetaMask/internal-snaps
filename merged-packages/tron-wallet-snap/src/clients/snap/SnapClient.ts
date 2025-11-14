@@ -106,6 +106,53 @@ export class SnapClient {
   }
 
   /**
+   * Gets the context of an interface by its ID.
+   *
+   * @param id - The ID for the interface.
+   * @returns The context object associated with the interface, or null if not found.
+   */
+  async getInterfaceContext<TContext extends Json>(
+    id: string,
+  ): Promise<TContext | null> {
+    const rawContext = await snap.request({
+      method: 'snap_getInterfaceContext',
+      params: {
+        id,
+      },
+    });
+
+    if (!rawContext) {
+      return null;
+    }
+
+    return rawContext as TContext;
+  }
+
+  /**
+   * Updates the context of an interface by its ID without changing the UI.
+   * Note: This is a helper that re-uses the existing UI.
+   *
+   * @param id - The ID for the interface.
+   * @param ui - The UI component.
+   * @param context - The updated context object.
+   * @returns The update interface result.
+   */
+  async updateInterfaceWithContext<TContext extends Record<string, Json>>(
+    id: string,
+    ui: any,
+    context: TContext,
+  ): Promise<UpdateInterfaceResult> {
+    return snap.request({
+      method: 'snap_updateInterface',
+      params: {
+        id,
+        ui,
+        context,
+      },
+    });
+  }
+
+  /**
    * Resolve a dialog using the provided ID.
    *
    * @param id - The ID for the interface to update.

@@ -27,7 +27,7 @@ export class LifecycleHandler {
 
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.ContinuouslySynchronizeSelectedAccounts,
-      duration: '1s',
+      duration: 'PT1S',
     });
   }
 }

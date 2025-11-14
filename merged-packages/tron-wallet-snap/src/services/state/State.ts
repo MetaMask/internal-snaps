@@ -17,6 +17,7 @@ export type UnencryptedStateValue = {
   assets: Record<AccountId, AssetEntity[]>;
   tokenPrices: SpotPrices;
   transactions: Record<AccountId, Transaction[]>;
+  mapInterfaceNameToId: Record<string, string>;
 };
 
 export const DEFAULT_UNENCRYPTED_STATE: UnencryptedStateValue = {
@@ -24,6 +25,7 @@ export const DEFAULT_UNENCRYPTED_STATE: UnencryptedStateValue = {
   assets: {},
   tokenPrices: {},
   transactions: {},
+  mapInterfaceNameToId: {},
 };
 
 export type StateConfig<TValue extends Record<string, Serializable>> = {

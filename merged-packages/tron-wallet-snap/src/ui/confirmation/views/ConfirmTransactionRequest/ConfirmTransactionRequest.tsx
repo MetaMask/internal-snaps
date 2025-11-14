@@ -33,11 +33,16 @@ export const ConfirmTransactionRequest = ({
     fees,
     preferences,
     networkImage,
+    tokenPrices,
+    tokenPricesFetchStatus,
   },
 }: {
   context: ConfirmTransactionRequestContext;
 }): ComponentOrElement => {
   const translate = i18n(preferences.locale);
+
+  const assetPrice = tokenPrices[asset.assetType]?.price ?? null;
+  const priceLoading = tokenPricesFetchStatus === 'fetching';
 
   return (
     <Container>
@@ -73,6 +78,9 @@ export const ConfirmTransactionRequest = ({
               amount={amount ?? ''}
               symbol={asset.symbol}
               iconSvg={asset.imageSvg ?? ''}
+              price={assetPrice}
+              preferences={preferences}
+              priceLoading={priceLoading}
             />
           </Box>
         </Section>
@@ -138,7 +146,12 @@ export const ConfirmTransactionRequest = ({
           </Box>
           <Box>{null}</Box>
           {/* Fee Breakdown */}
-          <Fees fees={fees} preferences={preferences} />
+          <Fees
+            fees={fees}
+            preferences={preferences}
+            tokenPrices={tokenPrices}
+            tokenPricesFetchStatus={tokenPricesFetchStatus}
+          />
         </Section>
       </Box>
       <Footer>
