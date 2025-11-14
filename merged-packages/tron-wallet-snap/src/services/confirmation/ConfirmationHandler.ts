@@ -18,6 +18,8 @@ export class ConfirmationHandler {
     amount,
     fees,
     asset,
+    accountType,
+    origin = 'MetaMask',
   }: {
     scope: Network;
     fromAddress: string;
@@ -25,7 +27,16 @@ export class ConfirmationHandler {
     amount: string;
     fees: ComputeFeeResult;
     asset: AssetEntity;
+    accountType: string;
+    origin?: string;
   }): Promise<boolean> {
+    // Track Transaction Added event
+    await this.#snapClient.trackTransactionAdded({
+      origin,
+      accountType,
+      chainIdCaip: scope,
+    });
+
     const result = await renderConfirmTransactionRequest(this.#snapClient, {
       scope,
       fromAddress,
@@ -33,8 +44,23 @@ export class ConfirmationHandler {
       amount,
       fees,
       asset,
-      origin: 'MetaMask',
+      origin,
     });
+
+    // Track Transaction Rejected event if user rejects
+    if (result === true) {
+      await this.#snapClient.trackTransactionApproved({
+        origin,
+        accountType,
+        chainIdCaip: scope,
+      });
+    } else {
+      await this.#snapClient.trackTransactionRejected({
+        origin,
+        accountType,
+        chainIdCaip: scope,
+      });
+    }
 
     return result === true;
   }

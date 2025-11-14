@@ -205,6 +205,7 @@ export class SendService {
     scope,
     fromAccountId,
     transaction,
+    origin = 'MetaMask',
   }: {
     scope: Network;
     fromAccountId: string;
@@ -212,6 +213,7 @@ export class SendService {
       | Transaction<TransferContract>
       | Transaction<TransferAssetContract>
       | Transaction<TriggerSmartContract>;
+    origin?: string;
   }): Promise<BroadcastReturn<any>> {
     /**
      * Initialize TronWeb client with the account's private key
@@ -228,6 +230,26 @@ export class SendService {
      */
     const signedTx = await tronWeb.trx.sign(transaction);
     const result = await tronWeb.trx.sendRawTransaction(signedTx);
+
+    // Track Transaction Submitted event if broadcast was successful
+    if (result.result) {
+      await this.#snapClient.trackTransactionSubmitted({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+      });
+
+      // Track Transaction Finalised event
+      // Note: TRON has fast finality (3s block time with DPoS), so transactions
+      // are effectively finalized shortly after being submitted
+      await this.#snapClient.trackTransactionFinalised({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+        transactionType: 'swap',
+        transactionStatus: 'finalised',
+      });
+    }
 
     return result;
   }
@@ -295,11 +317,13 @@ export class SendService {
     fromAccountId,
     toAddress,
     amount,
+    origin = 'MetaMask',
   }: {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
     amount: number;
+    origin?: string;
   }): Promise<TransactionResult> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -329,6 +353,22 @@ export class SendService {
         { txId: result.txid },
         'TRX transaction sent successfully',
       );
+
+      // Track Transaction Submitted event
+      await this.#snapClient.trackTransactionSubmitted({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+      });
+
+      // Track Transaction Finalised event
+      await this.#snapClient.trackTransactionFinalised({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+        transactionType: 'native',
+        transactionStatus: 'finalised',
+      });
 
       /**
        * Check if the transaction's destination address is also managed by the snap.
@@ -368,12 +408,14 @@ export class SendService {
     toAddress,
     amount,
     tokenId,
+    origin = 'MetaMask',
   }: {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
     amount: number;
     tokenId: string;
+    origin?: string;
   }): Promise<TransactionResult> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -403,6 +445,22 @@ export class SendService {
         { txId: result.txid },
         'TRC10 transaction sent successfully',
       );
+
+      // Track Transaction Submitted event
+      await this.#snapClient.trackTransactionSubmitted({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+      });
+
+      // Track Transaction Finalised event
+      await this.#snapClient.trackTransactionFinalised({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+        transactionType: 'trc10',
+        transactionStatus: 'finalised',
+      });
 
       /**
        * Check if the transaction's destination address is also managed by the snap.
@@ -443,6 +501,7 @@ export class SendService {
     contractAddress,
     amount,
     decimals,
+    origin = 'MetaMask',
   }: {
     scope: Network;
     fromAccountId: string;
@@ -450,6 +509,7 @@ export class SendService {
     contractAddress: string;
     amount: number;
     decimals: number;
+    origin?: string;
   }): Promise<TransactionResult> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -493,6 +553,22 @@ export class SendService {
         { txId: result.txid },
         'TRC20 transaction sent successfully',
       );
+
+      // Track Transaction Submitted event
+      await this.#snapClient.trackTransactionSubmitted({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+      });
+
+      // Track Transaction Finalised event
+      await this.#snapClient.trackTransactionFinalised({
+        origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+        transactionType: 'trc20',
+        transactionStatus: 'finalised',
+      });
 
       /**
        * Check if the transaction's destination address is also managed by the snap.

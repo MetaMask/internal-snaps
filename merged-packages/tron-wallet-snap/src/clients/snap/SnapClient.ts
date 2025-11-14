@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
 import type {
@@ -10,6 +11,7 @@ import type {
   UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
 
+import { TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
 
 /**
@@ -198,6 +200,142 @@ export class SnapClient {
   async listEntropySources(): Promise<EntropySource[]> {
     return snap.request({
       method: 'snap_listEntropySources',
+    });
+  }
+
+  /**
+   * Track an event in MetaMask analytics.
+   *
+   * @param event - The event name to track.
+   * @param properties - Additional properties to include with the event.
+   */
+  async trackEvent(
+    event: string,
+    properties: Record<string, Json>,
+  ): Promise<void> {
+    try {
+      await snap.request({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event,
+            properties,
+          },
+        },
+      });
+    } catch {
+      // Silently fail if tracking fails - we don't want to interrupt the user flow
+    }
+  }
+
+  /**
+   * Track a "Transaction Added" event when a transaction confirmation is shown.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
+  async trackTransactionAdded(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+  }): Promise<void> {
+    await this.trackEvent(TransactionEventType.TransactionAdded, {
+      message: 'Snap transaction added',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+    });
+  }
+
+  /**
+   * Track a "Transaction Rejected" event when user rejects a transaction.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
+  async trackTransactionRejected(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+  }): Promise<void> {
+    await this.trackEvent(TransactionEventType.TransactionRejected, {
+      message: 'Snap transaction rejected',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+    });
+  }
+
+  /**
+   * Track a "Transaction Submitted" event when a transaction is successfully broadcast.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
+  async trackTransactionSubmitted(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+  }): Promise<void> {
+    await this.trackEvent(TransactionEventType.TransactionSubmitted, {
+      message: 'Snap transaction submitted',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+    });
+  }
+
+  /**
+   * Track a "Transaction Approved" event when a transaction is approved.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
+  async trackTransactionApproved(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+  }): Promise<void> {
+    await this.trackEvent(TransactionEventType.TransactionApproved, {
+      message: 'Snap transaction approved',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+    });
+  }
+
+  /**
+   * Track a "Transaction Finalised" event when a transaction reaches final state.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - The type of transaction.
+   * @param properties.transactionStatus - The status of the transaction.
+   */
+  async trackTransactionFinalised(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+    transactionType: string;
+    transactionStatus: string;
+  }): Promise<void> {
+    await this.trackEvent(TransactionEventType.TransactionFinalised, {
+      message: 'Snap transaction finalised',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+      transaction_status: properties.transactionStatus,
+      transaction_type: properties.transactionType,
     });
   }
 }

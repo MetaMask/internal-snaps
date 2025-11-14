@@ -373,6 +373,7 @@ export class ClientRequestHandler {
         amount,
         fees,
         asset,
+        accountType: account.type,
       },
     );
 
