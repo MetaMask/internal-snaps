@@ -10,12 +10,15 @@ import type {
 import type { Network } from '../../constants';
 import { NULL_ADDRESS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 
 /**
  * Client for Tron JSON-RPC HTTP endpoints (not the REST API)
  * Handles contract interactions, constant contract calls, etc.
  */
 export class TronHttpClient {
+  readonly #logger: ILogger;
+
   readonly #clients: Map<
     Network,
     {
@@ -24,7 +27,14 @@ export class TronHttpClient {
     }
   > = new Map();
 
-  constructor({ configProvider }: { configProvider: ConfigProvider }) {
+  constructor({
+    configProvider,
+    logger,
+  }: {
+    configProvider: ConfigProvider;
+    logger: ILogger;
+  }) {
+    this.#logger = createPrefixedLogger(logger, '[🌐 TronHttpClient]');
     const { baseUrls } = configProvider.get().tronHttpApi;
 
     // Initialize clients for all networks
@@ -170,7 +180,12 @@ export class TronHttpClient {
 
       return result.trim();
     } catch (error) {
-      console.error('Error decoding hex string:', error, 'hex:', hexString);
+      this.#logger.error(
+        'Error decoding hex string:',
+        error,
+        'hex:',
+        hexString,
+      );
       return '';
     }
   }
@@ -295,7 +310,10 @@ export class TronHttpClient {
       try {
         results[network] = await this.getContract(contractAddress, network);
       } catch (error) {
-        console.warn(`Failed to get contract for network ${network}:`, error);
+        this.#logger.warn(
+          `Failed to get contract for network ${network}:`,
+          error,
+        );
         // You might want to handle this differently based on your requirements
       }
     }
@@ -324,7 +342,7 @@ export class TronHttpClient {
           network,
         );
       } catch (error) {
-        console.warn(
+        this.#logger.warn(
           `Failed to get TRC20 token metadata for network ${network}:`,
           error,
         );

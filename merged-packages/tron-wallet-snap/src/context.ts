@@ -61,6 +61,7 @@ const trongridApiClient = new TrongridApiClient({
 });
 const tronHttpClient = new TronHttpClient({
   configProvider,
+  logger,
 });
 const tronWebFactory = new TronWebFactory({
   configProvider,

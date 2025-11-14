@@ -96,15 +96,9 @@ describe('TransactionsService', () => {
         contractInfoMock.data as ContractTransactionInfo[],
       );
 
-      const result = await transactionsService.fetchTransactionsForAccount(
+      await transactionsService.fetchTransactionsForAccount(
         Network.Mainnet,
         mockAccount,
-      );
-
-      console.log('Fetched transactions count:', result.length);
-      console.log(
-        'Sample fetched transactions:',
-        JSON.stringify(result.slice(0, 2), null, 2),
       );
 
       // Verify API calls were made
@@ -133,15 +127,9 @@ describe('TransactionsService', () => {
         [],
       );
 
-      const result = await transactionsService.fetchTransactionsForAccount(
+      await transactionsService.fetchTransactionsForAccount(
         Network.Mainnet,
         mockAccount2,
-      );
-
-      console.log('Fetched TRC10 transactions count:', result.length);
-      console.log(
-        'Sample fetched TRC10 transactions:',
-        JSON.stringify(result.slice(0, 2), null, 2),
       );
 
       // Verify API calls were made
@@ -190,7 +178,6 @@ describe('TransactionsService', () => {
         mockAccount,
       );
 
-      console.log('Empty API response result:', result);
       expect(result).toStrictEqual([]);
       expect(true).toBe(true);
     });
@@ -304,11 +291,6 @@ describe('TransactionsService', () => {
         mockAccount2,
       ]);
 
-      console.log(
-        'Found transactions for multiple accounts:',
-        JSON.stringify(result, null, 2),
-      );
-
       expect(mockTransactionsRepository.findByAccountId).toHaveBeenCalledTimes(
         2,
       );
@@ -325,7 +307,6 @@ describe('TransactionsService', () => {
     it('should handle empty accounts array', async () => {
       const result = await transactionsService.findByAccounts([]);
 
-      console.log('Empty accounts result:', result);
       expect(result).toStrictEqual([]);
       expect(mockTransactionsRepository.findByAccountId).not.toHaveBeenCalled();
       expect(true).toBe(true);
@@ -369,7 +350,6 @@ describe('TransactionsService', () => {
 
       await transactionsService.save(mockTransaction);
 
-      console.log('Saved single transaction:', mockTransaction.id);
       expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([
         mockTransaction,
       ]);
@@ -448,15 +428,6 @@ describe('TransactionsService', () => {
 
       await transactionsService.saveMany(mockTransactions);
 
-      console.log(
-        'Saved multiple transactions count:',
-        mockTransactions.length,
-      );
-      console.log(
-        'Saved transactions IDs:',
-        mockTransactions.map((tx) => tx.id),
-      );
-
       expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
         mockTransactions,
       );
@@ -466,7 +437,6 @@ describe('TransactionsService', () => {
     it('should handle empty transactions array', async () => {
       await transactionsService.saveMany([]);
 
-      console.log('Saved empty transactions array');
       expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([]);
       expect(true).toBe(true);
     });
@@ -573,10 +543,6 @@ describe('TransactionsService', () => {
 
       await transactionsService.saveMany(mockTransactions);
 
-      console.log('Grouped transactions by account:');
-      console.log(`Account ${mockAccount.id}: 2 transactions`);
-      console.log(`Account ${mockAccount2.id}: 1 transaction`);
-
       expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
         mockTransactions,
       );
@@ -604,15 +570,6 @@ describe('TransactionsService', () => {
       // Save the fetched transactions
       await transactionsService.saveMany(fetchedTransactions);
 
-      console.log(
-        'Complete flow - Fetched and saved transactions:',
-        fetchedTransactions.length,
-      );
-      console.log(
-        'Sample transaction IDs:',
-        fetchedTransactions.slice(0, 2).map((tx) => tx.id),
-      );
-
       expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
         fetchedTransactions,
       );
@@ -634,15 +591,9 @@ describe('TransactionsService', () => {
         [],
       );
 
-      const result = await transactionsService.fetchTransactionsForAccount(
+      await transactionsService.fetchTransactionsForAccount(
         Network.Mainnet,
         mockAccount2,
-      );
-
-      console.log('Mixed transaction types result:', result.length);
-      console.log(
-        'Transaction types:',
-        result.map((tx) => tx.type),
       );
 
       expect(true).toBe(true);

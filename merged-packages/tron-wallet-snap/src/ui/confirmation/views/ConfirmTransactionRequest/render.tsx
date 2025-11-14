@@ -74,11 +74,6 @@ export async function render(
     ...incomingContext,
   };
 
-  console.log(
-    'RENDERING CONFIRM TRANSACTION REQUEST WITH CONTEXT',
-    JSON.stringify(context),
-  );
-
   try {
     context.preferences = await snapClient.getPreferences();
   } catch {

@@ -35,11 +35,6 @@ describe('TransactionMapper', () => {
           trongridTransaction: rawTransaction,
         });
 
-        console.log(
-          'Native TRX Transaction Result:',
-          JSON.stringify(result, null, 2),
-        );
-
         const expectedTransaction = {
           account: 'test-account-id',
           type: 'send',
@@ -109,11 +104,6 @@ describe('TransactionMapper', () => {
           trongridTransaction: rawTransaction,
         });
 
-        console.log(
-          'TRC10 Transaction Result:',
-          JSON.stringify(result, null, 2),
-        );
-
         const expectedTransaction = {
           account: 'test-trc10-account',
           type: 'send',
@@ -178,11 +168,6 @@ describe('TransactionMapper', () => {
           trongridTransaction: rawTransaction,
           trc20AssistanceData,
         });
-
-        console.log(
-          'TRC20 Transaction Result:',
-          JSON.stringify(result, null, 2),
-        );
 
         const expectedTransaction = {
           account: 'test-account-id',
@@ -263,10 +248,6 @@ describe('TransactionMapper', () => {
           // No trc20AssistanceData provided
         });
 
-        console.log(
-          'TriggerSmartContract without assistance data Result:',
-          result,
-        );
         expect(result).toBeNull();
       });
     });
@@ -280,8 +261,6 @@ describe('TransactionMapper', () => {
           account: mockAccount,
           trongridTransaction: rawTransaction,
         });
-
-        console.log('Native TRX fees:', JSON.stringify(result?.fees, null, 2));
 
         const expectedFees = [
           {
@@ -309,11 +288,6 @@ describe('TransactionMapper', () => {
           trongridTransaction: rawTransaction,
           trc20AssistanceData,
         });
-
-        console.log(
-          'TRC20 comprehensive fees:',
-          JSON.stringify(result?.fees, null, 2),
-        );
 
         const expectedFees = [
           {
@@ -367,19 +341,6 @@ describe('TransactionMapper', () => {
         trc20Transactions: trc20AssistanceData,
       });
 
-      console.log(
-        'Mapped multiple transaction types count:',
-        result.filter((tx) => tx !== null).length,
-      );
-      console.log(
-        'Sample mapped transactions:',
-        JSON.stringify(
-          result.filter((tx) => tx !== null),
-          null,
-          2,
-        ),
-      );
-
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
       // All 3 transactions map successfully (native TRX + TRC10 + TRC20)
@@ -394,7 +355,6 @@ describe('TransactionMapper', () => {
         trc20Transactions: [],
       });
 
-      console.log('Empty input result:', result);
       expect(result).toStrictEqual([]);
     });
   });
@@ -415,7 +375,6 @@ describe('TransactionMapper', () => {
         trongridTransaction: malformedTransaction,
       });
 
-      console.log('Malformed transaction result:', result);
       expect(result).toBeNull();
     });
 
@@ -441,7 +400,6 @@ describe('TransactionMapper', () => {
         trongridTransaction: rawTransaction,
       });
 
-      console.log('Unsupported contract type result:', result);
       expect(result).toBeNull();
     });
   });
@@ -455,11 +413,6 @@ describe('TransactionMapper', () => {
         account: mockAccount,
         trongridTransaction: rawTransaction,
       });
-
-      console.log(
-        'Shasta network transaction result:',
-        JSON.stringify(result, null, 2),
-      );
 
       const expectedTransaction = {
         account: 'test-account-id',
