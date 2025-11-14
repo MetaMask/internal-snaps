@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "Compte"
+    "confirmation.from": {
+      "message": "De"
     },
-    "confirmation.recipient": {
-      "message": "Destinataire"
+    "confirmation.to": {
+      "message": "À"
     },
     "confirmation.network": {
       "message": "Réseau"

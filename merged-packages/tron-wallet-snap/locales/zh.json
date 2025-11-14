@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "账户"
+    "confirmation.from": {
+      "message": "从"
     },
-    "confirmation.recipient": {
-      "message": "接收者"
+    "confirmation.to": {
+      "message": "到"
     },
     "confirmation.network": {
       "message": "网络"

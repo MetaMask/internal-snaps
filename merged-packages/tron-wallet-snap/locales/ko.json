@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "계정"
+    "confirmation.from": {
+      "message": "보내는 주소"
     },
-    "confirmation.recipient": {
-      "message": "수신자"
+    "confirmation.to": {
+      "message": "받는 주소"
     },
     "confirmation.network": {
       "message": "네트워크"

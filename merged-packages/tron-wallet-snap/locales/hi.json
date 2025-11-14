@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "अकाउंट"
+    "confirmation.from": {
+      "message": "से"
     },
-    "confirmation.recipient": {
-      "message": "द्वारा प्राप्त किया गया"
+    "confirmation.to": {
+      "message": "को"
     },
     "confirmation.network": {
       "message": "नेटवर्क"

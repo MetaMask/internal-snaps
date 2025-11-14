@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "Akun"
+    "confirmation.from": {
+      "message": "Dari"
     },
-    "confirmation.recipient": {
-      "message": "Penerima"
+    "confirmation.to": {
+      "message": "Ke"
     },
     "confirmation.network": {
       "message": "Jaringan"

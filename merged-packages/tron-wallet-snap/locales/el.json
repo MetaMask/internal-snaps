@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "Λογαριασμός"
+    "confirmation.from": {
+      "message": "Από"
     },
-    "confirmation.recipient": {
-      "message": "Παραλήπτης"
+    "confirmation.to": {
+      "message": "Προς"
     },
     "confirmation.network": {
       "message": "Δίκτυο"

@@ -8,6 +8,7 @@ import {
   Heading,
   Icon,
   Image,
+  Link,
   Section,
   Text as SnapText,
   Tooltip,
@@ -16,6 +17,7 @@ import {
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import { type ConfirmTransactionRequestContext } from './types';
 import { Networks } from '../../../../constants';
+import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { Asset } from '../../components/Asset/Asset';
 import { Fees } from '../../components/Fees';
@@ -90,26 +92,35 @@ export const ConfirmTransactionRequest = ({
             <SnapText>{origin}</SnapText>
           </Box>
           <Box>{null}</Box>
-          {/* Account */}
+          {/* From */}
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {translate('confirmation.account')}
+              {translate('confirmation.from')}
             </SnapText>
-            <Address
-              address={`${scope}:${fromAddress}`}
-              truncate
-              displayName
-              avatar
-            />
+            <Link href={getExplorerUrl(scope, 'address', fromAddress ?? '')}>
+              <Address
+                address={`${scope}:${fromAddress}`}
+                truncate
+                displayName
+                avatar
+              />
+            </Link>
           </Box>
           <Box>{null}</Box>
-          {/* Recipient */}
+          {/* To */}
           {toAddress && (
             <Box alignment="space-between" direction="horizontal">
               <SnapText fontWeight="medium" color="alternative">
-                {translate('confirmation.recipient')}
+                {translate('confirmation.to')}
               </SnapText>
-              <Address address={`${scope}:${toAddress}`} truncate />
+              <Link href={getExplorerUrl(scope, 'address', toAddress ?? '')}>
+                <Address
+                  address={`${scope}:${toAddress}`}
+                  truncate
+                  displayName
+                  avatar
+                />
+              </Link>
             </Box>
           )}
           <Box>{null}</Box>

@@ -25,11 +25,11 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "Tài khoản"
+    "confirmation.from": {
+      "message": "Từ"
     },
-    "confirmation.recipient": {
-      "message": "Người nhận"
+    "confirmation.to": {
+      "message": "Đến"
     },
     "confirmation.network": {
       "message": "Mạng"

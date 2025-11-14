@@ -23,8 +23,11 @@
   "confirmation.origin.tooltip": {
     "message": "This is the site asking for your confirmation."
   },
-  "confirmation.account": {
-    "message": "Account"
+  "confirmation.from": {
+    "message": "From"
+  },
+  "confirmation.to": {
+    "message": "To"
   },
   "confirmation.network": {
     "message": "Network"

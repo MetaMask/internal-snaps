@@ -25,10 +25,10 @@
     "confirmation.origin.tooltip": {
       "message": "This is the site asking for your confirmation."
     },
-    "confirmation.account": {
-      "message": "Hesap"
+    "confirmation.from": {
+      "message": "Gönderen"
     },
-    "confirmation.recipient": {
+    "confirmation.to": {
       "message": "Alıcı"
     },
     "confirmation.network": {
