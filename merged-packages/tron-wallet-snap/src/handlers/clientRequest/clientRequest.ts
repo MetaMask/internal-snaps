@@ -10,23 +10,10 @@ import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import { sha256 } from 'ethers';
 
-import { ClientRequestMethod, SendErrorCodes } from './types';
-import {
-  ComputeFeeRequestStruct,
-  ComputeFeeResponseStruct,
-  OnAddressInputRequestStruct,
-  OnAmountInputRequestStruct,
-  OnConfirmSendRequestStruct,
-  OnConfirmStakeRequestStruct,
-  OnConfirmUnstakeRequestStruct,
-  OnStakeAmountInputRequestStruct,
-  OnUnstakeAmountInputRequestStruct,
-  SignAndSendTransactionRequestStruct,
-} from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Networks } from '../../constants';
 import type { Network } from '../../constants';
+import { Networks } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
@@ -41,6 +28,19 @@ import { assertOrThrow } from '../../utils/assertOrThrow';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
+import { ClientRequestMethod, SendErrorCodes } from './types';
+import {
+  ComputeFeeRequestStruct,
+  ComputeFeeResponseStruct,
+  OnAddressInputRequestStruct,
+  OnAmountInputRequestStruct,
+  OnConfirmSendRequestStruct,
+  OnConfirmStakeRequestStruct,
+  OnConfirmUnstakeRequestStruct,
+  OnStakeAmountInputRequestStruct,
+  OnUnstakeAmountInputRequestStruct,
+  SignAndSendTransactionRequestStruct,
+} from './validation';
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;
@@ -324,28 +324,24 @@ export class ClientRequestHandler {
     const { chainId } = parseCaipAssetType(assetId);
     const scope = chainId as Network;
 
-    /**
-     * Get available Energy and Bandwidth from account assets.
-     */
-    const assetsPromise = this.#assetsService.getAssetsByAccountId(
-      fromAccountId,
-      [Networks[scope].bandwidth.id, Networks[scope].energy.id],
-    );
-
-    /**
-     * Build the transaction that will be sent
-     */
-    const transactionPromise = this.#sendService.buildTransaction({
-      fromAccountId,
-      toAddress,
-      asset,
-      amount: BigNumber(amount).toNumber(),
-    });
-
-    // wait for both
     const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
-      assetsPromise,
-      transactionPromise,
+      /**
+       * Get available Energy and Bandwidth from account assets.
+       */
+      this.#assetsService.getAssetsByAccountId(fromAccountId, [
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]),
+      /**
+       * Build the transaction that will be sent.
+       * The signature is included because we need it to correctly estimate fees.
+       */
+      this.#sendService.buildTransaction({
+        fromAccountId,
+        toAddress,
+        asset,
+        amount: BigNumber(amount).toNumber(),
+      }),
     ]);
 
     const availableEnergy = energyAsset
@@ -382,9 +378,9 @@ export class ClientRequestHandler {
     }
 
     /**
-     * Sign and send the built transaction
+     * Send the built transaction
      */
-    const result = await this.#sendService.signAndSendTransaction({
+    const result = await this.#sendService.sendTransaction({
       scope,
       fromAccountId,
       transaction,
@@ -443,6 +439,7 @@ export class ClientRequestHandler {
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data_hex: rawDataHex,
     };
+    const signedTransaction = await tronWeb.trx.sign(transaction);
 
     /**
      * Get available Energy and Bandwidth from account assets.
@@ -465,7 +462,7 @@ export class ClientRequestHandler {
      */
     const result = await this.#feeCalculatorService.computeFee({
       scope,
-      transaction,
+      transaction: signedTransaction,
       availableEnergy,
       availableBandwidth,
     });

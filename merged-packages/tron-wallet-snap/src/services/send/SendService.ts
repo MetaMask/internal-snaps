@@ -1,18 +1,17 @@
 import { parseCaipAssetType } from '@metamask/utils';
 import type {
   BroadcastReturn,
+  SignedTransaction,
   Transaction,
   TransferAssetContract,
   TransferContract,
   TriggerSmartContract,
 } from 'tronweb/lib/esm/types';
 
-import type { TransactionResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
-import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 
@@ -52,7 +51,11 @@ export class SendService {
     toAddress: string;
     asset: AssetEntity;
     amount: number;
-  }): Promise<any> {
+  }): Promise<
+    | (SignedTransaction & Transaction<TransferContract>)
+    | (SignedTransaction & Transaction<TransferAssetContract>)
+    | (SignedTransaction & Transaction<TriggerSmartContract>)
+  > {
     const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
       asset.assetType,
     );
@@ -110,7 +113,7 @@ export class SendService {
     fromAccountId: string;
     toAddress: string;
     amount: number;
-  }): Promise<Transaction<TransferContract>> {
+  }): Promise<SignedTransaction & Transaction<TransferContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
@@ -125,8 +128,9 @@ export class SendService {
       toAddress,
       amountInSun,
     );
+    const signedTransaction = await tronWeb.trx.sign(transaction);
 
-    return transaction;
+    return signedTransaction;
   }
 
   async buildSendTrc10Transaction({
@@ -141,7 +145,7 @@ export class SendService {
     toAddress: string;
     amount: number;
     tokenId: string;
-  }): Promise<Transaction<TransferAssetContract>> {
+  }): Promise<SignedTransaction & Transaction<TransferAssetContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
@@ -156,7 +160,9 @@ export class SendService {
       amount,
       tokenId,
     );
-    return transaction;
+    const signedTransaction = await tronWeb.trx.sign(transaction);
+
+    return signedTransaction;
   }
 
   async buildSendTrc20Transaction({
@@ -173,7 +179,7 @@ export class SendService {
     contractAddress: string;
     amount: number;
     decimals: number;
-  }): Promise<Transaction<TriggerSmartContract>> {
+  }): Promise<SignedTransaction & Transaction<TriggerSmartContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
@@ -197,11 +203,14 @@ export class SendService {
         {},
         parameter,
       );
+    const signedTransaction = await tronWeb.trx.sign(
+      contractResult.transaction,
+    );
 
-    return contractResult.transaction;
+    return signedTransaction;
   }
 
-  async signAndSendTransaction({
+  async sendTransaction({
     scope,
     fromAccountId,
     transaction,
@@ -210,9 +219,9 @@ export class SendService {
     scope: Network;
     fromAccountId: string;
     transaction:
-      | Transaction<TransferContract>
-      | Transaction<TransferAssetContract>
-      | Transaction<TriggerSmartContract>;
+      | (SignedTransaction & Transaction<TransferContract>)
+      | (SignedTransaction & Transaction<TransferAssetContract>)
+      | (SignedTransaction & Transaction<TriggerSmartContract>);
     origin?: string;
   }): Promise<BroadcastReturn<any>> {
     /**
@@ -228,8 +237,7 @@ export class SendService {
     /**
      * Sign and send the transaction
      */
-    const signedTx = await tronWeb.trx.sign(transaction);
-    const result = await tronWeb.trx.sendRawTransaction(signedTx);
+    const result = await tronWeb.trx.sendRawTransaction(transaction);
 
     // Track Transaction Submitted event if broadcast was successful
     if (result.result) {
@@ -252,353 +260,5 @@ export class SendService {
     }
 
     return result;
-  }
-
-  async sendAsset({
-    fromAccountId,
-    toAddress,
-    asset,
-    amount,
-  }: {
-    fromAccountId: string;
-    toAddress: string;
-    asset: AssetEntity;
-    amount: number;
-  }): Promise<TransactionResult> {
-    const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
-      asset.assetType,
-    );
-
-    try {
-      switch (assetNamespace) {
-        case 'slip44':
-          this.#logger.log('Sending TRX transaction');
-          return this.sendTrx({
-            scope: chainId as Network,
-            fromAccountId,
-            toAddress,
-            amount,
-          });
-
-        case 'trc10':
-          this.#logger.log(`Sending TRC10 token: ${assetReference}`);
-          return this.sendTrc10({
-            scope: chainId as Network,
-            fromAccountId,
-            toAddress,
-            amount,
-            tokenId: assetReference,
-          });
-
-        case 'trc20':
-          this.#logger.log(`Sending TRC20 token: ${assetReference}`);
-          return this.sendTrc20({
-            scope: chainId as Network,
-            fromAccountId,
-            toAddress,
-            contractAddress: assetReference,
-            amount,
-            decimals: asset.decimals,
-          });
-
-        default:
-          throw new Error(`Unsupported asset namespace: ${assetNamespace}`);
-      }
-    } catch (error) {
-      this.#logger.error({ error }, 'Failed to send asset');
-      throw new Error(
-        `Failed to send asset: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
-  }
-
-  async sendTrx({
-    scope,
-    fromAccountId,
-    toAddress,
-    amount,
-    origin = 'MetaMask',
-  }: {
-    scope: Network;
-    fromAccountId: string;
-    toAddress: string;
-    amount: number;
-    origin?: string;
-  }): Promise<TransactionResult> {
-    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
-
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
-
-    try {
-      const amountInSun = amount * 1e6; // Convert TRX to sun
-      const transaction = await tronWeb.transactionBuilder.sendTrx(
-        toAddress,
-        amountInSun,
-      );
-      const signedTx = await tronWeb.trx.sign(transaction);
-      const result = await tronWeb.trx.sendRawTransaction(signedTx);
-
-      if (!result.result) {
-        throw new Error(
-          `Transaction failed: ${result.message || 'Unknown error'}`,
-        );
-      }
-
-      this.#logger.log(
-        { txId: result.txid },
-        'TRX transaction sent successfully',
-      );
-
-      // Track Transaction Submitted event
-      await this.#snapClient.trackTransactionSubmitted({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-      });
-
-      // Track Transaction Finalised event
-      await this.#snapClient.trackTransactionFinalised({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-        transactionType: 'native',
-        transactionStatus: 'finalised',
-      });
-
-      /**
-       * Check if the transaction's destination address is also managed by the snap.
-       * If so, sync the account. Otherwise, only sync the source account.
-       */
-      const accountIdsToSync = [fromAccountId];
-
-      const destinationAccount =
-        await this.#accountsService.findByAddress(toAddress);
-
-      if (destinationAccount) {
-        accountIdsToSync.push(destinationAccount.id);
-      }
-
-      await this.#snapClient.scheduleBackgroundEvent({
-        method: BackgroundEventMethod.SynchronizeAccounts,
-        params: { accountIds: accountIdsToSync },
-        duration: 'PT5S', // Wait 5 seconds before syncing to allow transaction to be processed
-      });
-
-      return {
-        success: true,
-        txId: result.txid,
-        transaction: signedTx,
-      };
-    } catch (error) {
-      this.#logger.error({ error }, 'Failed to send TRX');
-      throw new Error(
-        `Failed to send TRX: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
-  }
-
-  async sendTrc10({
-    scope,
-    fromAccountId,
-    toAddress,
-    amount,
-    tokenId,
-    origin = 'MetaMask',
-  }: {
-    scope: Network;
-    fromAccountId: string;
-    toAddress: string;
-    amount: number;
-    tokenId: string;
-    origin?: string;
-  }): Promise<TransactionResult> {
-    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
-
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
-
-    try {
-      const transaction = await tronWeb.transactionBuilder.sendToken(
-        toAddress,
-        amount,
-        tokenId,
-      );
-      const signedTx = await tronWeb.trx.sign(transaction);
-      const result = await tronWeb.trx.sendRawTransaction(signedTx);
-
-      if (!result.result) {
-        throw new Error(
-          `Transaction failed: ${result.message || 'Unknown error'}`,
-        );
-      }
-
-      this.#logger.log(
-        { txId: result.txid },
-        'TRC10 transaction sent successfully',
-      );
-
-      // Track Transaction Submitted event
-      await this.#snapClient.trackTransactionSubmitted({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-      });
-
-      // Track Transaction Finalised event
-      await this.#snapClient.trackTransactionFinalised({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-        transactionType: 'trc10',
-        transactionStatus: 'finalised',
-      });
-
-      /**
-       * Check if the transaction's destination address is also managed by the snap.
-       * If so, sync the account. Otherwise, only sync the source account.
-       */
-      const accountIdsToSync = [fromAccountId];
-
-      const destinationAccount =
-        await this.#accountsService.findByAddress(toAddress);
-
-      if (destinationAccount) {
-        accountIdsToSync.push(destinationAccount.id);
-      }
-
-      await this.#snapClient.scheduleBackgroundEvent({
-        method: BackgroundEventMethod.SynchronizeAccounts,
-        params: { accountIds: accountIdsToSync },
-        duration: 'PT5S', // Wait 5 seconds before syncing to allow transaction to be processed
-      });
-
-      return {
-        success: true,
-        txId: result.txid,
-        transaction: signedTx,
-      };
-    } catch (error) {
-      this.#logger.error({ error }, 'Failed to send TRC10');
-      throw new Error(
-        `Failed to send TRC10: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
-  }
-
-  async sendTrc20({
-    scope,
-    fromAccountId,
-    toAddress,
-    contractAddress,
-    amount,
-    decimals,
-    origin = 'MetaMask',
-  }: {
-    scope: Network;
-    fromAccountId: string;
-    toAddress: string;
-    contractAddress: string;
-    amount: number;
-    decimals: number;
-    origin?: string;
-  }): Promise<TransactionResult> {
-    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
-
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
-
-    try {
-      const functionSelector = 'transfer(address,uint256)';
-      const decimalsAdjustedAmount = amount * 10 ** decimals;
-      const parameter = [
-        { type: 'address', value: toAddress },
-        { type: 'uint256', value: decimalsAdjustedAmount },
-      ];
-
-      const contractResult =
-        await tronWeb.transactionBuilder.triggerSmartContract(
-          contractAddress,
-          functionSelector,
-          {},
-          parameter,
-        );
-
-      if (!contractResult.result?.result) {
-        throw new Error('Failed to create TRC20 transaction');
-      }
-
-      const signedTx = await tronWeb.trx.sign(contractResult.transaction);
-      const result = await tronWeb.trx.sendRawTransaction(signedTx);
-
-      if (!result.result) {
-        throw new Error(
-          `Transaction failed: ${result.message || 'Unknown error'}`,
-        );
-      }
-
-      this.#logger.log(
-        { txId: result.txid },
-        'TRC20 transaction sent successfully',
-      );
-
-      // Track Transaction Submitted event
-      await this.#snapClient.trackTransactionSubmitted({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-      });
-
-      // Track Transaction Finalised event
-      await this.#snapClient.trackTransactionFinalised({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-        transactionType: 'trc20',
-        transactionStatus: 'finalised',
-      });
-
-      /**
-       * Check if the transaction's destination address is also managed by the snap.
-       * If so, sync the account. Otherwise, only sync the source account.
-       */
-      const accountIdsToSync = [fromAccountId];
-
-      const destinationAccount =
-        await this.#accountsService.findByAddress(toAddress);
-
-      if (destinationAccount) {
-        accountIdsToSync.push(destinationAccount.id);
-      }
-
-      await this.#snapClient.scheduleBackgroundEvent({
-        method: BackgroundEventMethod.SynchronizeAccounts,
-        params: { accountIds: accountIdsToSync },
-        duration: 'PT5S', // Wait 5 seconds before syncing to allow transaction to be processed
-      });
-
-      return {
-        success: true,
-        txId: result.txid,
-        transaction: signedTx,
-      };
-    } catch (error) {
-      this.#logger.error({ error }, 'Failed to send TRC20');
-      throw new Error(
-        `Failed to send TRC20: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
   }
 }

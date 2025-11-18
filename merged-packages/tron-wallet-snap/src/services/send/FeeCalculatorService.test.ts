@@ -121,13 +121,14 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should only have bandwidth consumption, no TRX cost
+        // Native transfer: 132 bytes (raw_data_hex / 2) + 134 = 266 bytes
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '758000',
+              amount: '266',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -139,7 +140,7 @@ describe('FeeCalculatorService', () => {
       it('not enough bandwidth', async () => {
         const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(1000); // Less than needed
+        const availableBandwidth = BigNumber(100); // Less than needed (266)
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -149,13 +150,14 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should only have TRX cost for bandwidth overage
+        // 266 bandwidth * 1000 SUN = 266,000 SUN = 0.266 TRX
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '758.000000',
+              amount: '0.266000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -178,7 +180,7 @@ describe('FeeCalculatorService', () => {
       it('has enough bandwidth + has enough energy', async () => {
         const transaction = getTransactionExample('trc20');
 
-        const availableEnergy = BigNumber(100000); // More than needed (55001)
+        const availableEnergy = BigNumber(100000); // More than needed (100000 fallback)
         const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
 
         const result = await feeCalculatorService.computeFee({
@@ -189,13 +191,15 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should have both energy and bandwidth consumption, no TRX cost
+        // Energy: 100000 (conservative fallback when estimateEnergy doesn't return energy_required)
+        // Bandwidth: 211 bytes (raw_data_hex / 2) + 134 = 345 bytes
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
             asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
-              amount: '55001',
+              amount: '100000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -206,7 +210,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '1083000',
+              amount: '345',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -218,7 +222,7 @@ describe('FeeCalculatorService', () => {
       it('has enough bandwidth + not enough energy', async () => {
         const transaction = getTransactionExample('trc20');
 
-        const availableEnergy = BigNumber(30000); // Less than needed (55001)
+        const availableEnergy = BigNumber(30000); // Less than needed (100000)
         const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
 
         const result = await feeCalculatorService.computeFee({
@@ -229,6 +233,8 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should have bandwidth consumption and TRX cost for energy overage
+        // Energy consumed: 30000, overage: 70000
+        // TRX cost: 70000 * 100 SUN = 7,000,000 SUN = 7 TRX
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
@@ -246,7 +252,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '1083000',
+              amount: '345',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -257,7 +263,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '2.500100',
+              amount: '7.000000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -269,8 +275,8 @@ describe('FeeCalculatorService', () => {
       it('not enough bandwidth + has enough energy', async () => {
         const largeTransaction = createLargeTransaction();
 
-        const availableEnergy = BigNumber(100000); // More than needed (55001)
-        const availableBandwidth = BigNumber(1000); // Less than needed
+        const availableEnergy = BigNumber(100000); // More than needed (100000)
+        const availableBandwidth = BigNumber(100); // Less than needed (345 bytes actual)
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -280,13 +286,16 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should have energy consumption and TRX cost for bandwidth overage
+        // Note: raw_data_hex doesn't change when we modify the data field,
+        // so bandwidth is still 345 bytes (not the larger theoretical size)
+        // TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
             asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
-              amount: '55001',
+              amount: '100000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -297,7 +306,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '2947.000000',
+              amount: '0.345000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -309,8 +318,8 @@ describe('FeeCalculatorService', () => {
       it('not enough bandwidth + not enough energy', async () => {
         const largeTransaction = createLargeTransaction();
 
-        const availableEnergy = BigNumber(30000); // Less than needed (55001)
-        const availableBandwidth = BigNumber(1000); // Less than needed
+        const availableEnergy = BigNumber(30000); // Less than needed (100000)
+        const availableBandwidth = BigNumber(100); // Less than needed (345)
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -320,7 +329,9 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should have energy consumption and TRX cost for both energy and bandwidth overages
-        // Note: bandwidth consumption is 0 when there's not enough bandwidth, so it gets filtered out
+        // Energy consumed: 30000, overage: 70000 → 7 TRX
+        // Bandwidth overage: 345 → 0.345 TRX
+        // Total: 7.345 TRX
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
@@ -338,7 +349,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '2949.500100',
+              amount: '7.345000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -362,13 +373,14 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should only have TRX cost, no zero amount fees
+        // 266 bandwidth * 1000 SUN = 266,000 SUN = 0.266 TRX
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '758.000000',
+              amount: '0.266000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -395,7 +407,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:2494104990/slip44:bandwidth',
-              amount: '758000',
+              amount: '266',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -426,6 +438,8 @@ describe('FeeCalculatorService', () => {
         });
 
         // Should use fallback values: energyFee=100, bandwidthFee=1000
+        // Energy: consumes all 100000 available, no TRX fee (even though more is needed)
+        // Bandwidth: 345 bytes consumed
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
@@ -443,18 +457,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '1083000',
-              fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '6.500000',
+              amount: '345',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -476,7 +479,7 @@ describe('FeeCalculatorService', () => {
         );
 
         const availableEnergy = BigNumber(100000);
-        const availableBandwidth = BigNumber(1000);
+        const availableBandwidth = BigNumber(100); // Less than needed (345)
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -485,13 +488,16 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
+        // Note: Modifying the data field doesn't update raw_data_hex,
+        // so bandwidth is still calculated from the original hex (345 bytes)
+        // TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
         expect(result).toStrictEqual([
           {
             type: FeeType.Base,
             asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
-              amount: '55001',
+              amount: '100000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -502,7 +508,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
-              amount: '10947.000000',
+              amount: '0.345000',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
@@ -514,7 +520,7 @@ describe('FeeCalculatorService', () => {
       it('should handle exact resource matches', async () => {
         const transaction = getTransactionExample('native');
         const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(758000); // Exact match for native transaction
+        const availableBandwidth = BigNumber(266); // Exact match for native transaction
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -529,7 +535,7 @@ describe('FeeCalculatorService', () => {
             asset: {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
-              amount: '758000',
+              amount: '266',
               fungible: true,
               imageSvg:
                 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',

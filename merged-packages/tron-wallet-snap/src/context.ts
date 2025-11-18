@@ -162,7 +162,10 @@ const keyringHandler = new KeyringHandler({
   assetsService,
   transactionsService,
 });
-const rpcHandler = new RpcHandler();
+const rpcHandler = new RpcHandler({
+  logger,
+  clientRequestHandler,
+});
 const userInputHandler = new UserInputHandler({
   logger,
   snapClient,

@@ -1,5 +1,6 @@
 import type { JsonRpcRequest } from '@metamask/utils';
 
+import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
@@ -29,7 +30,7 @@ export class CronHandler {
 
   readonly #state: State<UnencryptedStateValue>;
 
-  readonly #priceApiClient: any; // PriceApiClient type
+  readonly #priceApiClient: PriceApiClient;
 
   constructor({
     logger,

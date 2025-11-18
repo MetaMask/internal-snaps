@@ -1,6 +1,7 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 
 import { ClientRequestMethod } from './handlers/clientRequest/types';
+import { TestDappRpcRequestMethod } from './handlers/rpc/types';
 
 const prodOrigins = ['https://portfolio.metamask.io'];
 
@@ -20,6 +21,8 @@ const dappPermissions = isDev
       KeyringRpcMethod.SubmitRequest,
       KeyringRpcMethod.ListAccountTransactions,
       KeyringRpcMethod.ListAccountAssets,
+      // Test dapp specific methods
+      TestDappRpcRequestMethod.ComputeFee,
     ])
   : new Set([]);
 

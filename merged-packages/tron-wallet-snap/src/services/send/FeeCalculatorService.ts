@@ -1,6 +1,7 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import type {
+  SignedTransaction,
   Transaction,
   TransactionContract,
   TriggerSmartContract,
@@ -37,75 +38,93 @@ export class FeeCalculatorService {
   }
 
   /**
-   * Calculate the energy requirements for a TRON transaction
+   * The bandwidth needed for a transaction is the size of the transaction in bytes.
+   * You can get the total length of a transaction by adding the following lengths:
+   * - The length of the raw_data_hex
+   * - The length of the first signature which is 65 bytes
+   * - MAX_RESULT_SIZE_IN_TX in the data which is 64 bytes
+   * - Protobuf LEN typed tag and len-prefix which is 5 bytes
+   *
+   * See: https://github.com/tronprotocol/wallet-cli/issues/292
+   *
+   * @param transaction - The base64 encoded transaction
+   * @returns number - The calculated bandwidth in TRX
+   */
+  #calculateBandwidth(transaction: SignedTransaction & Transaction): BigNumber {
+    const transactionByteLength =
+      // eslint-disable-next-line no-restricted-globals
+      Buffer.from(transaction.raw_data_hex, 'hex').byteLength + 134;
+    return BigNumber(transactionByteLength);
+  }
+
+  /**
+   * Calculate the energy requirements for a TRON transaction.
+   * Depends on the type of contracts in the transaction.
    *
    * @param scope - The network scope for the transaction
    * @param transaction - The base64 encoded transaction
-   * @returns Promise<number> - The calculated energy consumption
+   * @returns Promise<BigNumber> - The calculated energy consumption
    */
   async #calculateEnergy(
     scope: Network,
-    transaction: Transaction,
+    transaction: SignedTransaction & Transaction,
   ): Promise<BigNumber> {
-    try {
-      const contract = transaction.raw_data.contract[0];
+    const contracts = transaction.raw_data.contract;
 
-      if (!contract) {
-        throw new Error(
-          'Cannot calculate energy: No contract found in transaction',
-        );
-      }
+    if (!contracts || contracts.length === 0) {
+      this.#logger.log(
+        'No contracts found in transaction, assuming zero energy usage',
+      );
+      return BigNumber(0);
+    }
 
+    let totalEnergy = BigNumber(0);
+
+    for (const contract of contracts) {
       const contractType = contract.type as string;
       this.#logger.log(`Calculating energy for contract type: ${contractType}`);
 
+      let currentContractEnergy: BigNumber;
+
       switch (contractType) {
+        /**
+         * Native TRX transfers + TRC10 token transfers don't consume energy
+         */
         case 'TransferContract':
-          // Native TRX transfers don't consume energy
-          return BigNumber(0);
-
         case 'TransferAssetContract':
-          // TRC10 token transfers don't consume energy
-          return BigNumber(0);
-
+          currentContractEnergy = BigNumber(0);
+          break;
         case 'TriggerSmartContract': {
-          // For smart contracts, try to estimate energy using triggerconstantcontract
-          return BigNumber(
+          currentContractEnergy = BigNumber(
             await this.#estimateSmartContractEnergy(
               scope,
               contract as TransactionContract<TriggerSmartContract>,
             ),
           );
+          break;
         }
-
         default:
           this.#logger.warn(
             `Unknown contract type: ${contractType}, using conservative estimate`,
           );
-          return BigNumber(100000); // Conservative estimate
+          currentContractEnergy = BigNumber(100000); // Conservative estimate
+          break;
       }
-    } catch (error) {
-      this.#logger.error({ error }, 'Failed to calculate energy usage');
-      throw error;
-    }
-  }
 
-  /**
-   * The bandwidth needed for a transaction is the size of the transaction in bytes
-   * multiplied by the price per byte, which is currently 1000 SUN per byte.
-   *
-   * @param transaction - The base64 encoded transaction
-   * @returns number - The calculated bandwidth in SUN
-   */
-  #calculateBandwidth(transaction: Transaction): BigNumber {
-    // eslint-disable-next-line no-restricted-globals
-    const byteSize = Buffer.byteLength(JSON.stringify(transaction));
-    return BigNumber(byteSize * 1000);
+      this.#logger.log(
+        `Contract ${contractType} energy: ${currentContractEnergy.toString()}`,
+      );
+      totalEnergy = totalEnergy.plus(currentContractEnergy);
+    }
+
+    this.#logger.log(`Total energy for transaction: ${totalEnergy.toString()}`);
+
+    return totalEnergy;
   }
 
   /**
    * Estimate energy consumption for smart contract execution
-   * Uses the triggerconstantcontract API to simulate execution
+   * Uses the estimateEnergy API to get accurate energy requirements
    *
    * @param scope - The network scope for the contract
    * @param contract - The contract object from the transaction
@@ -146,11 +165,8 @@ export class FeeCalculatorService {
         throw new Error('Cannot estimate energy: No function selector found');
       }
 
-      // Convert addresses from hex to base58 if needed
-      const contractAddressBase58 = tronWeb.address.fromHex(
-        `41${contractAddress}`,
-      );
-      const ownerAddressBase58 = tronWeb.address.fromHex(`41${ownerAddress}`);
+      const contractAddressBase58 = tronWeb.address.fromHex(contractAddress);
+      const ownerAddressBase58 = tronWeb.address.fromHex(ownerAddress);
 
       this.#logger.log(
         {
@@ -162,26 +178,27 @@ export class FeeCalculatorService {
         'Estimating smart contract energy',
       );
 
-      // Call triggerconstantcontract to simulate execution
-      const result = await tronWeb.transactionBuilder.triggerConstantContract(
+      const result = await tronWeb.transactionBuilder.estimateEnergy(
         contractAddressBase58,
         functionSelector,
-        {},
+        { callValue },
         [],
         ownerAddressBase58,
       );
 
-      if (result?.energy_used) {
-        const energyUsed = result.energy_used;
-        this.#logger.log({ energyUsed }, 'Energy estimation from network');
+      if (result?.energy_required) {
+        const energyRequired = result.energy_required;
+        this.#logger.log(
+          { energyRequired },
+          'Energy estimation from estimateEnergy API',
+        );
 
-        // Add a 10% buffer for safety (execution might vary slightly)
-        return Math.ceil(energyUsed * 1.1);
+        return energyRequired;
       }
 
-      // If no energy_used in result, use typical TRC20 transfer energy
+      // If no energy_required in result, use typical TRC20 transfer energy
       this.#logger.warn(
-        'No energy_used in simulation result, using typical TRC20 value',
+        'No energy_required in estimation result, using typical TRC20 value',
       );
       return 65000; // Typical for TRC20 transfer
     } catch (error) {
@@ -215,7 +232,7 @@ export class FeeCalculatorService {
     availableBandwidth,
   }: {
     scope: Network;
-    transaction: Transaction;
+    transaction: SignedTransaction & Transaction;
     availableEnergy: BigNumber;
     availableBandwidth: BigNumber;
   }): Promise<ComputeFeeResult> {
@@ -245,8 +262,11 @@ export class FeeCalculatorService {
       0,
     );
 
-    const result: ComputeFeeResult = [
-      {
+    const result: ComputeFeeResult = [];
+
+    // Add energy consumption fee if we're consuming any energy
+    if (energyConsumed.isGreaterThan(0)) {
+      result.push({
         type: FeeType.Base,
         asset: {
           unit: Networks[scope].energy.symbol,
@@ -255,8 +275,12 @@ export class FeeCalculatorService {
           fungible: true as const,
           imageSvg: getIconUrlForKnownAsset(Networks[scope].energy.id) ?? '',
         },
-      },
-      {
+      });
+    }
+
+    // Add bandwidth consumption fee if we're consuming any bandwidth
+    if (bandwidthConsumed.isGreaterThan(0)) {
+      result.push({
         type: FeeType.Base,
         asset: {
           unit: Networks[scope].bandwidth.symbol,
@@ -265,10 +289,10 @@ export class FeeCalculatorService {
           fungible: true as const,
           imageSvg: getIconUrlForKnownAsset(Networks[scope].bandwidth.id) ?? '',
         },
-      },
-    ];
+      });
+    }
 
-    // If we need to pay TRX for bandwidth or energy overages
+    // Add TRX fee if we need to pay for bandwidth or energy overages
     if (
       bandwidthToPayInTRX.isGreaterThan(0) ||
       energyToPayInTRX.isGreaterThan(0)
@@ -305,9 +329,6 @@ export class FeeCalculatorService {
       });
     }
 
-    // Filter out any fees with zero amounts
-    return result.filter(
-      (fee) => fee.asset.fungible && fee.asset.amount !== '0',
-    );
+    return result;
   }
 }

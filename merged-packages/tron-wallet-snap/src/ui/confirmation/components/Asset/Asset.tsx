@@ -45,8 +45,8 @@ export const Asset = (props: AssetProps): ComponentOrElement => {
 
   return (
     <Box direction="horizontal" alignment="center">
-      {showSkeleton && <Skeleton width={80} />}
-      {showFiat && <SnapText color="muted">{fiatValue}</SnapText>}
+      {showSkeleton ? <Skeleton width={80} /> : null}
+      {showFiat ? <SnapText color="muted">{fiatValue}</SnapText> : null}
       <Box alignment="center" center>
         <Image borderRadius="full" src={iconSvg} />
       </Box>
