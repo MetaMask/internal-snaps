@@ -7,7 +7,7 @@ export type NativeCaipAssetType = `${Network}/slip44:195`;
 export type StakedCaipAssetType =
   `${TrxScope}/slip44:195-staked-for-${'energy' | 'bandwidth'}`;
 export type ResourceCaipAssetType =
-  `${TrxScope}/slip44:195-${'energy' | 'bandwidth'}`;
+  `${TrxScope}/slip44:${'energy' | 'bandwidth'}`;
 export type TokenCaipAssetType = `${TrxScope}/${'trc10' | 'trc20'}:${string}`;
 export type NftCaipAssetType = `${TrxScope}/trc721:${string}`;
 

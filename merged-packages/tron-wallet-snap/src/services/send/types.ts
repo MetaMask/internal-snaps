@@ -1,5 +1,10 @@
 import type { FeeType } from '@metamask/keyring-api';
 
+import type {
+  NativeCaipAssetType,
+  ResourceCaipAssetType,
+} from '../assets/types';
+
 export type TransactionResult = {
   success: boolean;
   txId: string;
@@ -8,7 +13,7 @@ export type TransactionResult = {
 
 export type FeeAsset = {
   unit: string;
-  type: string;
+  type: NativeCaipAssetType | ResourceCaipAssetType;
   amount: string;
   fungible: true;
   imageSvg: string;

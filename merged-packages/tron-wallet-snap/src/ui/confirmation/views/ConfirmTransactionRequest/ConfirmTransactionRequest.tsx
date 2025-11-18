@@ -75,6 +75,7 @@ export const ConfirmTransactionRequest = ({
               </SnapText>
             </Box>
             <Asset
+              caipId={asset.assetType}
               amount={amount ?? ''}
               symbol={asset.symbol}
               iconSvg={asset.imageSvg ?? ''}

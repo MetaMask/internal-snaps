@@ -60,6 +60,7 @@ export const Fees = ({
 
             {/* Right side - fee value with asset display including price */}
             <Asset
+              caipId={feeItem.asset.type}
               amount={feeItem.asset.amount}
               symbol={feeItem.asset.unit}
               iconSvg={feeItem.asset.imageSvg ?? ''}
