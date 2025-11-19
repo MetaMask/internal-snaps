@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1]
+
+### Added
+
+- Bandwidth and Energy confirmation logos ([#95](https://github.com/MetaMask/snap-tron-wallet/pull/95))
+
+### Fixed
+
+- `computeFee` was returning in SUN and inaccurate values ([#84](https://github.com/MetaMask/snap-tron-wallet/pull/84))
+
 ## [1.8.0]
 
 ### Added
@@ -181,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.8.1...HEAD
+[1.8.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.7.4...v1.8.0
 [1.7.4]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.7.3...v1.7.4
 [1.7.3]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.7.2...v1.7.3
