@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1]
+
+### Fixed
+
+- Use available `triggerConstantContract` instead of `estimateEnergy` ([#101](https://github.com/MetaMask/snap-tron-wallet/pull/101))
+- Use mutex for state blob modifications ([#93](https://github.com/MetaMask/snap-tron-wallet/pull/93))
+
 ## [1.9.0]
 
 ### Added
@@ -201,7 +208,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.7.4...v1.8.0
