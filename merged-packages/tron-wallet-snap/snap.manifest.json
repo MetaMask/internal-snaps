@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/snap-tron-wallet.git"
   },
   "source": {
-    "shasum": "lEN4sob3AFKGkfB/J8Y0UVYXNtLHiT+azOOc+1Z4bAU=",
+    "shasum": "rZkOojSyIYfVdtnRIbzueNVouTNCLqBOIZHfmwbkxOA=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -19,10 +19,7 @@
     "locales": ["locales/en.json"]
   },
   "initialConnections": {
-    "https://portfolio.metamask.io": {},
-    "https://portfolio-builds.metafi-dev.codefi.network": {},
-    "https://dev.portfolio.metamask.io": {},
-    "https://ramps-dev.portfolio.metamask.io": {}
+    "https://portfolio.metamask.io": {}
   },
   "initialPermissions": {
     "endowment:rpc": {
@@ -30,13 +27,7 @@
       "snaps": false
     },
     "endowment:keyring": {
-      "allowedOrigins": [
-        "http://localhost:3000",
-        "https://portfolio.metamask.io",
-        "https://portfolio-builds.metafi-dev.codefi.network",
-        "https://dev.portfolio.metamask.io",
-        "https://ramps-dev.portfolio.metamask.io"
-      ]
+      "allowedOrigins": ["https://portfolio.metamask.io"]
     },
     "snap_getBip32Entropy": [
       {
