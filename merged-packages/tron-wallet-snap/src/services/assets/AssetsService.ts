@@ -403,7 +403,8 @@ export class AssetsService {
     tronAccountResources: AccountResources | Record<string, never>;
   }): AssetEntity[] {
     const maximumEnergy = tronAccountResources?.EnergyLimit ?? 0;
-    const energy = tronAccountResources?.EnergyUsed ?? maximumEnergy;
+    const energyUsed = tronAccountResources?.EnergyUsed ?? 0;
+    const energy = maximumEnergy - energyUsed;
 
     return [
       {

@@ -1,15 +1,10 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-import type {
-  SignedTransaction,
-  Transaction,
-  TransactionContract,
-  TriggerSmartContract,
-} from 'tronweb/lib/esm/types';
+import type { SignedTransaction, Transaction } from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+// import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
@@ -19,21 +14,21 @@ import { createPrefixedLogger } from '../../utils/logger';
 export class FeeCalculatorService {
   readonly #logger: ILogger;
 
-  readonly #tronWebFactory: TronWebFactory;
+  // readonly #tronWebFactory: TronWebFactory;
 
   readonly #trongridApiClient: TrongridApiClient;
 
   constructor({
     logger,
-    tronWebFactory,
+    // tronWebFactory,
     trongridApiClient,
   }: {
     logger: ILogger;
-    tronWebFactory: TronWebFactory;
+    // tronWebFactory: TronWebFactory;
     trongridApiClient: TrongridApiClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[💸 FeeCalculatorService]');
-    this.#tronWebFactory = tronWebFactory;
+    // this.#tronWebFactory = tronWebFactory;
     this.#trongridApiClient = trongridApiClient;
   }
 
@@ -61,12 +56,11 @@ export class FeeCalculatorService {
    * Calculate the energy requirements for a TRON transaction.
    * Depends on the type of contracts in the transaction.
    *
-   * @param scope - The network scope for the transaction
    * @param transaction - The base64 encoded transaction
    * @returns Promise<BigNumber> - The calculated energy consumption
    */
   async #calculateEnergy(
-    scope: Network,
+    // scope: Network,
     transaction: SignedTransaction & Transaction,
   ): Promise<BigNumber> {
     const contracts = transaction.raw_data.contract;
@@ -94,20 +88,24 @@ export class FeeCalculatorService {
         case 'TransferAssetContract':
           currentContractEnergy = BigNumber(0);
           break;
+        /**
+         * TRC20
+         */
         case 'TriggerSmartContract': {
-          currentContractEnergy = BigNumber(
-            await this.#estimateSmartContractEnergy(
-              scope,
-              contract as TransactionContract<TriggerSmartContract>,
-            ),
-          );
+          // currentContractEnergy = BigNumber(
+          //   await this.#estimateTriggerSmartContractEnergy(
+          //     scope,
+          //     contract as TransactionContract<TriggerSmartContract>,
+          //   ),
+          // );
+          currentContractEnergy = BigNumber(130000);
           break;
         }
         default:
           this.#logger.warn(
             `Unknown contract type: ${contractType}, using conservative estimate`,
           );
-          currentContractEnergy = BigNumber(100000); // Conservative estimate
+          currentContractEnergy = BigNumber(130000); // Conservative estimate
           break;
       }
 
@@ -122,97 +120,74 @@ export class FeeCalculatorService {
     return totalEnergy;
   }
 
-  /**
-   * Estimate energy consumption for smart contract execution
-   * Uses the estimateEnergy API to get accurate energy requirements
-   *
-   * @param scope - The network scope for the contract
-   * @param contract - The contract object from the transaction
-   * @returns Promise<number> - The estimated energy consumption
-   */
-  async #estimateSmartContractEnergy(
-    scope: Network,
-    contract: TransactionContract<TriggerSmartContract>,
-  ): Promise<number> {
-    try {
-      this.#logger.log(
-        'Estimating smart contract energy',
-        JSON.stringify(contract),
-      );
+  // /**
+  //  * Estimate energy consumption for contract calls of type TriggerSmartContract (V2).
+  //  * Uses direct TronGrid API call bypassing TronWeb for better reliability.
+  //  *
+  //  * @param scope - The network scope for the contract
+  //  * @param contract - The contract object from the transaction
+  //  * @returns Promise<number> - The estimated energy consumption (defaults to 65000 if estimation fails)
+  //  */
+  // async #estimateTriggerSmartContractEnergy(
+  //   scope: Network,
+  //   contract: TransactionContract<TriggerSmartContract>,
+  // ): Promise<number> {
+  //   try {
+  //     const {
+  //       data,
+  //       owner_address: ownerAddress,
+  //       contract_address: contractAddress,
+  //     } = contract.parameter.value;
 
-      const tronWeb = this.#tronWebFactory.createClient(scope);
+  //     if (!data) {
+  //       this.#logger.warn('No data field found in contract, using fallback');
+  //       return 130000;
+  //     }
 
-      // Example TriggerSmartContract structure:
-      // "contract": [
-      //   {
-      //     "parameter": {
-      //       "value": {
-      //         "data": "a9059cbb0000000000000000000000007c7ec04a5297bb92305ebcf776e59876be0ca53b00000000000000000000000000000000000000000000000002c68af0bb140000",
-      //           "owner_address": "413986cff58bc3066e62f43f2e32f603d026a43726",
-      //           "contract_address": "41e91a7411e56ce79e83570570f49b9fc35b7727c5"
-      //         },
-      //       "type_url": "type.googleapis.com/protocol.TriggerSmartContract"
-      //     },
-      //     "type": "TriggerSmartContract"
-      //   }
-      // ]
-      const contractAddress = contract.parameter.value.contract_address;
-      const functionSelector = contract.parameter.value.data;
-      const ownerAddress = contract.parameter.value.owner_address;
-      const callValue = contract.parameter.value.call_value ?? 0;
+  //     this.#logger.log(
+  //       {
+  //         contractAddress,
+  //         ownerAddress,
+  //         data,
+  //       },
+  //       'Estimating smart contract energy (V2 - Direct TronGrid)',
+  //     );
 
-      if (!functionSelector) {
-        throw new Error('Cannot estimate energy: No function selector found');
-      }
+  //     const result = await this.#trongridApiClient.triggerConstantContract(
+  //       scope,
+  //       {
+  //         /**
+  //          * These addresses are in hex format. If they weren't we would need to
+  //          * pass `visible: true` to the request.
+  //          */
+  //         owner_address: ownerAddress,
+  //         contract_address: contractAddress,
+  //         function_selector: 'transfer(address,uint256)',
+  //         parameter: data,
+  //       },
+  //     );
 
-      const contractAddressBase58 = tronWeb.address.fromHex(contractAddress);
-      const ownerAddressBase58 = tronWeb.address.fromHex(ownerAddress);
+  //     if (result.energy_used) {
+  //       this.#logger.log(
+  //         {
+  //           energyUsed: result.energy_used,
+  //           energyPenalty: result.energy_penalty,
+  //         },
+  //         'Energy estimation from TronGrid API',
+  //       );
+  //       return result.energy_used;
+  //     }
 
-      this.#logger.log(
-        {
-          contractAddress: contractAddressBase58,
-          ownerAddress: ownerAddressBase58,
-          functionSelector,
-          callValue,
-        },
-        'Estimating smart contract energy',
-      );
-
-      const result = await tronWeb.transactionBuilder.estimateEnergy(
-        contractAddressBase58,
-        functionSelector,
-        { callValue },
-        [],
-        ownerAddressBase58,
-      );
-
-      if (result?.energy_required) {
-        const energyRequired = result.energy_required;
-        this.#logger.log(
-          { energyRequired },
-          'Energy estimation from estimateEnergy API',
-        );
-
-        return energyRequired;
-      }
-
-      // If no energy_required in result, use typical TRC20 transfer energy
-      this.#logger.warn(
-        'No energy_required in estimation result, using typical TRC20 value',
-      );
-      return 65000; // Typical for TRC20 transfer
-    } catch (error) {
-      this.#logger.error(
-        { error },
-        'Failed to estimate smart contract energy, using fallback',
-      );
-
-      // Fallback to conservative estimate
-      // TRC20 transfers typically use ~31,000-65,000 energy
-      // Complex contracts can use much more
-      return 100000; // Conservative estimate for unknown contracts
-    }
-  }
+  //     this.#logger.warn('No energy_used in result, using fallback');
+  //     return 130000;
+  //   } catch (error) {
+  //     this.#logger.error(
+  //       { error },
+  //       'Failed to estimate smart contract energy (V2), using fallback',
+  //     );
+  //     return 130000;
+  //   }
+  // }
 
   /**
    * Calculate complete fee breakdown for a TRON transaction
@@ -242,7 +217,8 @@ export class FeeCalculatorService {
     );
 
     const bandwidthNeeded = this.#calculateBandwidth(transaction);
-    const energyNeeded = await this.#calculateEnergy(scope, transaction);
+    // const energyNeeded = await this.#calculateEnergy(scope, transaction);
+    const energyNeeded = await this.#calculateEnergy(transaction);
 
     // Calculate consumption and overages:
     // - Bandwidth: If we don't have enough, we pay for ALL of it in TRX (no partial consumption)

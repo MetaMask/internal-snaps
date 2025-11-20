@@ -2,6 +2,8 @@ import type {
   ChainParameter,
   ContractTransactionInfo,
   TransactionInfo,
+  TriggerConstantContractRequest,
+  TriggerConstantContractResponse,
   TronAccount,
   TrongridApiResponse,
 } from './types';
@@ -178,5 +180,41 @@ export class TrongridApiClient {
     }
 
     return rawData.chainParameter;
+  }
+
+  /**
+   * Trigger a constant contract call to estimate energy consumption.
+   * This is a read-only call that doesn't broadcast to the network.
+   *
+   * @see https://developers.tron.network/reference/triggerconstantcontract
+   * @param scope - The network to query (e.g., 'mainnet', 'shasta')
+   * @param request - The contract call parameters
+   * @returns Promise<TriggerConstantContractResponse> - Energy estimation and execution result
+   */
+  async triggerConstantContract(
+    scope: Network,
+    request: TriggerConstantContractRequest,
+  ): Promise<TriggerConstantContractResponse> {
+    const client = this.#clients.get(scope);
+    if (!client) {
+      throw new Error(`No client configured for network: ${scope}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = `${baseUrl}/wallet/triggerconstantcontract`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: TriggerConstantContractResponse = await response.json();
+
+    return result;
   }
 }

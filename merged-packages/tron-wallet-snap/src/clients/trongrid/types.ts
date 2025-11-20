@@ -197,3 +197,45 @@ export type ChainParameter = {
   key: string;
   value?: number;
 };
+
+export type TriggerConstantContractRequest = {
+  owner_address: string;
+  contract_address: string;
+  function_selector: string;
+  parameter: string;
+};
+
+export type TriggerConstantContractResponse = {
+  result: {
+    result: boolean;
+    message?: string;
+  };
+  energy_used: number;
+  constant_result: string[];
+  energy_penalty?: number;
+  transaction: {
+    ret: {
+      ret: string;
+    }[];
+    visible: boolean;
+    txID: string;
+    raw_data: {
+      contract: {
+        parameter: {
+          value: {
+            data: string;
+            owner_address: string;
+            contract_address: string;
+          };
+          type_url: string;
+        };
+        type: string;
+      }[];
+      ref_block_bytes: string;
+      ref_block_hash: string;
+      expiration: number;
+      timestamp: number;
+    };
+    raw_data_hex: string;
+  };
+};
