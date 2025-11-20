@@ -2,6 +2,8 @@ import type { JsonRpcRequest } from '@metamask/utils';
 
 import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';
+import type { TronHttpClient } from '../clients/tron-http/TronHttpClient';
+import type { Network } from '../constants';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
 import { ConfirmTransactionRequest } from '../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
@@ -19,6 +21,7 @@ export enum BackgroundEventMethod {
   SynchronizeAccount = 'onSynchronizeAccount',
   SynchronizeAccountTransactions = 'onSynchronizeAccountTransactions',
   RefreshConfirmationPrices = 'refreshConfirmationPrices',
+  TrackTransaction = 'onTrackTransaction',
 }
 
 export class CronHandler {
@@ -32,24 +35,29 @@ export class CronHandler {
 
   readonly #priceApiClient: PriceApiClient;
 
+  readonly #tronHttpClient: TronHttpClient;
+
   constructor({
     logger,
     accountsService,
     snapClient,
     state,
     priceApiClient,
+    tronHttpClient,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
     snapClient: SnapClient;
     state: State<UnencryptedStateValue>;
-    priceApiClient: any;
+    priceApiClient: PriceApiClient;
+    tronHttpClient: TronHttpClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[⏰ CronHandler]');
     this.#accountsService = accountsService;
     this.#snapClient = snapClient;
     this.#state = state;
     this.#priceApiClient = priceApiClient;
+    this.#tronHttpClient = tronHttpClient;
   }
 
   async handle(request: JsonRpcRequest): Promise<void> {
@@ -80,6 +88,16 @@ export class CronHandler {
         break;
       case BackgroundEventMethod.RefreshConfirmationPrices:
         await this.refreshConfirmationPrices();
+        break;
+      case BackgroundEventMethod.TrackTransaction:
+        await this.trackTransaction(
+          params as {
+            txId: string;
+            scope: Network;
+            accountIds: string[];
+            attempt: number;
+          },
+        );
         break;
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
@@ -272,6 +290,139 @@ export class CronHandler {
       }
 
       // Don't schedule another refresh on error - the dialog might be gone
+    }
+  }
+
+  /**
+   * Background job to track a transaction's confirmation status.
+   * Syncs accounts on first check to fetch transaction with status from network.
+   * Continues polling until confirmed, then syncs again to update status.
+   * Implements automatic retry logic with exponential backoff limits.
+   *
+   * @param params - Transaction tracking parameters
+   * @param params.txId - The transaction ID to track
+   * @param params.scope - The network scope (e.g., 'mainnet', 'shasta')
+   * @param params.accountIds - Account IDs to sync after confirmation (first account is always the sender)
+   * @param params.attempt - Current attempt number (for retry logic)
+   */
+  async trackTransaction({
+    txId,
+    scope,
+    accountIds,
+    attempt = 0,
+  }: {
+    txId: string;
+    scope: Network;
+    accountIds: string[];
+    attempt: number;
+  }): Promise<void> {
+    const maxAttempts = 15; // Maximum number of polling attempts
+    const pollingInterval = 'PT1S'; // Poll every 1 second
+
+    this.#logger.info(
+      `[Attempt ${attempt + 1} of ${maxAttempts}] Tracking transaction ${txId} on ${scope}...`,
+    );
+
+    // Check if we've exceeded maximum attempts
+    if (attempt >= maxAttempts) {
+      this.#logger.warn(
+        { txId, scope, attempts: maxAttempts },
+        'Transaction tracking timeout - syncing accounts',
+      );
+
+      // Fallback: sync accounts anyway to update final status
+      const accounts = await this.#accountsService.findByIds(accountIds);
+      if (accounts && accounts.length > 0) {
+        await this.#accountsService.synchronize(accounts);
+      }
+      return;
+    }
+
+    try {
+      // Fetch transaction info from Full Node API
+      // Note: This endpoint only returns data for confirmed transactions
+      const txInfo = await this.#tronHttpClient.getTransactionInfoById(
+        scope,
+        txId,
+      );
+
+      // If transaction not found yet (not confirmed), schedule next check
+      if (!txInfo) {
+        this.#logger.info(
+          { txId, attempt },
+          'Transaction not confirmed yet, scheduling next check...',
+        );
+
+        await this.#snapClient.scheduleBackgroundEvent({
+          method: BackgroundEventMethod.TrackTransaction,
+          params: {
+            txId,
+            scope,
+            accountIds,
+            attempt: attempt + 1,
+          },
+          duration: pollingInterval,
+        });
+        return;
+      }
+
+      // Transaction found! This means it's confirmed on-chain
+      this.#logger.log(
+        { txId, blockNumber: txInfo.blockNumber, scope },
+        '✅ Transaction confirmed on-chain',
+      );
+
+      // Get the sender account to determine account type
+      const accounts = await this.#accountsService.findByIds(accountIds);
+      const senderAccount = accounts?.[0];
+
+      if (!senderAccount) {
+        this.#logger.error({ txId }, 'Sender account not found');
+        return;
+      }
+
+      // Synchronize accounts to get the full transaction details and update state
+      // Scheduled in the background to avoid blocking the main thread
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.SynchronizeSelectedAccounts,
+        duration: 'PT1S',
+      });
+
+      // Track Transaction Finalised event now that transaction is confirmed
+      await this.#snapClient.trackTransactionFinalised({
+        origin: 'MetaMask',
+        accountType: senderAccount.type,
+        chainIdCaip: scope,
+      });
+    } catch (error) {
+      this.#logger.error(
+        { error, txId, scope, attempt },
+        'Error tracking transaction',
+      );
+
+      // On error, retry with next attempt (unless we've hit max attempts)
+      if (attempt < maxAttempts - 1) {
+        await this.#snapClient.scheduleBackgroundEvent({
+          method: BackgroundEventMethod.TrackTransaction,
+          params: {
+            txId,
+            scope,
+            accountIds,
+            attempt: attempt + 1,
+          },
+          duration: pollingInterval,
+        });
+      } else {
+        // Max attempts reached - fallback to sync
+        this.#logger.warn(
+          { txId, scope },
+          'Max tracking attempts reached with errors - falling back to account sync',
+        );
+        const accounts = await this.#accountsService.findByIds(accountIds);
+        if (accounts && accounts.length > 0) {
+          await this.#accountsService.synchronize(accounts);
+        }
+      }
     }
   }
 }

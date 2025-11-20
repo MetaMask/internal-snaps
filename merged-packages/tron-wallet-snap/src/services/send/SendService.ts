@@ -12,6 +12,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
+import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 
@@ -247,15 +248,18 @@ export class SendService {
         chainIdCaip: scope,
       });
 
-      // Track Transaction Finalised event
-      // Note: TRON has fast finality (3s block time with DPoS), so transactions
-      // are effectively finalized shortly after being submitted
-      await this.#snapClient.trackTransactionFinalised({
-        origin,
-        accountType: account.type,
-        chainIdCaip: scope,
-        transactionType: 'swap',
-        transactionStatus: 'finalised',
+      // Schedule transaction tracking to monitor confirmation status
+      // The tracking job will determine transaction type from the transaction data
+      // and emit trackTransactionFinalised when confirmed
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: result.txid,
+          scope,
+          accountIds: [fromAccountId],
+          attempt: 0,
+        },
+        duration: 'PT1S', // Start tracking after 1 second
       });
     }
 

@@ -79,10 +79,13 @@ describe('TransactionsService', () => {
     } as unknown as jest.Mocked<TrongridApiClient>;
 
     // Create service instance
+    const mockTronHttpClient = {} as any;
+
     transactionsService = new TransactionsService({
       logger: mockLogger,
       transactionsRepository: mockTransactionsRepository,
       trongridApiClient: mockTrongridApiClient,
+      tronHttpClient: mockTronHttpClient,
     });
   });
 

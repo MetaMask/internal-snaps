@@ -1,0 +1,64 @@
+{
+  "ret": [
+    {
+      "contractRet": "SUCCESS",
+      "fee": 72646600
+    }
+  ],
+  "signature": [
+    "a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456"
+  ],
+  "txID": "7b6589b22ca801e35fd5d98186e019757875d3fb52c0bdc38a7cf4b2f24d9808",
+  "net_usage": 0,
+  "raw_data_hex": "0a02b30a2208fb8cad07225574354080b7f5eda9335af40f081f12ef0f0a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412b90f",
+  "net_fee": 2209000,
+  "energy_usage": 0,
+  "blockNumber": 77641497,
+  "block_timestamp": 1763586027000,
+  "energy_fee": 70437600,
+  "energy_usage_total": 704376,
+  "raw_data": {
+    "contract": [
+      {
+        "parameter": {
+          "value": {
+            "data": "14d08fca0000000000000000000000000000000000000000000000000000000000000060",
+            "owner_address": "412efffc7686e54ab669a1cdb1e2cc17cf4b4eca96",
+            "contract_address": "41f742f4589459f0923fa579600815763d1646bec3"
+          },
+          "type_url": "type.googleapis.com/protocol.TriggerSmartContract"
+        },
+        "type": "TriggerSmartContract"
+      }
+    ],
+    "ref_block_bytes": "b30a",
+    "ref_block_hash": "fb8cad0722557435",
+    "expiration": 1763586606000,
+    "fee_limit": 100000000,
+    "timestamp": 1763586027000
+  },
+  "internal_transactions": [
+    {
+      "hash": "a00dc01a55e7b2babebdf13d2c94c36ae584ffe1956bf5274db879dca9839133",
+      "caller_address": "41f742f4589459f0923fa579600815763d1646bec3",
+      "transferTo_address": "4170b0f2955dde7dca6567187d0a74d532043fc2a2",
+      "callValueInfo": [
+        {
+          "callValue": 87500
+        }
+      ],
+      "note": "63616c6c"
+    },
+    {
+      "hash": "08231878f4b258e31570654a6f3705ba734355b91e31ceb5812334812c35cd5d",
+      "caller_address": "41f742f4589459f0923fa579600815763d1646bec3",
+      "transferTo_address": "4118ff186cb1973d4b29700f2aac6b1eec9e55ffbd",
+      "callValueInfo": [
+        {
+          "callValue": 9912500
+        }
+      ],
+      "note": "63616c6c"
+    }
+  ]
+}

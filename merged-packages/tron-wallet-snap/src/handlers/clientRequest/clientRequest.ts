@@ -194,12 +194,17 @@ export class ClientRequestHandler {
     const result = await tronWeb.trx.sendRawTransaction(signedTx);
 
     /**
-     * Sync account after a transaction
+     * Track transaction after a transaction
      */
     await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.SynchronizeAccount,
-      params: { accountId },
-      duration: 'PT5S',
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId: result.txid,
+        scope,
+        accountIds: [accountId],
+        attempt: 0,
+      },
+      duration: 'PT1S',
     });
 
     return {

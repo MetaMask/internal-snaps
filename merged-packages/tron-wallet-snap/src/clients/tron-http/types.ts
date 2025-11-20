@@ -23,6 +23,51 @@ export type TronContract = {
   code_hash: string;
 };
 
+/**
+ * Full Node API response for GetTransactionInfoById
+ * Returns detailed transaction info including block number and fees
+ */
+export type FullNodeTransactionInfo = {
+  id?: string;
+  fee?: number;
+  blockNumber?: number;
+  blockTimeStamp?: number;
+  contractResult?: string[];
+  contract_address?: string;
+  receipt?: {
+    energy_usage?: number;
+    energy_fee?: number;
+    origin_energy_usage?: number;
+    energy_usage_total?: number;
+    net_usage?: number;
+    net_fee?: number;
+    result?: string;
+    energy_penalty_total?: number;
+  };
+  log?: {
+    address: string;
+    topics: string[];
+    data: string;
+  }[];
+  result?: string;
+  resMessage?: string;
+  withdraw_amount?: number;
+  unfreeze_amount?: number;
+  internal_transactions?: {
+    hash: string;
+    caller_address: string;
+    transferTo_address: string;
+    callValueInfo: {
+      callValue?: number;
+      tokenId?: string;
+    }[];
+    note: string;
+    rejected: boolean;
+  }[];
+  withdraw_expire_amount?: number;
+  cancel_unfreezeV2_amount?: Record<string, number>;
+};
+
 export type TriggerConstantContractRequest = {
   owner_address: string;
   contract_address: string;

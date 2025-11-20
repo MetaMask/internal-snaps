@@ -1,5 +1,6 @@
 import type {
   AccountResources,
+  FullNodeTransactionInfo,
   TRC10TokenInfo,
   TRC10TokenMetadata,
   TRC20TokenMetadata,
@@ -390,5 +391,53 @@ export class TronHttpClient {
 
     const accountResources: AccountResources = await response.json();
     return accountResources;
+  }
+
+  /**
+   * Get transaction info by transaction ID from Full Node API
+   *
+   * @see https://developers.tron.network/reference/gettransactioninfobyid
+   * @param network - Network to query
+   * @param txId - Transaction ID
+   * @returns Promise<FullNodeTransactionInfo | null> - Transaction info with block details, or null if not found/confirmed
+   */
+  async getTransactionInfoById(
+    network: Network,
+    txId: string,
+  ): Promise<FullNodeTransactionInfo | null> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = `${baseUrl}/wallet/gettransactioninfobyid`;
+
+    const body = JSON.stringify({
+      value: txId,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null; // Transaction not found
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const txInfo: FullNodeTransactionInfo = await response.json();
+
+    // If the response is empty or doesn't have the expected data, return null
+    // Note: GetTransactionInfoById only returns data for confirmed transactions
+    if (!txInfo?.id || !txInfo?.blockNumber) {
+      return null;
+    }
+
+    return txInfo;
   }
 }

@@ -1,4 +1,6 @@
 // eslint-disable-file @typescript-eslint/no-non-null-assertion
+import { TransactionType, TransactionStatus } from '@metamask/keyring-api';
+
 import { TransactionMapper } from './TransactionsMapper';
 import type {
   TransactionInfo,
@@ -7,7 +9,10 @@ import type {
 import { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 import contractInfoMock from './mocks/contract-info.json';
+import failedTransactionMock from './mocks/failed-transaction.json';
 import nativeTransferMock from './mocks/native-transfer.json';
+import swapContractInfoMock from './mocks/swap-contract-info.json';
+import swapTransactionMock from './mocks/swap-transaction.json';
 import trc10TransferMock from './mocks/trc10-transfer.json';
 import trc20TransferMock from './mocks/trc20-transfer.json';
 
@@ -37,7 +42,7 @@ describe('TransactionMapper', () => {
 
         const expectedTransaction = {
           account: 'test-account-id',
-          type: 'send',
+          type: TransactionType.Send,
           id: '8145535b24f71bc592b8ab2d94e91a30d12f74ab33fa4aab2ff2a27b767fc49b',
           from: [
             {
@@ -62,11 +67,11 @@ describe('TransactionMapper', () => {
             },
           ],
           chain: 'tron:728126428',
-          status: 'confirmed',
+          status: TransactionStatus.Confirmed,
           timestamp: 1756914747,
           events: [
             {
-              status: 'confirmed',
+              status: TransactionStatus.Confirmed,
               timestamp: 1756914747,
             },
           ],
@@ -106,7 +111,7 @@ describe('TransactionMapper', () => {
 
         const expectedTransaction = {
           account: 'test-trc10-account',
-          type: 'send',
+          type: TransactionType.Send,
           id: 'd8fc96d5b81fe600e055741e27135e22d5ae42584c9056758f797b1a20328818',
           from: [
             {
@@ -131,11 +136,11 @@ describe('TransactionMapper', () => {
             },
           ],
           chain: 'tron:728126428',
-          status: 'confirmed',
+          status: TransactionStatus.Confirmed,
           timestamp: 1756870677,
           events: [
             {
-              status: 'confirmed',
+              status: TransactionStatus.Confirmed,
               timestamp: 1756870677,
             },
           ],
@@ -159,19 +164,20 @@ describe('TransactionMapper', () => {
     describe('TriggerSmartContract (TRC20 transfers)', () => {
       it('should map a TRC20 send transaction with assistance data correctly', () => {
         const rawTransaction = trc20TransferMock as TransactionInfo;
-        const trc20AssistanceData = contractInfoMock
-          .data[0] as ContractTransactionInfo;
+        const trc20Transfers = [
+          contractInfoMock.data[0] as ContractTransactionInfo,
+        ];
 
         const result = TransactionMapper.mapTransaction({
           scope: Network.Mainnet,
           account: mockAccount,
           trongridTransaction: rawTransaction,
-          trc20AssistanceData,
+          trc20Transfers,
         });
 
         const expectedTransaction = {
           account: 'test-account-id',
-          type: 'send',
+          type: TransactionType.Send,
           id: '35f3dcfede12f943827809ddc18b891f78c38337e2b80912f50bd52a054497aa',
           from: [
             {
@@ -196,11 +202,11 @@ describe('TransactionMapper', () => {
             },
           ],
           chain: 'tron:728126428',
-          status: 'confirmed',
+          status: TransactionStatus.Confirmed,
           timestamp: 1757590707,
           events: [
             {
-              status: 'confirmed',
+              status: TransactionStatus.Confirmed,
               timestamp: 1757590707,
             },
           ],
@@ -238,14 +244,14 @@ describe('TransactionMapper', () => {
         expect(result).toStrictEqual(expectedTransaction);
       });
 
-      it('should return null for TriggerSmartContract without assistance data', () => {
+      it('should return null for TriggerSmartContract without assistance data and no call_value', () => {
         const rawTransaction = trc20TransferMock as TransactionInfo;
 
         const result = TransactionMapper.mapTransaction({
           scope: Network.Mainnet,
           account: mockAccount,
           trongridTransaction: rawTransaction,
-          // No trc20AssistanceData provided
+          // No trc20Transfers provided and no call_value
         });
 
         expect(result).toBeNull();
@@ -279,14 +285,15 @@ describe('TransactionMapper', () => {
 
       it('should calculate comprehensive fees for TRC20 transfers', () => {
         const rawTransaction = trc20TransferMock as TransactionInfo;
-        const trc20AssistanceData = contractInfoMock
-          .data[0] as ContractTransactionInfo;
+        const trc20Transfers = [
+          contractInfoMock.data[0] as ContractTransactionInfo,
+        ];
 
         const result = TransactionMapper.mapTransaction({
           scope: Network.Mainnet,
           account: mockAccount,
           trongridTransaction: rawTransaction,
-          trc20AssistanceData,
+          trc20Transfers,
         });
 
         const expectedFees = [
@@ -343,8 +350,10 @@ describe('TransactionMapper', () => {
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
-      // All 3 transactions map successfully (native TRX + TRC10 + TRC20)
-      expect(result.filter((tx) => tx !== null)).toHaveLength(3);
+      // All transactions map successfully:
+      // 3 raw transactions (native TRX + TRC10 + TRC20 send)
+      // + 2 TRC20-only transactions (USDDOLD receive + USDT receive)
+      expect(result.filter((tx) => tx !== null)).toHaveLength(5);
     });
 
     it('should handle empty input arrays', () => {
@@ -441,11 +450,11 @@ describe('TransactionMapper', () => {
           },
         ],
         chain: 'tron:2494104990',
-        status: 'confirmed',
+        status: TransactionStatus.Confirmed,
         timestamp: 1756914747,
         events: [
           {
-            status: 'confirmed',
+            status: TransactionStatus.Confirmed,
             timestamp: 1756914747,
           },
         ],
@@ -463,6 +472,398 @@ describe('TransactionMapper', () => {
       };
 
       expect(result).toStrictEqual(expectedTransaction);
+    });
+  });
+
+  describe('Failed Transactions', () => {
+    it('maps a failed TriggerSmartContract transaction (OUT_OF_ENERGY) without TRC20 data', () => {
+      const failedTx = failedTransactionMock as unknown as TransactionInfo;
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: failedTx,
+        trc20Transfers: [],
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.status).toStrictEqual(TransactionStatus.Failed);
+      expect(result?.type).toStrictEqual(TransactionType.Unknown);
+      expect(result?.from).toStrictEqual([]);
+      expect(result?.to).toStrictEqual([]);
+      expect(result?.fees).toBeDefined();
+    });
+  });
+
+  describe('Swap Transactions', () => {
+    it('maps a TRX → TRC20 swap transaction correctly', () => {
+      const swapTx = swapTransactionMock as unknown as TransactionInfo;
+      const trc20Transfers =
+        swapContractInfoMock.data as unknown as ContractTransactionInfo[];
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: swapTx,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Swap);
+      expect(result?.status).toStrictEqual(TransactionStatus.Confirmed);
+
+      // Check TRX → USDT swap
+      expect(result?.from[0]?.asset).toHaveProperty('unit', 'TRX');
+      expect(result?.from[0]?.asset).toHaveProperty('amount', '10');
+      expect(result?.to[0]?.asset).toHaveProperty('unit', 'USDT');
+    });
+
+    it('maps a TRC20 ↔ TRC20 swap transaction correctly', () => {
+      const mockTrc20Swap = {
+        ...swapTransactionMock,
+      } as unknown as TransactionInfo;
+
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTrc20Swap.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: mockAccount.address,
+          to: 'TContractAddress',
+          type: 'Transfer',
+          value: '100000000',
+        },
+        {
+          transaction_id: mockTrc20Swap.txID,
+          token_info: {
+            symbol: 'USDC',
+            address: 'TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8',
+            decimals: 6,
+            name: 'USD Coin',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TContractAddress',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '99500000',
+        },
+      ];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTrc20Swap,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Swap);
+      expect(result?.from[0]?.asset).toHaveProperty('unit', 'USDT');
+      expect(result?.from[0]?.asset).toHaveProperty('amount', '100');
+      expect(result?.to[0]?.asset).toHaveProperty('unit', 'USDC');
+      expect(result?.to[0]?.asset).toHaveProperty('amount', '99.5');
+    });
+  });
+
+  describe('Non-Swap Scenarios', () => {
+    it('does not detect a swap when only receiving TRC20 (no TRX movement)', () => {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const mockTx = {
+        ...swapTransactionMock,
+        internal_transactions: [],
+      } as unknown as TransactionInfo;
+
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTx.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TSomeOtherAddress',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '50000000',
+        },
+      ];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTx,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Receive);
+    });
+
+    it('does not detect a swap when only sending TRC20', () => {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const mockTx = {
+        ...swapTransactionMock,
+        internal_transactions: [],
+      } as unknown as TransactionInfo;
+
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTx.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: mockAccount.address,
+          to: 'TSomeOtherAddress',
+          type: 'Transfer',
+          value: '50000000',
+        },
+      ];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTx,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Send);
+    });
+
+    it('does not detect a swap when sending and receiving the same token (send to self)', () => {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const mockTx = {
+        ...swapTransactionMock,
+      } as unknown as TransactionInfo;
+
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTx.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: mockAccount.address,
+          to: 'TContract',
+          type: 'Transfer',
+          value: '100000000',
+        },
+        {
+          transaction_id: mockTx.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TContract',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '100000000',
+        },
+      ];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTx,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).not.toStrictEqual(TransactionType.Swap);
+    });
+
+    it('does not detect TRX swap when there are no internal transactions', () => {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const mockTx = {
+        ...swapTransactionMock,
+        internal_transactions: [],
+      } as unknown as TransactionInfo;
+
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTx.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TContract',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '50000000',
+        },
+      ];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTx,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Receive);
+    });
+
+    it('handles TRX movements with zero callValue correctly', () => {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const mockTx = {
+        ...swapTransactionMock,
+        internal_transactions: [
+          {
+            from_address: mockAccount.address.toLowerCase(),
+            to_address: 'TContractAddress',
+            data: {
+              call_value: { _: 0 },
+              note: '',
+              rejected: false,
+            },
+            internal_tx_id: 'internal-0',
+          },
+        ],
+      } as unknown as TransactionInfo;
+
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTx.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TContract',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '50000000',
+        },
+      ];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTx,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Receive);
+    });
+  });
+
+  describe('TRC20-Only Transactions', () => {
+    it('maps TRC20-only transactions in mapTransactions', () => {
+      const rawTransactions: TransactionInfo[] = [
+        nativeTransferMock,
+        trc10TransferMock,
+        trc20TransferMock,
+      ] as TransactionInfo[];
+
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const trc20Transactions = [
+        ...contractInfoMock.data,
+        {
+          transaction_id: 'trc20-only-tx-id',
+          token_info: {
+            symbol: 'AIRDROP',
+            address: 'TAirdropTokenAddress',
+            decimals: 18,
+            name: 'Airdrop Token',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TSomeContract',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '1000000000000000000',
+        },
+      ] as ContractTransactionInfo[];
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransactions({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        rawTransactions,
+        trc20Transactions,
+      });
+
+      // 3 raw transactions (native TRX + TRC10 + TRC20 send)
+      // + 3 TRC20-only (USDDOLD receive + USDT receive + airdrop)
+      expect(result).toHaveLength(6);
+      const airdropTx = result.find((tx) => tx.id === 'trc20-only-tx-id');
+      expect(airdropTx).toBeDefined();
+      expect(airdropTx?.type).toStrictEqual(TransactionType.Receive);
+      expect(airdropTx?.from[0]?.asset).toHaveProperty('unit', 'AIRDROP');
+      expect(airdropTx?.from[0]?.asset).toHaveProperty('amount', '1');
+    });
+  });
+
+  describe('TRX-Only Contract Interactions', () => {
+    it('maps a TriggerSmartContract with TRX call_value but no TRC20 data', () => {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      const mockTrxOnlyContract = {
+        ...trc20TransferMock,
+        raw_data: {
+          ...trc20TransferMock.raw_data,
+          contract: [
+            {
+              ...trc20TransferMock.raw_data.contract[0],
+              parameter: {
+                ...trc20TransferMock.raw_data.contract[0]?.parameter,
+                value: {
+                  owner_address: '41bace09b0c75ff01da2cb86cf05bc0d6d1af21f5d',
+                  contract_address:
+                    '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+                  call_value: 50000000, // 50 TRX
+                  data: '0x',
+                },
+              },
+            },
+          ],
+        },
+      } as unknown as TransactionInfo;
+      /* eslint-enable @typescript-eslint/naming-convention */
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTrxOnlyContract,
+        trc20Transfers: [],
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Send);
+      expect(result?.from[0]?.asset).toBeDefined();
+      expect(result?.from[0]?.asset).toHaveProperty('unit', 'TRX');
+      expect(result?.from[0]?.asset).toHaveProperty('amount', '50');
+      expect(result?.to[0]?.asset).toBeDefined();
+      expect(result?.to[0]?.asset).toHaveProperty('unit', 'TRX');
     });
   });
 });

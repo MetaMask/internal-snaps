@@ -90,6 +90,7 @@ const transactionsService = new TransactionsService({
   logger,
   transactionsRepository,
   trongridApiClient,
+  tronHttpClient,
 });
 
 const accountsService = new AccountsService({
@@ -150,6 +151,7 @@ const cronHandler = new CronHandler({
   accountsService,
   state,
   priceApiClient,
+  tronHttpClient,
 });
 const lifecycleHandler = new LifecycleHandler({
   logger,

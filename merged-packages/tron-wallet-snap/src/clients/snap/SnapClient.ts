@@ -366,23 +366,17 @@ export class SnapClient {
    * @param properties.origin - The origin of the request.
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
-   * @param properties.transactionType - The type of transaction.
-   * @param properties.transactionStatus - The status of the transaction.
    */
   async trackTransactionFinalised(properties: {
     origin: string;
     accountType: string;
     chainIdCaip: string;
-    transactionType: string;
-    transactionStatus: string;
   }): Promise<void> {
     await this.trackEvent(TransactionEventType.TransactionFinalised, {
       message: 'Snap transaction finalised',
       origin: properties.origin,
       account_type: properties.accountType,
       chain_id_caip: properties.chainIdCaip,
-      transaction_status: properties.transactionStatus,
-      transaction_type: properties.transactionType,
     });
   }
 }
