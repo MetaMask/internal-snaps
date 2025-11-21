@@ -843,11 +843,11 @@ export class AssetsService {
       return Boolean(savedAsset && hasZeroAmount(savedAsset));
     };
 
-    const isNativeAsset = (asset: AssetEntity): boolean =>
-      asset.assetType.includes('/slip44:195');
+    const isEssentialAsset = (asset: AssetEntity): boolean =>
+      ESSENTIAL_ASSETS.includes(asset.assetType);
 
     const shouldBeInRemovedList = (asset: AssetEntity): boolean =>
-      hasZeroAmount(asset) && !isNativeAsset(asset); // Never remove native assets from the account asset list
+      hasZeroAmount(asset) && !isEssentialAsset(asset); // Never remove essential assets (including energy & bandwidth) from the account asset list
 
     const shouldBeInAddedList = (asset: AssetEntity): boolean =>
       !shouldBeInRemovedList(asset) &&
