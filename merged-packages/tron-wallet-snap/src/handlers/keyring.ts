@@ -31,7 +31,7 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS, type Network } from '../constants';
-import type { TronKeyringAccount } from '../entities';
+import { asStrictKeyringAccount, type TronKeyringAccount } from '../entities';
 import { BackgroundEventMethod } from './cronjob';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
@@ -94,7 +94,7 @@ export class KeyringHandler implements Keyring {
     return result;
   }
 
-  async listAccounts(): Promise<TronKeyringAccount[]> {
+  async #listAccounts(): Promise<TronKeyringAccount[]> {
     try {
       const keyringAccounts = await this.#accountsService.getAll();
 
@@ -105,7 +105,13 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  async getAccount(accountId: string): Promise<TronKeyringAccount | undefined> {
+  async listAccounts(): Promise<KeyringAccount[]> {
+    return (await this.#listAccounts()).map(asStrictKeyringAccount);
+  }
+
+  async #getAccount(
+    accountId: string,
+  ): Promise<TronKeyringAccount | undefined> {
     try {
       const account =
         (await this.#accountsService.findById(accountId)) ?? undefined;
@@ -117,8 +123,14 @@ export class KeyringHandler implements Keyring {
     }
   }
 
+  async getAccount(accountId: string): Promise<KeyringAccount | undefined> {
+    const account = await this.#getAccount(accountId);
+
+    return account ? asStrictKeyringAccount(account) : undefined;
+  }
+
   async #getAccountOrThrow(accountId: string): Promise<TronKeyringAccount> {
-    const account = await this.getAccount(accountId);
+    const account = await this.#getAccount(accountId);
 
     if (!account) {
       throw new Error(`Account "${accountId}" not found`);
@@ -200,7 +212,7 @@ export class KeyringHandler implements Keyring {
       this.#logger.info('Listing account transactions...');
       const { limit, next } = pagination;
 
-      const keyringAccount = await this.getAccount(accountId);
+      const keyringAccount = await this.#getAccount(accountId);
 
       if (!keyringAccount) {
         throw new Error('Account not found');
