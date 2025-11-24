@@ -144,6 +144,7 @@ const clientRequestHandler = new ClientRequestHandler({
   feeCalculatorService,
   stakingService,
   confirmationHandler,
+  transactionsService,
 });
 const cronHandler = new CronHandler({
   logger,

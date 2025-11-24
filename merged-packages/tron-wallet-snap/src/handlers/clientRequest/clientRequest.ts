@@ -10,23 +10,6 @@ import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import { sha256 } from 'ethers';
 
-import type { SnapClient } from '../../clients/snap/SnapClient';
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import type { Network } from '../../constants';
-import { Networks } from '../../constants';
-import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { AssetsService } from '../../services/assets/AssetsService';
-import type {
-  NativeCaipAssetType,
-  StakedCaipAssetType,
-} from '../../services/assets/types';
-import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
-import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
-import type { SendService } from '../../services/send/SendService';
-import type { StakingService } from '../../services/staking/StakingService';
-import { assertOrThrow } from '../../utils/assertOrThrow';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
@@ -41,6 +24,25 @@ import {
   OnUnstakeAmountInputRequestStruct,
   SignAndSendTransactionRequestStruct,
 } from './validation';
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+import type { Network } from '../../constants';
+import { Networks } from '../../constants';
+import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { AssetsService } from '../../services/assets/AssetsService';
+import type {
+  NativeCaipAssetType,
+  StakedCaipAssetType,
+} from '../../services/assets/types';
+import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
+import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
+import type { SendService } from '../../services/send/SendService';
+import type { StakingService } from '../../services/staking/StakingService';
+import { TransactionMapper } from '../../services/transactions/TransactionsMapper';
+import type { TransactionsService } from '../../services/transactions/TransactionsService';
+import { assertOrThrow } from '../../utils/assertOrThrow';
+import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;
@@ -61,6 +63,8 @@ export class ClientRequestHandler {
 
   readonly #confirmationHandler: ConfirmationHandler;
 
+  readonly #transactionsService: TransactionsService;
+
   constructor({
     logger,
     accountsService,
@@ -71,6 +75,7 @@ export class ClientRequestHandler {
     snapClient,
     stakingService,
     confirmationHandler,
+    transactionsService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
@@ -81,6 +86,7 @@ export class ClientRequestHandler {
     snapClient: SnapClient;
     stakingService: StakingService;
     confirmationHandler: ConfirmationHandler;
+    transactionsService: TransactionsService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
@@ -91,6 +97,7 @@ export class ClientRequestHandler {
     this.#snapClient = snapClient;
     this.#stakingService = stakingService;
     this.#confirmationHandler = confirmationHandler;
+    this.#transactionsService = transactionsService;
   }
 
   /**
@@ -192,6 +199,16 @@ export class ClientRequestHandler {
     };
     const signedTx = await tronWeb.trx.sign(transaction);
     const result = await tronWeb.trx.sendRawTransaction(signedTx);
+
+    // Immediately create and save a minimal pending transaction
+    // This shows the transaction to the user right away
+    const pendingTransaction = TransactionMapper.createPendingTransaction({
+      txId: result.txid,
+      account,
+      scope,
+    });
+
+    await this.#transactionsService.save(pendingTransaction);
 
     /**
      * Track transaction after a transaction
@@ -390,6 +407,24 @@ export class ClientRequestHandler {
       fromAccountId,
       transaction,
     });
+
+    // Immediately create and save a detailed pending Send transaction
+    // This shows the transaction to the user right away with all details
+    const pendingTransaction = TransactionMapper.createPendingSendTransaction({
+      txId: result.txid,
+      account,
+      scope,
+      toAddress,
+      amount,
+      assetType: assetId,
+      assetSymbol: asset.symbol,
+    });
+
+    await this.#transactionsService.save(pendingTransaction);
+
+    this.#logger.log(
+      `Created pending Send transaction ${result.txid} for account ${account.id}`,
+    );
 
     return {
       transactionId: result.txid,

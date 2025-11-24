@@ -249,8 +249,7 @@ export class SendService {
       });
 
       // Schedule transaction tracking to monitor confirmation status
-      // The tracking job will determine transaction type from the transaction data
-      // and emit trackTransactionFinalised when confirmed
+      // The tracking job will fetch full details and update the transaction
       await this.#snapClient.scheduleBackgroundEvent({
         method: BackgroundEventMethod.TrackTransaction,
         params: {

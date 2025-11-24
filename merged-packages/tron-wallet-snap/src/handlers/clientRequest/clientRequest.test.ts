@@ -12,6 +12,7 @@ import type { ConfirmationHandler } from '../../services/confirmation/Confirmati
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
 import type { StakingService } from '../../services/staking/StakingService';
+import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { mockLogger } from '../../utils/mockLogger';
 
 describe('ClientRequestHandler - computeFee', () => {
@@ -25,6 +26,7 @@ describe('ClientRequestHandler - computeFee', () => {
   let mockStakingService: jest.Mocked<StakingService>;
   let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
   let mockTronWeb: any;
+  let mockTransactionsService: jest.Mocked<TransactionsService>;
 
   const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
   const TEST_TRANSACTION_BASE64 =
@@ -64,7 +66,9 @@ describe('ClientRequestHandler - computeFee', () => {
     mockSnapClient = {} as unknown as jest.Mocked<SnapClient>;
     mockStakingService = {} as unknown as jest.Mocked<StakingService>;
     mockConfirmationHandler = {} as unknown as jest.Mocked<ConfirmationHandler>;
-
+    mockTransactionsService = {
+      save: jest.fn(),
+    } as unknown as jest.Mocked<TransactionsService>;
     clientRequestHandler = new ClientRequestHandler({
       logger: mockLogger,
       accountsService: mockAccountsService,
@@ -75,6 +79,7 @@ describe('ClientRequestHandler - computeFee', () => {
       snapClient: mockSnapClient,
       stakingService: mockStakingService,
       confirmationHandler: mockConfirmationHandler,
+      transactionsService: mockTransactionsService,
     });
   });
 

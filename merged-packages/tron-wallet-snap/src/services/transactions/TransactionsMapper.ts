@@ -19,6 +19,140 @@ export class TransactionMapper {
   static readonly TRX_DECIMALS = 1_000_000;
 
   /**
+   * Creates a minimal pending transaction immediately after broadcast.
+   * This shows a placeholder transaction to the user while we wait for the
+   * background job to fetch full details from the blockchain.
+   *
+   * @param params - The parameters for creating the pending transaction
+   * @param params.txId - The transaction ID from the broadcast result
+   * @param params.account - The account that initiated the transaction
+   * @param params.scope - The network scope
+   * @returns A minimal pending transaction in keyring API format
+   */
+  static createPendingTransaction({
+    txId,
+    account,
+    scope,
+  }: {
+    txId: string;
+    account: TronKeyringAccount;
+    scope: Network;
+  }): Transaction {
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    return {
+      type: TransactionType.Unknown,
+      id: txId,
+      from: [
+        {
+          address: account.address,
+          asset: {
+            unit: 'TRX',
+            type: `${scope}/slip44:195`,
+            amount: '0',
+            fungible: true,
+          },
+        },
+      ],
+      to: [
+        {
+          address: account.address,
+          asset: {
+            unit: 'TRX',
+            type: `${scope}/slip44:195`,
+            amount: '0',
+            fungible: true,
+          },
+        },
+      ],
+      events: [
+        {
+          status: TransactionStatus.Unconfirmed,
+          timestamp,
+        },
+      ],
+      chain: scope,
+      status: TransactionStatus.Unconfirmed,
+      account: account.id,
+      timestamp,
+      fees: [],
+    };
+  }
+
+  /**
+   * Creates a detailed pending Send transaction immediately after broadcast.
+   * Uses the known transaction details to show a complete transaction to the user
+   * before blockchain confirmation.
+   *
+   * @param params - The parameters for creating the pending send transaction
+   * @param params.txId - The transaction ID from the broadcast result
+   * @param params.account - The account that initiated the transaction
+   * @param params.scope - The network scope
+   * @param params.toAddress - The recipient address
+   * @param params.amount - The amount being sent (in human-readable format)
+   * @param params.assetType - The CAIP asset type
+   * @param params.assetSymbol - The asset symbol (e.g., 'TRX', 'USDT')
+   * @returns A detailed pending Send transaction in keyring API format
+   */
+  static createPendingSendTransaction({
+    txId,
+    account,
+    scope,
+    toAddress,
+    amount,
+    assetType,
+    assetSymbol,
+  }: {
+    txId: string;
+    account: TronKeyringAccount;
+    scope: Network;
+    toAddress: string;
+    amount: string;
+    assetType: CaipAssetType;
+    assetSymbol: string;
+  }): Transaction {
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    return {
+      type: TransactionType.Send,
+      id: txId,
+      from: [
+        {
+          address: account.address,
+          asset: {
+            unit: assetSymbol,
+            type: assetType,
+            amount,
+            fungible: true,
+          },
+        },
+      ],
+      to: [
+        {
+          address: toAddress,
+          asset: {
+            unit: assetSymbol,
+            type: assetType,
+            amount,
+            fungible: true,
+          },
+        },
+      ],
+      events: [
+        {
+          status: TransactionStatus.Unconfirmed,
+          timestamp,
+        },
+      ],
+      chain: scope,
+      status: TransactionStatus.Unconfirmed,
+      account: account.id,
+      timestamp,
+      fees: [],
+    };
+  }
+
+  /**
    * Calculate fees for Tron transactions including Energy and Bandwidth as separate assets.
    *
    * @param network The network configuration.
