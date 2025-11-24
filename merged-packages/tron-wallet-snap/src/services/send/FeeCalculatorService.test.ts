@@ -131,8 +131,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:bandwidth',
               amount: '266',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -162,8 +160,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '0.266',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -205,8 +201,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:energy',
               amount: '100000',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -216,8 +210,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -227,8 +219,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '3',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -259,8 +249,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:energy',
               amount: '30000',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -270,8 +258,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -281,8 +267,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '10',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -318,8 +302,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:energy',
               amount: '100000',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -329,8 +311,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '3.345',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -363,8 +343,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:energy',
               amount: '30000',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -374,8 +352,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '10.345',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -405,8 +381,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '0.266',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -432,8 +406,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:2494104990/slip44:bandwidth',
               amount: '266',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -473,8 +445,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:energy',
               amount: '100000',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -484,8 +454,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -495,8 +463,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '3',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -540,8 +506,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:energy',
               amount: '100000',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
           {
@@ -551,8 +515,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:195',
               amount: '3.345',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);
@@ -578,8 +540,6 @@ describe('FeeCalculatorService', () => {
               type: 'tron:728126428/slip44:bandwidth',
               amount: '266',
               fungible: true,
-              imageSvg:
-                'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
             },
           },
         ]);

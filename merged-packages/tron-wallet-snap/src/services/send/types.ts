@@ -16,7 +16,7 @@ export type FeeAsset = {
   type: NativeCaipAssetType | ResourceCaipAssetType;
   amount: string;
   fungible: true;
-  imageSvg: string;
+  imageSvg?: string;
 };
 
 export type ComputeFeeResult = {

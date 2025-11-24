@@ -7,7 +7,6 @@ import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient
 // import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
-import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 
@@ -297,7 +296,6 @@ export class FeeCalculatorService {
           type: Networks[scope].energy.id,
           amount: energyConsumed.toString(),
           fungible: true as const,
-          imageSvg: getIconUrlForKnownAsset(Networks[scope].energy.id) ?? '',
         },
       });
     }
@@ -311,7 +309,6 @@ export class FeeCalculatorService {
           type: Networks[scope].bandwidth.id,
           amount: bandwidthConsumed.toString(),
           fungible: true as const,
-          imageSvg: getIconUrlForKnownAsset(Networks[scope].bandwidth.id) ?? '',
         },
       });
     }
@@ -347,8 +344,6 @@ export class FeeCalculatorService {
           type: Networks[scope].nativeToken.id,
           amount: Number(totalCostTRX.toFixed(6)).toString(),
           fungible: true as const,
-          imageSvg:
-            getIconUrlForKnownAsset(Networks[scope].nativeToken.id) ?? '',
         },
       });
     }
