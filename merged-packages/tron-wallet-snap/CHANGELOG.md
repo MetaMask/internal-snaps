@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1]
+
+### Fixed
+
+- `computeFee` error ([#108](https://github.com/MetaMask/snap-tron-wallet/pull/108))
+- Map freeze/unfreeze txs ([#107](https://github.com/MetaMask/snap-tron-wallet/pull/107))
+
 ## [1.10.0]
 
 ### Fixed
@@ -216,7 +223,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.8.1...v1.9.0
