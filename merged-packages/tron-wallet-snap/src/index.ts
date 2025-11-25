@@ -1,5 +1,4 @@
 import type {
-  OnActiveHandler,
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
@@ -16,7 +15,6 @@ import {
   clientRequestHandler,
   cronHandler,
   keyringHandler,
-  lifecycleHandler,
   rpcHandler,
   userInputHandler,
 } from './context';
@@ -65,7 +63,3 @@ export const onRpcRequest: OnRpcRequestHandler = async ({ origin, request }) =>
 
 export const onUserInput: OnUserInputHandler = async (params) =>
   withCatchAndThrowSnapError(async () => userInputHandler.handle(params));
-
-export const onActive: OnActiveHandler = async () => {
-  await withCatchAndThrowSnapError(async () => lifecycleHandler.onActive());
-};

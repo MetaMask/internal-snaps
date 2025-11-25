@@ -14,8 +14,11 @@ import {
 import type { ILogger } from '../utils/logger';
 import { createPrefixedLogger } from '../utils/logger';
 
+export enum CronjobMethod {
+  ContinuouslySynchronizeSelectedAccounts = 'onSynchronizeSelectedAccountsCronjob',
+}
+
 export enum BackgroundEventMethod {
-  ContinuouslySynchronizeSelectedAccounts = 'onContinuouslySynchronizeAccounts',
   SynchronizeSelectedAccounts = 'onSynchronizeSelectedAccounts',
   SynchronizeAccounts = 'onSynchronizeAccounts',
   SynchronizeAccount = 'onSynchronizeAccount',
@@ -62,15 +65,15 @@ export class CronHandler {
 
   async handle(request: JsonRpcRequest): Promise<void> {
     const { method, params } = request;
-    const { active } = await this.#snapClient.getClientStatus();
+    const { active, locked } = await this.#snapClient.getClientStatus();
 
-    if (!active) {
+    if (!active || locked) {
       return;
     }
 
-    switch (method as BackgroundEventMethod) {
-      case BackgroundEventMethod.ContinuouslySynchronizeSelectedAccounts:
-        await this.continuouslySynchronizeSelectedAccounts();
+    switch (method as CronjobMethod | BackgroundEventMethod) {
+      case CronjobMethod.ContinuouslySynchronizeSelectedAccounts:
+        await this.synchronizeSelectedAccounts();
         break;
       case BackgroundEventMethod.SynchronizeSelectedAccounts:
         await this.synchronizeSelectedAccounts();
@@ -102,21 +105,6 @@ export class CronHandler {
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
     }
-  }
-
-  /**
-   * A background job that continuously synchronizes selected accounts.
-   * It schedules itself while the extension is active to make sure the data is fresh.
-   */
-  async continuouslySynchronizeSelectedAccounts(): Promise<void> {
-    this.#logger.info('[Tick] Continuously synchronizing selected accounts...');
-
-    await this.synchronizeSelectedAccounts();
-
-    await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.ContinuouslySynchronizeSelectedAccounts,
-      duration: 'PT30S',
-    });
   }
 
   async synchronizeSelectedAccounts(): Promise<void> {
