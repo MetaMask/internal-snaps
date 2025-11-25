@@ -1,63 +1,28 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import type { SignedTransaction, Transaction } from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-// import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 
-/**
- * Common TRC-20 function selectors (first 4 bytes of keccak256 hash of function signature)
- * Used for decoding and better logging
- */
-const FUNCTION_SELECTORS: Record<string, string> = {
-  // TRC-20 Standard
-  a9059cbb: 'transfer(address,uint256)',
-  '23b872dd': 'transferFrom(address,address,uint256)',
-  '095ea7b3': 'approve(address,uint256)',
-  '70a08231': 'balanceOf(address)',
-  dd62ed3e: 'allowance(address,address)',
-  '18160ddd': 'totalSupply()',
-  '06fdde03': 'name()',
-  '95d89b41': 'symbol()',
-  '313ce567': 'decimals()',
-
-  // Common DeFi functions
-  '38ed1739':
-    'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
-  '7ff36ab5': 'swapExactETHForTokens(uint256,address[],address,uint256)',
-  '02751cec':
-    'removeLiquidity(address,address,uint256,uint256,uint256,address,uint256)',
-  e8e33700:
-    'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)',
-  '2e1a7d4d': 'withdraw(uint256)',
-  d0e30db0: 'deposit()',
-  '441a3e70': 'mint(uint256)',
-  '42966c68': 'burn(uint256)',
-};
-
 export class FeeCalculatorService {
   readonly #logger: ILogger;
-
-  // readonly #tronWebFactory: TronWebFactory;
 
   readonly #trongridApiClient: TrongridApiClient;
 
   constructor({
     logger,
-    // tronWebFactory,
     trongridApiClient,
   }: {
     logger: ILogger;
-    // tronWebFactory: TronWebFactory;
     trongridApiClient: TrongridApiClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[💸 FeeCalculatorService]');
-    // this.#tronWebFactory = tronWebFactory;
     this.#trongridApiClient = trongridApiClient;
   }
 
@@ -147,18 +112,9 @@ export class FeeCalculatorService {
   }
 
   /**
-   * Decode a function selector to its human-readable signature
-   *
-   * @param selector - The 8-character hex function selector
-   * @returns The function signature if known, otherwise the selector itself
-   */
-  #decodeFunctionSelector(selector: string): string {
-    return FUNCTION_SELECTORS[selector] ?? `transfer(address,uint256)`;
-  }
-
-  /**
    * Estimate energy consumption for contract calls of type TriggerSmartContract.
    * Uses direct TronGrid API call for accurate energy estimation.
+   * Based on TIP-544: https://github.com/tronprotocol/tips/blob/master/tip-544.md
    *
    * @param scope - The network scope for the contract
    * @param contract - The contract object from the transaction
@@ -173,6 +129,10 @@ export class FeeCalculatorService {
         data,
         owner_address: ownerAddress,
         contract_address: contractAddress,
+        call_value: callValue,
+        token_id: tokenId,
+        call_token_id: callTokenId,
+        call_token_value: callTokenValue,
       } = contract.parameter.value;
 
       if (!data) {
@@ -180,21 +140,16 @@ export class FeeCalculatorService {
         return 130000;
       }
 
-      // Extract function selector (first 8 hex chars) and parameters (rest)
-      // The data field contains: functionSelector (4 bytes = 8 hex) + encodedParameters
-      const functionSelector = data.slice(0, 8);
-      const parameter = data.slice(8);
-      const decodedFunction = this.#decodeFunctionSelector(functionSelector);
-
       this.#logger.log(
         {
           contractAddress,
           ownerAddress,
-          functionSelector,
-          decodedFunction,
-          parameterLength: parameter.length,
+          callValue,
+          tokenId,
+          callTokenId,
+          callTokenValue,
         },
-        `Estimating energy for ${decodedFunction}`,
+        `Estimating energy`,
       );
 
       const result = await this.#trongridApiClient.triggerConstantContract(
@@ -204,24 +159,24 @@ export class FeeCalculatorService {
            * These addresses are in hex format. If they weren't we would need to
            * pass `visible: true` to the request.
            */
-          // eslint-disable-next-line @typescript-eslint/naming-convention
           owner_address: ownerAddress,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
           contract_address: contractAddress,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          function_selector: decodedFunction,
-          parameter,
+          data,
+          call_value: callValue,
+          token_id: tokenId,
+          call_token_id: callTokenId,
+          call_token_value: callTokenValue,
         },
       );
 
       if (result.energy_used) {
         this.#logger.log(
           {
-            function: decodedFunction,
+            data: data.slice(0, 8),
             energyUsed: result.energy_used,
             energyPenalty: result.energy_penalty,
           },
-          `Energy estimate for ${decodedFunction}: ${result.energy_used} units`,
+          `Energy estimate for ${data.slice(0, 8)}: ${result.energy_used} units`,
         );
         return result.energy_used;
       }

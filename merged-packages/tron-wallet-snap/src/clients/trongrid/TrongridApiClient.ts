@@ -206,7 +206,13 @@ export class TrongridApiClient {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify(request),
+      body: JSON.stringify(
+        Object.fromEntries(
+          Object.entries(request).filter(
+            ([_key, value]) => value !== undefined && value !== null,
+          ),
+        ),
+      ),
     });
 
     if (!response.ok) {

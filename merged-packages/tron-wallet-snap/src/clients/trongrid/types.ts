@@ -201,8 +201,12 @@ export type ChainParameter = {
 export type TriggerConstantContractRequest = {
   owner_address: string;
   contract_address: string;
-  function_selector: string;
-  parameter: string;
+  data: string;
+  call_value?: number;
+  token_id?: number;
+  visible?: boolean; // Default to true
+  call_token_id?: number;
+  call_token_value?: number;
 };
 
 export type TriggerConstantContractResponse = {
