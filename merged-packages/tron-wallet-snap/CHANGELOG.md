@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1]
+
+### Fixed
+
+- Continuous synchronization of accounts not starting until we locked and unlocked the client ([#117](https://github.com/MetaMask/snap-tron-wallet/pull/117))
+- Could not send TRC20 tokens where decimals were `18` ([#115](https://github.com/MetaMask/snap-tron-wallet/pull/115))
+
 ## [1.12.0]
 
 ### Changed
@@ -235,7 +242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.10.0...v1.10.1
