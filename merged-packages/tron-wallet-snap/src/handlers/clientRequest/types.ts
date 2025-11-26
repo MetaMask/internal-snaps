@@ -14,6 +14,10 @@ export enum ClientRequestMethod {
   ConfirmStake = 'confirmStake',
   OnUnstakeAmountInput = 'onUnstakeAmountInput',
   ConfirmUnstake = 'confirmUnstake',
+  /**
+   * Sign Rewards Message
+   */
+  SignRewardsMessage = 'signRewardsMessage',
 }
 
 export enum SendErrorCodes {

@@ -22,12 +22,13 @@ import {
   OnConfirmUnstakeRequestStruct,
   OnStakeAmountInputRequestStruct,
   OnUnstakeAmountInputRequestStruct,
+  parseRewardsMessage,
   SignAndSendTransactionRequestStruct,
+  SignRewardsMessageRequestStruct,
 } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import type { Network } from '../../constants';
-import { Networks } from '../../constants';
+import { Network, Networks } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
@@ -143,6 +144,11 @@ export class ClientRequestHandler {
         return this.#handleOnUnstakeAmountInput(request);
       case ClientRequestMethod.ConfirmUnstake:
         return this.#handleConfirmUnstake(request);
+      /**
+       * Sign Rewards Message
+       */
+      case ClientRequestMethod.SignRewardsMessage:
+        return this.#handleSignRewardsMessage(request);
       default:
         throw new MethodNotFoundError() as Error;
     }
@@ -721,6 +727,65 @@ export class ClientRequestHandler {
     return {
       valid: true,
       errors: [],
+    };
+  }
+
+  /**
+   * Handles signing a rewards message without confirmation.
+   *
+   * @param request - The JSON-RPC request containing the message to sign.
+   * @returns The signature, signed message, and signature type.
+   */
+  async #handleSignRewardsMessage(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      SignRewardsMessageRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const {
+      params: { accountId, message },
+    } = request;
+
+    const account = await this.#accountsService.findById(accountId);
+    if (!account) {
+      throw new InvalidParamsError(`Account not found: ${accountId}`) as Error;
+    }
+
+    // Parse the rewards message to extract the address
+    const { address: messageAddress } = parseRewardsMessage(message);
+
+    // Validate that the address in the message matches the signing account
+    if (messageAddress !== account.address) {
+      throw new InvalidParamsError(
+        `Address in rewards message (${messageAddress}) does not match signing account address (${account.address})`,
+      ) as Error;
+    }
+
+    // Derive the private key for signing
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    // Create a TronWeb instance for message signing
+    // We can use any network scope since we're just signing a message
+    const tronWeb = this.#tronWebFactory.createClient(
+      Network.Mainnet,
+      privateKeyHex,
+    );
+
+    // Decode the base64 message to get the raw message
+    // eslint-disable-next-line no-restricted-globals
+    const decodedMessage = Buffer.from(message, 'base64').toString('utf8');
+
+    // Sign the message using TronWeb's signMessageV2
+    const signature = tronWeb.trx.signMessageV2(decodedMessage, privateKeyHex);
+
+    return {
+      signature,
+      signedMessage: message,
+      signatureType: 'secp256k1',
     };
   }
 }
