@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0]
+
+### Changed
+
+- Ensure only safe concurrent state operations ([#116](https://github.com/MetaMask/snap-tron-wallet/pull/116))
+
 ## [1.12.1]
 
 ### Fixed
@@ -242,7 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.10.1...v1.11.0
