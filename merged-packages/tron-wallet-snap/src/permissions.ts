@@ -5,7 +5,7 @@ import { TestDappRpcRequestMethod } from './handlers/rpc/types';
 
 const prodOrigins = ['https://portfolio.metamask.io'];
 
-const isDev = true; // TODO: Change me when we have a config provider
+const isDev = false; // TODO: Change me when we have a config provider
 const allowedOrigins = isDev ? ['http://localhost:3000'] : prodOrigins;
 
 const dappPermissions = isDev
