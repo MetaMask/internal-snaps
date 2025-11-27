@@ -483,7 +483,6 @@ describe('WalletService', () => {
       });
       expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
         Network.Shasta,
-        '0'.repeat(64),
       );
     });
 
