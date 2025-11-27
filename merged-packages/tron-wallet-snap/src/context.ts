@@ -24,6 +24,7 @@ import type { UnencryptedStateValue } from './services/state/State';
 import { State } from './services/state/State';
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
 import { TransactionsService } from './services/transactions/TransactionsService';
+import { WalletService } from './services/wallet/WalletService';
 import logger, { noOpLogger } from './utils/logger';
 
 /**
@@ -121,6 +122,12 @@ const stakingService = new StakingService({
   tronWebFactory,
 });
 
+const walletService = new WalletService({
+  logger,
+  accountsService,
+  tronWebFactory,
+});
+
 const confirmationHandler = new ConfirmationHandler({
   snapClient,
   state,
@@ -159,6 +166,8 @@ const keyringHandler = new KeyringHandler({
   accountsService,
   assetsService,
   transactionsService,
+  walletService,
+  confirmationHandler,
 });
 const rpcHandler = new RpcHandler({
   logger,
@@ -184,6 +193,7 @@ export type SnapExecutionContext = {
   accountsService: AccountsService;
   transactionsService: TransactionsService;
   sendService: SendService;
+  walletService: WalletService;
   tronHttpClient: TronHttpClient;
   tronWebFactory: TronWebFactory;
   confirmationHandler: ConfirmationHandler;
@@ -213,6 +223,7 @@ const snapContext: SnapExecutionContext = {
   accountsService,
   transactionsService,
   sendService,
+  walletService,
   tronHttpClient,
   tronWebFactory,
   confirmationHandler,

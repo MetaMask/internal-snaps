@@ -2,12 +2,12 @@
 import {
   KeyringEvent,
   ListAccountAssetsResponseStruct,
+  ResolveAccountAddressResponseStruct,
   type Balance,
   type DiscoveredAccount,
   type EntropySourceId,
   type Keyring,
   type KeyringAccount,
-  type KeyringAccountData,
   type KeyringRequest,
   type KeyringResponse,
   type Pagination,
@@ -18,8 +18,8 @@ import {
   emitSnapKeyringEvent,
   handleKeyringRequest,
 } from '@metamask/keyring-snap-sdk';
-import { SnapError } from '@metamask/snaps-sdk';
-import { array } from '@metamask/superstruct';
+import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
+import { array, assert } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
@@ -33,10 +33,13 @@ import type { SnapClient } from '../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS, type Network } from '../constants';
 import { asStrictKeyringAccount, type TronKeyringAccount } from '../entities';
 import { BackgroundEventMethod } from './cronjob';
+import type { TronMultichainMethod } from './keyring-types';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
+import type { ConfirmationHandler } from '../services/confirmation/ConfirmationHandler';
 import type { TransactionsService } from '../services/transactions/TransactionsService';
+import type { WalletService } from '../services/wallet/WalletService';
 import { withCatchAndThrowSnapError } from '../utils/errors';
 import { createPrefixedLogger, type ILogger } from '../utils/logger';
 import {
@@ -44,6 +47,7 @@ import {
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
   ListAccountAssetsStruct,
+  TronKeyringRequestStruct,
   UuidStruct,
 } from '../validation/structs';
 import {
@@ -63,24 +67,34 @@ export class KeyringHandler implements Keyring {
 
   readonly #transactionsService: TransactionsService;
 
+  readonly #walletService: WalletService;
+
+  readonly #confirmationHandler: ConfirmationHandler;
+
   constructor({
     logger,
     snapClient,
     accountsService,
     assetsService,
     transactionsService,
+    walletService,
+    confirmationHandler,
   }: {
     logger: ILogger;
     snapClient: SnapClient;
     accountsService: AccountsService;
     assetsService: AssetsService;
     transactionsService: TransactionsService;
+    walletService: WalletService;
+    confirmationHandler: ConfirmationHandler;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🔑 KeyringHandler]');
     this.#snapClient = snapClient;
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#transactionsService = transactionsService;
+    this.#walletService = walletService;
+    this.#confirmationHandler = confirmationHandler;
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
@@ -338,11 +352,31 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  resolveAccountAddress?(
+  /**
+   * Resolves an account address from a request.
+   * Routes to WalletService for address resolution and validation.
+   *
+   * @param scope - The CAIP-2 chain ID.
+   * @param request - The JSON-RPC request containing the address parameter.
+   * @returns The resolved account address in CAIP-10 format, or null if resolution fails.
+   */
+  async resolveAccountAddress(
     scope: CaipChainId,
     request: JsonRpcRequest,
-  ): Promise<ResolvedAccountAddress | null> {
-    throw new Error('Method not implemented.');
+  ): Promise<ResolvedAccountAddress> {
+    this.#logger.info('Resolving account address', { scope, request });
+
+    // Get all keyring accounts
+    const keyringAccounts = await this.#listAccounts();
+
+    // Resolve the address using the wallet service
+    const caip10Address = await this.#walletService.resolveAccountAddress(
+      keyringAccounts,
+      scope as Network,
+      request,
+    );
+
+    return caip10Address;
   }
 
   async filterAccountChains(id: string, chains: string[]): Promise<string[]> {
@@ -370,28 +404,50 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  exportAccount?(id: string): Promise<KeyringAccountData> {
-    throw new Error('Method not implemented.');
-  }
-
-  listRequests?(): Promise<KeyringRequest[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  getRequest?(id: string): Promise<KeyringRequest | undefined> {
-    throw new Error('Method not implemented.');
-  }
-
   async submitRequest(request: KeyringRequest): Promise<KeyringResponse> {
-    throw new Error('Method not implemented.');
+    return { pending: false, result: await this.#handleSubmitRequest(request) };
   }
 
-  approveRequest?(id: string, data?: Record<string, Json>): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
+  async #handleSubmitRequest(request: KeyringRequest): Promise<Json> {
+    assert(request, TronKeyringRequestStruct);
 
-  rejectRequest?(id: string): Promise<void> {
-    throw new Error('Method not implemented.');
+    this.#logger.log('Handling submitRequest', {
+      method: request.request.method,
+    });
+
+    const {
+      request: { method, params = {} },
+      scope,
+      account: accountId,
+    } = request;
+
+    const account = await this.#getAccountOrThrow(accountId);
+
+    if (scope && !account.scopes.includes(scope)) {
+      throw new Error(`Scope "${scope}" is not allowed for this account`);
+    }
+
+    if (!account.methods.includes(method)) {
+      throw new Error(`Method "${method}" is not allowed for this account`);
+    }
+
+    const isConfirmed = await this.#confirmationHandler.handleKeyringRequest({
+      request,
+      account,
+    });
+
+    if (!isConfirmed) {
+      throw new UserRejectedRequestError() as unknown as Error;
+    }
+
+    const result = await this.#walletService.handleKeyringRequest({
+      account,
+      scope,
+      method: method as TronMultichainMethod,
+      params,
+    });
+
+    return result;
   }
 
   /**

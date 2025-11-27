@@ -156,7 +156,7 @@ export class AccountsService {
         },
         exportable: true,
       },
-      methods: ['signMessageV2', 'verifyMessageV2'],
+      methods: ['signMessage', 'signTransaction'],
     };
   }
 
