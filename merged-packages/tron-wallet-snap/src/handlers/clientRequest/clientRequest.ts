@@ -12,7 +12,7 @@ import { sha256 } from 'ethers';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Network, Networks, NULL_ADDRESS } from '../../constants';
+import { Network, Networks, NULL_ADDRESS, ZERO } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
@@ -44,8 +44,6 @@ import {
   SignAndSendTransactionRequestStruct,
   SignRewardsMessageRequestStruct,
 } from './validation';
-
-const ZERO = new BigNumber(0);
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;

@@ -1,6 +1,9 @@
 import { TrxScope } from '@metamask/keyring-api';
+import { BigNumber } from 'bignumber.js';
 
 export const NULL_ADDRESS = 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb';
+export const ZERO = BigNumber(0);
+export const ACCOUNT_ACTIVATION_FEE_TRX = BigNumber(1);
 
 export enum Network {
   Mainnet = TrxScope.Mainnet,

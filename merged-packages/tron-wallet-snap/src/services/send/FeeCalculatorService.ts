@@ -6,7 +6,7 @@ import type { SignedTransaction, Transaction } from 'tronweb/lib/esm/types';
 import type { ComputeFeeResult } from './types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
-import { Networks } from '../../constants';
+import { ACCOUNT_ACTIVATION_FEE_TRX, Networks, ZERO } from '../../constants';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 
@@ -64,10 +64,10 @@ export class FeeCalculatorService {
       this.#logger.log(
         'No contracts found in transaction, assuming zero energy usage',
       );
-      return BigNumber(0);
+      return ZERO;
     }
 
-    let totalEnergy = BigNumber(0);
+    let totalEnergy = ZERO;
 
     for (const contract of contracts) {
       const contractType = contract.type as string;
@@ -81,7 +81,7 @@ export class FeeCalculatorService {
          */
         case 'TransferContract':
         case 'TransferAssetContract':
-          currentContractEnergy = BigNumber(0);
+          currentContractEnergy = ZERO;
           break;
         /**
          * TRC20
@@ -109,6 +109,25 @@ export class FeeCalculatorService {
     this.#logger.log(`Total energy for transaction: ${totalEnergy.toString()}`);
 
     return totalEnergy;
+  }
+
+  /**
+   * Check if an account is activated (exists on the network).
+   * An account is considered not activated if it has never received any assets.
+   *
+   * @param scope - The network scope to check
+   * @param address - The TRON address to check
+   * @returns Promise<boolean> - True if the account is activated, false otherwise
+   */
+  async #isAccountActivated(scope: Network, address: string): Promise<boolean> {
+    try {
+      await this.#trongridApiClient.getAccountInfoByAddress(scope, address);
+      return true;
+    } catch {
+      // If the account is not found, it means it's not activated
+      this.#logger.log(`Account ${address} is not activated on ${scope}`);
+      return false;
+    }
   }
 
   /**
@@ -193,6 +212,72 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Calculate account activation fees for the transaction.
+   * This happens when sending native TRX to addresses that haven't been activated yet.
+   *
+   * @param options - The options object
+   * @param options.scope - The network scope to check
+   * @param options.transaction - The transaction to check for activation fee requirement
+   * @returns Promise<BigNumber> - The total activation fees in TRX
+   */
+  async #accountActivationFees({
+    scope,
+    transaction,
+  }: {
+    scope: Network;
+    transaction: SignedTransaction & Transaction;
+  }): Promise<BigNumber> {
+    const contracts = transaction.raw_data.contract;
+
+    if (!contracts || contracts.length === 0) {
+      return ZERO;
+    }
+
+    // Collect all recipient addresses from TransferContract operations
+    const recipientAddresses: string[] = [];
+
+    for (const contract of contracts) {
+      if ((contract.type as string) === 'TransferContract') {
+        const { amount, to_address: toAddress } = contract.parameter.value as {
+          amount: number;
+          to_address: string;
+        };
+
+        if (amount > 0 && toAddress) {
+          recipientAddresses.push(toAddress);
+        }
+      }
+    }
+
+    if (recipientAddresses.length === 0) {
+      return ZERO;
+    }
+
+    // Check all addresses in parallel
+    const activationResults = await Promise.all(
+      recipientAddresses.map(async (address) => {
+        const isActivated = await this.#isAccountActivated(scope, address);
+        return { address, isActivated };
+      }),
+    );
+
+    // Count unactivated accounts and calculate total fees
+    const unactivatedCount = activationResults.filter(
+      ({ address, isActivated }) => {
+        if (!isActivated) {
+          this.#logger.log(
+            `Account ${address} is not activated, activation fee required`,
+          );
+          return true;
+        }
+        return false;
+      },
+    ).length;
+
+    return ACCOUNT_ACTIVATION_FEE_TRX.multipliedBy(unactivatedCount);
+  }
+
+  /**
    * Calculate complete fee breakdown for a TRON transaction
    * Handles both free resource consumption and TRX costs for overages
    *
@@ -222,27 +307,27 @@ export class FeeCalculatorService {
     const bandwidthNeeded = this.#calculateBandwidth(transaction);
     const energyNeeded = await this.#calculateEnergy(scope, transaction);
 
-    // Calculate consumption and overages:
-    // - Bandwidth: If we don't have enough, we pay for ALL of it in TRX (no partial consumption)
-    // - Energy: We consume what we have available, and pay TRX only for the overage
+    /**
+     * Calculate consumption and overages:
+     * - Bandwidth: If we don't have enough, we pay for ALL of it in TRX (no partial consumption)
+     * - Energy: We consume what we have available, and pay TRX only for the overage
+     */
     const hasEnoughBandwidth =
       availableBandwidth.isGreaterThanOrEqualTo(bandwidthNeeded);
-    const bandwidthConsumed = hasEnoughBandwidth
-      ? bandwidthNeeded
-      : BigNumber(0);
-    const bandwidthToPayInTRX = hasEnoughBandwidth
-      ? BigNumber(0)
-      : bandwidthNeeded;
+    const bandwidthConsumed = hasEnoughBandwidth ? bandwidthNeeded : ZERO;
+    const bandwidthToPayInTRX = hasEnoughBandwidth ? ZERO : bandwidthNeeded;
 
     const energyConsumed = BigNumber.min(energyNeeded, availableEnergy);
     const energyToPayInTRX = BigNumber.max(
       energyNeeded.minus(availableEnergy),
-      0,
+      ZERO,
     );
 
     const result: ComputeFeeResult = [];
 
-    // Add energy consumption fee if we're consuming any energy
+    /**
+     * Add energy consumption fee if we're consuming any energy
+     */
     if (energyConsumed.isGreaterThan(0)) {
       result.push({
         type: FeeType.Base,
@@ -255,7 +340,9 @@ export class FeeCalculatorService {
       });
     }
 
-    // Add bandwidth consumption fee if we're consuming any bandwidth
+    /**
+     * Add bandwidth consumption fee if we're consuming any bandwidth
+     */
     if (bandwidthConsumed.isGreaterThan(0)) {
       result.push({
         type: FeeType.Base,
@@ -268,7 +355,14 @@ export class FeeCalculatorService {
       });
     }
 
-    // Add TRX fee if we need to pay for bandwidth or energy overages
+    /**
+     * Now calculate the total TRX cost from all sources...
+     */
+    let totalTrxCost = ZERO;
+
+    /**
+     * First, overages in bandwidth and energy
+     */
     if (
       bandwidthToPayInTRX.isGreaterThan(0) ||
       energyToPayInTRX.isGreaterThan(0)
@@ -290,14 +384,32 @@ export class FeeCalculatorService {
       const energyCostTRX = energyToPayInTRX
         .multipliedBy(energyCost)
         .div(1_000_000); // Convert SUN to TRX
-      const totalCostTRX = bandwidthCostTRX.plus(energyCostTRX);
 
+      totalTrxCost = totalTrxCost.plus(bandwidthCostTRX).plus(energyCostTRX);
+    }
+
+    /**
+     * Second, account activation fees
+     */
+    const accountActivationFees = await this.#accountActivationFees({
+      scope,
+      transaction,
+    });
+
+    if (accountActivationFees.isGreaterThan(0)) {
+      totalTrxCost = totalTrxCost.plus(accountActivationFees);
+    }
+
+    /**
+     * Finally, add the TRX cost to the result
+     */
+    if (totalTrxCost.isGreaterThan(0)) {
       result.push({
         type: FeeType.Base,
         asset: {
           unit: Networks[scope].nativeToken.symbol,
           type: Networks[scope].nativeToken.id,
-          amount: Number(totalCostTRX.toFixed(6)).toString(),
+          amount: Number(totalTrxCost.toFixed(6)).toString(),
           fungible: true as const,
         },
       });

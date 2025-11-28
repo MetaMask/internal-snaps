@@ -3,7 +3,7 @@ import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 
 import { FeeCalculatorService } from './FeeCalculatorService';
-import { Network } from '../../constants';
+import { Network, ZERO } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from '../transactions/mocks/native-transfer.json';
 import trc10TransferMock from '../transactions/mocks/trc10-transfer.json';
@@ -16,6 +16,7 @@ const mockTronWebFactory = {
 const mockTrongridApiClient = {
   getChainParameters: jest.fn(),
   triggerConstantContract: jest.fn(),
+  getAccountInfoByAddress: jest.fn(),
 } as any;
 
 // Helper to get transaction examples in the expected format
@@ -111,7 +112,7 @@ describe('FeeCalculatorService', () => {
     describe('TransferContract scenarios (no energy needed)', () => {
       it('has enough bandwidth', async () => {
         const transaction = getTransactionExample('native');
-        const availableEnergy = BigNumber(0);
+        const availableEnergy = ZERO;
         const availableBandwidth = BigNumber(1000000); // More than needed
 
         const result = await feeCalculatorService.computeFee({
@@ -138,7 +139,7 @@ describe('FeeCalculatorService', () => {
 
       it('not enough bandwidth', async () => {
         const transaction = getTransactionExample('native');
-        const availableEnergy = BigNumber(0);
+        const availableEnergy = ZERO;
         const availableBandwidth = BigNumber(100); // Less than needed (266)
 
         const result = await feeCalculatorService.computeFee({
@@ -361,8 +362,8 @@ describe('FeeCalculatorService', () => {
     describe('Edge cases and error handling', () => {
       it('should filter out zero amount fees', async () => {
         const transaction = getTransactionExample('native');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(0);
+        const availableEnergy = ZERO;
+        const availableBandwidth = ZERO;
 
         const result = await feeCalculatorService.computeFee({
           scope: Network.Mainnet,
@@ -522,7 +523,7 @@ describe('FeeCalculatorService', () => {
 
       it('should handle exact resource matches', async () => {
         const transaction = getTransactionExample('native');
-        const availableEnergy = BigNumber(0);
+        const availableEnergy = ZERO;
         const availableBandwidth = BigNumber(266); // Exact match for native transaction
 
         const result = await feeCalculatorService.computeFee({
@@ -543,6 +544,158 @@ describe('FeeCalculatorService', () => {
             },
           },
         ]);
+      });
+    });
+
+    describe('Account activation fee scenarios', () => {
+      it('should add 1 TRX activation fee when recipient account is not activated', async () => {
+        // Mock the account check to throw (account not found)
+        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+          new Error('Account not found or no data returned'),
+        );
+
+        const transaction = getTransactionExample('native');
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000); // More than needed
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // Should have bandwidth consumption and 1 TRX activation fee
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '266',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '1',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('should add activation fee to existing TRX cost when recipient is not activated', async () => {
+        // Mock the account check to throw (account not found)
+        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+          new Error('Account not found or no data returned'),
+        );
+
+        const transaction = getTransactionExample('native');
+        const availableEnergy = ZERO;
+        const availableBandwidth = ZERO; // Not enough bandwidth, triggers TRX cost
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // Should have TRX cost for bandwidth (0.266) + activation fee (1) = 1.266 TRX
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '1.266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('should not add activation fee when recipient account is already activated', async () => {
+        // Mock the account check to succeed (account exists)
+        mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue({
+          address: 'TExistingActiveAddress123456789012',
+          balance: 1000000,
+        });
+
+        const transaction = getTransactionExample('native');
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000); // More than needed
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // Should only have bandwidth consumption, no activation fee
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('should not check activation for TRC20 transfers (no TransferContract)', async () => {
+        // Mock energy calculation for smart contracts
+        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+          energy_used: 130000,
+          result: { result: true },
+          constant_result: [],
+        });
+
+        const transaction = getTransactionExample('trc20');
+        const availableEnergy = BigNumber(130000); // Enough energy
+        const availableBandwidth = BigNumber(2000000); // More than needed
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // Should only have energy and bandwidth consumption, no activation check
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'ENERGY',
+              type: 'tron:728126428/slip44:energy',
+              amount: '130000',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '345',
+              fungible: true,
+            },
+          },
+        ]);
+
+        // getAccountInfoByAddress should not have been called for TRC20
+        expect(
+          mockTrongridApiClient.getAccountInfoByAddress,
+        ).not.toHaveBeenCalled();
       });
     });
   });
