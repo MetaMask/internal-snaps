@@ -1,6 +1,6 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
-import { bytesToBase64, stringToBytes } from '@metamask/utils';
+import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import { Network } from '../constants';
 import type { TronKeyringAccount } from '../entities';
@@ -22,6 +22,16 @@ import { mockLogger } from '../utils/mockLogger';
  */
 function toBase64(str: string): string {
   return bytesToBase64(stringToBytes(str));
+}
+
+/**
+ * Helper function to convert string to hex.
+ *
+ * @param str - The string to convert.
+ * @returns Hex encoded string (without 0x prefix).
+ */
+function toHex(str: string): string {
+  return bytesToHex(stringToBytes(str)).slice(2);
 }
 
 describe('KeyringHandler', () => {
@@ -173,7 +183,10 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignTransaction,
             params: {
               address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-              transaction: toBase64('transaction-data'),
+              transaction: {
+                rawDataHex: toHex('transaction-data'),
+                type: 'TransferContract',
+              },
             },
           },
         };
@@ -204,7 +217,10 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignTransaction,
             params: {
               address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-              transaction: toBase64('transaction-data'),
+              transaction: {
+                rawDataHex: toHex('transaction-data'),
+                type: 'TransferContract',
+              },
             },
           },
         };
@@ -258,7 +274,10 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignTransaction,
             params: {
               address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-              transaction: toBase64('transaction-data'),
+              transaction: {
+                rawDataHex: toHex('transaction-data'),
+                type: 'TransferContract',
+              },
             },
           },
         };

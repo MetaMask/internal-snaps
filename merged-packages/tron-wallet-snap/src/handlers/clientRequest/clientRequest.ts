@@ -190,7 +190,7 @@ export class ClientRequestHandler {
      */
     // eslint-disable-next-line no-restricted-globals
     const rawDataHex = Buffer.from(transactionBase64, 'base64').toString('hex');
-    const rawData = tronWeb.utils.transaction.DeserializeTransaction(
+    const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
       type,
       rawDataHex,
     );
@@ -535,7 +535,7 @@ export class ClientRequestHandler {
 
     // eslint-disable-next-line no-restricted-globals
     const rawDataHex = Buffer.from(transactionBase64, 'base64').toString('hex');
-    const rawData = tronWeb.utils.transaction.DeserializeTransaction(
+    const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
       type,
       rawDataHex,
     );

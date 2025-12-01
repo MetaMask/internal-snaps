@@ -55,7 +55,7 @@
     "jest-transform-stub": "2.0.0",
     "lodash": "^4.17.21",
     "prettier": "^3.5.3",
-    "tronweb": "patch:tronweb@npm%3A6.0.4#~/.yarn/patches/tronweb-npm-6.0.4-2b661b7651.patch",
+    "tronweb": "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch",
     "ts-jest": "^29.4.0"
   },
   "publishConfig": {

@@ -51,8 +51,8 @@ describe('ClientRequestHandler', () => {
 
       mockTronWeb = {
         utils: {
-          transaction: {
-            DeserializeTransaction: jest.fn(),
+          deserializeTx: {
+            deserializeTransaction: jest.fn(),
           },
         },
         trx: {
@@ -117,7 +117,7 @@ describe('ClientRequestHandler', () => {
         } as any);
 
         // Mock transaction deserialization
-        mockTronWeb.utils.transaction.DeserializeTransaction.mockReturnValue({
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
           contract: [
             {
               type: 'TriggerSmartContract',
@@ -204,7 +204,7 @@ describe('ClientRequestHandler', () => {
           'test-private-key',
         );
         expect(
-          mockTronWeb.utils.transaction.DeserializeTransaction,
+          mockTronWeb.utils.deserializeTx.deserializeTransaction,
         ).toHaveBeenCalledWith('TriggerSmartContract', expect.any(String));
         expect(mockTronWeb.trx.sign).toHaveBeenCalled();
         expect(mockAssetsService.getAssetsByAccountId).toHaveBeenCalledWith(
@@ -248,7 +248,7 @@ describe('ClientRequestHandler', () => {
           privateKeyHex: 'test-private-key',
         } as any);
 
-        mockTronWeb.utils.transaction.DeserializeTransaction.mockReturnValue({
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
           contract: [
             {
               type: 'TransferContract',
@@ -349,7 +349,7 @@ describe('ClientRequestHandler', () => {
           privateKeyHex: 'test-private-key',
         } as any);
 
-        mockTronWeb.utils.transaction.DeserializeTransaction.mockReturnValue(
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
           {},
         );
         mockTronWeb.trx.sign.mockResolvedValue({

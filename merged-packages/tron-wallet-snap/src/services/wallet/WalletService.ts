@@ -1,6 +1,7 @@
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
+import { sha256 } from 'ethers';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
@@ -173,7 +174,7 @@ export class WalletService {
 
   /**
    * Signs a Tron transaction.
-   * The transaction must be provided as a base64-encoded serialized transaction string.
+   * The transaction rawDataHex must be provided as a hex-encoded string.
    *
    * @param request - The sign transaction request.
    * @param request.account - The account to sign with.
@@ -194,7 +195,10 @@ export class WalletService {
       // Validate the params structure
       validateRequest(params, SignTransactionRequestStruct);
 
-      const { address, transaction: transactionBase64 } = params;
+      const {
+        address,
+        transaction: { rawDataHex, type },
+      } = params;
 
       // Derive the private key for signing
       const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
@@ -205,15 +209,22 @@ export class WalletService {
       // Create a TronWeb instance for transaction signing
       const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
-      // Deserialize the transaction from base64
-      // eslint-disable-next-line no-restricted-globals
-      const txBytes = Buffer.from(transactionBase64, 'base64');
+      // Rebuild the transaction from hex (same logic as clientRequest handler)
+      const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
+        type,
+        rawDataHex,
+      );
+      const txID = sha256(`0x${rawDataHex}`).slice(2);
+      const transaction = {
+        visible: false,
+        txID,
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        raw_data: rawData,
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        raw_data_hex: rawDataHex,
+      };
 
-      // Use TronWeb to deserialize and sign the transaction
-      // The transaction should be a protobuf-serialized transaction
-      const transaction = tronWeb.utils.transaction.txPbToTxID(txBytes);
-
-      // Sign the transaction
+      // Sign the rebuilt transaction
       const signedTx = await tronWeb.trx.sign(transaction, privateKeyHex);
 
       // Extract the signature from the signed transaction

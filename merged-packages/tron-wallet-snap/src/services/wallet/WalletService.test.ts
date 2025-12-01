@@ -1,5 +1,5 @@
 import { SnapError } from '@metamask/snaps-sdk';
-import { bytesToBase64, stringToBytes } from '@metamask/utils';
+import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import { WalletService } from './WalletService';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -20,6 +20,16 @@ import type { AccountsService } from '../accounts/AccountsService';
  */
 function toBase64(str: string): string {
   return bytesToBase64(stringToBytes(str));
+}
+
+/**
+ * Helper function to convert string to hex.
+ *
+ * @param str - The string to convert.
+ * @returns Hex encoded string (without 0x prefix).
+ */
+function toHex(str: string): string {
+  return bytesToHex(stringToBytes(str)).slice(2);
 }
 
 describe('WalletService', () => {
@@ -56,8 +66,8 @@ describe('WalletService', () => {
         }),
       },
       utils: {
-        transaction: {
-          txPbToTxID: jest.fn().mockReturnValue({ txID: 'tx123' }),
+        deserializeTx: {
+          deserializeTransaction: jest.fn().mockReturnValue({ contract: [] }),
         },
       },
       isAddress: jest.fn().mockReturnValue(true),
@@ -102,7 +112,10 @@ describe('WalletService', () => {
     it('routes signTransaction requests correctly', async () => {
       const params = {
         address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-        transaction: toBase64('transaction-data'),
+        transaction: {
+          rawDataHex: toHex('transaction-data'),
+          type: 'TransferContract',
+        },
       };
 
       const result = await walletService.handleKeyringRequest({
@@ -225,7 +238,10 @@ describe('WalletService', () => {
       const transactionData = 'transaction-data-bytes';
       const params = {
         address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-        transaction: toBase64(transactionData),
+        transaction: {
+          rawDataHex: toHex(transactionData),
+          type: 'TransferContract',
+        },
       };
 
       const result = await walletService.signTransaction({
@@ -241,10 +257,13 @@ describe('WalletService', () => {
       );
     });
 
-    it('deserializes transaction from base64', async () => {
+    it('deserializes transaction from hex', async () => {
       const params = {
         address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-        transaction: toBase64('tx-data'),
+        transaction: {
+          rawDataHex: toHex('tx-data'),
+          type: 'TransferContract',
+        },
       };
 
       await walletService.signTransaction({
@@ -253,14 +272,18 @@ describe('WalletService', () => {
         params,
       });
 
-      expect(mockTronWeb.utils.transaction.txPbToTxID).toHaveBeenCalled();
+      expect(
+        mockTronWeb.utils.deserializeTx.deserializeTransaction,
+      ).toHaveBeenCalled();
       expect(mockTronWeb.trx.sign).toHaveBeenCalled();
     });
 
     it('handles transaction format errors', async () => {
-      mockTronWeb.utils.transaction.txPbToTxID.mockImplementation(() => {
-        throw new Error('Failed to deserialize transaction');
-      });
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockImplementation(
+        () => {
+          throw new Error('Failed to deserialize transaction');
+        },
+      );
 
       await expect(
         walletService.signTransaction({
@@ -268,7 +291,10 @@ describe('WalletService', () => {
           scope: Network.Mainnet,
           params: {
             address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-            transaction: toBase64('valid-but-unparseable-transaction-data'),
+            transaction: {
+              rawDataHex: toHex('valid-but-unparseable-transaction-data'),
+              type: 'TransferContract',
+            },
           },
         }),
       ).rejects.toThrow('Failed to deserialize transaction');
@@ -296,7 +322,10 @@ describe('WalletService', () => {
         scope: Network.Mainnet,
         params: {
           address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-          transaction: toBase64('transaction-data'),
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
         },
       });
 
@@ -314,7 +343,10 @@ describe('WalletService', () => {
         scope: Network.Mainnet,
         params: {
           address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
-          transaction: toBase64('transaction-data'),
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
         },
       });
 
@@ -369,7 +401,10 @@ describe('WalletService', () => {
         params: {
           scope,
           address,
-          transaction: toBase64('transaction-data'),
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
         },
       };
 
