@@ -77,6 +77,7 @@ describe('StakingService', () => {
       transactionBuilder: {
         freezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
         unfreezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
+        vote: jest.fn().mockResolvedValue(mockTransaction),
       },
       trx: {
         sign: jest.fn().mockResolvedValue(mockSignedTransaction),

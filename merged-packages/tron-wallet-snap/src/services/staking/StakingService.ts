@@ -1,10 +1,11 @@
 import { parseCaipAssetType } from '@metamask/utils';
+import { BigNumber } from 'bignumber.js';
 import type { Resource } from 'tronweb/lib/esm/types';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import { KnownCaip19Id } from '../../constants';
+import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import type { ILogger } from '../../utils/logger';
@@ -66,15 +67,33 @@ export class StakingService {
     );
 
     const amountInSun = amount.multipliedBy(10 ** 6).toNumber();
-    const transaction = await tronWeb.transactionBuilder.freezeBalanceV2(
+    const stakingTransaction = await tronWeb.transactionBuilder.freezeBalanceV2(
       amountInSun,
       purpose,
       account.address,
     );
 
-    const signedTx = await tronWeb.trx.sign(transaction);
+    const signedStakingTransaction = await tronWeb.trx.sign(stakingTransaction);
 
-    await tronWeb.trx.sendRawTransaction(signedTx);
+    await tronWeb.trx.sendRawTransaction(signedStakingTransaction);
+
+    /**
+     * The amount of votes available from a stake is the closest integer to the amount of TRX staked.
+     */
+    const availableVotes = amount.integerValue(BigNumber.ROUND_DOWN).toNumber();
+
+    const voteAllocationTransaction = await tronWeb.transactionBuilder.vote(
+      {
+        [CONSENSYS_SR_NODE_ADDRESS]: availableVotes,
+      },
+      account.address,
+    );
+
+    const voteAllocationSignedTransaction = await tronWeb.trx.sign(
+      voteAllocationTransaction,
+    );
+
+    await tronWeb.trx.sendRawTransaction(voteAllocationSignedTransaction);
 
     /**
      * Sync account after the transaction happens
