@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "कैंसिल करें"
+    },
+    "confirmation.signMessage.title": {
+      "message": "संदेश साइन करें"
+    },
+    "confirmation.signMessage.message": {
+      "message": "संदेश"
+    },
+    "confirmation.account": {
+      "message": "अकाउंट"
     }
   }
 }

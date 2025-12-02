@@ -91,7 +91,7 @@ describe('KeyringHandler', () => {
       it('successfully signs a message', async () => {
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000001',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -131,7 +131,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000002',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -154,7 +154,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000003',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: '123e4567-e89b-42d3-a456-426614174999',
           scope: Network.Mainnet,
           request: {
@@ -176,7 +176,7 @@ describe('KeyringHandler', () => {
       it('successfully signs a transaction', async () => {
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000004',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -210,7 +210,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000005',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -241,7 +241,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000006',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Shasta,
           request: {
@@ -267,7 +267,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000007',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -290,7 +290,7 @@ describe('KeyringHandler', () => {
       it('throws error for malformed request structure', async () => {
         const invalidRequest = {
           id: '00000000-0000-4000-8000-000000000008',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: 'invalid-uuid',
           scope: Network.Mainnet,
           request: {
@@ -307,7 +307,7 @@ describe('KeyringHandler', () => {
       it('throws error for missing params', async () => {
         const request = {
           id: '00000000-0000-4000-8000-000000000009',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -330,7 +330,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000010',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -354,7 +354,7 @@ describe('KeyringHandler', () => {
 
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000011',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -386,7 +386,7 @@ describe('KeyringHandler', () => {
 
         const request1: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000012',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -400,7 +400,7 @@ describe('KeyringHandler', () => {
 
         const request2: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000013',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: account2.id,
           scope: Network.Mainnet,
           request: {
@@ -431,7 +431,7 @@ describe('KeyringHandler', () => {
       it('handles different networks correctly', async () => {
         const mainnetRequest: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000014',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Mainnet,
           request: {
@@ -445,7 +445,7 @@ describe('KeyringHandler', () => {
 
         const shastaRequest: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000015',
-          origin: 'test-origin',
+          origin: 'https://test-origin.com',
           account: mockAccount.id,
           scope: Network.Shasta,
           request: {

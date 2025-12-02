@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "Отмена"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Подписать сообщение"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Сообщение"
+    },
+    "confirmation.account": {
+      "message": "Аккаунт"
     }
   }
 }

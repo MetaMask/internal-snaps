@@ -1,5 +1,5 @@
 {
-  "locale": "en",
+  "locale": "zh",
   "messages": {
     "confirmation.transaction.title": {
       "message": "交易请求"
@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "取消"
+    },
+    "confirmation.signMessage.title": {
+      "message": "签署消息"
+    },
+    "confirmation.signMessage.message": {
+      "message": "消息"
+    },
+    "confirmation.account": {
+      "message": "账户"
     }
   }
 }

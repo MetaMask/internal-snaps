@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "İptal"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Mesajı imzala"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mesaj"
+    },
+    "confirmation.account": {
+      "message": "Hesap"
     }
   }
 }

@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "취소"
+    },
+    "confirmation.signMessage.title": {
+      "message": "메시지 서명"
+    },
+    "confirmation.signMessage.message": {
+      "message": "메시지"
+    },
+    "confirmation.account": {
+      "message": "계정"
     }
   }
 }

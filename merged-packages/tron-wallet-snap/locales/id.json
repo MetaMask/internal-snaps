@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "Batal"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Tanda tangani pesan"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Pesan"
+    },
+    "confirmation.account": {
+      "message": "Akun"
     }
   }
 }

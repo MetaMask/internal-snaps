@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "Annuler"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Signer le message"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Message"
+    },
+    "confirmation.account": {
+      "message": "Compte"
     }
   }
 }

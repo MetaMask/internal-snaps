@@ -3,12 +3,13 @@ import {
   KeyringRequestStruct,
   SolMethod,
 } from '@metamask/keyring-api';
-import type { Struct } from '@metamask/superstruct';
+import type { Infer, Struct } from '@metamask/superstruct';
 import {
   array,
   define,
   enums,
   integer,
+  literal,
   nullable,
   object,
   optional,
@@ -356,7 +357,7 @@ export const TronCaipAssetTypeStruct = union([
 ]) as Struct<string, null>;
 
 /**
- * Multichain API - signMessage validation
+ * Multichain API - signMessage validation (params only)
  */
 export const SignMessageRequestStruct = object({
   address: TronAddressStruct,
@@ -368,7 +369,7 @@ export const SignMessageResponseStruct = object({
 });
 
 /**
- * Multichain API - signTransaction validation
+ * Multichain API - signTransaction validation (params only)
  */
 export const SignTransactionRequestStruct = object({
   address: TronAddressStruct,
@@ -379,16 +380,34 @@ export const SignTransactionRequestStruct = object({
 });
 
 /**
+ * Full signMessage request object (method + params)
+ */
+export const SignMessageRequestObjectStruct = object({
+  method: literal(TronMultichainMethod.SignMessage),
+  params: SignMessageRequestStruct,
+});
+
+/**
+ * Full signTransaction request object (method + params)
+ */
+export const SignTransactionRequestObjectStruct = object({
+  method: literal(TronMultichainMethod.SignTransaction),
+  params: SignTransactionRequestStruct,
+});
+
+/**
  * Keyring Request validation for submitRequest
  */
 export const TronKeyringRequestStruct = object({
   ...KeyringRequestStruct.schema, // Re-use default schema as a base.
   scope: ScopeStringStruct,
-  request: object({
-    method: enums(Object.values(TronMultichainMethod)),
-    params: union([SignTransactionRequestStruct, SignMessageRequestStruct]),
-  }),
+  request: union([
+    SignMessageRequestObjectStruct,
+    SignTransactionRequestObjectStruct,
+  ]),
 });
+
+export type TronWalletKeyringRequest = Infer<typeof TronKeyringRequestStruct>;
 
 /**
  * Validation struct for resolveAccountAddress request

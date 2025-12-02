@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "Kanselahin"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Pirmahan ang mensahe"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mensahe"
+    },
+    "confirmation.account": {
+      "message": "Account"
     }
   }
 }

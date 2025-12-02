@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "Άκυρο"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Υπογραφή μηνύματος"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Μήνυμα"
+    },
+    "confirmation.account": {
+      "message": "Λογαριασμός"
     }
   }
 }

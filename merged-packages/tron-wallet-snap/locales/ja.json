@@ -42,6 +42,15 @@
     },
     "confirmation.cancelButton": {
       "message": "キャンセル"
+    },
+    "confirmation.signMessage.title": {
+      "message": "メッセージに署名"
+    },
+    "confirmation.signMessage.message": {
+      "message": "メッセージ"
+    },
+    "confirmation.account": {
+      "message": "アカウント"
     }
   }
 }
