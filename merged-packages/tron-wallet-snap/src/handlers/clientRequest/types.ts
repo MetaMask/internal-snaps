@@ -10,6 +10,7 @@ export enum ClientRequestMethod {
   /**
    * Staking + Unstaking
    */
+  ComputeStakeFee = 'computeStakeFee',
   OnStakeAmountInput = 'onStakeAmountInput',
   ConfirmStake = 'confirmStake',
   OnUnstakeAmountInput = 'onUnstakeAmountInput',

@@ -2,7 +2,7 @@ import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 
 import { ClientRequestHandler } from './clientRequest';
-import { ClientRequestMethod } from './types';
+import { ClientRequestMethod, SendErrorCodes } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network, Networks } from '../../constants';
@@ -696,5 +696,212 @@ describe('ClientRequestHandler', () => {
         ).rejects.toThrow('Invalid method parameter(s)');
       });
     });
+  });
+});
+
+describe('ClientRequestHandler - computeStakeFee', () => {
+  let clientRequestHandler: ClientRequestHandler;
+  let mockAccountsService: jest.Mocked<AccountsService>;
+  let mockAssetsService: jest.Mocked<AssetsService>;
+  let mockSendService: jest.Mocked<SendService>;
+  let mockFeeCalculatorService: jest.Mocked<FeeCalculatorService>;
+  let mockTronWebFactory: jest.Mocked<TronWebFactory>;
+  let mockSnapClient: jest.Mocked<SnapClient>;
+  let mockStakingService: jest.Mocked<StakingService>;
+  let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
+  let mockTransactionsService: jest.Mocked<TransactionsService>;
+  let mockTronWeb: any;
+
+  const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+
+  beforeEach(() => {
+    mockAccountsService = {
+      findByIdOrThrow: jest.fn(),
+      deriveTronKeypair: jest.fn(),
+    } as unknown as jest.Mocked<AccountsService>;
+
+    mockAssetsService = {
+      getAssetByAccountId: jest.fn(),
+      getAssetsByAccountId: jest.fn(),
+    } as unknown as jest.Mocked<AssetsService>;
+
+    mockSendService = {} as unknown as jest.Mocked<SendService>;
+
+    mockFeeCalculatorService = {
+      computeFee: jest.fn(),
+    } as unknown as jest.Mocked<FeeCalculatorService>;
+
+    mockTronWeb = {
+      trx: {
+        sign: jest.fn(),
+      },
+      transactionBuilder: {
+        freezeBalanceV2: jest.fn(),
+      },
+    };
+
+    mockTronWebFactory = {
+      createClient: jest.fn().mockReturnValue(mockTronWeb),
+    } as unknown as jest.Mocked<TronWebFactory>;
+
+    mockSnapClient = {} as unknown as jest.Mocked<SnapClient>;
+    mockStakingService = {} as unknown as jest.Mocked<StakingService>;
+    mockConfirmationHandler = {} as unknown as jest.Mocked<ConfirmationHandler>;
+    mockTransactionsService = {
+      save: jest.fn(),
+    } as unknown as jest.Mocked<TransactionsService>;
+    clientRequestHandler = new ClientRequestHandler({
+      logger: mockLogger,
+      accountsService: mockAccountsService,
+      assetsService: mockAssetsService,
+      sendService: mockSendService,
+      feeCalculatorService: mockFeeCalculatorService,
+      tronWebFactory: mockTronWebFactory,
+      snapClient: mockSnapClient,
+      stakingService: mockStakingService,
+      confirmationHandler: mockConfirmationHandler,
+      transactionsService: mockTransactionsService,
+    });
+  });
+
+  it('computes fee breakdown for TRX staking on mainnet', async () => {
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.ComputeStakeFee,
+      params: {
+        fromAccountId: TEST_ACCOUNT_ID,
+        value: '10',
+        options: {
+          purpose: 'ENERGY' as const,
+        },
+      },
+    };
+
+    const scope = Network.Mainnet;
+
+    // Mock account lookup
+    mockAccountsService.findByIdOrThrow.mockResolvedValue({
+      id: TEST_ACCOUNT_ID,
+      address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+      entropySource: 'test-entropy',
+      derivationPath: [],
+    } as any);
+
+    // Mock keypair derivation
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+    } as any);
+
+    const builtTransaction = {
+      txID: 'stake-tx-id',
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data: {
+        contract: [],
+      },
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data_hex: 'stake-hex',
+    };
+
+    mockTronWeb.transactionBuilder.freezeBalanceV2.mockResolvedValue(
+      builtTransaction,
+    );
+
+    const signedTransaction = {
+      ...builtTransaction,
+      signature: ['stake-signature'],
+    };
+    mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+
+    // Native TRX asset for mainnet
+    const nativeAssetId = Networks[scope].nativeToken.id;
+
+    // Mock native balance and resources
+    (mockAssetsService.getAssetByAccountId as jest.Mock).mockResolvedValue({
+      uiAmount: '100',
+    });
+    mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+      { rawAmount: '5000' }, // Bandwidth
+      { rawAmount: '100000' }, // Energy
+    ] as any);
+
+    const feeResult = [
+      {
+        type: FeeType.Base,
+        asset: {
+          unit: Networks[scope].energy.symbol,
+          type: Networks[scope].energy.id,
+          amount: '65000',
+          fungible: true as const,
+        },
+      },
+    ];
+    mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+
+    const result = await clientRequestHandler.handle(request as any);
+
+    expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
+      TEST_ACCOUNT_ID,
+    );
+    expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalled();
+    expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+      scope,
+      'test-private-key',
+    );
+    expect(mockTronWeb.transactionBuilder.freezeBalanceV2).toHaveBeenCalledWith(
+      10 * 10 ** 6,
+      'ENERGY',
+      'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+    );
+    expect(mockAssetsService.getAssetByAccountId).toHaveBeenCalledWith(
+      TEST_ACCOUNT_ID,
+      nativeAssetId,
+    );
+    expect(mockAssetsService.getAssetsByAccountId).toHaveBeenCalledWith(
+      TEST_ACCOUNT_ID,
+      [Networks[scope].bandwidth.id, Networks[scope].energy.id],
+    );
+    expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+      scope,
+      transaction: signedTransaction,
+      availableEnergy: BigNumber('100000'),
+      availableBandwidth: BigNumber('5000'),
+    });
+    expect(result).toStrictEqual(feeResult);
+  });
+
+  it('returns insufficient balance error when staking more than balance', async () => {
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '2',
+      method: ClientRequestMethod.ComputeStakeFee,
+      params: {
+        fromAccountId: TEST_ACCOUNT_ID,
+        value: '10',
+        options: {
+          purpose: 'BANDWIDTH' as const,
+        },
+      },
+    };
+
+    mockAccountsService.findByIdOrThrow.mockResolvedValue({
+      id: TEST_ACCOUNT_ID,
+      address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+      entropySource: 'test-entropy',
+      derivationPath: [],
+    } as any);
+
+    // Account has only 5 TRX
+    (mockAssetsService.getAssetByAccountId as jest.Mock).mockResolvedValue({
+      uiAmount: '5',
+    });
+
+    const result = (await clientRequestHandler.handle(request as any)) as any;
+
+    expect(result).toStrictEqual({
+      valid: false,
+      errors: [SendErrorCodes.InsufficientBalance],
+    });
+    expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
   });
 });
