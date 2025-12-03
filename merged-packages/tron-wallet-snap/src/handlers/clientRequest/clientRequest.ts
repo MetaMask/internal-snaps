@@ -520,7 +520,7 @@ export class ClientRequestHandler {
         scope,
         transaction: transactionBase64,
         accountId,
-        options: { visible, type },
+        options: { visible, type, feeLimit },
       },
     } = request;
 
@@ -577,6 +577,7 @@ export class ClientRequestHandler {
       transaction: signedTransaction,
       availableEnergy,
       availableBandwidth,
+      feeLimit,
     });
 
     assert(result, ComputeFeeResponseStruct);

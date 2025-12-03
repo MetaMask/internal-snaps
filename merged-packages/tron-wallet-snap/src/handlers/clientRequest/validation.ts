@@ -6,7 +6,9 @@ import {
   boolean,
   enums,
   is,
+  number,
   object,
+  optional,
   refine,
   string,
 } from '@metamask/superstruct';
@@ -114,6 +116,7 @@ export const ComputeFeeRequestParamsStruct = object({
   options: object({
     visible: boolean(),
     type: string(),
+    feeLimit: optional(number()),
   }),
 });
 

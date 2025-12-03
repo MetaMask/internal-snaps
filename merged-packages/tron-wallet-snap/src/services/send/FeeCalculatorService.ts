@@ -52,11 +52,13 @@ export class FeeCalculatorService {
    *
    * @param scope - The network scope for the transaction
    * @param transaction - The base64 encoded transaction
+   * @param feeLimit - Optional fee limit in SUN to use for fallback calculation
    * @returns Promise<BigNumber> - The calculated energy consumption
    */
   async #calculateEnergy(
     scope: Network,
     transaction: SignedTransaction & Transaction,
+    feeLimit?: number,
   ): Promise<BigNumber> {
     const contracts = transaction.raw_data.contract;
 
@@ -88,7 +90,11 @@ export class FeeCalculatorService {
          */
         case 'TriggerSmartContract': {
           currentContractEnergy = BigNumber(
-            await this.#estimateTriggerSmartContractEnergy(scope, contract),
+            await this.#estimateTriggerSmartContractEnergy(
+              scope,
+              contract,
+              feeLimit,
+            ),
           );
           break;
         }
@@ -131,18 +137,59 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Calculate fallback energy from fee limit.
+   * Uses fee limit and energy price to derive maximum energy that could be consumed.
+   *
+   * @param scope - The network scope for the contract
+   * @param feeLimit - The fee limit in SUN
+   * @returns Promise<number> - The calculated max energy from fee limit
+   */
+  async #calculateFallbackEnergyFromFeeLimit(
+    scope: Network,
+    feeLimit: number,
+  ): Promise<number> {
+    const chainParameters =
+      await this.#trongridApiClient.getChainParameters(scope);
+    const energyPrice =
+      chainParameters.find((param) => param.key === 'getEnergyFee')?.value ??
+      420; // Fallback to 420 SUN per energy unit
+
+    const maxEnergyFromFeeLimit = Math.floor(feeLimit / energyPrice);
+
+    this.#logger.log(
+      {
+        feeLimit,
+        energyPrice,
+        maxEnergyFromFeeLimit,
+      },
+      `Calculated fallback energy from fee limit`,
+    );
+
+    return maxEnergyFromFeeLimit;
+  }
+
+  /**
    * Estimate energy consumption for contract calls of type TriggerSmartContract.
    * Uses direct TronGrid API call for accurate energy estimation.
    * Based on TIP-544: https://github.com/tronprotocol/tips/blob/master/tip-544.md
    *
    * @param scope - The network scope for the contract
    * @param contract - The contract object from the transaction
-   * @returns Promise<number> - The estimated energy consumption (defaults to 130000 if estimation fails)
+   * @param feeLimit - Optional fee limit in SUN to use for fallback calculation
+   * @returns Promise<number> - The estimated energy consumption (defaults to 130000 if estimation fails without feeLimit)
    */
   async #estimateTriggerSmartContractEnergy(
     scope: Network,
     contract: any,
+    feeLimit?: number,
   ): Promise<number> {
+    const getFallbackEnergy = async (): Promise<number> => {
+      if (feeLimit !== undefined && feeLimit > 0) {
+        return this.#calculateFallbackEnergyFromFeeLimit(scope, feeLimit);
+      }
+      return 130000; // Default conservative estimate
+    };
+
     try {
       const {
         data,
@@ -156,7 +203,7 @@ export class FeeCalculatorService {
 
       if (!data) {
         this.#logger.warn('No data field found in contract, using fallback');
-        return 130000;
+        return getFallbackEnergy();
       }
 
       this.#logger.log(
@@ -201,13 +248,13 @@ export class FeeCalculatorService {
       }
 
       this.#logger.warn('No energy_used in result, using fallback');
-      return 130000;
+      return getFallbackEnergy();
     } catch (error) {
       this.#logger.error(
         { error },
         'Failed to estimate smart contract energy, using fallback',
       );
-      return 130000;
+      return getFallbackEnergy();
     }
   }
 
@@ -286,6 +333,7 @@ export class FeeCalculatorService {
    * @param params.transaction - The base64 encoded transaction
    * @param params.availableEnergy - Available energy from account
    * @param params.availableBandwidth - Available bandwidth from account
+   * @param params.feeLimit - Optional fee limit in SUN to use for fallback energy calculation
    * @returns Promise<ComputeFeeResult> - Complete fee breakdown
    */
   async computeFee({
@@ -293,11 +341,13 @@ export class FeeCalculatorService {
     transaction,
     availableEnergy,
     availableBandwidth,
+    feeLimit,
   }: {
     scope: Network;
     transaction: SignedTransaction & Transaction;
     availableEnergy: BigNumber;
     availableBandwidth: BigNumber;
+    feeLimit?: number;
   }): Promise<ComputeFeeResult> {
     this.#logger.log(
       'Calculating fee for transaction ',
@@ -305,7 +355,11 @@ export class FeeCalculatorService {
     );
 
     const bandwidthNeeded = this.#calculateBandwidth(transaction);
-    const energyNeeded = await this.#calculateEnergy(scope, transaction);
+    const energyNeeded = await this.#calculateEnergy(
+      scope,
+      transaction,
+      feeLimit,
+    );
 
     /**
      * Calculate consumption and overages:
