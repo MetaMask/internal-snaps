@@ -1,6 +1,8 @@
 import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
+import { createEventHandlers as createSignMessageEvents } from '../ui/confirmation/views/ConfirmSignMessage/events';
+import { createEventHandlers as createSignTransactionEvents } from '../ui/confirmation/views/ConfirmSignTransaction/events';
 import { createEventHandlers as createTransactionConfirmationEvents } from '../ui/confirmation/views/ConfirmTransactionRequest/events';
 import { withCatchAndThrowSnapError } from '../utils/errors';
 import { createPrefixedLogger, type ILogger } from '../utils/logger';
@@ -48,6 +50,8 @@ export class UserInputHandler {
 
     const uiEventHandlers: Record<string, (...args: any) => Promise<void>> = {
       ...createTransactionConfirmationEvents(this.#snapClient),
+      ...createSignMessageEvents(this.#snapClient),
+      ...createSignTransactionEvents(this.#snapClient),
     };
 
     /**

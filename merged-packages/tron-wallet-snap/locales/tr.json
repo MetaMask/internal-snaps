@@ -23,7 +23,7 @@
       "message": "Talebi gönderen"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Bu, onayınızı isteyen sitedir."
     },
     "confirmation.from": {
       "message": "Gönderen"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Hesap"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "İşlemi imzala"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Tahmini değişiklikler mevcut değil"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Tahmini değişiklik yok"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Güvenlik kontrolü başarısız oldu"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "İşlem güvenliği doğrulanamadı"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Uyarı"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Bu işlem riskli olabilir. Dikkatli ilerleyin."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Tehlike"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Bu işlem kötü niyetli görünüyor. Reddetmenizi şiddetle tavsiye ediyoruz."
     }
   }
 }

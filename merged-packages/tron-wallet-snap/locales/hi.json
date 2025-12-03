@@ -23,7 +23,7 @@
       "message": "इनसे मिला अनुरोध"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "यह वह साइट है जो आपकी पुष्टि मांग रही है।"
     },
     "confirmation.from": {
       "message": "से"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "अकाउंट"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "ट्रांसेक्शन साइन करें"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "अनुमानित बदलाव उपलब्ध नहीं हैं"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "कोई अनुमानित बदलाव नहीं"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "सुरक्षा जांच विफल"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "ट्रांसेक्शन सुरक्षा सत्यापित नहीं की जा सकी"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "चेतावनी"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "यह ट्रांसेक्शन जोखिम भरा हो सकता है। सावधानी से आगे बढ़ें।"
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "खतरा"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "यह ट्रांसेक्शन दुर्भावनापूर्ण प्रतीत होता है। हम इसे अस्वीकार करने की दृढ़ता से सलाह देते हैं।"
     }
   }
 }

@@ -23,7 +23,7 @@
       "message": "Anfrage von"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Dies ist die Website, die um Ihre Bestätigung bittet."
     },
     "confirmation.from": {
       "message": "Von"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Konto"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Transaktion signieren"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Geschätzte Änderungen sind nicht verfügbar"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Keine geschätzten Änderungen"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Sicherheitsüberprüfung fehlgeschlagen"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "Transaktionssicherheit konnte nicht überprüft werden"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Warnung"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Diese Transaktion kann riskant sein. Vorsichtig fortfahren."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Gefahr"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Diese Transaktion scheint bösartig zu sein. Wir empfehlen dringend, sie abzulehnen."
     }
   }
 }

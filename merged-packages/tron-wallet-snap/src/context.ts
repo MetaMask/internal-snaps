@@ -1,5 +1,6 @@
 import { InMemoryCache } from './caching/InMemoryCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
+import { SecurityAlertsApiClient } from './clients/security-alerts-api/SecurityAlertsApiClient';
 import { SnapClient } from './clients/snap/SnapClient';
 import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
@@ -22,6 +23,7 @@ import { SendService } from './services/send/SendService';
 import { StakingService } from './services/staking/StakingService';
 import type { UnencryptedStateValue } from './services/state/State';
 import { State } from './services/state/State';
+import { TransactionScanService } from './services/transaction-scan/TransactionScanService';
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
 import { TransactionsService } from './services/transactions/TransactionsService';
 import { WalletService } from './services/wallet/WalletService';
@@ -74,6 +76,12 @@ const priceApiClient = new PriceApiClient(configProvider, priceCache);
 
 // Token API client
 const tokenApiClient = new TokenApiClient(configProvider);
+
+// Security Alerts API client
+const securityAlertsApiClient = new SecurityAlertsApiClient(
+  configProvider,
+  logger,
+);
 
 // Business Services - depend on Repositories, State and other Services
 const assetsService = new AssetsService({
@@ -128,6 +136,11 @@ const walletService = new WalletService({
   tronWebFactory,
 });
 
+const transactionScanService = new TransactionScanService(
+  securityAlertsApiClient,
+  logger,
+);
+
 const confirmationHandler = new ConfirmationHandler({
   snapClient,
   state,
@@ -159,6 +172,7 @@ const cronHandler = new CronHandler({
   state,
   priceApiClient,
   tronHttpClient,
+  transactionScanService,
 });
 const keyringHandler = new KeyringHandler({
   logger,
@@ -197,6 +211,7 @@ export type SnapExecutionContext = {
   tronHttpClient: TronHttpClient;
   tronWebFactory: TronWebFactory;
   confirmationHandler: ConfirmationHandler;
+  transactionScanService: TransactionScanService;
   /**
    * Handlers
    */
@@ -227,6 +242,7 @@ const snapContext: SnapExecutionContext = {
   tronHttpClient,
   tronWebFactory,
   confirmationHandler,
+  transactionScanService,
   /**
    * Handlers
    */

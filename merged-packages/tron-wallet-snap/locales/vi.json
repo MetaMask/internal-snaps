@@ -23,7 +23,7 @@
       "message": "Yêu cầu từ"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Đây là trang web yêu cầu xác nhận của bạn."
     },
     "confirmation.from": {
       "message": "Từ"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Tài khoản"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Ký giao dịch"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Thay đổi ước tính không khả dụng"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Không có thay đổi ước tính"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Kiểm tra bảo mật không thành công"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "Không thể xác minh tính an toàn của giao dịch"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Cảnh báo"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Giao dịch này có thể có rủi ro. Hãy tiếp tục thận trọng."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Nguy hiểm"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Giao dịch này có vẻ độc hại. Chúng tôi đề nghị mạnh mẽ rằng bạn từ chối nó."
     }
   }
 }

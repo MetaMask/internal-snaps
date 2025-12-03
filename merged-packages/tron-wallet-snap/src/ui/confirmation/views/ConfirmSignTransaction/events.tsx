@@ -1,12 +1,11 @@
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 
 /**
- * Handles the click event for the cancel button.
+ * Handle cancel button click by resolving the interface with a falsy value.
  *
  * @param snapClient - The SnapClient instance for API interactions.
  * @param options - The options bag.
  * @param options.id - The interface id.
- * @returns A promise that resolves when the interface has been updated.
  */
 async function onCancelButtonClick(
   snapClient: SnapClient,
@@ -17,12 +16,11 @@ async function onCancelButtonClick(
 }
 
 /**
- * Handles the click event for the confirm button.
+ * Handle confirm button click by resolving the interface with a truthy value.
  *
  * @param snapClient - The SnapClient instance for API interactions.
  * @param options - The options bag.
  * @param options.id - The interface id.
- * @returns A promise that resolves when the interface has been updated.
  */
 async function onConfirmButtonClick(
   snapClient: SnapClient,
@@ -32,9 +30,9 @@ async function onConfirmButtonClick(
   await snapClient.resolveInterface(id, true);
 }
 
-export enum ConfirmSignMessageFormNames {
-  Cancel = 'confirm-sign-message-cancel',
-  Confirm = 'confirm-sign-message-confirm',
+export enum ConfirmSignTransactionFormNames {
+  Cancel = 'confirm-sign-transaction-cancel',
+  Confirm = 'confirm-sign-transaction-confirm',
 }
 
 /**
@@ -47,9 +45,10 @@ export function createEventHandlers(
   snapClient: SnapClient,
 ): Record<string, (options: { id: string }) => Promise<void>> {
   return {
-    [ConfirmSignMessageFormNames.Cancel]: async (options: { id: string }) =>
+    [ConfirmSignTransactionFormNames.Cancel]: async (options: { id: string }) =>
       onCancelButtonClick(snapClient, options),
-    [ConfirmSignMessageFormNames.Confirm]: async (options: { id: string }) =>
-      onConfirmButtonClick(snapClient, options),
+    [ConfirmSignTransactionFormNames.Confirm]: async (options: {
+      id: string;
+    }) => onConfirmButtonClick(snapClient, options),
   };
 }

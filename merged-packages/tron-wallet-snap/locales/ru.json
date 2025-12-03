@@ -23,7 +23,7 @@
       "message": "Запрос от"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Это сайт, запрашивающий ваше подтверждение."
     },
     "confirmation.from": {
       "message": "От"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Аккаунт"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Подписать транзакцию"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Прогнозируемые изменения недоступны"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Нет прогнозируемых изменений"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Проверка безопасности не удалась"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "Невозможно проверить безопасность транзакции"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Предупреждение"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Эта транзакция может быть рискованной. Действуйте осторожно."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Опасность"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Эта транзакция кажется вредоносной. Мы настоятельно рекомендуем отклонить её."
     }
   }
 }

@@ -23,7 +23,7 @@
       "message": "Kahilingan mula sa/kay"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Ito ang site na humihiling ng iyong kumpirmasyon."
     },
     "confirmation.from": {
       "message": "Mula sa"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Account"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Pirmahan ang transaksyon"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Hindi available ang tinatayang mga pagbabago"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Walang tinatayang mga pagbabago"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Nabigo ang pagsusuri ng seguridad"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "Hindi ma-verify ang kaligtasan ng transaksyon"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Babala"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Ang transaksyong ito ay maaaring mapanganib. Magpatuloy nang may pag-iingat."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Panganib"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Ang transaksyong ito ay mukhang mapaminsala. Lubos naming inirerekomenda na tanggihan ito."
     }
   }
 }

@@ -51,23 +51,20 @@ export const ConfirmSignMessage = ({
           <Heading size="lg">
             {translate('confirmation.signMessage.title')}
           </Heading>
+          <Box>{null}</Box>
         </Box>
 
         <Section>
-          <Box direction="horizontal" center>
-            <SnapText fontWeight="medium">
-              {translate('confirmation.signMessage.message')}
-            </SnapText>
-          </Box>
-          <Box alignment="space-between">
-            <SnapText>{message}</SnapText>
-          </Box>
+          <SnapText fontWeight="medium">
+            {translate('confirmation.signMessage.message')}
+          </SnapText>
+          <SnapText>{message}</SnapText>
         </Section>
 
         <Section>
           {origin ? (
             <Box alignment="space-between" direction="horizontal">
-              <Box alignment="space-between" direction="horizontal" center>
+              <Box direction="horizontal" alignment="start">
                 <SnapText fontWeight="medium" color="alternative">
                   {translate('confirmation.origin')}
                 </SnapText>
@@ -88,13 +85,11 @@ export const ConfirmSignMessage = ({
             <SnapText fontWeight="medium" color="alternative">
               {translate('confirmation.network')}
             </SnapText>
-            <Box direction="horizontal" alignment="center">
-              <Box alignment="center" center>
-                <Image
-                  borderRadius="medium"
-                  src={networkImage ?? TRX_IMAGE_SVG}
-                />
-              </Box>
+            <Box direction="horizontal" alignment="end">
+              <Image
+                borderRadius="medium"
+                src={networkImage ?? TRX_IMAGE_SVG}
+              />
               <SnapText>{Networks[scope].name}</SnapText>
             </Box>
           </Box>

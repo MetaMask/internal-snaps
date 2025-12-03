@@ -23,7 +23,7 @@
       "message": "要求元"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "これは確認を求めているサイトです。"
     },
     "confirmation.from": {
       "message": "送信元"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "アカウント"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "トランザクションに署名"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "予測される増減額は利用できません"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "予測される増減額はありません"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "セキュリティチェックに失敗しました"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "トランザクションの安全性を確認できません"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "警告"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "このトランザクションはリスクがある可能性があります。注意して進めてください。"
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "危険"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "このトランザクションは悪意のあるものと思われます。拒否することを強くお勧めします。"
     }
   }
 }

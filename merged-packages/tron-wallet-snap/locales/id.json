@@ -23,7 +23,7 @@
       "message": "Permintaan dari"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Ini adalah situs yang meminta konfirmasi Anda."
     },
     "confirmation.from": {
       "message": "Dari"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Akun"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Tanda tangani transaksi"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Estimasi perubahan tidak tersedia"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Tidak ada estimasi perubahan"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Pemeriksaan keamanan gagal"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "Tidak dapat memverifikasi keamanan transaksi"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Peringatan"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Transaksi ini mungkin berisiko. Lanjutkan dengan hati-hati."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Bahaya"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Transaksi ini tampaknya berbahaya. Kami sangat menyarankan untuk menolaknya."
     }
   }
 }

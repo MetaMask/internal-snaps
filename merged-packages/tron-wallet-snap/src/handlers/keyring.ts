@@ -2,7 +2,6 @@
 import {
   KeyringEvent,
   ListAccountAssetsResponseStruct,
-  ResolveAccountAddressResponseStruct,
   type Balance,
   type DiscoveredAccount,
   type EntropySourceId,

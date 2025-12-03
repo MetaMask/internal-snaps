@@ -55,6 +55,11 @@ describe('ConfirmSignMessage render', () => {
       showDialog: jest.fn().mockResolvedValue(true),
       getPreferences: jest.fn().mockResolvedValue(mockPreferences),
     } as any;
+
+    // Update mocked context with our mocks
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
+    const snapContext = require('../../../../context').default;
+    snapContext.snapClient = mockSnapClient;
   });
 
   it('renders the confirmation dialog with correct props', async () => {
@@ -75,7 +80,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    await render(mockSnapClient, request, mockAccount);
+    await render(request, mockAccount);
 
     // Verify createInterface was called
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -106,7 +111,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    await render(mockSnapClient, request, mockAccount);
+    await render(request, mockAccount);
 
     // Verify createInterface was called (message decoding happened internally)
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -131,7 +136,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    await render(mockSnapClient, request, mockAccount);
+    await render(request, mockAccount);
 
     // Should still create interface even when preferences fail
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -153,7 +158,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    await render(mockSnapClient, request, mockAccount);
+    await render(request, mockAccount);
 
     // Should create interface even with missing origin (formatOrigin handles it)
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -174,7 +179,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    await render(mockSnapClient, request, mockAccount);
+    await render(request, mockAccount);
 
     // Verify render completes successfully with Shasta scope
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -198,7 +203,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    const result = await render(mockSnapClient, request, mockAccount);
+    const result = await render(request, mockAccount);
 
     expect(result).toBe(expectedResult);
   });
@@ -218,7 +223,7 @@ describe('ConfirmSignMessage render', () => {
       },
     };
 
-    await render(mockSnapClient, request, mockAccount);
+    await render(request, mockAccount);
 
     // Verify interface was created with TRX image
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);

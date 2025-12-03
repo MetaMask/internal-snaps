@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Account"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Sign transaction"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Estimated changes are not available"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "No estimated changes"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Security check failed"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "Unable to verify transaction safety"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Warning"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "This transaction may be risky. Proceed with caution."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Danger"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "This transaction appears to be malicious. We strongly recommend rejecting it."
     }
   }
 }

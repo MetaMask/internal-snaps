@@ -23,7 +23,7 @@
       "message": "请求来自"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "这是请求您确认的网站。"
     },
     "confirmation.from": {
       "message": "从"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "账户"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "签署交易"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "预计变化不可用"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "无预计变化"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "安全检查失败"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "无法验证交易安全性"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "警告"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "此交易可能存在风险。请谨慎操作。"
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "危险"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "此交易似乎是恶意的。我们强烈建议您拒绝它。"
     }
   }
 }

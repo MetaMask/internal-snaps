@@ -23,7 +23,7 @@
       "message": "Solicitud de"
     },
     "confirmation.origin.tooltip": {
-      "message": "This is the site asking for your confirmation."
+      "message": "Este es el sitio que solicita su confirmación."
     },
     "confirmation.from": {
       "message": "De"
@@ -51,6 +51,33 @@
     },
     "confirmation.account": {
       "message": "Cuenta"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Firmar transacción"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Los cambios estimados no están disponibles"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Sin cambios estimados"
+    },
+    "confirmation.securityAlert.error": {
+      "message": "Falló la verificación de seguridad"
+    },
+    "confirmation.securityAlert.unavailable": {
+      "message": "No se pudo verificar la seguridad de la transacción"
+    },
+    "confirmation.securityAlert.warning.title": {
+      "message": "Advertencia"
+    },
+    "confirmation.securityAlert.warning.message": {
+      "message": "Esta transacción puede ser riesgosa. Proceda con precaución."
+    },
+    "confirmation.securityAlert.malicious.title": {
+      "message": "Peligro"
+    },
+    "confirmation.securityAlert.malicious.message": {
+      "message": "Esta transacción parece ser maliciosa. Recomendamos encarecidamente rechazarla."
     }
   }
 }
