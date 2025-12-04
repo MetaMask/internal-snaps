@@ -2,7 +2,6 @@ import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type {
   BroadcastReturn,
-  SignedTransaction,
   Transaction,
   TransferAssetContract,
   TransferContract,
@@ -54,9 +53,9 @@ export class SendService {
     asset: AssetEntity;
     amount: number;
   }): Promise<
-    | (SignedTransaction & Transaction<TransferContract>)
-    | (SignedTransaction & Transaction<TransferAssetContract>)
-    | (SignedTransaction & Transaction<TriggerSmartContract>)
+    | Transaction<TransferContract>
+    | Transaction<TransferAssetContract>
+    | Transaction<TriggerSmartContract>
   > {
     const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
       asset.assetType,
@@ -115,24 +114,17 @@ export class SendService {
     fromAccountId: string;
     toAddress: string;
     amount: number;
-  }): Promise<SignedTransaction & Transaction<TransferContract>> {
+  }): Promise<Transaction<TransferContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+    const tronWeb = this.#tronWebFactory.createClient(scope);
 
     const amountInSun = amount * 1e6; // Convert TRX to sun
-    const transaction = await tronWeb.transactionBuilder.sendTrx(
+    return tronWeb.transactionBuilder.sendTrx(
       toAddress,
       amountInSun,
+      account.address,
     );
-    const signedTransaction = await tronWeb.trx.sign(transaction);
-
-    return signedTransaction;
   }
 
   async buildSendTrc10Transaction({
@@ -147,24 +139,17 @@ export class SendService {
     toAddress: string;
     amount: number;
     tokenId: string;
-  }): Promise<SignedTransaction & Transaction<TransferAssetContract>> {
+  }): Promise<Transaction<TransferAssetContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
+    const tronWeb = this.#tronWebFactory.createClient(scope);
 
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
-
-    const transaction = await tronWeb.transactionBuilder.sendToken(
+    return tronWeb.transactionBuilder.sendToken(
       toAddress,
       amount,
       tokenId,
+      account.address,
     );
-    const signedTransaction = await tronWeb.trx.sign(transaction);
-
-    return signedTransaction;
   }
 
   async buildSendTrc20Transaction({
@@ -181,15 +166,10 @@ export class SendService {
     contractAddress: string;
     amount: number;
     decimals: number;
-  }): Promise<SignedTransaction & Transaction<TriggerSmartContract>> {
+  }): Promise<Transaction<TriggerSmartContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+    const tronWeb = this.#tronWebFactory.createClient(scope);
 
     const functionSelector = 'transfer(address,uint256)';
     // Convert amount to the smallest unit using BigNumber to avoid precision loss
@@ -208,15 +188,13 @@ export class SendService {
         functionSelector,
         {},
         parameter,
+        account.address,
       );
-    const signedTransaction = await tronWeb.trx.sign(
-      contractResult.transaction,
-    );
 
-    return signedTransaction;
+    return contractResult.transaction;
   }
 
-  async sendTransaction({
+  async signAndSendTransaction({
     scope,
     fromAccountId,
     transaction,
@@ -225,9 +203,9 @@ export class SendService {
     scope: Network;
     fromAccountId: string;
     transaction:
-      | (SignedTransaction & Transaction<TransferContract>)
-      | (SignedTransaction & Transaction<TransferAssetContract>)
-      | (SignedTransaction & Transaction<TriggerSmartContract>);
+      | Transaction<TransferContract>
+      | Transaction<TransferAssetContract>
+      | Transaction<TriggerSmartContract>;
     origin?: string;
   }): Promise<BroadcastReturn<any>> {
     /**
@@ -241,9 +219,10 @@ export class SendService {
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     /**
-     * Sign and send the transaction
+     * Sign and send the transaction atomically after user confirmation
      */
-    const result = await tronWeb.trx.sendRawTransaction(transaction);
+    const signedTransaction = await tronWeb.trx.sign(transaction);
+    const result = await tronWeb.trx.sendRawTransaction(signedTransaction);
 
     if (!result.result) {
       throw new Error(`Failed to send transaction: ${result.message}`);

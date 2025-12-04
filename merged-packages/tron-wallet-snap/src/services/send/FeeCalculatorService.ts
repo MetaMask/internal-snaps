@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-import type { SignedTransaction, Transaction } from 'tronweb/lib/esm/types';
+import type { Transaction } from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
@@ -9,6 +9,49 @@ import type { Network } from '../../constants';
 import { ACCOUNT_ACTIVATION_FEE_TRX, Networks, ZERO } from '../../constants';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
+
+/**
+ * Bandwidth calculation constants.
+ *
+ * Transaction byte size is calculated based on the protobuf Transaction structure:
+ *
+ * ```
+ * message Transaction {
+ *   raw raw_data = 1;
+ *   repeated bytes signature = 2;
+ *   repeated Result ret = 5;
+ * }
+ * ```
+ *
+ * The formula is: raw_data_bytes + signature_bytes + MAX_RESULT_SIZE_IN_TX + protobuf_overhead
+ *
+ * See: https://github.com/tronprotocol/wallet-cli/issues/292
+ */
+
+/**
+ * Standard ECDSA signature size (r, s, v) = 65 bytes
+ */
+const SIGNATURE_SIZE = 65;
+
+/**
+ * From java-tron source code: transaction byte size includes MAX_RESULT_SIZE_IN_TX (64 bytes)
+ * which is added for each contract when VM is supported.
+ * The ret field is cleared before serialization and this constant is added instead.
+ */
+const MAX_RESULT_SIZE_IN_TX = 64;
+
+/**
+ * Protobuf overhead for LEN-typed tags and length prefixes.
+ *
+ * Protobuf represents data as: (tag)(len-prefix if needed)(data)
+ * - raw_data field: 1 byte tag + 2 bytes len-prefix (data usually > 127 bytes)
+ * - signature field: 1 byte tag + 1 byte len-prefix (signature is 65 bytes < 127)
+ * Total: 5 bytes
+ */
+const PROTOBUF_OVERHEAD = 5;
+
+const UNSIGNED_TX_OVERHEAD =
+  SIGNATURE_SIZE + MAX_RESULT_SIZE_IN_TX + PROTOBUF_OVERHEAD;
 
 export class FeeCalculatorService {
   readonly #logger: ILogger;
@@ -27,23 +70,43 @@ export class FeeCalculatorService {
   }
 
   /**
-   * The bandwidth needed for a transaction is the size of the transaction in bytes.
-   * You can get the total length of a transaction by adding the following lengths:
-   * - The length of the raw_data_hex
-   * - The length of the first signature which is 65 bytes
-   * - MAX_RESULT_SIZE_IN_TX in the data which is 64 bytes
-   * - Protobuf LEN typed tag and len-prefix which is 5 bytes
+   * Calculate the bandwidth needed for a transaction (size in bytes).
+   *
+   * Based on java-tron implementation, the transaction byte size is:
+   * raw_data_bytes + signature_bytes + MAX_RESULT_SIZE_IN_TX + protobuf_overhead
+   *
+   * For unsigned transactions, we use the standard ECDSA signature size (65 bytes).
+   * For signed transactions, we use the actual signature bytes.
    *
    * See: https://github.com/tronprotocol/wallet-cli/issues/292
    *
-   * @param transaction - The base64 encoded transaction
-   * @returns number - The calculated bandwidth in TRX
+   * @param transaction - The transaction (signed or unsigned)
+   * @returns BigNumber - The calculated bandwidth in bytes
    */
-  #calculateBandwidth(transaction: SignedTransaction & Transaction): BigNumber {
-    const transactionByteLength =
-      // eslint-disable-next-line no-restricted-globals
-      Buffer.from(transaction.raw_data_hex, 'hex').byteLength + 134;
-    return BigNumber(transactionByteLength);
+  #calculateBandwidth(transaction: Transaction): BigNumber {
+    // eslint-disable-next-line no-restricted-globals
+    const rawDataBytes = Buffer.from(
+      transaction.raw_data_hex,
+      'hex',
+    ).byteLength;
+
+    // If transaction is already signed, use actual signature bytes
+    const signedTx = transaction as Transaction & { signature?: string[] };
+    if (signedTx.signature && Array.isArray(signedTx.signature)) {
+      const signatureBytes = signedTx.signature.reduce(
+        (sum, signatureHex) => sum + signatureHex.length / 2,
+        0,
+      );
+      return BigNumber(
+        rawDataBytes +
+          signatureBytes +
+          MAX_RESULT_SIZE_IN_TX +
+          PROTOBUF_OVERHEAD,
+      );
+    }
+
+    // Unsigned transaction: assume single standard ECDSA signature (65 bytes)
+    return BigNumber(rawDataBytes + UNSIGNED_TX_OVERHEAD);
   }
 
   /**
@@ -51,13 +114,13 @@ export class FeeCalculatorService {
    * Depends on the type of contracts in the transaction.
    *
    * @param scope - The network scope for the transaction
-   * @param transaction - The base64 encoded transaction
+   * @param transaction - The transaction (signed or unsigned)
    * @param feeLimit - Optional fee limit in SUN to use for fallback calculation
    * @returns Promise<BigNumber> - The calculated energy consumption
    */
   async #calculateEnergy(
     scope: Network,
-    transaction: SignedTransaction & Transaction,
+    transaction: Transaction,
     feeLimit?: number,
   ): Promise<BigNumber> {
     const contracts = transaction.raw_data.contract;
@@ -272,7 +335,7 @@ export class FeeCalculatorService {
     transaction,
   }: {
     scope: Network;
-    transaction: SignedTransaction & Transaction;
+    transaction: Transaction;
   }): Promise<BigNumber> {
     const contracts = transaction.raw_data.contract;
 
@@ -325,12 +388,13 @@ export class FeeCalculatorService {
   }
 
   /**
-   * Calculate complete fee breakdown for a TRON transaction
-   * Handles both free resource consumption and TRX costs for overages
+   * Calculate complete fee breakdown for a TRON transaction.
+   * Supports both signed and unsigned transactions.
+   * Handles both free resource consumption and TRX costs for overages.
    *
    * @param params - The parameters for the fee calculation
    * @param params.scope - The network scope for the transaction
-   * @param params.transaction - The base64 encoded transaction
+   * @param params.transaction - The transaction (signed or unsigned)
    * @param params.availableEnergy - Available energy from account
    * @param params.availableBandwidth - Available bandwidth from account
    * @param params.feeLimit - Optional fee limit in SUN to use for fallback energy calculation
@@ -344,7 +408,7 @@ export class FeeCalculatorService {
     feeLimit,
   }: {
     scope: Network;
-    transaction: SignedTransaction & Transaction;
+    transaction: Transaction;
     availableEnergy: BigNumber;
     availableBandwidth: BigNumber;
     feeLimit?: number;

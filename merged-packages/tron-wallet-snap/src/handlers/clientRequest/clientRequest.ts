@@ -427,8 +427,9 @@ export class ClientRequestHandler {
         Networks[scope].energy.id,
       ]),
       /**
-       * Build the transaction that will be sent.
-       * The signature is included because we need it to correctly estimate fees.
+       * Build the unsigned transaction.
+       * Fee estimation uses a constant overhead for the signature (134 bytes).
+       * Signing happens after user confirmation in sendTransaction().
        */
       this.#sendService.buildTransaction({
         fromAccountId,
@@ -474,7 +475,7 @@ export class ClientRequestHandler {
     /**
      * Send the built transaction
      */
-    const result = await this.#sendService.sendTransaction({
+    const result = await this.#sendService.signAndSendTransaction({
       scope,
       fromAccountId,
       transaction,
@@ -525,16 +526,12 @@ export class ClientRequestHandler {
     } = request;
 
     /**
-     * Start by recreating the transaction object with the missing fields
-     * just like we do for `signAndSendTransaction`
+     * Recreate the transaction object from base64-encoded raw data.
+     * No signing needed - fee calculation uses constant overhead for signature.
      */
-    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    await this.#accountsService.findByIdOrThrow(accountId);
 
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+    const tronWeb = this.#tronWebFactory.createClient(scope);
 
     // eslint-disable-next-line no-restricted-globals
     const rawDataHex = Buffer.from(transactionBase64, 'base64').toString('hex');
@@ -551,7 +548,6 @@ export class ClientRequestHandler {
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data_hex: rawDataHex,
     };
-    const signedTransaction = await tronWeb.trx.sign(transaction);
 
     /**
      * Get available Energy and Bandwidth from account assets.
@@ -571,10 +567,11 @@ export class ClientRequestHandler {
 
     /**
      * Calculate complete fee breakdown using the service.
+     * Uses constant overhead (134 bytes) for unsigned transactions.
      */
     const result = await this.#feeCalculatorService.computeFee({
       scope,
-      transaction: signedTransaction,
+      transaction,
       availableEnergy,
       availableBandwidth,
       feeLimit,
@@ -629,11 +626,7 @@ export class ClientRequestHandler {
       };
     }
 
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+    const tronWeb = this.#tronWebFactory.createClient(scope);
 
     const amountInSun = requestBalance.multipliedBy(10 ** 6).toNumber();
     const transaction = await tronWeb.transactionBuilder.freezeBalanceV2(
@@ -641,8 +634,6 @@ export class ClientRequestHandler {
       purpose,
       account.address,
     );
-
-    const signedTransaction = await tronWeb.trx.sign(transaction);
 
     /**
      * Get available Energy and Bandwidth from account assets.
@@ -662,10 +653,11 @@ export class ClientRequestHandler {
 
     /**
      * Calculate complete fee breakdown using the service.
+     * Uses constant overhead (134 bytes) for unsigned transactions.
      */
     const result = await this.#feeCalculatorService.computeFee({
       scope,
-      transaction: signedTransaction,
+      transaction,
       availableEnergy,
       availableBandwidth,
     });

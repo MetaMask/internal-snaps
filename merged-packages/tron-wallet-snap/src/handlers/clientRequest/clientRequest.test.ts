@@ -194,28 +194,36 @@ describe('ClientRequestHandler', () => {
         // Execute
         const result = await clientRequestHandler.handle(request as any);
 
-        // Verify
+        // Verify - no signing needed for fee computation
         expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
           TEST_ACCOUNT_ID,
         );
-        expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalled();
-        expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
-          scope,
-          'test-private-key',
-        );
+        // deriveTronKeypair is NOT called - no private key needed for fee computation
+        expect(mockAccountsService.deriveTronKeypair).not.toHaveBeenCalled();
+        expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(scope);
         expect(
           mockTronWeb.utils.deserializeTx.deserializeTransaction,
         ).toHaveBeenCalledWith('TriggerSmartContract', expect.any(String));
-        expect(mockTronWeb.trx.sign).toHaveBeenCalled();
+        // trx.sign is NOT called - fee computation uses unsigned transactions
+        expect(mockTronWeb.trx.sign).not.toHaveBeenCalled();
         expect(mockAssetsService.getAssetsByAccountId).toHaveBeenCalledWith(
           TEST_ACCOUNT_ID,
           [Networks[scope].bandwidth.id, Networks[scope].energy.id],
         );
+        // computeFee receives unsigned transaction (no signature field)
         expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
           scope,
-          transaction: signedTransaction,
+          transaction: expect.objectContaining({
+            txID: expect.any(String),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            raw_data: expect.any(Object),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            raw_data_hex: expect.any(String),
+            visible: false,
+          }),
           availableEnergy: BigNumber('100000'),
           availableBandwidth: BigNumber('5000'),
+          feeLimit: undefined,
         });
         expect(result).toStrictEqual(feeResult);
       });
@@ -313,11 +321,20 @@ describe('ClientRequestHandler', () => {
         const result = await clientRequestHandler.handle(request as any);
 
         expect(result).toStrictEqual(feeResult);
+        // computeFee receives unsigned transaction (no signature field)
         expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
           scope,
-          transaction: signedTransaction,
+          transaction: expect.objectContaining({
+            txID: expect.any(String),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            raw_data: expect.any(Object),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            raw_data_hex: expect.any(String),
+            visible: true,
+          }),
           availableEnergy: BigNumber('0'),
           availableBandwidth: BigNumber('1000'),
+          feeLimit: undefined,
         });
       });
 
@@ -843,11 +860,9 @@ describe('ClientRequestHandler - computeStakeFee', () => {
     expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
       TEST_ACCOUNT_ID,
     );
-    expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalled();
-    expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
-      scope,
-      'test-private-key',
-    );
+    // deriveTronKeypair is NOT called - no private key needed for fee computation
+    expect(mockAccountsService.deriveTronKeypair).not.toHaveBeenCalled();
+    expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(scope);
     expect(mockTronWeb.transactionBuilder.freezeBalanceV2).toHaveBeenCalledWith(
       10 * 10 ** 6,
       'ENERGY',
@@ -861,9 +876,10 @@ describe('ClientRequestHandler - computeStakeFee', () => {
       TEST_ACCOUNT_ID,
       [Networks[scope].bandwidth.id, Networks[scope].energy.id],
     );
+    // computeFee receives unsigned transaction (no signature field)
     expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
       scope,
-      transaction: signedTransaction,
+      transaction: builtTransaction,
       availableEnergy: BigNumber('100000'),
       availableBandwidth: BigNumber('5000'),
     });
