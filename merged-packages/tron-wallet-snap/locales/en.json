@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "No estimated changes"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Security check failed"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Because of an error, we couldn't check for security alerts."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Unable to verify transaction safety"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Only continue if you trust every address involved."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Warning"
+    "confirmation.simulationErrorTitle": {
+      "message": "This transaction was reverted during simulation."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "This transaction may be risky. Proceed with caution."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Danger"
+    "confirmation.validationErrorTitle": {
+      "message": "This is a deceptive request"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "This transaction appears to be malicious. We strongly recommend rejecting it."
+    "confirmation.validationErrorSubtitle": {
+      "message": "If you approve this request, a third party known for scams will take all your assets."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Learn more"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Security advice by"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Insufficient balance"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Invalid transaction"
     }
   }
 }

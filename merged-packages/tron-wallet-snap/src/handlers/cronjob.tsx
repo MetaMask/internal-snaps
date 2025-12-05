@@ -357,7 +357,7 @@ export class CronHandler {
       return;
     }
 
-    const { preferences, scope, account, transaction, origin } =
+    const { preferences, scope, account, origin, scanParameters } =
       interfaceContext;
 
     // Determine what needs to be refreshed
@@ -399,7 +399,10 @@ export class CronHandler {
         try {
           scan = await this.#transactionScanService.scanTransaction({
             accountAddress: account.address,
-            transaction: transaction.rawDataHex,
+            from: scanParameters?.from as string,
+            to: scanParameters?.to as string,
+            data: scanParameters?.data as string,
+            value: scanParameters?.value as number,
             origin,
             options,
           });

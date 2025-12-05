@@ -28,26 +28,38 @@ export class TransactionScanService {
    *
    * @param params - The parameters for the function.
    * @param params.accountAddress - The address of the account.
-   * @param params.transaction - The transaction to scan.
+   * @param params.from - The from address.
+   * @param params.to - The to address.
+   * @param params.data - The data of the transaction.
+   * @param params.value - The value of the transaction.
    * @param params.origin - The origin of the transaction.
    * @param params.options - The options for the scan (simulation, validation).
    * @returns The result of the scan, or null if the scan failed.
    */
   async scanTransaction({
     accountAddress,
-    transaction,
+    from,
+    to,
+    data,
+    value,
     origin,
     options = ['simulation', 'validation'],
   }: {
     accountAddress: string;
-    transaction: string;
+    from: string;
+    to: string;
+    data: string;
+    value: number;
     origin: string;
     options?: string[] | undefined;
   }): Promise<TransactionScanResult | null> {
     try {
       const result = await this.#securityAlertsApiClient.scanTransaction({
         accountAddress,
-        transaction,
+        from,
+        to,
+        data,
+        value,
         origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
         options,
       });

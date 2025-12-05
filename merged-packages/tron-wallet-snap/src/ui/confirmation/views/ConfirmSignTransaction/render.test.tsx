@@ -133,7 +133,25 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
-    await render(request, mockAccount);
+    // Mock raw data with contract information
+    const mockRawData = {
+      contract: [
+        {
+          parameter: {
+            value: {
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              to_address: '4132F9C0C487F21716B7A8F12906B752889902655',
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              call_value: 100000,
+            },
+          },
+        },
+      ],
+    };
+
+    await render(request, mockAccount, mockRawData as any);
 
     // Verify createInterface was called
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -141,10 +159,13 @@ describe('ConfirmSignTransaction render', () => {
     // Verify showDialog was called with the interface ID
     expect(mockSnapClient.showDialog).toHaveBeenCalledWith('interface-id-123');
 
-    // Verify security scan was triggered
+    // Verify security scan was triggered with from/to addresses and value
     expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith({
       accountAddress: mockAccount.address,
-      transaction: testTransaction,
+      from: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
+      to: '6wjzKJfLvipffZfji1fGwz4hbhwZrTgF5',
+      data: `0x${testTransaction}`,
+      value: 100000,
       origin: testOrigin,
       options: ['simulation', 'validation'],
     });
@@ -171,12 +192,16 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
+    const mockRawData = {
+      contract: [],
+    };
+
     // Set transactionScanService to null for this test
     // eslint-disable-next-line no-restricted-globals, @typescript-eslint/no-require-imports
     const snapContext = require('../../../../context').default;
     snapContext.transactionScanService = null;
 
-    await render(request, mockAccount);
+    await render(request, mockAccount, mockRawData as any);
 
     // Should still create interface
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -207,7 +232,11 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
-    await render(request, mockAccount);
+    const mockRawData = {
+      contract: [],
+    };
+
+    await render(request, mockAccount, mockRawData as any);
 
     // Should still render with error state
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -238,7 +267,11 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
-    await render(request, mockAccount);
+    const mockRawData = {
+      contract: [],
+    };
+
+    await render(request, mockAccount, mockRawData as any);
 
     // Security scan should not be called
     expect(mockTransactionScanService.scanTransaction).not.toHaveBeenCalled();
@@ -266,8 +299,12 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
+    const mockRawData = {
+      contract: [],
+    };
+
     // Should not throw, even with failed preferences
-    expect(await render(request, mockAccount)).toBe(true);
+    expect(await render(request, mockAccount, mockRawData as any)).toBe(true);
   });
 
   it('handles missing origin gracefully', async () => {
@@ -288,7 +325,11 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
-    await render(request, mockAccount);
+    const mockRawData = {
+      contract: [],
+    };
+
+    await render(request, mockAccount, mockRawData as any);
 
     // Should still work
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -315,7 +356,11 @@ describe('ConfirmSignTransaction render', () => {
       },
     };
 
-    const result = await render(request, mockAccount);
+    const mockRawData = {
+      contract: [],
+    };
+
+    const result = await render(request, mockAccount, mockRawData as any);
 
     expect(result).toBe(expectedResult);
   });

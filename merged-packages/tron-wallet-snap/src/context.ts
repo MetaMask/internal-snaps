@@ -144,6 +144,8 @@ const transactionScanService = new TransactionScanService(
 const confirmationHandler = new ConfirmationHandler({
   snapClient,
   state,
+  accountsService,
+  tronWebFactory,
 });
 
 /**

@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "予測される増減額はありません"
     },
-    "confirmation.securityAlert.error": {
-      "message": "セキュリティチェックに失敗しました"
+    "confirmation.simulationTitleAPIError": {
+      "message": "エラーのため、セキュリティアラートを確認できませんでした。"
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "トランザクションの安全性を確認できません"
+    "confirmation.simulationMessageAPIError": {
+      "message": "関係するすべてのアドレスを信頼できる場合にのみ続行してください。"
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "警告"
+    "confirmation.simulationErrorTitle": {
+      "message": "このトランザクションはシミュレーション中に元に戻されました。"
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "このトランザクションはリスクがある可能性があります。注意して進めてください。"
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "危険"
+    "confirmation.validationErrorTitle": {
+      "message": "これは欺瞞的なリクエストです"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "このトランザクションは悪意のあるものと思われます。拒否することを強くお勧めします。"
+    "confirmation.validationErrorSubtitle": {
+      "message": "このリクエストを承認すると、詐欺で知られる第三者があなたのすべての資産を取得します。"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "詳細を見る"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "セキュリティアドバイス提供元"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "不明なエラーが発生しました"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "残高不足"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "無効なトランザクション"
     }
   }
 }

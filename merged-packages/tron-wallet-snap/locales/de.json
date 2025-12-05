@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Keine geschätzten Änderungen"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Sicherheitsüberprüfung fehlgeschlagen"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Aufgrund eines Fehlers konnten wir nicht auf Sicherheitswarnungen prüfen."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Transaktionssicherheit konnte nicht überprüft werden"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Fahren Sie nur fort, wenn Sie jeder beteiligten Adresse vertrauen."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Warnung"
+    "confirmation.simulationErrorTitle": {
+      "message": "Diese Transaktion wurde während der Simulation rückgängig gemacht."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Diese Transaktion kann riskant sein. Vorsichtig fortfahren."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Gefahr"
+    "confirmation.validationErrorTitle": {
+      "message": "Dies ist eine irreführende Anfrage"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Diese Transaktion scheint bösartig zu sein. Wir empfehlen dringend, sie abzulehnen."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Wenn Sie diese Anfrage genehmigen, wird ein Dritter, der für Betrügereien bekannt ist, alle Ihre Vermögenswerte nehmen."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Mehr erfahren"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Sicherheitsberatung von"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Ein unbekannter Fehler ist aufgetreten"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Unzureichendes Guthaben"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Ungültige Transaktion"
     }
   }
 }

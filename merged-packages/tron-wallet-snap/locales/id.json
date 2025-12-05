@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Tidak ada estimasi perubahan"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Pemeriksaan keamanan gagal"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Karena kesalahan, kami tidak dapat memeriksa peringatan keamanan."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Tidak dapat memverifikasi keamanan transaksi"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Hanya lanjutkan jika Anda mempercayai setiap alamat yang terlibat."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Peringatan"
+    "confirmation.simulationErrorTitle": {
+      "message": "Transaksi ini dikembalikan selama simulasi."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Transaksi ini mungkin berisiko. Lanjutkan dengan hati-hati."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Bahaya"
+    "confirmation.validationErrorTitle": {
+      "message": "Ini adalah permintaan yang menipu"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Transaksi ini tampaknya berbahaya. Kami sangat menyarankan untuk menolaknya."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Jika Anda menyetujui permintaan ini, pihak ketiga yang dikenal melakukan penipuan akan mengambil semua aset Anda."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Pelajari lebih lanjut"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Saran keamanan oleh"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Terjadi kesalahan yang tidak diketahui"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Saldo tidak mencukupi"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transaksi tidak valid"
     }
   }
 }

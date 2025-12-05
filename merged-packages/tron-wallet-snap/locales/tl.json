@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Walang tinatayang mga pagbabago"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Nabigo ang pagsusuri ng seguridad"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Dahil sa isang error, hindi namin masuri ang mga alerto sa seguridad."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Hindi ma-verify ang kaligtasan ng transaksyon"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Magpatuloy lamang kung nagtitiwala ka sa bawat address na kasangkot."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Babala"
+    "confirmation.simulationErrorTitle": {
+      "message": "Ang transaksyong ito ay na-revert sa panahon ng simulation."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Ang transaksyong ito ay maaaring mapanganib. Magpatuloy nang may pag-iingat."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Panganib"
+    "confirmation.validationErrorTitle": {
+      "message": "Ito ay isang mapanlinlang na kahilingan"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Ang transaksyong ito ay mukhang mapaminsala. Lubos naming inirerekomenda na tanggihan ito."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Kung aprubahan mo ang kahilingang ito, isang third party na kilala sa mga scam ay kukuha ng lahat ng iyong assets."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Matuto pa"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Payo sa seguridad mula sa"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Naganap ang hindi kilalang error"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Kulang ang balanse"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Hindi wastong transaksyon"
     }
   }
 }

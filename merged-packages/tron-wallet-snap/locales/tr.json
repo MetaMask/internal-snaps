@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Tahmini değişiklik yok"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Güvenlik kontrolü başarısız oldu"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Bir hata nedeniyle güvenlik uyarılarını kontrol edemedik."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "İşlem güvenliği doğrulanamadı"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Yalnızca ilgili her adrese güveniyorsanız devam edin."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Uyarı"
+    "confirmation.simulationErrorTitle": {
+      "message": "Bu işlem simülasyon sırasında geri alındı."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Bu işlem riskli olabilir. Dikkatli ilerleyin."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Tehlike"
+    "confirmation.validationErrorTitle": {
+      "message": "Bu aldatıcı bir istektir"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Bu işlem kötü niyetli görünüyor. Reddetmenizi şiddetle tavsiye ediyoruz."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Bu isteği onaylarsanız, dolandırıcılıkla bilinen bir üçüncü taraf tüm varlıklarınızı alacaktır."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Daha fazla bilgi"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Güvenlik tavsiyesi sağlayan"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Bilinmeyen bir hata oluştu"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Yetersiz bakiye"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Geçersiz işlem"
     }
   }
 }

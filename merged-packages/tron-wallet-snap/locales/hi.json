@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "कोई अनुमानित बदलाव नहीं"
     },
-    "confirmation.securityAlert.error": {
-      "message": "सुरक्षा जांच विफल"
+    "confirmation.simulationTitleAPIError": {
+      "message": "एक त्रुटि के कारण, हम सुरक्षा अलर्ट की जांच नहीं कर सके।"
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "ट्रांसेक्शन सुरक्षा सत्यापित नहीं की जा सकी"
+    "confirmation.simulationMessageAPIError": {
+      "message": "केवल तभी जारी रखें जब आप हर शामिल पते पर भरोसा करते हैं।"
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "चेतावनी"
+    "confirmation.simulationErrorTitle": {
+      "message": "यह ट्रांसेक्शन सिमुलेशन के दौरान वापस कर दिया गया था।"
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "यह ट्रांसेक्शन जोखिम भरा हो सकता है। सावधानी से आगे बढ़ें।"
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "खतरा"
+    "confirmation.validationErrorTitle": {
+      "message": "यह एक धोखाधड़ी वाला अनुरोध है"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "यह ट्रांसेक्शन दुर्भावनापूर्ण प्रतीत होता है। हम इसे अस्वीकार करने की दृढ़ता से सलाह देते हैं।"
+    "confirmation.validationErrorSubtitle": {
+      "message": "यदि आप इस अनुरोध को स्वीकृत करते हैं, तो घोटालों के लिए जानी जाने वाली एक तीसरी पार्टी आपकी सभी संपत्तियां ले लेगी।"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "और जानें"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "सुरक्षा सलाह द्वारा"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "एक अज्ञात त्रुटि हुई"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "अपर्याप्त शेष राशि"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "अमान्य ट्रांसेक्शन"
     }
   }
 }

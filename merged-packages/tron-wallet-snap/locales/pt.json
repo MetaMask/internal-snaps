@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Sem alterações estimadas"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Falha na verificação de segurança"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Devido a um erro, não pudemos verificar alertas de segurança."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Não foi possível verificar a segurança da transação"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Só continue se você confiar em cada endereço envolvido."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Aviso"
+    "confirmation.simulationErrorTitle": {
+      "message": "Esta transação foi revertida durante a simulação."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Esta transação pode ser arriscada. Prossiga com cautela."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Perigo"
+    "confirmation.validationErrorTitle": {
+      "message": "Este é um pedido enganoso"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Esta transação parece ser maliciosa. Recomendamos fortemente rejeitá-la."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Se você aprovar este pedido, um terceiro conhecido por golpes pegará todos os seus ativos."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Saiba mais"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Consultoria de segurança por"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Ocorreu um erro desconhecido"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Saldo insuficiente"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transação inválida"
     }
   }
 }

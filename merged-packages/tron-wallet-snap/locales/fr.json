@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Aucun changement estimé"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Échec de la vérification de sécurité"
+    "confirmation.simulationTitleAPIError": {
+      "message": "En raison d'une erreur, nous n'avons pas pu vérifier les alertes de sécurité."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Impossible de vérifier la sécurité de la transaction"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Ne continuez que si vous faites confiance à chaque adresse impliquée."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Avertissement"
+    "confirmation.simulationErrorTitle": {
+      "message": "Cette transaction a été annulée lors de la simulation."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Cette transaction peut être risquée. Procédez avec prudence."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Danger"
+    "confirmation.validationErrorTitle": {
+      "message": "Il s'agit d'une demande trompeuse"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Cette transaction semble être malveillante. Nous vous recommandons vivement de la rejeter."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Si vous approuvez cette demande, un tiers connu pour des escroqueries prendra tous vos actifs."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "En savoir plus"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Conseils de sécurité par"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Une erreur inconnue s'est produite"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Solde insuffisant"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transaction invalide"
     }
   }
 }

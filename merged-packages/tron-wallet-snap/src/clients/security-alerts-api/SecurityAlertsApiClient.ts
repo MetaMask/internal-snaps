@@ -36,19 +36,28 @@ export class SecurityAlertsApiClient {
    *
    * @param params - The parameters for the scan.
    * @param params.accountAddress - The account address in base58 format.
-   * @param params.transaction - The transaction data in base64 format.
+   * @param params.from - The from address.
+   * @param params.to - The to address.
+   * @param params.data - The data of the transaction.
+   * @param params.value - The value of the transaction.
    * @param params.origin - The origin URL of the request.
    * @param params.options - Optional scan options (simulation, validation).
    * @returns The security alert response from Security Alerts API.
    */
   async scanTransaction({
     accountAddress,
-    transaction,
+    from,
+    to,
+    data,
+    value,
     origin,
     options = ['simulation', 'validation'],
   }: {
     accountAddress: string;
-    transaction: string;
+    from: string;
+    to: string;
+    data: string;
+    value: number;
     origin: string;
     options?: string[];
   }): Promise<SecurityAlertSimulationValidationResponse> {
@@ -70,8 +79,10 @@ export class SecurityAlertsApiClient {
             domain: origin,
           },
           data: {
-            from: accountAddress,
-            data: transaction,
+            from,
+            to,
+            data,
+            value,
           },
           options,
         }),

@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "无预计变化"
     },
-    "confirmation.securityAlert.error": {
-      "message": "安全检查失败"
+    "confirmation.simulationTitleAPIError": {
+      "message": "由于错误，我们无法检查安全警报。"
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "无法验证交易安全性"
+    "confirmation.simulationMessageAPIError": {
+      "message": "只有在信任所有相关地址时才继续。"
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "警告"
+    "confirmation.simulationErrorTitle": {
+      "message": "该交易在模拟过程中被撤销。"
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "此交易可能存在风险。请谨慎操作。"
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "危险"
+    "confirmation.validationErrorTitle": {
+      "message": "这是一个欺骗性请求"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "此交易似乎是恶意的。我们强烈建议您拒绝它。"
+    "confirmation.validationErrorSubtitle": {
+      "message": "如果您批准此请求，一个以诈骗闻名的第三方将获取您的所有资产。"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "了解更多"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "安全建议提供方"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "发生了未知错误"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "余额不足"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "无效交易"
     }
   }
 }

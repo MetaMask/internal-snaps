@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "예상 변동 사항 없음"
     },
-    "confirmation.securityAlert.error": {
-      "message": "보안 검사 실패"
+    "confirmation.simulationTitleAPIError": {
+      "message": "오류로 인해 보안 경고를 확인할 수 없습니다."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "트랜잭션 안전성을 확인할 수 없습니다"
+    "confirmation.simulationMessageAPIError": {
+      "message": "관련된 모든 주소를 신뢰하는 경우에만 계속하세요."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "경고"
+    "confirmation.simulationErrorTitle": {
+      "message": "이 트랜잭션은 시뮬레이션 중에 되돌려졌습니다."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "이 트랜잭션은 위험할 수 있습니다. 주의하여 진행하세요."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "위험"
+    "confirmation.validationErrorTitle": {
+      "message": "이것은 기만적인 요청입니다"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "이 트랜잭션은 악의적인 것으로 보입니다. 거부하실 것을 강력히 권장합니다."
+    "confirmation.validationErrorSubtitle": {
+      "message": "이 요청을 승인하면 사기로 알려진 제3자가 모든 자산을 가져갑니다."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "자세히 알아보기"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "보안 조언 제공"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "알 수 없는 오류가 발생했습니다"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "잔액 부족"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "무효한 트랜잭션"
     }
   }
 }

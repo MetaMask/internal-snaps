@@ -1,39 +1,51 @@
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
-  Box,
   Banner,
-  Text as SnapText,
+  Box,
+  Icon,
+  Link,
   Skeleton,
+  Text as SnapText,
+  type BannerProps,
 } from '@metamask/snaps-sdk/jsx';
 
+import { getErrorMessage } from './getErrorMessage';
 import type {
   TransactionScanError,
   TransactionScanValidation,
 } from '../../../../services/transaction-scan/types';
-import { SecurityAlertResponse } from '../../../../services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../types/snap';
 import { i18n } from '../../../../utils/i18n';
 
 export type TransactionAlertProps = {
-  scanFetchStatus: FetchStatus;
-  validation: TransactionScanValidation | null;
-  status: 'SUCCESS' | 'ERROR' | null;
-  error: TransactionScanError | null;
   preferences: Preferences;
+  validation: TransactionScanValidation | null;
+  error: TransactionScanError | null;
+  scanFetchStatus: FetchStatus;
+};
+
+const VALIDATION_TYPE_TO_SEVERITY: Partial<
+  Record<
+    NonNullable<TransactionScanValidation['type']>,
+    BannerProps['severity']
+  >
+> = {
+  Malicious: 'danger',
+  Warning: 'warning',
 };
 
 export const TransactionAlert = ({
-  scanFetchStatus,
-  validation,
-  status,
-  error,
   preferences,
-}: TransactionAlertProps): ComponentOrElement | null => {
+  validation,
+  error,
+  scanFetchStatus,
+}: TransactionAlertProps): ComponentOrElement => {
   const translate = i18n(preferences.locale);
 
-  const isFetching = scanFetchStatus === 'fetching';
-
-  if (isFetching) {
+  /**
+   * Display a loading skeleton while fetching.
+   */
+  if (scanFetchStatus === 'fetching') {
     return (
       <Box>
         <Skeleton height="40px" />
@@ -41,58 +53,84 @@ export const TransactionAlert = ({
     );
   }
 
-  // Show error state if scan failed, has error status, or has error details
-  if (error || scanFetchStatus === 'error' || status === 'ERROR') {
+  /**
+   * Displays a warning banner if the transaction scan fails.
+   */
+  if (scanFetchStatus === 'error') {
     return (
       <Banner
-        title={translate('confirmation.securityAlert.error')}
-        severity="warning"
-      >
-        <SnapText>
-          {translate('confirmation.securityAlert.unavailable')}
-        </SnapText>
-      </Banner>
-    );
-  }
-
-  // No validation result
-  if (!validation?.type) {
-    return null;
-  }
-
-  // Benign - no alert needed
-  if (validation.type === SecurityAlertResponse.Benign) {
-    return null;
-  }
-
-  // Warning
-  if (validation.type === SecurityAlertResponse.Warning) {
-    return (
-      <Banner
-        title={translate('confirmation.securityAlert.warning.title')}
-        severity="warning"
-      >
-        <SnapText>
-          {translate('confirmation.securityAlert.warning.message')}
-        </SnapText>
-      </Banner>
-    );
-  }
-
-  // Malicious
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-  if (validation.type === SecurityAlertResponse.Malicious) {
-    return (
-      <Banner
-        title={translate('confirmation.securityAlert.malicious.title')}
+        title={translate('confirmation.simulationTitleAPIError')}
         severity="danger"
       >
         <SnapText>
-          {translate('confirmation.securityAlert.malicious.message')}
+          {translate('confirmation.simulationMessageAPIError')}
         </SnapText>
       </Banner>
     );
   }
 
-  return null;
+  /**
+   * Displays nothing if there is no error or validation.
+   */
+  if (!error && !validation) {
+    return <Box>{null}</Box>;
+  }
+
+  /**
+   * Displays a warning banner if the transaction scan has an error.
+   */
+  if (error) {
+    return (
+      <Banner
+        title={translate('confirmation.simulationErrorTitle')}
+        severity="warning"
+      >
+        <SnapText>
+          {translate('confirmation.simulationErrorSubtitle', {
+            reason: getErrorMessage(error, preferences),
+          })}
+        </SnapText>
+      </Banner>
+    );
+  }
+
+  /**
+   * Displays nothing if there is no validation.
+   */
+  if (!validation) {
+    return <Box>{null}</Box>;
+  }
+
+  const severity = validation?.type
+    ? VALIDATION_TYPE_TO_SEVERITY[validation.type]
+    : undefined;
+
+  /**
+   * Displays a banner if the validation there is a validation.
+   */
+  if (severity) {
+    return (
+      <Banner
+        title={translate('confirmation.validationErrorTitle')}
+        severity={severity}
+      >
+        <SnapText>{translate('confirmation.validationErrorSubtitle')}</SnapText>
+        <SnapText size="sm">
+          <Link href="https://support.metamask.io/configure/wallet/how-to-turn-on-security-alerts/">
+            {translate('confirmation.validationErrorLearnMore')}
+          </Link>
+        </SnapText>
+        <SnapText size="sm">
+          <Icon color="primary" name="security-tick" />{' '}
+          {translate('confirmation.validationErrorSecurityAdviced')}{' '}
+          <Link href="https://www.blockaid.io">Blockaid</Link>
+        </SnapText>
+      </Banner>
+    );
+  }
+
+  /**
+   * Displays nothing by default.
+   */
+  return <Box>{null}</Box>;
 };

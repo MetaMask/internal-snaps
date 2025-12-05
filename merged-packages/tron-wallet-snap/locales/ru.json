@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Нет прогнозируемых изменений"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Проверка безопасности не удалась"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Из-за ошибки мы не смогли проверить предупреждения безопасности."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Невозможно проверить безопасность транзакции"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Продолжайте только если доверяете каждому адресу."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Предупреждение"
+    "confirmation.simulationErrorTitle": {
+      "message": "Эта транзакция была отменена во время симуляции."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Эта транзакция может быть рискованной. Действуйте осторожно."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Опасность"
+    "confirmation.validationErrorTitle": {
+      "message": "Это обманчивый запрос"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Эта транзакция кажется вредоносной. Мы настоятельно рекомендуем отклонить её."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Если вы одобрите этот запрос, третья сторона, известная мошенничеством, заберет все ваши активы."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Узнать больше"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Совет по безопасности от"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Произошла неизвестная ошибка"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Недостаточный баланс"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Недействительная транзакция"
     }
   }
 }

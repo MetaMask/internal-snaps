@@ -51,7 +51,6 @@ export const ConfirmSignTransaction = ({
           <TransactionAlert
             scanFetchStatus={scanFetchStatus}
             validation={scan?.validation ?? null}
-            status={scan?.status ?? null}
             error={scan?.error ?? null}
             preferences={preferences}
           />

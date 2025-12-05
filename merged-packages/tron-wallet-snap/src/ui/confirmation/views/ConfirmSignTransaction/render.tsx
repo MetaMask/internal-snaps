@@ -1,6 +1,8 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
+import { TronWeb } from 'tronweb';
+import type { Transaction } from 'tronweb/lib/esm/types';
 
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
@@ -25,6 +27,7 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   scanFetchStatus: 'initial',
   tokenPrices: {},
   tokenPricesFetchStatus: 'initial',
+  scanParameters: null,
   preferences: {
     locale: 'en',
     currency: 'usd',
@@ -44,11 +47,13 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
  *
  * @param request - The keyring request to confirm.
  * @param account - The account that the request is for.
+ * @param rawData - The raw data of the transaction.
  * @returns The confirmation dialog result.
  */
 export async function render(
   request: KeyringRequest,
   account: TronKeyringAccount,
+  rawData: Transaction['raw_data'],
 ): Promise<DialogResult> {
   const { snapClient, transactionScanService } = snapContext;
   assert(request.request.params, SignTransactionRequestStruct);
@@ -119,9 +124,30 @@ export async function render(
     }
 
     try {
+      // Extract hex addresses from raw data
+      const contractParam = rawData.contract?.[0]?.parameter?.value as any;
+      const fromHex = contractParam?.owner_address ?? '';
+      const toHex =
+        contractParam?.contract_address ?? contractParam?.to_address ?? '';
+      const value = contractParam?.call_value ?? 0;
+
+      // Convert hex addresses to base58 format
+      const from = fromHex ? TronWeb.address.fromHex(fromHex) : '';
+      const to = toHex ? TronWeb.address.fromHex(toHex) : '';
+
+      context.scanParameters = {
+        from,
+        to,
+        data: `0x${transaction.rawDataHex}`,
+        value,
+      };
+
       const scan = await transactionScanService.scanTransaction({
         accountAddress: account.address,
-        transaction: transaction.rawDataHex,
+        from,
+        to,
+        data: `0x${transaction.rawDataHex}`,
+        value,
         origin,
         options,
       });

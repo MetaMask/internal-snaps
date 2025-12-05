@@ -1,4 +1,7 @@
+import { assert } from '@metamask/superstruct';
+
 import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 import type { AssetEntity } from '../../entities/assets';
@@ -9,7 +12,11 @@ import { render as renderConfirmTransactionRequest } from '../../ui/confirmation
 import { formatOrigin } from '../../utils/formatOrigin';
 import type { ILogger } from '../../utils/logger';
 import logger, { createPrefixedLogger } from '../../utils/logger';
-import type { TronWalletKeyringRequest } from '../../validation/structs';
+import {
+  SignTransactionRequestStruct,
+  type TronWalletKeyringRequest,
+} from '../../validation/structs';
+import type { AccountsService } from '../accounts/AccountsService';
 import type { ComputeFeeResult } from '../send/types';
 import type { State, UnencryptedStateValue } from '../state/State';
 
@@ -20,16 +27,26 @@ export class ConfirmationHandler {
 
   readonly #state: State<UnencryptedStateValue>;
 
+  readonly #accountsService: AccountsService;
+
+  readonly #tronWebFactory: TronWebFactory;
+
   constructor({
     snapClient,
     state,
+    accountsService,
+    tronWebFactory,
   }: {
     snapClient: SnapClient;
     state: State<UnencryptedStateValue>;
+    accountsService: AccountsService;
+    tronWebFactory: TronWebFactory;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🔑 ConfirmationHandler]');
     this.#snapClient = snapClient;
     this.#state = state;
+    this.#accountsService = accountsService;
+    this.#tronWebFactory = tronWebFactory;
   }
 
   async handleKeyringRequest({
@@ -74,7 +91,39 @@ export class ConfirmationHandler {
     request: TronWalletKeyringRequest,
     account: TronKeyringAccount,
   ): Promise<boolean> {
-    const result = await renderConfirmSignTransaction(request, account);
+    assert(request.request.params, SignTransactionRequestStruct);
+
+    const {
+      scope,
+      request: {
+        params: {
+          transaction: { rawDataHex, type },
+        },
+      },
+    } = request;
+
+    // Derive the private key for signing
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    // Create a TronWeb instance for transaction signing
+    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+
+    // Rebuild the transaction from hex (same logic as clientRequest handler)
+    const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
+      type,
+      rawDataHex,
+    );
+
+    console.log('rawData', JSON.stringify(rawData, null, 2));
+
+    const result = await renderConfirmSignTransaction(
+      request,
+      account,
+      rawData,
+    );
     return result === true;
   }
 

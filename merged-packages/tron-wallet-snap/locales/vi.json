@@ -61,23 +61,38 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Không có thay đổi ước tính"
     },
-    "confirmation.securityAlert.error": {
-      "message": "Kiểm tra bảo mật không thành công"
+    "confirmation.simulationTitleAPIError": {
+      "message": "Do lỗi, chúng tôi không thể kiểm tra cảnh báo bảo mật."
     },
-    "confirmation.securityAlert.unavailable": {
-      "message": "Không thể xác minh tính an toàn của giao dịch"
+    "confirmation.simulationMessageAPIError": {
+      "message": "Chỉ tiếp tục nếu bạn tin tưởng mọi địa chỉ liên quan."
     },
-    "confirmation.securityAlert.warning.title": {
-      "message": "Cảnh báo"
+    "confirmation.simulationErrorTitle": {
+      "message": "Giao dịch này đã bị hoàn nguyên trong quá trình mô phỏng."
     },
-    "confirmation.securityAlert.warning.message": {
-      "message": "Giao dịch này có thể có rủi ro. Hãy tiếp tục thận trọng."
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
     },
-    "confirmation.securityAlert.malicious.title": {
-      "message": "Nguy hiểm"
+    "confirmation.validationErrorTitle": {
+      "message": "Đây là một yêu cầu lừa đảo"
     },
-    "confirmation.securityAlert.malicious.message": {
-      "message": "Giao dịch này có vẻ độc hại. Chúng tôi đề nghị mạnh mẽ rằng bạn từ chối nó."
+    "confirmation.validationErrorSubtitle": {
+      "message": "Nếu bạn phê duyệt yêu cầu này, một bên thứ ba được biết đến với các vụ lừa đảo sẽ lấy tất cả tài sản của bạn."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Tìm hiểu thêm"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Tư vấn bảo mật bởi"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Đã xảy ra lỗi không xác định"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Số dư không đủ"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Giao dịch không hợp lệ"
     }
   }
 }
