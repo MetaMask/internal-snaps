@@ -21,6 +21,50 @@ import {
 import logger from './logger';
 
 /**
+ * Sanitizes error messages that may contain sensitive cryptographic information.
+ * This prevents leaking details about private keys, entropy, or derivation paths.
+ *
+ * @param error - The error to sanitize.
+ * @returns A sanitized error with generic message if sensitive info detected.
+ */
+export function sanitizeSensitiveError(error: any): Error {
+  const message = error?.message?.toLowerCase() ?? '';
+  const stack = error?.stack?.toLowerCase() ?? '';
+
+  // Check for sensitive keywords in error message or stack trace
+  const sensitiveKeywords = [
+    'private',
+    'key',
+    'entropy',
+    'mnemonic',
+    'seed',
+    'derivation',
+    'bip32',
+    'bip44',
+    'secret',
+  ];
+
+  const containsSensitiveInfo = sensitiveKeywords.some(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    (keyword) => message.includes(keyword) || stack.includes(keyword),
+  );
+
+  if (containsSensitiveInfo) {
+    // Return generic error without exposing sensitive details
+    const sanitizedError = new Error(
+      'Key derivation failed. Please check your connection and try again.',
+    );
+    // Preserve error type if it's a Snap error
+    if (isSnapRpcError(error)) {
+      return error.constructor ? new error.constructor() : sanitizedError;
+    }
+    return sanitizedError;
+  }
+
+  return error;
+}
+
+/**
  * Determines if the given error is a Snap RPC error.
  *
  * @param error - The error instance to be checked.

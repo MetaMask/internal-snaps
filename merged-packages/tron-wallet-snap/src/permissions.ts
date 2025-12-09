@@ -5,7 +5,8 @@ import { TestDappRpcRequestMethod } from './handlers/rpc/types';
 
 const prodOrigins = ['https://portfolio.metamask.io'];
 
-const isDev = false; // TODO: Change me when we have a config provider
+// eslint-disable-next-line no-restricted-globals
+const isDev = process.env.ENVIRONMENT !== 'production';
 const allowedOrigins = isDev ? ['http://localhost:3000'] : prodOrigins;
 
 const dappPermissions = isDev

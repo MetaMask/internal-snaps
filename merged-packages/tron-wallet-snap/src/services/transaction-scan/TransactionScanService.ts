@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { TransactionScanResult, TransactionScanValidation } from './types';
+import { ScanStatus, SecurityAlertResponse } from './types';
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { Network } from '../../constants';
+import type { TronKeyringAccount } from '../../entities';
 import { generateImageComponent } from '../../ui/utils/generateImageComponent';
 import type { ILogger } from '../../utils/logger';
 
@@ -13,13 +17,17 @@ const METAMASK_ORIGIN_URL = 'https://metamask.io';
 export class TransactionScanService {
   readonly #securityAlertsApiClient: SecurityAlertsApiClient;
 
+  readonly #snapClient: SnapClient;
+
   readonly #logger: ILogger;
 
   constructor(
     securityAlertsApiClient: SecurityAlertsApiClient,
+    snapClient: SnapClient,
     logger: ILogger,
   ) {
     this.#securityAlertsApiClient = securityAlertsApiClient;
+    this.#snapClient = snapClient;
     this.#logger = logger;
   }
 
@@ -33,7 +41,9 @@ export class TransactionScanService {
    * @param params.data - The data of the transaction.
    * @param params.value - The value of the transaction.
    * @param params.origin - The origin of the transaction.
+   * @param params.scope - The network scope.
    * @param params.options - The options for the scan (simulation, validation).
+   * @param params.account - The account for analytics tracking.
    * @returns The result of the scan, or null if the scan failed.
    */
   async scanTransaction({
@@ -43,7 +53,9 @@ export class TransactionScanService {
     data,
     value,
     origin,
+    scope,
     options = ['simulation', 'validation'],
+    account,
   }: {
     accountAddress: string;
     from: string;
@@ -51,7 +63,9 @@ export class TransactionScanService {
     data: string;
     value: number;
     origin: string;
+    scope: Network;
     options?: string[] | undefined;
+    account?: TronKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     try {
       const result = await this.#securityAlertsApiClient.scanTransaction({
@@ -70,7 +84,64 @@ export class TransactionScanService {
         this.#logger.warn(
           'Invalid scan result received from security alerts API',
         );
+
+        // Track error if account is provided
+        if (account) {
+          await this.#snapClient.trackSecurityScanCompleted({
+            origin,
+            accountType: account.type,
+            chainIdCaip: scope,
+            scanStatus: ScanStatus.ERROR,
+            hasSecurityAlerts: false,
+          });
+        }
+
         return null;
+      }
+
+      // Track security scan completion
+      if (account) {
+        const isValidScanStatus = Object.values(ScanStatus).includes(
+          scan.status as ScanStatus,
+        );
+        const scanStatus = isValidScanStatus
+          ? (scan.status as ScanStatus)
+          : ScanStatus.ERROR;
+
+        const hasSecurityAlert = Boolean(
+          scan.validation?.type &&
+            scan.validation.type !== SecurityAlertResponse.Benign,
+        );
+
+        // Track scan completed
+        await this.#snapClient.trackSecurityScanCompleted({
+          origin,
+          accountType: account.type,
+          chainIdCaip: scope,
+          scanStatus,
+          hasSecurityAlerts: hasSecurityAlert,
+        });
+
+        // Track security alert if detected
+        if (hasSecurityAlert) {
+          const isValidSecurityAlertType = Object.values(
+            SecurityAlertResponse,
+          ).includes(scan.validation.type as SecurityAlertResponse);
+          const securityAlertType = isValidSecurityAlertType
+            ? (scan.validation.type as SecurityAlertResponse)
+            : SecurityAlertResponse.Warning;
+
+          await this.#snapClient.trackSecurityAlertDetected({
+            origin,
+            accountType: account.type,
+            chainIdCaip: scope,
+            securityAlertResponse: securityAlertType,
+            securityAlertReason: scan.validation.reason ?? null,
+            securityAlertDescription: this.getSecurityAlertDescription(
+              scan.validation,
+            ),
+          });
+        }
       }
 
       if (!scan?.estimatedChanges?.assets) {
@@ -106,6 +177,18 @@ export class TransactionScanService {
       return updatedScan;
     } catch (error) {
       this.#logger.error(error);
+
+      // Track error if account is provided
+      if (account) {
+        await this.#snapClient.trackSecurityScanCompleted({
+          origin,
+          accountType: account.type,
+          chainIdCaip: scope,
+          scanStatus: ScanStatus.ERROR,
+          hasSecurityAlerts: false,
+        });
+      }
+
       return null;
     }
   }

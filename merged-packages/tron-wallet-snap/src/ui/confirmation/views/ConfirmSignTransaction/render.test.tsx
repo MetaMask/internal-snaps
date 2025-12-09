@@ -167,7 +167,9 @@ describe('ConfirmSignTransaction render', () => {
       data: `0x${testTransaction}`,
       value: 100000,
       origin: testOrigin,
+      scope: Network.Mainnet,
       options: ['simulation', 'validation'],
+      account: mockAccount,
     });
 
     // Verify interface was updated with scan results

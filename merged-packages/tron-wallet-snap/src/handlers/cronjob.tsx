@@ -404,7 +404,9 @@ export class CronHandler {
             data: scanParameters?.data as string,
             value: scanParameters?.value as number,
             origin,
+            scope,
             options,
+            account,
           });
           scanFetchStatus = scan ? 'fetched' : 'error';
           this.#logger.info('Successfully refreshed signTransaction scan');

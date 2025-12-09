@@ -138,6 +138,7 @@ const walletService = new WalletService({
 
 const transactionScanService = new TransactionScanService(
   securityAlertsApiClient,
+  snapClient,
   logger,
 );
 

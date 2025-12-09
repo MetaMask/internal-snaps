@@ -11,7 +11,7 @@ import type {
   UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
 
-import { TransactionEventType } from '../../types/analytics';
+import { SecurityEventType, TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
 
 /**
@@ -377,6 +377,63 @@ export class SnapClient {
       origin: properties.origin,
       account_type: properties.accountType,
       chain_id_caip: properties.chainIdCaip,
+    });
+  }
+
+  /**
+   * Track a "Security Alert Detected" event when a malicious or warning transaction is detected.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.securityAlertResponse - The type of security alert (Warning, Malicious).
+   * @param properties.securityAlertReason - The reason for the security alert.
+   * @param properties.securityAlertDescription - Human-readable description of the alert.
+   */
+  async trackSecurityAlertDetected(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+    securityAlertResponse: string;
+    securityAlertReason: string | null;
+    securityAlertDescription: string;
+  }): Promise<void> {
+    await this.trackEvent(SecurityEventType.SecurityAlertDetected, {
+      message: 'Snap security alert detected',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+      security_alert_response: properties.securityAlertResponse,
+      security_alert_reason: properties.securityAlertReason,
+      security_alert_description: properties.securityAlertDescription,
+    });
+  }
+
+  /**
+   * Track a "Security Scan Completed" event when a transaction security scan finishes.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.scanStatus - The status of the scan (SUCCESS, ERROR).
+   * @param properties.hasSecurityAlerts - Whether security alerts were detected.
+   */
+  async trackSecurityScanCompleted(properties: {
+    origin: string;
+    accountType: string;
+    chainIdCaip: string;
+    scanStatus: string;
+    hasSecurityAlerts: boolean;
+  }): Promise<void> {
+    await this.trackEvent(SecurityEventType.SecurityScanCompleted, {
+      message: 'Snap security scan completed',
+      origin: properties.origin,
+      account_type: properties.accountType,
+      chain_id_caip: properties.chainIdCaip,
+      scan_status: properties.scanStatus,
+      has_security_alerts: properties.hasSecurityAlerts,
     });
   }
 }

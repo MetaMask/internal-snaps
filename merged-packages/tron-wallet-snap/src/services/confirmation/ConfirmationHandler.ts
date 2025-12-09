@@ -117,8 +117,6 @@ export class ConfirmationHandler {
       rawDataHex,
     );
 
-    console.log('rawData', JSON.stringify(rawData, null, 2));
-
     const result = await renderConfirmSignTransaction(
       request,
       account,

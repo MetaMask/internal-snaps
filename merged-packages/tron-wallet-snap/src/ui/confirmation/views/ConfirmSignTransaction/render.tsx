@@ -135,10 +135,12 @@ export async function render(
       const from = fromHex ? TronWeb.address.fromHex(fromHex) : '';
       const to = toHex ? TronWeb.address.fromHex(toHex) : '';
 
+      const data = `0x${transaction.rawDataHex}`;
+
       context.scanParameters = {
         from,
         to,
-        data: `0x${transaction.rawDataHex}`,
+        data,
         value,
       };
 
@@ -146,10 +148,12 @@ export async function render(
         accountAddress: account.address,
         from,
         to,
-        data: `0x${transaction.rawDataHex}`,
+        data,
         value,
         origin,
+        scope: scope as Network,
         options,
+        account,
       });
 
       context.scan = scan;

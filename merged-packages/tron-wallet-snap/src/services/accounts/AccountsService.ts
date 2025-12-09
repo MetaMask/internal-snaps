@@ -16,6 +16,7 @@ import {
   asStrictKeyringAccount,
   type TronKeyringAccount,
 } from '../../entities';
+import { sanitizeSensitiveError } from '../../utils/errors';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AssetsService } from '../assets/AssetsService';
@@ -92,38 +93,43 @@ export class AccountsService {
     privateKeyHex: string;
     address: string;
   }> {
-    this.#logger.log({ derivationPath }, 'Generating TRON wallet');
+    try {
+      this.#logger.log({ derivationPath }, 'Generating TRON wallet');
 
-    assert(derivationPath, DerivationPathStruct);
+      assert(derivationPath, DerivationPathStruct);
 
-    const path = derivationPath.split('/');
+      const path = derivationPath.split('/');
 
-    const node = await this.#snapClient.getBip32Entropy({
-      entropySource,
-      path,
-      curve: CURVE,
-    });
+      const node = await this.#snapClient.getBip32Entropy({
+        entropySource,
+        path,
+        curve: CURVE,
+      });
 
-    if (!node.privateKey || !node.publicKey) {
-      throw new Error('Unable to derive private key');
+      if (!node.privateKey || !node.publicKey) {
+        throw new Error('Unable to derive private key');
+      }
+
+      const privateKeyBytes = hexToBytes(node.privateKey);
+      const publicKeyBytes = hexToBytes(node.publicKey);
+      const privateKeyHex = node.privateKey.slice(2);
+
+      const address = TronWeb.address.fromPrivateKey(privateKeyHex);
+
+      if (!address) {
+        throw new Error('Unable to derive address');
+      }
+
+      return {
+        privateKeyBytes,
+        publicKeyBytes,
+        privateKeyHex,
+        address,
+      };
+    } catch (error) {
+      // Sanitize errors to prevent leaking sensitive cryptographic information
+      throw sanitizeSensitiveError(error);
     }
-
-    const privateKeyBytes = hexToBytes(node.privateKey);
-    const publicKeyBytes = hexToBytes(node.publicKey);
-    const privateKeyHex = node.privateKey.slice(2);
-
-    const address = TronWeb.address.fromPrivateKey(privateKeyHex);
-
-    if (!address) {
-      throw new Error('Unable to derive address');
-    }
-
-    return {
-      privateKeyBytes,
-      publicKeyBytes,
-      privateKeyHex,
-      address,
-    };
   }
 
   async deriveAccount({

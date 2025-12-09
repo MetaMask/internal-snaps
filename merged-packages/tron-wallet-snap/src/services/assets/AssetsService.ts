@@ -268,14 +268,17 @@ export class AssetsService {
     scope: Network;
     tronAccountInfo: TronAccount;
   }): AssetEntity {
+    // Balance may be missing for very new/inactive accounts, default to 0
+    const balance = tronAccountInfo.balance ?? 0;
+
     const asset: AssetEntity = {
       assetType: Networks[scope].nativeToken.id,
       keyringAccountId: account.id,
       network: scope,
       symbol: Networks[scope].nativeToken.symbol,
       decimals: Networks[scope].nativeToken.decimals,
-      rawAmount: tronAccountInfo.balance.toString(),
-      uiAmount: new BigNumber(tronAccountInfo.balance)
+      rawAmount: balance.toString(),
+      uiAmount: new BigNumber(balance)
         .dividedBy(10 ** Networks[scope].nativeToken.decimals)
         .toString(),
       iconUrl: Networks[scope].nativeToken.iconUrl,
