@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0]
+
+### Added
+
+- Integrate Blockaid transaction simulation ([#139](https://github.com/MetaMask/snap-tron-wallet/pull/139))
+
+### Fixed
+
+- Enhance FeeCalculatorService with fallback energy estimation to `feeLimit` ([#142](https://github.com/MetaMask/snap-tron-wallet/pull/142))
+- Audit fixes ([#140](https://github.com/MetaMask/snap-tron-wallet/pull/140))
+- Stop signing transactions before user confirmation ([#138](https://github.com/MetaMask/snap-tron-wallet/pull/138))
+
 ## [1.15.1]
 
 ### Changed
@@ -285,7 +297,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.15.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.13.0...v1.14.0
