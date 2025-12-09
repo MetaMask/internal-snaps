@@ -174,6 +174,7 @@ describe('FeeCalculatorService', () => {
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
         });
       });
 
@@ -421,6 +422,7 @@ describe('FeeCalculatorService', () => {
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
         });
 
         const availableEnergy = BigNumber(100000);
@@ -479,6 +481,7 @@ describe('FeeCalculatorService', () => {
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
         });
 
         const availableEnergy = BigNumber(100000);
@@ -657,6 +660,7 @@ describe('FeeCalculatorService', () => {
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
         });
 
         const transaction = getTransactionExample('trc20');
@@ -815,6 +819,7 @@ describe('FeeCalculatorService', () => {
           energy_used: 65000,
           result: { result: true },
           constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
         });
 
         const transaction = getTransactionExample('trc20');
@@ -867,11 +872,48 @@ describe('FeeCalculatorService', () => {
         ]);
       });
 
+      it('handles energy_used of zero correctly without falling back', async () => {
+        // Simulation returns energy_used: 0 (legitimate zero energy consumption)
+        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+          energy_used: 0,
+          result: { result: true },
+          constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
+        });
+
+        const transaction = getTransactionExample('trc20');
+        const availableEnergy = BigNumber(50000);
+        const availableBandwidth = BigNumber(2000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // Should use the actual simulation result (0 energy), not fall back
+        // Energy consumed: 0 from available, no overage
+        // No TRX cost for energy
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '345',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
       it('uses feeLimit fallback when simulation returns no energy_used', async () => {
         // Simulation returns empty/no energy_used
         mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
           result: { result: true },
           constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
         });
 
         const transaction = getTransactionExample('trc20');

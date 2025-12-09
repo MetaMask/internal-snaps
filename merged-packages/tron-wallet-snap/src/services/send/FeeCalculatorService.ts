@@ -232,6 +232,21 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Get fallback energy estimate when simulation fails or is unavailable.
+   * Uses fee limit to calculate max energy if provided, otherwise returns a conservative default.
+   *
+   * @param scope - The network scope for the contract
+   * @param feeLimit - Optional fee limit in SUN to use for calculation
+   * @returns Promise<number> - The fallback energy estimate
+   */
+  async #getFallbackEnergy(scope: Network, feeLimit?: number): Promise<number> {
+    if (feeLimit !== undefined && feeLimit > 0) {
+      return this.#calculateFallbackEnergyFromFeeLimit(scope, feeLimit);
+    }
+    return 130000; // Default conservative estimate
+  }
+
+  /**
    * Estimate energy consumption for contract calls of type TriggerSmartContract.
    * Uses direct TronGrid API call for accurate energy estimation.
    * Based on TIP-544: https://github.com/tronprotocol/tips/blob/master/tip-544.md
@@ -246,13 +261,6 @@ export class FeeCalculatorService {
     contract: any,
     feeLimit?: number,
   ): Promise<number> {
-    const getFallbackEnergy = async (): Promise<number> => {
-      if (feeLimit !== undefined && feeLimit > 0) {
-        return this.#calculateFallbackEnergyFromFeeLimit(scope, feeLimit);
-      }
-      return 130000; // Default conservative estimate
-    };
-
     try {
       const {
         data,
@@ -266,7 +274,7 @@ export class FeeCalculatorService {
 
       if (!data) {
         this.#logger.warn('No data field found in contract, using fallback');
-        return getFallbackEnergy();
+        throw new Error('No data field found in contract');
       }
 
       this.#logger.log(
@@ -298,7 +306,14 @@ export class FeeCalculatorService {
         },
       );
 
-      if (result.energy_used) {
+      /**
+       * If the transaction simulation failed, we use the fallback energy estimate.
+       */
+      if (result.transaction.ret[0]?.ret === 'FAILED') {
+        throw new Error('Simulation yields failed result');
+      }
+
+      if ('energy_used' in result) {
         this.#logger.log(
           {
             data: data.slice(0, 8),
@@ -311,13 +326,13 @@ export class FeeCalculatorService {
       }
 
       this.#logger.warn('No energy_used in result, using fallback');
-      return getFallbackEnergy();
+      return this.#getFallbackEnergy(scope, feeLimit);
     } catch (error) {
       this.#logger.error(
         { error },
         'Failed to estimate smart contract energy, using fallback',
       );
-      return getFallbackEnergy();
+      return this.#getFallbackEnergy(scope, feeLimit);
     }
   }
 
