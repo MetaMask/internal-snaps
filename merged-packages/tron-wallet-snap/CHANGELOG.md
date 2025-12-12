@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.1]
+
+### Fixed
+
+- Dapp connectivity confirmations ([#146](https://github.com/MetaMask/snap-tron-wallet/pull/146))
+
 ## [1.16.0]
 
 ### Added
@@ -297,7 +303,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.1...HEAD
+[1.16.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.14.0...v1.15.0
