@@ -1,6 +1,7 @@
 import type { SpotPrices } from '../../../../clients/price-api/types';
 import type { Network } from '../../../../constants';
 import type { TronKeyringAccount } from '../../../../entities';
+import type { ComputeFeeResult } from '../../../../services/send/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../types/snap';
 
@@ -26,4 +27,6 @@ export type ConfirmSignTransactionContext = {
     data: string | null;
     value: number | null;
   } | null;
+  fees: ComputeFeeResult;
+  feesFetchStatus: FetchStatus;
 };

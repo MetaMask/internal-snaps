@@ -7,8 +7,9 @@ import { i18n } from '../../../../utils/i18n';
  */
 const ERROR_MESSAGES: Record<string, string> = {
   // Add Tron-specific error codes here as needed
-  InsufficientBalance: 'transactionScan.errors.insufficientBalance',
-  InvalidTransaction: 'transactionScan.errors.invalidTransaction',
+  GENERAL_INSUFFICIENT_FUNDS: 'transactionScan.errors.insufficientFunds',
+  GENERAL_INVALID_ADDRESS: 'transactionScan.errors.invalidAddress',
+  UNSUPPORTED_EIP712_MESSAGE: 'transactionScan.errors.unsupportedEIP712Message',
 };
 
 /**

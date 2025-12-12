@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "अमान्य ट्रांसेक्शन"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "अपर्याप्त धनराशि"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "अमान्य पता"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "असमर्थित विधि"
     }
   }
 }

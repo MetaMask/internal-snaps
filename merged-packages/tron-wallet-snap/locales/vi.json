@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Giao dịch không hợp lệ"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Không đủ tiền"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Địa chỉ không hợp lệ"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Phương thức không được hỗ trợ"
     }
   }
 }

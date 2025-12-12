@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Недействительная транзакция"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Недостаточно средств"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Неверный адрес"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Неподдерживаемый метод"
     }
   }
 }

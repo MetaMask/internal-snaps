@@ -102,6 +102,7 @@ export type AccountSummary = {
 
 export type Simulation = {
   status: 'Success' | 'Error';
+  error_details?: TransactionErrorDetails;
   assets_diffs: Record<string, any>;
   transaction_actions: string[];
   total_usd_diff: Record<string, any>;

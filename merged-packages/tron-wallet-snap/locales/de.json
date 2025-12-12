@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Ungültige Transaktion"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Unzureichende Mittel"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Ungültige Adresse"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Nicht unterstützte Methode"
     }
   }
 }

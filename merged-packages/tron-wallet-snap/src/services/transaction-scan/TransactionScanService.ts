@@ -36,10 +36,11 @@ export class TransactionScanService {
    *
    * @param params - The parameters for the function.
    * @param params.accountAddress - The address of the account.
-   * @param params.from - The from address.
-   * @param params.to - The to address.
-   * @param params.data - The data of the transaction.
-   * @param params.value - The value of the transaction.
+   * @param params.parameters - The parameters for the transaction.
+   * @param params.parameters.from - The from address.
+   * @param params.parameters.to - The to address.
+   * @param params.parameters.data - The data of the transaction.
+   * @param params.parameters.value - The value of the transaction.
    * @param params.origin - The origin of the transaction.
    * @param params.scope - The network scope.
    * @param params.options - The options for the scan (simulation, validation).
@@ -48,20 +49,19 @@ export class TransactionScanService {
    */
   async scanTransaction({
     accountAddress,
-    from,
-    to,
-    data,
-    value,
+    parameters,
     origin,
     scope,
     options = ['simulation', 'validation'],
     account,
   }: {
     accountAddress: string;
-    from: string;
-    to: string;
-    data: string;
-    value: number;
+    parameters: {
+      from: string | undefined;
+      to: string | undefined;
+      data: string | undefined;
+      value: number | undefined | null;
+    };
     origin: string;
     scope: Network;
     options?: string[] | undefined;
@@ -70,10 +70,7 @@ export class TransactionScanService {
     try {
       const result = await this.#securityAlertsApiClient.scanTransaction({
         accountAddress,
-        from,
-        to,
-        data,
-        value,
+        parameters,
         origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
         options,
       });
@@ -275,13 +272,12 @@ export class TransactionScanService {
         type: result.validation?.result_type ?? null,
         reason: result.validation?.reason ?? null,
       },
-      error:
-        status === 'ERROR'
-          ? {
-              type: 'validation_error',
-              code: null,
-            }
-          : null,
+      error: result.simulation?.error_details
+        ? {
+            type: result.simulation?.error_details.type ?? null,
+            code: result.simulation?.error_details.code ?? null,
+          }
+        : null,
     };
   }
 }

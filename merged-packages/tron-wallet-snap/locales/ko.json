@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "무효한 트랜잭션"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "자금 부족"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "무효한 주소"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "지원되지 않는 메서드"
     }
   }
 }

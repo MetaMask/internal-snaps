@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Hindi wastong transaksyon"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Kulang ang pondo"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Hindi wastong address"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Hindi suportadong paraan"
     }
   }
 }

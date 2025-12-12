@@ -104,12 +104,36 @@ describe('ConfirmSignTransaction render', () => {
       getKey: jest.fn().mockResolvedValue({}),
     } as any;
 
+    const mockAssetsService = {
+      getAssetsByAccountId: jest.fn().mockResolvedValue([
+        { rawAmount: '1000000' }, // bandwidth
+        { rawAmount: '50000' }, // energy
+      ]),
+    } as any;
+
+    const mockFeeCalculatorService = {
+      computeFee: jest.fn().mockResolvedValue([]),
+    } as any;
+
+    const mockTronWebFactory = {
+      createClient: jest.fn().mockReturnValue({
+        utils: {
+          crypto: {
+            getTransactionID: jest.fn().mockReturnValue('mock-tx-id'),
+          },
+        },
+      }),
+    } as any;
+
     // Update mocked context with our mocks
     // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
     const snapContext = require('../../../../context').default;
     snapContext.snapClient = mockSnapClient;
     snapContext.transactionScanService = mockTransactionScanService;
     snapContext.state = mockState;
+    snapContext.assetsService = mockAssetsService;
+    snapContext.feeCalculatorService = mockFeeCalculatorService;
+    snapContext.tronWebFactory = mockTronWebFactory;
   });
 
   it('renders the confirmation dialog with security scan', async () => {
@@ -162,14 +186,15 @@ describe('ConfirmSignTransaction render', () => {
     // Verify security scan was triggered with from/to addresses and value
     expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith({
       accountAddress: mockAccount.address,
-      from: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
-      to: '6wjzKJfLvipffZfji1fGwz4hbhwZrTgF5',
-      data: `0x${testTransaction}`,
-      value: 100000,
+      parameters: {
+        from: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
+        to: '6wjzKJfLvipffZfji1fGwz4hbhwZrTgF5',
+        data: undefined,
+        value: undefined,
+      },
       origin: testOrigin,
       scope: Network.Mainnet,
       options: ['simulation', 'validation'],
-      account: mockAccount,
     });
 
     // Verify interface was updated with scan results

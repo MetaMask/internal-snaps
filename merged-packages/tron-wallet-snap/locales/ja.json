@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "無効なトランザクション"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "資金不足"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "無効なアドレス"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "サポートされていないメソッド"
     }
   }
 }

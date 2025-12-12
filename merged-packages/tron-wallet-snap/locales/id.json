@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Transaksi tidak valid"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Dana tidak mencukupi"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Alamat tidak valid"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Metode tidak didukung"
     }
   }
 }

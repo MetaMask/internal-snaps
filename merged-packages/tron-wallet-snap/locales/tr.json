@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Geçersiz işlem"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Yetersiz fon"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Geçersiz adres"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Desteklenmeyen yöntem"
     }
   }
 }

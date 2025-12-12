@@ -1,18 +1,22 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
+import { BigNumber } from 'bignumber.js';
+import { sha256 } from 'ethers';
 import { TronWeb } from 'tronweb';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
 import type { ConfirmSignTransactionContext } from './types';
-import { Network } from '../../../../constants';
+import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
+import { generateImageComponent } from '../../../utils/generateImageComponent';
+import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
 export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   scope: Network.Mainnet,
@@ -28,6 +32,8 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   tokenPrices: {},
   tokenPricesFetchStatus: 'initial',
   scanParameters: null,
+  fees: [],
+  feesFetchStatus: 'initial',
   preferences: {
     locale: 'en',
     currency: 'usd',
@@ -74,17 +80,108 @@ export async function render(
     transaction,
     origin: origin ?? 'Unknown',
     scanFetchStatus: 'fetching',
-    tokenPricesFetchStatus: 'fetching',
+    tokenPricesFetchStatus: 'initial',
+    feesFetchStatus: 'initial',
   };
 
-  // Get preferences
+  const { assetsService, feeCalculatorService, priceApiClient } = snapContext;
+
+  // Parallelize: Get preferences + Fetch account assets
+  const [preferences, accountAssets] = await Promise.all([
+    snapClient.getPreferences().catch(() => DEFAULT_CONTEXT.preferences),
+    assetsService.getAssetsByAccountId(account.id, [
+      Networks[scope as Network].bandwidth.id,
+      Networks[scope as Network].energy.id,
+    ]),
+  ]);
+
+  context.preferences = preferences;
+
+  const { useSecurityAlerts, simulateOnChainActions, useExternalPricingData } =
+    context.preferences;
+
+  // Calculate fees
   try {
-    context.preferences = await snapClient.getPreferences();
+    const [bandwidthAsset, energyAsset] = accountAssets;
+
+    const availableEnergy = energyAsset
+      ? new BigNumber(energyAsset.rawAmount)
+      : ZERO;
+    const availableBandwidth = bandwidthAsset
+      ? new BigNumber(bandwidthAsset.rawAmount)
+      : ZERO;
+
+    // Build transaction object from raw data
+    const txID = sha256(`0x${transaction.rawDataHex}`).slice(2);
+
+    const transactionObj: Transaction = {
+      visible: true,
+      txID,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data: rawData,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data_hex: transaction.rawDataHex,
+    };
+
+    const fees = await feeCalculatorService.computeFee({
+      scope: scope as Network,
+      transaction: transactionObj,
+      availableEnergy,
+      availableBandwidth,
+    });
+
+    // Parallelize: Generate SVG images + Fetch prices
+    const svgPromises = fees.map(async (fee) =>
+      generateImageComponent(getIconUrlForKnownAsset(fee.asset.type), 16, 16),
+    );
+
+    const pricePromise = useExternalPricingData
+      ? priceApiClient
+          .getMultipleSpotPrices(
+            [`${scope}/slip44:195`] as any,
+            context.preferences.currency,
+          )
+          .catch(() => ({}))
+      : Promise.resolve({});
+
+    const [feeSvgs, tokenPrices] = await Promise.all([
+      Promise.all(svgPromises),
+      pricePromise,
+    ]);
+
+    context.fees = fees;
+    context.fees.forEach((fee, index) => {
+      fee.asset.imageSvg = feeSvgs[index] ?? '';
+    });
+    context.feesFetchStatus = 'fetched';
+    context.tokenPrices = tokenPrices;
+    context.tokenPricesFetchStatus = 'fetched';
   } catch {
-    context.preferences = DEFAULT_CONTEXT.preferences;
+    context.fees = [];
+    context.feesFetchStatus = 'error';
+    context.tokenPrices = {};
+    context.tokenPricesFetchStatus = 'error';
   }
 
-  const { useSecurityAlerts, simulateOnChainActions } = context.preferences;
+  // Extract scan parameters early (before interface creation)
+  const contractParam = rawData.contract?.[0]?.parameter?.value as any;
+  const fromHex = contractParam?.owner_address ?? '';
+  const toHex =
+    contractParam?.contract_address ?? contractParam?.to_address ?? '';
+  const value = contractParam?.amount ?? null;
+  const dataHex = contractParam?.data ?? null;
+
+  // Convert hex addresses to base58 format
+  const from = fromHex ? TronWeb.address.fromHex(fromHex) : '';
+  const to = toHex ? TronWeb.address.fromHex(toHex) : '';
+  const data = dataHex ? `0x${dataHex}` : null;
+
+  context.scanParameters = {
+    from,
+    to,
+    data,
+    value,
+  };
 
   // Create initial interface with loading state
   const id = await snapClient.createInterface(
@@ -94,22 +191,11 @@ export async function render(
 
   const dialogPromise = snapClient.showDialog(id);
 
-  // Store interface ID in state for background refresh
-  await snapContext.state.setKey(
+  // Parallelize: Store interface ID + Start security scan
+  const storeIdPromise = snapContext.state.setKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME}`,
     id,
   );
-
-  // Schedule background job for price fetching if enabled
-  if (context.preferences.useExternalPricingData) {
-    await snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.RefreshConfirmationPrices,
-      duration: 'PT1S', // Start immediately
-    });
-  } else {
-    // If pricing is disabled, set to fetched immediately
-    context.tokenPricesFetchStatus = 'fetched';
-  }
 
   // If security scanning is enabled, scan the transaction
   if (transactionScanService && (useSecurityAlerts || simulateOnChainActions)) {
@@ -124,36 +210,17 @@ export async function render(
     }
 
     try {
-      // Extract hex addresses from raw data
-      const contractParam = rawData.contract?.[0]?.parameter?.value as any;
-      const fromHex = contractParam?.owner_address ?? '';
-      const toHex =
-        contractParam?.contract_address ?? contractParam?.to_address ?? '';
-      const value = contractParam?.call_value ?? 0;
-
-      // Convert hex addresses to base58 format
-      const from = fromHex ? TronWeb.address.fromHex(fromHex) : '';
-      const to = toHex ? TronWeb.address.fromHex(toHex) : '';
-
-      const data = `0x${transaction.rawDataHex}`;
-
-      context.scanParameters = {
-        from,
-        to,
-        data,
-        value,
-      };
-
       const scan = await transactionScanService.scanTransaction({
         accountAddress: account.address,
-        from,
-        to,
-        data,
-        value,
+        parameters: {
+          from: from ?? undefined,
+          to: to ?? undefined,
+          data: data ?? undefined,
+          value: value ?? undefined,
+        },
         origin,
         scope: scope as Network,
         options,
-        account,
       });
 
       context.scan = scan;
@@ -163,6 +230,9 @@ export async function render(
       context.scanFetchStatus = 'error';
     }
 
+    // Ensure interface ID is stored before updating
+    await storeIdPromise;
+
     // Update interface with scan results
     await snapClient.updateInterface(
       id,
@@ -170,7 +240,6 @@ export async function render(
       context,
     );
 
-    // Schedule background refresh for scan and prices (20 seconds like Solana)
     await snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshSignTransaction,
       duration: 'PT20S',
@@ -178,6 +247,10 @@ export async function render(
   } else {
     // No scanning, mark as fetched immediately
     context.scanFetchStatus = 'fetched';
+
+    // Ensure interface ID is stored before updating
+    await storeIdPromise;
+
     await snapClient.updateInterface(
       id,
       <ConfirmSignTransaction context={context} />,

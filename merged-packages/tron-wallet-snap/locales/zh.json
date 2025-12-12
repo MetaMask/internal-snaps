@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "无效交易"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "资金不足"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "无效地址"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "不支持的方法"
     }
   }
 }

@@ -93,6 +93,15 @@
     },
     "transactionScan.errors.invalidTransaction": {
       "message": "Invalid transaction"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Ανεπαρκή κεφάλαια"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Μη έγκυρη διεύθυνση"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Μη υποστηριζόμενη μέθοδος"
     }
   }
 }

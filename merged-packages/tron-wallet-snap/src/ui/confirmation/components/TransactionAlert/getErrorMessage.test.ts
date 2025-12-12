@@ -19,23 +19,23 @@ describe('getErrorMessage', () => {
   it('returns translated message for known error codes', () => {
     const error: TransactionScanError = {
       type: 'validation_error',
-      code: 'InsufficientBalance',
+      code: 'GENERAL_INSUFFICIENT_FUNDS',
     };
 
     const result = getErrorMessage(error, mockPreferences);
 
-    expect(result).toBe('Insufficient balance');
+    expect(result).toBe('Insufficient funds');
   });
 
-  it('returns translated message for invalid transaction code', () => {
+  it('returns translated message for invalid address code', () => {
     const error: TransactionScanError = {
       type: 'validation_error',
-      code: 'InvalidTransaction',
+      code: 'GENERAL_INVALID_ADDRESS',
     };
 
     const result = getErrorMessage(error, mockPreferences);
 
-    expect(result).toBe('Invalid transaction');
+    expect(result).toBe('Invalid address');
   });
 
   it('returns unknown error message for unmapped code', () => {

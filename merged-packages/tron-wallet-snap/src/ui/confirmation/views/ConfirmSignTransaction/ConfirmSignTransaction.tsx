@@ -20,6 +20,7 @@ import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { formatOrigin } from '../../../../utils/formatOrigin';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
+import { Fees } from '../../components/Fees';
 import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
 
 export const ConfirmSignTransaction = ({
@@ -36,6 +37,9 @@ export const ConfirmSignTransaction = ({
     preferences,
     scan,
     scanFetchStatus,
+    fees,
+    tokenPrices,
+    tokenPricesFetchStatus,
   } = context;
 
   const shouldDisableConfirmButton =
@@ -124,6 +128,16 @@ export const ConfirmSignTransaction = ({
               <SnapText>{Networks[scope].name}</SnapText>
             </Box>
           </Box>
+
+          <Box>{null}</Box>
+
+          {/* Fees */}
+          <Fees
+            fees={fees}
+            preferences={preferences}
+            tokenPrices={tokenPrices}
+            tokenPricesFetchStatus={tokenPricesFetchStatus}
+          />
         </Section>
       </Box>
       <Footer>
