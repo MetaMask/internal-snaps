@@ -2,6 +2,7 @@
 import { TransactionType, TransactionStatus } from '@metamask/keyring-api';
 
 import { TransactionMapper } from './TransactionsMapper';
+import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type {
   TransactionInfo,
   ContractTransactionInfo,
@@ -93,14 +94,14 @@ describe('TransactionMapper', () => {
     });
 
     describe('TransferAssetContract (TRC10 transfers)', () => {
-      it('should map a TRC10 send transaction correctly', () => {
-        // Use the actual address from the TRC10 transaction mock instead of converting
-        const trc10Account: TronKeyringAccount = {
-          ...mockAccount,
-          id: 'test-trc10-account',
-          address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw', // Actual address from TRC10 mock
-        };
+      // Use the actual address from the TRC10 transaction mock instead of converting
+      const trc10Account: TronKeyringAccount = {
+        ...mockAccount,
+        id: 'test-trc10-account',
+        address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw', // Actual address from TRC10 mock
+      };
 
+      it('maps TRC10 send transaction with default 6 decimals when no metadata provided', () => {
         const rawTransaction = trc10TransferMock as TransactionInfo;
 
         const result = TransactionMapper.mapTransaction({
@@ -117,6 +118,7 @@ describe('TransactionMapper', () => {
             {
               address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw',
               asset: {
+                // 494000 / 10^6 = 0.494 (default 6 decimals)
                 amount: '0.494',
                 unit: 'UNKNOWN',
                 type: 'tron:728126428/trc10:1002000',
@@ -158,6 +160,80 @@ describe('TransactionMapper', () => {
         };
 
         expect(result).toStrictEqual(expectedTransaction);
+      });
+
+      it('maps TRC10 send transaction using metadata (decimals and symbol)', () => {
+        const rawTransaction = trc10TransferMock as TransactionInfo;
+
+        // Create metadata map with 3 decimals for token 1002000
+        const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>([
+          [
+            '1002000',
+            {
+              name: 'BitTorrent',
+              symbol: 'BTT',
+              decimals: 3, // Token has 3 decimals, not 6
+            },
+          ],
+        ]);
+
+        const result = TransactionMapper.mapTransaction({
+          scope: Network.Mainnet,
+          account: trc10Account,
+          trongridTransaction: rawTransaction,
+          trc10TokenMetadata,
+        });
+
+        // 494000 / 10^3 = 494 (using actual 3 decimals)
+        const fromAsset = result!.from[0]!.asset as {
+          amount: string;
+          unit: string;
+        };
+        const toAsset = result!.to[0]!.asset as {
+          amount: string;
+          unit: string;
+        };
+        expect(fromAsset.amount).toBe('494');
+        expect(fromAsset.unit).toBe('BTT');
+        expect(toAsset.amount).toBe('494');
+        expect(toAsset.unit).toBe('BTT');
+      });
+
+      it('maps TRC10 send transaction using 0 decimals from token metadata', () => {
+        const rawTransaction = trc10TransferMock as TransactionInfo;
+
+        // Create metadata map with 0 decimals for token 1002000
+        const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>([
+          [
+            '1002000',
+            {
+              name: 'WholeToken',
+              symbol: 'WHL',
+              decimals: 0, // Token has no decimals
+            },
+          ],
+        ]);
+
+        const result = TransactionMapper.mapTransaction({
+          scope: Network.Mainnet,
+          account: trc10Account,
+          trongridTransaction: rawTransaction,
+          trc10TokenMetadata,
+        });
+
+        // 494000 / 10^0 = 494000 (using actual 0 decimals)
+        const fromAsset = result!.from[0]!.asset as {
+          amount: string;
+          unit: string;
+        };
+        const toAsset = result!.to[0]!.asset as {
+          amount: string;
+          unit: string;
+        };
+        expect(fromAsset.amount).toBe('494000');
+        expect(fromAsset.unit).toBe('WHL');
+        expect(toAsset.amount).toBe('494000');
+        expect(toAsset.unit).toBe('WHL');
       });
     });
 

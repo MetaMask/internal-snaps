@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
 
+import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type {
   ContractTransactionInfo,
@@ -22,6 +24,7 @@ describe('TransactionsService', () => {
   let mockLogger: jest.Mocked<ILogger>;
   let mockTransactionsRepository: jest.Mocked<TransactionsRepository>;
   let mockTrongridApiClient: jest.Mocked<TrongridApiClient>;
+  let mockTronHttpClient: jest.Mocked<TronHttpClient>;
 
   const mockAccount: TronKeyringAccount = {
     id: 'test-account-id',
@@ -78,9 +81,13 @@ describe('TransactionsService', () => {
       getContractTransactionInfoByAddress: jest.fn(),
     } as unknown as jest.Mocked<TrongridApiClient>;
 
-    // Create service instance
-    const mockTronHttpClient = {} as any;
+    // Create mock TronHttpClient
+    mockTronHttpClient = {
+      getTRC10TokenMetadata: jest.fn(),
+      getTransactionInfoById: jest.fn(),
+    } as unknown as jest.Mocked<TronHttpClient>;
 
+    // Create service instance
     transactionsService = new TransactionsService({
       logger: mockLogger,
       transactionsRepository: mockTransactionsRepository,
@@ -121,7 +128,7 @@ describe('TransactionsService', () => {
       expect(true).toBe(true);
     });
 
-    it('should fetch and map transactions for an account using TRC10 transfers mock data', async () => {
+    it('fetches and maps TRC10 transactions with token metadata', async () => {
       // Setup mock responses with simplified single-transaction structure
       mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
         trc10TransferMock,
@@ -129,11 +136,18 @@ describe('TransactionsService', () => {
       mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
         [],
       );
+      // Mock TRC10 token metadata response with 3 decimals
+      mockTronHttpClient.getTRC10TokenMetadata.mockResolvedValue({
+        name: 'BitTorrent',
+        symbol: 'BTT',
+        decimals: 3,
+      });
 
-      await transactionsService.fetchTransactionsForAccount(
-        Network.Mainnet,
-        mockAccount2,
-      );
+      const transactions =
+        await transactionsService.fetchTransactionsForAccount(
+          Network.Mainnet,
+          mockAccount2,
+        );
 
       // Verify API calls were made
       expect(
@@ -143,7 +157,69 @@ describe('TransactionsService', () => {
         mockTrongridApiClient.getContractTransactionInfoByAddress,
       ).toHaveBeenCalledWith(Network.Mainnet, mockAccount2.address);
 
-      expect(true).toBe(true);
+      // Verify TRC10 token metadata was fetched for the token ID in the transaction
+      expect(mockTronHttpClient.getTRC10TokenMetadata).toHaveBeenCalledWith(
+        '1002000',
+        Network.Mainnet,
+      );
+
+      // Verify the amount and symbol are from fetched metadata
+      // Raw amount is 494000, with 3 decimals: 494000 / 10^3 = 494
+      expect(transactions).toHaveLength(1);
+      const fromAsset = transactions[0]!.from[0]!.asset as {
+        amount: string;
+        unit: string;
+      };
+      const toAsset = transactions[0]!.to[0]!.asset as {
+        amount: string;
+        unit: string;
+      };
+      expect(fromAsset.amount).toBe('494');
+      expect(fromAsset.unit).toBe('BTT');
+      expect(toAsset.amount).toBe('494');
+      expect(toAsset.unit).toBe('BTT');
+    });
+
+    it('falls back to defaults when TRC10 metadata fetch fails', async () => {
+      // Setup mock responses with simplified single-transaction structure
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+        trc10TransferMock,
+      ] as TransactionInfo[]);
+      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+        [],
+      );
+      // Mock TRC10 token metadata to fail
+      mockTronHttpClient.getTRC10TokenMetadata.mockRejectedValue(
+        new Error('Token not found'),
+      );
+
+      const transactions =
+        await transactionsService.fetchTransactionsForAccount(
+          Network.Mainnet,
+          mockAccount2,
+        );
+
+      // Verify TRC10 token metadata fetch was attempted
+      expect(mockTronHttpClient.getTRC10TokenMetadata).toHaveBeenCalledWith(
+        '1002000',
+        Network.Mainnet,
+      );
+
+      // Verify the amount falls back to default 6 decimals and symbol to UNKNOWN
+      // Raw amount is 494000, with 6 decimals: 494000 / 10^6 = 0.494
+      expect(transactions).toHaveLength(1);
+      const fromAsset = transactions[0]!.from[0]!.asset as {
+        amount: string;
+        unit: string;
+      };
+      const toAsset = transactions[0]!.to[0]!.asset as {
+        amount: string;
+        unit: string;
+      };
+      expect(fromAsset.amount).toBe('0.494');
+      expect(fromAsset.unit).toBe('UNKNOWN');
+      expect(toAsset.amount).toBe('0.494');
+      expect(toAsset.unit).toBe('UNKNOWN');
     });
 
     it('should handle network parameter correctly for different networks', async () => {

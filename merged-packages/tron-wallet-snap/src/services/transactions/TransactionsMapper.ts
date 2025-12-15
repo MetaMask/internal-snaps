@@ -1,14 +1,15 @@
 import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
-import { TransactionType, TransactionStatus } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { TronWeb } from 'tronweb';
 
+import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type {
   ContractTransactionInfo,
-  TransactionInfo,
-  TransferContractInfo,
-  TransferAssetContractInfo,
-  GeneralContractInfo,
   ContractValue,
+  GeneralContractInfo,
+  TransactionInfo,
+  TransferAssetContractInfo,
+  TransferContractInfo,
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
@@ -398,17 +399,20 @@ export class TransactionMapper {
    * @param params.scope - The network scope (e.g., mainnet, shasta).
    * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
    * @param params.trongridTransaction - The raw transaction data from Trongrid.
-   * @returns The mapped Transaction or null if the transaction is not supported.
+   * @param params.trc10TokenMetadata - Optional map of TRC10 token ID to metadata (including decimals).
+   * @returns The mapped Transaction.
    */
   static #mapTransferAssetContract({
     scope,
     account,
     trongridTransaction,
+    trc10TokenMetadata,
   }: {
     scope: Network;
     account: TronKeyringAccount;
     trongridTransaction: TransactionInfo;
-  }): Transaction | null {
+    trc10TokenMetadata?: Map<string, TRC10TokenMetadata>;
+  }): Transaction {
     const firstContract = trongridTransaction.raw_data
       .contract[0] as TransferAssetContractInfo;
     const contractValue = firstContract.parameter.value;
@@ -425,10 +429,17 @@ export class TransactionMapper {
       ? Math.floor(Date.now() / 1000)
       : Math.floor(trongridTransaction.block_timestamp / 1000);
 
-    // Convert from smallest unit to human-readable amount (TRC10 typically uses 6 decimals)
-    const amountInSmallestUnit = contractValue.amount;
-    const amountInReadableUnit = (amountInSmallestUnit / 1_000_000).toString();
+    // Get token metadata for decimals and symbol
     const assetName = contractValue.asset_name;
+    const tokenMetadata = trc10TokenMetadata?.get(assetName);
+    const decimals = tokenMetadata?.decimals ?? 6;
+    const symbol = tokenMetadata?.symbol ?? 'UNKNOWN';
+
+    // Convert from smallest unit to human-readable amount using actual token decimals
+    const amountInSmallestUnit = contractValue.amount;
+    const amountInReadableUnit = (
+      amountInSmallestUnit / Math.pow(10, decimals)
+    ).toString();
 
     // Calculate comprehensive fees including Energy and Bandwidth
     const fees = TransactionMapper.#calculateTronFees(
@@ -450,7 +461,7 @@ export class TransactionMapper {
         {
           address: from as any,
           asset: {
-            unit: 'UNKNOWN',
+            unit: symbol,
             type: `${scope}/trc10:${assetName}`,
             amount: amountInReadableUnit,
             fungible: true,
@@ -461,7 +472,7 @@ export class TransactionMapper {
         {
           address: to,
           asset: {
-            unit: 'UNKNOWN',
+            unit: symbol,
             type: `${scope}/trc10:${assetName}`,
             amount: amountInReadableUnit,
             fungible: true,
@@ -1260,6 +1271,7 @@ export class TransactionMapper {
    * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
    * @param params.trongridTransaction - The raw transaction data from Trongrid.
    * @param params.trc20Transfers - Optional array of TRC20 transfers for this transaction ID.
+   * @param params.trc10TokenMetadata - Optional map of TRC10 token ID to metadata (including decimals).
    * @returns The mapped Transaction or null if the transaction is not supported.
    */
   static mapTransaction({
@@ -1267,11 +1279,13 @@ export class TransactionMapper {
     account,
     trongridTransaction,
     trc20Transfers = [],
+    trc10TokenMetadata,
   }: {
     scope: Network;
     account: TronKeyringAccount;
     trongridTransaction: TransactionInfo;
     trc20Transfers?: ContractTransactionInfo[];
+    trc10TokenMetadata?: Map<string, TRC10TokenMetadata>;
   }): Transaction | null {
     /**
      * Cheat Sheet of "raw_data" > "contract" > "type"
@@ -1303,6 +1317,7 @@ export class TransactionMapper {
           scope,
           account,
           trongridTransaction,
+          trc10TokenMetadata,
         });
 
       case 'FreezeBalanceV2Contract':
@@ -1345,6 +1360,7 @@ export class TransactionMapper {
    * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
    * @param params.rawTransactions - Array of raw transaction data (primary source).
    * @param params.trc20Transactions - Array of TRC20 transaction data (assistance).
+   * @param params.trc10TokenMetadata - Optional map of TRC10 token ID to metadata (including decimals).
    * @returns Array of mapped Transactions.
    */
   static mapTransactions({
@@ -1352,11 +1368,13 @@ export class TransactionMapper {
     account,
     rawTransactions,
     trc20Transactions,
+    trc10TokenMetadata,
   }: {
     scope: Network;
     account: TronKeyringAccount;
     rawTransactions: TransactionInfo[];
     trc20Transactions: ContractTransactionInfo[];
+    trc10TokenMetadata?: Map<string, TRC10TokenMetadata>;
   }): Transaction[] {
     const transactions: Transaction[] = [];
     const processedTxIds = new Set<string>();
@@ -1378,6 +1396,7 @@ export class TransactionMapper {
         account,
         trongridTransaction: rawTx,
         trc20Transfers,
+        trc10TokenMetadata,
       });
 
       if (mappedTx) {

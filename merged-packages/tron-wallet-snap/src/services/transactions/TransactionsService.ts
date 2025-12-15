@@ -6,10 +6,12 @@ import { groupBy } from 'lodash';
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
+import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type {
   ContractTransactionInfo,
   TransactionInfo,
+  TransferAssetContractInfo,
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
@@ -105,6 +107,73 @@ export class TransactionsService {
       .filter(Boolean) as TransactionInfo[];
   }
 
+  /**
+   * Extracts unique TRC10 token IDs from raw transactions and fetches their metadata.
+   * This is used to get the correct decimal precision for TRC10 token amount conversions.
+   *
+   * @param scope - The network scope.
+   * @param rawTransactions - Array of raw transactions to scan for TRC10 transfers.
+   * @returns Map of token ID to TRC10 token metadata.
+   */
+  async #fetchTrc10TokenMetadata(
+    scope: Network,
+    rawTransactions: TransactionInfo[],
+  ): Promise<Map<string, TRC10TokenMetadata>> {
+    const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>();
+
+    // Extract unique TRC10 token IDs from TransferAssetContract transactions
+    const trc10TokenIds = new Set<string>();
+    for (const tx of rawTransactions) {
+      const contract = tx.raw_data.contract?.[0];
+      if (contract?.type === 'TransferAssetContract') {
+        const assetContract = contract as TransferAssetContractInfo;
+        const tokenId = assetContract.parameter.value.asset_name;
+        if (tokenId) {
+          trc10TokenIds.add(tokenId);
+        }
+      }
+    }
+
+    if (trc10TokenIds.size === 0) {
+      return trc10TokenMetadata;
+    }
+
+    this.#logger.debug(
+      `Fetching metadata for ${trc10TokenIds.size} TRC10 tokens...`,
+    );
+
+    // Fetch metadata for each unique token ID
+    const metadataPromises = Array.from(trc10TokenIds).map(async (tokenId) => {
+      try {
+        const metadata = await this.#tronHttpClient.getTRC10TokenMetadata(
+          tokenId,
+          scope,
+        );
+        return { tokenId, metadata };
+      } catch (error) {
+        this.#logger.warn(
+          { tokenId, error },
+          `Failed to fetch TRC10 token metadata for ${tokenId}, will use default decimals`,
+        );
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(metadataPromises);
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        trc10TokenMetadata.set(result.value.tokenId, result.value.metadata);
+      }
+    }
+
+    this.#logger.debug(
+      `Successfully fetched metadata for ${trc10TokenMetadata.size}/${trc10TokenIds.size} TRC10 tokens.`,
+    );
+
+    return trc10TokenMetadata;
+  }
+
   async fetchTransactionsForAccount(
     scope: Network,
     account: KeyringAccount,
@@ -112,66 +181,52 @@ export class TransactionsService {
     this.#logger.info(
       `Fetching transactions for account ${account.address} on network ${scope}...`,
     );
+
     /**
-     * Raw transactions are the primary source containing complete transaction history
-     * TRC20 transactions provide assistance data for enhanced smart contract parsing
+     * First: Raw Data Fetching
+     *
+     * Fetch the foundational transaction data from TronGrid in parallel:
+     * - Raw transactions: Primary source for all transaction types
+     * - TRC20 transactions: Assistance data for smart contract parsing
      */
-    let tronRawTransactions: TransactionInfo[] = [];
-    let tronTrc20Transactions: ContractTransactionInfo[] = [];
-
-    const [tronRawTransactionsRequest, tronTrc20TransactionsRequest] =
-      await Promise.allSettled([
-        this.#trongridApiClient.getTransactionInfoByAddress(
-          scope,
-          account.address,
-        ),
-        this.#trongridApiClient.getContractTransactionInfoByAddress(
-          scope,
-          account.address,
-        ),
-      ]);
-
-    if (tronRawTransactionsRequest.status === 'rejected') {
-      this.#logger.error('Failed to fetch raw transactions');
-      tronRawTransactions = [];
-    } else {
-      tronRawTransactions = tronRawTransactionsRequest.value;
-    }
-
-    if (tronTrc20TransactionsRequest.status === 'rejected') {
-      this.#logger.error('Failed to fetch TRC20 transactions');
-      tronTrc20Transactions = [];
-    } else {
-      tronTrc20Transactions = tronTrc20TransactionsRequest.value;
-    }
+    const { rawTransactions, trc20Transactions } =
+      await this.#fetchRawTransactionData(scope, account.address);
 
     this.#logger.info(
-      `Fetched ${tronRawTransactions.length} raw transactions and ${tronTrc20Transactions.length} TRC20 assistance data for account ${account.address} on network ${scope}.`,
+      `Fetched ${rawTransactions.length} raw transactions and ${trc20Transactions.length} TRC20 assistance data for account ${account.address} on network ${scope}.`,
     );
 
     /**
-     * Enrich potential swap transactions with full internal_transactions data
-     * This is necessary for accurate TRX↔TRC20 swap detection
+     * Second: Enrichment Data Fetching
+     *
+     * Based on the raw data, fetch additional metadata in parallel:
+     * - Swap enrichment: Full internal_transactions for TRX ↔ TRC20 swaps
+     * - TRC10 metadata: Decimals and symbols for TRC10 token transfers
+     *
+     * These run in parallel because they scan for different contract
+     * types: TriggerSmartContract vs TransferAssetContract
      */
-    const enrichedRawTransactions = await this.#enrichPotentialSwaps(
-      scope,
-      tronRawTransactions,
-    );
+    const { enrichedRawTransactions, trc10TokenMetadata } =
+      await this.#fetchEnrichmentData(scope, rawTransactions);
 
     this.#logger.info(
-      `Enriched ${enrichedRawTransactions.length} transactions for swap detection.`,
+      `Enriched ${enrichedRawTransactions.length} transactions, fetched metadata for ${trc10TokenMetadata.size} TRC10 tokens.`,
     );
 
     /**
-     * Map transactions using raw data as primary source with TRC20 assistance
-     * Raw transactions -> All transaction types (TRX, TRC10, TRC20, other smart contracts)
-     * TRC20 assistance -> Enhanced parsing for TriggerSmartContract transactions
+     * Third: Transaction Mapping
+     *
+     * Map all transaction data to the keyring Transaction format:
+     * - Raw transactions → TRX, TRC10, staking, smart contract calls
+     * - TRC20 assistance → Enhanced parsing for TriggerSmartContract
+     * - TRC10 metadata → Correct decimal precision for token amounts
      */
     const transactions = TransactionMapper.mapTransactions({
       scope,
       account: account as TronKeyringAccount,
       rawTransactions: enrichedRawTransactions,
-      trc20Transactions: tronTrc20Transactions,
+      trc20Transactions,
+      trc10TokenMetadata,
     });
 
     this.#logger.info(
@@ -179,6 +234,73 @@ export class TransactionsService {
     );
 
     return transactions;
+  }
+
+  /**
+   * Fetches the foundational transaction data from TronGrid.
+   * Both requests run in parallel for optimal performance.
+   *
+   * @param scope - The network scope.
+   * @param address - The account address to fetch transactions for.
+   * @returns Raw transactions and TRC20 transactions.
+   */
+  async #fetchRawTransactionData(
+    scope: Network,
+    address: string,
+  ): Promise<{
+    rawTransactions: TransactionInfo[];
+    trc20Transactions: ContractTransactionInfo[];
+  }> {
+    const [rawTransactionsResult, trc20TransactionsResult] =
+      await Promise.allSettled([
+        this.#trongridApiClient.getTransactionInfoByAddress(scope, address),
+        this.#trongridApiClient.getContractTransactionInfoByAddress(
+          scope,
+          address,
+        ),
+      ]);
+
+    let rawTransactions: TransactionInfo[] = [];
+    let trc20Transactions: ContractTransactionInfo[] = [];
+
+    if (rawTransactionsResult.status === 'rejected') {
+      this.#logger.error('Failed to fetch raw transactions');
+    } else {
+      rawTransactions = rawTransactionsResult.value;
+    }
+
+    if (trc20TransactionsResult.status === 'rejected') {
+      this.#logger.error('Failed to fetch TRC20 transactions');
+    } else {
+      trc20Transactions = trc20TransactionsResult.value;
+    }
+
+    return { rawTransactions, trc20Transactions };
+  }
+
+  /**
+   * Fetches enrichment data based on the raw transactions.
+   * Both enrichment operations run in parallel since they scan for different contract types:
+   * - Swap enrichment scans for TriggerSmartContract
+   * - TRC10 metadata scans for TransferAssetContract
+   *
+   * @param scope - The network scope.
+   * @param rawTransactions - The raw transactions to enrich.
+   * @returns Enriched transactions and TRC10 token metadata.
+   */
+  async #fetchEnrichmentData(
+    scope: Network,
+    rawTransactions: TransactionInfo[],
+  ): Promise<{
+    enrichedRawTransactions: TransactionInfo[];
+    trc10TokenMetadata: Map<string, TRC10TokenMetadata>;
+  }> {
+    const [enrichedRawTransactions, trc10TokenMetadata] = await Promise.all([
+      this.#enrichPotentialSwaps(scope, rawTransactions),
+      this.#fetchTrc10TokenMetadata(scope, rawTransactions),
+    ]);
+
+    return { enrichedRawTransactions, trc10TokenMetadata };
   }
 
   async findByAccounts(accounts: TronKeyringAccount[]): Promise<Transaction[]> {
