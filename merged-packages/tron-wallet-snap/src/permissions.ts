@@ -1,12 +1,11 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 
-import { ClientRequestMethod } from './handlers/clientRequest/types';
 import { TestDappRpcRequestMethod } from './handlers/rpc/types';
-
-const prodOrigins = ['https://portfolio.metamask.io'];
 
 // eslint-disable-next-line no-restricted-globals
 const isDev = process.env.ENVIRONMENT !== 'production';
+
+const prodOrigins = ['https://portfolio.metamask.io'];
 const allowedOrigins = isDev ? ['http://localhost:3000'] : prodOrigins;
 
 const dappPermissions = isDev
@@ -40,16 +39,6 @@ const metamaskPermissions = new Set([
   KeyringRpcMethod.ListAccountAssets,
   KeyringRpcMethod.ResolveAccountAddress,
   KeyringRpcMethod.SetSelectedAccounts,
-  // Client request
-  ClientRequestMethod.SignAndSendTransaction,
-  ClientRequestMethod.ConfirmSend,
-  ClientRequestMethod.ComputeFee,
-  ClientRequestMethod.OnAddressInput,
-  ClientRequestMethod.OnAmountInput,
-  ClientRequestMethod.OnStakeAmountInput,
-  ClientRequestMethod.ConfirmStake,
-  ClientRequestMethod.OnUnstakeAmountInput,
-  ClientRequestMethod.ConfirmUnstake,
 ]);
 
 const metamask = 'metamask';

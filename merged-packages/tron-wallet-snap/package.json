@@ -17,6 +17,8 @@
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build:dev": "ENVIRONMENT=local node scripts/update-manifest-local.js && mm-snap build && yarn build:locale",
+    "build:prod": "ENVIRONMENT=production node scripts/update-manifest-local.js && mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
     "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
     "build:clean": "yarn clean && yarn build:locale && yarn build",
     "build:locale": "node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w",
@@ -31,7 +33,7 @@
     "format": "prettier '**/*.ts' '**/*.tsx' --write",
     "prepublishOnly": "mm-snap manifest",
     "serve": "mm-snap serve",
-    "start": "concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
+    "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
     "test": "jest --passWithNoTests",
     "test:integration": "./integration-test/run-integration.sh"
   },

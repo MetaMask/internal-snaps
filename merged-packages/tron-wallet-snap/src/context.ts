@@ -10,7 +10,7 @@ import { AssetsHandler } from './handlers/assets';
 import { ClientRequestHandler } from './handlers/clientRequest/clientRequest';
 import { CronHandler } from './handlers/cronjob';
 import { KeyringHandler } from './handlers/keyring';
-import { RpcHandler } from './handlers/rpc';
+import { RpcHandler } from './handlers/rpc/rpc';
 import { UserInputHandler } from './handlers/userInput';
 import { AccountsRepository } from './services/accounts/AccountsRepository';
 import { AccountsService } from './services/accounts/AccountsService';
@@ -112,7 +112,6 @@ const accountsService = new AccountsService({
 
 const feeCalculatorService = new FeeCalculatorService({
   logger,
-  // tronWebFactory,
   trongridApiClient,
 });
 
@@ -188,7 +187,6 @@ const keyringHandler = new KeyringHandler({
 });
 const rpcHandler = new RpcHandler({
   logger,
-  clientRequestHandler,
 });
 const userInputHandler = new UserInputHandler({
   logger,
