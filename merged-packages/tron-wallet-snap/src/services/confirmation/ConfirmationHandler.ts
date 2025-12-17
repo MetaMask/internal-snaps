@@ -133,7 +133,7 @@ export class ConfirmationHandler {
     fees,
     asset,
     accountType,
-    origin = 'MetaMask',
+    origin,
   }: {
     scope: Network;
     fromAddress: string;
@@ -142,7 +142,7 @@ export class ConfirmationHandler {
     fees: ComputeFeeResult;
     asset: AssetEntity;
     accountType: string;
-    origin?: string;
+    origin: string;
   }): Promise<boolean> {
     // Track Transaction Added event
     await this.#snapClient.trackTransactionAdded({

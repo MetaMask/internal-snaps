@@ -1,5 +1,6 @@
 import { assert } from '@metamask/superstruct';
 
+import { sanitizeControlCharacters, sanitizeUri } from './sanitize';
 import { UrlStruct } from '../validation/structs';
 
 export type BuildUrlParams = {
@@ -7,12 +8,14 @@ export type BuildUrlParams = {
   path: string;
   pathParams?: Record<string, string> | undefined;
   queryParams?: Record<string, string> | undefined;
+  encodePathParams?: boolean;
 };
 
 /**
  * Builds a URL with the given base URL and parameters:
  * - The `URL` API provides proper URL parsing and encoding.
  * - The `path` is sanitized to prevent path traversal attacks.
+ * - Path and query parameters are sanitized to remove control characters.
  *
  * Ensures that the built URL is safe, valid, and sanitized.
  *
@@ -20,16 +23,31 @@ export type BuildUrlParams = {
  * @returns The built URL.
  */
 export function buildUrl(params: BuildUrlParams): string {
-  const { baseUrl, path, pathParams, queryParams } = params;
+  const {
+    baseUrl,
+    path,
+    pathParams,
+    queryParams,
+    encodePathParams = true,
+  } = params;
 
-  assert(baseUrl, UrlStruct);
+  // Validate and sanitize base URL
+  const sanitizedBaseUrl = sanitizeUri(baseUrl);
+  if (sanitizedBaseUrl === '') {
+    throw new Error('Invalid URL format');
+  }
+  assert(sanitizedBaseUrl, UrlStruct);
 
   const pathWithParams = path.replace(/\{(\w+)\}/gu, (_match, key: string) => {
     const value = pathParams?.[key];
     if (value === undefined) {
       throw new Error(`Path parameter ${key} is undefined`);
     }
-    return value;
+    // Sanitize path parameter values to remove control characters
+    const sanitizedValue = sanitizeControlCharacters(value);
+    return encodePathParams
+      ? encodeURIComponent(sanitizedValue)
+      : sanitizedValue;
   });
 
   const cleanPath = pathWithParams
@@ -37,13 +55,15 @@ export function buildUrl(params: BuildUrlParams): string {
     .replace(/\/+/gu, '/') // Replace multiple slashes with single
     .replace(/\/+$/u, ''); // Remove trailing slashes
 
-  const url = new URL(cleanPath, baseUrl);
+  const url = new URL(cleanPath, sanitizedBaseUrl);
   Object.entries(queryParams ?? {})
     .filter(([_key, value]) => value !== undefined)
     .filter(([_key, value]) => value !== null)
     .forEach(([key, value]) => {
       if (value) {
-        url.searchParams.append(key, value);
+        // Sanitize query parameter values to remove control characters
+        const sanitizedValue = sanitizeControlCharacters(value);
+        url.searchParams.append(key, sanitizedValue);
       }
     });
 

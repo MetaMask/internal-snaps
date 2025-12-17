@@ -10,7 +10,10 @@ import {
   enums,
   integer,
   literal,
+  min,
+  nonempty,
   nullable,
+  number,
   object,
   optional,
   pattern,
@@ -193,6 +196,37 @@ export const ListAccountTransactionsStruct = object({
   }),
 });
 
+export const NetworkStruct = enums(Object.values(Network));
+
+/**
+ * Validates createAccount options.
+ * - entropySource: Optional string for the entropy source (UUID or ULID format)
+ * - index: Optional non-negative integer for account derivation index
+ */
+export const CreateAccountOptionsStruct = optional(
+  object({
+    entropySource: optional(string()),
+    index: optional(integer()),
+    metamask: optional(
+      object({
+        correlationId: optional(string()),
+      }),
+    ),
+  }),
+);
+
+/**
+ * Validates discoverAccounts parameters.
+ * - scopes: Non-empty array of valid Tron network scopes (e.g., 'tron:728126428')
+ * - entropySource: String for the entropy source (UUID or ULID format)
+ * - groupIndex: Non-negative integer for the group index
+ */
+export const DiscoverAccountsStruct = object({
+  scopes: nonempty(array(NetworkStruct)),
+  entropySource: string(),
+  groupIndex: min(number(), 0),
+});
+
 export const GetAccounBalancesResponseStruct = record(
   CaipAssetTypeStruct,
   object({
@@ -204,8 +238,6 @@ export const GetAccounBalancesResponseStruct = record(
 export const ListAccountAssetsResponseStruct = array(CaipAssetTypeStruct);
 
 export const SubmitRequestMethodStruct = enums(Object.values(SolMethod));
-
-export const NetworkStruct = enums(Object.values(Network));
 
 export const Curenc = enums([
   'btc',

@@ -116,12 +116,32 @@ export const TickerStruct = union([
 
 export type Ticker = Infer<typeof TickerStruct>;
 
-export type ExchangeRate = {
-  name: string;
-  ticker: Ticker;
-  value: number;
-  currencyType: 'fiat' | 'crypto' | 'commodity';
-};
+/**
+ * Struct for validating exchange rate data from the API.
+ * Includes bounds validation to prevent malicious data injection.
+ */
+export const ExchangeRateStruct = object({
+  name: string(),
+  ticker: TickerStruct,
+  value: min(number(), 0),
+  currencyType: enums(['fiat', 'crypto', 'commodity']),
+});
+
+export type ExchangeRate = Infer<typeof ExchangeRateStruct>;
+
+/**
+ * Struct for validating the fiat exchange rates response.
+ * Maps ticker symbols to their exchange rate data.
+ * Despite the endpoint name, the response includes all exchange rates (crypto, fiat, commodity).
+ */
+export const FiatExchangeRatesResponseStruct = record(
+  TickerStruct,
+  ExchangeRateStruct,
+);
+
+export type FiatExchangeRatesResponse = Infer<
+  typeof FiatExchangeRatesResponseStruct
+>;
 
 /**
  * The structure of the spot price response from the Price API as described in

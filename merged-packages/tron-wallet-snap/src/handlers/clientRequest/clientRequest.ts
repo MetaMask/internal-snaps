@@ -454,7 +454,8 @@ export class ClientRequestHandler {
     });
 
     /**
-     * Show the confirmation UI
+     * Show the confirmation UI.
+     * Origin is 'MetaMask' because client requests come from MetaMask's own unified send flow.
      */
     const confirmed = await this.#confirmationHandler.confirmTransactionRequest(
       {
@@ -465,6 +466,7 @@ export class ClientRequestHandler {
         fees,
         asset,
         accountType: account.type,
+        origin: 'MetaMask',
       },
     );
 

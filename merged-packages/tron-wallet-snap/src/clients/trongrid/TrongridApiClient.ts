@@ -1,3 +1,14 @@
+import { assert } from '@metamask/superstruct';
+
+import {
+  ChainParametersResponseStruct,
+  ChainParameterStruct,
+  ContractTransactionInfoStruct,
+  TransactionInfoStruct,
+  TriggerConstantContractResponseStruct,
+  TronAccountStruct,
+  TrongridApiMetaStruct,
+} from './structs';
 import type {
   ChainParameter,
   ContractTransactionInfo,
@@ -9,6 +20,8 @@ import type {
 } from './types';
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { buildUrl } from '../../utils/buildUrl';
+import { sanitizeTronAddress } from '../../utils/sanitize';
 
 export class TrongridApiClient {
   readonly #clients: Map<
@@ -51,8 +64,18 @@ export class TrongridApiClient {
       throw new Error(`No client configured for network: ${scope}`);
     }
 
+    // Validate and sanitize the address to prevent URL injection
+    const sanitizedAddress = sanitizeTronAddress(address);
+    if (sanitizedAddress === '') {
+      throw new Error('Invalid Tron address');
+    }
+
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/v1/accounts/${address}`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/v1/accounts/{address}',
+      pathParams: { address: sanitizedAddress },
+    });
 
     const response = await fetch(url, { headers });
 
@@ -62,9 +85,11 @@ export class TrongridApiClient {
 
     const rawData: TrongridApiResponse<TronAccount[]> = await response.json();
 
-    if (!rawData.success) {
+    // Validate API response structure
+    if (typeof rawData.success !== 'boolean' || !rawData.success) {
       throw new Error('API request failed');
     }
+    assert(rawData.meta, TrongridApiMetaStruct);
 
     if (!rawData.data || rawData.data.length === 0) {
       throw new Error('Account not found or no data returned');
@@ -75,6 +100,9 @@ export class TrongridApiClient {
     if (!account) {
       throw new Error('No data');
     }
+
+    // Validate account data schema
+    assert(account, TronAccountStruct);
 
     return account;
   }
@@ -96,8 +124,18 @@ export class TrongridApiClient {
       throw new Error(`No client configured for network: ${scope}`);
     }
 
+    // Validate and sanitize the address to prevent URL injection
+    const sanitizedAddress = sanitizeTronAddress(address);
+    if (sanitizedAddress === '') {
+      throw new Error('Invalid Tron address');
+    }
+
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/v1/accounts/${address}/transactions`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/v1/accounts/{address}/transactions',
+      pathParams: { address: sanitizedAddress },
+    });
 
     const response = await fetch(url, { headers });
 
@@ -108,8 +146,19 @@ export class TrongridApiClient {
     const rawData: TrongridApiResponse<TransactionInfo[]> =
       await response.json();
 
-    if (!rawData.success || !rawData.data) {
+    // Validate API response structure
+    if (typeof rawData.success !== 'boolean' || !rawData.success) {
       throw new Error('API request failed');
+    }
+    assert(rawData.meta, TrongridApiMetaStruct);
+
+    if (!rawData.data) {
+      throw new Error('API request failed');
+    }
+
+    // Validate each transaction info
+    for (const txInfo of rawData.data) {
+      assert(txInfo, TransactionInfoStruct);
     }
 
     return rawData.data;
@@ -132,8 +181,18 @@ export class TrongridApiClient {
       throw new Error(`No client configured for network: ${scope}`);
     }
 
+    // Validate and sanitize the address to prevent URL injection
+    const sanitizedAddress = sanitizeTronAddress(address);
+    if (sanitizedAddress === '') {
+      throw new Error('Invalid Tron address');
+    }
+
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/v1/accounts/${address}/transactions/trc20`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/v1/accounts/{address}/transactions/trc20',
+      pathParams: { address: sanitizedAddress },
+    });
 
     const response = await fetch(url, { headers });
 
@@ -144,8 +203,19 @@ export class TrongridApiClient {
     const rawData: TrongridApiResponse<ContractTransactionInfo[]> =
       await response.json();
 
-    if (!rawData.success || !rawData.data) {
+    // Validate API response structure
+    if (typeof rawData.success !== 'boolean' || !rawData.success) {
       throw new Error('API request failed');
+    }
+    assert(rawData.meta, TrongridApiMetaStruct);
+
+    if (!rawData.data) {
+      throw new Error('API request failed');
+    }
+
+    // Validate each contract transaction info
+    for (const txInfo of rawData.data) {
+      assert(txInfo, ContractTransactionInfoStruct);
     }
 
     return rawData.data;
@@ -165,7 +235,10 @@ export class TrongridApiClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/getchainparameters`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getchainparameters',
+    });
 
     const response = await fetch(url, { headers });
 
@@ -175,8 +248,16 @@ export class TrongridApiClient {
 
     const rawData = await response.json();
 
+    // Validate response schema
+    assert(rawData, ChainParametersResponseStruct);
+
     if (!rawData.chainParameter) {
       throw new Error('No chain parameters found');
+    }
+
+    // Validate each chain parameter
+    for (const param of rawData.chainParameter) {
+      assert(param, ChainParameterStruct);
     }
 
     return rawData.chainParameter;
@@ -201,7 +282,10 @@ export class TrongridApiClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/triggerconstantcontract`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/triggerconstantcontract',
+    });
 
     const response = await fetch(url, {
       method: 'POST',
@@ -220,6 +304,9 @@ export class TrongridApiClient {
     }
 
     const result: TriggerConstantContractResponse = await response.json();
+
+    // Validate response schema
+    assert(result, TriggerConstantContractResponseStruct);
 
     return result;
   }

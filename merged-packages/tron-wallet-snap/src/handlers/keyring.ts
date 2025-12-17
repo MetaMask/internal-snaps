@@ -42,10 +42,14 @@ import type { WalletService } from '../services/wallet/WalletService';
 import { withCatchAndThrowSnapError } from '../utils/errors';
 import { createPrefixedLogger, type ILogger } from '../utils/logger';
 import {
+  CreateAccountOptionsStruct,
   DeleteAccountStruct,
+  DiscoverAccountsStruct,
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
+  GetAccountStruct,
   ListAccountAssetsStruct,
+  ListAccountTransactionsStruct,
   TronKeyringRequestStruct,
   UuidStruct,
 } from '../validation/structs';
@@ -137,6 +141,8 @@ export class KeyringHandler implements Keyring {
   }
 
   async getAccount(accountId: string): Promise<KeyringAccount | undefined> {
+    validateRequest({ accountId }, GetAccountStruct);
+
     const account = await this.#getAccount(accountId);
 
     return account ? asStrictKeyringAccount(account) : undefined;
@@ -153,6 +159,8 @@ export class KeyringHandler implements Keyring {
   }
 
   async createAccount(options?: CreateAccountOptions): Promise<KeyringAccount> {
+    validateRequest(options, CreateAccountOptionsStruct);
+
     const id = globalThis.crypto.randomUUID();
 
     try {
@@ -222,6 +230,8 @@ export class KeyringHandler implements Keyring {
     next: string | null;
   }> {
     try {
+      validateRequest({ accountId, pagination }, ListAccountTransactionsStruct);
+
       this.#logger.info('Listing account transactions...');
       const { limit, next } = pagination;
 
@@ -268,6 +278,11 @@ export class KeyringHandler implements Keyring {
     groupIndex: number,
   ): Promise<DiscoveredAccount[]> {
     try {
+      validateRequest(
+        { scopes, entropySource, groupIndex },
+        DiscoverAccountsStruct,
+      );
+
       const account = await this.#accountsService.deriveAccount({
         entropySource,
         index: groupIndex,

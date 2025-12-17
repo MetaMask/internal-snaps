@@ -162,6 +162,7 @@ export class TokenApiClient {
               pathParams: {
                 assetType: assetType.replace(/:/gu, '/'),
               },
+              encodePathParams: false,
             }),
           units: [
             {

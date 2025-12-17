@@ -6,14 +6,14 @@ import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
 import type {
-  ExchangeRate,
-  FiatTicker,
+  FiatExchangeRatesResponse,
   GetHistoricalPricesParams,
   GetHistoricalPricesResponse,
   SpotPrices,
   VsCurrencyParam,
 } from './types';
 import {
+  FiatExchangeRatesResponseStruct,
   GetHistoricalPricesParamsStruct,
   GetHistoricalPricesResponseStruct,
   SpotPricesStruct,
@@ -66,17 +66,22 @@ export class PriceApiClient {
     this.#cache = _cache;
   }
 
-  async getFiatExchangeRates(): Promise<Record<FiatTicker, ExchangeRate>> {
+  async getFiatExchangeRates(): Promise<FiatExchangeRatesResponse> {
     try {
-      const response = await this.#fetch(
-        `${this.#baseUrl}/v1/exchange-rates/fiat`,
-      );
+      const url = buildUrl({
+        baseUrl: this.#baseUrl,
+        path: '/v1/exchange-rates/fiat',
+      });
+
+      const response = await this.#fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+      assert(data, FiatExchangeRatesResponseStruct);
+
       return data;
     } catch (error) {
       this.#logger.error(error, 'Error fetching fiat exchange rates');
@@ -290,6 +295,7 @@ export class PriceApiClient {
         ...(params.to && { to: params.to.toString() }),
         ...(params.vsCurrency && { vsCurrency: params.vsCurrency }),
       },
+      encodePathParams: false,
     });
 
     const response = await this.#fetch(url);

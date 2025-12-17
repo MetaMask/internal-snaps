@@ -152,21 +152,9 @@ export class AssetsService {
       tronAccountInfoRequest.status === 'rejected' ||
       tronAccountResourcesRequest.status === 'rejected'
     ) {
-      this.#logger.error(
-        `Failed to fetch account info or account resources for ${account.address} on network ${scope}`,
-      );
-      return [
-        {
-          symbol: Networks[scope].nativeToken.symbol,
-          decimals: Networks[scope].nativeToken.decimals,
-          uiAmount: '0',
-          assetType: Networks[scope].nativeToken.id,
-          keyringAccountId: account.id,
-          network: scope,
-          rawAmount: '0',
-          iconUrl: Networks[scope].nativeToken.iconUrl,
-        },
-      ];
+      const errorMessage = `Failed to fetch account info or account resources for ${account.address} on network ${scope}`;
+      this.#logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
 
     const nativeAsset = this.#extractNativeAsset({

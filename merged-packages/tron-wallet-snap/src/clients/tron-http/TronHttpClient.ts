@@ -1,3 +1,12 @@
+import { assert } from '@metamask/superstruct';
+
+import {
+  AccountResourcesStruct,
+  FullNodeTransactionInfoStruct,
+  TRC10TokenInfoStruct,
+  TronContractStruct,
+  TronHttpTriggerConstantContractResponseStruct,
+} from './structs';
 import type {
   AccountResources,
   FullNodeTransactionInfo,
@@ -11,6 +20,7 @@ import type {
 import type { Network } from '../../constants';
 import { NULL_ADDRESS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { buildUrl } from '../../utils/buildUrl';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 
 /**
@@ -67,7 +77,10 @@ export class TronHttpClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/getcontract`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getcontract',
+    });
 
     const body = JSON.stringify({
       value: contractAddress,
@@ -85,6 +98,10 @@ export class TronHttpClient {
     }
 
     const contractData: TronContract = await response.json();
+
+    // Validate response schema
+    assert(contractData, TronContractStruct);
+
     return contractData;
   }
 
@@ -107,7 +124,10 @@ export class TronHttpClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/triggerconstantcontract`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/triggerconstantcontract',
+    });
 
     const requestBody: TriggerConstantContractRequest = {
       /* eslint-disable-next-line @typescript-eslint/naming-convention */
@@ -131,6 +151,9 @@ export class TronHttpClient {
     }
 
     const responseData: TriggerConstantContractResponse = await response.json();
+
+    // Validate response schema
+    assert(responseData, TronHttpTriggerConstantContractResponseStruct);
 
     if (!responseData.result?.result) {
       throw new Error(`Contract call failed: ${JSON.stringify(responseData)}`);
@@ -253,7 +276,10 @@ export class TronHttpClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/getassetissuebyid`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getassetissuebyid',
+    });
 
     const body = JSON.stringify({
       value: tokenId,
@@ -270,6 +296,10 @@ export class TronHttpClient {
     }
 
     const tokenData: TRC10TokenInfo = await response.json();
+
+    // Validate response schema
+    assert(tokenData, TRC10TokenInfoStruct);
+
     return tokenData;
   }
 
@@ -372,7 +402,10 @@ export class TronHttpClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/getaccountresource`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getaccountresource',
+    });
 
     const body = JSON.stringify({
       address: accountAddress,
@@ -390,6 +423,10 @@ export class TronHttpClient {
     }
 
     const accountResources: AccountResources = await response.json();
+
+    // Validate response schema
+    assert(accountResources, AccountResourcesStruct);
+
     return accountResources;
   }
 
@@ -411,7 +448,10 @@ export class TronHttpClient {
     }
 
     const { baseUrl, headers } = client;
-    const url = `${baseUrl}/wallet/gettransactioninfobyid`;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/gettransactioninfobyid',
+    });
 
     const body = JSON.stringify({
       value: txId,
@@ -437,6 +477,9 @@ export class TronHttpClient {
     if (!txInfo?.id || !txInfo?.blockNumber) {
       return null;
     }
+
+    // Validate response schema
+    assert(txInfo, FullNodeTransactionInfoStruct);
 
     return txInfo;
   }

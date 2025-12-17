@@ -12,13 +12,10 @@ import type {
   TransferContractInfo,
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
-import { Networks } from '../../constants';
+import { Networks, SUN_IN_TRX } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 
 export class TransactionMapper {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  static readonly TRX_DECIMALS = 1_000_000;
-
   /**
    * Creates a minimal pending transaction immediately after broadcast.
    * This shows a placeholder transaction to the user while we wait for the
@@ -334,9 +331,7 @@ export class TransactionMapper {
 
     // Convert from sun to TRX (divide by 10^6)
     const amountInSun = contractValue.amount;
-    const amountInTrx = (
-      amountInSun / TransactionMapper.TRX_DECIMALS
-    ).toString();
+    const amountInTrx = (amountInSun / SUN_IN_TRX).toString();
 
     // Calculate comprehensive fees including Energy and Bandwidth
     const fees = TransactionMapper.#calculateTronFees(
@@ -708,9 +703,7 @@ export class TransactionMapper {
 
     // First, check if user sent TRX directly via call_value
     if (contractCallValue && contractCallValue > 0) {
-      trxAmount = (
-        contractCallValue / TransactionMapper.TRX_DECIMALS
-      ).toString();
+      trxAmount = (contractCallValue / SUN_IN_TRX).toString();
     } else {
       // Otherwise, look in internal_transactions
       const internalTransactions =
@@ -726,7 +719,7 @@ export class TransactionMapper {
             internal.callValueInfo?.find((vi: any) => vi.callValue)
               ?.callValue ?? 0;
           if (callValue > 0) {
-            trxAmount = (callValue / TransactionMapper.TRX_DECIMALS).toString();
+            trxAmount = (callValue / SUN_IN_TRX).toString();
             break;
           }
         }
@@ -743,9 +736,7 @@ export class TransactionMapper {
           totalInternalTrx += callValue;
         }
         if (totalInternalTrx > 0) {
-          trxAmount = (
-            totalInternalTrx / TransactionMapper.TRX_DECIMALS
-          ).toString();
+          trxAmount = (totalInternalTrx / SUN_IN_TRX).toString();
         }
       }
     }
@@ -865,7 +856,7 @@ export class TransactionMapper {
       }
 
       const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
-      const trxAmount = (callValue / TransactionMapper.TRX_DECIMALS).toString();
+      const trxAmount = (callValue / SUN_IN_TRX).toString();
       const fees = TransactionMapper.#calculateTronFees(
         scope,
         trongridTransaction,
@@ -1204,7 +1195,7 @@ export class TransactionMapper {
 
     // V2 uses "unfreeze_balance"; legacy may use this or a similar field
     const amountInSun: number = Number(contractValue.unfreeze_balance) || 0;
-    const amountInTrx = (amountInSun / 1_000_000).toString();
+    const amountInTrx = (amountInSun / SUN_IN_TRX).toString();
 
     // Determine resource and corresponding staked asset metadata
     const { resource } = contractValue as { resource?: 'BANDWIDTH' | 'ENERGY' };
