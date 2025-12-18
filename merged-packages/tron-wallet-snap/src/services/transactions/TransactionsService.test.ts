@@ -279,11 +279,11 @@ describe('TransactionsService', () => {
       expect(result).toStrictEqual([]);
       expect(mockLogger.error).toHaveBeenCalledWith(
         '[🧾 TransactionsService]',
-        'Failed to fetch raw transactions',
+        'Failed to fetch raw transactions for address TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx on network tron:728126428',
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         '[🧾 TransactionsService]',
-        'Failed to fetch TRC20 transactions',
+        'Failed to fetch TRC20 transactions for address TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx on network tron:728126428',
       );
       expect(true).toBe(true);
     });

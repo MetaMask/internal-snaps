@@ -1,3 +1,4 @@
+import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
 
 import type { ILogger } from '../../utils/logger';
@@ -20,11 +21,7 @@ export class RpcHandler {
 
     switch (method) {
       default:
-        return {
-          id: request.id,
-          jsonrpc: request.jsonrpc,
-          result: null,
-        };
+        throw new MethodNotFoundError() as Error;
     }
   }
 }

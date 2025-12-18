@@ -5,10 +5,10 @@ import {
   boolean,
   min,
   number,
-  object,
   optional,
   record,
   string,
+  type,
 } from '@metamask/superstruct';
 
 import { TronAddressStruct } from '../../validation/structs';
@@ -23,12 +23,12 @@ import { TronAddressStruct } from '../../validation/structs';
 // TronAccount Response Structs
 // --------------------------------------------------------------------------
 
-export const RawTronKeyStruct = object({
+export const RawTronKeyStruct = type({
   address: string(),
   weight: number(),
 });
 
-export const RawTronPermissionStruct = object({
+export const RawTronPermissionStruct = type({
   keys: array(RawTronKeyStruct),
   threshold: number(),
   permission_name: string(),
@@ -37,45 +37,52 @@ export const RawTronPermissionStruct = object({
   type: optional(string()),
 });
 
-export const RawTronAccountResourceStruct = object({
-  energy_window_optimized: boolean(),
-  energy_window_size: number(),
+export const RawTronAccountResourceStruct = type({
+  energy_window_optimized: optional(boolean()),
+  energy_window_size: optional(number()),
   delegated_frozenV2_balance_for_energy: optional(min(number(), 0)),
   delegated_frozenV2_balance_for_bandwidth: optional(min(number(), 0)),
 });
 
-export const RawTronFrozenV2Struct = object({
+export const RawTronFrozenV2Struct = type({
   amount: optional(min(number(), 0)),
   type: optional(string()),
 });
 
-export const RawTronUnfrozenV2Struct = object({
+export const RawTronUnfrozenV2Struct = type({
   unfreeze_amount: min(number(), 0),
   unfreeze_expire_time: min(number(), 0),
+  type: optional(string()),
 });
 
-export const RawTronVoteStruct = object({
+export const RawTronVoteStruct = type({
   vote_address: string(),
   vote_count: min(number(), 0),
 });
 
-export const TronAccountStruct = object({
-  owner_permission: RawTronPermissionStruct,
-  account_resource: RawTronAccountResourceStruct,
-  active_permission: array(RawTronPermissionStruct),
+// AssetV2 entry with key-value structure
+export const RawTronAssetV2Struct = type({
+  key: string(),
+  value: number(),
+});
+
+export const TronAccountStruct = type({
+  owner_permission: optional(RawTronPermissionStruct),
+  account_resource: optional(RawTronAccountResourceStruct),
+  active_permission: optional(array(RawTronPermissionStruct)),
   address: TronAddressStruct,
-  create_time: min(number(), 0),
-  latest_opration_time: min(number(), 0),
-  frozenV2: array(RawTronFrozenV2Struct),
-  unfrozenV2: array(RawTronUnfrozenV2Struct),
-  balance: min(number(), 0),
-  assetV2: optional(array(record(string(), string()))),
+  create_time: optional(min(number(), 0)),
+  latest_opration_time: optional(min(number(), 0)),
+  frozenV2: optional(array(RawTronFrozenV2Struct)),
+  unfrozenV2: optional(array(RawTronUnfrozenV2Struct)),
+  balance: optional(min(number(), 0)),
+  assetV2: optional(array(RawTronAssetV2Struct)),
   trc20: optional(array(record(string(), string()))),
-  latest_consume_free_time: min(number(), 0),
-  votes: array(RawTronVoteStruct),
-  latest_withdraw_time: min(number(), 0),
-  net_window_size: min(number(), 0),
-  net_window_optimized: boolean(),
+  latest_consume_free_time: optional(min(number(), 0)),
+  votes: optional(array(RawTronVoteStruct)),
+  latest_withdraw_time: optional(min(number(), 0)),
+  net_window_size: optional(min(number(), 0)),
+  net_window_optimized: optional(boolean()),
 });
 
 export type ValidatedTronAccount = Infer<typeof TronAccountStruct>;
@@ -84,17 +91,17 @@ export type ValidatedTronAccount = Infer<typeof TronAccountStruct>;
 // Transaction Info Structs
 // --------------------------------------------------------------------------
 
-export const TransactionResultStruct = object({
-  contractRet: string(),
-  fee: min(number(), 0),
+export const TransactionResultStruct = type({
+  contractRet: optional(string()),
+  fee: optional(min(number(), 0)),
 });
 
-export const ContractVoteStruct = object({
+export const ContractVoteStruct = type({
   vote_address: string(),
   vote_count: min(number(), 0),
 });
 
-export const ContractValueStruct = object({
+export const ContractValueStruct = type({
   owner_address: optional(string()),
   to_address: optional(string()),
   unfreeze_balance: optional(min(number(), 0)),
@@ -107,35 +114,35 @@ export const ContractValueStruct = object({
   asset_name: optional(string()),
 });
 
-export const ContractParameterStruct = object({
+export const ContractParameterStruct = type({
   value: ContractValueStruct,
   type_url: string(),
 });
 
-export const ContractInfoStruct = object({
+export const ContractInfoStruct = type({
   parameter: ContractParameterStruct,
   type: string(),
 });
 
-export const InternalTransactionCallValueStruct = object({
+export const InternalTransactionCallValueStruct = type({
   // eslint-disable-next-line id-length
   _: number(),
 });
 
-export const InternalTransactionDataStruct = object({
+export const InternalTransactionDataStruct = type({
   note: string(),
   rejected: boolean(),
   call_value: optional(InternalTransactionCallValueStruct),
 });
 
-export const InternalTransactionStruct = object({
+export const InternalTransactionStruct = type({
   internal_tx_id: string(),
   data: InternalTransactionDataStruct,
   to_address: string(),
   from_address: string(),
 });
 
-export const RawTransactionDataStruct = object({
+export const RawTransactionDataStruct = type({
   contract: array(ContractInfoStruct),
   ref_block_bytes: string(),
   ref_block_hash: string(),
@@ -144,20 +151,20 @@ export const RawTransactionDataStruct = object({
   fee_limit: optional(min(number(), 0)),
 });
 
-export const TransactionInfoStruct = object({
-  ret: array(TransactionResultStruct),
-  signature: array(string()),
+export const TransactionInfoStruct = type({
+  ret: optional(array(TransactionResultStruct)),
+  signature: optional(array(string())),
   txID: string(),
-  net_usage: min(number(), 0),
-  raw_data_hex: string(),
-  net_fee: min(number(), 0),
-  energy_usage: min(number(), 0),
-  blockNumber: min(number(), 0),
-  block_timestamp: min(number(), 0),
-  energy_fee: min(number(), 0),
-  energy_usage_total: min(number(), 0),
+  net_usage: optional(min(number(), 0)),
+  raw_data_hex: optional(string()),
+  net_fee: optional(min(number(), 0)),
+  energy_usage: optional(min(number(), 0)),
+  blockNumber: optional(min(number(), 0)),
+  block_timestamp: optional(min(number(), 0)),
+  energy_fee: optional(min(number(), 0)),
+  energy_usage_total: optional(min(number(), 0)),
   raw_data: RawTransactionDataStruct,
-  internal_transactions: array(InternalTransactionStruct),
+  internal_transactions: optional(array(InternalTransactionStruct)),
 });
 
 export type ValidatedTransactionInfo = Infer<typeof TransactionInfoStruct>;
@@ -166,14 +173,14 @@ export type ValidatedTransactionInfo = Infer<typeof TransactionInfoStruct>;
 // Contract Transaction Info Structs (TRC20)
 // --------------------------------------------------------------------------
 
-export const TokenInfoStruct = object({
+export const TokenInfoStruct = type({
   symbol: string(),
   address: string(),
   decimals: min(number(), 0),
   name: string(),
 });
 
-export const ContractTransactionInfoStruct = object({
+export const ContractTransactionInfoStruct = type({
   transaction_id: string(),
   token_info: TokenInfoStruct,
   block_timestamp: min(number(), 0),
@@ -191,14 +198,14 @@ export type ValidatedContractTransactionInfo = Infer<
 // Chain Parameter Structs
 // --------------------------------------------------------------------------
 
-export const ChainParameterStruct = object({
+export const ChainParameterStruct = type({
   key: string(),
   value: optional(number()),
 });
 
 export type ValidatedChainParameter = Infer<typeof ChainParameterStruct>;
 
-export const ChainParametersResponseStruct = object({
+export const ChainParametersResponseStruct = type({
   chainParameter: array(ChainParameterStruct),
 });
 
@@ -206,16 +213,16 @@ export const ChainParametersResponseStruct = object({
 // TriggerConstantContract Structs
 // --------------------------------------------------------------------------
 
-export const TriggerConstantContractResultStruct = object({
+export const TriggerConstantContractResultStruct = type({
   result: boolean(),
   message: optional(string()),
 });
 
-export const TriggerConstantContractTransactionRawDataStruct = object({
+export const TriggerConstantContractTransactionRawDataStruct = type({
   contract: array(
-    object({
-      parameter: object({
-        value: object({
+    type({
+      parameter: type({
+        value: type({
           data: string(),
           owner_address: string(),
           contract_address: string(),
@@ -231,10 +238,10 @@ export const TriggerConstantContractTransactionRawDataStruct = object({
   timestamp: min(number(), 0),
 });
 
-export const TriggerConstantContractTransactionStruct = object({
+export const TriggerConstantContractTransactionStruct = type({
   ret: array(
-    object({
-      ret: string(),
+    type({
+      ret: optional(string()),
     }),
   ),
   visible: boolean(),
@@ -243,7 +250,7 @@ export const TriggerConstantContractTransactionStruct = object({
   raw_data_hex: string(),
 });
 
-export const TriggerConstantContractResponseStruct = object({
+export const TriggerConstantContractResponseStruct = type({
   result: TriggerConstantContractResultStruct,
   energy_used: min(number(), 0),
   constant_result: array(string()),
@@ -259,25 +266,25 @@ export type ValidatedTriggerConstantContractResponse = Infer<
 // Generic API Response Wrapper Struct
 // --------------------------------------------------------------------------
 
-export const TrongridApiMetaStruct = object({
+export const TrongridApiMetaStruct = type({
   at: min(number(), 0),
   page_size: min(number(), 0),
 });
 
 // Pre-built response structs for common use cases
-export const TrongridAccountResponseStruct = object({
+export const TrongridAccountResponseStruct = type({
   data: array(TronAccountStruct),
   success: boolean(),
   meta: TrongridApiMetaStruct,
 });
 
-export const TrongridTransactionInfoResponseStruct = object({
+export const TrongridTransactionInfoResponseStruct = type({
   data: array(TransactionInfoStruct),
   success: boolean(),
   meta: TrongridApiMetaStruct,
 });
 
-export const TrongridContractTransactionInfoResponseStruct = object({
+export const TrongridContractTransactionInfoResponseStruct = type({
   data: array(ContractTransactionInfoStruct),
   success: boolean(),
   meta: TrongridApiMetaStruct,

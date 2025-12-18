@@ -101,9 +101,6 @@ export class PriceApiClient {
     vsCurrency: VsCurrencyParam | string = 'usd',
   ): Promise<SpotPrices> {
     try {
-      assert(tokenCaipAssetTypes, array(CaipAssetTypeStruct));
-      assert(vsCurrency, VsCurrencyParamStruct);
-
       if (tokenCaipAssetTypes.length === 0) {
         return {};
       }
@@ -260,6 +257,9 @@ export class PriceApiClient {
     tokenCaip19Types: CaipAssetType[],
     vsCurrency: VsCurrencyParam | string = 'usd',
   ): Promise<SpotPrices> {
+    assert(tokenCaip19Types, array(CaipAssetTypeStruct));
+    assert(vsCurrency, VsCurrencyParamStruct);
+
     const filteredTokens = tokenCaip19Types.filter(
       (tokenCaip19Type) => !SPECIAL_ASSETS.includes(tokenCaip19Type),
     );
@@ -281,8 +281,6 @@ export class PriceApiClient {
   async #getHistoricalPrices_INTERNAL(
     params: GetHistoricalPricesParams,
   ): Promise<GetHistoricalPricesResponse> {
-    assert(params, GetHistoricalPricesParamsStruct);
-
     const url = buildUrl({
       baseUrl: this.#baseUrl,
       path: '/v3/historical-prices/{assetType}',
@@ -321,6 +319,8 @@ export class PriceApiClient {
   async getHistoricalPrices(
     params: GetHistoricalPricesParams,
   ): Promise<GetHistoricalPricesResponse> {
+    assert(params, GetHistoricalPricesParamsStruct);
+
     return useCache(
       this.#getHistoricalPrices_INTERNAL.bind(this),
       this.#cache,

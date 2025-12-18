@@ -55,7 +55,12 @@ export function buildUrl(params: BuildUrlParams): string {
     .replace(/\/+/gu, '/') // Replace multiple slashes with single
     .replace(/\/+$/u, ''); // Remove trailing slashes
 
-  const url = new URL(cleanPath, sanitizedBaseUrl);
+  // Ensure base URL has trailing slash for proper path appending
+  const normalizedBaseUrl = sanitizedBaseUrl.endsWith('/')
+    ? sanitizedBaseUrl
+    : `${sanitizedBaseUrl}/`;
+
+  const url = new URL(cleanPath, normalizedBaseUrl);
   Object.entries(queryParams ?? {})
     .filter(([_key, value]) => value !== undefined)
     .filter(([_key, value]) => value !== null)

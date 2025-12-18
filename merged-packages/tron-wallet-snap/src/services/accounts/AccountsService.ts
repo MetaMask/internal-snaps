@@ -4,7 +4,7 @@ import {
   emitSnapKeyringEvent,
   getSelectedAccounts,
 } from '@metamask/keyring-snap-sdk';
-import { assert, pattern, string } from '@metamask/superstruct';
+import { assert } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 import { hexToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
@@ -19,15 +19,10 @@ import {
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { TransactionsService } from '../transactions/TransactionsService';
-
-/**
- * Validates a Tron derivation path following the format: m/44'/195'/...
- */
-const DERIVATION_PATH_REGEX = /^m\/44'\/195'/u;
-export const DerivationPathStruct = pattern(string(), DERIVATION_PATH_REGEX);
 
 /**
  * Elliptic curve for TRON (same as Ethereum)

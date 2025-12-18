@@ -14,7 +14,6 @@ const dappPermissions = isDev
       KeyringRpcMethod.ListAccounts,
       KeyringRpcMethod.GetAccount,
       KeyringRpcMethod.CreateAccount,
-      KeyringRpcMethod.FilterAccountChains,
       KeyringRpcMethod.DeleteAccount,
       KeyringRpcMethod.DiscoverAccounts,
       KeyringRpcMethod.GetAccountBalances,

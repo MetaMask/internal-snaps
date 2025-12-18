@@ -160,6 +160,19 @@ export class ClientRequestHandler {
   /**
    * Handles the signing and sending of a transaction.
    *
+   * CRITICAL SECURITY REQUIREMENT:
+   * This method does NOT request user confirmation. The caller is responsible
+   * for obtaining explicit user consent before invoking this method.
+   *
+   * The caller MUST:
+   * - Display transaction details (recipient, amount, fees) to the user
+   * - Obtain explicit user approval before calling this method
+   * - Validate transaction authenticity and integrity
+   *
+   * Failure to implement caller-side consent will result in transactions being
+   * signed and broadcast without user knowledge, creating a critical security
+   * vulnerability.
+   *
    * @param request - The JSON-RPC request containing transaction details.
    * @returns The transaction result with hash and status.
    */
@@ -258,7 +271,7 @@ export class ClientRequestHandler {
     } catch {
       return {
         valid: false,
-        errors: [SendErrorCodes.Invalid],
+        errors: [{ code: SendErrorCodes.Invalid }],
       };
     }
   }
@@ -278,6 +291,7 @@ export class ClientRequestHandler {
       assert(request, OnAmountInputRequestStruct);
 
       const { accountId, assetId, value } = request.params;
+
       const account = await this.#accountsService.findById(accountId);
 
       /**
@@ -286,7 +300,7 @@ export class ClientRequestHandler {
       if (!account) {
         return {
           valid: false,
-          errors: [SendErrorCodes.Invalid],
+          errors: [{ code: SendErrorCodes.Required }],
         };
       }
 
@@ -319,7 +333,7 @@ export class ClientRequestHandler {
       if (!asset || valueBN.isGreaterThan(assetToSendBalance)) {
         return {
           valid: false,
-          errors: [SendErrorCodes.InsufficientBalance],
+          errors: [{ code: SendErrorCodes.InsufficientBalance }],
         };
       }
 
@@ -360,7 +374,7 @@ export class ClientRequestHandler {
       if (totalTrxToSpend.isGreaterThan(nativeTokenBalance)) {
         return {
           valid: false,
-          errors: [SendErrorCodes.InsufficientBalanceToCoverFee],
+          errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
         };
       }
 
@@ -372,7 +386,7 @@ export class ClientRequestHandler {
       this.#logger.error('Error in #handleOnAmountInput:', error);
       return {
         valid: false,
-        errors: [SendErrorCodes.Invalid],
+        errors: [{ code: SendErrorCodes.Invalid }],
       };
     }
   }
@@ -397,7 +411,7 @@ export class ClientRequestHandler {
     if (!account) {
       return {
         valid: false,
-        errors: [SendErrorCodes.Invalid],
+        errors: [{ code: SendErrorCodes.Invalid }],
       };
     }
 
@@ -409,7 +423,7 @@ export class ClientRequestHandler {
     if (!asset) {
       return {
         valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
 
@@ -700,7 +714,7 @@ export class ClientRequestHandler {
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
         valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
 
@@ -746,7 +760,7 @@ export class ClientRequestHandler {
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
         valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
 
@@ -808,7 +822,7 @@ export class ClientRequestHandler {
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
         valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
 
@@ -862,7 +876,7 @@ export class ClientRequestHandler {
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
         valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
 

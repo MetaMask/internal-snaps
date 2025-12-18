@@ -166,16 +166,6 @@ export class KeyringHandler implements Keyring {
     try {
       const account = await this.#accountsService.create(id, options);
 
-      /**
-       * For transactions we don't need to be in a hurry, so we schedule
-       * a background event to sync them right after.
-       */
-      await this.#snapClient.scheduleBackgroundEvent({
-        method: BackgroundEventMethod.SynchronizeAccountTransactions,
-        params: { accountId: account.id },
-        duration: 'PT1S',
-      });
-
       return account;
     } catch (error: any) {
       this.#logger.error({ error }, 'Error creating account');

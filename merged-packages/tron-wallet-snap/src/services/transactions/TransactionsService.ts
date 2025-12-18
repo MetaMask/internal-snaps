@@ -264,13 +264,17 @@ export class TransactionsService {
     let trc20Transactions: ContractTransactionInfo[] = [];
 
     if (rawTransactionsResult.status === 'rejected') {
-      this.#logger.error('Failed to fetch raw transactions');
+      this.#logger.error(
+        `Failed to fetch raw transactions for address ${address} on network ${scope}`,
+      );
     } else {
       rawTransactions = rawTransactionsResult.value;
     }
 
     if (trc20TransactionsResult.status === 'rejected') {
-      this.#logger.error('Failed to fetch TRC20 transactions');
+      this.#logger.error(
+        `Failed to fetch TRC20 transactions for address ${address} on network ${scope}`,
+      );
     } else {
       trc20Transactions = trc20TransactionsResult.value;
     }

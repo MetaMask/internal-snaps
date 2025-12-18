@@ -1,5 +1,3 @@
-import { TronWeb } from 'tronweb';
-
 /**
  * Removes control characters from a string.
  * Control characters can be used for injection attacks and should be stripped from user input.
@@ -15,28 +13,6 @@ export function sanitizeControlCharacters(input: string): string {
   // Remove all control characters except tab
   // eslint-disable-next-line no-control-regex
   return input.replace(/[\u0000-\u0008\u000A-\u001F\u007F]/gu, '');
-}
-
-/**
- * Validates and sanitizes a Tron address.
- * Returns empty string if the address is invalid.
- *
- * @param address - The address to validate and sanitize.
- * @returns The sanitized address or empty string if invalid.
- */
-export function sanitizeTronAddress(address: string): string {
-  if (!address || typeof address !== 'string') {
-    return '';
-  }
-
-  const sanitized = sanitizeControlCharacters(address);
-
-  // Use TronWeb's built-in address validation
-  if (!TronWeb.isAddress(sanitized)) {
-    return '';
-  }
-
-  return sanitized;
 }
 
 /**

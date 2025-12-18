@@ -2,6 +2,7 @@ import {
   CaipAssetTypeStruct,
   KeyringRequestStruct,
   SolMethod,
+  TrxAccountType,
 } from '@metamask/keyring-api';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
@@ -207,6 +208,8 @@ export const CreateAccountOptionsStruct = optional(
   object({
     entropySource: optional(string()),
     index: optional(integer()),
+    addressType: optional(enums([TrxAccountType.Eoa])),
+    scope: optional(NetworkStruct),
     metamask: optional(
       object({
         correlationId: optional(string()),

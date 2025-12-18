@@ -6,7 +6,12 @@ import type { Transaction } from 'tronweb/lib/esm/types';
 import type { ComputeFeeResult } from './types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
-import { ACCOUNT_ACTIVATION_FEE_TRX, Networks, ZERO } from '../../constants';
+import {
+  ACCOUNT_ACTIVATION_FEE_TRX,
+  Networks,
+  SUN_IN_TRX,
+  ZERO,
+} from '../../constants';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 
@@ -513,10 +518,10 @@ export class FeeCalculatorService {
       // Calculate TRX cost for bandwidth and energy that needs to be paid
       const bandwidthCostTRX = bandwidthToPayInTRX
         .multipliedBy(bandwidthCost)
-        .div(1_000_000); // Convert SUN to TRX
+        .div(SUN_IN_TRX); // Convert SUN to TRX
       const energyCostTRX = energyToPayInTRX
         .multipliedBy(energyCost)
-        .div(1_000_000); // Convert SUN to TRX
+        .div(SUN_IN_TRX); // Convert SUN to TRX
 
       totalTrxCost = totalTrxCost.plus(bandwidthCostTRX).plus(energyCostTRX);
     }

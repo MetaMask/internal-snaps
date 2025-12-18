@@ -21,7 +21,6 @@ import type {
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
-import { sanitizeTronAddress } from '../../utils/sanitize';
 
 export class TrongridApiClient {
   readonly #clients: Map<
@@ -64,17 +63,11 @@ export class TrongridApiClient {
       throw new Error(`No client configured for network: ${scope}`);
     }
 
-    // Validate and sanitize the address to prevent URL injection
-    const sanitizedAddress = sanitizeTronAddress(address);
-    if (sanitizedAddress === '') {
-      throw new Error('Invalid Tron address');
-    }
-
     const { baseUrl, headers } = client;
     const url = buildUrl({
       baseUrl,
       path: '/v1/accounts/{address}',
-      pathParams: { address: sanitizedAddress },
+      pathParams: { address },
     });
 
     const response = await fetch(url, { headers });
@@ -124,17 +117,11 @@ export class TrongridApiClient {
       throw new Error(`No client configured for network: ${scope}`);
     }
 
-    // Validate and sanitize the address to prevent URL injection
-    const sanitizedAddress = sanitizeTronAddress(address);
-    if (sanitizedAddress === '') {
-      throw new Error('Invalid Tron address');
-    }
-
     const { baseUrl, headers } = client;
     const url = buildUrl({
       baseUrl,
       path: '/v1/accounts/{address}/transactions',
-      pathParams: { address: sanitizedAddress },
+      pathParams: { address },
     });
 
     const response = await fetch(url, { headers });
@@ -181,17 +168,11 @@ export class TrongridApiClient {
       throw new Error(`No client configured for network: ${scope}`);
     }
 
-    // Validate and sanitize the address to prevent URL injection
-    const sanitizedAddress = sanitizeTronAddress(address);
-    if (sanitizedAddress === '') {
-      throw new Error('Invalid Tron address');
-    }
-
     const { baseUrl, headers } = client;
     const url = buildUrl({
       baseUrl,
       path: '/v1/accounts/{address}/transactions/trc20',
-      pathParams: { address: sanitizedAddress },
+      pathParams: { address },
     });
 
     const response = await fetch(url, { headers });

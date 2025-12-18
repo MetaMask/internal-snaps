@@ -174,7 +174,7 @@ export class TransactionMapper {
       (total, result) => total + (result.fee || 0),
       0,
     );
-    const transactionFee = transactionFeeInSun / 1_000_000;
+    const transactionFee = transactionFeeInSun / SUN_IN_TRX;
 
     const setFeeIfPresent = (
       amount: number,
@@ -1098,7 +1098,7 @@ export class TransactionMapper {
         contractValue.frozen_balance ??
           (contractValue as any).frozen_balance_v2,
       ) || 0;
-    const amountInTrx = (amountInSun / 1_000_000).toString();
+    const amountInTrx = (amountInSun / SUN_IN_TRX).toString();
 
     // Determine resource and corresponding staked asset metadata
     const { resource } = contractValue as { resource?: 'BANDWIDTH' | 'ENERGY' };

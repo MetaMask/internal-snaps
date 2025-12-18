@@ -62,10 +62,7 @@ const transactionsRepository = new TransactionsRepository(state);
 const trongridApiClient = new TrongridApiClient({
   configProvider,
 });
-const tronHttpClient = new TronHttpClient({
-  configProvider,
-  logger,
-});
+const tronHttpClient = new TronHttpClient({ configProvider });
 const tronWebFactory = new TronWebFactory({
   configProvider,
 });
