@@ -27,7 +27,11 @@ import type {
   TokenCaipAssetType,
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import type { FiatTicker, SpotPrice } from '../../clients/price-api/types';
+import type {
+  FiatTicker,
+  SpotPrice,
+  SpotPrices,
+} from '../../clients/price-api/types';
 import {
   GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
   VsCurrencyParamStruct,
@@ -196,7 +200,20 @@ export class AssetsService {
       ...trc10Assets.map((assets) => assets.assetType),
       ...trc20Assets.map((assets) => assets.assetType),
     ];
-    const assetsMetadata = await this.getAssetsMetadata(assetTypes);
+    // Only native, TRC10, and TRC20 have Price API-compliant CAIP IDs
+    // (staked, energy, bandwidth have non-compliant IDs that would fail)
+    const priceableAssetTypes = [
+      nativeAsset.assetType,
+      ...trc10Assets.map((assets) => assets.assetType),
+      ...trc20Assets.map((assets) => assets.assetType),
+    ];
+
+    const [assetsMetadata, spotPrices] = await Promise.all([
+      this.getAssetsMetadata(assetTypes),
+      this.#priceApiClient
+        .getMultipleSpotPrices(priceableAssetTypes, 'usd')
+        .catch(() => ({})), // If prices fail, return empty - filtering will handle it
+    ]);
 
     const assets = [
       nativeAsset,
@@ -244,7 +261,38 @@ export class AssetsService {
       };
     });
 
-    return assets;
+    // Filter out tokens without price data (spam/obscure tokens)
+    const filteredAssets = this.#filterTokensWithoutPriceData(
+      assets,
+      spotPrices,
+    );
+
+    return filteredAssets;
+  }
+
+  /**
+   * Filters out spam tokens (those without price data).
+   * Essential assets are always kept. Tokens need price data to be included.
+   *
+   * @param assets - The assets to filter.
+   * @param spotPrices - Pre-fetched USD prices for assets.
+   * @returns The filtered assets.
+   */
+  #filterTokensWithoutPriceData(
+    assets: AssetEntity[],
+    spotPrices: SpotPrices | Record<string, never>,
+  ): AssetEntity[] {
+    const filtered = assets.filter((asset) => {
+      // Essential assets (TRX, staked, energy, bandwidth) are always kept
+      if (ESSENTIAL_ASSETS.includes(asset.assetType)) {
+        return true;
+      }
+      // Tokens: keep only if they have price data
+      const spotPrice = (spotPrices as SpotPrices)[asset.assetType];
+      return typeof spotPrice?.price === 'number';
+    });
+
+    return filtered;
   }
 
   #extractNativeAsset({
