@@ -7,6 +7,7 @@ import {
 import { assert } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 import { hexToBytes } from '@metamask/utils';
+import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
 
 import type { AccountsRepository } from './AccountsRepository';
@@ -109,7 +110,9 @@ export class AccountsService {
       const publicKeyBytes = hexToBytes(node.publicKey);
       const privateKeyHex = node.privateKey.slice(2);
 
-      const address = TronWeb.address.fromPrivateKey(privateKeyHex);
+      // Derive address from public key (cheaper than from private key)
+      const ethAddress = computeAddress(node.publicKey);
+      const address = TronWeb.address.fromHex(ethAddress);
 
       if (!address) {
         throw new Error('Unable to derive address');

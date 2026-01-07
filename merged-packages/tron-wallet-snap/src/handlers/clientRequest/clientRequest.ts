@@ -6,9 +6,13 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import { parseCaipAssetType } from '@metamask/utils';
+import {
+  bytesToHex,
+  hexToBytes,
+  parseCaipAssetType,
+  sha256,
+} from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import { sha256 } from 'ethers';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -210,7 +214,7 @@ export class ClientRequestHandler {
       type,
       rawDataHex,
     );
-    const txID = sha256(`0x${rawDataHex}`).slice(2);
+    const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {
       visible,
       txID,
@@ -555,7 +559,7 @@ export class ClientRequestHandler {
       type,
       rawDataHex,
     );
-    const txID = sha256(`0x${rawDataHex}`).slice(2);
+    const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {
       visible,
       txID,

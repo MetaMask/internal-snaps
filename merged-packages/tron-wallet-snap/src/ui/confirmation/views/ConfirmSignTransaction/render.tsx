@@ -1,8 +1,8 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
+import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import { sha256 } from 'ethers';
 import { TronWeb } from 'tronweb';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
@@ -112,7 +112,9 @@ export async function render(
       : ZERO;
 
     // Build transaction object from raw data
-    const txID = sha256(`0x${transaction.rawDataHex}`).slice(2);
+    const txID = bytesToHex(
+      await sha256(hexToBytes(transaction.rawDataHex)),
+    ).slice(2);
 
     const transactionObj: Transaction = {
       visible: true,

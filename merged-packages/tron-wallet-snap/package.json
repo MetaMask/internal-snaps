@@ -45,7 +45,7 @@
     "@metamask/snaps-jest": "^9.2.0",
     "@metamask/snaps-sdk": "^9.3.0",
     "@metamask/superstruct": "^3.2.1",
-    "@metamask/utils": "^11.4.2",
+    "@metamask/utils": "^11.9.0",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
     "async-mutex": "^0.5.0",

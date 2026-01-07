@@ -1,7 +1,7 @@
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
-import { sha256 } from 'ethers';
+import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
@@ -214,7 +214,7 @@ export class WalletService {
         type,
         rawDataHex,
       );
-      const txID = sha256(`0x${rawDataHex}`).slice(2);
+      const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
       const transaction = {
         visible: false,
         txID,

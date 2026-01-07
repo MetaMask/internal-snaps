@@ -16,7 +16,6 @@ import {
   SignTransactionRequestStruct,
   type TronWalletKeyringRequest,
 } from '../../validation/structs';
-import type { AccountsService } from '../accounts/AccountsService';
 import type { ComputeFeeResult } from '../send/types';
 import type { State, UnencryptedStateValue } from '../state/State';
 
@@ -27,25 +26,20 @@ export class ConfirmationHandler {
 
   readonly #state: State<UnencryptedStateValue>;
 
-  readonly #accountsService: AccountsService;
-
   readonly #tronWebFactory: TronWebFactory;
 
   constructor({
     snapClient,
     state,
-    accountsService,
     tronWebFactory,
   }: {
     snapClient: SnapClient;
     state: State<UnencryptedStateValue>;
-    accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🔑 ConfirmationHandler]');
     this.#snapClient = snapClient;
     this.#state = state;
-    this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
   }
 
@@ -102,14 +96,8 @@ export class ConfirmationHandler {
       },
     } = request;
 
-    // Derive the private key for signing
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    // Create a TronWeb instance for transaction signing
-    const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
+    // Create a TronWeb instance for transaction deserialization
+    const tronWeb = this.#tronWebFactory.createClient(scope);
 
     // Rebuild the transaction from hex (same logic as clientRequest handler)
     const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
