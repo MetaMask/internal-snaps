@@ -44,11 +44,17 @@ export class StakingService {
     assetId,
     amount,
     purpose,
+    srNodeAddress,
   }: {
     account: TronKeyringAccount;
     assetId: NativeCaipAssetType;
     amount: BigNumber;
     purpose: 'BANDWIDTH' | 'ENERGY';
+    /**
+     * Optional SR node address to allocate votes to.
+     * If not provided, defaults to the Consensys SR node.
+     */
+    srNodeAddress?: string;
   }): Promise<void> {
     this.#logger.info(
       `Staking ${amount.toString()} ${assetId} from ${account.address} for ${purpose}...`,
@@ -82,9 +88,14 @@ export class StakingService {
      */
     const availableVotes = amount.integerValue(BigNumber.ROUND_DOWN).toNumber();
 
+    /**
+     * Use the provided SR node address or default to Consensys SR node.
+     */
+    const voteRecipient = srNodeAddress ?? CONSENSYS_SR_NODE_ADDRESS;
+
     const voteAllocationTransaction = await tronWeb.transactionBuilder.vote(
       {
-        [CONSENSYS_SR_NODE_ADDRESS]: availableVotes,
+        [voteRecipient]: availableVotes,
       },
       account.address,
     );

@@ -746,7 +746,7 @@ export class ClientRequestHandler {
       fromAccountId,
       assetId,
       value,
-      options: { purpose },
+      options: { purpose, srNodeAddress },
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
@@ -776,6 +776,7 @@ export class ClientRequestHandler {
       assetId: assetId as NativeCaipAssetType,
       amount: requestBalance,
       purpose,
+      srNodeAddress,
     });
 
     return {

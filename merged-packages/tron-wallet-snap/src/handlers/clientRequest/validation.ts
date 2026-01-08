@@ -139,6 +139,11 @@ export const OnConfirmStakeRequestParamsStruct = object({
   value: PositiveNumberStringStruct,
   options: object({
     purpose: enums(['ENERGY', 'BANDWIDTH']),
+    /**
+     * Optional SR node address to allocate votes to.
+     * If not provided, defaults to the Consensys SR node.
+     */
+    srNodeAddress: optional(TronAddressStruct),
   }),
 });
 

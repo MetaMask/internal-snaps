@@ -3,7 +3,11 @@ import { BigNumber } from 'bignumber.js';
 import { StakingService } from './StakingService';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { KnownCaip19Id, Network } from '../../constants';
+import {
+  CONSENSYS_SR_NODE_ADDRESS,
+  KnownCaip19Id,
+  Network,
+} from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
@@ -249,6 +253,72 @@ describe('StakingService', () => {
         entropySource: 'custom-entropy',
         derivationPath: "m/44'/195'/1'/0/0",
       });
+    });
+
+    it('uses Consensys SR node address by default when srNodeAddress is not provided', async () => {
+      const amount = BigNumber(100);
+      const assetId = KnownCaip19Id.TrxMainnet;
+      const purpose = 'BANDWIDTH';
+
+      await stakingService.stake({
+        account: mockAccount,
+        assetId,
+        amount,
+        purpose,
+      });
+
+      expect(mockTronWeb.transactionBuilder.vote).toHaveBeenCalledWith(
+        { [CONSENSYS_SR_NODE_ADDRESS]: 100 },
+        mockAccount.address,
+      );
+    });
+
+    it('uses custom SR node address when provided', async () => {
+      const amount = BigNumber(100);
+      const assetId = KnownCaip19Id.TrxMainnet;
+      const purpose = 'BANDWIDTH';
+      const customSrNodeAddress = 'TSR1234567890abcdefghijklmnopqrstuv';
+
+      await stakingService.stake({
+        account: mockAccount,
+        assetId,
+        amount,
+        purpose,
+        srNodeAddress: customSrNodeAddress,
+      });
+
+      expect(mockTronWeb.transactionBuilder.vote).toHaveBeenCalledWith(
+        { [customSrNodeAddress]: 100 },
+        mockAccount.address,
+      );
+    });
+
+    it('overrides Consensys SR node with custom address when provided', async () => {
+      const amount = BigNumber(500);
+      const assetId = KnownCaip19Id.TrxNile;
+      const purpose = 'ENERGY';
+      const customSrNodeAddress = 'TCustomSRNode12345678901234567890';
+
+      await stakingService.stake({
+        account: mockAccount,
+        assetId,
+        amount,
+        purpose,
+        srNodeAddress: customSrNodeAddress,
+      });
+
+      expect(mockTronWeb.transactionBuilder.vote).toHaveBeenCalledWith(
+        { [customSrNodeAddress]: 500 },
+        mockAccount.address,
+      );
+
+      // Verify Consensys SR node was NOT used
+      expect(mockTronWeb.transactionBuilder.vote).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          [CONSENSYS_SR_NODE_ADDRESS]: expect.any(Number),
+        }),
+        expect.anything(),
+      );
     });
   });
 
