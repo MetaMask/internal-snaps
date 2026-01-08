@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.0]
+
+### Added
+
+- Add optional `srNodeAddress` param to `confirmStake` ([#154](https://github.com/MetaMask/snap-tron-wallet/pull/154))
+- Implement token filtering by minimum USD value in `AssetsService` ([#152](https://github.com/MetaMask/snap-tron-wallet/pull/152))
+
+### Fixed
+
+- Use `sha256` from MM utils and remove pkey usage ([#151](https://github.com/MetaMask/snap-tron-wallet/pull/151))
+
 ## [1.17.0]
 
 ### Added
@@ -315,7 +326,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.1...v1.17.0
 [1.16.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.15.1...v1.16.0
