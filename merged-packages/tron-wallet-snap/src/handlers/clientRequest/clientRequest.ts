@@ -194,7 +194,7 @@ export class ClientRequestHandler {
       transaction: transactionBase64,
       accountId,
       scope,
-      options: { visible, type },
+      options: { type },
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
@@ -216,7 +216,10 @@ export class ClientRequestHandler {
     );
     const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {
-      visible,
+      /**
+       * Deserialized transaction always hexadecimal addresses
+       */
+      visible: false,
       txID,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data: rawData,
