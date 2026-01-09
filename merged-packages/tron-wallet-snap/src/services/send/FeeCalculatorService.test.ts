@@ -122,9 +122,18 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should only have bandwidth consumption, no TRX cost
+        // TRX is always first (even if 0), then bandwidth consumption
         // Native transfer: 132 bytes (raw_data_hex / 2) + 134 = 266 bytes
         expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
           {
             type: FeeType.Base,
             asset: {
@@ -199,6 +208,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '3',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
               amount: '100000',
@@ -211,15 +229,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3',
               fungible: true,
             },
           },
@@ -239,11 +248,20 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should have bandwidth consumption and TRX cost for energy overage
+        // Should have TRX first, then bandwidth consumption and energy
         // Energy: 130000 (hardcoded), available: 30000
         // Energy consumed: 30000, overage: 100000
         // TRX cost: 100000 * 100 SUN = 10,000,000 SUN = 10 TRX
         expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '10',
+              fungible: true,
+            },
+          },
           {
             type: FeeType.Base,
             asset: {
@@ -259,15 +277,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '10',
               fungible: true,
             },
           },
@@ -287,7 +296,7 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should have energy consumption and TRX cost for overages
+        // Should have TRX first, then energy consumption
         // Energy: 130000 (hardcoded), available: 100000
         // Energy consumed: 100000, overage: 30000
         // Energy TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
@@ -300,18 +309,18 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '100000',
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '3.345',
               fungible: true,
             },
           },
           {
             type: FeeType.Base,
             asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3.345',
+              unit: 'ENERGY',
+              type: 'tron:728126428/slip44:energy',
+              amount: '100000',
               fungible: true,
             },
           },
@@ -331,7 +340,7 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should have energy consumption and TRX cost for both overages
+        // Should have TRX first, then energy consumption
         // Energy: 130000 (hardcoded), available: 30000
         // Energy consumed: 30000, overage: 100000 → 10 TRX
         // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
@@ -341,18 +350,18 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '30000',
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '10.345',
               fungible: true,
             },
           },
           {
             type: FeeType.Base,
             asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '10.345',
+              unit: 'ENERGY',
+              type: 'tron:728126428/slip44:energy',
+              amount: '30000',
               fungible: true,
             },
           },
@@ -404,6 +413,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:2494104990/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'BANDWIDTH',
               type: 'tron:2494104990/slip44:bandwidth',
               amount: '266',
@@ -444,6 +462,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '3',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
               amount: '100000',
@@ -456,15 +483,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3',
               fungible: true,
             },
           },
@@ -506,18 +524,18 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '100000',
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '3.345',
               fungible: true,
             },
           },
           {
             type: FeeType.Base,
             asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3.345',
+              unit: 'ENERGY',
+              type: 'tron:728126428/slip44:energy',
+              amount: '100000',
               fungible: true,
             },
           },
@@ -537,6 +555,15 @@ describe('FeeCalculatorService', () => {
         });
 
         expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
           {
             type: FeeType.Base,
             asset: {
@@ -568,23 +595,23 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should have bandwidth consumption and 1 TRX activation fee
+        // Should have TRX first (1 TRX activation fee), then bandwidth consumption
         expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
           {
             type: FeeType.Base,
             asset: {
               unit: 'TRX',
               type: 'tron:728126428/slip44:195',
               amount: '1',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '266',
               fungible: true,
             },
           },
@@ -640,8 +667,17 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should only have bandwidth consumption, no activation fee
+        // Should have TRX first (0 since no activation fee), then bandwidth consumption
         expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
           {
             type: FeeType.Base,
             asset: {
@@ -674,8 +710,17 @@ describe('FeeCalculatorService', () => {
           availableBandwidth,
         });
 
-        // Should only have energy and bandwidth consumption, no activation check
+        // Should have TRX first (0), then energy and bandwidth consumption
         expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
           {
             type: FeeType.Base,
             asset: {
@@ -733,6 +778,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '5',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
               amount: '50000',
@@ -745,15 +799,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '5',
               fungible: true,
             },
           },
@@ -786,6 +831,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '10',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
               amount: '30000',
@@ -798,15 +852,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '10',
               fungible: true,
             },
           },
@@ -845,6 +890,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '1.5',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
               amount: '50000',
@@ -857,15 +911,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1.5',
               fungible: true,
             },
           },
@@ -894,8 +939,17 @@ describe('FeeCalculatorService', () => {
 
         // Should use the actual simulation result (0 energy), not fall back
         // Energy consumed: 0 from available, no overage
-        // No TRX cost for energy
+        // TRX is 0 but still first
         expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
           {
             type: FeeType.Base,
             asset: {
@@ -939,6 +993,15 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '3',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
               unit: 'ENERGY',
               type: 'tron:728126428/slip44:energy',
               amount: '20000',
@@ -951,15 +1014,6 @@ describe('FeeCalculatorService', () => {
               unit: 'BANDWIDTH',
               type: 'tron:728126428/slip44:bandwidth',
               amount: '345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3',
               fungible: true,
             },
           },
@@ -1003,18 +1057,18 @@ describe('FeeCalculatorService', () => {
           {
             type: FeeType.Base,
             asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '1',
               fungible: true,
             },
           },
           {
             type: FeeType.Base,
             asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1',
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '345',
               fungible: true,
             },
           },

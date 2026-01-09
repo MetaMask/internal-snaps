@@ -461,40 +461,8 @@ export class FeeCalculatorService {
       ZERO,
     );
 
-    const result: ComputeFeeResult = [];
-
     /**
-     * Add energy consumption fee if we're consuming any energy
-     */
-    if (energyConsumed.isGreaterThan(0)) {
-      result.push({
-        type: FeeType.Base,
-        asset: {
-          unit: Networks[scope].energy.symbol,
-          type: Networks[scope].energy.id,
-          amount: energyConsumed.toString(),
-          fungible: true as const,
-        },
-      });
-    }
-
-    /**
-     * Add bandwidth consumption fee if we're consuming any bandwidth
-     */
-    if (bandwidthConsumed.isGreaterThan(0)) {
-      result.push({
-        type: FeeType.Base,
-        asset: {
-          unit: Networks[scope].bandwidth.symbol,
-          type: Networks[scope].bandwidth.id,
-          amount: bandwidthConsumed.toString(),
-          fungible: true as const,
-        },
-      });
-    }
-
-    /**
-     * Now calculate the total TRX cost from all sources...
+     * Calculate the total TRX cost from all sources...
      */
     let totalTrxCost = ZERO;
 
@@ -539,15 +507,45 @@ export class FeeCalculatorService {
     }
 
     /**
-     * Finally, add the TRX cost to the result
+     * Build result array - TRX MUST always be first element, even if 0
      */
-    if (totalTrxCost.isGreaterThan(0)) {
-      result.push({
+    const result: ComputeFeeResult = [
+      {
         type: FeeType.Base,
         asset: {
           unit: Networks[scope].nativeToken.symbol,
           type: Networks[scope].nativeToken.id,
           amount: Number(totalTrxCost.toFixed(6)).toString(),
+          fungible: true as const,
+        },
+      },
+    ];
+
+    /**
+     * Add energy consumption fee if we're consuming any energy
+     */
+    if (energyConsumed.isGreaterThan(0)) {
+      result.push({
+        type: FeeType.Base,
+        asset: {
+          unit: Networks[scope].energy.symbol,
+          type: Networks[scope].energy.id,
+          amount: energyConsumed.toString(),
+          fungible: true as const,
+        },
+      });
+    }
+
+    /**
+     * Add bandwidth consumption fee if we're consuming any bandwidth
+     */
+    if (bandwidthConsumed.isGreaterThan(0)) {
+      result.push({
+        type: FeeType.Base,
+        asset: {
+          unit: Networks[scope].bandwidth.symbol,
+          type: Networks[scope].bandwidth.id,
+          amount: bandwidthConsumed.toString(),
           fungible: true as const,
         },
       });
