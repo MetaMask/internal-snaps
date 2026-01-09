@@ -330,7 +330,6 @@ describe('ClientRequestHandler', () => {
             raw_data: expect.any(Object),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             raw_data_hex: expect.any(String),
-            visible: true,
           }),
           availableEnergy: BigNumber('0'),
           availableBandwidth: BigNumber('1000'),

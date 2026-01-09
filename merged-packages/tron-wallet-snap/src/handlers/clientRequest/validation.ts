@@ -114,7 +114,7 @@ export const ComputeFeeRequestParamsStruct = object({
   accountId: UuidStruct,
   scope: ScopeStringStruct,
   options: object({
-    visible: boolean(),
+    visible: optional(boolean()),
     type: string(),
     feeLimit: optional(number()),
   }),

@@ -544,7 +544,7 @@ export class ClientRequestHandler {
         scope,
         transaction: transactionBase64,
         accountId,
-        options: { visible, type, feeLimit },
+        options: { type, feeLimit },
       },
     } = request;
 
@@ -564,7 +564,7 @@ export class ClientRequestHandler {
     );
     const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {
-      visible,
+      visible: false,
       txID,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data: rawData,
