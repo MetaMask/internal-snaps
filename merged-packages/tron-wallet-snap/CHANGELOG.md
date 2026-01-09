@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0]
+
+### Fixed
+
+- Always include TRX fee as first result on `computeFee` ([#159](https://github.com/MetaMask/snap-tron-wallet/pull/159))
+- Ignore `visible` in `handleComputeFee` field ([#158](https://github.com/MetaMask/snap-tron-wallet/pull/158))
+- Address unsubmitable swaps from Bridgers ([#157](https://github.com/MetaMask/snap-tron-wallet/pull/157))
+
 ## [1.18.0]
 
 ### Added
@@ -326,7 +334,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.0...HEAD
+[1.19.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.1...v1.17.0
 [1.16.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.16.0...v1.16.1
