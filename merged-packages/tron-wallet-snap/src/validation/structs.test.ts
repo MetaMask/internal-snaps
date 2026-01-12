@@ -186,6 +186,10 @@ describe('structs', () => {
         'YWJzb2x1dGU=', // "aBc"
         'aGVsbG8=', // "hello"
         'aGVsbG8sIHdvcmxkIQ==', // "hello, world!"
+        // Short messages (1-3 characters)
+        'YQ==', // "a" (1 character)
+        'YWI=', // "ab" (2 characters)
+        'YWJj', // "abc" (3 characters)
       ];
 
       validBase64Strings.forEach((base64String) => {

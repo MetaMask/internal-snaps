@@ -344,7 +344,7 @@ export const Base58Struct: Struct<string, null> = define('Base58', (value) => {
  */
 export const Base64Struct = pattern(
   string(),
-  /^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u,
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/u,
 );
 
 const DERIVATION_PATH_REGEX = /^m\/44'\/195'/u;
