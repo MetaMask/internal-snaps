@@ -168,7 +168,7 @@ describe('ClientRequestHandler', () => {
           { rawAmount: '100000' }, // Energy
         ] as any);
 
-        // Mock fee calculation result - NO imageSvg field
+        // Mock fee calculation result
         const feeResult = [
           {
             type: FeeType.Base,

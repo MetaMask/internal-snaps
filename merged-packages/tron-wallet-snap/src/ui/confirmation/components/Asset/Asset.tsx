@@ -8,6 +8,7 @@ import {
   Text as SnapText,
 } from '@metamask/snaps-sdk/jsx';
 
+import questionMarkSvg from '../../../../../images/question-mark.svg';
 import { KnownCaip19Id } from '../../../../constants';
 import type { Preferences } from '../../../../types/snap';
 import { formatFiat } from '../../../../utils/formatFiat';
@@ -17,7 +18,7 @@ type AssetProps = {
   caipId: CaipAssetType;
   symbol: string;
   amount: string;
-  iconSvg: string;
+  iconUrl?: string;
   showAmount?: boolean;
   price?: number | null;
   preferences?: Preferences;
@@ -32,7 +33,7 @@ type AssetProps = {
  * @returns The rendered asset element.
  */
 export const Asset = (props: AssetProps): ComponentOrElement => {
-  const { caipId, symbol, amount, iconSvg, price, preferences, priceLoading } =
+  const { caipId, symbol, amount, iconUrl, price, preferences, priceLoading } =
     props;
 
   const fiatValue =
@@ -59,6 +60,7 @@ export const Asset = (props: AssetProps): ComponentOrElement => {
     caipId === KnownCaip19Id.EnergyShasta;
 
   const isNormalAsset = !isBandwidth && !isEnergy;
+  const iconSrc = iconUrl ?? questionMarkSvg;
 
   return (
     <Box direction="horizontal" alignment="center">
@@ -67,7 +69,9 @@ export const Asset = (props: AssetProps): ComponentOrElement => {
       <Box alignment="center" center>
         {isBandwidth ? <Icon name="connect" size="md" /> : null}
         {isEnergy ? <Icon name="flash" size="md" /> : null}
-        {isNormalAsset ? <Image borderRadius="full" src={iconSvg} /> : null}
+        {isNormalAsset ? (
+          <Image borderRadius="full" src={iconSrc} height={16} width={16} />
+        ) : null}
       </Box>
       <SnapText>{`${amount} ${symbol}`}</SnapText>
     </Box>

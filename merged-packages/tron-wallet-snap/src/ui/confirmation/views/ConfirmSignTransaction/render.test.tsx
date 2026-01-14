@@ -70,7 +70,6 @@ describe('ConfirmSignTransaction render', () => {
           symbol: 'TRX',
           name: 'Tron',
           logo: null,
-          imageSvg: null,
           assetType: 'TRC20',
         },
       ],

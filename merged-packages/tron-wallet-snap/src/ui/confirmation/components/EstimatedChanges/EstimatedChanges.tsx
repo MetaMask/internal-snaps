@@ -82,8 +82,8 @@ const AssetChange = ({
 
   return (
     <Box direction="horizontal" alignment="end">
-      {asset.imageSvg ? (
-        <Image src={asset.imageSvg} borderRadius="full" />
+      {asset.logo ? (
+        <Image src={asset.logo} borderRadius="full" height={16} width={16} />
       ) : null}
       <SnapText color={isOut ? 'error' : 'success'}>
         {isOut ? '-' : '+'}

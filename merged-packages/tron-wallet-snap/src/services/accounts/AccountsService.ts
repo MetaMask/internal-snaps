@@ -4,8 +4,8 @@ import {
   emitSnapKeyringEvent,
   getSelectedAccounts,
 } from '@metamask/keyring-snap-sdk';
+import type { Json } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import type { Json } from '@metamask/utils';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';

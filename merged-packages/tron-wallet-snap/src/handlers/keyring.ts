@@ -18,13 +18,12 @@ import {
   handleKeyringRequest,
 } from '@metamask/keyring-snap-sdk';
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
+import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
   CaipChainId,
-  Json,
-  JsonRpcRequest,
 } from '@metamask/utils';
 import { sortBy } from 'lodash';
 

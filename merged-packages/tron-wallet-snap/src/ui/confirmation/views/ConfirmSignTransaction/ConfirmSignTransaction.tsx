@@ -124,6 +124,8 @@ export const ConfirmSignTransaction = ({
               <Image
                 borderRadius="medium"
                 src={networkImage ?? TRX_IMAGE_SVG}
+                height={16}
+                width={16}
               />
               <SnapText>{Networks[scope].name}</SnapText>
             </Box>

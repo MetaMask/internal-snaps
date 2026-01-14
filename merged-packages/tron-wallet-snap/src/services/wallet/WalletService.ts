@@ -1,6 +1,6 @@
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
 import { SnapError } from '@metamask/snaps-sdk';
-import type { Json, JsonRpcRequest } from '@metamask/utils';
+import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';

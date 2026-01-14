@@ -15,7 +15,6 @@ import type {
   UnencryptedStateValue,
 } from '../../../../services/state/State';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
-import { generateImageComponent } from '../../../utils/generateImageComponent';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
 export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
@@ -33,7 +32,6 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
     rawAmount: '0',
     uiAmount: '0',
     iconUrl: '',
-    imageSvg: TRX_IMAGE_SVG,
   },
   origin: 'MetaMask',
   networkImage: TRX_IMAGE_SVG,
@@ -95,28 +93,10 @@ export async function render(
   }
 
   /**
-   * Generate SVG images for all assets (it's an async process so it must be done here).
+   * Resolve icon URLs for fee assets from known asset metadata.
    */
-  const [assetSvg, ...feeSvgs] = await Promise.all([
-    generateImageComponent(context.asset.iconUrl, 16, 16),
-    ...context.fees.map(async (fee) => {
-      return await generateImageComponent(
-        getIconUrlForKnownAsset(fee.asset.type),
-        16,
-        16,
-      );
-    }),
-  ]);
-
-  /**
-   * There will always be SVGs for the assets because we fallback to the question mark SVG.
-   */
-  context.asset = {
-    ...context.asset,
-    imageSvg: assetSvg,
-  };
-  context.fees.forEach((fee, index) => {
-    fee.asset.imageSvg = feeSvgs[index] ?? '';
+  context.fees.forEach((fee) => {
+    fee.asset.iconUrl = getIconUrlForKnownAsset(fee.asset.type);
   });
 
   // 2. Initial render with loading skeleton (always show loading if pricing enabled)

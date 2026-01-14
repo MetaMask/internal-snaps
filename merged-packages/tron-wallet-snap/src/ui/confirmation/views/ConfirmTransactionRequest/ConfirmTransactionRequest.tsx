@@ -17,6 +17,7 @@ import {
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import { type ConfirmTransactionRequestContext } from './types';
 import { Networks } from '../../../../constants';
+import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { Asset } from '../../components/Asset/Asset';
@@ -78,7 +79,7 @@ export const ConfirmTransactionRequest = ({
               caipId={asset.assetType}
               amount={amount ?? ''}
               symbol={asset.symbol}
-              iconSvg={asset.imageSvg ?? ''}
+              iconUrl={asset.iconUrl}
               price={assetPrice}
               preferences={preferences}
               priceLoading={priceLoading}
@@ -140,7 +141,12 @@ export const ConfirmTransactionRequest = ({
             </SnapText>
             <Box direction="horizontal" alignment="center">
               <Box alignment="center" center>
-                <Image borderRadius="medium" src={networkImage ?? ''} />
+                <Image
+                  borderRadius="medium"
+                  src={networkImage ?? TRX_IMAGE_SVG}
+                  height={16}
+                  width={16}
+                />
               </Box>
               <SnapText>{Networks[scope].name}</SnapText>
             </Box>

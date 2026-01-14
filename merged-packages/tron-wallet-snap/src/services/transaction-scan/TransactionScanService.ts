@@ -6,10 +6,7 @@ import type { SecurityAlertSimulationValidationResponse } from '../../clients/se
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
-import { generateImageComponent } from '../../ui/utils/generateImageComponent';
 import type { ILogger } from '../../utils/logger';
-
-const ICON_SIZE = 16;
 
 const METAMASK_ORIGIN = 'metamask';
 const METAMASK_ORIGIN_URL = 'https://metamask.io';
@@ -141,37 +138,7 @@ export class TransactionScanService {
         }
       }
 
-      if (!scan?.estimatedChanges?.assets) {
-        return scan;
-      }
-
-      const updatedScan = { ...scan };
-
-      // Generate SVG images for each asset
-      const transactionScanIconPromises = scan.estimatedChanges.assets.map(
-        async (asset, index) => {
-          const { logo } = asset;
-
-          if (logo) {
-            return generateImageComponent(logo, ICON_SIZE, ICON_SIZE)
-              .then((image) => {
-                if (image && updatedScan?.estimatedChanges?.assets?.[index]) {
-                  updatedScan.estimatedChanges.assets[index].imageSvg = image;
-                }
-                return null;
-              })
-              .catch(() => {
-                return null;
-              });
-          }
-
-          return undefined;
-        },
-      );
-
-      await Promise.all(transactionScanIconPromises ?? []);
-
-      return updatedScan;
+      return scan;
     } catch (error) {
       this.#logger.error(error);
 
@@ -263,7 +230,6 @@ export class TransactionScanService {
                   : null,
               value: change ? parseFloat(change.value) : null,
               price: change?.usd_price ? parseFloat(change.usd_price) : null,
-              imageSvg: null,
               assetType: asset.asset_type,
             };
           }) ?? [],

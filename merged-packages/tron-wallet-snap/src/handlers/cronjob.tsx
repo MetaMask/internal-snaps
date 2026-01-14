@@ -1,4 +1,4 @@
-import type { JsonRpcRequest } from '@metamask/utils';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
 import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';

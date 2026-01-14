@@ -1,5 +1,5 @@
 import type { EntropySourceId, MetaMaskOptions } from '@metamask/keyring-api';
-import type { Json } from '@metamask/utils';
+import type { Json } from '@metamask/snaps-sdk';
 
 export type CreateAccountOptions = {
   entropySource?: EntropySourceId;

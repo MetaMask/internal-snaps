@@ -15,7 +15,6 @@ import type { TronKeyringAccount } from '../../../../entities';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
-import { generateImageComponent } from '../../../utils/generateImageComponent';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
 export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
@@ -132,29 +131,22 @@ export async function render(
       availableBandwidth,
     });
 
-    // Parallelize: Generate SVG images + Fetch prices
-    const svgPromises = fees.map(async (fee) =>
-      generateImageComponent(getIconUrlForKnownAsset(fee.asset.type), 16, 16),
-    );
+    // Resolve icon URLs for fee assets
+    fees.forEach((fee) => {
+      fee.asset.iconUrl = getIconUrlForKnownAsset(fee.asset.type);
+    });
 
-    const pricePromise = useExternalPricingData
-      ? priceApiClient
+    // Fetch prices if enabled
+    const tokenPrices = useExternalPricingData
+      ? await priceApiClient
           .getMultipleSpotPrices(
             [`${scope}/slip44:195`] as any,
             context.preferences.currency,
           )
           .catch(() => ({}))
-      : Promise.resolve({});
-
-    const [feeSvgs, tokenPrices] = await Promise.all([
-      Promise.all(svgPromises),
-      pricePromise,
-    ]);
+      : {};
 
     context.fees = fees;
-    context.fees.forEach((fee, index) => {
-      fee.asset.imageSvg = feeSvgs[index] ?? '';
-    });
     context.feesFetchStatus = 'fetched';
     context.tokenPrices = tokenPrices;
     context.tokenPricesFetchStatus = 'fetched';

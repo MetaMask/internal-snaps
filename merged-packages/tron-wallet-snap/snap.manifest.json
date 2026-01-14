@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/snap-tron-wallet.git"
   },
   "source": {
-    "shasum": "k0DH15rxAV7A/2FOm8UXRepSYIFi8iDamljLT4r2JmQ=",
+    "shasum": "9EiURfy13+hPdu9O2f02+WDJ+ZxBWWPhJOYu08e3dmw=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -50,6 +50,6 @@
       "scopes": ["tron:728126428"]
     }
   },
-  "platformVersion": "9.3.0",
+  "platformVersion": "10.3.0",
   "manifestVersion": "0.1"
 }
