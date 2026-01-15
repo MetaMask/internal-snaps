@@ -574,8 +574,8 @@ export class CronHandler {
         duration: 'PT1S',
       });
 
-      // Track Transaction Finalised event now that transaction is confirmed
-      await this.#snapClient.trackTransactionFinalised({
+      // Track Transaction Finalized event now that transaction is confirmed
+      await this.#snapClient.trackTransactionFinalized({
         origin: 'MetaMask',
         accountType: senderAccount.type,
         chainIdCaip: scope,

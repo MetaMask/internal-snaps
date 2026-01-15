@@ -6,7 +6,7 @@ export enum TransactionEventType {
   TransactionRejected = 'Transaction Rejected',
   TransactionApproved = 'Transaction Approved',
   TransactionSubmitted = 'Transaction Submitted',
-  TransactionFinalised = 'Transaction Finalised',
+  TransactionFinalized = 'Transaction Finalized',
 }
 
 /**
