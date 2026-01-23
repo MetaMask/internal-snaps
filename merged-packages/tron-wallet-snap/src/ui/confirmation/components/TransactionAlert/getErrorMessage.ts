@@ -24,11 +24,16 @@ export function getErrorMessage(
   preferences: Preferences,
 ): string {
   const translate = i18n(preferences.locale);
-  const { code, type } = error;
+  const { code, type, message } = error;
 
   // Try to find a translation key for the error code
   const translationKey =
     (code && ERROR_MESSAGES[code]) ?? 'transactionScan.errors.unknownError';
+
+  // Fall back to the raw message only when the error code is unknown
+  if (message && translationKey === 'transactionScan.errors.unknownError') {
+    return message;
+  }
 
   try {
     return translate(translationKey as any);

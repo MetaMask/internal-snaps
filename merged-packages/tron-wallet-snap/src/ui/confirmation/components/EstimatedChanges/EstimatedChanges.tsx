@@ -9,16 +9,12 @@ import {
   Skeleton,
 } from '@metamask/snaps-sdk/jsx';
 
-import type {
-  TransactionScanEstimatedChanges,
-  TransactionScanStatus,
-} from '../../../../services/transaction-scan/types';
+import type { TransactionScanEstimatedChanges } from '../../../../services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../types/snap';
 import { i18n } from '../../../../utils/i18n';
 
 type EstimatedChangesProps = {
   changes: TransactionScanEstimatedChanges | null;
-  scanStatus: TransactionScanStatus | null;
   preferences: Preferences;
   scanFetchStatus: FetchStatus;
 };
@@ -97,19 +93,19 @@ export const EstimatedChanges = ({
   changes,
   preferences,
   scanFetchStatus,
-  scanStatus,
 }: EstimatedChangesProps): ComponentOrElement => {
   const translate = i18n(preferences.locale);
 
   const isFetching = scanFetchStatus === 'fetching';
   const isFetched = scanFetchStatus === 'fetched';
-  const isError = scanFetchStatus === 'error';
+  const isFetchError = scanFetchStatus === 'error';
 
   if (isFetching) {
     return <EstimatedChangesSkeleton preferences={preferences} />;
   }
 
-  if (isError || (isFetched && scanStatus === 'ERROR')) {
+  // API fetch error (network failure, etc.) - show "not available"
+  if (isFetchError) {
     return (
       <Section direction="vertical">
         <EstimatedChangesHeader preferences={preferences} />

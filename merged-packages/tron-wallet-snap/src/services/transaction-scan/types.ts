@@ -28,6 +28,7 @@ export type TransactionScanValidation = {
 export type TransactionScanError = {
   type: string | null;
   code: string | null;
+  message: string | null;
 };
 
 export type TransactionScanResult = {

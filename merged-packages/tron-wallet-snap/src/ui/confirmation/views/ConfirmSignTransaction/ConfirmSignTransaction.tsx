@@ -72,7 +72,6 @@ export const ConfirmSignTransaction = ({
         {/* Estimated Changes from Security Scan */}
         {preferences.simulateOnChainActions ? (
           <EstimatedChanges
-            scanStatus={scan?.status ?? null}
             scanFetchStatus={scanFetchStatus}
             changes={scan?.estimatedChanges ?? null}
             preferences={preferences}

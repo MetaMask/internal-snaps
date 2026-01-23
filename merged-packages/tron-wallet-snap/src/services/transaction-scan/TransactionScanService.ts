@@ -238,12 +238,14 @@ export class TransactionScanService {
         type: result.validation?.result_type ?? null,
         reason: result.validation?.reason ?? null,
       },
-      error: result.simulation?.error_details
-        ? {
-            type: result.simulation?.error_details.type ?? null,
-            code: result.simulation?.error_details.code ?? null,
-          }
-        : null,
+      error:
+        result.simulation?.error || result.simulation?.error_details
+          ? {
+              type: result.simulation?.error_details?.type ?? null,
+              code: result.simulation?.error_details?.code ?? null,
+              message: result.simulation?.error ?? null,
+            }
+          : null,
     };
   }
 }

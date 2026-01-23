@@ -16,10 +16,25 @@ describe('getErrorMessage', () => {
     useNftDetection: true,
   };
 
-  it('returns translated message for known error codes', () => {
+  it('returns translated message for known error code even when message is provided', () => {
     const error: TransactionScanError = {
       type: 'validation_error',
       code: 'GENERAL_INSUFFICIENT_FUNDS',
+      message:
+        'The transaction provided was reverted by the node. Insufficient balances to execute the transaction',
+    };
+
+    const result = getErrorMessage(error, mockPreferences);
+
+    // Known error codes use translated messages, not the raw message
+    expect(result).toBe('Insufficient funds');
+  });
+
+  it('returns translated message for known error codes when message is null', () => {
+    const error: TransactionScanError = {
+      type: 'validation_error',
+      code: 'GENERAL_INSUFFICIENT_FUNDS',
+      message: null,
     };
 
     const result = getErrorMessage(error, mockPreferences);
@@ -31,6 +46,7 @@ describe('getErrorMessage', () => {
     const error: TransactionScanError = {
       type: 'validation_error',
       code: 'GENERAL_INVALID_ADDRESS',
+      message: null,
     };
 
     const result = getErrorMessage(error, mockPreferences);
@@ -42,6 +58,7 @@ describe('getErrorMessage', () => {
     const error: TransactionScanError = {
       type: 'validation_error',
       code: 'SomeUnknownCode',
+      message: null,
     };
 
     const result = getErrorMessage(error, mockPreferences);
@@ -53,6 +70,7 @@ describe('getErrorMessage', () => {
     const error: TransactionScanError = {
       type: 'validation_error',
       code: null,
+      message: null,
     };
 
     const result = getErrorMessage(error, mockPreferences);
@@ -64,6 +82,7 @@ describe('getErrorMessage', () => {
     const error: TransactionScanError = {
       type: 'some_error_type',
       code: null,
+      message: null,
     };
 
     const result = getErrorMessage(error, mockPreferences);
@@ -76,6 +95,7 @@ describe('getErrorMessage', () => {
     const error: TransactionScanError = {
       type: null,
       code: null,
+      message: null,
     };
 
     const result = getErrorMessage(error, mockPreferences);

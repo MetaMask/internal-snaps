@@ -94,6 +94,7 @@ describe('TransactionAlert', () => {
     const mockError: TransactionScanError = {
       type: 'validation_error',
       code: 'InsufficientBalance',
+      message: null,
     };
 
     const props: TransactionAlertProps = {
@@ -158,6 +159,7 @@ describe('TransactionAlert', () => {
     const mockError: TransactionScanError = {
       type: 'validation_error',
       code: 'InsufficientBalance',
+      message: null,
     };
 
     const props: TransactionAlertProps = {
@@ -174,6 +176,7 @@ describe('TransactionAlert', () => {
     const mockError: TransactionScanError = {
       type: 'validation_error',
       code: 'InsufficientBalance',
+      message: null,
     };
 
     const mockValidation: TransactionScanValidation = {
