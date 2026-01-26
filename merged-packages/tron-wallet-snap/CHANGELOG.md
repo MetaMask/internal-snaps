@@ -7,16 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.2]
+
+### Added
+
+- Display error message coming from transaction simulations ([#166](https://github.com/MetaMask/snap-tron-wallet/pull/166))
+
 ## [1.19.1]
+
+### Changed
+
+- Remove convertion layer for images displayed in Snaps UI ([#162](https://github.com/MetaMask/snap-tron-wallet/pull/162))
 
 ### Fixed
 
 - Finalised word transformed to us-en ([#164](https://github.com/MetaMask/snap-tron-wallet/pull/164))
 - Signing messages of 3 characters or less ([#161](https://github.com/MetaMask/snap-tron-wallet/pull/161))
-
-### Changed
-
-- Remove convertion layer for images displayed in Snaps UI ([#162](https://github.com/MetaMask/snap-tron-wallet/pull/162))
 
 ## [1.19.0]
 
@@ -345,7 +351,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.2...HEAD
+[1.19.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.1...v1.19.2
 [1.19.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.17.0...v1.18.0
