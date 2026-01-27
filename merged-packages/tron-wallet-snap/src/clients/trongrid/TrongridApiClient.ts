@@ -1,26 +1,28 @@
 import { assert } from '@metamask/superstruct';
 
 import {
-  ChainParametersResponseStruct,
-  ChainParameterStruct,
   ContractTransactionInfoStruct,
   TransactionInfoStruct,
-  TriggerConstantContractResponseStruct,
   TronAccountStruct,
   TrongridApiMetaStruct,
 } from './structs';
 import type {
-  ChainParameter,
   ContractTransactionInfo,
   TransactionInfo,
-  TriggerConstantContractRequest,
-  TriggerConstantContractResponse,
   TronAccount,
   TrongridApiResponse,
 } from './types';
+import type { ICache } from '../../caching/ICache';
+import {
+  useCacheUntil,
+  type ResultWithExpiry,
+} from '../../caching/useCacheUntil';
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
+import type { Serializable } from '../../utils/serialization/types';
+import type { TronHttpClient } from '../tron-http/TronHttpClient';
+import type { ChainParameter } from '../tron-http/types';
 
 export class TrongridApiClient {
   readonly #clients: Map<
@@ -31,7 +33,27 @@ export class TrongridApiClient {
     }
   > = new Map();
 
-  constructor({ configProvider }: { configProvider: ConfigProvider }) {
+  readonly #tronHttpClient: TronHttpClient;
+
+  readonly #cache: ICache<Serializable>;
+
+  /**
+   * Cached version of getChainParameters that uses maintenance-aligned expiry.
+   * The cache is invalidated when the next maintenance period is reached.
+   */
+  readonly #cachedGetChainParameters: (
+    scope: Network,
+  ) => Promise<ChainParameter[]>;
+
+  constructor({
+    configProvider,
+    tronHttpClient,
+    cache,
+  }: {
+    configProvider: ConfigProvider;
+    tronHttpClient: TronHttpClient;
+    cache: ICache<Serializable>;
+  }) {
     const { baseUrls } = configProvider.get().trongridApi;
 
     // Initialize clients for all networks
@@ -44,6 +66,16 @@ export class TrongridApiClient {
 
       this.#clients.set(network as Network, { baseUrl, headers });
     });
+
+    this.#tronHttpClient = tronHttpClient;
+    this.#cache = cache;
+
+    // Create cached version of getChainParameters with maintenance-aligned expiry
+    this.#cachedGetChainParameters = useCacheUntil(
+      this.#fetchChainParametersWithExpiry.bind(this),
+      this.#cache,
+      { functionName: 'TrongridApiClient:getChainParameters' },
+    );
   }
 
   /**
@@ -204,91 +236,36 @@ export class TrongridApiClient {
 
   /**
    * Get chain parameters for a specific network.
+   * Results are cached until the next maintenance period (every ~6 hours).
    *
    * @see https://api.trongrid.io/wallet/getchainparameters
    * @param scope - The network to query (e.g., 'mainnet', 'shasta')
-   * @returns Promise<ChainParameter> - Chain parameters data
+   * @returns Promise<ChainParameter[]> - Chain parameters data
    */
   async getChainParameters(scope: Network): Promise<ChainParameter[]> {
-    const client = this.#clients.get(scope);
-    if (!client) {
-      throw new Error(`No client configured for network: ${scope}`);
-    }
-
-    const { baseUrl, headers } = client;
-    const url = buildUrl({
-      baseUrl,
-      path: '/wallet/getchainparameters',
-    });
-
-    const response = await fetch(url, { headers });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const rawData = await response.json();
-
-    // Validate response schema
-    assert(rawData, ChainParametersResponseStruct);
-
-    if (!rawData.chainParameter) {
-      throw new Error('No chain parameters found');
-    }
-
-    // Validate each chain parameter
-    for (const param of rawData.chainParameter) {
-      assert(param, ChainParameterStruct);
-    }
-
-    return rawData.chainParameter;
+    return this.#cachedGetChainParameters(scope);
   }
 
   /**
-   * Trigger a constant contract call to estimate energy consumption.
-   * This is a read-only call that doesn't broadcast to the network.
+   * Internal method to fetch chain parameters with expiry timestamp.
+   * Fetches both chain parameters and next maintenance time in parallel.
    *
-   * @see https://developers.tron.network/reference/triggerconstantcontract
-   * @param scope - The network to query (e.g., 'mainnet', 'shasta')
-   * @param request - The contract call parameters
-   * @returns Promise<TriggerConstantContractResponse> - Energy estimation and execution result
+   * @param scope - The network to query
+   * @returns Promise with result and expiresAt for caching
    */
-  async triggerConstantContract(
+  async #fetchChainParametersWithExpiry(
     scope: Network,
-    request: TriggerConstantContractRequest,
-  ): Promise<TriggerConstantContractResponse> {
-    const client = this.#clients.get(scope);
-    if (!client) {
-      throw new Error(`No client configured for network: ${scope}`);
-    }
+  ): Promise<ResultWithExpiry<ChainParameter[]>> {
+    // Fetch both in parallel for efficiency
+    // Delegates to TronHttpClient for the actual API calls
+    const [parameters, nextMaintenanceTime] = await Promise.all([
+      this.#tronHttpClient.getChainParameters(scope),
+      this.#tronHttpClient.getNextMaintenanceTime(scope),
+    ]);
 
-    const { baseUrl, headers } = client;
-    const url = buildUrl({
-      baseUrl,
-      path: '/wallet/triggerconstantcontract',
-    });
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(
-        Object.fromEntries(
-          Object.entries(request).filter(
-            ([_key, value]) => value !== undefined && value !== null,
-          ),
-        ),
-      ),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result: TriggerConstantContractResponse = await response.json();
-
-    // Validate response schema
-    assert(result, TriggerConstantContractResponseStruct);
-
-    return result;
+    return {
+      result: parameters,
+      expiresAt: nextMaintenanceTime, // Exact maintenance time, no buffer needed
+    };
   }
 }

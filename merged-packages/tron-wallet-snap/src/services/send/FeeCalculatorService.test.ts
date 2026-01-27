@@ -15,8 +15,11 @@ const mockTronWebFactory = {
 
 const mockTrongridApiClient = {
   getChainParameters: jest.fn(),
-  triggerConstantContract: jest.fn(),
   getAccountInfoByAddress: jest.fn(),
+} as any;
+
+const mockTronHttpClient = {
+  triggerConstantContract: jest.fn(),
 } as any;
 
 // Helper to get transaction examples in the expected format
@@ -95,8 +98,8 @@ describe('FeeCalculatorService', () => {
 
     feeCalculatorService = new FeeCalculatorService({
       logger: mockLogger,
-      // tronWebFactory: mockTronWebFactory,
       trongridApiClient: mockTrongridApiClient,
+      tronHttpClient: mockTronHttpClient,
     });
   });
 
@@ -179,7 +182,7 @@ describe('FeeCalculatorService', () => {
     describe('TriggerSmartContract scenarios (energy needed)', () => {
       beforeEach(() => {
         // Mock energy calculation for smart contracts
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
@@ -436,7 +439,7 @@ describe('FeeCalculatorService', () => {
 
         const transaction = getTransactionExample('trc20');
 
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
@@ -495,7 +498,7 @@ describe('FeeCalculatorService', () => {
         veryLargeTransaction.raw_data.contract[0].parameter.value.data =
           'b'.repeat(10000);
 
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
@@ -692,7 +695,7 @@ describe('FeeCalculatorService', () => {
 
       it('does not check activation for TRC20 transfers (no TransferContract)', async () => {
         // Mock energy calculation for smart contracts
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           energy_used: 130000,
           result: { result: true },
           constant_result: [],
@@ -751,7 +754,7 @@ describe('FeeCalculatorService', () => {
     describe('FeeLimit fallback scenarios', () => {
       it('uses feeLimit to calculate fallback energy when simulation fails', async () => {
         // Simulate triggerConstantContract failing
-        mockTrongridApiClient.triggerConstantContract.mockRejectedValue(
+        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
           new Error('Simulation failed'),
         );
 
@@ -807,7 +810,7 @@ describe('FeeCalculatorService', () => {
 
       it('uses default 130000 fallback when simulation fails and no feeLimit provided', async () => {
         // Simulate triggerConstantContract failing
-        mockTrongridApiClient.triggerConstantContract.mockRejectedValue(
+        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
           new Error('Simulation failed'),
         );
 
@@ -860,7 +863,7 @@ describe('FeeCalculatorService', () => {
 
       it('ignores feeLimit when simulation succeeds', async () => {
         // Simulation succeeds with energy_used
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           energy_used: 65000,
           result: { result: true },
           constant_result: [],
@@ -919,7 +922,7 @@ describe('FeeCalculatorService', () => {
 
       it('handles energy_used of zero correctly without falling back', async () => {
         // Simulation returns energy_used: 0 (legitimate zero energy consumption)
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           energy_used: 0,
           result: { result: true },
           constant_result: [],
@@ -964,7 +967,7 @@ describe('FeeCalculatorService', () => {
 
       it('uses feeLimit fallback when simulation returns no energy_used', async () => {
         // Simulation returns empty/no energy_used
-        mockTrongridApiClient.triggerConstantContract.mockResolvedValue({
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
           result: { result: true },
           constant_result: [],
           transaction: { ret: [{ ret: 'SUCCESS' }] },
@@ -1022,7 +1025,7 @@ describe('FeeCalculatorService', () => {
 
       it('uses fallback energy price (420 SUN) when chain parameters are missing', async () => {
         // Simulate triggerConstantContract failing
-        mockTrongridApiClient.triggerConstantContract.mockRejectedValue(
+        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
           new Error('Simulation failed'),
         );
 

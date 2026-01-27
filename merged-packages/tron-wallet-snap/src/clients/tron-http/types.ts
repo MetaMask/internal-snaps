@@ -85,3 +85,82 @@ export type AccountResources = {
   TotalEnergyLimit: number;
   TotalEnergyWeight: number;
 };
+
+/**
+ * Next maintenance time response
+ *
+ * @see https://developers.tron.network/reference/getnextmaintenancetime
+ */
+export type NextMaintenanceTime = {
+  /**
+   * Unix timestamp in milliseconds of the next maintenance period
+   */
+  // eslint-disable-next-line id-denylist
+  num: number;
+};
+
+/**
+ * Chain parameter
+ *
+ * @see https://developers.tron.network/reference/wallet-getchainparameters
+ */
+export type ChainParameter = {
+  key: string;
+  value?: number;
+};
+
+/**
+ * Request parameters for TriggerConstantContract
+ *
+ * @see https://developers.tron.network/reference/triggerconstantcontract
+ */
+export type TriggerConstantContractRequest = {
+  owner_address: string;
+  contract_address: string;
+  data: string;
+  call_value?: number;
+  token_id?: number;
+  visible?: boolean; // Default to true
+  call_token_id?: number;
+  call_token_value?: number;
+};
+
+/**
+ * Response from TriggerConstantContract
+ *
+ * @see https://developers.tron.network/reference/triggerconstantcontract
+ */
+export type TriggerConstantContractResponse = {
+  result: {
+    result: boolean;
+    message?: string;
+  };
+  energy_used: number;
+  constant_result: string[];
+  energy_penalty?: number;
+  transaction: {
+    ret: {
+      ret: string;
+    }[];
+    visible: boolean;
+    txID: string;
+    raw_data: {
+      contract: {
+        parameter: {
+          value: {
+            data: string;
+            owner_address: string;
+            contract_address: string;
+          };
+          type_url: string;
+        };
+        type: string;
+      }[];
+      ref_block_bytes: string;
+      ref_block_hash: string;
+      expiration: number;
+      timestamp: number;
+    };
+    raw_data_hex: string;
+  };
+};

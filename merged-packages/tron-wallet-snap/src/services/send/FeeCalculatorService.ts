@@ -4,6 +4,7 @@ import { BigNumber } from 'bignumber.js';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
+import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
 import {
@@ -63,15 +64,20 @@ export class FeeCalculatorService {
 
   readonly #trongridApiClient: TrongridApiClient;
 
+  readonly #tronHttpClient: TronHttpClient;
+
   constructor({
     logger,
     trongridApiClient,
+    tronHttpClient,
   }: {
     logger: ILogger;
     trongridApiClient: TrongridApiClient;
+    tronHttpClient: TronHttpClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[💸 FeeCalculatorService]');
     this.#trongridApiClient = trongridApiClient;
+    this.#tronHttpClient = tronHttpClient;
   }
 
   /**
@@ -294,22 +300,19 @@ export class FeeCalculatorService {
         `Estimating energy`,
       );
 
-      const result = await this.#trongridApiClient.triggerConstantContract(
-        scope,
-        {
-          /**
-           * These addresses are in hex format. If they weren't we would need to
-           * pass `visible: true` to the request.
-           */
-          owner_address: ownerAddress,
-          contract_address: contractAddress,
-          data,
-          call_value: callValue,
-          token_id: tokenId,
-          call_token_id: callTokenId,
-          call_token_value: callTokenValue,
-        },
-      );
+      const result = await this.#tronHttpClient.triggerConstantContract(scope, {
+        /**
+         * These addresses are in hex format. If they weren't we would need to
+         * pass `visible: true` to the request.
+         */
+        owner_address: ownerAddress,
+        contract_address: contractAddress,
+        data,
+        call_value: callValue,
+        token_id: tokenId,
+        call_token_id: callTokenId,
+        call_token_value: callTokenValue,
+      });
 
       /**
        * If the transaction simulation failed, we use the fallback energy estimate.

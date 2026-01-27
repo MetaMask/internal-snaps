@@ -2,14 +2,21 @@ import { assert } from '@metamask/superstruct';
 
 import {
   AccountResourcesStruct,
+  ChainParametersResponseStruct,
+  ChainParameterStruct,
   FullNodeTransactionInfoStruct,
+  NextMaintenanceTimeStruct,
   TRC10TokenInfoStruct,
+  TriggerConstantContractResponseStruct,
 } from './structs';
 import type {
   AccountResources,
+  ChainParameter,
   FullNodeTransactionInfo,
   TRC10TokenInfo,
   TRC10TokenMetadata,
+  TriggerConstantContractRequest,
+  TriggerConstantContractResponse,
 } from './types';
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
@@ -205,5 +212,132 @@ export class TronHttpClient {
     assert(txInfo, FullNodeTransactionInfoStruct);
 
     return txInfo;
+  }
+
+  /**
+   * Get the timestamp of the next maintenance period.
+   * Chain parameters can only change at maintenance periods (every ~6 hours).
+   *
+   * @see https://developers.tron.network/reference/getnextmaintenancetime
+   * @param network - The network to query
+   * @returns Promise<number> - Unix timestamp in milliseconds of next maintenance
+   */
+  async getNextMaintenanceTime(network: Network): Promise<number> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getnextmaintenancetime',
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Validate response schema
+    assert(data, NextMaintenanceTimeStruct);
+
+    return data.num;
+  }
+
+  /**
+   * Get chain parameters for a specific network.
+   *
+   * @see https://developers.tron.network/reference/wallet-getchainparameters
+   * @param network - The network to query (e.g., 'mainnet', 'shasta')
+   * @returns Promise<ChainParameter[]> - Chain parameters data
+   */
+  async getChainParameters(network: Network): Promise<ChainParameter[]> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getchainparameters',
+    });
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const rawData = await response.json();
+
+    // Validate response schema
+    assert(rawData, ChainParametersResponseStruct);
+
+    if (!rawData.chainParameter) {
+      throw new Error('No chain parameters found');
+    }
+
+    // Validate each chain parameter
+    for (const param of rawData.chainParameter) {
+      assert(param, ChainParameterStruct);
+    }
+
+    return rawData.chainParameter;
+  }
+
+  /**
+   * Trigger a constant contract call to estimate energy consumption.
+   * This is a read-only call that doesn't broadcast to the network.
+   *
+   * @see https://developers.tron.network/reference/triggerconstantcontract
+   * @param network - The network to query (e.g., 'mainnet', 'shasta')
+   * @param request - The contract call parameters
+   * @returns Promise<TriggerConstantContractResponse> - Energy estimation and execution result
+   */
+  async triggerConstantContract(
+    network: Network,
+    request: TriggerConstantContractRequest,
+  ): Promise<TriggerConstantContractResponse> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/triggerconstantcontract',
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(
+        Object.fromEntries(
+          Object.entries(request).filter(
+            ([_key, value]) => value !== undefined && value !== null,
+          ),
+        ),
+      ),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: TriggerConstantContractResponse = await response.json();
+
+    // Validate response schema
+    assert(result, TriggerConstantContractResponseStruct);
+
+    return result;
   }
 }
