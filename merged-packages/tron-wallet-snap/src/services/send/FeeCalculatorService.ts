@@ -59,6 +59,60 @@ const PROTOBUF_OVERHEAD = 5;
 const UNSIGNED_TX_OVERHEAD =
   SIGNATURE_SIZE + MAX_RESULT_SIZE_IN_TX + PROTOBUF_OVERHEAD;
 
+/**
+ * System contracts that only consume bandwidth (zero energy).
+ * These are native TRON protocol operations that don't execute VM code.
+ *
+ * Only CreateSmartContract and TriggerSmartContract consume energy
+ * because they execute smart contract bytecode.
+ *
+ * See: https://tronprotocol.github.io/documentation-en/mechanism-algorithm/system-contracts/
+ */
+const ZERO_ENERGY_SYSTEM_CONTRACTS = new Set([
+  // Staking
+  'FreezeBalanceContract',
+  'FreezeBalanceV2Contract',
+  'UnfreezeBalanceContract',
+  'UnfreezeBalanceV2Contract',
+  'WithdrawExpireUnfreezeContract',
+  'CancelAllUnfreezeV2Contract',
+  // Resource delegation
+  'DelegateResourceContract',
+  'UnDelegateResourceContract',
+  // Voting
+  'VoteWitnessContract',
+  // Account management
+  'AccountCreateContract',
+  'AccountUpdateContract',
+  'AccountPermissionUpdateContract',
+  'SetAccountIdContract',
+  // Witness/SR operations
+  'WitnessCreateContract',
+  'WitnessUpdateContract',
+  'UpdateBrokerageContract',
+  // TRC10/Asset operations
+  'AssetIssueContract',
+  'ParticipateAssetIssueContract',
+  'UnfreezeAssetContract',
+  'UpdateAssetContract',
+  // Proposals
+  'ProposalCreateContract',
+  'ProposalApproveContract',
+  'ProposalDeleteContract',
+  // Exchange
+  'ExchangeCreateContract',
+  'ExchangeInjectContract',
+  'ExchangeWithdrawContract',
+  'ExchangeTransactionContract',
+  // Smart contract management (no VM execution)
+  'ClearABIContract',
+  'UpdateSettingContract',
+  'UpdateEnergyLimitContract',
+  // Other
+  'WithdrawBalanceContract',
+  'ShieldedTransferContract',
+]);
+
 export class FeeCalculatorService {
   readonly #logger: ILogger;
 
@@ -151,33 +205,41 @@ export class FeeCalculatorService {
 
       let currentContractEnergy: BigNumber;
 
-      switch (contractType) {
+      if (
+        contractType === 'TransferContract' ||
+        contractType === 'TransferAssetContract'
+      ) {
         /**
-         * Native TRX transfers + TRC10 token transfers don't consume energy
+         * Native TRX transfers + TRC10 token transfers
          */
-        case 'TransferContract':
-        case 'TransferAssetContract':
-          currentContractEnergy = ZERO;
-          break;
+        currentContractEnergy = ZERO;
+      } else if (contractType === 'TriggerSmartContract') {
         /**
-         * TRC20
+         * Smart contract calls (TRC20, swaps, etc.)
          */
-        case 'TriggerSmartContract': {
-          currentContractEnergy = BigNumber(
-            await this.#estimateTriggerSmartContractEnergy(
-              scope,
-              contract,
-              feeLimit,
-            ),
-          );
-          break;
-        }
-        default:
-          this.#logger.warn(
-            `Unknown contract type: ${contractType}, using conservative estimate`,
-          );
-          currentContractEnergy = BigNumber(130000); // Conservative estimate
-          break;
+        currentContractEnergy = BigNumber(
+          await this.#estimateTriggerSmartContractEnergy(
+            scope,
+            contract,
+            feeLimit,
+          ),
+        );
+      } else if (ZERO_ENERGY_SYSTEM_CONTRACTS.has(contractType)) {
+        /**
+         * System contracts - don't consume energy
+         */
+        this.#logger.log(
+          `System contract ${contractType} detected, zero energy consumption`,
+        );
+        currentContractEnergy = ZERO;
+      } else {
+        /**
+         * Unknown contract type, use conservative energy estimate.
+         */
+        this.#logger.warn(
+          `Unknown contract type: ${contractType}, using conservative estimate`,
+        );
+        currentContractEnergy = BigNumber(130000);
       }
 
       this.#logger.log(

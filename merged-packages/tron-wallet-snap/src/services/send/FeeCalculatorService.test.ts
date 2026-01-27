@@ -179,6 +179,106 @@ describe('FeeCalculatorService', () => {
       });
     });
 
+    describe('System contract scenarios (no energy needed)', () => {
+      // Helper to create a mock transaction with a specific contract type
+      const createSystemContractTransaction = (contractType: string): any => {
+        const baseTransaction = getTransactionExample('native');
+        return {
+          ...baseTransaction,
+          raw_data: {
+            ...baseTransaction.raw_data,
+            contract: [
+              {
+                parameter: {
+                  value: {
+                    owner_address: '41a7d8a35b260395c14aa456297662092ba3b76fc0',
+                    frozen_balance: 1000000,
+                    resource: 'ENERGY',
+                  },
+                  type_url: `type.googleapis.com/protocol.${contractType}`,
+                },
+                type: contractType,
+              },
+            ],
+          },
+        };
+      };
+
+      it.each([
+        'FreezeBalanceV2Contract',
+        'UnfreezeBalanceV2Contract',
+        'VoteWitnessContract',
+        'DelegateResourceContract',
+        'UnDelegateResourceContract',
+        'WithdrawExpireUnfreezeContract',
+        'AccountCreateContract',
+        'AccountPermissionUpdateContract',
+      ])('returns zero energy for %s', async (contractType) => {
+        const transaction = createSystemContractTransaction(contractType);
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // System contracts should only have TRX (0) and bandwidth, no energy
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('charges bandwidth in TRX when not enough bandwidth for system contract', async () => {
+        const transaction = createSystemContractTransaction(
+          'FreezeBalanceV2Contract',
+        );
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(100); // Less than needed (266)
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // System contracts should only pay for bandwidth in TRX, no energy cost
+        // Bandwidth needed: 266 bytes
+        // TRX cost: 266 * 1000 SUN = 266,000 SUN = 0.266 TRX
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '0.266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+    });
+
     describe('TriggerSmartContract scenarios (energy needed)', () => {
       beforeEach(() => {
         // Mock energy calculation for smart contracts
