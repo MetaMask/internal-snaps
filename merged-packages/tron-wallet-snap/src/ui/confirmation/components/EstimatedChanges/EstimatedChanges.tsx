@@ -73,7 +73,12 @@ const AssetChange = ({
   preferences,
 }: AssetChangeProps): ComponentOrElement => {
   const { locale } = preferences;
-  const formattedValue = asset.value?.toLocaleString(locale) ?? '0';
+  const formattedValue =
+    asset.value?.toLocaleString(
+      // Clients may use locales with underscore (e.g., zh_CN), but toLocaleString
+      // requires a BCP 47 locale (e.g., zh-CN)
+      locale.replace('_', '-'),
+    ) ?? '0';
   const isOut = asset.type === 'out';
 
   return (
