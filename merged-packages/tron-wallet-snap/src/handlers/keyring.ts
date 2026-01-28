@@ -281,7 +281,7 @@ export class KeyringHandler implements Keyring {
 
       for (const scope of scopes) {
         activityChecksPromises.push(
-          this.#transactionsService.fetchTransactionsForAccount(
+          this.#transactionsService.fetchNewTransactionsForAccount(
             scope as Network,
             account,
           ),

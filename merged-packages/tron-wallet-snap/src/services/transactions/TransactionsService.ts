@@ -174,16 +174,45 @@ export class TransactionsService {
     return trc10TokenMetadata;
   }
 
-  async fetchTransactionsForAccount(
+  /**
+   * Fetches and processes only NEW transactions for an account.
+   *
+   * This function implements incremental sync - it only processes transactions
+   * that are not already in state, avoiding redundant API calls for:
+   * - getTransactionInfoById (swap enrichment)
+   * - getTRC10TokenMetadata (token decimals)
+   *
+   * The caller is responsible for saving the returned transactions to state
+   * via `saveMany()`, which will merge them with existing transactions.
+   *
+   * @param scope - The network scope.
+   * @param account - The account to fetch transactions for.
+   * @returns Only NEW transactions (not already in state). Empty array if none.
+   */
+  async fetchNewTransactionsForAccount(
     scope: Network,
     account: KeyringAccount,
   ): Promise<Transaction[]> {
     this.#logger.info(
-      `Fetching transactions for account ${account.address} on network ${scope}...`,
+      `Fetching new transactions for account ${account.address} on network ${scope}...`,
     );
 
     /**
-     * First: Raw Data Fetching
+     * Step 1: Load existing transaction IDs from state
+     *
+     * We only need the IDs to check which transactions are new.
+     */
+    const existingTxIds =
+      await this.#transactionsRepository.getTransactionIdsByAccountId(
+        account.id,
+      );
+
+    this.#logger.debug(
+      `Found ${existingTxIds.size} existing transactions in state for account ${account.id}.`,
+    );
+
+    /**
+     * Step 2: Fetch raw transaction list from TronGrid
      *
      * Fetch the foundational transaction data from TronGrid in parallel:
      * - Raw transactions: Primary source for all transaction types
@@ -197,43 +226,65 @@ export class TransactionsService {
     );
 
     /**
-     * Second: Enrichment Data Fetching
+     * Step 3: Filter to only NEW transactions
      *
-     * Based on the raw data, fetch additional metadata in parallel:
-     * - Swap enrichment: Full internal_transactions for TRX ↔ TRC20 swaps
-     * - TRC10 metadata: Decimals and symbols for TRC10 token transfers
-     *
-     * These run in parallel because they scan for different contract
-     * types: TriggerSmartContract vs TransferAssetContract
+     * Skip transactions that are already processed and saved in state.
+     * This is the core optimization - we avoid re-processing known transactions.
      */
-    const { enrichedRawTransactions, trc10TokenMetadata } =
-      await this.#fetchEnrichmentData(scope, rawTransactions);
+    const newRawTransactions = rawTransactions.filter(
+      (tx) => !existingTxIds.has(tx.txID),
+    );
 
     this.#logger.info(
-      `Enriched ${enrichedRawTransactions.length} transactions, fetched metadata for ${trc10TokenMetadata.size} TRC10 tokens.`,
+      `Found ${newRawTransactions.length} new transactions to process (${rawTransactions.length - newRawTransactions.length} already in state).`,
     );
 
     /**
-     * Third: Transaction Mapping
+     * Step 4: If no new transactions, return empty array
      *
-     * Map all transaction data to the keyring Transaction format:
-     * - Raw transactions → TRX, TRC10, staking, smart contract calls
-     * - TRC20 assistance → Enhanced parsing for TriggerSmartContract
-     * - TRC10 metadata → Correct decimal precision for token amounts
+     * This is the fast path - skip all enrichment and mapping.
      */
-    const transactions = TransactionMapper.mapTransactions({
+    if (newRawTransactions.length === 0) {
+      this.#logger.info(`No new transactions found.`);
+      return [];
+    }
+
+    /**
+     * Step 5: Process only NEW transactions (enrichment + mapping)
+     *
+     * Enrich potential swaps with internal_transactions data
+     * and fetch TRC10 token metadata for new transactions only.
+     */
+    const { enrichedRawTransactions, trc10TokenMetadata } =
+      await this.#fetchEnrichmentData(scope, newRawTransactions);
+
+    this.#logger.info(
+      `Enriched ${enrichedRawTransactions.length} new transactions, fetched metadata for ${trc10TokenMetadata.size} TRC10 tokens.`,
+    );
+
+    /**
+     * Step 6: Map new transactions to keyring format
+     *
+     * Filter TRC20 assistance data to only include transactions matching new raw txs.
+     */
+    const newTxIds = new Set(newRawTransactions.map((tx) => tx.txID));
+    const relevantTrc20Transactions = trc20Transactions.filter((tx) =>
+      newTxIds.has(tx.transaction_id),
+    );
+
+    const newMappedTransactions = TransactionMapper.mapTransactions({
       scope,
       account: account as TronKeyringAccount,
       rawTransactions: enrichedRawTransactions,
-      trc20Transactions,
+      trc20Transactions: relevantTrc20Transactions,
       trc10TokenMetadata,
     });
 
     this.#logger.info(
-      `Mapped ${transactions.length} transactions for account ${account.address} on network ${scope}.`,
+      `Returning ${newMappedTransactions.length} new transactions for account ${account.address} on network ${scope}.`,
     );
 
-    return transactions;
+    return newMappedTransactions;
   }
 
   /**

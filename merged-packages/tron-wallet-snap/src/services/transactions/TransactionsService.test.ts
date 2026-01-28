@@ -69,7 +69,8 @@ describe('TransactionsService', () => {
     // Create mock repository
     mockTransactionsRepository = {
       getAll: jest.fn(),
-      findByAccountId: jest.fn(),
+      findByAccountId: jest.fn().mockResolvedValue([]),
+      getTransactionIdsByAccountId: jest.fn().mockResolvedValue(new Set()),
       save: jest.fn(),
       saveMany: jest.fn(),
     } as unknown as jest.Mocked<TransactionsRepository>;
@@ -96,7 +97,7 @@ describe('TransactionsService', () => {
     });
   });
 
-  describe('fetchTransactionsForAccount', () => {
+  describe('fetchNewTransactionsForAccount', () => {
     it('should fetch and map transactions for an account using native transfers mock data', async () => {
       // Setup mock responses with simplified single-transaction structure
       mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
@@ -106,7 +107,7 @@ describe('TransactionsService', () => {
         contractInfoMock.data as ContractTransactionInfo[],
       );
 
-      await transactionsService.fetchTransactionsForAccount(
+      await transactionsService.fetchNewTransactionsForAccount(
         Network.Mainnet,
         mockAccount,
       );
@@ -122,7 +123,7 @@ describe('TransactionsService', () => {
       // Verify logger calls
       expect(mockLogger.info).toHaveBeenCalledWith(
         '[🧾 TransactionsService]',
-        expect.stringContaining('Fetching transactions for account'),
+        expect.stringContaining('Fetching new transactions for account'),
       );
 
       expect(true).toBe(true);
@@ -144,7 +145,7 @@ describe('TransactionsService', () => {
       });
 
       const transactions =
-        await transactionsService.fetchTransactionsForAccount(
+        await transactionsService.fetchNewTransactionsForAccount(
           Network.Mainnet,
           mockAccount2,
         );
@@ -194,7 +195,7 @@ describe('TransactionsService', () => {
       );
 
       const transactions =
-        await transactionsService.fetchTransactionsForAccount(
+        await transactionsService.fetchNewTransactionsForAccount(
           Network.Mainnet,
           mockAccount2,
         );
@@ -229,7 +230,7 @@ describe('TransactionsService', () => {
         [],
       );
 
-      await transactionsService.fetchTransactionsForAccount(
+      await transactionsService.fetchNewTransactionsForAccount(
         Network.Shasta,
         mockAccount,
       );
@@ -252,7 +253,7 @@ describe('TransactionsService', () => {
         [],
       );
 
-      const result = await transactionsService.fetchTransactionsForAccount(
+      const result = await transactionsService.fetchNewTransactionsForAccount(
         Network.Mainnet,
         mockAccount,
       );
@@ -271,7 +272,7 @@ describe('TransactionsService', () => {
         apiError,
       );
 
-      const result = await transactionsService.fetchTransactionsForAccount(
+      const result = await transactionsService.fetchNewTransactionsForAccount(
         Network.Mainnet,
         mockAccount,
       );
@@ -641,7 +642,7 @@ describe('TransactionsService', () => {
 
       // Fetch transactions
       const fetchedTransactions =
-        await transactionsService.fetchTransactionsForAccount(
+        await transactionsService.fetchNewTransactionsForAccount(
           Network.Mainnet,
           mockAccount,
         );
@@ -670,7 +671,7 @@ describe('TransactionsService', () => {
         [],
       );
 
-      await transactionsService.fetchTransactionsForAccount(
+      await transactionsService.fetchNewTransactionsForAccount(
         Network.Mainnet,
         mockAccount2,
       );

@@ -28,6 +28,21 @@ export class TransactionsRepository {
     return transactions ?? [];
   }
 
+  /**
+   * Gets transaction IDs for an account as a Set for O(1) lookup.
+   * Useful for incremental sync to check which transactions already exist.
+   *
+   * @param accountId - The account ID to get transaction IDs for.
+   * @returns Set of transaction IDs.
+   */
+  async getTransactionIdsByAccountId(accountId: string): Promise<Set<string>> {
+    const transactions = await this.#state.getKey<Transaction[]>(
+      `${this.#stateKey}.${accountId}`,
+    );
+
+    return new Set((transactions ?? []).map((tx) => tx.id));
+  }
+
   async save(transaction: Transaction): Promise<void> {
     await this.saveMany([transaction]);
   }

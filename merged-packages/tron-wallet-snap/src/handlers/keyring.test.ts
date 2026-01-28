@@ -67,7 +67,7 @@ describe('KeyringHandler', () => {
     } as any;
     mockAssetsService = {} as any;
     mockTransactionsService = {
-      fetchTransactionsForAccount: jest.fn(),
+      fetchNewTransactionsForAccount: jest.fn(),
     } as any;
     mockWalletService = {
       handleKeyringRequest: jest
@@ -511,12 +511,12 @@ describe('KeyringHandler', () => {
         .mockImplementation()
         .mockResolvedValue(mockDerivedAccount);
       jest
-        .spyOn(mockTransactionsService, 'fetchTransactionsForAccount')
+        .spyOn(mockTransactionsService, 'fetchNewTransactionsForAccount')
         .mockImplementation();
     });
 
     it('returns empty array if there is no activity on any of the scopes', async () => {
-      mockTransactionsService.fetchTransactionsForAccount
+      mockTransactionsService.fetchNewTransactionsForAccount
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
 
@@ -534,7 +534,7 @@ describe('KeyringHandler', () => {
     });
 
     it('returns discovered accounts when there is activity on any scope', async () => {
-      mockTransactionsService.fetchTransactionsForAccount
+      mockTransactionsService.fetchNewTransactionsForAccount
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([mockTransaction]);
 
@@ -554,7 +554,7 @@ describe('KeyringHandler', () => {
     });
 
     it('throws error if there is an error fetching transactions', async () => {
-      mockTransactionsService.fetchTransactionsForAccount.mockRejectedValue(
+      mockTransactionsService.fetchNewTransactionsForAccount.mockRejectedValue(
         new Error('Network error'),
       );
 
@@ -568,7 +568,7 @@ describe('KeyringHandler', () => {
         keyringHandler.discoverAccounts?.([], 'test', 0),
       ).rejects.toThrow('Expected a nonempty array but received an empty one');
       expect(
-        mockTransactionsService.fetchTransactionsForAccount,
+        mockTransactionsService.fetchNewTransactionsForAccount,
       ).not.toHaveBeenCalled();
     });
 
@@ -581,7 +581,7 @@ describe('KeyringHandler', () => {
         ),
       ).rejects.toThrow(/Expected one of/u);
       expect(
-        mockTransactionsService.fetchTransactionsForAccount,
+        mockTransactionsService.fetchNewTransactionsForAccount,
       ).not.toHaveBeenCalled();
     });
 
@@ -592,7 +592,7 @@ describe('KeyringHandler', () => {
         'Expected a number greater than or equal to 0 but received `-1`',
       );
       expect(
-        mockTransactionsService.fetchTransactionsForAccount,
+        mockTransactionsService.fetchNewTransactionsForAccount,
       ).not.toHaveBeenCalled();
     });
   });

@@ -333,7 +333,7 @@ export class AccountsService {
 
     const transactionResponses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
-        return this.#transactionsService.fetchTransactionsForAccount(
+        return this.#transactionsService.fetchNewTransactionsForAccount(
           scope,
           account,
         );
