@@ -189,7 +189,7 @@ describe('ConfirmSignTransaction render', () => {
         from: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
         to: '6wjzKJfLvipffZfji1fGwz4hbhwZrTgF5',
         data: undefined,
-        value: undefined,
+        value: 100000,
       },
       origin: testOrigin,
       scope: Network.Mainnet,

@@ -133,3 +133,10 @@ export type SecurityAlertSimulationValidationResponse = {
   chain: string;
   account_address: string;
 };
+
+export type SecurityScanPayload = {
+  from: string | null;
+  to: string | null;
+  data: string | null;
+  value: number | null;
+};

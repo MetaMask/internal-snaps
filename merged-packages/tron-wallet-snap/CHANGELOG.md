@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix missing values in simulation API request ([#176](https://github.com/MetaMask/snap-tron-wallet/pull/176))
+  - The wrong parameters sent to the simulation API were causing inaccurate estimations and false negatives.
+
 ## [1.19.3]
 
 ### Fixed

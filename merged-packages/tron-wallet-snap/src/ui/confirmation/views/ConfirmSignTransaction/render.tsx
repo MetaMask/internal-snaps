@@ -3,12 +3,12 @@ import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import { TronWeb } from 'tronweb';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
 import type { ConfirmSignTransactionContext } from './types';
+import { extractScanParametersFromTransactionData } from '../../../../clients/security-alerts-api/utils';
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities';
@@ -158,24 +158,7 @@ export async function render(
   }
 
   // Extract scan parameters early (before interface creation)
-  const contractParam = rawData.contract?.[0]?.parameter?.value as any;
-  const fromHex = contractParam?.owner_address ?? '';
-  const toHex =
-    contractParam?.contract_address ?? contractParam?.to_address ?? '';
-  const value = contractParam?.amount ?? null;
-  const dataHex = contractParam?.data ?? null;
-
-  // Convert hex addresses to base58 format
-  const from = fromHex ? TronWeb.address.fromHex(fromHex) : '';
-  const to = toHex ? TronWeb.address.fromHex(toHex) : '';
-  const data = dataHex ? `0x${dataHex}` : null;
-
-  context.scanParameters = {
-    from,
-    to,
-    data,
-    value,
-  };
+  context.scanParameters = extractScanParametersFromTransactionData(rawData);
 
   // Create initial interface with loading state
   const id = await snapClient.createInterface(
@@ -207,10 +190,10 @@ export async function render(
       const scan = await transactionScanService.scanTransaction({
         accountAddress: account.address,
         parameters: {
-          from: from ?? undefined,
-          to: to ?? undefined,
-          data: data ?? undefined,
-          value: value ?? undefined,
+          from: context.scanParameters?.from ?? undefined,
+          to: context.scanParameters?.to ?? undefined,
+          data: context.scanParameters?.data ?? undefined,
+          value: context.scanParameters?.value ?? undefined,
         },
         origin,
         scope: scope as Network,
