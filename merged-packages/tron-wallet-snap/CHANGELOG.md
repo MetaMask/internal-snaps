@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Add pre-confirmation validation to `confirmSend` flow ([#179](https://github.com/MetaMask/snap-tron-wallet/pull/179))
+  - Validates that the user has enough funds to cover both the amount and all associated fees (bandwidth, energy, account activation) before showing the confirmation dialog.
 - Fix missing values in simulation API request ([#176](https://github.com/MetaMask/snap-tron-wallet/pull/176))
   - The wrong parameters sent to the simulation API were causing inaccurate estimations and false negatives.
 

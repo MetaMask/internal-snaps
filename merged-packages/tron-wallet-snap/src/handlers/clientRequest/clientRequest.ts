@@ -439,6 +439,28 @@ export class ClientRequestHandler {
 
     const amountBN = new BigNumber(amount);
 
+    /**
+     * Validate that the user has enough funds to cover both the amount
+     * and all associated fees (including account activation if applicable).
+     * This prevents users from confirming sends that we know will fail.
+     */
+    const validation = await this.#sendService.validateSend({
+      scope,
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amountBN,
+    });
+
+    if (!validation.valid) {
+      return {
+        valid: false,
+        errors: [
+          { code: validation.errorCode ?? SendErrorCodes.InsufficientBalance },
+        ],
+      };
+    }
+
     const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
       /**
        * Get available Energy and Bandwidth from account assets.

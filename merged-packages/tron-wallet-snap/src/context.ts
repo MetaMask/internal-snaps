@@ -124,7 +124,9 @@ const sendService = new SendService({
   logger,
   snapClient,
   accountsService,
+  assetsService,
   tronWebFactory,
+  feeCalculatorService,
 });
 
 const stakingService = new StakingService({

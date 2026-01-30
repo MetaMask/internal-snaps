@@ -9,18 +9,27 @@ import type {
   TriggerSmartContract,
 } from 'tronweb/lib/esm/types';
 
+import type { FeeCalculatorService } from './FeeCalculatorService';
+import type { SendValidationResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
+import { Networks, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
+import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
+import type { AssetsService } from '../assets/AssetsService';
 
 export class SendService {
   readonly #accountsService: AccountsService;
 
+  readonly #assetsService: AssetsService;
+
   readonly #tronWebFactory: TronWebFactory;
+
+  readonly #feeCalculatorService: FeeCalculatorService;
 
   readonly #logger: ILogger;
 
@@ -28,19 +37,165 @@ export class SendService {
 
   constructor({
     accountsService,
+    assetsService,
     tronWebFactory,
+    feeCalculatorService,
     logger,
     snapClient,
   }: {
     accountsService: AccountsService;
+    assetsService: AssetsService;
     tronWebFactory: TronWebFactory;
+    feeCalculatorService: FeeCalculatorService;
     logger: ILogger;
     snapClient: SnapClient;
   }) {
     this.#accountsService = accountsService;
+    this.#assetsService = assetsService;
     this.#tronWebFactory = tronWebFactory;
+    this.#feeCalculatorService = feeCalculatorService;
     this.#logger = createPrefixedLogger(logger, '[💸 SendService]');
     this.#snapClient = snapClient;
+  }
+
+  /**
+   * Validates that the user has enough funds to complete the send operation.
+   * This includes both the amount being sent and all associated fees
+   * (bandwidth, energy overages, and account activation if applicable).
+   *
+   * @param params - The validation parameters.
+   * @param params.scope - The network scope.
+   * @param params.fromAccountId - The account ID to send from.
+   * @param params.toAddress - The recipient address.
+   * @param params.asset - The asset being sent.
+   * @param params.amount - The amount to send (in UI units, e.g., TRX not SUN).
+   * @returns A validation result indicating if the send can proceed.
+   */
+  async validateSend({
+    scope,
+    fromAccountId,
+    toAddress,
+    asset,
+    amount,
+  }: {
+    scope: Network;
+    fromAccountId: string;
+    toAddress: string;
+    asset: AssetEntity;
+    amount: BigNumber;
+  }): Promise<SendValidationResult> {
+    this.#logger.log('Validating send', {
+      scope,
+      fromAccountId,
+      toAddress,
+      assetType: asset.assetType,
+      amount: amount.toString(),
+    });
+
+    const nativeTokenId = Networks[scope].nativeToken.id;
+    const isNativeToken = asset.assetType === nativeTokenId;
+
+    /**
+     * Get the user's current balances for the asset being sent and TRX (for fees).
+     */
+    const [assetBalance, nativeTokenAsset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getAssetsByAccountId(fromAccountId, [
+        asset.assetType,
+        nativeTokenId,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+
+    const assetToSendBalance = assetBalance
+      ? new BigNumber(assetBalance.uiAmount)
+      : ZERO;
+    const nativeTokenBalance = nativeTokenAsset
+      ? new BigNumber(nativeTokenAsset.uiAmount)
+      : ZERO;
+    const availableBandwidth = bandwidthAsset
+      ? new BigNumber(bandwidthAsset.rawAmount)
+      : ZERO;
+    const availableEnergy = energyAsset
+      ? new BigNumber(energyAsset.rawAmount)
+      : ZERO;
+
+    /**
+     * First check: Does the user have enough of the asset they want to send?
+     */
+    if (amount.isGreaterThan(assetToSendBalance)) {
+      this.#logger.log('Insufficient balance for asset being sent', {
+        amount: amount.toString(),
+        assetBalance: assetToSendBalance.toString(),
+      });
+      return {
+        valid: false,
+        errorCode: SendErrorCodes.InsufficientBalance,
+      };
+    }
+
+    /**
+     * Build the transaction with the ACTUAL toAddress to properly calculate
+     * account activation fees if the recipient is not yet activated.
+     */
+    const transaction = await this.buildTransaction({
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amount.toNumber(),
+    });
+
+    /**
+     * Calculate the fees including:
+     * - Bandwidth costs (or TRX if insufficient bandwidth)
+     * - Energy costs (or TRX if insufficient energy)
+     * - Account activation fee (1 TRX if recipient is not activated)
+     */
+    const fees = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy,
+      availableBandwidth,
+    });
+
+    /**
+     * Extract the TRX fee from the computed fees.
+     * The fee calculation already accounts for bandwidth/energy consumption,
+     * so we only need to check the TRX overage cost.
+     */
+    const trxFee = new BigNumber(
+      fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ?? '0',
+    );
+
+    /**
+     * Calculate total TRX needed:
+     * - If sending TRX: amount + fees
+     * - If sending a token: just fees (but we still need TRX to pay them)
+     */
+    const totalTrxNeeded = isNativeToken ? amount.plus(trxFee) : trxFee;
+
+    this.#logger.log('Validation calculation', {
+      isNativeToken,
+      amount: amount.toString(),
+      trxFee: trxFee.toString(),
+      totalTrxNeeded: totalTrxNeeded.toString(),
+      nativeTokenBalance: nativeTokenBalance.toString(),
+    });
+
+    /**
+     * Second check: Does the user have enough TRX to cover the total cost?
+     */
+    if (totalTrxNeeded.isGreaterThan(nativeTokenBalance)) {
+      this.#logger.log('Insufficient TRX balance to cover fees', {
+        totalTrxNeeded: totalTrxNeeded.toString(),
+        nativeTokenBalance: nativeTokenBalance.toString(),
+      });
+      return {
+        valid: false,
+        errorCode: SendErrorCodes.InsufficientBalanceToCoverFee,
+      };
+    }
+
+    return { valid: true };
   }
 
   async buildTransaction({
