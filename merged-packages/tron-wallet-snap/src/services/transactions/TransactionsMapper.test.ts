@@ -332,6 +332,102 @@ describe('TransactionMapper', () => {
 
         expect(result).toBeNull();
       });
+
+      it('should map a TRC20 approval transaction as Unknown type', () => {
+        const rawTransaction = trc20TransferMock as TransactionInfo;
+        const approvalTransfer: ContractTransactionInfo = {
+          ...contractInfoMock.data[0],
+          type: 'Approval', // TRC20 approve operation
+        } as ContractTransactionInfo;
+
+        const result = TransactionMapper.mapTransaction({
+          scope: Network.Mainnet,
+          account: mockAccount,
+          trongridTransaction: rawTransaction,
+          trc20Transfers: [approvalTransfer],
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.type).toBe(TransactionType.Unknown);
+        expect(result?.id).toBe(approvalTransfer.transaction_id);
+      });
+
+      it('should map a TRC20 transfer transaction as Send/Receive type', () => {
+        const rawTransaction = trc20TransferMock as TransactionInfo;
+        const transferTransfer: ContractTransactionInfo = {
+          ...contractInfoMock.data[0],
+          type: 'Transfer', // Explicit Transfer type
+        } as ContractTransactionInfo;
+
+        const result = TransactionMapper.mapTransaction({
+          scope: Network.Mainnet,
+          account: mockAccount,
+          trongridTransaction: rawTransaction,
+          trc20Transfers: [transferTransfer],
+        });
+
+        expect(result).not.toBeNull();
+        // Since account is the sender, it should be mapped as Send
+        expect(result?.type).toBe(TransactionType.Send);
+      });
+    });
+
+    describe('TRC20-only transactions', () => {
+      it('should map a TRC20-only approval as Unknown type', () => {
+        const approvalTrc20: ContractTransactionInfo = {
+          transaction_id: 'approval-tx-id-123',
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1757590707000,
+          from: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+          to: 'TSomeSpenderAddress123456789012',
+          type: 'Approval',
+          value: '1000000000',
+        };
+
+        const result = TransactionMapper.mapTransactions({
+          scope: Network.Mainnet,
+          account: mockAccount,
+          rawTransactions: [],
+          trc20Transactions: [approvalTrc20],
+        });
+
+        expect(result).toHaveLength(1);
+        expect(result[0]?.type).toBe(TransactionType.Unknown);
+        expect(result[0]?.id).toBe('approval-tx-id-123');
+      });
+
+      it('should map a TRC20-only transfer as Send/Receive type', () => {
+        const transferTrc20: ContractTransactionInfo = {
+          transaction_id: 'transfer-tx-id-456',
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1757590707000,
+          from: 'TSomeOtherAddress123456789012',
+          to: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx', // Account receives
+          type: 'Transfer',
+          value: '1000000',
+        };
+
+        const result = TransactionMapper.mapTransactions({
+          scope: Network.Mainnet,
+          account: mockAccount,
+          rawTransactions: [],
+          trc20Transactions: [transferTrc20],
+        });
+
+        expect(result).toHaveLength(1);
+        // Account is the receiver
+        expect(result[0]?.type).toBe(TransactionType.Receive);
+      });
     });
 
     describe('Fee calculation', () => {

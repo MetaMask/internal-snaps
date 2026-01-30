@@ -15,6 +15,9 @@ import type { Network } from '../../constants';
 import { Networks, SUN_IN_TRX } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 
+// TRC20 transaction types from TronGrid API
+const TRC20_APPROVAL_TYPE = 'Approval';
+
 export class TransactionMapper {
   /**
    * Creates a minimal pending transaction immediately after broadcast.
@@ -230,17 +233,23 @@ export class TransactionMapper {
    * @param params.accountAddress - The account address.
    * @param params.from - The sender address.
    * @param params.to - The receiver address.
+   * @param params.trc20Type - Optional TRC20 transaction type from TronGrid API.
    * @returns The transaction type (send/receive/swap/unknown).
    */
   static #computeTransactionType({
     accountAddress,
     from,
     to,
+    trc20Type,
   }: {
     accountAddress: string;
     from: string;
     to: string;
+    trc20Type?: string;
   }): TransactionType {
+    if (trc20Type === TRC20_APPROVAL_TYPE) {
+      return TransactionType.Unknown;
+    }
     if (from === accountAddress && to === accountAddress) {
       return TransactionType.Swap; // This is a self-transfer, but in the context of a DEX, it's a swap
     }
@@ -525,6 +534,7 @@ export class TransactionMapper {
       accountAddress: account.address,
       from,
       to,
+      trc20Type: trc20Transfer.type,
     });
 
     // TRC20-only transactions are always confirmed (they have a block timestamp)
@@ -1010,6 +1020,7 @@ export class TransactionMapper {
       accountAddress: account.address,
       from,
       to,
+      trc20Type: trc20AssistanceData.type,
     });
 
     // Calculate comprehensive fees including Energy and Bandwidth from raw transaction data
