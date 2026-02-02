@@ -10,6 +10,7 @@ import {
 } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
 
@@ -138,7 +139,7 @@ describe('StakingService', () => {
       expect(
         mockTronWeb.transactionBuilder.freezeBalanceV2,
       ).toHaveBeenCalledWith(
-        amount.multipliedBy(10 ** 6).toNumber(),
+        Number(trxToSun(amount)),
         purpose,
         mockAccount.address,
       );
@@ -170,7 +171,7 @@ describe('StakingService', () => {
       expect(
         mockTronWeb.transactionBuilder.freezeBalanceV2,
       ).toHaveBeenCalledWith(
-        amount.multipliedBy(10 ** 6).toNumber(),
+        Number(trxToSun(amount)),
         purpose,
         mockAccount.address,
       );
@@ -207,12 +208,9 @@ describe('StakingService', () => {
 
     it('handles different amount values correctly', async () => {
       const testCases = [
-        { amount: BigNumber(1), expectedNumber: 1000000 },
-        { amount: BigNumber(1000000), expectedNumber: 1000000000000 },
-        {
-          amount: BigNumber('1000000000000'),
-          expectedNumber: 1000000000000000000,
-        },
+        { amount: BigNumber(1) },
+        { amount: BigNumber(1000000) },
+        { amount: BigNumber('1000000000000') },
       ];
 
       for (const testCase of testCases) {
@@ -228,7 +226,7 @@ describe('StakingService', () => {
         expect(
           mockTronWeb.transactionBuilder.freezeBalanceV2,
         ).toHaveBeenCalledWith(
-          testCase.expectedNumber,
+          Number(trxToSun(testCase.amount)),
           'BANDWIDTH',
           mockAccount.address,
         );
@@ -346,7 +344,7 @@ describe('StakingService', () => {
       expect(
         mockTronWeb.transactionBuilder.unfreezeBalanceV2,
       ).toHaveBeenCalledWith(
-        amount.multipliedBy(10 ** 6).toNumber(),
+        Number(trxToSun(amount)),
         'BANDWIDTH',
         mockAccount.address,
       );
@@ -395,7 +393,11 @@ describe('StakingService', () => {
 
         expect(
           mockTronWeb.transactionBuilder.unfreezeBalanceV2,
-        ).toHaveBeenCalledWith(1000000000000, 'BANDWIDTH', mockAccount.address);
+        ).toHaveBeenCalledWith(
+          Number(trxToSun(1000000)),
+          'BANDWIDTH',
+          mockAccount.address,
+        );
       }
     });
 
@@ -431,7 +433,11 @@ describe('StakingService', () => {
 
         expect(
           mockTronWeb.transactionBuilder.unfreezeBalanceV2,
-        ).toHaveBeenCalledWith(2000000000000, 'ENERGY', mockAccount.address);
+        ).toHaveBeenCalledWith(
+          Number(trxToSun(2000000)),
+          'ENERGY',
+          mockAccount.address,
+        );
       }
     });
 
@@ -469,12 +475,9 @@ describe('StakingService', () => {
 
     it('handles different amount values correctly', async () => {
       const testCases = [
-        { amount: BigNumber(1), expectedNumber: 1000000 },
-        { amount: BigNumber(1000000), expectedNumber: 1000000000000 },
-        {
-          amount: BigNumber('1000000000000'),
-          expectedNumber: 1000000000000000000,
-        },
+        { amount: BigNumber(1) },
+        { amount: BigNumber(1000000) },
+        { amount: BigNumber('1000000000000') },
       ];
 
       for (const testCase of testCases) {
@@ -489,7 +492,7 @@ describe('StakingService', () => {
         expect(
           mockTronWeb.transactionBuilder.unfreezeBalanceV2,
         ).toHaveBeenCalledWith(
-          testCase.expectedNumber,
+          Number(trxToSun(testCase.amount)),
           'BANDWIDTH',
           mockAccount.address,
         );

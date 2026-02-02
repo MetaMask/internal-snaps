@@ -30,6 +30,7 @@ import type { StakingService } from '../../services/staking/StakingService';
 import { TransactionMapper } from '../../services/transactions/TransactionsMapper';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
+import { trxToSun } from '../../utils/conversion';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
@@ -673,7 +674,7 @@ export class ClientRequestHandler {
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
-    const amountInSun = requestBalance.multipliedBy(10 ** 6).toNumber();
+    const amountInSun = Number(trxToSun(requestBalance));
     const transaction = await tronWeb.transactionBuilder.freezeBalanceV2(
       amountInSun,
       purpose,

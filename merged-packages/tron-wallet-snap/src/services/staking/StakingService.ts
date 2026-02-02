@@ -8,6 +8,7 @@ import type { Network } from '../../constants';
 import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { trxToSun } from '../../utils/conversion';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -72,7 +73,7 @@ export class StakingService {
       privateKeyHex,
     );
 
-    const amountInSun = amount.multipliedBy(10 ** 6).toNumber();
+    const amountInSun = Number(trxToSun(amount));
     const stakingTransaction = await tronWeb.transactionBuilder.freezeBalanceV2(
       amountInSun,
       purpose,
@@ -170,7 +171,7 @@ export class StakingService {
       throw new Error('Invalid asset ID');
     }
 
-    const amountInSun = amount.multipliedBy(10 ** 6).toNumber();
+    const amountInSun = Number(trxToSun(amount));
     const transaction = await tronWeb.transactionBuilder.unfreezeBalanceV2(
       amountInSun,
       purpose,

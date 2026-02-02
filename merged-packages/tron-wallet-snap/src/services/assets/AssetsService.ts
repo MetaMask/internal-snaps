@@ -56,6 +56,7 @@ import {
 } from '../../constants';
 import { configProvider } from '../../context';
 import type { AssetEntity } from '../../entities/assets';
+import { toUiAmount } from '../../utils/conversion';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
 
@@ -248,9 +249,7 @@ export class AssetsService {
         iconUrl = metadata.iconUrl ?? iconUrl;
       }
 
-      const uiAmount = new BigNumber(asset.rawAmount)
-        .dividedBy(new BigNumber(10).pow(decimals))
-        .toString();
+      const uiAmount = toUiAmount(asset.rawAmount, decimals).toString();
 
       return {
         ...asset,
@@ -314,9 +313,10 @@ export class AssetsService {
       symbol: Networks[scope].nativeToken.symbol,
       decimals: Networks[scope].nativeToken.decimals,
       rawAmount: balance.toString(),
-      uiAmount: new BigNumber(balance)
-        .dividedBy(10 ** Networks[scope].nativeToken.decimals)
-        .toString(),
+      uiAmount: toUiAmount(
+        balance,
+        Networks[scope].nativeToken.decimals,
+      ).toString(),
       iconUrl: Networks[scope].nativeToken.iconUrl,
     };
 
@@ -366,9 +366,10 @@ export class AssetsService {
         symbol: Networks[scope].stakedForBandwidth.symbol,
         decimals: Networks[scope].stakedForBandwidth.decimals,
         rawAmount: stakedBandwidthAmount.toString(),
-        uiAmount: new BigNumber(stakedBandwidthAmount)
-          .dividedBy(10 ** Networks[scope].stakedForBandwidth.decimals)
-          .toString(),
+        uiAmount: toUiAmount(
+          stakedBandwidthAmount,
+          Networks[scope].stakedForBandwidth.decimals,
+        ).toString(),
         iconUrl: Networks[scope].stakedForBandwidth.iconUrl,
       };
       assets.push(stakedBandwidthAsset);
@@ -382,9 +383,10 @@ export class AssetsService {
         symbol: Networks[scope].stakedForEnergy.symbol,
         decimals: Networks[scope].stakedForEnergy.decimals,
         rawAmount: stakedEnergyAmount.toString(),
-        uiAmount: new BigNumber(stakedEnergyAmount)
-          .dividedBy(10 ** Networks[scope].stakedForEnergy.decimals)
-          .toString(),
+        uiAmount: toUiAmount(
+          stakedEnergyAmount,
+          Networks[scope].stakedForEnergy.decimals,
+        ).toString(),
         iconUrl: Networks[scope].stakedForEnergy.iconUrl,
       };
       assets.push(stakedEnergyAsset);

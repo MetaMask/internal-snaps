@@ -18,6 +18,7 @@ import { Networks, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
@@ -236,6 +237,7 @@ export class SendService {
             toAddress,
             amount,
             tokenId: assetReference,
+            decimals: asset.decimals,
           });
 
         case 'trc20':
@@ -275,7 +277,7 @@ export class SendService {
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
-    const amountInSun = amount * 1e6; // Convert TRX to sun
+    const amountInSun = Number(trxToSun(amount));
     return tronWeb.transactionBuilder.sendTrx(
       toAddress,
       amountInSun,
@@ -289,20 +291,24 @@ export class SendService {
     toAddress,
     amount,
     tokenId,
+    decimals,
   }: {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
     amount: number;
     tokenId: string;
+    decimals: number;
   }): Promise<Transaction<TransferAssetContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
+    const rawAmount = Number(toRawAmount(amount, decimals));
+
     return tronWeb.transactionBuilder.sendToken(
       toAddress,
-      amount,
+      rawAmount,
       tokenId,
       account.address,
     );
@@ -328,11 +334,7 @@ export class SendService {
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
     const functionSelector = 'transfer(address,uint256)';
-    // Convert amount to the smallest unit using BigNumber to avoid precision loss
-    // This is necessary for tokens with 18 decimals where numbers exceed JavaScript's safe integer range
-    const decimalsAdjustedAmount = BigNumber(amount)
-      .multipliedBy(BigNumber(10).pow(decimals))
-      .toFixed(0);
+    const decimalsAdjustedAmount = toRawAmount(amount, decimals);
     const parameter = [
       { type: 'address', value: toAddress },
       { type: 'uint256', value: decimalsAdjustedAmount },

@@ -13,6 +13,7 @@ import type { FeeCalculatorService } from '../../services/send/FeeCalculatorServ
 import type { SendService } from '../../services/send/SendService';
 import type { StakingService } from '../../services/staking/StakingService';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
+import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 
 describe('ClientRequestHandler', () => {
@@ -863,7 +864,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
     expect(mockAccountsService.deriveTronKeypair).not.toHaveBeenCalled();
     expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(scope);
     expect(mockTronWeb.transactionBuilder.freezeBalanceV2).toHaveBeenCalledWith(
-      10 * 10 ** 6,
+      Number(trxToSun(10)),
       'ENERGY',
       'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
     );
