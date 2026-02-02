@@ -164,3 +164,20 @@ export type TriggerConstantContractResponse = {
     raw_data_hex: string;
   };
 };
+
+/**
+ * Contract energy sharing parameters from /wallet/getcontract endpoint.
+ * We only extract the fields needed for fee calculation.
+ *
+ * @see https://developers.tron.network/reference/wallet-getcontract
+ */
+export type ContractInfo = {
+  /**
+   * Percentage of energy the USER/CALLER pays (0-100).
+   */
+  consume_user_resource_percent?: number;
+  /**
+   * Max energy the deployer will subsidize per transaction.
+   */
+  origin_energy_limit?: number;
+};

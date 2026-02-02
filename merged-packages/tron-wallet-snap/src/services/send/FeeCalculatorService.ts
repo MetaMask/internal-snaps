@@ -5,6 +5,7 @@ import type { Transaction } from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
+import type { ContractInfo } from '../../clients/tron-http/types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
 import {
@@ -320,14 +321,74 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Calculate how energy is shared between user and contract deployer.
+   *
+   * TRON's Energy Sharing Mechanism:
+   * - consume_user_resource_percent: % of energy the USER pays (0-100).
+   * 100 = user pays all (default if missing), 0 = deployer pays all.
+   * - origin_energy_limit: max energy deployer subsidizes per tx.
+   * 0 = no subsidy (default if missing).
+   *
+   * @see https://developers.tron.network/docs/energy-consumption-mechanism
+   * @param totalEnergy - Total energy needed for the transaction
+   * @param contractInfo - Contract info with energy sharing parameters (null = user pays all)
+   * @returns Object containing the energy the user must pay
+   */
+  #calculateEnergySharing(
+    totalEnergy: number,
+    contractInfo: ContractInfo | null,
+  ): { userEnergy: number } {
+    // If no contract info or API failed, user pays everything
+    if (!contractInfo) {
+      return { userEnergy: totalEnergy };
+    }
+
+    // consume_user_resource_percent: % the USER pays (default 100 = user pays all)
+    const userPercent = contractInfo.consume_user_resource_percent ?? 100;
+    // origin_energy_limit: max deployer subsidy (default 0 = no subsidy)
+    const maxDeployerSubsidy = contractInfo.origin_energy_limit ?? 0;
+
+    // If user pays 100% or deployer has no subsidy budget, user pays all
+    if (userPercent >= 100 || maxDeployerSubsidy <= 0) {
+      return { userEnergy: totalEnergy };
+    }
+
+    // Calculate theoretical split
+    const userTheoretical = Math.ceil(totalEnergy * (userPercent / 100));
+    const deployerTheoretical = totalEnergy - userTheoretical;
+
+    // Deployer's contribution is capped by origin_energy_limit
+    const deployerActual = Math.min(deployerTheoretical, maxDeployerSubsidy);
+
+    // User pays the rest
+    const userActual = totalEnergy - deployerActual;
+
+    this.#logger.log(
+      {
+        totalEnergy,
+        userPercent,
+        maxDeployerSubsidy,
+        userTheoretical,
+        deployerTheoretical,
+        deployerActual,
+        userActual,
+      },
+      'Energy sharing calculation',
+    );
+
+    return { userEnergy: userActual };
+  }
+
+  /**
    * Estimate energy consumption for contract calls of type TriggerSmartContract.
    * Uses direct TronGrid API call for accurate energy estimation.
+   * Accounts for energy sharing mechanism at the contract level.
    * Based on TIP-544: https://github.com/tronprotocol/tips/blob/master/tip-544.md
    *
    * @param scope - The network scope for the contract
    * @param contract - The contract object from the transaction
    * @param feeLimit - Optional fee limit in SUN to use for fallback calculation
-   * @returns Promise<number> - The estimated energy consumption (defaults to 130000 if estimation fails without feeLimit)
+   * @returns Promise<number> - The estimated energy the USER will pay (after deployer subsidy)
    */
   async #estimateTriggerSmartContractEnergy(
     scope: Network,
@@ -362,19 +423,29 @@ export class FeeCalculatorService {
         `Estimating energy`,
       );
 
-      const result = await this.#tronHttpClient.triggerConstantContract(scope, {
-        /**
-         * These addresses are in hex format. If they weren't we would need to
-         * pass `visible: true` to the request.
-         */
-        owner_address: ownerAddress,
-        contract_address: contractAddress,
-        data,
-        call_value: callValue,
-        token_id: tokenId,
-        call_token_id: callTokenId,
-        call_token_value: callTokenValue,
-      });
+      // Fetch contract info and energy estimation in parallel
+      const [result, contractInfo] = await Promise.all([
+        this.#tronHttpClient.triggerConstantContract(scope, {
+          /**
+           * These addresses are in hex format. If they weren't we would need to
+           * pass `visible: true` to the request.
+           */
+          owner_address: ownerAddress,
+          contract_address: contractAddress,
+          data,
+          call_value: callValue,
+          token_id: tokenId,
+          call_token_id: callTokenId,
+          call_token_value: callTokenValue,
+        }),
+        // Graceful fallback: if getContract fails, contractInfo will be null
+        this.#tronHttpClient.getContract(scope, contractAddress).catch(() => {
+          this.#logger.warn(
+            'Failed to fetch contract info for energy sharing, assuming user pays all',
+          );
+          return null;
+        }),
+      ]);
 
       /**
        * If the transaction simulation failed, we use the fallback energy estimate.
@@ -384,15 +455,26 @@ export class FeeCalculatorService {
       }
 
       if ('energy_used' in result) {
+        const totalEnergy = result.energy_used;
+
+        // Calculate user's portion based on energy sharing
+        const { userEnergy } = this.#calculateEnergySharing(
+          totalEnergy,
+          contractInfo,
+        );
+
         this.#logger.log(
           {
             data: data.slice(0, 8),
-            energyUsed: result.energy_used,
+            totalEnergy,
+            userEnergy,
             energyPenalty: result.energy_penalty,
+            hasEnergySharing: contractInfo !== null,
           },
-          `Energy estimate for ${data.slice(0, 8)}: ${result.energy_used} units`,
+          `Energy estimate for ${data.slice(0, 8)}: user pays ${userEnergy} of ${totalEnergy} units`,
         );
-        return result.energy_used;
+
+        return userEnergy;
       }
 
       this.#logger.warn('No energy_used in result, using fallback');

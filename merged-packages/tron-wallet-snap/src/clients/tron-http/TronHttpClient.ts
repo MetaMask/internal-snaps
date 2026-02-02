@@ -4,6 +4,7 @@ import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
   ChainParameterStruct,
+  ContractInfoStruct,
   FullNodeTransactionInfoStruct,
   NextMaintenanceTimeStruct,
   TRC10TokenInfoStruct,
@@ -12,6 +13,7 @@ import {
 import type {
   AccountResources,
   ChainParameter,
+  ContractInfo,
   FullNodeTransactionInfo,
   TRC10TokenInfo,
   TRC10TokenMetadata,
@@ -339,5 +341,56 @@ export class TronHttpClient {
     assert(result, TriggerConstantContractResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Get smart contract info including energy sharing parameters.
+   *
+   * @see https://developers.tron.network/reference/wallet-getcontract
+   * @param network - Network to query
+   * @param contractAddress - Contract address in base58 format
+   * @returns Promise<ContractInfo | null> - Contract info or null if not found
+   */
+  async getContract(
+    network: Network,
+    contractAddress: string,
+  ): Promise<ContractInfo | null> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getcontract',
+    });
+
+    const body = JSON.stringify({
+      value: contractAddress,
+      visible: false,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const contractInfo: ContractInfo = await response.json();
+
+    // Empty response means contract not found (TRON returns {} for non-existent contracts)
+    if (!contractInfo || Object.keys(contractInfo).length === 0) {
+      return null;
+    }
+
+    // Validate response schema
+    assert(contractInfo, ContractInfoStruct);
+
+    return contractInfo;
   }
 }

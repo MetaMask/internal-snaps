@@ -204,3 +204,14 @@ export const TriggerConstantContractResponseStruct = type({
 export type ValidatedTriggerConstantContractResponse = Infer<
   typeof TriggerConstantContractResponseStruct
 >;
+
+// --------------------------------------------------------------------------
+// Contract Info Structs (Energy Sharing Parameters)
+// --------------------------------------------------------------------------
+
+export const ContractInfoStruct = type({
+  consume_user_resource_percent: optional(min(number(), 0)),
+  origin_energy_limit: optional(min(number(), 0)),
+});
+
+export type ValidatedContractInfo = Infer<typeof ContractInfoStruct>;
