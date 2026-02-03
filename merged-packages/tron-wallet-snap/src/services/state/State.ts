@@ -107,9 +107,9 @@ class StateLock {
  * - It  merges the default state with the underlying snap state to ensure that we always have default values,
  * letting us avoid a ton of null checks everywhere.
  */
-export class State<TStateValue extends Record<string, Serializable>>
-  implements IStateManager<TStateValue>
-{
+export class State<
+  TStateValue extends Record<string, Serializable>,
+> implements IStateManager<TStateValue> {
   readonly #lock = new StateLock();
 
   readonly #config: StateConfig<TStateValue>;
