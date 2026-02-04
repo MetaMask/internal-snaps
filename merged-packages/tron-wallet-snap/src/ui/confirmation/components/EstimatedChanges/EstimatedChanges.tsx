@@ -11,6 +11,7 @@ import {
 
 import type { TransactionScanEstimatedChanges } from '../../../../services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../types/snap';
+import { formatAmount } from '../../../../utils/formatAmount';
 import { i18n } from '../../../../utils/i18n';
 
 type EstimatedChangesProps = {
@@ -65,20 +66,10 @@ const EstimatedChangesHeader = ({
 
 type AssetChangeProps = {
   asset: TransactionScanEstimatedChanges['assets'][0];
-  preferences: Preferences;
 };
 
-const AssetChange = ({
-  asset,
-  preferences,
-}: AssetChangeProps): ComponentOrElement => {
-  const { locale } = preferences;
-  const formattedValue =
-    asset.value?.toLocaleString(
-      // Clients may use locales with underscore (e.g., zh_CN), but toLocaleString
-      // requires a BCP 47 locale (e.g., zh-CN)
-      locale.replace('_', '-'),
-    ) ?? '0';
+const AssetChange = ({ asset }: AssetChangeProps): ComponentOrElement => {
+  const formattedValue = formatAmount(asset.value);
   const isOut = asset.type === 'out';
 
   return (
@@ -147,7 +138,7 @@ export const EstimatedChanges = ({
           </SnapText>
           <Box>
             {send?.map((asset) => (
-              <AssetChange asset={asset} preferences={preferences} />
+              <AssetChange asset={asset} />
             ))}
           </Box>
         </Box>
@@ -159,7 +150,7 @@ export const EstimatedChanges = ({
           </SnapText>
           <Box>
             {receive?.map((asset) => (
-              <AssetChange asset={asset} preferences={preferences} />
+              <AssetChange asset={asset} />
             ))}
           </Box>
         </Box>

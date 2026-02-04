@@ -65,8 +65,8 @@ describe('ConfirmSignTransaction render', () => {
       assets: [
         {
           type: 'out',
-          value: 100,
-          price: 0.1,
+          value: '100',
+          price: '0.1',
           symbol: 'TRX',
           name: 'Tron',
           logo: null,

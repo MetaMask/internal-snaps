@@ -14,7 +14,7 @@ import type {
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
-import { sunToTrx } from '../../utils/conversion';
+import { sunToTrx, toUiAmount } from '../../utils/conversion';
 
 // TRC20 transaction types from TronGrid API
 const TRC20_APPROVAL_TYPE = 'Approval';
@@ -442,9 +442,10 @@ export class TransactionMapper {
 
     // Convert from smallest unit to human-readable amount using actual token decimals
     const amountInSmallestUnit = contractValue.amount;
-    const amountInReadableUnit = (
-      amountInSmallestUnit / Math.pow(10, decimals)
-    ).toString();
+    const amountInReadableUnit = toUiAmount(
+      amountInSmallestUnit,
+      decimals,
+    ).toFixed();
 
     // Calculate comprehensive fees including Energy and Bandwidth
     const fees = TransactionMapper.#calculateTronFees(
@@ -527,8 +528,7 @@ export class TransactionMapper {
     } = trc20Transfer;
 
     // Calculate amount in human-readable format
-    const divisor = Math.pow(10, tokenInfo.decimals);
-    const amount = (parseFloat(value) / divisor).toString();
+    const amount = toUiAmount(value, tokenInfo.decimals).toFixed();
 
     // Determine transaction type
     const type = this.#computeTransactionType({
@@ -614,16 +614,16 @@ export class TransactionMapper {
       : Math.floor(trongridTransaction.block_timestamp / 1000);
 
     // Calculate sent amount
-    const sentDivisor = Math.pow(10, sentTransfer.token_info.decimals);
-    const sentAmount = (
-      parseFloat(sentTransfer.value) / sentDivisor
-    ).toString();
+    const sentAmount = toUiAmount(
+      sentTransfer.value,
+      sentTransfer.token_info.decimals,
+    ).toFixed();
 
     // Calculate received amount
-    const receivedDivisor = Math.pow(10, receivedTransfer.token_info.decimals);
-    const receivedAmount = (
-      parseFloat(receivedTransfer.value) / receivedDivisor
-    ).toString();
+    const receivedAmount = toUiAmount(
+      receivedTransfer.value,
+      receivedTransfer.token_info.decimals,
+    ).toFixed();
 
     const fees = TransactionMapper.#calculateTronFees(
       scope,
@@ -697,10 +697,10 @@ export class TransactionMapper {
       : Math.floor(trongridTransaction.block_timestamp / 1000);
 
     // Calculate TRC20 received amount
-    const trc20Divisor = Math.pow(10, trc20Transfer.token_info.decimals);
-    const trc20Amount = (
-      parseFloat(trc20Transfer.value) / trc20Divisor
-    ).toString();
+    const trc20Amount = toUiAmount(
+      trc20Transfer.value,
+      trc20Transfer.token_info.decimals,
+    ).toFixed();
 
     // Extract TRX amount - priority order:
     // 1. call_value from main contract (user sent TRX directly)
@@ -1011,10 +1011,12 @@ export class TransactionMapper {
     const timestamp = isPending
       ? Math.floor(Date.now() / 1000)
       : Math.floor(trc20AssistanceData.block_timestamp / 1000);
-    const divisor = Math.pow(10, decimals);
-    const valueInReadableUnit = (
-      parseFloat(valueInSmallestUnit) / divisor
-    ).toString();
+
+    // Convert from smallest unit to human-readable amount
+    const valueInReadableUnit = toUiAmount(
+      valueInSmallestUnit,
+      decimals,
+    ).toFixed();
 
     // Determine transaction type
     const type = this.#computeTransactionType({

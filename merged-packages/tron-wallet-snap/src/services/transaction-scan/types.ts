@@ -4,8 +4,8 @@ export type TransactionScanStatus = 'SUCCESS' | 'ERROR';
 
 export type TransactionScanAssetChange = {
   type: 'in' | 'out';
-  value: number | null;
-  price: number | null;
+  value: string;
+  price: string | null;
   symbol: string;
   name: string;
   logo: string | null;

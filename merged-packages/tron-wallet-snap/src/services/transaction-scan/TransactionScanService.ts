@@ -213,26 +213,38 @@ export class TransactionScanService {
       status,
       estimatedChanges: {
         assets:
-          result.simulation?.account_summary?.assets_diffs?.map((asset) => {
-            // Get the first in/out change value (arrays now)
-            const inChange = asset.in?.[0];
-            const outChange = asset.out?.[0];
-            const change = inChange ?? outChange;
+          result.simulation?.account_summary?.assets_diffs
+            // Filter out assets without a displayable value (e.g., NONERC tokens
+            // that only have raw_value but no human-readable value from the API)
+            ?.filter((asset) => {
+              const inChange = asset.in?.[0];
+              const outChange = asset.out?.[0];
+              const change = inChange ?? outChange;
+              return change?.value !== undefined;
+            })
+            .map((asset) => {
+              // Get the first in/out change value (arrays now)
+              const inChange = asset.in?.[0];
+              const outChange = asset.out?.[0];
+              const change = inChange ?? outChange;
 
-            return {
-              type: inChange ? 'in' : 'out',
-              symbol:
-                'symbol' in asset.asset ? asset.asset.symbol : asset.asset_type,
-              name: 'name' in asset.asset ? asset.asset.name : asset.asset_type,
-              logo:
-                'logo_url' in asset.asset
-                  ? (asset.asset.logo_url ?? null)
-                  : null,
-              value: change ? parseFloat(change.value) : null,
-              price: change?.usd_price ? parseFloat(change.usd_price) : null,
-              assetType: asset.asset_type,
-            };
-          }) ?? [],
+              return {
+                type: inChange ? ('in' as const) : ('out' as const),
+                symbol:
+                  'symbol' in asset.asset
+                    ? asset.asset.symbol
+                    : asset.asset_type,
+                name:
+                  'name' in asset.asset ? asset.asset.name : asset.asset_type,
+                logo:
+                  'logo_url' in asset.asset
+                    ? (asset.asset.logo_url ?? null)
+                    : null,
+                value: change?.value ?? '0',
+                price: change?.usd_price ?? null,
+                assetType: asset.asset_type,
+              };
+            }) ?? [],
       },
       validation: {
         type: result.validation?.result_type ?? null,
