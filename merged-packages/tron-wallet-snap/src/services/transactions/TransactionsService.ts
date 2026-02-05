@@ -198,17 +198,17 @@ export class TransactionsService {
     );
 
     /**
-     * Step 1: Load existing transaction IDs from state
+     * Step 1: Load confirmed transaction IDs from state
      *
-     * We only need the IDs to check which transactions are new.
+     * We only skip transactions that are already confirmed. Pending (Unconfirmed)
+     * transactions are allowed to be re-fetched so their status can be updated
+     * when they become confirmed on the network.
      */
-    const existingTxIds =
-      await this.#transactionsRepository.getTransactionIdsByAccountId(
-        account.id,
-      );
+    const confirmedTxIds =
+      await this.#transactionsRepository.getConfirmedTransactionIds(account.id);
 
     this.#logger.debug(
-      `Found ${existingTxIds.size} existing transactions in state for account ${account.id}.`,
+      `Found ${confirmedTxIds.size} confirmed transactions in state for account ${account.id}.`,
     );
 
     /**
@@ -226,53 +226,54 @@ export class TransactionsService {
     );
 
     /**
-     * Step 3: Filter to only NEW transactions
+     * Step 3: Filter to transactions that need processing
      *
-     * Skip transactions that are already processed and saved in state.
-     * This is the core optimization - we avoid re-processing known transactions.
+     * Skip transactions that are already confirmed in state.
+     * Pending transactions are included so they can be updated when confirmed.
+     * This maintains the optimization while allowing status updates.
      */
-    const newRawTransactions = rawTransactions.filter(
-      (tx) => !existingTxIds.has(tx.txID),
+    const transactionsToProcess = rawTransactions.filter(
+      (tx) => !confirmedTxIds.has(tx.txID),
     );
 
     this.#logger.info(
-      `Found ${newRawTransactions.length} new transactions to process (${rawTransactions.length - newRawTransactions.length} already in state).`,
+      `Found ${transactionsToProcess.length} transactions to process (${rawTransactions.length - transactionsToProcess.length} already confirmed in state).`,
     );
 
     /**
-     * Step 4: If no new transactions, return empty array
+     * Step 4: If no transactions to process, return empty array
      *
      * This is the fast path - skip all enrichment and mapping.
      */
-    if (newRawTransactions.length === 0) {
-      this.#logger.info(`No new transactions found.`);
+    if (transactionsToProcess.length === 0) {
+      this.#logger.info(`No transactions to process.`);
       return [];
     }
 
     /**
-     * Step 5: Process only NEW transactions (enrichment + mapping)
+     * Step 5: Process transactions (enrichment + mapping)
      *
      * Enrich potential swaps with internal_transactions data
-     * and fetch TRC10 token metadata for new transactions only.
+     * and fetch TRC10 token metadata for transactions to process.
      */
     const { enrichedRawTransactions, trc10TokenMetadata } =
-      await this.#fetchEnrichmentData(scope, newRawTransactions);
+      await this.#fetchEnrichmentData(scope, transactionsToProcess);
 
     this.#logger.info(
-      `Enriched ${enrichedRawTransactions.length} new transactions, fetched metadata for ${trc10TokenMetadata.size} TRC10 tokens.`,
+      `Enriched ${enrichedRawTransactions.length} transactions, fetched metadata for ${trc10TokenMetadata.size} TRC10 tokens.`,
     );
 
     /**
-     * Step 6: Map new transactions to keyring format
+     * Step 6: Map transactions to keyring format
      *
-     * Filter TRC20 assistance data to only include transactions matching new raw txs.
+     * Filter TRC20 assistance data to only include transactions matching processed txs.
      */
-    const newTxIds = new Set(newRawTransactions.map((tx) => tx.txID));
+    const processedTxIds = new Set(transactionsToProcess.map((tx) => tx.txID));
     const relevantTrc20Transactions = trc20Transactions.filter((tx) =>
-      newTxIds.has(tx.transaction_id),
+      processedTxIds.has(tx.transaction_id),
     );
 
-    const newMappedTransactions = TransactionMapper.mapTransactions({
+    const mappedTransactions = TransactionMapper.mapTransactions({
       scope,
       account: account as TronKeyringAccount,
       rawTransactions: enrichedRawTransactions,
@@ -281,10 +282,10 @@ export class TransactionsService {
     });
 
     this.#logger.info(
-      `Returning ${newMappedTransactions.length} new transactions for account ${account.address} on network ${scope}.`,
+      `Returning ${mappedTransactions.length} transactions for account ${account.address} on network ${scope}.`,
     );
 
-    return newMappedTransactions;
+    return mappedTransactions;
   }
 
   /**

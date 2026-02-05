@@ -1,4 +1,5 @@
 import type { Transaction } from '@metamask/keyring-api';
+import { TransactionStatus } from '@metamask/keyring-api';
 import { chain } from 'lodash';
 
 import type { State, UnencryptedStateValue } from '../state/State';
@@ -41,6 +42,26 @@ export class TransactionsRepository {
     );
 
     return new Set((transactions ?? []).map((tx) => tx.id));
+  }
+
+  /**
+   * Gets transaction IDs for confirmed (non-pending) transactions only.
+   * This allows pending transactions to be re-fetched and updated when
+   * their confirmed version becomes available from the network.
+   *
+   * @param accountId - The account ID to get confirmed transaction IDs for.
+   * @returns Set of transaction IDs for confirmed transactions only.
+   */
+  async getConfirmedTransactionIds(accountId: string): Promise<Set<string>> {
+    const transactions = await this.#state.getKey<Transaction[]>(
+      `${this.#stateKey}.${accountId}`,
+    );
+
+    return new Set(
+      (transactions ?? [])
+        .filter((tx) => tx.status !== TransactionStatus.Unconfirmed)
+        .map((tx) => tx.id),
+    );
   }
 
   async save(transaction: Transaction): Promise<void> {

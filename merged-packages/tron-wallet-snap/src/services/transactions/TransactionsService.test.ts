@@ -71,6 +71,7 @@ describe('TransactionsService', () => {
       getAll: jest.fn(),
       findByAccountId: jest.fn().mockResolvedValue([]),
       getTransactionIdsByAccountId: jest.fn().mockResolvedValue(new Set()),
+      getConfirmedTransactionIds: jest.fn().mockResolvedValue(new Set()),
       save: jest.fn(),
       saveMany: jest.fn(),
     } as unknown as jest.Mocked<TransactionsRepository>;
@@ -287,6 +288,65 @@ describe('TransactionsService', () => {
         'Failed to fetch TRC20 transactions for address TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx on network tron:728126428',
       );
       expect(true).toBe(true);
+    });
+
+    it('skips already confirmed transactions but allows pending transactions to be updated', async () => {
+      // Simulate a confirmed transaction ID that should be skipped
+      const confirmedTxId = 'confirmed-tx-id';
+      mockTransactionsRepository.getConfirmedTransactionIds.mockResolvedValue(
+        new Set([confirmedTxId]),
+      );
+
+      // API returns both the confirmed tx and a new tx
+      const confirmedTx = {
+        ...nativeTransferMock,
+        txID: confirmedTxId,
+      };
+      const newTx = {
+        ...nativeTransferMock,
+        txID: 'new-tx-id',
+      };
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+        confirmedTx,
+        newTx,
+      ] as TransactionInfo[]);
+      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+        [],
+      );
+
+      const result = await transactionsService.fetchNewTransactionsForAccount(
+        Network.Mainnet,
+        mockAccount,
+      );
+
+      // Should only return the new transaction, not the confirmed one
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe('new-tx-id');
+    });
+
+    it('re-fetches pending transactions so they can be updated to confirmed status', async () => {
+      // Simulate a pending transaction that exists in state but is NOT in confirmed set
+      const pendingTxId = nativeTransferMock.txID;
+      mockTransactionsRepository.getConfirmedTransactionIds.mockResolvedValue(
+        new Set(), // Pending tx ID is not in confirmed set
+      );
+
+      // API returns the same transaction (now confirmed on network)
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+        nativeTransferMock,
+      ] as TransactionInfo[]);
+      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+        [],
+      );
+
+      const result = await transactionsService.fetchNewTransactionsForAccount(
+        Network.Mainnet,
+        mockAccount,
+      );
+
+      // The pending transaction should be returned so it can be updated
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(pendingTxId);
     });
   });
 
