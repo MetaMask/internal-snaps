@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.1]
+
+### Fixed
+
+- Sent transactions stuck on `pending` state ([#194](https://github.com/MetaMask/snap-tron-wallet/pull/194))
+
 ## [1.21.0]
 
 ### Fixed
@@ -385,7 +391,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.1...HEAD
+[1.21.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.3...v1.20.0
 [1.19.3]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.2...v1.19.3
