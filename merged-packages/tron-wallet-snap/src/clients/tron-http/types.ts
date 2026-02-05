@@ -173,6 +173,10 @@ export type TriggerConstantContractResponse = {
  */
 export type ContractInfo = {
   /**
+   * The address of the contract deployer.
+   */
+  origin_address?: string;
+  /**
    * Percentage of energy the USER/CALLER pays (0-100).
    */
   consume_user_resource_percent?: number;

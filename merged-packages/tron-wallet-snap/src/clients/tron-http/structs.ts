@@ -210,6 +210,7 @@ export type ValidatedTriggerConstantContractResponse = Infer<
 // --------------------------------------------------------------------------
 
 export const ContractInfoStruct = type({
+  origin_address: optional(string()),
   consume_user_resource_percent: optional(min(number(), 0)),
   origin_energy_limit: optional(min(number(), 0)),
 });

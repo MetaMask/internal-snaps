@@ -328,15 +328,18 @@ export class FeeCalculatorService {
    * 100 = user pays all (default if missing), 0 = deployer pays all.
    * - origin_energy_limit: max energy deployer subsidizes per tx.
    * 0 = no subsidy (default if missing).
+   * - deployer's available energy: the deployer's actual energy balance.
    *
    * @see https://developers.tron.network/docs/energy-consumption-mechanism
    * @param totalEnergy - Total energy needed for the transaction
    * @param contractInfo - Contract info with energy sharing parameters (null = user pays all)
+   * @param deployerAvailableEnergy - Deployer's available energy.
    * @returns Object containing the energy the user must pay
    */
   #calculateEnergySharing(
     totalEnergy: number,
     contractInfo: ContractInfo | null,
+    deployerAvailableEnergy: number | null,
   ): { userEnergy: number } {
     // If no contract info or API failed, user pays everything
     if (!contractInfo) {
@@ -357,9 +360,13 @@ export class FeeCalculatorService {
     const userTheoretical = Math.ceil(totalEnergy * (userPercent / 100));
     const deployerTheoretical = totalEnergy - userTheoretical;
 
-    // Deployer's contribution is capped by origin_energy_limit
-    const deployerActual = Math.min(deployerTheoretical, maxDeployerSubsidy);
-
+    // Deployer's contribution is capped
+    let deployerActual = Math.min(deployerTheoretical, maxDeployerSubsidy);
+    if (deployerAvailableEnergy === null) {
+      deployerActual = 0;
+    } else {
+      deployerActual = Math.min(deployerActual, deployerAvailableEnergy);
+    }
     // User pays the rest
     const userActual = totalEnergy - deployerActual;
 
@@ -368,6 +375,7 @@ export class FeeCalculatorService {
         totalEnergy,
         userPercent,
         maxDeployerSubsidy,
+        deployerAvailableEnergy,
         userTheoretical,
         deployerTheoretical,
         deployerActual,
@@ -377,6 +385,53 @@ export class FeeCalculatorService {
     );
 
     return { userEnergy: userActual };
+  }
+
+  /**
+   * Fetch the deployer's available energy.
+   * Returns null if the deployer address is not known or the fetch fails.
+   *
+   * @param scope - The network scope
+   * @param deployerAddress - The deployer's address (hex or base58)
+   * @returns Promise<number | null> - Available energy or null on failure
+   */
+  async #getDeployerAvailableEnergy(
+    scope: Network,
+    deployerAddress: string | undefined,
+  ): Promise<number | null> {
+    if (!deployerAddress) {
+      return null;
+    }
+
+    try {
+      const resources = await this.#tronHttpClient.getAccountResources(
+        scope,
+        deployerAddress,
+      );
+
+      // Available energy = EnergyLimit - EnergyUsed
+      const energyLimit = resources.EnergyLimit ?? 0;
+      const energyUsed = resources.EnergyUsed ?? 0;
+      const availableEnergy = Math.max(0, energyLimit - energyUsed);
+
+      this.#logger.log(
+        {
+          deployerAddress,
+          energyLimit,
+          energyUsed,
+          availableEnergy,
+        },
+        'Fetched deployer available energy',
+      );
+
+      return availableEnergy;
+    } catch (error) {
+      this.#logger.warn(
+        { error, deployerAddress },
+        'Failed to fetch deployer energy',
+      );
+      return null;
+    }
   }
 
   /**
@@ -457,10 +512,17 @@ export class FeeCalculatorService {
       if ('energy_used' in result) {
         const totalEnergy = result.energy_used;
 
+        // Fetch deployer's available energy
+        const deployerAvailableEnergy = await this.#getDeployerAvailableEnergy(
+          scope,
+          contractInfo?.origin_address,
+        );
+
         // Calculate user's portion based on energy sharing
         const { userEnergy } = this.#calculateEnergySharing(
           totalEnergy,
           contractInfo,
+          deployerAvailableEnergy,
         );
 
         this.#logger.log(
@@ -470,6 +532,7 @@ export class FeeCalculatorService {
             userEnergy,
             energyPenalty: result.energy_penalty,
             hasEnergySharing: contractInfo !== null,
+            deployerAvailableEnergy,
           },
           `Energy estimate for ${data.slice(0, 8)}: user pays ${userEnergy} of ${totalEnergy} units`,
         );
