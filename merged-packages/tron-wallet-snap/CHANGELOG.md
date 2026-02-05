@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.0]
+
 ### Fixed
 
 - Handle extreme token amounts to prevent NaN and scientific notation in estimated changes ([#191](https://github.com/MetaMask/snap-tron-wallet/pull/191))
+- Consider contract deployer's energy when calculating fees ([#192](https://github.com/MetaMask/snap-tron-wallet/pull/192))
 
 ## [1.20.0]
 
@@ -382,7 +385,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.20.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.0...HEAD
+[1.21.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.3...v1.20.0
 [1.19.3]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.2...v1.19.3
 [1.19.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.1...v1.19.2
