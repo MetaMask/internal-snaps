@@ -38,7 +38,7 @@
     "publish:preview": "yarn npm publish --tag preview",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
-    "test": "jest --passWithNoTests",
+    "test": "jest && yarn jest-it-up",
     "test:integration": "./integration-test/run-integration.sh"
   },
   "devDependencies": {
@@ -59,6 +59,7 @@
     "dotenv": "^17.0.0",
     "ethers": "^6.15.0",
     "jest": "^30.0.3",
+    "jest-it-up": "^2.0.2",
     "jest-transform-stub": "2.0.0",
     "lodash": "^4.17.21",
     "prettier": "^3.5.3",
