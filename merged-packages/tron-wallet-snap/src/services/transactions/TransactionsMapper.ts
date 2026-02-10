@@ -294,10 +294,14 @@ export class TransactionMapper {
 
     // Check for TRX movements where this account is involved
     // Note: internal_transactions from Full Node API uses caller_address/transferTo_address
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return internalTransactions.some((internal: any) => {
       const fromHex = internal.caller_address?.toLowerCase();
       const toHex = internal.transferTo_address?.toLowerCase();
       const hasCallValue = internal.callValueInfo?.some(
+        // TODO: Replace `any` with type
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (valueInfo: any) => (valueInfo.callValue ?? 0) > 0,
       );
 
@@ -363,6 +367,8 @@ export class TransactionMapper {
       id: trongridTransaction.txID,
       from: [
         {
+          // TODO: Replace `any` with type
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           address: from as any,
           asset: {
             unit: tronAsset.symbol,
@@ -465,6 +471,8 @@ export class TransactionMapper {
       id: trongridTransaction.txID,
       from: [
         {
+          // TODO: Replace `any` with type
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           address: from as any,
           asset: {
             unit: symbol,
@@ -707,6 +715,8 @@ export class TransactionMapper {
     // 2. internal_transactions where user is sender
     // 3. Sum of all internal TRX (fallback for complex DEX swaps)
     const contractInfo = trongridTransaction.raw_data.contract?.[0];
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const contractCallValue = (contractInfo?.parameter?.value as any)
       ?.call_value;
 
@@ -723,10 +733,14 @@ export class TransactionMapper {
 
       // Find the TRX movement where the account is the sender
       // Note: internal_transactions from Full Node API uses caller_address/callValueInfo
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const internal of internalTransactions as any[]) {
         const fromHex = internal.caller_address?.toLowerCase();
         if (fromHex === accountHex) {
           const callValue =
+            // TODO: Replace `any` with type
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             internal.callValueInfo?.find((vi: any) => vi.callValue)
               ?.callValue ?? 0;
           if (callValue > 0) {
@@ -740,8 +754,12 @@ export class TransactionMapper {
       // (DEX swaps often have TRX moving internally without the user's address)
       if (trxAmount === '0' && internalTransactions.length > 0) {
         let totalInternalTrx = 0;
+        // TODO: Replace `any` with type
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const internal of internalTransactions as any[]) {
           const callValue =
+            // TODO: Replace `any` with type
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             internal.callValueInfo?.find((vi: any) => vi.callValue)
               ?.callValue ?? 0;
           totalInternalTrx += callValue;
@@ -824,8 +842,12 @@ export class TransactionMapper {
 
     const contractInfo = trongridTransaction.raw_data.contract?.[0];
     const ownerAddress = contractInfo?.parameter?.value?.owner_address;
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const contractAddress = (contractInfo?.parameter?.value as any)
       ?.contract_address;
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callValue = (contractInfo?.parameter?.value as any)?.call_value;
 
     // Handle failed transactions (even without TRC20 data)
@@ -969,7 +991,11 @@ export class TransactionMapper {
     const hasAnyInternalTrxMovement =
       trongridTransaction.internal_transactions &&
       trongridTransaction.internal_transactions.length > 0 &&
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       trongridTransaction.internal_transactions.some((internal: any) =>
+        // TODO: Replace `any` with type
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         internal.callValueInfo?.some((vi: any) => (vi.callValue ?? 0) > 0),
       );
 
@@ -1110,6 +1136,8 @@ export class TransactionMapper {
     const amountInSun: number =
       Number(
         contractValue.frozen_balance ??
+          // TODO: Replace `any` with type
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (contractValue as any).frozen_balance_v2,
       ) || 0;
     const amountInTrx = sunToTrx(amountInSun).toString();

@@ -41,6 +41,8 @@ export const Fees = ({
       {sortedFees.map((feeItem, index) => {
         // Get the price for this specific fee asset
         const feePrice =
+          // TODO: Replace `any` with type
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (tokenPrices as any)[feeItem.asset.type]?.price ?? null;
 
         return (

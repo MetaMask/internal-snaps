@@ -27,6 +27,8 @@ import logger from './logger';
  * @param error - The error to sanitize.
  * @returns A sanitized error with generic message if sensitive info detected.
  */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function sanitizeSensitiveError(error: any): Error {
   const message = error?.message?.toLowerCase() ?? '';
   const stack = error?.stack?.toLowerCase() ?? '';
@@ -99,6 +101,8 @@ export const withCatchAndThrowSnapError = async <ResponseT>(
 ): Promise<ResponseT> => {
   try {
     return await fn();
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (errorInstance: any) {
     const error = isSnapRpcError(errorInstance)
       ? errorInstance

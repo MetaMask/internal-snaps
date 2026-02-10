@@ -8,18 +8,32 @@
  */
 
 export type ILogger = {
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   log: (...args: any[]) => void;
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: (...args: any[]) => void;
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   warn: (...args: any[]) => void;
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error: (...args: any[]) => void;
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   debug: (...args: any[]) => void;
 };
 
 const withErrorLogging =
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (logFn: (...args: any[]) => void) =>
-  (...args: any[]): void => {
-    logFn(...args);
-  };
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (...args: any[]): void => {
+      logFn(...args);
+    };
 
 /**
  * A decorator function that noops if the environment is not local,
@@ -29,14 +43,18 @@ const withErrorLogging =
  * @returns The wrapped function.
  */
 const withNoopInProduction =
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (fn: (...args: any[]) => void) =>
-  (...args: any[]): void => {
-    // eslint-disable-next-line no-restricted-globals
-    if (process.env.ENVIRONMENT === 'production') {
-      return;
-    }
-    fn(...args);
-  };
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (...args: any[]): void => {
+      // eslint-disable-next-line no-restricted-globals
+      if (process.env.ENVIRONMENT === 'production') {
+        return;
+      }
+      fn(...args);
+    };
 
 /**
  * A basic logger that wraps the console, extending its functionality to properly log Tron errors.
@@ -62,9 +80,13 @@ export const createPrefixedLogger = (
   prefix: string,
 ): ILogger => {
   return new Proxy(_logger, {
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     get(target, prop: keyof ILogger): any {
       const method = target[prop];
       if (typeof method === 'function') {
+        // TODO: Replace `any` with type
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (message: string, ...args: any[]) => {
           return method.call(target, prefix, message, ...args);
         };

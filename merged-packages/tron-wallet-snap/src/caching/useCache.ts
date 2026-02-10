@@ -20,6 +20,8 @@ export type CacheOptions = {
    * Optional function to generate the cache key for the function call.
    * Defaults to a function that generates the key based on function name and JSON stringified args separated by colons.
    */
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   generateCacheKey?: (functionName: string, args: any[]) => string;
 };
 
@@ -30,6 +32,8 @@ export type CacheOptions = {
  * @param args - The arguments of the function call.
  * @returns The cache key.
  */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultGenerateCacheKey = (functionName: string, args: any[]): string =>
   `${functionName}:${args.map((arg) => JSON.stringify(arg)).join(':')}`;
 
@@ -46,6 +50,8 @@ const defaultGenerateCacheKey = (functionName: string, args: any[]): string =>
  * @param options.generateCacheKey - Optional function to generate the cache key.
  * @returns A new asynchronous function with caching behavior.
  */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const useCache = <TArgs extends any[], TResult extends Serializable>(
   fn: (...args: TArgs) => Promise<TResult>,
   cache: ICache<Serializable>,

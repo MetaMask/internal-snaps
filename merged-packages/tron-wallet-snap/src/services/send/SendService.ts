@@ -366,6 +366,8 @@ export class SendService {
       | Transaction<TriggerSmartContract>,
   ): string | null {
     const contract = transaction.raw_data?.contract?.[0];
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ownerAddressHex = (contract?.parameter?.value as any)?.owner_address;
 
     if (!ownerAddressHex) {
@@ -392,6 +394,8 @@ export class SendService {
       | Transaction<TransferAssetContract>
       | Transaction<TriggerSmartContract>;
     origin?: string;
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }): Promise<BroadcastReturn<any>> {
     /**
      * Validate that the fromAccountId resolves to a snap-managed account

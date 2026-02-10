@@ -55,6 +55,8 @@ export class SnapClient {
    * @returns The created interface id.
    */
   async createInterface<TContext>(
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ui: any,
     context: TContext & Record<string, Json>,
   ): Promise<string> {
@@ -77,6 +79,8 @@ export class SnapClient {
    */
   async updateInterface<TContext>(
     id: string,
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ui: any,
     context: TContext & Record<string, Json>,
   ): Promise<UpdateInterfaceResult> {
@@ -139,6 +143,8 @@ export class SnapClient {
    */
   async updateInterfaceWithContext<TContext extends Record<string, Json>>(
     id: string,
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ui: any,
     context: TContext,
   ): Promise<UpdateInterfaceResult> {

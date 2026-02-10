@@ -115,7 +115,7 @@ export class KeyringHandler implements Keyring {
       const keyringAccounts = await this.#accountsService.getAll();
 
       return sortBy(keyringAccounts, ['entropySource', 'index']);
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error listing accounts');
       throw new Error('Error listing accounts');
     }
@@ -133,6 +133,8 @@ export class KeyringHandler implements Keyring {
         (await this.#accountsService.findById(accountId)) ?? undefined;
 
       return account;
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error getting account');
       throw new SnapError(error);
@@ -166,6 +168,8 @@ export class KeyringHandler implements Keyring {
       const account = await this.#accountsService.create(id, options);
 
       return account;
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error creating account');
       await this.#accountsService.delete(id);
@@ -196,6 +200,8 @@ export class KeyringHandler implements Keyring {
 
       validateResponse(result, ListAccountAssetsResponseStruct);
       return result;
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error listing account assets');
       throw error;
@@ -255,6 +261,8 @@ export class KeyringHandler implements Keyring {
         data: accountTransactions,
         next: nextSignature,
       };
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error listing account transactions');
       throw error;
@@ -305,6 +313,8 @@ export class KeyringHandler implements Keyring {
           derivationPath: account.derivationPath,
         },
       ];
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error discovering accounts');
       throw error;
@@ -349,6 +359,8 @@ export class KeyringHandler implements Keyring {
 
       validateResponse(result, GetAccounBalancesResponseStruct);
       return result;
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error getting account balances');
       throw error;
@@ -401,6 +413,8 @@ export class KeyringHandler implements Keyring {
       });
 
       await this.#accountsService.delete(accountId);
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error deleting account');
       throw error;

@@ -48,6 +48,8 @@ export class UserInputHandler {
       return;
     }
 
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const uiEventHandlers: Record<string, (...args: any) => Promise<void>> = {
       ...createTransactionConfirmationEvents(this.#snapClient),
       ...createSignMessageEvents(this.#snapClient),

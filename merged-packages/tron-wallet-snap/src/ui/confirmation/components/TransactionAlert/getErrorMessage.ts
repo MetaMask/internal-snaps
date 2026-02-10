@@ -36,6 +36,8 @@ export function getErrorMessage(
   }
 
   try {
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return translate(translationKey as any);
   } catch {
     // If translation fails, return a descriptive message based on the error

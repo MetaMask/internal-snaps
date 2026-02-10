@@ -447,6 +447,8 @@ export class FeeCalculatorService {
    */
   async #estimateTriggerSmartContractEnergy(
     scope: Network,
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     contract: any,
     feeLimit?: number,
   ): Promise<number> {

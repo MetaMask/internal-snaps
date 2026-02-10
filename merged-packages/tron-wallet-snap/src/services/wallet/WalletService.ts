@@ -85,6 +85,8 @@ export class WalletService {
             TronMultichainErrors.InvalidParams,
           );
       }
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error handling wallet request');
 
@@ -166,6 +168,8 @@ export class WalletService {
       this.#logger.log('Message signed successfully', { address });
 
       return result;
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error signing message');
       throw error;
@@ -229,6 +233,8 @@ export class WalletService {
 
       // Extract the signature from the signed transaction
       // signedTx.signature is an array of hex strings
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const signatureArray = (signedTx as any).signature as string[];
       const signature = signatureArray?.[0] ?? '';
 
@@ -239,6 +245,8 @@ export class WalletService {
       this.#logger.log('Transaction signed successfully', { address, scope });
 
       return result;
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error signing transaction');
 
@@ -298,6 +306,8 @@ export class WalletService {
     const { params } = request;
 
     // Validate that address exists in params
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { address } = params as any;
     if (!address || typeof address !== 'string') {
       throw new Error('Address parameter is required and must be a string');

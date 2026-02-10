@@ -26,12 +26,16 @@ export const validateOrigin = (origin: string, method: string): void => {
  * @param struct - The expected structure of the request parameters.
  * @throws {typeof InvalidParamsError} If the request parameters do not conform to the expected structure.
  */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validateRequest<Params, TStruct extends Struct<any>>(
   requestParams: Params,
   struct: TStruct,
 ): asserts requestParams is Infer<TStruct> {
   try {
     assert(requestParams, struct);
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (validationError: any) {
     throw new InvalidParamsError(validationError.message);
   }
@@ -45,6 +49,8 @@ export function validateRequest<Params, TStruct extends Struct<any>>(
  * @param struct - The expected structure of the response.
  * @throws {SnapError} If the response does not conform to the expected structure.
  */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validateResponse<Params, TStruct extends Struct<any>>(
   response: Params,
   struct: TStruct,

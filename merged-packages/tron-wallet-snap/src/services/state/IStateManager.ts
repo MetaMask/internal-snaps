@@ -47,6 +47,8 @@ export type IStateManager<TStateValue extends Record<string, Serializable>> = {
    * @param key - The key to set, which is a json path to the location.
    * @param value - The value to set.
    */
+  // TODO: Replace `any` with type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setKey(key: string, value: any): Promise<void>;
   /**
    * Updates the whole state object.
