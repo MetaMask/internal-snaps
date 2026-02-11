@@ -140,8 +140,8 @@ describe('TransactionsService', () => {
       );
       // Mock TRC10 token metadata response with 3 decimals
       mockTronHttpClient.getTRC10TokenMetadata.mockResolvedValue({
-        name: 'BitTorrent',
-        symbol: 'BTT',
+        name: 'BestAdsCoin',
+        symbol: 'TRC20AdsCOM',
         decimals: 3,
       });
 
@@ -161,12 +161,12 @@ describe('TransactionsService', () => {
 
       // Verify TRC10 token metadata was fetched for the token ID in the transaction
       expect(mockTronHttpClient.getTRC10TokenMetadata).toHaveBeenCalledWith(
-        '1002000',
+        '1005119',
         Network.Mainnet,
       );
 
       // Verify the amount and symbol are from fetched metadata
-      // Raw amount is 494000, with 3 decimals: 494000 / 10^3 = 494
+      // Raw amount is 88888888, with 3 decimals: 88888888 / 10^3 = 88888.888
       expect(transactions).toHaveLength(1);
       const fromAsset = transactions[0]!.from[0]!.asset as {
         amount: string;
@@ -176,10 +176,10 @@ describe('TransactionsService', () => {
         amount: string;
         unit: string;
       };
-      expect(fromAsset.amount).toBe('494');
-      expect(fromAsset.unit).toBe('BTT');
-      expect(toAsset.amount).toBe('494');
-      expect(toAsset.unit).toBe('BTT');
+      expect(fromAsset.amount).toBe('88888.888');
+      expect(fromAsset.unit).toBe('TRC20AdsCOM');
+      expect(toAsset.amount).toBe('88888.888');
+      expect(toAsset.unit).toBe('TRC20AdsCOM');
     });
 
     it('falls back to defaults when TRC10 metadata fetch fails', async () => {
@@ -203,12 +203,12 @@ describe('TransactionsService', () => {
 
       // Verify TRC10 token metadata fetch was attempted
       expect(mockTronHttpClient.getTRC10TokenMetadata).toHaveBeenCalledWith(
-        '1002000',
+        '1005119',
         Network.Mainnet,
       );
 
       // Verify the amount falls back to default 6 decimals and symbol to UNKNOWN
-      // Raw amount is 494000, with 6 decimals: 494000 / 10^6 = 0.494
+      // Raw amount is 88888888, with 6 decimals: 88888888 / 10^6 = 88.888888
       expect(transactions).toHaveLength(1);
       const fromAsset = transactions[0]!.from[0]!.asset as {
         amount: string;
@@ -218,9 +218,9 @@ describe('TransactionsService', () => {
         amount: string;
         unit: string;
       };
-      expect(fromAsset.amount).toBe('0.494');
+      expect(fromAsset.amount).toBe('88.888888');
       expect(fromAsset.unit).toBe('UNKNOWN');
-      expect(toAsset.amount).toBe('0.494');
+      expect(toAsset.amount).toBe('88.888888');
       expect(toAsset.unit).toBe('UNKNOWN');
     });
 

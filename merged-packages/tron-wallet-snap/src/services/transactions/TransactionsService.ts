@@ -15,6 +15,7 @@ import type {
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
+import { hexToString } from '../../utils/hex';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 
@@ -125,14 +126,13 @@ export class TransactionsService {
 
     // Extract unique TRC10 token IDs from TransferAssetContract transactions
     const trc10TokenIds = new Set<string>();
+
     for (const tx of rawTransactions) {
       const contract = tx.raw_data.contract?.[0];
       if (contract?.type === 'TransferAssetContract') {
         const assetContract = contract as TransferAssetContractInfo;
-        const tokenId = assetContract.parameter.value.asset_name;
-        if (tokenId) {
-          trc10TokenIds.add(tokenId);
-        }
+        const tokenId = hexToString(assetContract.parameter.value.asset_name);
+        trc10TokenIds.add(tokenId);
       }
     }
 

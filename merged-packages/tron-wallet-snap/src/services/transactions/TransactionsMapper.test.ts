@@ -94,11 +94,11 @@ describe('TransactionMapper', () => {
     });
 
     describe('TransferAssetContract (TRC10 transfers)', () => {
-      // Use the actual address from the TRC10 transaction mock instead of converting
+      // Use the actual address from the TRC10 transaction mock
       const trc10Account: TronKeyringAccount = {
         ...mockAccount,
         id: 'test-trc10-account',
-        address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw', // Actual address from TRC10 mock
+        address: 'TSgs5wukfK4492Vgt55D7FxoiNDaqmrgWG',
       };
 
       it('maps TRC10 send transaction with default 6 decimals when no metadata provided', () => {
@@ -113,45 +113,45 @@ describe('TransactionMapper', () => {
         const expectedTransaction = {
           account: 'test-trc10-account',
           type: TransactionType.Send,
-          id: 'd8fc96d5b81fe600e055741e27135e22d5ae42584c9056758f797b1a20328818',
+          id: 'b079d6084d565898c6f534228a9df6860d96e3a0794d55ec1bb169daece1eb81',
           from: [
             {
-              address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw',
+              address: 'TSgs5wukfK4492Vgt55D7FxoiNDaqmrgWG',
               asset: {
-                // 494000 / 10^6 = 0.494 (default 6 decimals)
-                amount: '0.494',
+                // 88888888 / 10^6 = 88.888888 (default 6 decimals)
+                amount: '88.888888',
                 unit: 'UNKNOWN',
-                type: 'tron:728126428/trc10:1002000',
+                type: 'tron:728126428/trc10:1005119',
                 fungible: true,
               },
             },
           ],
           to: [
             {
-              address: 'TKYT8YiiL58h8USHkmVEhCYpNfgSyiWPcW',
+              address: 'TA3nAC3fofyXiQ7qcJGANih6a3DawjM5su',
               asset: {
-                amount: '0.494',
+                amount: '88.888888',
                 unit: 'UNKNOWN',
-                type: 'tron:728126428/trc10:1002000',
+                type: 'tron:728126428/trc10:1005119',
                 fungible: true,
               },
             },
           ],
           chain: 'tron:728126428',
           status: TransactionStatus.Confirmed,
-          timestamp: 1756870677,
+          timestamp: 1769119122,
           events: [
             {
               status: TransactionStatus.Confirmed,
-              timestamp: 1756870677,
+              timestamp: 1769119122,
             },
           ],
           fees: [
             {
               asset: {
-                amount: '0.281',
-                unit: 'TRX',
-                type: 'tron:728126428/slip44:195',
+                amount: '282',
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
                 fungible: true,
               },
               type: 'base',
@@ -165,14 +165,13 @@ describe('TransactionMapper', () => {
       it('maps TRC10 send transaction using metadata (decimals and symbol)', () => {
         const rawTransaction = trc10TransferMock as TransactionInfo;
 
-        // Create metadata map with 3 decimals for token 1002000
         const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>([
           [
-            '1002000',
+            '1005119',
             {
-              name: 'BitTorrent',
-              symbol: 'BTT',
-              decimals: 3, // Token has 3 decimals, not 6
+              name: 'BestAdsCoin',
+              symbol: 'TRC20AdsCOM',
+              decimals: 3,
             },
           ],
         ]);
@@ -184,7 +183,7 @@ describe('TransactionMapper', () => {
           trc10TokenMetadata,
         });
 
-        // 494000 / 10^3 = 494 (using actual 3 decimals)
+        // 88888888 / 10^3 = 88888.888 (using 3 decimals)
         const fromAsset = result!.from[0]!.asset as {
           amount: string;
           unit: string;
@@ -193,23 +192,22 @@ describe('TransactionMapper', () => {
           amount: string;
           unit: string;
         };
-        expect(fromAsset.amount).toBe('494');
-        expect(fromAsset.unit).toBe('BTT');
-        expect(toAsset.amount).toBe('494');
-        expect(toAsset.unit).toBe('BTT');
+        expect(fromAsset.amount).toBe('88888.888');
+        expect(fromAsset.unit).toBe('TRC20AdsCOM');
+        expect(toAsset.amount).toBe('88888.888');
+        expect(toAsset.unit).toBe('TRC20AdsCOM');
       });
 
       it('maps TRC10 send transaction using 0 decimals from token metadata', () => {
         const rawTransaction = trc10TransferMock as TransactionInfo;
 
-        // Create metadata map with 0 decimals for token 1002000
         const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>([
           [
-            '1002000',
+            '1005119',
             {
               name: 'WholeToken',
               symbol: 'WHL',
-              decimals: 0, // Token has no decimals
+              decimals: 0,
             },
           ],
         ]);
@@ -221,7 +219,7 @@ describe('TransactionMapper', () => {
           trc10TokenMetadata,
         });
 
-        // 494000 / 10^0 = 494000 (using actual 0 decimals)
+        // 88888888 / 10^0 = 88888888 (using 0 decimals)
         const fromAsset = result!.from[0]!.asset as {
           amount: string;
           unit: string;
@@ -230,10 +228,46 @@ describe('TransactionMapper', () => {
           amount: string;
           unit: string;
         };
-        expect(fromAsset.amount).toBe('494000');
+        expect(fromAsset.amount).toBe('88888888');
         expect(fromAsset.unit).toBe('WHL');
-        expect(toAsset.amount).toBe('494000');
+        expect(toAsset.amount).toBe('88888888');
         expect(toAsset.unit).toBe('WHL');
+      });
+
+      it('decodes hex-encoded asset_name to resolve token metadata', () => {
+        const rawTransaction = trc10TransferMock as TransactionInfo;
+
+        const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>([
+          [
+            '1005119',
+            {
+              name: 'BestAdsCoin',
+              symbol: 'TRC20AdsCOM',
+              decimals: 6,
+            },
+          ],
+        ]);
+
+        const result = TransactionMapper.mapTransaction({
+          scope: Network.Mainnet,
+          account: trc10Account,
+          trongridTransaction: rawTransaction,
+          trc10TokenMetadata,
+        });
+
+        expect(result).not.toBeNull();
+        const fromAsset = result!.from[0]!.asset as {
+          type: string;
+          unit: string;
+        };
+        const toAsset = result!.to[0]!.asset as {
+          type: string;
+          unit: string;
+        };
+        expect(fromAsset.type).toBe('tron:728126428/trc10:1005119');
+        expect(fromAsset.unit).toBe('TRC20AdsCOM');
+        expect(toAsset.type).toBe('tron:728126428/trc10:1005119');
+        expect(toAsset.unit).toBe('TRC20AdsCOM');
       });
     });
 

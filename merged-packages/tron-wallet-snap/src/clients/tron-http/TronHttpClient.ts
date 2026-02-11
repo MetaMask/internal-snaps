@@ -23,6 +23,7 @@ import type {
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
+import { hexToString } from '../../utils/hex';
 
 /**
  * Client for Tron JSON-RPC HTTP endpoints (not the REST API)
@@ -110,8 +111,8 @@ export class TronHttpClient {
     const tokenInfo = await this.getTRC10TokenById(tokenId, network);
 
     return {
-      name: tokenInfo.name,
-      symbol: tokenInfo.abbr,
+      name: hexToString(tokenInfo.name),
+      symbol: hexToString(tokenInfo.abbr),
       decimals: tokenInfo.precision,
     };
   }

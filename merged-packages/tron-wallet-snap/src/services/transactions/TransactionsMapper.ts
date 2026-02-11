@@ -15,6 +15,7 @@ import type { Network } from '../../constants';
 import { Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 import { sunToTrx, toUiAmount } from '../../utils/conversion';
+import { hexToString } from '../../utils/hex';
 
 // TRC20 transaction types from TronGrid API
 const TRC20_APPROVAL_TYPE = 'Approval';
@@ -440,8 +441,8 @@ export class TransactionMapper {
       ? Math.floor(Date.now() / 1000)
       : Math.floor(trongridTransaction.block_timestamp / 1000);
 
-    // Get token metadata for decimals and symbol
-    const assetName = contractValue.asset_name;
+    const assetName = hexToString(contractValue.asset_name);
+
     const tokenMetadata = trc10TokenMetadata?.get(assetName);
     const decimals = tokenMetadata?.decimals ?? 6;
     const symbol = tokenMetadata?.symbol ?? 'UNKNOWN';
