@@ -395,6 +395,15 @@ export class AssetsService {
     return assets;
   }
 
+  /**
+   * Extracts used bandwidth and maximum bandwidth assets from the account resources.
+   *
+   * @param options - Options object.
+   * @param options.account - The account to extract bandwidth for.
+   * @param options.scope - The network to extract bandwidth for.
+   * @param options.tronAccountResources - The account resources to extract bandwidth for.
+   * @returns The bandwidth assets.
+   */
   #extractBandwidth({
     account,
     scope,
@@ -404,11 +413,15 @@ export class AssetsService {
     scope: Network;
     tronAccountResources: AccountResources | Record<string, never>;
   }): AssetEntity[] {
-    const maximumBandwidth =
-      (tronAccountResources?.freeNetLimit ?? 0) +
-      (tronAccountResources?.NetLimit ?? 0);
-    const bandwidth =
-      maximumBandwidth - (tronAccountResources?.freeNetUsed ?? 0);
+    const freeBandwidth = tronAccountResources?.freeNetLimit ?? 0;
+    const stakingBandwidth = tronAccountResources?.NetLimit ?? 0;
+    const maximumBandwidth = freeBandwidth + stakingBandwidth;
+
+    const usedFreeBandwidth = tronAccountResources?.freeNetUsed ?? 0;
+    const usedStakingBandwidth = tronAccountResources?.NetUsed ?? 0;
+    const usedBandwidth = usedFreeBandwidth + usedStakingBandwidth;
+
+    const availableBandwidth = Math.max(0, maximumBandwidth - usedBandwidth);
 
     return [
       {
@@ -417,8 +430,8 @@ export class AssetsService {
         network: scope,
         symbol: Networks[scope].bandwidth.symbol,
         decimals: Networks[scope].bandwidth.decimals,
-        rawAmount: bandwidth.toString(),
-        uiAmount: bandwidth.toString(),
+        rawAmount: availableBandwidth.toString(),
+        uiAmount: availableBandwidth.toString(),
         iconUrl: Networks[scope].bandwidth.iconUrl,
       },
       {
@@ -444,8 +457,13 @@ export class AssetsService {
     tronAccountResources: AccountResources | Record<string, never>;
   }): AssetEntity[] {
     const maximumEnergy = tronAccountResources?.EnergyLimit ?? 0;
-    const energyUsed = tronAccountResources?.EnergyUsed ?? 0;
-    const energy = maximumEnergy - energyUsed;
+
+    const usedEnergy = tronAccountResources?.EnergyUsed ?? 0;
+
+    /**
+     * We might have used more Energy than the maximum allocated
+     */
+    const availableEnergy = Math.max(0, maximumEnergy - usedEnergy);
 
     return [
       {
@@ -454,8 +472,8 @@ export class AssetsService {
         network: scope,
         symbol: Networks[scope].energy.symbol,
         decimals: Networks[scope].energy.decimals,
-        rawAmount: energy.toString(),
-        uiAmount: energy.toString(),
+        rawAmount: availableEnergy.toString(),
+        uiAmount: availableEnergy.toString(),
         iconUrl: Networks[scope].energy.iconUrl,
       },
       {

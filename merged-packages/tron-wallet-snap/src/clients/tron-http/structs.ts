@@ -46,6 +46,7 @@ export type ValidatedTRC10TokenInfo = Infer<typeof TRC10TokenInfoStruct>;
 export const AccountResourcesStruct = type({
   freeNetUsed: optional(min(number(), 0)),
   freeNetLimit: optional(min(number(), 0)),
+  NetUsed: optional(min(number(), 0)),
   NetLimit: optional(min(number(), 0)),
   TotalNetLimit: optional(min(number(), 0)),
   TotalNetWeight: optional(min(number(), 0)),
@@ -57,7 +58,12 @@ export const AccountResourcesStruct = type({
   TotalEnergyWeight: optional(min(number(), 0)),
 });
 
-export type ValidatedAccountResources = Infer<typeof AccountResourcesStruct>;
+/**
+ * Account resources derived from the Superstruct schema.
+ *
+ * @see https://developers.tron.network/reference/getaccountresource
+ */
+export type AccountResources = Infer<typeof AccountResourcesStruct>;
 
 // --------------------------------------------------------------------------
 // FullNodeTransactionInfo Structs

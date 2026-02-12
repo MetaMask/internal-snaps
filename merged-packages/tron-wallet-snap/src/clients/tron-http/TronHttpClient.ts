@@ -10,8 +10,8 @@ import {
   TRC10TokenInfoStruct,
   TriggerConstantContractResponseStruct,
 } from './structs';
+import type { AccountResources } from './structs';
 import type {
-  AccountResources,
   ChainParameter,
   ContractInfo,
   FullNodeTransactionInfo,
