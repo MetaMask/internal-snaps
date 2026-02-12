@@ -20,8 +20,9 @@ import { Networks } from '../../../../constants';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
-import { Asset } from '../../components/Asset/Asset';
+import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
+import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
 
 export const ConfirmTransactionRequest = ({
   context: {
@@ -29,25 +30,35 @@ export const ConfirmTransactionRequest = ({
     scope,
     fromAddress,
     toAddress,
-    asset,
-    amount,
     fees,
     preferences,
     networkImage,
     tokenPrices,
     tokenPricesFetchStatus,
+    scan,
+    scanFetchStatus,
   },
 }: {
   context: ConfirmTransactionRequestContext;
 }): ComponentOrElement => {
   const translate = i18n(preferences.locale);
 
-  const assetPrice = tokenPrices[asset.assetType]?.price ?? null;
-  const priceLoading = tokenPricesFetchStatus === 'fetching';
+  const shouldDisableConfirmButton =
+    scanFetchStatus === 'fetching' || scan?.status === 'ERROR';
 
   return (
     <Container>
       <Box>
+        {/* Security Alert */}
+        {preferences.useSecurityAlerts ? (
+          <TransactionAlert
+            scanFetchStatus={scanFetchStatus}
+            validation={scan?.validation ?? null}
+            error={scan?.error ?? null}
+            preferences={preferences}
+          />
+        ) : null}
+
         {/* Header */}
         <Box alignment="center" center>
           <Box>{null}</Box>
@@ -56,36 +67,15 @@ export const ConfirmTransactionRequest = ({
           </Heading>
           <Box>{null}</Box>
         </Box>
-        {/* Estimated Changes */}
-        <Section>
-          {/* Header + Tooltip */}
-          <Box direction="horizontal" center>
-            <SnapText fontWeight="medium">
-              {translate('confirmation.estimatedChanges.title')}
-            </SnapText>
-            <Tooltip
-              content={translate('confirmation.estimatedChanges.tooltip')}
-            >
-              <Icon name="info" />
-            </Tooltip>
-          </Box>
-          <Box alignment="space-between" direction="horizontal">
-            <Box alignment="space-between" direction="horizontal" center>
-              <SnapText fontWeight="medium" color="alternative">
-                {translate('confirmation.estimatedChanges.send')}
-              </SnapText>
-            </Box>
-            <Asset
-              caipId={asset.assetType}
-              amount={amount ?? ''}
-              symbol={asset.symbol}
-              iconUrl={asset.iconUrl}
-              price={assetPrice}
-              preferences={preferences}
-              priceLoading={priceLoading}
-            />
-          </Box>
-        </Section>
+
+        {/* Estimated Changes (from security scan simulation) */}
+        {preferences.simulateOnChainActions ? (
+          <EstimatedChanges
+            scanFetchStatus={scanFetchStatus}
+            changes={scan?.estimatedChanges ?? null}
+            preferences={preferences}
+          />
+        ) : null}
 
         {/* Additional Details */}
         <Section>
@@ -165,7 +155,10 @@ export const ConfirmTransactionRequest = ({
         <Button name={ConfirmSignAndSendTransactionFormNames.Cancel}>
           {translate(`confirmation.cancelButton`)}
         </Button>
-        <Button name={ConfirmSignAndSendTransactionFormNames.Confirm}>
+        <Button
+          name={ConfirmSignAndSendTransactionFormNames.Confirm}
+          disabled={shouldDisableConfirmButton}
+        >
           {translate(`confirmation.confirmButton`)}
         </Button>
       </Footer>

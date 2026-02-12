@@ -4,6 +4,7 @@ import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';
 import type { TronHttpClient } from '../clients/tron-http/TronHttpClient';
 import type { Network } from '../constants';
+import type { TronKeyringAccount } from '../entities';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
@@ -30,6 +31,7 @@ export enum BackgroundEventMethod {
   SynchronizeAccount = 'onSynchronizeAccount',
   SynchronizeAccountTransactions = 'onSynchronizeAccountTransactions',
   RefreshConfirmationPrices = 'refreshConfirmationPrices',
+  RefreshConfirmationSend = 'refreshConfirmationSend',
   RefreshSignTransaction = 'refreshSignTransaction',
   TrackTransaction = 'onTrackTransaction',
 }
@@ -103,6 +105,9 @@ export class CronHandler {
         break;
       case BackgroundEventMethod.RefreshConfirmationPrices:
         await this.refreshConfirmationPrices();
+        break;
+      case BackgroundEventMethod.RefreshConfirmationSend:
+        await this.refreshConfirmationSend();
         break;
       case BackgroundEventMethod.RefreshSignTransaction:
         await this.refreshSignTransaction();
@@ -293,6 +298,166 @@ export class CronHandler {
         const errorContext: ConfirmTransactionRequestContext = {
           ...currentContext,
           tokenPricesFetchStatus: 'error' as const,
+        };
+
+        await this.#snapClient.updateInterface(
+          confirmationInterfaceId,
+          <ConfirmTransactionRequest context={errorContext} />,
+          errorContext,
+        );
+      } catch {
+        // Ignore errors when trying to update error state
+      }
+
+      // Don't schedule another refresh on error - the dialog might be gone
+    }
+  }
+
+  /**
+   * Background job to refresh the security scan for simple send confirmation dialogs.
+   * Follows Solana's snap pattern: get interface ID from map, refresh scan data, update UI.
+   */
+  async refreshConfirmationSend(): Promise<void> {
+    this.#logger.info(
+      'Background scan refresh triggered for send confirmation...',
+    );
+
+    const mapInterfaceNameToId =
+      (await this.#state.getKey<UnencryptedStateValue['mapInterfaceNameToId']>(
+        'mapInterfaceNameToId',
+      )) ?? {};
+
+    const confirmationInterfaceId =
+      mapInterfaceNameToId[CONFIRM_TRANSACTION_INTERFACE_NAME];
+
+    // Don't do anything if the confirmation interface is not open
+    if (!confirmationInterfaceId) {
+      this.#logger.info('No active send confirmation interface found');
+      return;
+    }
+
+    // Get the current interface context
+    const interfaceContext =
+      await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+        confirmationInterfaceId,
+      );
+
+    if (!interfaceContext) {
+      this.#logger.info('Interface context no longer exists, cleaning up');
+      await this.#state.setKey(
+        `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
+        null,
+      );
+      return;
+    }
+
+    // Skip if required fields are missing
+    if (!interfaceContext.fromAddress || !interfaceContext.scope) {
+      this.#logger.info('Context is missing required fields for scan refresh');
+      return;
+    }
+
+    const { preferences, scope, fromAddress, origin, scanParameters } =
+      interfaceContext;
+
+    try {
+      // Update UI to show fetching state for scan
+      const fetchingContext: ConfirmTransactionRequestContext = {
+        ...interfaceContext,
+        scanFetchStatus: 'fetching',
+      };
+
+      await this.#snapClient.updateInterface(
+        confirmationInterfaceId,
+        <ConfirmTransactionRequest context={fetchingContext} />,
+        fetchingContext,
+      );
+
+      // Always request simulation for estimated changes;
+      // conditionally add validation based on user preference
+      const options: string[] = ['simulation'];
+      if (preferences.useSecurityAlerts) {
+        options.push('validation');
+      }
+
+      // Create a minimal account object for analytics tracking
+      const scanAccount = {
+        type: interfaceContext.accountType,
+        address: fromAddress,
+      } as TronKeyringAccount;
+
+      let { scan } = interfaceContext;
+      let { scanFetchStatus } = interfaceContext;
+
+      try {
+        scan = await this.#transactionScanService.scanTransaction({
+          accountAddress: fromAddress,
+          parameters: {
+            from: scanParameters?.from ?? undefined,
+            to: scanParameters?.to ?? undefined,
+            data: scanParameters?.data ?? undefined,
+            value: scanParameters?.value ?? undefined,
+          },
+          origin,
+          scope,
+          options,
+          account: scanAccount,
+        });
+        scanFetchStatus = scan ? 'fetched' : 'error';
+        this.#logger.info('Successfully refreshed send confirmation scan');
+      } catch (error) {
+        this.#logger.error('Error refreshing send confirmation scan:', error);
+        scanFetchStatus = 'error';
+      }
+
+      // Get the latest context (might have changed during async operations)
+      const latestContext =
+        await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+          confirmationInterfaceId,
+        );
+
+      if (!latestContext) {
+        this.#logger.info('Interface closed during refresh');
+        return;
+      }
+
+      // Update with scan results
+      const updatedContext: ConfirmTransactionRequestContext = {
+        ...latestContext,
+        scan,
+        scanFetchStatus,
+      };
+
+      await this.#snapClient.updateInterface(
+        confirmationInterfaceId,
+        <ConfirmTransactionRequest context={updatedContext} />,
+        updatedContext,
+      );
+
+      this.#logger.info('Successfully refreshed send confirmation');
+
+      // Schedule the next refresh (20 seconds matching Solana pattern)
+      await this.#snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.RefreshConfirmationSend,
+        duration: 'PT20S',
+      });
+    } catch (error) {
+      this.#logger.error('Error refreshing send confirmation:', error);
+
+      // Try to update the UI to show error state
+      try {
+        const currentContext =
+          await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+            confirmationInterfaceId,
+          );
+
+        if (!currentContext) {
+          return;
+        }
+
+        const errorContext: ConfirmTransactionRequestContext = {
+          ...currentContext,
+          scanFetchStatus: 'error',
         };
 
         await this.#snapClient.updateInterface(

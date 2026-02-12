@@ -150,6 +150,7 @@ export class ConfirmationHandler {
         fees,
         asset,
         origin: formatOrigin(origin),
+        accountType,
       },
     );
 
