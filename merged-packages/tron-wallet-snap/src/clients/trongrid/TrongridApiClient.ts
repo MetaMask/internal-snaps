@@ -2,12 +2,14 @@ import { assert } from '@metamask/superstruct';
 
 import {
   ContractTransactionInfoStruct,
+  Trc20BalanceStruct,
   TransactionInfoStruct,
   TronAccountStruct,
   TrongridApiMetaStruct,
 } from './structs';
 import type {
   ContractTransactionInfo,
+  Trc20Balance,
   TransactionInfo,
   TronAccount,
   TrongridApiResponse,
@@ -79,12 +81,15 @@ export class TrongridApiClient {
   }
 
   /**
-   * Get account information by address for a specific network. The returned data will also have assets information.
+   * Get account information by address for a specific network.
+   * The returned data includes TRX balance, TRC10 assets and TRC20 token balances.
    *
    * @see https://developers.tron.network/reference/get-account-info-by-address
    * @param scope - The network to query (e.g., 'mainnet', 'shasta')
    * @param address - The TRON address to query
-   * @returns Promise<TronAccount> - Account data in camelCase
+   * @returns Promise<TronAccount> - Account data including balances.
+   * @throws Error - "Account not found or no data returned" for inactive accounts.
+   * @throws Error - HTTP errors or API failures.
    */
   async getAccountInfoByAddress(
     scope: Network,
@@ -229,6 +234,57 @@ export class TrongridApiClient {
     // Validate each contract transaction info
     for (const txInfo of rawData.data) {
       assert(txInfo, ContractTransactionInfoStruct);
+    }
+
+    return rawData.data;
+  }
+
+  /**
+   * Get TRC20 token balances for an account address.
+   * This endpoint works for inactive accounts that haven't been activated yet.
+   *
+   * @see https://developers.tron.network/reference/get-trc20-token-holder-balances
+   * @param scope - The network to query (e.g., 'mainnet', 'shasta')
+   * @param address - The TRON address to query
+   * @returns Promise<Trc20Balance[]> - Array of TRC20 balances (contract address -> balance)
+   */
+  async getTrc20BalancesByAddress(
+    scope: Network,
+    address: string,
+  ): Promise<Trc20Balance[]> {
+    const client = this.#clients.get(scope);
+    if (!client) {
+      throw new Error(`No client configured for network: ${scope}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = buildUrl({
+      baseUrl,
+      path: '/v1/accounts/{address}/trc20/balance',
+      pathParams: { address },
+    });
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const rawData: TrongridApiResponse<Trc20Balance[]> = await response.json();
+
+    // Validate API response structure
+    if (typeof rawData.success !== 'boolean' || !rawData.success) {
+      throw new Error('API request failed');
+    }
+    assert(rawData.meta, TrongridApiMetaStruct);
+
+    if (!rawData.data) {
+      return [];
+    }
+
+    // Validate each TRC20 balance entry
+    for (const balance of rawData.data) {
+      assert(balance, Trc20BalanceStruct);
     }
 
     return rawData.data;

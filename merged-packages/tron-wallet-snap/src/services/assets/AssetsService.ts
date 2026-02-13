@@ -40,7 +40,7 @@ import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { TronAccount } from '../../clients/trongrid/types';
+import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
 import type { KnownCaip19Id, Network } from '../../constants';
 import {
   BANDWIDTH_METADATA,
@@ -59,6 +59,27 @@ import type { AssetEntity } from '../../entities/assets';
 import { toUiAmount } from '../../utils/conversion';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
+
+/**
+ * Normalized account data structure that provides a consistent shape for both
+ * active and inactive accounts. This allows extraction functions to work
+ * without needing to know the account's activation state.
+ */
+type NormalizedAccountData = {
+  /** Native TRX balance in sun (0 for inactive accounts). */
+  nativeBalance: number;
+  /** TRC10 token balances as `{ key: tokenId, value: balance }[]` (empty for inactive accounts). */
+  trc10Balances: TronAccount['assetV2'];
+  /** TRC20 token balances from either account info or fallback endpoint. */
+  trc20Balances: Trc20Balance[];
+  /** Staking data including frozen balances and delegated resources. */
+  stakedData: {
+    frozenV2: TronAccount['frozenV2'];
+    accountResource: TronAccount['account_resource'] | undefined;
+  };
+  /** Account resources (energy, bandwidth). Empty object for inactive accounts. */
+  resources: AccountResources | Record<string, never>;
+};
 
 export class AssetsService {
   readonly #logger: ILogger;
@@ -138,6 +159,26 @@ export class AssetsService {
     );
   }
 
+  /**
+   * Fetches all assets and balances for an account.
+   *
+   * Data Sources:
+   * - `getAccountInfoByAddress`: TRX balance, TRC10 tokens, TRC20 tokens (active accounts only)
+   * - `getAccountResources`: Energy and Bandwidth (returns {} for inactive accounts)
+   * - `getTrc20BalancesByAddress`: TRC20 balances fallback (works for inactive accounts)
+   *
+   * Logic Flow:
+   * 1. Fetch account info, resources, and TRC20 fallback (for inactive accounts)
+   * 2. Normalize data into consistent shape via `#buildAccountData`
+   * 3. Extract all assets via `#extractAssets`
+   * 4. Fetch metadata and prices in parallel
+   * 5. Enrich assets with metadata via `#enrichAssetsWithMetadata`
+   * 6. Filter spam tokens via `#filterTokensWithoutPriceData`
+   *
+   * @param scope - The network to query.
+   * @param account - The keyring account.
+   * @returns Promise<AssetEntity[]> - Array of assets with balances.
+   */
   async fetchAssetsAndBalancesForAccount(
     scope: Network,
     account: KeyringAccount,
@@ -153,120 +194,49 @@ export class AssetsService {
         this.#tronHttpClient.getAccountResources(scope, account.address),
       ]);
 
-    if (
-      tronAccountInfoRequest.status === 'rejected' ||
-      tronAccountResourcesRequest.status === 'rejected'
-    ) {
-      const errorMessage = `Failed to fetch account info or account resources for ${account.address} on network ${scope}`;
-      this.#logger.error(errorMessage);
-      throw new Error(errorMessage);
+    const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
+    if (isInactiveAccount) {
+      this.#logger.info(
+        'Account info request failed, treating as inactive account',
+        { account, scope },
+      );
     }
 
-    const nativeAsset = this.#extractNativeAsset({
-      account,
-      scope,
-      tronAccountInfo: tronAccountInfoRequest.value,
-    });
-    const stakedNativeAssets = this.#extractStakedNativeAssets({
-      account,
-      scope,
-      tronAccountInfo: tronAccountInfoRequest.value,
-    });
-    const bandwidthAssets = this.#extractBandwidth({
-      account,
-      scope,
-      tronAccountResources: tronAccountResourcesRequest.value,
-    });
-    const energyAssets = this.#extractEnergy({
-      account,
-      scope,
-      tronAccountResources: tronAccountResourcesRequest.value,
-    });
-    const trc10Assets = this.#extractTrc10Assets({
-      account,
-      scope,
-      tronAccountInfo: tronAccountInfoRequest.value,
-    });
-    const trc20Assets = this.#extractTrc20Assets({
-      account,
-      scope,
-      tronAccountInfo: tronAccountInfoRequest.value,
+    const trc20BalancesFallback = isInactiveAccount
+      ? await this.#trongridApiClient
+          .getTrc20BalancesByAddress(scope, account.address)
+          .catch((error) => {
+            this.#logger.warn(
+              'Failed to fetch TRC20 balances for inactive account',
+              { error, account, scope },
+            );
+            return [];
+          })
+      : [];
+
+    const accountData = this.#buildAccountData({
+      tronAccountInfoRequest,
+      tronAccountResourcesRequest,
+      trc20BalancesFallback,
     });
 
-    const assetTypes = [
-      nativeAsset.assetType,
-      ...stakedNativeAssets.map((assets) => assets.assetType),
-      ...bandwidthAssets.map((assets) => assets.assetType),
-      ...energyAssets.map((assets) => assets.assetType),
-      ...trc10Assets.map((assets) => assets.assetType),
-      ...trc20Assets.map((assets) => assets.assetType),
-    ];
-    // Only native, TRC10, and TRC20 have Price API-compliant CAIP IDs
-    // (staked, energy, bandwidth have non-compliant IDs that would fail)
-    const priceableAssetTypes = [
-      nativeAsset.assetType,
-      ...trc10Assets.map((assets) => assets.assetType),
-      ...trc20Assets.map((assets) => assets.assetType),
-    ];
+    const rawAssets = this.#extractAssets(account, scope, accountData);
+
+    const assetTypes = rawAssets.map((asset) => asset.assetType);
+    const priceableAssetTypes = this.#getPriceableAssetTypes(rawAssets);
 
     const [assetsMetadata, spotPrices] = await Promise.all([
       this.getAssetsMetadata(assetTypes),
       this.#priceApiClient
         .getMultipleSpotPrices(priceableAssetTypes, 'usd')
-        .catch(() => ({})), // If prices fail, return empty - filtering will handle it
+        .catch(() => ({})),
     ]);
 
-    const assets = [
-      nativeAsset,
-      ...stakedNativeAssets,
-      ...bandwidthAssets,
-      ...energyAssets,
-      ...trc10Assets,
-      ...trc20Assets,
-    ].map((asset) => {
-      const metadata = assetsMetadata[
-        asset.assetType
-      ] as FungibleAssetMetadata | null;
-
-      const {
-        symbol: initialSymbol,
-        decimals: initialDecimals = 0,
-        iconUrl: initialIconUrl,
-      } = asset;
-      let symbol = initialSymbol;
-      let decimals = initialDecimals;
-      let iconUrl = initialIconUrl;
-
-      if (metadata?.fungible) {
-        const unit = metadata.units?.[0];
-        if (unit) {
-          symbol = unit.symbol ?? metadata.symbol ?? symbol;
-          decimals = unit.decimals ?? decimals;
-        } else {
-          symbol = metadata?.symbol ?? symbol;
-        }
-        // Include iconUrl from metadata if available
-        iconUrl = metadata.iconUrl ?? iconUrl;
-      }
-
-      const uiAmount = toUiAmount(asset.rawAmount, decimals).toString();
-
-      return {
-        ...asset,
-        symbol,
-        decimals,
-        uiAmount,
-        iconUrl,
-      };
-    });
-
-    // Filter out tokens without price data (spam/obscure tokens)
-    const filteredAssets = this.#filterTokensWithoutPriceData(
-      assets,
-      spotPrices,
+    const enrichedAssets = this.#enrichAssetsWithMetadata(
+      rawAssets,
+      assetsMetadata,
     );
-
-    return filteredAssets;
+    return this.#filterTokensWithoutPriceData(enrichedAssets, spotPrices);
   }
 
   /**
@@ -294,19 +264,166 @@ export class AssetsService {
     return filtered;
   }
 
-  #extractNativeAsset({
-    account,
-    scope,
-    tronAccountInfo,
+  /**
+   * Normalizes raw API responses into a consistent shape for both active and inactive accounts.
+   * This allows extraction functions to work without needing to know the account's activation state.
+   *
+   * @param params - The raw API responses to normalize.
+   * @param params.tronAccountInfoRequest - The settled promise result from getAccountInfoByAddress.
+   * @param params.tronAccountResourcesRequest - The settled promise result from getAccountResources.
+   * @param params.trc20BalancesFallback - TRC20 balances from fallback endpoint (empty for active accounts).
+   * @returns NormalizedAccountData - Consistent data shape for extraction.
+   */
+  #buildAccountData({
+    tronAccountInfoRequest,
+    tronAccountResourcesRequest,
+    trc20BalancesFallback,
   }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountInfo: TronAccount;
-  }): AssetEntity {
-    // Balance may be missing for very new/inactive accounts, default to 0
-    const balance = tronAccountInfo.balance ?? 0;
+    tronAccountInfoRequest: PromiseSettledResult<TronAccount>;
+    tronAccountResourcesRequest: PromiseSettledResult<AccountResources>;
+    trc20BalancesFallback: Trc20Balance[];
+  }): NormalizedAccountData {
+    const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
+    const resources =
+      tronAccountResourcesRequest.status === 'fulfilled'
+        ? tronAccountResourcesRequest.value
+        : {};
 
-    const asset: AssetEntity = {
+    if (isInactiveAccount) {
+      return {
+        nativeBalance: 0,
+        trc10Balances: [],
+        trc20Balances: trc20BalancesFallback,
+        stakedData: { frozenV2: [], accountResource: undefined },
+        resources,
+      };
+    }
+
+    const tronAccountInfo = tronAccountInfoRequest.value;
+    return {
+      nativeBalance: tronAccountInfo.balance ?? 0,
+      trc10Balances: tronAccountInfo.assetV2 ?? [],
+      trc20Balances: tronAccountInfo.trc20 ?? [],
+      stakedData: {
+        frozenV2: tronAccountInfo.frozenV2 ?? [],
+        accountResource: tronAccountInfo.account_resource,
+      },
+      resources,
+    };
+  }
+
+  /**
+   * Extracts all assets from normalized account data.
+   * Coordinates calls to individual extraction functions.
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param data - Normalized account data.
+   * @returns AssetEntity[] - Array of all extracted assets.
+   */
+  #extractAssets(
+    account: KeyringAccount,
+    scope: Network,
+    data: NormalizedAccountData,
+  ): AssetEntity[] {
+    return [
+      this.#extractNativeAsset(account, scope, data.nativeBalance),
+      ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
+      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
+      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
+      ...this.#extractBandwidth({
+        account,
+        scope,
+        tronAccountResources: data.resources,
+      }),
+      ...this.#extractEnergy({
+        account,
+        scope,
+        tronAccountResources: data.resources,
+      }),
+    ];
+  }
+
+  /**
+   * Returns the asset types that can be priced (native, TRC10, TRC20).
+   * Staked, energy, and bandwidth assets have non-compliant CAIP IDs that would fail the Price API.
+   *
+   * @param assets - Array of assets to filter.
+   * @returns CaipAssetType[] - Array of priceable asset types.
+   */
+  #getPriceableAssetTypes(assets: AssetEntity[]): CaipAssetType[] {
+    return assets
+      .filter(
+        (asset) =>
+          asset.assetType.includes('/slip44:') ||
+          asset.assetType.includes('/trc10:') ||
+          asset.assetType.includes('/trc20:'),
+      )
+      .map((asset) => asset.assetType);
+  }
+
+  /**
+   * Enriches assets with metadata (symbol, decimals, iconUrl) and calculates uiAmount.
+   *
+   * @param assets - Raw assets to enrich.
+   * @param assetsMetadata - Metadata lookup by asset type.
+   * @returns AssetEntity[] - Enriched assets.
+   */
+  #enrichAssetsWithMetadata(
+    assets: AssetEntity[],
+    assetsMetadata: Record<CaipAssetType, AssetMetadata | null>,
+  ): AssetEntity[] {
+    return assets.map((asset) => {
+      const metadata = assetsMetadata[
+        asset.assetType
+      ] as FungibleAssetMetadata | null;
+
+      const {
+        symbol: initialSymbol,
+        decimals: initialDecimals = 0,
+        iconUrl: initialIconUrl,
+      } = asset;
+      let symbol = initialSymbol;
+      let decimals = initialDecimals;
+      let iconUrl = initialIconUrl;
+
+      if (metadata?.fungible) {
+        const unit = metadata.units?.[0];
+        if (unit) {
+          symbol = unit.symbol ?? metadata.symbol ?? symbol;
+          decimals = unit.decimals ?? decimals;
+        } else {
+          symbol = metadata?.symbol ?? symbol;
+        }
+        iconUrl = metadata.iconUrl ?? iconUrl;
+      }
+
+      const uiAmount = toUiAmount(asset.rawAmount, decimals).toString();
+
+      return {
+        ...asset,
+        symbol,
+        decimals,
+        uiAmount,
+        iconUrl,
+      };
+    });
+  }
+
+  /**
+   * Extracts the native TRX asset from the balance.
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param balance - The native balance in sun.
+   * @returns AssetEntity - The native TRX asset.
+   */
+  #extractNativeAsset(
+    account: KeyringAccount,
+    scope: Network,
+    balance: number,
+  ): AssetEntity {
+    return {
       assetType: Networks[scope].nativeToken.id,
       keyringAccountId: account.id,
       network: scope,
@@ -319,25 +436,27 @@ export class AssetsService {
       ).toString(),
       iconUrl: Networks[scope].nativeToken.iconUrl,
     };
-
-    return asset;
   }
 
-  #extractStakedNativeAssets({
-    account,
-    scope,
-    tronAccountInfo,
-  }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountInfo: TronAccount;
-  }): AssetEntity[] {
+  /**
+   * Extracts staked TRX assets (for bandwidth and energy).
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param stakedData - Staking data including frozen balances and delegated resources.
+   * @returns AssetEntity[] - Array of staked assets (may be empty if no staking).
+   */
+  #extractStakedNativeAssets(
+    account: KeyringAccount,
+    scope: Network,
+    stakedData: NormalizedAccountData['stakedData'],
+  ): AssetEntity[] {
     const assets: AssetEntity[] = [];
 
     let stakedBandwidthAmount = 0;
     let stakedEnergyAmount = 0;
 
-    tronAccountInfo.frozenV2?.forEach((frozen) => {
+    stakedData.frozenV2?.forEach((frozen) => {
       const amount = frozen.amount ?? 0;
 
       if (frozen.type === 'ENERGY') {
@@ -349,11 +468,9 @@ export class AssetsService {
     });
 
     const delegatedBandwidth =
-      tronAccountInfo?.account_resource
-        ?.delegated_frozenV2_balance_for_bandwidth ?? 0;
+      stakedData.accountResource?.delegated_frozenV2_balance_for_bandwidth ?? 0;
     const delegatedEnergy =
-      tronAccountInfo?.account_resource
-        ?.delegated_frozenV2_balance_for_energy ?? 0;
+      stakedData.accountResource?.delegated_frozenV2_balance_for_energy ?? 0;
 
     stakedBandwidthAmount += delegatedBandwidth;
     stakedEnergyAmount += delegatedEnergy;
@@ -396,7 +513,7 @@ export class AssetsService {
   }
 
   /**
-   * Extracts used bandwidth and maximum bandwidth assets from the account resources.
+   * Extracts current and maximum bandwidth from the account resources.
    *
    * @param options - Options object.
    * @param options.account - The account to extract bandwidth for.
@@ -447,6 +564,15 @@ export class AssetsService {
     ];
   }
 
+  /**
+   * Extracts current and maximum energy from the account resources.
+   *
+   * @param options - Options object.
+   * @param options.account - The keyring account.
+   * @param options.scope - The network.
+   * @param options.tronAccountResources - Account resources (energy, bandwidth).
+   * @returns AssetEntity[] - Array containing energy and maximum energy assets.
+   */
   #extractEnergy({
     account,
     scope,
@@ -457,7 +583,6 @@ export class AssetsService {
     tronAccountResources: AccountResources | Record<string, never>;
   }): AssetEntity[] {
     const maximumEnergy = tronAccountResources?.EnergyLimit ?? 0;
-
     const usedEnergy = tronAccountResources?.EnergyUsed ?? 0;
 
     /**
@@ -489,21 +614,22 @@ export class AssetsService {
     ];
   }
 
-  #extractTrc10Assets({
-    account,
-    scope,
-    tronAccountInfo,
-  }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountInfo: TronAccount;
-  }): AssetEntity[] {
-    const { assetV2 } = tronAccountInfo;
-
-    const trc10Assets =
-      assetV2?.flatMap((tokenObject) => {
+  /**
+   * Extracts TRC10 assets from the balances array.
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param trc10Balances - TRC10 token balances as `{ key: tokenId, value: balance }[]`.
+   * @returns AssetEntity[] - Array of TRC10 asset entities.
+   */
+  #extractTrc10Assets(
+    account: KeyringAccount,
+    scope: Network,
+    trc10Balances: TronAccount['assetV2'],
+  ): AssetEntity[] {
+    return (
+      trc10Balances?.flatMap((tokenObject) => {
         // assetV2 has structure: { "key": "token_id", "value": "balance" }
-        // Each object in the array has "key" and "value" properties
         return {
           assetType: `${scope}/trc10:${tokenObject.key}` as TokenCaipAssetType,
           keyringAccountId: account.id,
@@ -514,39 +640,38 @@ export class AssetsService {
           uiAmount: '0',
           iconUrl: '', // Will be enriched with metadata later
         };
-      }) ?? [];
-
-    return trc10Assets;
+      }) ?? []
+    );
   }
 
-  #extractTrc20Assets({
-    account,
-    scope,
-    tronAccountInfo,
-  }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountInfo: TronAccount;
-  }): AssetEntity[] {
-    const { trc20 } = tronAccountInfo;
-
-    const trc20Assets =
-      trc20?.flatMap((tokenObject) => {
-        return Object.entries(tokenObject).map(([address, balance]) => {
-          return {
-            assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
-            keyringAccountId: account.id,
-            network: scope,
-            symbol: '',
-            decimals: 0,
-            rawAmount: balance,
-            uiAmount: '0',
-            iconUrl: '', // Will be enriched with metadata later
-          };
-        });
-      }) ?? [];
-
-    return trc20Assets;
+  /**
+   * Extracts TRC20 assets from a balances array.
+   * Works with both active accounts (tronAccountInfo.trc20) and inactive accounts (getTrc20BalancesByAddress).
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param trc20Balances - Array of `Record<contractAddress, balance>` objects (e.g., `[{ "TContractAddr": "1000" }]`).
+   * @returns AssetEntity[] - Array of TRC20 asset entities.
+   */
+  #extractTrc20Assets(
+    account: KeyringAccount,
+    scope: Network,
+    trc20Balances: Trc20Balance[],
+  ): AssetEntity[] {
+    return trc20Balances.flatMap((tokenObject) => {
+      return Object.entries(tokenObject).map(([address, balance]) => {
+        return {
+          assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
+          keyringAccountId: account.id,
+          network: scope,
+          symbol: '',
+          decimals: 0,
+          rawAmount: balance,
+          uiAmount: '0',
+          iconUrl: '', // Will be enriched with metadata later
+        };
+      });
+    });
   }
 
   async getAssetsMetadata(

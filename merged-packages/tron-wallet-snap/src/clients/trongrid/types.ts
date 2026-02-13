@@ -192,3 +192,9 @@ export type TokenInfo = {
   decimals: number;
   name: string;
 };
+
+/**
+ * TRC20 balance entry from the /v1/accounts/{address}/trc20/balance endpoint.
+ * Each entry is a record mapping the contract address to its balance.
+ */
+export type Trc20Balance = Record<string, string>;

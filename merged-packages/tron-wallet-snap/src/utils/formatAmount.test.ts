@@ -73,7 +73,7 @@ describe('formatAmount', () => {
     });
   });
 
-  describe('extreme values (original bug scenarios)', () => {
+  describe('values out of `Number` 64-bit size', () => {
     it('handles extremely large token amounts without scientific notation', () => {
       // Values that caused parseFloat to return scientific notation
       const largeValue = '999999999999999999999999999999';

@@ -221,3 +221,22 @@ export const TrongridContractTransactionInfoResponseStruct = type({
   success: boolean(),
   meta: TrongridApiMetaStruct,
 });
+
+// --------------------------------------------------------------------------
+// TRC20 Balance Response Structs (for inactive account fallback)
+// --------------------------------------------------------------------------
+
+/**
+ * Struct for validating individual TRC20 balance entries.
+ * Each entry is a record mapping contract address to balance string.
+ */
+export const Trc20BalanceStruct = record(string(), string());
+
+/**
+ * Struct for validating the TRC20 balance API response.
+ */
+export const TrongridTrc20BalanceResponseStruct = type({
+  data: array(Trc20BalanceStruct),
+  success: boolean(),
+  meta: TrongridApiMetaStruct,
+});

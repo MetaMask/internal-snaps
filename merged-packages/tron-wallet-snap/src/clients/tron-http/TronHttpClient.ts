@@ -118,12 +118,14 @@ export class TronHttpClient {
   }
 
   /**
-   * Get account resources (Energy and Bandwidth)
+   * Get account resources (Energy and Bandwidth).
+   * For inactive accounts, returns an empty object `{}` with all resource values effectively being 0.
    *
    * @see https://developers.tron.network/reference/getaccountresource
-   * @param network - Network to query
-   * @param accountAddress - Account address in base58 format
-   * @returns Promise<AccountResources> - Account resources
+   * @param network - Network to query.
+   * @param accountAddress - Account address in base58 format.
+   * @returns Promise<AccountResources> - Account resources (energy, bandwidth, etc.).
+   * @throws Error - HTTP errors or configuration errors.
    */
   async getAccountResources(
     network: Network,
