@@ -229,16 +229,30 @@ export async function render(
   // Ensure interface ID is stored before updating
   await storeIdPromise;
 
-  // 4. Schedule background job to handle price fetching and scan refresh
+  // 4. If pricing is disabled, mark as fetched immediately
+  if (!context.preferences.useExternalPricingData) {
+    context.tokenPricesFetchStatus = 'fetched';
+  }
+
+  // 5. Update interface with scan results after initial render (silently ignores if dismissed)
+  const updated = await snapClient.updateInterfaceIfExists(
+    id,
+    <ConfirmTransactionRequest context={context} />,
+    context,
+  );
+
+  // If interface was dismissed during scan, exit early
+  if (!updated) {
+    return dialogPromise;
+  }
+
+  // 6. Schedule background jobs only after confirming the interface is still alive
   if (context.preferences.useExternalPricingData) {
     // Trigger immediate price fetch (1 second), then continue every 20 seconds
     await snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshConfirmationPrices,
       duration: 'PT1S', // Start immediately
     });
-  } else {
-    // If pricing is disabled, set to fetched immediately
-    context.tokenPricesFetchStatus = 'fetched';
   }
 
   // Schedule security scan background refresh (every 20 seconds)
@@ -249,14 +263,7 @@ export async function render(
     });
   }
 
-  // 5. Update interface with scan results after initial render
-  await snapClient.updateInterface(
-    id,
-    <ConfirmTransactionRequest context={context} />,
-    context,
-  );
-
-  // 6. Return the dialog promise immediately (don't await it!)
+  // 7. Return the dialog promise immediately (don't await it!)
   // Cleanup happens in the background refresh handler when it detects the interface is gone
   return dialogPromise;
 }

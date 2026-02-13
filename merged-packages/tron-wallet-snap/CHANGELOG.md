@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Decode hex-encoded TRC10 token names and symbols from Full Node API responses ([#187](https://github.com/MetaMask/snap-tron-wallet/pull/187))
+- Gracefully handle dismissed interface contexts during background refresh operations ([#188](https://github.com/MetaMask/snap-tron-wallet/pull/188/changes))
 - Add spent bandwidth from staking as part of the calculation of current bandwidth levels. For both energy and bandwidth, clamp the result between maximum and 0 to avoid negative values ([#197](https://github.com/MetaMask/snap-tron-wallet/pull/197))
 
 ## [1.21.1]

@@ -1,18 +1,33 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
-import type {
-  DialogResult,
-  EntropySource,
-  GetClientStatusResult,
-  GetInterfaceStateResult,
-  Json,
-  ResolveInterfaceResult,
-  UpdateInterfaceResult,
+import {
+  type DialogResult,
+  type EntropySource,
+  type GetClientStatusResult,
+  type Json,
+  type ResolveInterfaceResult,
+  type UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
 
 import { SecurityEventType, TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
+
+/**
+ * Checks if an error is an "interface not found" error.
+ * Detects JSON-RPC errors thrown when an interface has been dismissed by the user.
+ *
+ * @param error - The error to check.
+ * @returns True if the error indicates the interface was not found.
+ */
+function isInterfaceNotFoundError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes('interface') && message.includes('not found');
+  }
+
+  return false;
+}
 
 /**
  * Client for interacting with the Snap API.
@@ -71,65 +86,67 @@ export class SnapClient {
 
   /**
    * Update an existing UI interface with a new UI component and context.
+   * Returns null if the interface has been dismissed by the user.
    *
    * @param id - The interface id returned from createInterface.
    * @param ui - The new UI component to render.
    * @param context - The updated context object to associate with the interface.
-   * @returns The update interface result.
+   * @returns True if the interface was updated, or null if it was not found.
    */
-  async updateInterface<TContext>(
+  async updateInterfaceIfExists<TContext>(
     id: string,
     // TODO: Replace `any` with type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ui: any,
     context: TContext & Record<string, Json>,
-  ): Promise<UpdateInterfaceResult> {
-    return snap.request({
-      method: 'snap_updateInterface',
-      params: {
-        id,
-        ui,
-        context,
-      },
-    });
-  }
-
-  /**
-   * Gets the state of an interactive interface by its ID.
-   *
-   * @param id - The ID for the interface to update.
-   * @returns An object containing the state of the interface.
-   */
-  async getInterfaceState(id: string): Promise<GetInterfaceStateResult> {
-    return snap.request({
-      method: 'snap_getInterfaceState',
-      params: {
-        id,
-      },
-    });
+  ): Promise<true | null> {
+    try {
+      await snap.request({
+        method: 'snap_updateInterface',
+        params: {
+          id,
+          ui,
+          context,
+        },
+      });
+      return true;
+    } catch (error) {
+      if (isInterfaceNotFoundError(error)) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
    * Gets the context of an interface by its ID.
+   * Returns null if the interface has been dismissed by the user.
    *
    * @param id - The ID for the interface.
    * @returns The context object associated with the interface, or null if not found.
    */
-  async getInterfaceContext<TContext extends Json>(
+  async getInterfaceContextIfExists<TContext extends Json>(
     id: string,
   ): Promise<TContext | null> {
-    const rawContext = await snap.request({
-      method: 'snap_getInterfaceContext',
-      params: {
-        id,
-      },
-    });
+    try {
+      const rawContext = await snap.request({
+        method: 'snap_getInterfaceContext',
+        params: {
+          id,
+        },
+      });
 
-    if (!rawContext) {
-      return null;
+      if (!rawContext) {
+        return null;
+      }
+
+      return rawContext as TContext;
+    } catch (error) {
+      if (isInterfaceNotFoundError(error)) {
+        return null;
+      }
+      throw error;
     }
-
-    return rawContext as TContext;
   }
 
   /**

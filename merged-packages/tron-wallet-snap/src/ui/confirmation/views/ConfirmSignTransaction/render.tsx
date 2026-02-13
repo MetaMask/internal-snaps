@@ -212,12 +212,17 @@ export async function render(
     // Ensure interface ID is stored before updating
     await storeIdPromise;
 
-    // Update interface with scan results
-    await snapClient.updateInterface(
+    // Update interface with scan results (silently ignores if interface was dismissed)
+    const updated = await snapClient.updateInterfaceIfExists(
       id,
       <ConfirmSignTransaction context={context} />,
       context,
     );
+
+    // If interface was dismissed during scan, exit early
+    if (!updated) {
+      return dialogPromise;
+    }
 
     await snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshSignTransaction,
@@ -230,7 +235,8 @@ export async function render(
     // Ensure interface ID is stored before updating
     await storeIdPromise;
 
-    await snapClient.updateInterface(
+    // Update interface (silently ignores if interface was dismissed)
+    await snapClient.updateInterfaceIfExists(
       id,
       <ConfirmSignTransaction context={context} />,
       context,

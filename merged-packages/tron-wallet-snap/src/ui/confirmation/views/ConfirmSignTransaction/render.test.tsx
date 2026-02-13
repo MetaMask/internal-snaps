@@ -88,7 +88,7 @@ describe('ConfirmSignTransaction render', () => {
     mockSnapClient = {
       createInterface: jest.fn().mockResolvedValue('interface-id-123'),
       showDialog: jest.fn().mockResolvedValue(true),
-      updateInterface: jest.fn().mockResolvedValue(undefined),
+      updateInterfaceIfExists: jest.fn().mockResolvedValue(true),
       getPreferences: jest.fn().mockResolvedValue(mockPreferences),
       scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -197,7 +197,7 @@ describe('ConfirmSignTransaction render', () => {
     });
 
     // Verify interface was updated with scan results
-    expect(mockSnapClient.updateInterface).toHaveBeenCalled();
+    expect(mockSnapClient.updateInterfaceIfExists).toHaveBeenCalled();
   });
 
   it('handles missing transaction scan service gracefully', async () => {
@@ -233,7 +233,7 @@ describe('ConfirmSignTransaction render', () => {
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
 
     // Should update interface without scan
-    expect(mockSnapClient.updateInterface).toHaveBeenCalled();
+    expect(mockSnapClient.updateInterfaceIfExists).toHaveBeenCalled();
   });
 
   it('handles security scan failure gracefully', async () => {
@@ -266,7 +266,7 @@ describe('ConfirmSignTransaction render', () => {
 
     // Should still render with error state
     expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
-    expect(mockSnapClient.updateInterface).toHaveBeenCalled();
+    expect(mockSnapClient.updateInterfaceIfExists).toHaveBeenCalled();
   });
 
   it('skips security scan when preferences disable it', async () => {
@@ -389,5 +389,78 @@ describe('ConfirmSignTransaction render', () => {
     const result = await render(request, mockAccount, mockRawData as any);
 
     expect(result).toBe(expectedResult);
+  });
+
+  it('gracefully exits when interface was dismissed during scan', async () => {
+    // Mock updateInterfaceIfExists to return null (simulating user closed dialog during scan)
+    mockSnapClient.updateInterfaceIfExists.mockResolvedValue(null);
+
+    const request: KeyringRequest = {
+      id: '00000000-0000-4000-8000-000000000008',
+      origin: 'https://test.com',
+      account: mockAccount.id,
+      scope: Network.Mainnet,
+      request: {
+        method: TronMultichainMethod.SignTransaction,
+        params: {
+          address: mockAccount.address,
+          transaction: {
+            rawDataHex: toBase64('transaction'),
+            type: 'TransferContract',
+          },
+        },
+      },
+    };
+
+    const mockRawData = {
+      contract: [],
+    };
+
+    await render(request, mockAccount, mockRawData as any);
+
+    // Security scan was called
+    expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
+
+    // updateInterfaceIfExists was called (and returned null indicating interface dismissed)
+    expect(mockSnapClient.updateInterfaceIfExists).toHaveBeenCalledWith(
+      'interface-id-123',
+      expect.anything(),
+      expect.anything(),
+    );
+
+    // scheduleBackgroundEvent should NOT be called because we exited early
+    expect(mockSnapClient.scheduleBackgroundEvent).not.toHaveBeenCalled();
+  });
+
+  it('propagates non-interface-not-found errors from updateInterfaceIfExists', async () => {
+    // Mock updateInterfaceIfExists to throw a different error
+    const networkError = new Error('Network connection failed');
+    mockSnapClient.updateInterfaceIfExists.mockRejectedValue(networkError);
+
+    const request: KeyringRequest = {
+      id: '00000000-0000-4000-8000-000000000009',
+      origin: 'https://test.com',
+      account: mockAccount.id,
+      scope: Network.Mainnet,
+      request: {
+        method: TronMultichainMethod.SignTransaction,
+        params: {
+          address: mockAccount.address,
+          transaction: {
+            rawDataHex: toBase64('transaction'),
+            type: 'TransferContract',
+          },
+        },
+      },
+    };
+
+    const mockRawData = {
+      contract: [],
+    };
+
+    // Should throw the error (non-interface-not-found errors are propagated)
+    await expect(
+      render(request, mockAccount, mockRawData as any),
+    ).rejects.toThrow('Network connection failed');
   });
 });
