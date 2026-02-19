@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.22.0]
+
 ### Added
 
 - Support fetching TRC20 token balances for inactive accounts using fallback endpoint ([#190](https://github.com/MetaMask/snap-tron-wallet/pull/190))
@@ -402,7 +404,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.0...HEAD
+[1.22.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.1...v1.22.0
 [1.21.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.19.3...v1.20.0
