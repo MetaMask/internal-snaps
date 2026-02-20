@@ -3,6 +3,7 @@ import type {
   NativeCaipAssetType,
   NftCaipAssetType,
   ReadyForWithdrawalCaipAssetType,
+  StakingRewardsCaipAssetType,
   TokenCaipAssetType,
 } from '../services/assets/types';
 
@@ -27,6 +28,10 @@ export type StakedAsset = BaseAsset & {
 
 export type ReadyForWithdrawalAsset = BaseAsset & {
   assetType: ReadyForWithdrawalCaipAssetType;
+};
+
+export type StakingRewardsAsset = BaseAsset & {
+  assetType: StakingRewardsCaipAssetType;
 };
 
 export type ResourceAsset = BaseAsset & {
@@ -61,6 +66,7 @@ export type AssetEntity =
   | NativeAsset
   | StakedAsset
   | ReadyForWithdrawalAsset
+  | StakingRewardsAsset
   | TokenAsset
   | NftAsset
   | ResourceAsset

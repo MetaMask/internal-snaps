@@ -6,11 +6,12 @@ import {
   ChainParameterStruct,
   ContractInfoStruct,
   FullNodeTransactionInfoStruct,
+  GetRewardResponseStruct,
   NextMaintenanceTimeStruct,
   TRC10TokenInfoStruct,
   TriggerConstantContractResponseStruct,
 } from './structs';
-import type { AccountResources } from './structs';
+import type { AccountResources, GetRewardResponse } from './structs';
 import type {
   ChainParameter,
   ContractInfo,
@@ -395,5 +396,49 @@ export class TronHttpClient {
     assert(contractInfo, ContractInfoStruct);
 
     return contractInfo;
+  }
+
+  /**
+   * Get unclaimed staking rewards for an address.
+   * Returns the amount of TRX rewards from voting that can be claimed.
+   *
+   * @see https://developers.tron.network/reference/getreward
+   * @param network - Network to query
+   * @param accountAddress - Account address in base58 format
+   * @returns Promise<number> - Unclaimed rewards in sun (0 if no rewards)
+   */
+  async getReward(network: Network, accountAddress: string): Promise<number> {
+    const client = this.#clients.get(network);
+    if (!client) {
+      throw new Error(`No client configured for network: ${network}`);
+    }
+
+    const { baseUrl, headers } = client;
+    const url = buildUrl({
+      baseUrl,
+      path: '/wallet/getreward',
+    });
+
+    const body = JSON.stringify({
+      address: accountAddress,
+      visible: true,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const rewardResponse: GetRewardResponse = await response.json();
+
+    // Validate response schema
+    assert(rewardResponse, GetRewardResponseStruct);
+
+    return rewardResponse.reward ?? 0;
   }
 }

@@ -170,7 +170,9 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
       'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
     >
   >;
-  mockTronHttpClient: jest.Mocked<Pick<TronHttpClient, 'getAccountResources'>>;
+  mockTronHttpClient: jest.Mocked<
+    Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
+  >;
   mockPriceApiClient: jest.Mocked<
     Pick<
       PriceApiClient,
@@ -224,9 +226,10 @@ async function withAssetsService<ReturnValue>(
   };
 
   const mockTronHttpClient: jest.Mocked<
-    Pick<TronHttpClient, 'getAccountResources'>
+    Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
   > = {
     getAccountResources: jest.fn(),
+    getReward: jest.fn().mockResolvedValue(0),
   };
 
   const mockPriceApiClient: jest.Mocked<
@@ -1073,6 +1076,91 @@ describe('AssetsService', () => {
             expect(
               findAsset(assets, KnownCaip19Id.MaximumEnergyMainnet)?.rawAmount,
             ).toBe('329');
+          },
+        );
+      });
+    });
+
+    describe('staking rewards', () => {
+      it('returns 0 when account has no staking rewards', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+            mockTronHttpClient.getReward.mockResolvedValue(0);
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            expect(
+              findAsset(assets, KnownCaip19Id.TrxStakingRewardsMainnet)
+                ?.rawAmount,
+            ).toBe('0');
+          },
+        );
+      });
+
+      it('returns staking rewards when account has unclaimed rewards', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+            mockTronHttpClient.getReward.mockResolvedValue(5000000);
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const stakingRewardsAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxStakingRewardsMainnet,
+            );
+            expect(stakingRewardsAsset?.rawAmount).toBe('5000000');
+            expect(stakingRewardsAsset?.uiAmount).toBe('5');
+            expect(stakingRewardsAsset?.symbol).toBe('srTRX');
+          },
+        );
+      });
+
+      it('gracefully handles staking rewards API failure', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+            mockTronHttpClient.getReward.mockRejectedValue(
+              new Error('API Error'),
+            );
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            expect(
+              findAsset(assets, KnownCaip19Id.TrxStakingRewardsMainnet)
+                ?.rawAmount,
+            ).toBe('0');
           },
         );
       });

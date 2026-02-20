@@ -25,6 +25,7 @@ import type {
   ReadyForWithdrawalCaipAssetType,
   ResourceCaipAssetType,
   StakedCaipAssetType,
+  StakingRewardsCaipAssetType,
   TokenCaipAssetType,
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -59,6 +60,7 @@ import {
   TRX_READY_FOR_WITHDRAWAL_METADATA,
   TRX_STAKED_FOR_BANDWIDTH_METADATA,
   TRX_STAKED_FOR_ENERGY_METADATA,
+  TRX_STAKING_REWARDS_METADATA,
 } from '../../constants';
 import { configProvider } from '../../context';
 import type { AssetEntity } from '../../entities/assets';
@@ -86,6 +88,8 @@ type NormalizedAccountData = {
   };
   /** Account resources (energy, bandwidth). Empty object for inactive accounts. */
   resources: AccountResources | Record<string, never>;
+  /** Unclaimed staking rewards in sun (0 if no rewards). */
+  stakingRewards: number;
 };
 
 export class AssetsService {
@@ -195,11 +199,15 @@ export class AssetsService {
       scope,
     });
 
-    const [tronAccountInfoRequest, tronAccountResourcesRequest] =
-      await Promise.allSettled([
-        this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
-        this.#tronHttpClient.getAccountResources(scope, account.address),
-      ]);
+    const [
+      tronAccountInfoRequest,
+      tronAccountResourcesRequest,
+      stakingRewardsRequest,
+    ] = await Promise.allSettled([
+      this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
+      this.#tronHttpClient.getAccountResources(scope, account.address),
+      this.#tronHttpClient.getReward(scope, account.address),
+    ]);
 
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     if (isInactiveAccount) {
@@ -225,6 +233,7 @@ export class AssetsService {
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
       trc20BalancesFallback,
+      stakingRewardsRequest,
     });
 
     const rawAssets = this.#extractAssets(account, scope, accountData);
@@ -279,22 +288,29 @@ export class AssetsService {
    * @param params.tronAccountInfoRequest - The settled promise result from getAccountInfoByAddress.
    * @param params.tronAccountResourcesRequest - The settled promise result from getAccountResources.
    * @param params.trc20BalancesFallback - TRC20 balances from fallback endpoint (empty for active accounts).
+   * @param params.stakingRewardsRequest - The settled promise result from getReward.
    * @returns NormalizedAccountData - Consistent data shape for extraction.
    */
   #buildAccountData({
     tronAccountInfoRequest,
     tronAccountResourcesRequest,
     trc20BalancesFallback,
+    stakingRewardsRequest,
   }: {
     tronAccountInfoRequest: PromiseSettledResult<TronAccount>;
     tronAccountResourcesRequest: PromiseSettledResult<AccountResources>;
     trc20BalancesFallback: Trc20Balance[];
+    stakingRewardsRequest: PromiseSettledResult<number>;
   }): NormalizedAccountData {
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     const resources =
       tronAccountResourcesRequest.status === 'fulfilled'
         ? tronAccountResourcesRequest.value
         : {};
+    const stakingRewards =
+      stakingRewardsRequest.status === 'fulfilled'
+        ? Math.max(0, stakingRewardsRequest.value)
+        : 0;
 
     if (isInactiveAccount) {
       return {
@@ -307,6 +323,7 @@ export class AssetsService {
           accountResource: undefined,
         },
         resources,
+        stakingRewards,
       };
     }
 
@@ -321,6 +338,7 @@ export class AssetsService {
         accountResource: tronAccountInfo.account_resource,
       },
       resources,
+      stakingRewards,
     };
   }
 
@@ -342,6 +360,7 @@ export class AssetsService {
       this.#extractNativeAsset(account, scope, data.nativeBalance),
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
       ...this.#extractReadyForWithdrawalAssets(account, scope, data.stakedData),
+      this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
       ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
       ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
       ...this.#extractBandwidth({
@@ -571,6 +590,34 @@ export class AssetsService {
   }
 
   /**
+   * Extracts staking rewards asset (unclaimed voting rewards).
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param stakingRewards - Unclaimed staking rewards in sun.
+   * @returns AssetEntity - The staking rewards asset.
+   */
+  #extractStakingRewardsAsset(
+    account: KeyringAccount,
+    scope: Network,
+    stakingRewards: number,
+  ): AssetEntity {
+    return {
+      assetType: Networks[scope].stakingRewards.id,
+      keyringAccountId: account.id,
+      network: scope,
+      symbol: Networks[scope].stakingRewards.symbol,
+      decimals: Networks[scope].stakingRewards.decimals,
+      rawAmount: stakingRewards.toString(),
+      uiAmount: toUiAmount(
+        stakingRewards,
+        Networks[scope].stakingRewards.decimals,
+      ).toString(),
+      iconUrl: Networks[scope].stakingRewards.iconUrl,
+    };
+  }
+
+  /**
    * Extracts current and maximum bandwidth from the account resources.
    *
    * @param options - Options object.
@@ -741,6 +788,7 @@ export class AssetsService {
       nativeAssetTypes,
       stakedNativeAssetTypes,
       readyForWithdrawalAssetTypes,
+      stakingRewardsAssetTypes,
       energyAssetTypes,
       maximunEnergyAssetTypes,
       bandwidthAssetTypes,
@@ -756,6 +804,9 @@ export class AssetsService {
     );
     const readyForWithdrawalTokensMetadata =
       this.#getReadyForWithdrawalTokensMetadata(readyForWithdrawalAssetTypes);
+    const stakingRewardsMetadata = this.#getStakingRewardsMetadata(
+      stakingRewardsAssetTypes,
+    );
     const energyTokensMetadata = this.#getEnergyMetadata(energyAssetTypes);
     const maximunEnergyTokensMetadata = this.#getMaximunEnergyMetadata(
       maximunEnergyAssetTypes,
@@ -774,6 +825,7 @@ export class AssetsService {
       ...nativeTokensMetadata,
       ...stakedTokensMetadata,
       ...readyForWithdrawalTokensMetadata,
+      ...stakingRewardsMetadata,
       ...energyTokensMetadata,
       ...maximunEnergyTokensMetadata,
       ...bandwidthTokensMetadata,
@@ -790,6 +842,7 @@ export class AssetsService {
     nativeAssetTypes: NativeCaipAssetType[];
     stakedNativeAssetTypes: StakedCaipAssetType[];
     readyForWithdrawalAssetTypes: ReadyForWithdrawalCaipAssetType[];
+    stakingRewardsAssetTypes: StakingRewardsCaipAssetType[];
     energyAssetTypes: ResourceCaipAssetType[];
     maximunEnergyAssetTypes: ResourceCaipAssetType[];
     bandwidthAssetTypes: ResourceCaipAssetType[];
@@ -807,6 +860,9 @@ export class AssetsService {
     const readyForWithdrawalAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:195-ready-for-withdrawal'),
     ) as ReadyForWithdrawalCaipAssetType[];
+    const stakingRewardsAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:195-staking-rewards'),
+    ) as StakingRewardsCaipAssetType[];
     const energyAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:energy'),
     ) as ResourceCaipAssetType[];
@@ -833,6 +889,7 @@ export class AssetsService {
       nativeAssetTypes,
       stakedNativeAssetTypes,
       readyForWithdrawalAssetTypes,
+      stakingRewardsAssetTypes,
       energyAssetTypes,
       maximunEnergyAssetTypes,
       bandwidthAssetTypes,
@@ -945,6 +1002,33 @@ export class AssetsService {
     }
 
     return readyForWithdrawalTokensMetadata;
+  }
+
+  #getStakingRewardsMetadata(
+    assetTypes: StakingRewardsCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const stakingRewardsMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      stakingRewardsMetadata[assetType] = {
+        fungible: TRX_STAKING_REWARDS_METADATA.fungible,
+        name: TRX_STAKING_REWARDS_METADATA.name,
+        symbol: TRX_STAKING_REWARDS_METADATA.symbol,
+        iconUrl: TRX_STAKING_REWARDS_METADATA.iconUrl,
+        units: [
+          {
+            decimals: TRX_STAKING_REWARDS_METADATA.decimals,
+            symbol: TRX_STAKING_REWARDS_METADATA.symbol,
+            name: TRX_STAKING_REWARDS_METADATA.name,
+          },
+        ],
+      };
+    }
+
+    return stakingRewardsMetadata;
   }
 
   #getBandwidthMetadata(
