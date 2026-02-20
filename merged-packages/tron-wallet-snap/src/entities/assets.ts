@@ -2,6 +2,7 @@ import type { KnownCaip19Id, Network } from '../constants';
 import type {
   NativeCaipAssetType,
   NftCaipAssetType,
+  ReadyForWithdrawalCaipAssetType,
   TokenCaipAssetType,
 } from '../services/assets/types';
 
@@ -22,6 +23,10 @@ export type NativeAsset = BaseAsset & {
 
 export type StakedAsset = BaseAsset & {
   assetType: `${Network}/slip44:195-staked-for-${'energy' | 'bandwidth'}`;
+};
+
+export type ReadyForWithdrawalAsset = BaseAsset & {
+  assetType: ReadyForWithdrawalCaipAssetType;
 };
 
 export type ResourceAsset = BaseAsset & {
@@ -55,6 +60,7 @@ export type NftAsset = BaseAsset & {
 export type AssetEntity =
   | NativeAsset
   | StakedAsset
+  | ReadyForWithdrawalAsset
   | TokenAsset
   | NftAsset
   | ResourceAsset
