@@ -925,6 +925,218 @@ describe('AssetsService', () => {
     });
     /* eslint-enable @typescript-eslint/naming-convention */
 
+    /* eslint-disable @typescript-eslint/naming-convention */
+    describe('TRX in lock period', () => {
+      it('returns undefined when account has no unfrozenV2 data', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              createMockTronAccount({
+                address: mockAccount.address,
+                unfrozenV2: [],
+              }),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const inLockPeriodAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxInLockPeriodMainnet,
+            );
+            expect(inLockPeriodAsset).toBeUndefined();
+          },
+        );
+      });
+
+      it('returns in lock period amount when unfrozenV2 has future entries', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const futureTime = Date.now() + 1000000;
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              createMockTronAccount({
+                address: mockAccount.address,
+                unfrozenV2: [
+                  {
+                    unfreeze_amount: 1000000,
+                    unfreeze_expire_time: futureTime,
+                  },
+                ],
+              }),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const inLockPeriodAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxInLockPeriodMainnet,
+            );
+            expect(inLockPeriodAsset).toBeDefined();
+            expect(inLockPeriodAsset?.rawAmount).toBe('1000000');
+          },
+        );
+      });
+
+      it('does not return asset when unfrozenV2 has already expired', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const pastTime = Date.now() - 1000;
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              createMockTronAccount({
+                address: mockAccount.address,
+                unfrozenV2: [
+                  {
+                    unfreeze_amount: 1000000,
+                    unfreeze_expire_time: pastTime,
+                  },
+                ],
+              }),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const inLockPeriodAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxInLockPeriodMainnet,
+            );
+            expect(inLockPeriodAsset).toBeUndefined();
+          },
+        );
+      });
+
+      it('sums multiple non-expired unfrozen entries', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const futureTime1 = Date.now() + 1000000;
+            const futureTime2 = Date.now() + 2000000;
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              createMockTronAccount({
+                address: mockAccount.address,
+                unfrozenV2: [
+                  {
+                    unfreeze_amount: 1000000,
+                    unfreeze_expire_time: futureTime1,
+                  },
+                  {
+                    unfreeze_amount: 2000000,
+                    unfreeze_expire_time: futureTime2,
+                  },
+                ],
+              }),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const inLockPeriodAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxInLockPeriodMainnet,
+            );
+            expect(inLockPeriodAsset).toBeDefined();
+            expect(inLockPeriodAsset?.rawAmount).toBe('3000000');
+          },
+        );
+      });
+
+      it('only includes non-expired entries when mixed with expired', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const pastTime = Date.now() - 1000;
+            const futureTime = Date.now() + 1000000;
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              createMockTronAccount({
+                address: mockAccount.address,
+                unfrozenV2: [
+                  { unfreeze_amount: 1000000, unfreeze_expire_time: pastTime },
+                  {
+                    unfreeze_amount: 5000000,
+                    unfreeze_expire_time: futureTime,
+                  },
+                ],
+              }),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const inLockPeriodAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxInLockPeriodMainnet,
+            );
+            expect(inLockPeriodAsset).toBeDefined();
+            expect(inLockPeriodAsset?.rawAmount).toBe('5000000');
+          },
+        );
+      });
+
+      it('returns undefined for inactive accounts', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new Error('account not found'),
+            );
+            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
+              [],
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            const inLockPeriodAsset = findAsset(
+              assets,
+              KnownCaip19Id.TrxInLockPeriodMainnet,
+            );
+            expect(inLockPeriodAsset).toBeUndefined();
+          },
+        );
+      });
+    });
+    /* eslint-enable @typescript-eslint/naming-convention */
+
     describe('energy', () => {
       it('returns 0 when account has no resources', async () => {
         await withAssetsService(

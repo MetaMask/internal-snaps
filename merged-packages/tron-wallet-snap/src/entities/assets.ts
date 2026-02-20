@@ -1,5 +1,6 @@
 import type { KnownCaip19Id, Network } from '../constants';
 import type {
+  InLockPeriodCaipAssetType,
   NativeCaipAssetType,
   NftCaipAssetType,
   ReadyForWithdrawalCaipAssetType,
@@ -32,6 +33,10 @@ export type ReadyForWithdrawalAsset = BaseAsset & {
 
 export type StakingRewardsAsset = BaseAsset & {
   assetType: StakingRewardsCaipAssetType;
+};
+
+export type InLockPeriodAsset = BaseAsset & {
+  assetType: InLockPeriodCaipAssetType;
 };
 
 export type ResourceAsset = BaseAsset & {
@@ -67,6 +72,7 @@ export type AssetEntity =
   | StakedAsset
   | ReadyForWithdrawalAsset
   | StakingRewardsAsset
+  | InLockPeriodAsset
   | TokenAsset
   | NftAsset
   | ResourceAsset

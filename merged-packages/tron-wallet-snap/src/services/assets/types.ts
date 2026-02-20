@@ -10,6 +10,7 @@ export type ReadyForWithdrawalCaipAssetType =
   `${TrxScope}/slip44:195-ready-for-withdrawal`;
 export type StakingRewardsCaipAssetType =
   `${TrxScope}/slip44:195-staking-rewards`;
+export type InLockPeriodCaipAssetType = `${TrxScope}/slip44:195-in-lock-period`;
 export type ResourceCaipAssetType =
   `${TrxScope}/slip44:${'energy' | 'bandwidth'}`;
 export type TokenCaipAssetType = `${TrxScope}/${'trc10' | 'trc20'}:${string}`;
@@ -45,6 +46,14 @@ export const ReadyForWithdrawalCaipAssetTypeStruct = pattern(
 export const StakingRewardsCaipAssetTypeStruct = pattern(
   CaipAssetTypeStruct,
   /^tron:(728126428|3448148188|2494104990)\/slip44:195-staking-rewards$/u,
+);
+
+/**
+ * Validates a TRON in-lock-period CAIP-19 ID (e.g., "tron:728126428/slip44:195-in-lock-period")
+ */
+export const InLockPeriodCaipAssetTypeStruct = pattern(
+  CaipAssetTypeStruct,
+  /^tron:(728126428|3448148188|2494104990)\/slip44:195-in-lock-period$/u,
 );
 
 /**
