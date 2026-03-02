@@ -162,18 +162,12 @@ export class KeyringHandler implements Keyring {
   async createAccount(options?: CreateAccountOptions): Promise<KeyringAccount> {
     validateRequest(options, CreateAccountOptionsStruct);
 
-    const id = globalThis.crypto.randomUUID();
-
     try {
-      const account = await this.#accountsService.create(id, options);
-
-      return account;
+      return await this.#accountsService.create(options);
       // TODO: Replace `any` with type
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error creating account');
-      await this.#accountsService.delete(id);
-
       throw new Error(`Error creating account: ${error.message}`);
     }
   }

@@ -144,7 +144,7 @@ export class AccountsService {
     });
 
     return {
-      id: '',
+      id: globalThis.crypto.randomUUID(),
       entropySource,
       derivationPath,
       index,
@@ -164,10 +164,7 @@ export class AccountsService {
     };
   }
 
-  async create(
-    id: string,
-    options?: CreateAccountOptions,
-  ): Promise<KeyringAccount> {
+  async create(options?: CreateAccountOptions): Promise<KeyringAccount> {
     const accounts = await this.#accountsRepository.getAll();
 
     const entropySource =
@@ -201,7 +198,6 @@ export class AccountsService {
 
     const tronKeyringAccount: TronKeyringAccount = {
       ...derivedAccount,
-      id,
       options: {
         ...derivedAccount.options,
         ...(Object.fromEntries(
@@ -215,31 +211,45 @@ export class AccountsService {
 
     await this.#accountsRepository.create(tronKeyringAccount);
 
-    const keyringAccount = asStrictKeyringAccount(tronKeyringAccount);
+    try {
+      const keyringAccount = asStrictKeyringAccount(tronKeyringAccount);
 
-    await emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
-      /**
-       * We can't pass the `keyringAccount` object because it contains the index
-       * and the snaps sdk does not allow extra properties.
-       */
-      account: keyringAccount,
-      /**
-       * Skip account creation confirmation dialogs to make it look like a native
-       * account creation flow.
-       */
-      displayConfirmation: false,
-      /**
-       * Internal options to MetaMask that includes a correlation ID. We need
-       * to also emit this ID to the Snap keyring.
-       */
-      ...(metamaskOptions
-        ? {
-            metamask: metamaskOptions,
-          }
-        : {}),
-    });
+      await emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
+        /**
+         * We can't pass the `keyringAccount` object because it contains the index
+         * and the snaps sdk does not allow extra properties.
+         */
+        account: keyringAccount,
+        /**
+         * Skip account creation confirmation dialogs to make it look like a native
+         * account creation flow.
+         */
+        displayConfirmation: false,
+        /**
+         * Internal options to MetaMask that includes a correlation ID. We need
+         * to also emit this ID to the Snap keyring.
+         */
+        ...(metamaskOptions
+          ? {
+              metamask: metamaskOptions,
+            }
+          : {}),
+      });
 
-    return keyringAccount;
+      return keyringAccount;
+    } catch (error) {
+      // Rollback: if the event emission fails after the account was persisted,
+      // remove it from state so we don't end up with an orphaned record.
+      try {
+        await this.#accountsRepository.delete(tronKeyringAccount.id);
+      } catch (deleteError) {
+        this.#logger.error(
+          { deleteError, accountId: tronKeyringAccount.id },
+          'Failed to rollback account creation',
+        );
+      }
+      throw error;
+    }
   }
 
   async getAll(): Promise<TronKeyringAccount[]> {
@@ -303,7 +313,7 @@ export class AccountsService {
    *
    * @param accounts - The accounts to synchronize assets for.
    */
-  async synchronizeAssets(accounts: KeyringAccount[]): Promise<void> {
+  async synchronizeAssets(accounts: TronKeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
@@ -325,7 +335,7 @@ export class AccountsService {
     await this.#assetsService.saveMany(assets);
   }
 
-  async synchronizeTransactions(accounts: KeyringAccount[]): Promise<void> {
+  async synchronizeTransactions(accounts: TronKeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
@@ -347,7 +357,7 @@ export class AccountsService {
     await this.#transactionsService.saveMany(transactions);
   }
 
-  async synchronize(accounts: KeyringAccount[]): Promise<void> {
+  async synchronize(accounts: TronKeyringAccount[]): Promise<void> {
     await Promise.all([
       this.synchronizeAssets(accounts),
       this.synchronizeTransactions(accounts),

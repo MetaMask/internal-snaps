@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Correct account discovery by using address-based activity checks instead of account IDs ([#206](https://github.com/MetaMask/snap-tron-wallet/pull/206))
+
 ## [1.23.0]
 
 ### Added
