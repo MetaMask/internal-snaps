@@ -222,3 +222,19 @@ export const ContractInfoStruct = type({
 });
 
 export type ValidatedContractInfo = Infer<typeof ContractInfoStruct>;
+
+// --------------------------------------------------------------------------
+// Staking Rewards Structs
+// --------------------------------------------------------------------------
+
+/**
+ * Response from /wallet/getReward endpoint.
+ * Returns the unclaimed staking rewards for an address.
+ *
+ * @see https://developers.tron.network/reference/getreward
+ */
+export const GetRewardResponseStruct = type({
+  reward: optional(min(number(), 0)),
+});
+
+export type GetRewardResponse = Infer<typeof GetRewardResponseStruct>;

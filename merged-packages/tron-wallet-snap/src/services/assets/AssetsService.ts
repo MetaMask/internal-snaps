@@ -20,10 +20,13 @@ import { pick } from 'lodash';
 
 import type { AssetsRepository } from './AssetsRepository';
 import type {
+  InLockPeriodCaipAssetType,
   NativeCaipAssetType,
   NftCaipAssetType,
+  ReadyForWithdrawalCaipAssetType,
   ResourceCaipAssetType,
   StakedCaipAssetType,
+  StakingRewardsCaipAssetType,
   TokenCaipAssetType,
 } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -40,7 +43,11 @@ import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
+import type {
+  RawTronUnfrozenV2,
+  Trc20Balance,
+  TronAccount,
+} from '../../clients/trongrid/types';
 import type { KnownCaip19Id, Network } from '../../constants';
 import {
   BANDWIDTH_METADATA,
@@ -50,9 +57,12 @@ import {
   MAX_ENERGY_METADATA,
   Networks,
   TokenMetadata,
+  TRX_IN_LOCK_PERIOD_METADATA,
   TRX_METADATA,
+  TRX_READY_FOR_WITHDRAWAL_METADATA,
   TRX_STAKED_FOR_BANDWIDTH_METADATA,
   TRX_STAKED_FOR_ENERGY_METADATA,
+  TRX_STAKING_REWARDS_METADATA,
 } from '../../constants';
 import { configProvider } from '../../context';
 import type { AssetEntity } from '../../entities/assets';
@@ -75,10 +85,13 @@ type NormalizedAccountData = {
   /** Staking data including frozen balances and delegated resources. */
   stakedData: {
     frozenV2: TronAccount['frozenV2'];
+    unfrozenV2: TronAccount['unfrozenV2'];
     accountResource: TronAccount['account_resource'] | undefined;
   };
   /** Account resources (energy, bandwidth). Empty object for inactive accounts. */
   resources: AccountResources | Record<string, never>;
+  /** Unclaimed staking rewards in sun (0 if no rewards). */
+  stakingRewards: number;
 };
 
 export class AssetsService {
@@ -188,11 +201,15 @@ export class AssetsService {
       scope,
     });
 
-    const [tronAccountInfoRequest, tronAccountResourcesRequest] =
-      await Promise.allSettled([
-        this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
-        this.#tronHttpClient.getAccountResources(scope, account.address),
-      ]);
+    const [
+      tronAccountInfoRequest,
+      tronAccountResourcesRequest,
+      stakingRewardsRequest,
+    ] = await Promise.allSettled([
+      this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
+      this.#tronHttpClient.getAccountResources(scope, account.address),
+      this.#tronHttpClient.getReward(scope, account.address),
+    ]);
 
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     if (isInactiveAccount) {
@@ -218,6 +235,7 @@ export class AssetsService {
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
       trc20BalancesFallback,
+      stakingRewardsRequest,
     });
 
     const rawAssets = this.#extractAssets(account, scope, accountData);
@@ -272,30 +290,42 @@ export class AssetsService {
    * @param params.tronAccountInfoRequest - The settled promise result from getAccountInfoByAddress.
    * @param params.tronAccountResourcesRequest - The settled promise result from getAccountResources.
    * @param params.trc20BalancesFallback - TRC20 balances from fallback endpoint (empty for active accounts).
+   * @param params.stakingRewardsRequest - The settled promise result from getReward.
    * @returns NormalizedAccountData - Consistent data shape for extraction.
    */
   #buildAccountData({
     tronAccountInfoRequest,
     tronAccountResourcesRequest,
     trc20BalancesFallback,
+    stakingRewardsRequest,
   }: {
     tronAccountInfoRequest: PromiseSettledResult<TronAccount>;
     tronAccountResourcesRequest: PromiseSettledResult<AccountResources>;
     trc20BalancesFallback: Trc20Balance[];
+    stakingRewardsRequest: PromiseSettledResult<number>;
   }): NormalizedAccountData {
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     const resources =
       tronAccountResourcesRequest.status === 'fulfilled'
         ? tronAccountResourcesRequest.value
         : {};
+    const stakingRewards =
+      stakingRewardsRequest.status === 'fulfilled'
+        ? Math.max(0, stakingRewardsRequest.value)
+        : 0;
 
     if (isInactiveAccount) {
       return {
         nativeBalance: 0,
         trc10Balances: [],
         trc20Balances: trc20BalancesFallback,
-        stakedData: { frozenV2: [], accountResource: undefined },
+        stakedData: {
+          frozenV2: [],
+          unfrozenV2: [],
+          accountResource: undefined,
+        },
         resources,
+        stakingRewards,
       };
     }
 
@@ -306,9 +336,11 @@ export class AssetsService {
       trc20Balances: tronAccountInfo.trc20 ?? [],
       stakedData: {
         frozenV2: tronAccountInfo.frozenV2 ?? [],
+        unfrozenV2: tronAccountInfo.unfrozenV2 ?? [],
         accountResource: tronAccountInfo.account_resource,
       },
       resources,
+      stakingRewards,
     };
   }
 
@@ -329,6 +361,9 @@ export class AssetsService {
     return [
       this.#extractNativeAsset(account, scope, data.nativeBalance),
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
+      ...this.#extractReadyForWithdrawalAssets(account, scope, data.stakedData),
+      ...this.#extractInLockPeriodAssets(account, scope, data.stakedData),
+      this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
       ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
       ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
       ...this.#extractBandwidth({
@@ -513,6 +548,125 @@ export class AssetsService {
   }
 
   /**
+   * Extracts TRX ready for withdrawal (unstaked TRX that has completed the withdrawal period).
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param stakedData - Staking data including unfrozen balances.
+   * @returns AssetEntity[] - Array with ready-for-withdrawal asset (may be empty if none available).
+   */
+  #extractReadyForWithdrawalAssets(
+    account: KeyringAccount,
+    scope: Network,
+    stakedData: NormalizedAccountData['stakedData'],
+  ): AssetEntity[] {
+    const currentTimestamp = Date.now();
+    let readyForWithdrawalAmount = 0;
+
+    stakedData.unfrozenV2?.forEach((unfrozen: RawTronUnfrozenV2) => {
+      const expireTime = unfrozen.unfreeze_expire_time ?? 0;
+      const amount = unfrozen.unfreeze_amount ?? 0;
+
+      if (expireTime <= currentTimestamp && amount > 0) {
+        readyForWithdrawalAmount += amount;
+      }
+    });
+
+    if (readyForWithdrawalAmount > 0) {
+      const { id, symbol, decimals, iconUrl } =
+        Networks[scope].readyForWithdrawal;
+
+      const readyForWithdrawalAsset: AssetEntity = {
+        assetType: id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol,
+        decimals,
+        rawAmount: readyForWithdrawalAmount.toString(),
+        uiAmount: toUiAmount(readyForWithdrawalAmount, decimals).toString(),
+        iconUrl,
+      };
+      return [readyForWithdrawalAsset];
+    }
+
+    return [];
+  }
+
+  /**
+   * Extracts staking rewards asset (unclaimed voting rewards).
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param stakingRewards - Unclaimed staking rewards in sun.
+   * @returns AssetEntity - The staking rewards asset.
+   */
+  #extractStakingRewardsAsset(
+    account: KeyringAccount,
+    scope: Network,
+    stakingRewards: number,
+  ): AssetEntity {
+    return {
+      assetType: Networks[scope].stakingRewards.id,
+      keyringAccountId: account.id,
+      network: scope,
+      symbol: Networks[scope].stakingRewards.symbol,
+      decimals: Networks[scope].stakingRewards.decimals,
+      rawAmount: stakingRewards.toString(),
+      uiAmount: toUiAmount(
+        stakingRewards,
+        Networks[scope].stakingRewards.decimals,
+      ).toString(),
+      iconUrl: Networks[scope].stakingRewards.iconUrl,
+    };
+  }
+
+  /**
+   * Extracts TRX that is in the lock period (unstaked but lock period not yet ended).
+   * This represents TRX that the user has initiated unstaking for but must wait
+   * the 14-day lock period before they can withdraw.
+   *
+   * @param account - The keyring account.
+   * @param scope - The network.
+   * @param stakedData - Staking data including unfrozen balances.
+   * @returns AssetEntity[] - Array with in-lock-period asset (may be empty if none).
+   */
+  #extractInLockPeriodAssets(
+    account: KeyringAccount,
+    scope: Network,
+    stakedData: NormalizedAccountData['stakedData'],
+  ): AssetEntity[] {
+    const currentTimestamp = Date.now();
+    let inLockPeriodAmount = 0;
+
+    stakedData.unfrozenV2?.forEach((unfrozen: RawTronUnfrozenV2) => {
+      const expireTime = unfrozen.unfreeze_expire_time ?? 0;
+      const amount = unfrozen.unfreeze_amount ?? 0;
+
+      if (expireTime > currentTimestamp && amount > 0) {
+        inLockPeriodAmount += amount;
+      }
+    });
+
+    if (inLockPeriodAmount > 0) {
+      const { id, symbol, decimals, iconUrl } = Networks[scope].inLockPeriod;
+
+      const inLockPeriodAsset: AssetEntity = {
+        assetType: id,
+        keyringAccountId: account.id,
+        network: scope,
+        symbol,
+        decimals,
+        rawAmount: inLockPeriodAmount.toString(),
+        uiAmount: toUiAmount(inLockPeriodAmount, decimals).toString(),
+        iconUrl,
+      };
+      return [inLockPeriodAsset];
+    }
+
+    return [];
+  }
+
+  /**
    * Extracts current and maximum bandwidth from the account resources.
    *
    * @param options - Options object.
@@ -682,6 +836,9 @@ export class AssetsService {
     const {
       nativeAssetTypes,
       stakedNativeAssetTypes,
+      readyForWithdrawalAssetTypes,
+      inLockPeriodAssetTypes,
+      stakingRewardsAssetTypes,
       energyAssetTypes,
       maximunEnergyAssetTypes,
       bandwidthAssetTypes,
@@ -694,6 +851,14 @@ export class AssetsService {
       this.#getNativeTokensMetadata(nativeAssetTypes);
     const stakedTokensMetadata = this.#getStakedTokensMetadata(
       stakedNativeAssetTypes,
+    );
+    const readyForWithdrawalTokensMetadata =
+      this.#getReadyForWithdrawalTokensMetadata(readyForWithdrawalAssetTypes);
+    const inLockPeriodTokensMetadata = this.#getInLockPeriodMetadata(
+      inLockPeriodAssetTypes,
+    );
+    const stakingRewardsMetadata = this.#getStakingRewardsMetadata(
+      stakingRewardsAssetTypes,
     );
     const energyTokensMetadata = this.#getEnergyMetadata(energyAssetTypes);
     const maximunEnergyTokensMetadata = this.#getMaximunEnergyMetadata(
@@ -712,6 +877,9 @@ export class AssetsService {
     const result = {
       ...nativeTokensMetadata,
       ...stakedTokensMetadata,
+      ...readyForWithdrawalTokensMetadata,
+      ...inLockPeriodTokensMetadata,
+      ...stakingRewardsMetadata,
       ...energyTokensMetadata,
       ...maximunEnergyTokensMetadata,
       ...bandwidthTokensMetadata,
@@ -727,6 +895,9 @@ export class AssetsService {
   #splitAssetsByType(assetTypes: CaipAssetType[]): {
     nativeAssetTypes: NativeCaipAssetType[];
     stakedNativeAssetTypes: StakedCaipAssetType[];
+    readyForWithdrawalAssetTypes: ReadyForWithdrawalCaipAssetType[];
+    inLockPeriodAssetTypes: InLockPeriodCaipAssetType[];
+    stakingRewardsAssetTypes: StakingRewardsCaipAssetType[];
     energyAssetTypes: ResourceCaipAssetType[];
     maximunEnergyAssetTypes: ResourceCaipAssetType[];
     bandwidthAssetTypes: ResourceCaipAssetType[];
@@ -741,6 +912,15 @@ export class AssetsService {
     const stakedNativeAssetTypes = assetTypes.filter((assetType) =>
       assetType.includes('/slip44:195-staked-for-'),
     ) as StakedCaipAssetType[];
+    const readyForWithdrawalAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:195-ready-for-withdrawal'),
+    ) as ReadyForWithdrawalCaipAssetType[];
+    const inLockPeriodAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:195-in-lock-period'),
+    ) as InLockPeriodCaipAssetType[];
+    const stakingRewardsAssetTypes = assetTypes.filter((assetType) =>
+      assetType.endsWith('/slip44:195-staking-rewards'),
+    ) as StakingRewardsCaipAssetType[];
     const energyAssetTypes = assetTypes.filter((assetType) =>
       assetType.endsWith('/slip44:energy'),
     ) as ResourceCaipAssetType[];
@@ -766,6 +946,9 @@ export class AssetsService {
     return {
       nativeAssetTypes,
       stakedNativeAssetTypes,
+      readyForWithdrawalAssetTypes,
+      inLockPeriodAssetTypes,
+      stakingRewardsAssetTypes,
       energyAssetTypes,
       maximunEnergyAssetTypes,
       bandwidthAssetTypes,
@@ -851,6 +1034,87 @@ export class AssetsService {
     }
 
     return stakedTokensMetadata;
+  }
+
+  #getReadyForWithdrawalTokensMetadata(
+    assetTypes: ReadyForWithdrawalCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const readyForWithdrawalTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      readyForWithdrawalTokensMetadata[assetType] = {
+        fungible: TRX_READY_FOR_WITHDRAWAL_METADATA.fungible,
+        name: TRX_READY_FOR_WITHDRAWAL_METADATA.name,
+        symbol: TRX_READY_FOR_WITHDRAWAL_METADATA.symbol,
+        iconUrl: TRX_READY_FOR_WITHDRAWAL_METADATA.iconUrl,
+        units: [
+          {
+            decimals: TRX_READY_FOR_WITHDRAWAL_METADATA.decimals,
+            symbol: TRX_READY_FOR_WITHDRAWAL_METADATA.symbol,
+            name: TRX_READY_FOR_WITHDRAWAL_METADATA.name,
+          },
+        ],
+      };
+    }
+
+    return readyForWithdrawalTokensMetadata;
+  }
+
+  #getStakingRewardsMetadata(
+    assetTypes: StakingRewardsCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const stakingRewardsMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      stakingRewardsMetadata[assetType] = {
+        fungible: TRX_STAKING_REWARDS_METADATA.fungible,
+        name: TRX_STAKING_REWARDS_METADATA.name,
+        symbol: TRX_STAKING_REWARDS_METADATA.symbol,
+        iconUrl: TRX_STAKING_REWARDS_METADATA.iconUrl,
+        units: [
+          {
+            decimals: TRX_STAKING_REWARDS_METADATA.decimals,
+            symbol: TRX_STAKING_REWARDS_METADATA.symbol,
+            name: TRX_STAKING_REWARDS_METADATA.name,
+          },
+        ],
+      };
+    }
+
+    return stakingRewardsMetadata;
+  }
+
+  #getInLockPeriodMetadata(
+    assetTypes: InLockPeriodCaipAssetType[],
+  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
+    const inLockPeriodTokensMetadata: Record<
+      CaipAssetType,
+      FungibleAssetMetadata | null
+    > = {};
+
+    for (const assetType of assetTypes) {
+      inLockPeriodTokensMetadata[assetType] = {
+        fungible: TRX_IN_LOCK_PERIOD_METADATA.fungible,
+        name: TRX_IN_LOCK_PERIOD_METADATA.name,
+        symbol: TRX_IN_LOCK_PERIOD_METADATA.symbol,
+        iconUrl: TRX_IN_LOCK_PERIOD_METADATA.iconUrl,
+        units: [
+          {
+            decimals: TRX_IN_LOCK_PERIOD_METADATA.decimals,
+            symbol: TRX_IN_LOCK_PERIOD_METADATA.symbol,
+            name: TRX_IN_LOCK_PERIOD_METADATA.name,
+          },
+        ],
+      };
+    }
+
+    return inLockPeriodTokensMetadata;
   }
 
   #getBandwidthMetadata(
