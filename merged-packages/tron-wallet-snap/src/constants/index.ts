@@ -102,7 +102,7 @@ export const TRX_STAKED_FOR_ENERGY_METADATA = {
 
 export const TRX_READY_FOR_WITHDRAWAL_METADATA = {
   name: 'Ready for Withdrawal',
-  symbol: 'rfwTRX',
+  symbol: 'trx-ready-for-withdrawal',
   fungible: true as const,
   decimals: 6,
   iconUrl:
@@ -111,7 +111,7 @@ export const TRX_READY_FOR_WITHDRAWAL_METADATA = {
 
 export const TRX_STAKING_REWARDS_METADATA = {
   name: 'Staking Rewards',
-  symbol: 'srTRX',
+  symbol: 'trx-staking-rewards',
   fungible: true as const,
   decimals: 6,
   iconUrl:
@@ -120,7 +120,7 @@ export const TRX_STAKING_REWARDS_METADATA = {
 
 export const TRX_IN_LOCK_PERIOD_METADATA = {
   name: 'In Lock Period',
-  symbol: 'ilpTRX',
+  symbol: 'trx-in-lock-period',
   fungible: true as const,
   decimals: 6,
   iconUrl:

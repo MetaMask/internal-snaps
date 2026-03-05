@@ -1344,7 +1344,7 @@ describe('AssetsService', () => {
             );
             expect(stakingRewardsAsset?.rawAmount).toBe('5000000');
             expect(stakingRewardsAsset?.uiAmount).toBe('5');
-            expect(stakingRewardsAsset?.symbol).toBe('srTRX');
+            expect(stakingRewardsAsset?.symbol).toBe('trx-staking-rewards');
           },
         );
       });
@@ -1618,7 +1618,7 @@ describe('AssetsService', () => {
             assetType: KnownCaip19Id.TrxReadyForWithdrawalMainnet,
             keyringAccountId: mockAccount.id,
             network: Network.Mainnet,
-            symbol: 'rfwTRX',
+            symbol: 'trx-ready-for-withdrawal',
             decimals: 6,
             rawAmount: '0',
             uiAmount: '0',

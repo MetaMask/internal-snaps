@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Tweak asset symbols for the 3 new staking special assets: "In Lock Period" TRX, "Ready for Withdrawal" TRX and "Staking Rewards" TRX ([#227](https://github.com/MetaMask/snap-tron-wallet/pull/227))
+
 ## [1.23.0]
 
 ### Added
 
 - Add "Ready for Withdrawal" TRX as a special asset to display unstaked TRX that has completed the withdrawal period and is ready to be claimed ([#208](https://github.com/MetaMask/snap-tron-wallet/pull/208))
-- Add staking rewards TRX asset to display unclaimed voting rewards ([#209](https://github.com/MetaMask/snap-tron-wallet/pull/209))
-- Return "In Lock Period TRX" as a special asset showing TRX that is unstaked but still in the 14-day lock period ([#210](https://github.com/MetaMask/snap-tron-wallet/pull/210))
+- Add "Staking Rewards" TRX asset to display unclaimed voting rewards ([#209](https://github.com/MetaMask/snap-tron-wallet/pull/209))
+- Return "In Lock Period" TRX as a special asset showing TRX that is unstaked but still in the 14-day lock period ([#210](https://github.com/MetaMask/snap-tron-wallet/pull/210))
 
 ## [1.22.1]
 
