@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.1]
+
 ### Changed
 
 - Tweak asset symbols for the 3 new staking special assets: "In Lock Period" TRX, "Ready for Withdrawal" TRX and "Staking Rewards" TRX ([#227](https://github.com/MetaMask/snap-tron-wallet/pull/227))
@@ -422,7 +424,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.1...HEAD
+[1.23.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.0...v1.23.1
+[1.23.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.1...v1.23.0
 [1.22.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.0...v1.22.1
 [1.22.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.1...v1.22.0
 [1.21.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.21.0...v1.21.1

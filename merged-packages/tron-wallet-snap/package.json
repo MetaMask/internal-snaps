@@ -1,6 +1,6 @@
 {
   "name": "@metamask/tron-wallet-snap",
-  "version": "1.22.1",
+  "version": "1.23.1",
   "description": "A Tron wallet Snap.",
   "repository": {
     "type": "git",
