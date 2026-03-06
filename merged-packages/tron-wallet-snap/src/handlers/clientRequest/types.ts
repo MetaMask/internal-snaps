@@ -16,6 +16,7 @@ export enum ClientRequestMethod {
   OnUnstakeAmountInput = 'onUnstakeAmountInput',
   ConfirmUnstake = 'confirmUnstake',
   ClaimUnstakedTrx = 'claimUnstakedTrx',
+  ClaimTrxStakingRewards = 'claimTrxStakingRewards',
   /**
    * Sign Rewards Message
    */

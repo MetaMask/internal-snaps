@@ -84,6 +84,7 @@ describe('StakingService', () => {
         unfreezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
         vote: jest.fn().mockResolvedValue(mockTransaction),
         withdrawExpireUnfreeze: jest.fn().mockResolvedValue(mockTransaction),
+        withdrawBlockRewards: jest.fn().mockResolvedValue(mockTransaction),
       },
       trx: {
         sign: jest.fn().mockResolvedValue(mockSignedTransaction),
@@ -518,6 +519,36 @@ describe('StakingService', () => {
       );
       expect(
         mockTronWeb.transactionBuilder.withdrawExpireUnfreeze,
+      ).toHaveBeenCalledWith(mockAccount.address);
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(mockTransaction);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith(
+        mockSignedTransaction,
+      );
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.SynchronizeAccount,
+        params: { accountId: mockAccount.id },
+        duration: 'PT5S',
+      });
+    });
+  });
+
+  describe('claimTrxStakingRewards', () => {
+    it('builds, signs, and broadcasts a withdrawBlockRewards transaction', async () => {
+      await stakingService.claimTrxStakingRewards({
+        account: mockAccount,
+        scope: Network.Mainnet,
+      });
+
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: mockAccount.entropySource,
+        derivationPath: mockAccount.derivationPath,
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        mockKeypair.privateKeyHex,
+      );
+      expect(
+        mockTronWeb.transactionBuilder.withdrawBlockRewards,
       ).toHaveBeenCalledWith(mockAccount.address);
       expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(mockTransaction);
       expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith(

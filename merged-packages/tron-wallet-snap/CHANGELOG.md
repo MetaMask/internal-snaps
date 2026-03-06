@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Implement `claimUnstakedTrx` client request method ([#231](https://github.com/MetaMask/snap-tron-wallet/pull/231))
+- Implement `claimTrxStakingRewards` client request method ([#232](https://github.com/MetaMask/snap-tron-wallet/pull/232))
 
 ## [1.23.1]
 

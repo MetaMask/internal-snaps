@@ -172,4 +172,27 @@ export class StakingService {
       ],
     });
   }
+
+  async claimTrxStakingRewards({
+    account,
+    scope,
+  }: {
+    account: TronKeyringAccount;
+    scope: Network;
+  }): Promise<void> {
+    this.#logger.info(
+      `Claiming staking rewards for ${account.address} on ${scope}...`,
+    );
+
+    await executeOnChainActions({
+      accountsService: this.#accountsService,
+      tronWebFactory: this.#tronWebFactory,
+      snapClient: this.#snapClient,
+      account,
+      scope,
+      buildTransactions: async (tronWeb) => [
+        await tronWeb.transactionBuilder.withdrawBlockRewards(account.address),
+      ],
+    });
+  }
 }

@@ -36,6 +36,7 @@ import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
+  ClaimTrxStakingRewardsRequestStruct,
   ClaimUnstakedTrxRequestStruct,
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
@@ -155,6 +156,8 @@ export class ClientRequestHandler {
         return this.#handleConfirmUnstake(request);
       case ClientRequestMethod.ClaimUnstakedTrx:
         return this.#handleClaimUnstakedTrx(request);
+      case ClientRequestMethod.ClaimTrxStakingRewards:
+        return this.#handleClaimTrxStakingRewards(request);
       /**
        * Sign Rewards Message
        */
@@ -951,6 +954,35 @@ export class ClientRequestHandler {
     const scope = chainId as Network;
 
     await this.#stakingService.claimUnstakedTrx({ account, scope });
+
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
+
+  /**
+   * Claims accrued voting/staking rewards.
+   * Uses the WithdrawBalanceContract on the Tron network.
+   *
+   * @param request - The JSON-RPC request containing the account and asset details.
+   * @returns The result indicating success or failure with errors.
+   */
+  async #handleClaimTrxStakingRewards(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      ClaimTrxStakingRewardsRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const { fromAccountId, assetId } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+
+    const { chainId } = parseCaipAssetType(assetId);
+    const scope = chainId as Network;
+
+    await this.#stakingService.claimTrxStakingRewards({ account, scope });
 
     return {
       valid: true,
