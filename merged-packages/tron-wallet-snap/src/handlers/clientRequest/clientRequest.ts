@@ -36,6 +36,7 @@ import { createPrefixedLogger } from '../../utils/logger';
 import { BackgroundEventMethod } from '../cronjob';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
+  ClaimUnstakedTrxRequestStruct,
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
   ComputeStakeFeeRequestStruct,
@@ -152,6 +153,8 @@ export class ClientRequestHandler {
         return this.#handleOnUnstakeAmountInput(request);
       case ClientRequestMethod.ConfirmUnstake:
         return this.#handleConfirmUnstake(request);
+      case ClientRequestMethod.ClaimUnstakedTrx:
+        return this.#handleClaimUnstakedTrx(request);
       /**
        * Sign Rewards Message
        */
@@ -919,6 +922,35 @@ export class ClientRequestHandler {
       assetId: stakedAssetId,
       amount: requestBalance,
     });
+
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
+
+  /**
+   * Claims TRX that has completed the 14-day unstaking lock period.
+   * Uses the WithdrawExpireUnfreezeContract on the Tron network.
+   *
+   * @param request - The JSON-RPC request containing the account and asset details.
+   * @returns The result indicating success or failure with errors.
+   */
+  async #handleClaimUnstakedTrx(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      ClaimUnstakedTrxRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const { fromAccountId, assetId } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+
+    const { chainId } = parseCaipAssetType(assetId);
+    const scope = chainId as Network;
+
+    await this.#stakingService.claimUnstakedTrx({ account, scope });
 
     return {
       valid: true,

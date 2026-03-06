@@ -83,6 +83,7 @@ describe('StakingService', () => {
         freezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
         unfreezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
         vote: jest.fn().mockResolvedValue(mockTransaction),
+        withdrawExpireUnfreeze: jest.fn().mockResolvedValue(mockTransaction),
       },
       trx: {
         sign: jest.fn().mockResolvedValue(mockSignedTransaction),
@@ -497,6 +498,36 @@ describe('StakingService', () => {
           mockAccount.address,
         );
       }
+    });
+  });
+
+  describe('claimUnstakedTrx', () => {
+    it('builds, signs, and broadcasts a withdrawExpireUnfreeze transaction', async () => {
+      await stakingService.claimUnstakedTrx({
+        account: mockAccount,
+        scope: Network.Mainnet,
+      });
+
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: mockAccount.entropySource,
+        derivationPath: mockAccount.derivationPath,
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        mockKeypair.privateKeyHex,
+      );
+      expect(
+        mockTronWeb.transactionBuilder.withdrawExpireUnfreeze,
+      ).toHaveBeenCalledWith(mockAccount.address);
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(mockTransaction);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith(
+        mockSignedTransaction,
+      );
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.SynchronizeAccount,
+        params: { accountId: mockAccount.id },
+        duration: 'PT5S',
+      });
     });
   });
 });

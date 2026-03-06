@@ -7,8 +7,8 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { trxToSun } from '../../utils/conversion';
+import { executeOnChainActions } from '../../utils/executeOnChainActions';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -57,63 +57,32 @@ export class StakingService {
      */
     srNodeAddress?: string;
   }): Promise<void> {
-    this.#logger.info(
-      `Staking ${amount.toString()} ${assetId} from ${account.address} for ${purpose}...`,
-    );
-
     const { chainId } = parseCaipAssetType(assetId);
-
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(
-      chainId as Network,
-      privateKeyHex,
-    );
-
     const amountInSun = Number(trxToSun(amount));
-    const stakingTransaction = await tronWeb.transactionBuilder.freezeBalanceV2(
-      amountInSun,
-      purpose,
-      account.address,
-    );
-
-    const signedStakingTransaction = await tronWeb.trx.sign(stakingTransaction);
-
-    await tronWeb.trx.sendRawTransaction(signedStakingTransaction);
-
-    /**
-     * The amount of votes available from a stake is the closest integer to the amount of TRX staked.
-     */
     const availableVotes = amount.integerValue(BigNumber.ROUND_DOWN).toNumber();
-
-    /**
-     * Use the provided SR node address or default to Consensys SR node.
-     */
     const voteRecipient = srNodeAddress ?? CONSENSYS_SR_NODE_ADDRESS;
 
-    const voteAllocationTransaction = await tronWeb.transactionBuilder.vote(
-      {
-        [voteRecipient]: availableVotes,
-      },
-      account.address,
+    this.#logger.info(
+      `Staking ${amount.toString()} ${assetId} for ${purpose} for ${account.address} on ${chainId}...`,
     );
 
-    const voteAllocationSignedTransaction = await tronWeb.trx.sign(
-      voteAllocationTransaction,
-    );
-
-    await tronWeb.trx.sendRawTransaction(voteAllocationSignedTransaction);
-
-    /**
-     * Sync account after the transaction happens
-     */
-    await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.SynchronizeAccount,
-      params: { accountId: account.id },
-      duration: 'PT5S',
+    await executeOnChainActions({
+      accountsService: this.#accountsService,
+      tronWebFactory: this.#tronWebFactory,
+      snapClient: this.#snapClient,
+      account,
+      scope: chainId as Network,
+      buildTransactions: async (tronWeb) => [
+        await tronWeb.transactionBuilder.freezeBalanceV2(
+          amountInSun,
+          purpose,
+          account.address,
+        ),
+        await tronWeb.transactionBuilder.vote(
+          { [voteRecipient]: availableVotes },
+          account.address,
+        ),
+      ],
     });
   }
 
@@ -126,21 +95,7 @@ export class StakingService {
     assetId: StakedCaipAssetType;
     amount: BigNumber;
   }): Promise<void> {
-    this.#logger.info(
-      `Unstaking ${amount.toString()} ${assetId} from ${account.address}...`,
-    );
-
     const { chainId } = parseCaipAssetType(assetId);
-
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
-
-    const tronWeb = this.#tronWebFactory.createClient(
-      chainId as Network,
-      privateKeyHex,
-    );
 
     /**
      * Check which resource we are unstaking.
@@ -172,23 +127,49 @@ export class StakingService {
     }
 
     const amountInSun = Number(trxToSun(amount));
-    const transaction = await tronWeb.transactionBuilder.unfreezeBalanceV2(
-      amountInSun,
-      purpose,
-      account.address,
+
+    this.#logger.info(
+      `Unstaking ${amount.toString()} ${assetId} for ${account.address} on ${chainId}...`,
     );
 
-    const signedTx = await tronWeb.trx.sign(transaction);
+    await executeOnChainActions({
+      accountsService: this.#accountsService,
+      tronWebFactory: this.#tronWebFactory,
+      snapClient: this.#snapClient,
+      account,
+      scope: chainId as Network,
+      buildTransactions: async (tronWeb) => [
+        await tronWeb.transactionBuilder.unfreezeBalanceV2(
+          amountInSun,
+          purpose,
+          account.address,
+        ),
+      ],
+    });
+  }
 
-    await tronWeb.trx.sendRawTransaction(signedTx);
+  async claimUnstakedTrx({
+    account,
+    scope,
+  }: {
+    account: TronKeyringAccount;
+    scope: Network;
+  }): Promise<void> {
+    this.#logger.info(
+      `Claiming unstaked TRX for ${account.address} on ${scope}...`,
+    );
 
-    /**
-     * Sync account after the transaction happens
-     */
-    await this.#snapClient.scheduleBackgroundEvent({
-      method: BackgroundEventMethod.SynchronizeAccount,
-      params: { accountId: account.id },
-      duration: 'PT5S',
+    await executeOnChainActions({
+      accountsService: this.#accountsService,
+      tronWebFactory: this.#tronWebFactory,
+      snapClient: this.#snapClient,
+      account,
+      scope,
+      buildTransactions: async (tronWeb) => [
+        await tronWeb.transactionBuilder.withdrawExpireUnfreeze(
+          account.address,
+        ),
+      ],
     });
   }
 }
