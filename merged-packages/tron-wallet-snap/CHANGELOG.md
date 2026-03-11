@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `claimUnstakedTrx` client request method ([#231](https://github.com/MetaMask/snap-tron-wallet/pull/231))
 - Implement `claimTrxStakingRewards` client request method ([#232](https://github.com/MetaMask/snap-tron-wallet/pull/232))
 
+### Fixed
+
+- Always extract special assets to prevent stale balances when amounts drop to zero ([#234](https://github.com/MetaMask/snap-tron-wallet/pull/234))
+
 ## [1.23.1]
 
 ### Changed

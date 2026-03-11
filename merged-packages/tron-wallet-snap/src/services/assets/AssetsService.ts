@@ -361,8 +361,8 @@ export class AssetsService {
     return [
       this.#extractNativeAsset(account, scope, data.nativeBalance),
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
-      ...this.#extractReadyForWithdrawalAssets(account, scope, data.stakedData),
-      ...this.#extractInLockPeriodAssets(account, scope, data.stakedData),
+      this.#extractReadyForWithdrawalAsset(account, scope, data.stakedData),
+      this.#extractInLockPeriodAsset(account, scope, data.stakedData),
       this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
       ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
       ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
@@ -479,7 +479,7 @@ export class AssetsService {
    * @param account - The keyring account.
    * @param scope - The network.
    * @param stakedData - Staking data including frozen balances and delegated resources.
-   * @returns AssetEntity[] - Array of staked assets (may be empty if no staking).
+   * @returns AssetEntity[] - Array of staked assets (always 2: bandwidth and energy, amounts may be 0).
    */
   #extractStakedNativeAssets(
     account: KeyringAccount,
@@ -510,39 +510,33 @@ export class AssetsService {
     stakedBandwidthAmount += delegatedBandwidth;
     stakedEnergyAmount += delegatedEnergy;
 
-    if (stakedBandwidthAmount > 0) {
-      const stakedBandwidthAsset: AssetEntity = {
-        assetType: Networks[scope].stakedForBandwidth.id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: Networks[scope].stakedForBandwidth.symbol,
-        decimals: Networks[scope].stakedForBandwidth.decimals,
-        rawAmount: stakedBandwidthAmount.toString(),
-        uiAmount: toUiAmount(
-          stakedBandwidthAmount,
-          Networks[scope].stakedForBandwidth.decimals,
-        ).toString(),
-        iconUrl: Networks[scope].stakedForBandwidth.iconUrl,
-      };
-      assets.push(stakedBandwidthAsset);
-    }
+    assets.push({
+      assetType: Networks[scope].stakedForBandwidth.id,
+      keyringAccountId: account.id,
+      network: scope,
+      symbol: Networks[scope].stakedForBandwidth.symbol,
+      decimals: Networks[scope].stakedForBandwidth.decimals,
+      rawAmount: stakedBandwidthAmount.toString(),
+      uiAmount: toUiAmount(
+        stakedBandwidthAmount,
+        Networks[scope].stakedForBandwidth.decimals,
+      ).toString(),
+      iconUrl: Networks[scope].stakedForBandwidth.iconUrl,
+    });
 
-    if (stakedEnergyAmount > 0) {
-      const stakedEnergyAsset: AssetEntity = {
-        assetType: Networks[scope].stakedForEnergy.id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: Networks[scope].stakedForEnergy.symbol,
-        decimals: Networks[scope].stakedForEnergy.decimals,
-        rawAmount: stakedEnergyAmount.toString(),
-        uiAmount: toUiAmount(
-          stakedEnergyAmount,
-          Networks[scope].stakedForEnergy.decimals,
-        ).toString(),
-        iconUrl: Networks[scope].stakedForEnergy.iconUrl,
-      };
-      assets.push(stakedEnergyAsset);
-    }
+    assets.push({
+      assetType: Networks[scope].stakedForEnergy.id,
+      keyringAccountId: account.id,
+      network: scope,
+      symbol: Networks[scope].stakedForEnergy.symbol,
+      decimals: Networks[scope].stakedForEnergy.decimals,
+      rawAmount: stakedEnergyAmount.toString(),
+      uiAmount: toUiAmount(
+        stakedEnergyAmount,
+        Networks[scope].stakedForEnergy.decimals,
+      ).toString(),
+      iconUrl: Networks[scope].stakedForEnergy.iconUrl,
+    });
 
     return assets;
   }
@@ -553,13 +547,13 @@ export class AssetsService {
    * @param account - The keyring account.
    * @param scope - The network.
    * @param stakedData - Staking data including unfrozen balances.
-   * @returns AssetEntity[] - Array with ready-for-withdrawal asset (may be empty if none available).
+   * @returns AssetEntity - The ready-for-withdrawal asset (amount may be 0).
    */
-  #extractReadyForWithdrawalAssets(
+  #extractReadyForWithdrawalAsset(
     account: KeyringAccount,
     scope: Network,
     stakedData: NormalizedAccountData['stakedData'],
-  ): AssetEntity[] {
+  ): AssetEntity {
     const currentTimestamp = Date.now();
     let readyForWithdrawalAmount = 0;
 
@@ -572,24 +566,19 @@ export class AssetsService {
       }
     });
 
-    if (readyForWithdrawalAmount > 0) {
-      const { id, symbol, decimals, iconUrl } =
-        Networks[scope].readyForWithdrawal;
+    const { id, symbol, decimals, iconUrl } =
+      Networks[scope].readyForWithdrawal;
 
-      const readyForWithdrawalAsset: AssetEntity = {
-        assetType: id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol,
-        decimals,
-        rawAmount: readyForWithdrawalAmount.toString(),
-        uiAmount: toUiAmount(readyForWithdrawalAmount, decimals).toString(),
-        iconUrl,
-      };
-      return [readyForWithdrawalAsset];
-    }
-
-    return [];
+    return {
+      assetType: id,
+      keyringAccountId: account.id,
+      network: scope,
+      symbol,
+      decimals,
+      rawAmount: readyForWithdrawalAmount.toString(),
+      uiAmount: toUiAmount(readyForWithdrawalAmount, decimals).toString(),
+      iconUrl,
+    };
   }
 
   /**
@@ -628,13 +617,13 @@ export class AssetsService {
    * @param account - The keyring account.
    * @param scope - The network.
    * @param stakedData - Staking data including unfrozen balances.
-   * @returns AssetEntity[] - Array with in-lock-period asset (may be empty if none).
+   * @returns AssetEntity - The in-lock-period asset (amount may be 0).
    */
-  #extractInLockPeriodAssets(
+  #extractInLockPeriodAsset(
     account: KeyringAccount,
     scope: Network,
     stakedData: NormalizedAccountData['stakedData'],
-  ): AssetEntity[] {
+  ): AssetEntity {
     const currentTimestamp = Date.now();
     let inLockPeriodAmount = 0;
 
@@ -647,23 +636,18 @@ export class AssetsService {
       }
     });
 
-    if (inLockPeriodAmount > 0) {
-      const { id, symbol, decimals, iconUrl } = Networks[scope].inLockPeriod;
+    const { id, symbol, decimals, iconUrl } = Networks[scope].inLockPeriod;
 
-      const inLockPeriodAsset: AssetEntity = {
-        assetType: id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol,
-        decimals,
-        rawAmount: inLockPeriodAmount.toString(),
-        uiAmount: toUiAmount(inLockPeriodAmount, decimals).toString(),
-        iconUrl,
-      };
-      return [inLockPeriodAsset];
-    }
-
-    return [];
+    return {
+      assetType: id,
+      keyringAccountId: account.id,
+      network: scope,
+      symbol,
+      decimals,
+      rawAmount: inLockPeriodAmount.toString(),
+      uiAmount: toUiAmount(inLockPeriodAmount, decimals).toString(),
+      iconUrl,
+    };
   }
 
   /**

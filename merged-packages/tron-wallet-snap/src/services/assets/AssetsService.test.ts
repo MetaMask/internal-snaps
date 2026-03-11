@@ -753,7 +753,7 @@ describe('AssetsService', () => {
 
     /* eslint-disable @typescript-eslint/naming-convention */
     describe('TRX ready for withdrawal', () => {
-      it('returns undefined when account has no unfrozenV2 data', async () => {
+      it('returns zero balance when account has no unfrozenV2 data', async () => {
         await withAssetsService(
           async ({
             assetsService,
@@ -777,7 +777,8 @@ describe('AssetsService', () => {
               assets,
               KnownCaip19Id.TrxReadyForWithdrawalMainnet,
             );
-            expect(readyForWithdrawalAsset).toBeUndefined();
+            expect(readyForWithdrawalAsset).toBeDefined();
+            expect(readyForWithdrawalAsset?.rawAmount).toBe('0');
           },
         );
       });
@@ -815,7 +816,7 @@ describe('AssetsService', () => {
         );
       });
 
-      it('does not return asset when unfrozenV2 has not expired', async () => {
+      it('returns zero balance when unfrozenV2 has not expired', async () => {
         await withAssetsService(
           async ({
             assetsService,
@@ -845,7 +846,8 @@ describe('AssetsService', () => {
               assets,
               KnownCaip19Id.TrxReadyForWithdrawalMainnet,
             );
-            expect(readyForWithdrawalAsset).toBeUndefined();
+            expect(readyForWithdrawalAsset).toBeDefined();
+            expect(readyForWithdrawalAsset?.rawAmount).toBe('0');
           },
         );
       });
@@ -927,7 +929,7 @@ describe('AssetsService', () => {
 
     /* eslint-disable @typescript-eslint/naming-convention */
     describe('TRX in lock period', () => {
-      it('returns undefined when account has no unfrozenV2 data', async () => {
+      it('returns zero balance when account has no unfrozenV2 data', async () => {
         await withAssetsService(
           async ({
             assetsService,
@@ -951,7 +953,8 @@ describe('AssetsService', () => {
               assets,
               KnownCaip19Id.TrxInLockPeriodMainnet,
             );
-            expect(inLockPeriodAsset).toBeUndefined();
+            expect(inLockPeriodAsset).toBeDefined();
+            expect(inLockPeriodAsset?.rawAmount).toBe('0');
           },
         );
       });
@@ -992,7 +995,7 @@ describe('AssetsService', () => {
         );
       });
 
-      it('does not return asset when unfrozenV2 has already expired', async () => {
+      it('returns zero balance when unfrozenV2 has already expired', async () => {
         await withAssetsService(
           async ({
             assetsService,
@@ -1022,7 +1025,8 @@ describe('AssetsService', () => {
               assets,
               KnownCaip19Id.TrxInLockPeriodMainnet,
             );
-            expect(inLockPeriodAsset).toBeUndefined();
+            expect(inLockPeriodAsset).toBeDefined();
+            expect(inLockPeriodAsset?.rawAmount).toBe('0');
           },
         );
       });
@@ -1106,7 +1110,7 @@ describe('AssetsService', () => {
         );
       });
 
-      it('returns undefined for inactive accounts', async () => {
+      it('returns zero balance for inactive accounts', async () => {
         await withAssetsService(
           async ({
             assetsService,
@@ -1130,7 +1134,8 @@ describe('AssetsService', () => {
               assets,
               KnownCaip19Id.TrxInLockPeriodMainnet,
             );
-            expect(inLockPeriodAsset).toBeUndefined();
+            expect(inLockPeriodAsset).toBeDefined();
+            expect(inLockPeriodAsset?.rawAmount).toBe('0');
           },
         );
       });
