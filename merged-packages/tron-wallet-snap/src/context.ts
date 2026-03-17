@@ -152,6 +152,8 @@ const confirmationHandler = new ConfirmationHandler({
   snapClient,
   state,
   tronWebFactory,
+  assetsService,
+  feeCalculatorService,
 });
 
 /**

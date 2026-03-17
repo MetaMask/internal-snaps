@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Always extract special assets to prevent stale balances when amounts drop to zero ([#234](https://github.com/MetaMask/snap-tron-wallet/pull/234))
+- Add confirmation dialog to `claimUnstakedTrx` method ([#236](https://github.com/MetaMask/snap-tron-wallet/pull/236))
 
 ## [1.23.1]
 

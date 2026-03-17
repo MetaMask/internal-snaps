@@ -1291,7 +1291,9 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
     mockStakingService = {
       claimUnstakedTrx: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<StakingService>;
-    mockConfirmationHandler = {} as unknown as jest.Mocked<ConfirmationHandler>;
+    mockConfirmationHandler = {
+      confirmClaimUnstakedTrx: jest.fn().mockResolvedValue(true),
+    } as unknown as jest.Mocked<ConfirmationHandler>;
     mockTransactionsService = {
       save: jest.fn(),
     } as unknown as jest.Mocked<TransactionsService>;
@@ -1310,7 +1312,9 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
     });
   });
 
-  it('claims unstaked TRX successfully', async () => {
+  it('claims unstaked TRX successfully when user confirms', async () => {
+    mockConfirmationHandler.confirmClaimUnstakedTrx.mockResolvedValue(true);
+
     const request = {
       jsonrpc: '2.0' as const,
       id: '1',
@@ -1326,11 +1330,43 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
     expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
       TEST_ACCOUNT_ID,
     );
+    expect(
+      mockConfirmationHandler.confirmClaimUnstakedTrx,
+    ).toHaveBeenCalledWith({
+      account: mockAccount,
+      scope: Network.Mainnet,
+    });
     expect(mockStakingService.claimUnstakedTrx).toHaveBeenCalledWith({
       account: mockAccount,
       scope: Network.Mainnet,
     });
     expect(result).toStrictEqual({ valid: true, errors: [] });
+  });
+
+  it('throws when user rejects the confirmation', async () => {
+    mockConfirmationHandler.confirmClaimUnstakedTrx.mockResolvedValue(false);
+
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: 'claimUnstakedTrx',
+      params: {
+        fromAccountId: TEST_ACCOUNT_ID,
+        assetId: Networks[Network.Mainnet].nativeToken.id,
+      },
+    };
+
+    await expect(clientRequestHandler.handle(request as any)).rejects.toThrow(
+      'User rejected the request.',
+    );
+
+    expect(
+      mockConfirmationHandler.confirmClaimUnstakedTrx,
+    ).toHaveBeenCalledWith({
+      account: mockAccount,
+      scope: Network.Mainnet,
+    });
+    expect(mockStakingService.claimUnstakedTrx).not.toHaveBeenCalled();
   });
 
   it('throws InvalidParamsError for invalid params', async () => {
