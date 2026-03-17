@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.0]
+
 ### Added
 
 - Implement `claimUnstakedTrx` client request method ([#231](https://github.com/MetaMask/snap-tron-wallet/pull/231))
 - Implement `claimTrxStakingRewards` client request method ([#232](https://github.com/MetaMask/snap-tron-wallet/pull/232))
+- Add confirmation dialog to `claimUnstakedTrx` method ([#236](https://github.com/MetaMask/snap-tron-wallet/pull/236))
 
 ### Fixed
 
@@ -434,7 +437,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.24.0...HEAD
+[1.24.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.1...v1.24.0
 [1.23.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.1...v1.23.0
 [1.22.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.0...v1.22.1
