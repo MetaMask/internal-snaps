@@ -67,7 +67,24 @@ describe('WalletService', () => {
       },
       utils: {
         deserializeTx: {
-          deserializeTransaction: jest.fn().mockReturnValue({ contract: [] }),
+          deserializeTransaction: jest.fn().mockReturnValue({
+            contract: [
+              {
+                type: 'TransferContract',
+                parameter: {
+                  // eslint-disable-next-line @typescript-eslint/naming-convention
+                  type_url: 'type.googleapis.com/protocol.TransferContract',
+                  value: {
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    owner_address: '41abcdef',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    to_address: '41123456',
+                    amount: 1000000,
+                  },
+                },
+              },
+            ],
+          }),
         },
       },
       isAddress: jest.fn().mockReturnValue(true),

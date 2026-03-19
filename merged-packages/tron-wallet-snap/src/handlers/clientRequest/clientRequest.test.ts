@@ -123,6 +123,8 @@ describe('ClientRequestHandler', () => {
             {
               type: 'TriggerSmartContract',
               parameter: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
                 value: {
                   // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
@@ -262,6 +264,8 @@ describe('ClientRequestHandler', () => {
             {
               type: 'TransferContract',
               parameter: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                type_url: 'type.googleapis.com/protocol.TransferContract',
                 value: {
                   // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
@@ -366,9 +370,23 @@ describe('ClientRequestHandler', () => {
           privateKeyHex: 'test-private-key',
         } as any);
 
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
-          {},
-        );
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+                value: {
+                  // eslint-disable-next-line @typescript-eslint/naming-convention
+                  owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+                  // eslint-disable-next-line @typescript-eslint/naming-convention
+                  contract_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
+                },
+              },
+            },
+          ],
+        });
         mockTronWeb.trx.sign.mockResolvedValue({
           txID: 'test-tx-id-3',
           // eslint-disable-next-line @typescript-eslint/naming-convention

@@ -18,6 +18,7 @@ import {
   SignMessageResponseStruct,
   SignTransactionRequestStruct,
 } from '../../validation/structs';
+import { assertTransactionStructure } from '../../validation/transaction';
 import { validateRequest, validateResponse } from '../../validation/validators';
 import type { AccountsService } from '../accounts/AccountsService';
 /**
@@ -218,6 +219,8 @@ export class WalletService {
         type,
         rawDataHex,
       );
+      assertTransactionStructure(rawData);
+
       const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
       const transaction = {
         visible: false,

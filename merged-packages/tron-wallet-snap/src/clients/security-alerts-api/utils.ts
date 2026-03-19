@@ -8,12 +8,19 @@ import type { SecurityScanPayload } from './types';
  * can be used as adapter between a Tron transaction and the payload
  * supported by SecurityAlertsApiClient.
  *
+ * Only the first contract in `raw_data.contract` is used because
+ * the Tron protocol currently only executes one contract per
+ * transaction. The array exists in TronWeb's type definition for
+ * forward-compatibility, but any transaction with more than one
+ * contract is considered malformed.
+ *
+ * @see https://developers.tron.network/docs/tron-protocol-transaction
  * @param rawData - The raw transaction data.
  * @returns The extracted scan parameters.
  */
-export const extractScanParametersFromTransactionData = (
+export function extractScanParametersFromTransactionData(
   rawData: Types.Transaction['raw_data'],
-): SecurityScanPayload | null => {
+): SecurityScanPayload | null {
   const contractParam = rawData.contract[0]?.parameter.value;
   if (!contractParam) {
     return null;
@@ -41,4 +48,4 @@ export const extractScanParametersFromTransactionData = (
   }
 
   return { from, to, data, value };
-};
+}

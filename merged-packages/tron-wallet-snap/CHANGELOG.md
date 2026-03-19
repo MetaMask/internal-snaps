@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Assert transaction structure at all entry points, rejecting malformed transactions ([#237](https://github.com/MetaMask/snap-tron-wallet/pull/237))
+
 ## [1.24.0]
 
 ### Added

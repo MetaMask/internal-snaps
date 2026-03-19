@@ -14,6 +14,24 @@ import {
 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
+import { ClientRequestMethod, SendErrorCodes } from './types';
+import {
+  ClaimTrxStakingRewardsRequestStruct,
+  ClaimUnstakedTrxRequestStruct,
+  ComputeFeeRequestStruct,
+  ComputeFeeResponseStruct,
+  ComputeStakeFeeRequestStruct,
+  OnAddressInputRequestStruct,
+  OnAmountInputRequestStruct,
+  OnConfirmSendRequestStruct,
+  OnConfirmStakeRequestStruct,
+  OnConfirmUnstakeRequestStruct,
+  OnStakeAmountInputRequestStruct,
+  OnUnstakeAmountInputRequestStruct,
+  parseRewardsMessage,
+  SignAndSendTransactionRequestStruct,
+  SignRewardsMessageRequestStruct,
+} from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network, Networks, NULL_ADDRESS, ZERO } from '../../constants';
@@ -33,25 +51,8 @@ import { assertOrThrow } from '../../utils/assertOrThrow';
 import { trxToSun } from '../../utils/conversion';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
+import { assertTransactionStructure } from '../../validation/transaction';
 import { BackgroundEventMethod } from '../cronjob';
-import { ClientRequestMethod, SendErrorCodes } from './types';
-import {
-  ClaimTrxStakingRewardsRequestStruct,
-  ClaimUnstakedTrxRequestStruct,
-  ComputeFeeRequestStruct,
-  ComputeFeeResponseStruct,
-  ComputeStakeFeeRequestStruct,
-  OnAddressInputRequestStruct,
-  OnAmountInputRequestStruct,
-  OnConfirmSendRequestStruct,
-  OnConfirmStakeRequestStruct,
-  OnConfirmUnstakeRequestStruct,
-  OnStakeAmountInputRequestStruct,
-  OnUnstakeAmountInputRequestStruct,
-  parseRewardsMessage,
-  SignAndSendTransactionRequestStruct,
-  SignRewardsMessageRequestStruct,
-} from './validation';
 
 export class ClientRequestHandler {
   readonly #logger: ILogger;
@@ -221,6 +222,8 @@ export class ClientRequestHandler {
       type,
       rawDataHex,
     );
+    assertTransactionStructure(rawData);
+
     const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {
       /**
@@ -591,6 +594,8 @@ export class ClientRequestHandler {
       type,
       rawDataHex,
     );
+    assertTransactionStructure(rawData);
+
     const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {
       visible: false,
