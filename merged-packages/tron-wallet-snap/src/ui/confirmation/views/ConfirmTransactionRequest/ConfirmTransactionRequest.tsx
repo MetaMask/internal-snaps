@@ -17,6 +17,7 @@ import {
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import { type ConfirmTransactionRequestContext } from './types';
 import { Networks } from '../../../../constants';
+import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
@@ -44,7 +45,39 @@ export const ConfirmTransactionRequest = ({
   const translate = i18n(preferences.locale);
 
   const shouldDisableConfirmButton =
-    scanFetchStatus === 'fetching' || scan?.status === 'ERROR';
+    scanFetchStatus === 'fetching' ||
+    scan?.simulationStatus === SimulationStatus.Failed;
+
+  let estimatedChangesSection: ComponentOrElement | null = null;
+  if (preferences.simulateOnChainActions) {
+    if (scan?.simulationStatus === SimulationStatus.Skipped) {
+      estimatedChangesSection = (
+        <Section direction="vertical">
+          <Box direction="horizontal" alignment="start">
+            <SnapText fontWeight="medium">
+              {translate('confirmation.estimatedChanges.title')}
+            </SnapText>
+            <Tooltip
+              content={translate('confirmation.estimatedChanges.tooltip')}
+            >
+              <Icon name="info" />
+            </Tooltip>
+          </Box>
+          <SnapText color="alternative">
+            {translate('confirmation.estimatedChanges.unsupportedContract')}
+          </SnapText>
+        </Section>
+      );
+    } else {
+      estimatedChangesSection = (
+        <EstimatedChanges
+          scanFetchStatus={scanFetchStatus}
+          changes={scan?.estimatedChanges ?? null}
+          preferences={preferences}
+        />
+      );
+    }
+  }
 
   return (
     <Container>
@@ -69,13 +102,7 @@ export const ConfirmTransactionRequest = ({
         </Box>
 
         {/* Estimated Changes (from security scan simulation) */}
-        {preferences.simulateOnChainActions ? (
-          <EstimatedChanges
-            scanFetchStatus={scanFetchStatus}
-            changes={scan?.estimatedChanges ?? null}
-            preferences={preferences}
-          />
-        ) : null}
+        {estimatedChangesSection}
 
         {/* Additional Details */}
         <Section>

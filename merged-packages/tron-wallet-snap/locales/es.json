@@ -61,6 +61,9 @@
     "confirmation.estimatedChanges.noChanges": {
       "message": "Sin cambios estimados"
     },
+    "confirmation.estimatedChanges.unsupportedContract": {
+      "message": "Contrato no compatible con simulación"
+    },
     "confirmation.simulationTitleAPIError": {
       "message": "Debido a un error, no pudimos verificar alertas de seguridad."
     },

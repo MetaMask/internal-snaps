@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import type { Types } from 'tronweb';
+
 import type { TransactionScanResult, TransactionScanValidation } from './types';
-import { ScanStatus, SecurityAlertResponse } from './types';
-import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
+import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
+import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
 import type { ILogger } from '../../utils/logger';
+import { isTransactionWellFormed } from '../../validation/transaction';
 
 const METAMASK_ORIGIN = 'metamask';
 const METAMASK_ORIGIN_URL = 'https://metamask.io';
@@ -33,11 +36,7 @@ export class TransactionScanService {
    *
    * @param params - The parameters for the function.
    * @param params.accountAddress - The address of the account.
-   * @param params.parameters - The parameters for the transaction.
-   * @param params.parameters.from - The from address.
-   * @param params.parameters.to - The to address.
-   * @param params.parameters.data - The data of the transaction.
-   * @param params.parameters.value - The value of the transaction.
+   * @param params.transactionRawData - The raw data of the transaction.
    * @param params.origin - The origin of the transaction.
    * @param params.scope - The network scope.
    * @param params.options - The options for the scan (simulation, validation).
@@ -46,28 +45,55 @@ export class TransactionScanService {
    */
   async scanTransaction({
     accountAddress,
-    parameters,
+    transactionRawData,
     origin,
     scope,
     options = ['simulation', 'validation'],
     account,
   }: {
     accountAddress: string;
-    parameters: {
-      from: string | undefined;
-      to: string | undefined;
-      data: string | undefined;
-      value: number | undefined | null;
-    };
+    transactionRawData: Types.Transaction['raw_data'];
     origin: string;
     scope: Network;
     options?: string[] | undefined;
     account?: TronKeyringAccount;
   }): Promise<TransactionScanResult | null> {
+    if (!isTransactionWellFormed(transactionRawData)) {
+      this.#logger.warn(
+        'Malformed transaction: Tron transactions must contain exactly one contract',
+      );
+
+      return {
+        status: 'ERROR',
+        estimatedChanges: { assets: [] },
+        validation: { type: null, reason: null },
+        error: {
+          type: 'MALFORMED_TRANSACTION',
+          code: null,
+          message: 'Tron transactions must contain exactly one contract entry.',
+        },
+        simulationStatus: SimulationStatus.Failed,
+      };
+    }
+
+    if (!SecurityAlertsApiClient.isContractTypeSupported(transactionRawData)) {
+      this.#logger.info(
+        'Transaction contract type is not supported for simulation, skipping scan',
+      );
+
+      return {
+        status: 'SUCCESS',
+        estimatedChanges: { assets: [] },
+        validation: { type: null, reason: null },
+        error: null,
+        simulationStatus: SimulationStatus.Skipped,
+      };
+    }
+
     try {
       const result = await this.#securityAlertsApiClient.scanTransaction({
         accountAddress,
-        parameters,
+        transactionRawData,
         origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
         options,
       });
@@ -201,11 +227,11 @@ export class TransactionScanService {
 
     // Determine status: ERROR only if explicitly marked as Error
     // SUCCESS if either is Success or if statuses are missing
-    const simulationStatus = result.simulation?.status;
-    const validationStatus = result.validation?.status;
+    const apiSimulationStatus = result.simulation?.status;
+    const apiValidationStatus = result.validation?.status;
 
     const status =
-      simulationStatus === 'Error' || validationStatus === 'Error'
+      apiSimulationStatus === 'Error' || apiValidationStatus === 'Error'
         ? 'ERROR'
         : 'SUCCESS';
 
@@ -258,6 +284,10 @@ export class TransactionScanService {
               message: result.simulation?.error ?? null,
             }
           : null,
+      simulationStatus:
+        status === 'ERROR'
+          ? SimulationStatus.Failed
+          : SimulationStatus.Completed,
     };
   }
 }

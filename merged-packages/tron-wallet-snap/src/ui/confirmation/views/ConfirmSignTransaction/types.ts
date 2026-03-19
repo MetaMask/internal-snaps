@@ -21,12 +21,6 @@ export type ConfirmSignTransactionContext = {
   scanFetchStatus: FetchStatus;
   tokenPrices: SpotPrices;
   tokenPricesFetchStatus: FetchStatus;
-  scanParameters: {
-    from: string | null;
-    to: string | null;
-    data: string | null;
-    value: number | null;
-  } | null;
   fees: ComputeFeeResult;
   feesFetchStatus: FetchStatus;
 };

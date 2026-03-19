@@ -256,7 +256,6 @@ export class ConfirmationHandler {
       scanFetchStatus: 'fetched',
       tokenPrices: {},
       tokenPricesFetchStatus: 'fetched',
-      scanParameters: null,
       fees,
       feesFetchStatus: 'fetched',
     };

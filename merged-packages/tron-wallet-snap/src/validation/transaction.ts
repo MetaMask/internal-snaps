@@ -1,5 +1,5 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
-import { assert, define } from '@metamask/superstruct';
+import { assert, define, is } from '@metamask/superstruct';
 import type { Types } from 'tronweb';
 
 /**
@@ -30,6 +30,18 @@ export const TransactionRawDataStruct = define<Types.Transaction['raw_data']>(
     return true;
   },
 );
+
+/**
+ * Checks whether the transaction structure is well-formed.
+ *
+ * @param rawData - The raw transaction data.
+ * @returns True if the transaction has a valid single-contract structure.
+ */
+export function isTransactionWellFormed(
+  rawData: Types.Transaction['raw_data'],
+): boolean {
+  return is(rawData, TransactionRawDataStruct);
+}
 
 /**
  * Asserts that the transaction raw data is well-formed, throwing if not.

@@ -19,7 +19,7 @@ export type LocalizedMessage = keyof (typeof locales)[typeof FALLBACK_LANGUAGE];
  * @returns A function that gets the translation for a given key.
  */
 export function i18n(locale: Locale) {
-  // Needs to be castes as EN is the main language and we can have the case where
+  // Needs to be casted as EN is the main language and we can have the case where
   // messages are not yed completed for the other languages
 
   const messages = locales[locale] ?? locales[FALLBACK_LANGUAGE];

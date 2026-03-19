@@ -8,7 +8,6 @@ import type { Transaction } from 'tronweb/lib/esm/types';
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
 import type { ConfirmSignTransactionContext } from './types';
-import { extractScanParametersFromTransactionData } from '../../../../clients/security-alerts-api/utils';
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities';
@@ -30,7 +29,6 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   scanFetchStatus: 'initial',
   tokenPrices: {},
   tokenPricesFetchStatus: 'initial',
-  scanParameters: null,
   fees: [],
   feesFetchStatus: 'initial',
   preferences: {
@@ -159,9 +157,6 @@ export async function render(
     context.tokenPricesFetchStatus = 'error';
   }
 
-  // Extract scan parameters early (before interface creation)
-  context.scanParameters = extractScanParametersFromTransactionData(rawData);
-
   // Create initial interface with loading state
   const id = await snapClient.createInterface(
     <ConfirmSignTransaction context={context} />,
@@ -191,12 +186,7 @@ export async function render(
     try {
       const scan = await transactionScanService.scanTransaction({
         accountAddress: account.address,
-        parameters: {
-          from: context.scanParameters?.from ?? undefined,
-          to: context.scanParameters?.to ?? undefined,
-          data: context.scanParameters?.data ?? undefined,
-          value: context.scanParameters?.value ?? undefined,
-        },
+        transactionRawData: rawData,
         origin,
         scope: scope as Network,
         options,

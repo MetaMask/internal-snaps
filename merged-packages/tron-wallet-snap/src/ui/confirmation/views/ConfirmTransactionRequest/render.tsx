@@ -1,12 +1,14 @@
-import type { DialogResult } from '@metamask/snaps-sdk';
+import type { DialogResult, Json } from '@metamask/snaps-sdk';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
+import { Types } from 'tronweb';
 
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import {
   CONFIRM_TRANSACTION_INTERFACE_NAME,
   type ConfirmTransactionRequestContext,
 } from './types';
+import { buildTransactionRawData } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
@@ -43,7 +45,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   tokenPricesFetchStatus: 'initial',
   scan: null,
   scanFetchStatus: 'initial',
-  scanParameters: null,
+  transactionRawData: null,
   accountType: '',
   preferences: {
     locale: 'en',
@@ -60,52 +62,45 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
 };
 
 /**
- * Build scan parameters from the transaction details.
- * For native TRX sends, uses the recipient address and amount in sun.
- * For TRC20 sends, uses the contract address as the target.
+ * Builds a minimal raw transaction data object from the send details,
+ * suitable for security scanning via the Security Alerts API.
  *
- * @param fromAddress - The sender address.
- * @param toAddress - The recipient address.
+ * @param fromAddress - The sender address (base58).
+ * @param toAddress - The recipient address (base58).
  * @param amount - The amount to send (display units).
  * @param asset - The asset being sent.
- * @returns The scan parameters for the security alerts API.
+ * @returns A minimal raw transaction data object.
  */
-function buildScanParameters(
+function buildScanTransactionRawData(
   fromAddress: string,
   toAddress: string,
   amount: string,
   asset: AssetEntity,
-): {
-  from: string | null;
-  to: string | null;
-  data: string | null;
-  value: number | null;
-} {
+): ReturnType<typeof buildTransactionRawData> {
   const { assetNamespace, assetReference } = parseCaipAssetType(
     asset.assetType,
   );
   const isTrc20 = assetNamespace === 'trc20';
 
   if (isTrc20) {
-    return {
+    return buildTransactionRawData({
       from: fromAddress,
-      to: assetReference, // contract address
-      data: null,
-      value: null,
-    };
+      to: assetReference,
+      amount: 0,
+      contractType: Types.ContractType.TriggerSmartContract,
+    });
   }
 
-  // Native TRX: convert display amount to raw sun
   const rawValue = new BigNumber(amount)
     .multipliedBy(new BigNumber(10).pow(asset.decimals))
     .toNumber();
 
-  return {
+  return buildTransactionRawData({
     from: fromAddress,
     to: toAddress,
-    data: null,
-    value: rawValue,
-  };
+    amount: rawValue,
+    contractType: Types.ContractType.TransferContract,
+  });
 }
 
 /**
@@ -163,13 +158,14 @@ export async function render(
     fee.asset.iconUrl = getIconUrlForKnownAsset(fee.asset.type);
   });
 
-  // Build scan parameters from transaction details
-  context.scanParameters = buildScanParameters(
+  // Build a minimal raw transaction for security scanning
+  const transactionRawData = buildScanTransactionRawData(
     incomingContext.fromAddress,
     incomingContext.toAddress,
     incomingContext.amount,
     incomingContext.asset,
   );
+  context.transactionRawData = transactionRawData as unknown as Json;
 
   // 2. Initial render with loading skeleton (always show loading if pricing enabled)
   const id = await snapClient.createInterface(
@@ -203,12 +199,7 @@ export async function render(
     try {
       const scan = await transactionScanService.scanTransaction({
         accountAddress: incomingContext.fromAddress,
-        parameters: {
-          from: context.scanParameters?.from ?? undefined,
-          to: context.scanParameters?.to ?? undefined,
-          data: context.scanParameters?.data ?? undefined,
-          value: context.scanParameters?.value ?? undefined,
-        },
+        transactionRawData,
         origin: incomingContext.origin,
         scope: incomingContext.scope,
         options,

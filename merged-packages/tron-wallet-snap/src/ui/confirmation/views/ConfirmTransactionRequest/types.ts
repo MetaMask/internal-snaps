@@ -1,3 +1,5 @@
+import type { Json } from '@metamask/snaps-sdk';
+
 import type { SpotPrices } from '../../../../clients/price-api/types';
 import type { Network } from '../../../../constants';
 import type { AssetEntity } from '../../../../entities/assets';
@@ -21,11 +23,6 @@ export type ConfirmTransactionRequestContext = {
   tokenPricesFetchStatus: FetchStatus;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
-  scanParameters: {
-    from: string | null;
-    to: string | null;
-    data: string | null;
-    value: number | null;
-  } | null;
+  transactionRawData: Json;
   accountType: string;
 };

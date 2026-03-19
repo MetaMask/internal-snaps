@@ -31,11 +31,18 @@ export type TransactionScanError = {
   message: string | null;
 };
 
+export enum SimulationStatus {
+  Completed = 'COMPLETED',
+  Skipped = 'SKIPPED',
+  Failed = 'FAILED',
+}
+
 export type TransactionScanResult = {
   status: TransactionScanStatus;
   estimatedChanges: TransactionScanEstimatedChanges;
   validation: TransactionScanValidation;
   error: TransactionScanError | null;
+  simulationStatus: SimulationStatus;
 };
 
 export enum SecurityAlertResponse {
