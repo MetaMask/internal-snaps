@@ -228,7 +228,7 @@ export type ValidatedContractInfo = Infer<typeof ContractInfoStruct>;
 // --------------------------------------------------------------------------
 
 /**
- * Response from /wallet/getReward endpoint.
+ * Response from the /wallet/getReward endpoint.
  * Returns the unclaimed staking rewards for an address.
  *
  * @see https://developers.tron.network/reference/getreward
