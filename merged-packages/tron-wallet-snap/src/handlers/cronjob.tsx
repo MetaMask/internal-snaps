@@ -146,7 +146,7 @@ export class CronHandler {
 
     const accounts = await this.#accountsService.findByIds(accountIds);
 
-    if (!accounts) {
+    if (accounts.length === 0) {
       return;
     }
 
@@ -731,7 +731,7 @@ export class CronHandler {
 
       // Fallback: sync accounts anyway to update final status
       const accounts = await this.#accountsService.findByIds(accountIds);
-      if (accounts && accounts.length > 0) {
+      if (accounts.length > 0) {
         await this.#accountsService.synchronize(accounts);
       }
       return;
@@ -773,7 +773,7 @@ export class CronHandler {
 
       // Get the sender account to determine account type
       const accounts = await this.#accountsService.findByIds(accountIds);
-      const senderAccount = accounts?.[0];
+      const senderAccount = accounts[0];
 
       if (!senderAccount) {
         this.#logger.error({ txId }, 'Sender account not found');
@@ -818,7 +818,7 @@ export class CronHandler {
           'Max tracking attempts reached with errors - falling back to account sync',
         );
         const accounts = await this.#accountsService.findByIds(accountIds);
-        if (accounts && accounts.length > 0) {
+        if (accounts.length > 0) {
           await this.#accountsService.synchronize(accounts);
         }
       }

@@ -1,4 +1,4 @@
-import type { KeyringAccount, Transaction } from '@metamask/keyring-api';
+import type { Transaction } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { groupBy } from 'lodash';
@@ -193,7 +193,7 @@ export class TransactionsService {
    */
   async fetchNewTransactionsForAccount(
     scope: Network,
-    account: KeyringAccount,
+    account: TronKeyringAccount,
   ): Promise<Transaction[]> {
     this.#logger.info(
       `Fetching new transactions for account ${account.address} on network ${scope}...`,
@@ -277,7 +277,7 @@ export class TransactionsService {
 
     const mappedTransactions = TransactionMapper.mapTransactions({
       scope,
-      account: account as TronKeyringAccount,
+      account,
       rawTransactions: enrichedRawTransactions,
       trc20Transactions: relevantTrc20Transactions,
       trc10TokenMetadata,
