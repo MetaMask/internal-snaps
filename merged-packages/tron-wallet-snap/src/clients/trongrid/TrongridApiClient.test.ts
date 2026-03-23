@@ -1,9 +1,10 @@
 import { TrongridApiClient } from './TrongridApiClient';
-import type { Trc20Balance } from './types';
+import type { Trc20Balance, TransactionInfo } from './types';
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { Network } from '../../constants';
 import { ConfigProvider } from '../../services/config';
+import nativeTransferMock from '../../services/transactions/mocks/native-transfer.json';
 import { mockLogger } from '../../utils/mockLogger';
 import type { Serializable } from '../../utils/serialization/types';
 import { TronHttpClient } from '../tron-http/TronHttpClient';
@@ -295,6 +296,69 @@ describe('TrongridApiClient', () => {
         const normalizedBalances = normalizeBalances(result);
         expect(normalizedBalances[0]).toStrictEqual({ TokenAddress1: '100' });
         expect(normalizedBalances[1]).toStrictEqual({ TokenAddress2: '200' });
+      });
+    });
+  });
+
+  describe('getTransactionInfoByAddress', () => {
+    const mockAddress = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+    const mockTx = nativeTransferMock as TransactionInfo;
+
+    it('fetches transactions without a limit query parameter by default', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        // eslint-disable-next-line no-restricted-globals
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response(
+            JSON.stringify({
+              data: [mockTx],
+              success: true,
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              meta: { at: 1770121997373, page_size: 1 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+        const result = await client.getTransactionInfoByAddress(
+          Network.Mainnet,
+          mockAddress,
+        );
+
+        expect(result).toHaveLength(1);
+        // eslint-disable-next-line no-restricted-globals
+        expect(global.fetch).toHaveBeenCalledWith(
+          `https://api.trongrid.io/v1/accounts/${mockAddress}/transactions`,
+          expect.any(Object),
+        );
+      });
+    });
+
+    it('appends limit to the query string when options.limit is set', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        // eslint-disable-next-line no-restricted-globals
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response(
+            JSON.stringify({
+              data: [mockTx],
+              success: true,
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              meta: { at: 1770121997373, page_size: 1 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+        await client.getTransactionInfoByAddress(Network.Mainnet, mockAddress, {
+          limit: 1,
+        });
+
+        // eslint-disable-next-line no-restricted-globals
+        expect(global.fetch).toHaveBeenCalledWith(
+          `https://api.trongrid.io/v1/accounts/${mockAddress}/transactions?limit=1`,
+          expect.any(Object),
+        );
       });
     });
   });

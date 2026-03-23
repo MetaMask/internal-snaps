@@ -277,7 +277,7 @@ export class KeyringHandler implements Keyring {
         DiscoverAccountsStruct,
       );
 
-      const account = await this.#accountsService.deriveAccount({
+      const derivedAccount = await this.#accountsService.deriveAccount({
         entropySource,
         index: groupIndex,
       });
@@ -286,18 +286,16 @@ export class KeyringHandler implements Keyring {
 
       for (const scope of scopes) {
         activityChecksPromises.push(
-          this.#transactionsService.fetchNewTransactionsForAccount(
+          this.#transactionsService.checkAddressActivity(
             scope as Network,
-            account,
+            derivedAccount.address,
           ),
         );
       }
 
-      const transactionsOnAllScopes = await Promise.all(activityChecksPromises);
+      const activityOnScopes = await Promise.all(activityChecksPromises);
 
-      const hasActivity = transactionsOnAllScopes.some(
-        (transactions) => transactions.length > 0,
-      );
+      const hasActivity = activityOnScopes.some((active) => active);
 
       if (!hasActivity) {
         return [];
@@ -307,7 +305,7 @@ export class KeyringHandler implements Keyring {
         {
           type: 'bip44',
           scopes,
-          derivationPath: account.derivationPath,
+          derivationPath: derivedAccount.derivationPath,
         },
       ];
       // TODO: Replace `any` with type

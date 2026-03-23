@@ -98,6 +98,51 @@ describe('TransactionsService', () => {
     });
   });
 
+  describe('checkAddressActivity', () => {
+    it('returns true when the address has at least one transaction', async () => {
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+        nativeTransferMock,
+      ] as TransactionInfo[]);
+
+      const result = await transactionsService.checkAddressActivity(
+        Network.Mainnet,
+        mockAccount.address,
+      );
+
+      expect(result).toBe(true);
+      expect(
+        mockTrongridApiClient.getTransactionInfoByAddress,
+      ).toHaveBeenCalledWith(Network.Mainnet, mockAccount.address, {
+        limit: 1,
+      });
+    });
+
+    it('returns false when the address has no transactions', async () => {
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([]);
+
+      const result = await transactionsService.checkAddressActivity(
+        Network.Mainnet,
+        mockAccount.address,
+      );
+
+      expect(result).toBe(false);
+    });
+
+    it('propagates errors from the API client', async () => {
+      const error = new Error('API failure');
+      mockTrongridApiClient.getTransactionInfoByAddress.mockRejectedValue(
+        error,
+      );
+
+      await expect(
+        transactionsService.checkAddressActivity(
+          Network.Mainnet,
+          mockAccount.address,
+        ),
+      ).rejects.toThrow('API failure');
+    });
+  });
+
   describe('fetchNewTransactionsForAccount', () => {
     it('should fetch and map transactions for an account using native transfers mock data', async () => {
       // Setup mock responses with simplified single-transaction structure

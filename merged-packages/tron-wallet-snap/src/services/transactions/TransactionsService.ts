@@ -291,6 +291,27 @@ export class TransactionsService {
   }
 
   /**
+   * Returns whether the address has any on-chain transaction history on the scope.
+   * Uses a minimal TronGrid page size when supported (`limit=1`).
+   *
+   * @param scope - The network scope.
+   * @param address - The account address to check.
+   * @returns True when at least one transaction is returned for the address on this scope.
+   */
+  async checkAddressActivity(
+    scope: Network,
+    address: string,
+  ): Promise<boolean> {
+    const transactions =
+      await this.#trongridApiClient.getTransactionInfoByAddress(
+        scope,
+        address,
+        { limit: 1 },
+      );
+    return transactions.length > 0;
+  }
+
+  /**
    * Fetches the foundational transaction data from TronGrid.
    * Both requests run in parallel for optimal performance.
    *

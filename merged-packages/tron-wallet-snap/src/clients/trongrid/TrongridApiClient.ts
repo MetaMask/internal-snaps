@@ -143,11 +143,14 @@ export class TrongridApiClient {
    * @see https://developers.tron.network/reference/get-transaction-info-by-account-address
    * @param scope - The network to query (e.g., 'mainnet', 'shasta')
    * @param address - The TRON address to query
+   * @param options - Optional query options for TronGrid.
+   * @param options.limit - When set, passed as the TronGrid `limit` query parameter.
    * @returns Promise<TransactionInfo[]> - Transaction data in camelCase
    */
   async getTransactionInfoByAddress(
     scope: Network,
     address: string,
+    options?: { limit?: number },
   ): Promise<TransactionInfo[]> {
     const client = this.#clients.get(scope);
     if (!client) {
@@ -155,10 +158,15 @@ export class TrongridApiClient {
     }
 
     const { baseUrl, headers } = client;
+    const queryParams: Record<string, string> | undefined =
+      options?.limit === undefined
+        ? undefined
+        : { limit: String(options.limit) };
     const url = buildUrl({
       baseUrl,
       path: '/v1/accounts/{address}/transactions',
       pathParams: { address },
+      ...(queryParams ? { queryParams } : {}),
     });
 
     const response = await fetch(url, { headers });

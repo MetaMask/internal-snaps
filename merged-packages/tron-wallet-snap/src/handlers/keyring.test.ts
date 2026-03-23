@@ -67,7 +67,7 @@ describe('KeyringHandler', () => {
     } as any;
     mockAssetsService = {} as any;
     mockTransactionsService = {
-      fetchNewTransactionsForAccount: jest.fn(),
+      checkAddressActivity: jest.fn(),
     } as any;
     mockWalletService = {
       handleKeyringRequest: jest
@@ -491,34 +491,20 @@ describe('KeyringHandler', () => {
       index: 0,
     };
 
-    // Minimal mock transaction that satisfies the Transaction type
-    const mockTransaction = {
-      id: 'tx-123',
-      type: 'send' as const,
-      status: 'confirmed' as const,
-      timestamp: Date.now(),
-      chain: 'tron:728126428' as const,
-      account: mockAccount.id,
-      from: [],
-      to: [],
-      fees: [],
-      events: [],
-    };
-
     beforeEach(() => {
       jest
         .spyOn(mockAccountsService, 'deriveAccount')
         .mockImplementation()
         .mockResolvedValue(mockDerivedAccount);
       jest
-        .spyOn(mockTransactionsService, 'fetchNewTransactionsForAccount')
+        .spyOn(mockTransactionsService, 'checkAddressActivity')
         .mockImplementation();
     });
 
     it('returns empty array if there is no activity on any of the scopes', async () => {
-      mockTransactionsService.fetchNewTransactionsForAccount
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockTransactionsService.checkAddressActivity
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(false);
 
       const result = await keyringHandler.discoverAccounts?.(
         [Network.Mainnet, Network.Shasta],
@@ -534,9 +520,9 @@ describe('KeyringHandler', () => {
     });
 
     it('returns discovered accounts when there is activity on any scope', async () => {
-      mockTransactionsService.fetchNewTransactionsForAccount
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([mockTransaction]);
+      mockTransactionsService.checkAddressActivity
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
 
       const result = await keyringHandler.discoverAccounts?.(
         [Network.Mainnet, Network.Shasta],
@@ -554,7 +540,7 @@ describe('KeyringHandler', () => {
     });
 
     it('throws error if there is an error fetching transactions', async () => {
-      mockTransactionsService.fetchNewTransactionsForAccount.mockRejectedValue(
+      mockTransactionsService.checkAddressActivity.mockRejectedValue(
         new Error('Network error'),
       );
 
@@ -568,7 +554,7 @@ describe('KeyringHandler', () => {
         keyringHandler.discoverAccounts?.([], 'test', 0),
       ).rejects.toThrow('Expected a nonempty array but received an empty one');
       expect(
-        mockTransactionsService.fetchNewTransactionsForAccount,
+        mockTransactionsService.checkAddressActivity,
       ).not.toHaveBeenCalled();
     });
 
@@ -581,7 +567,7 @@ describe('KeyringHandler', () => {
         ),
       ).rejects.toThrow(/Expected one of/u);
       expect(
-        mockTransactionsService.fetchNewTransactionsForAccount,
+        mockTransactionsService.checkAddressActivity,
       ).not.toHaveBeenCalled();
     });
 
@@ -592,7 +578,7 @@ describe('KeyringHandler', () => {
         'Expected a number greater than or equal to 0 but received `-1`',
       );
       expect(
-        mockTransactionsService.fetchNewTransactionsForAccount,
+        mockTransactionsService.checkAddressActivity,
       ).not.toHaveBeenCalled();
     });
   });
