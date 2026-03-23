@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/naming-convention */
 import { TransactionType, TransactionStatus } from '@metamask/keyring-api';
 
-import { TransactionMapper } from './TransactionsMapper';
 import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type {
   TransactionInfo,
   ContractTransactionInfo,
 } from '../../clients/trongrid/types';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities';
 import contractInfoMock from './mocks/contract-info.json';
 import failedTransactionMock from './mocks/failed-transaction.json';
 import nativeTransferMock from './mocks/native-transfer.json';
@@ -16,6 +14,8 @@ import swapContractInfoMock from './mocks/swap-contract-info.json';
 import swapTransactionMock from './mocks/swap-transaction.json';
 import trc10TransferMock from './mocks/trc10-transfer.json';
 import trc20TransferMock from './mocks/trc20-transfer.json';
+import { TransactionMapper } from './TransactionsMapper';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 
 describe('TransactionMapper', () => {
   const mockAccount: TronKeyringAccount = {

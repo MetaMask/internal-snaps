@@ -16,7 +16,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import {
   asStrictKeyringAccount,
   type TronKeyringAccount,
-} from '../../entities';
+} from '../../entities/keyring-account';
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';

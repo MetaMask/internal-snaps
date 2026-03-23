@@ -1,4 +1,4 @@
-import type { TronKeyringAccount } from '../../entities';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { IStateManager } from '../state/IStateManager';
 import type { UnencryptedStateValue } from '../state/State';
 

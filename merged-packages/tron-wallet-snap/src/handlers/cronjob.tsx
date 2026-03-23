@@ -5,7 +5,7 @@ import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';
 import type { TronHttpClient } from '../clients/tron-http/TronHttpClient';
 import type { Network } from '../constants';
-import type { TronKeyringAccount } from '../entities';
+import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';

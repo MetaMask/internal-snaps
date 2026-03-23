@@ -10,7 +10,7 @@ import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
 import type { ConfirmSignTransactionContext } from './types';
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
-import type { TronKeyringAccount } from '../../../../entities';
+import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';

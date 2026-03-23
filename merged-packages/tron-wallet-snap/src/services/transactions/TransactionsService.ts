@@ -14,7 +14,7 @@ import type {
   TransferAssetContractInfo,
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { hexToString } from '../../utils/hex';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';

@@ -13,7 +13,7 @@ import type {
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
-import type { TronKeyringAccount } from '../../entities';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { sunToTrx, toUiAmount } from '../../utils/conversion';
 import { hexToString } from '../../utils/hex';
 

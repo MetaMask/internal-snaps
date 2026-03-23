@@ -5,7 +5,7 @@ import { assert } from '@metamask/superstruct';
 import { ConfirmSignMessage } from './ConfirmSignMessage';
 import type { Network } from '../../../../constants';
 import snapContext from '../../../../context';
-import type { TronKeyringAccount } from '../../../../entities';
+import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { formatOrigin } from '../../../../utils/formatOrigin';
 import { FALLBACK_LANGUAGE } from '../../../../utils/i18n';

@@ -4,7 +4,7 @@ import { bytesToBase64, stringToBytes } from '@metamask/utils';
 import { render } from './render';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
-import type { TronKeyringAccount } from '../../../../entities';
+import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TronMultichainMethod } from '../../../../handlers/keyring-types';
 import type { Preferences } from '../../../../types/snap';
 

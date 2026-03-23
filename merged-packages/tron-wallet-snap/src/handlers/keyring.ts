@@ -29,9 +29,12 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS, type Network } from '../constants';
-import { asStrictKeyringAccount, type TronKeyringAccount } from '../entities';
 import { BackgroundEventMethod } from './cronjob';
 import type { TronMultichainMethod } from './keyring-types';
+import {
+  asStrictKeyringAccount,
+  type TronKeyringAccount,
+} from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';

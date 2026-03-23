@@ -5,8 +5,8 @@ import { unset } from 'lodash';
 
 import type { IStateManager } from './IStateManager';
 import type { SpotPrices } from '../../clients/price-api/types';
-import type { TronKeyringAccount } from '../../entities';
 import type { AssetEntity } from '../../entities/assets';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { safeMerge } from '../../utils/safeMerge';
 import { deserialize } from '../../utils/serialization/deserialize';
 import { serialize } from '../../utils/serialization/serialize';

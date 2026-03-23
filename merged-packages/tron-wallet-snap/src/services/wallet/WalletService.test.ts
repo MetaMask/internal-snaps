@@ -4,7 +4,7 @@ import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 import { WalletService } from './WalletService';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import {
   TronMultichainErrors,
   TronMultichainMethod,

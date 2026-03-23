@@ -7,7 +7,7 @@ import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/Secur
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
 import { isTransactionWellFormed } from '../../validation/transaction';
 

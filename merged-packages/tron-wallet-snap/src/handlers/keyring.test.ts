@@ -4,9 +4,9 @@ import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { Network } from '../constants';
-import type { TronKeyringAccount } from '../entities';
 import { KeyringHandler } from './keyring';
 import { TronMultichainMethod } from './keyring-types';
+import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { AssetsService } from '../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../services/confirmation/ConfirmationHandler';
