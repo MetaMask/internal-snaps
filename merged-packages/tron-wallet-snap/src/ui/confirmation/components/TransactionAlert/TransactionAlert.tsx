@@ -14,7 +14,7 @@ import type {
   TransactionScanError,
   TransactionScanValidation,
 } from '../../../../services/transaction-scan/types';
-import type { FetchStatus, Preferences } from '../../../../types/snap';
+import { FetchStatus, type Preferences } from '../../../../types/snap';
 import { i18n } from '../../../../utils/i18n';
 
 export type TransactionAlertProps = {
@@ -45,7 +45,7 @@ export const TransactionAlert = ({
   /**
    * Display a loading skeleton while fetching.
    */
-  if (scanFetchStatus === 'fetching') {
+  if (scanFetchStatus === FetchStatus.Fetching) {
     return (
       <Box>
         <Skeleton height="40px" />
@@ -56,7 +56,7 @@ export const TransactionAlert = ({
   /**
    * Displays a warning banner if the transaction scan fails.
    */
-  if (scanFetchStatus === 'error') {
+  if (scanFetchStatus === FetchStatus.Error) {
     return (
       <Banner
         title={translate('confirmation.simulationTitleAPIError')}

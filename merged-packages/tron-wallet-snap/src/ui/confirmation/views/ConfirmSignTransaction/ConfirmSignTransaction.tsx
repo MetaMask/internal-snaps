@@ -18,6 +18,7 @@ import type { ConfirmSignTransactionContext } from './types';
 import { Networks } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
+import { FetchStatus } from '../../../../types/snap';
 import { formatOrigin } from '../../../../utils/formatOrigin';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
@@ -44,7 +45,7 @@ export const ConfirmSignTransaction = ({
   } = context;
 
   const shouldDisableConfirmButton =
-    scanFetchStatus === 'fetching' ||
+    scanFetchStatus === FetchStatus.Fetching ||
     scan?.simulationStatus === SimulationStatus.Failed;
 
   const addressCaip10 = account ? `${scope}:${account.address}` : null;

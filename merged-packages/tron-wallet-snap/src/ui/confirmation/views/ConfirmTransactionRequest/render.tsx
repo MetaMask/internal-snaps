@@ -21,6 +21,7 @@ import type {
   UnencryptedStateValue,
 } from '../../../../services/state/State';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
+import { FetchStatus } from '../../../../types/snap';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
 export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
@@ -42,9 +43,9 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   origin: 'MetaMask',
   networkImage: TRX_IMAGE_SVG,
   tokenPrices: {},
-  tokenPricesFetchStatus: 'initial',
+  tokenPricesFetchStatus: FetchStatus.Initial,
   scan: null,
-  scanFetchStatus: 'initial',
+  scanFetchStatus: FetchStatus.Initial,
   transactionRawData: null,
   accountType: '',
   preferences: {
@@ -139,8 +140,8 @@ export async function render(
   const context: ConfirmTransactionRequestContext = {
     ...DEFAULT_CONFIRMATION_CONTEXT,
     ...incomingContext,
-    tokenPricesFetchStatus: 'fetching', // Start as fetching
-    scanFetchStatus: 'fetching', // Start as fetching
+    tokenPricesFetchStatus: FetchStatus.Fetching, // Start as fetching
+    scanFetchStatus: FetchStatus.Fetching, // Start as fetching
   };
 
   try {
@@ -207,14 +208,14 @@ export async function render(
       });
 
       context.scan = scan;
-      context.scanFetchStatus = scan ? 'fetched' : 'error';
+      context.scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
     } catch {
       context.scan = null;
-      context.scanFetchStatus = 'error';
+      context.scanFetchStatus = FetchStatus.Error;
     }
   } else {
     // No scan service available, mark as fetched immediately
-    context.scanFetchStatus = 'fetched';
+    context.scanFetchStatus = FetchStatus.Fetched;
   }
 
   // Ensure interface ID is stored before updating
@@ -222,7 +223,7 @@ export async function render(
 
   // 4. If pricing is disabled, mark as fetched immediately
   if (!context.preferences.useExternalPricingData) {
-    context.tokenPricesFetchStatus = 'fetched';
+    context.tokenPricesFetchStatus = FetchStatus.Fetched;
   }
 
   // 5. Update interface with scan results after initial render (silently ignores if dismissed)

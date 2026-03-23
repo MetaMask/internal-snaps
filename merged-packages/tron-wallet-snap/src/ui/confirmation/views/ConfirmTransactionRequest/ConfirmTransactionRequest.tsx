@@ -19,6 +19,7 @@ import { type ConfirmTransactionRequestContext } from './types';
 import { Networks } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
+import { FetchStatus } from '../../../../types/snap';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
@@ -45,7 +46,7 @@ export const ConfirmTransactionRequest = ({
   const translate = i18n(preferences.locale);
 
   const shouldDisableConfirmButton =
-    scanFetchStatus === 'fetching' ||
+    scanFetchStatus === FetchStatus.Fetching ||
     scan?.simulationStatus === SimulationStatus.Failed;
 
   let estimatedChangesSection: ComponentOrElement | null = null;

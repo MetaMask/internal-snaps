@@ -12,7 +12,7 @@ import {
   SimulationStatus,
   type TransactionScanResult,
 } from '../../../../services/transaction-scan/types';
-import type { Preferences } from '../../../../types/snap';
+import { FetchStatus, type Preferences } from '../../../../types/snap';
 
 // Mock the context module
 jest.mock('../../../../context', () => ({
@@ -297,7 +297,7 @@ describe('ConfirmTransactionRequest render', () => {
 
         const updateCall = mockSnapClient.updateInterfaceIfExists.mock.calls[0];
         const contextArg = updateCall?.[2] as any;
-        expect(contextArg?.scanFetchStatus).toBe('error');
+        expect(contextArg?.scanFetchStatus).toBe(FetchStatus.Error);
         expect(contextArg?.scan).toBeNull();
       },
     );

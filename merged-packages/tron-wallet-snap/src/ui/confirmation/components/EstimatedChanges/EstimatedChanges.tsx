@@ -10,7 +10,7 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import type { TransactionScanEstimatedChanges } from '../../../../services/transaction-scan/types';
-import type { FetchStatus, Preferences } from '../../../../types/snap';
+import { FetchStatus, type Preferences } from '../../../../types/snap';
 import { formatAmount } from '../../../../utils/formatAmount';
 import { i18n } from '../../../../utils/i18n';
 
@@ -92,9 +92,9 @@ export const EstimatedChanges = ({
 }: EstimatedChangesProps): ComponentOrElement => {
   const translate = i18n(preferences.locale);
 
-  const isFetching = scanFetchStatus === 'fetching';
-  const isFetched = scanFetchStatus === 'fetched';
-  const isFetchError = scanFetchStatus === 'error';
+  const isFetching = scanFetchStatus === FetchStatus.Fetching;
+  const isFetched = scanFetchStatus === FetchStatus.Fetched;
+  const isFetchError = scanFetchStatus === FetchStatus.Error;
 
   if (isFetching) {
     return <EstimatedChangesSkeleton preferences={preferences} />;

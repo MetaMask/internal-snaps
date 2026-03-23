@@ -5,7 +5,7 @@ import {
   SimulationStatus,
   type TransactionScanResult,
 } from '../../../../services/transaction-scan/types';
-import type { Preferences } from '../../../../types/snap';
+import { FetchStatus, type Preferences } from '../../../../types/snap';
 
 // Mock i18n
 jest.mock('../../../../utils/i18n', () => ({
@@ -75,9 +75,9 @@ describe('ConfirmTransactionRequest', () => {
     preferences: mockPreferences,
     networkImage: '',
     tokenPrices: {},
-    tokenPricesFetchStatus: 'fetched',
+    tokenPricesFetchStatus: FetchStatus.Fetched,
     scan: mockScanResult,
-    scanFetchStatus: 'fetched',
+    scanFetchStatus: FetchStatus.Fetched,
     transactionRawData: null,
     accountType: 'tron:eoa',
   };
@@ -136,7 +136,7 @@ describe('ConfirmTransactionRequest', () => {
   it('disables confirm button when scanFetchStatus is fetching', () => {
     const context: ConfirmTransactionRequestContext = {
       ...baseContext,
-      scanFetchStatus: 'fetching',
+      scanFetchStatus: FetchStatus.Fetching,
       scan: null,
     };
 
@@ -157,7 +157,7 @@ describe('ConfirmTransactionRequest', () => {
     const context: ConfirmTransactionRequestContext = {
       ...baseContext,
       scan: errorScanResult,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
     };
 
     const result = ConfirmTransactionRequest({ context });
@@ -181,7 +181,7 @@ describe('ConfirmTransactionRequest', () => {
     const context: ConfirmTransactionRequestContext = {
       ...baseContext,
       scan: null,
-      scanFetchStatus: 'error',
+      scanFetchStatus: FetchStatus.Error,
     };
 
     const result = ConfirmTransactionRequest({ context });

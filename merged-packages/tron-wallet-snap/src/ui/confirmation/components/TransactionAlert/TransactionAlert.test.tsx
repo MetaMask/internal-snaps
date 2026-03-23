@@ -4,7 +4,7 @@ import type {
   TransactionScanError,
   TransactionScanValidation,
 } from '../../../../services/transaction-scan/types';
-import type { Preferences } from '../../../../types/snap';
+import { FetchStatus, type Preferences } from '../../../../types/snap';
 
 // Mock the getErrorMessage function
 jest.mock('./getErrorMessage', () => ({
@@ -55,13 +55,13 @@ describe('TransactionAlert', () => {
     preferences: mockPreferences,
     validation: null,
     error: null,
-    scanFetchStatus: 'initial',
+    scanFetchStatus: FetchStatus.Initial,
   };
 
   it('renders without crashing when fetching', () => {
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetching',
+      scanFetchStatus: FetchStatus.Fetching,
     };
 
     const result = TransactionAlert(props);
@@ -71,7 +71,7 @@ describe('TransactionAlert', () => {
   it('renders without crashing on API error', () => {
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'error',
+      scanFetchStatus: FetchStatus.Error,
     };
 
     const result = TransactionAlert(props);
@@ -81,7 +81,7 @@ describe('TransactionAlert', () => {
   it('renders without crashing with no error or validation', () => {
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
       error: null,
       validation: null,
     };
@@ -99,7 +99,7 @@ describe('TransactionAlert', () => {
 
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
       error: mockError,
     };
 
@@ -115,7 +115,7 @@ describe('TransactionAlert', () => {
 
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
       validation: mockValidation,
     };
 
@@ -131,7 +131,7 @@ describe('TransactionAlert', () => {
 
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
       validation: mockValidation,
     };
 
@@ -147,7 +147,7 @@ describe('TransactionAlert', () => {
 
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
       validation: mockValidation,
     };
 
@@ -164,7 +164,7 @@ describe('TransactionAlert', () => {
 
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'error',
+      scanFetchStatus: FetchStatus.Error,
       error: mockError,
     };
 
@@ -186,7 +186,7 @@ describe('TransactionAlert', () => {
 
     const props: TransactionAlertProps = {
       ...baseProps,
-      scanFetchStatus: 'fetched',
+      scanFetchStatus: FetchStatus.Fetched,
       error: mockError,
       validation: mockValidation,
     };
@@ -204,7 +204,7 @@ describe('TransactionAlert', () => {
     const props: TransactionAlertProps = {
       ...baseProps,
       preferences: spanishPreferences,
-      scanFetchStatus: 'error',
+      scanFetchStatus: FetchStatus.Error,
     };
 
     const result = TransactionAlert(props);

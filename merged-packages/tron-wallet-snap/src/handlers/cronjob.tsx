@@ -9,6 +9,7 @@ import type { TronKeyringAccount } from '../entities';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
+import { FetchStatus } from '../types/snap';
 import { ConfirmSignTransaction } from '../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
 import {
   CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME,
@@ -242,7 +243,7 @@ export class CronHandler {
       // First, update UI to show loading skeletons (Solana pattern)
       const fetchingContext: ConfirmTransactionRequestContext = {
         ...interfaceContext,
-        tokenPricesFetchStatus: 'fetching' as const,
+        tokenPricesFetchStatus: FetchStatus.Fetching,
       };
 
       // Update interface (silently ignores if interface was dismissed)
@@ -285,7 +286,7 @@ export class CronHandler {
       const updatedContext: ConfirmTransactionRequestContext = {
         ...latestContext,
         tokenPrices: prices,
-        tokenPricesFetchStatus: 'fetched' as const,
+        tokenPricesFetchStatus: FetchStatus.Fetched,
       };
 
       // Update the interface with new UI and context (silently ignores if dismissed)
@@ -314,7 +315,7 @@ export class CronHandler {
       if (currentContext) {
         const errorContext: ConfirmTransactionRequestContext = {
           ...currentContext,
-          tokenPricesFetchStatus: 'error' as const,
+          tokenPricesFetchStatus: FetchStatus.Error,
         };
 
         await this.#snapClient.updateInterfaceIfExists(
@@ -398,7 +399,7 @@ export class CronHandler {
       // Update UI to show fetching state for scan
       const fetchingContext: ConfirmTransactionRequestContext = {
         ...interfaceContext,
-        scanFetchStatus: 'fetching',
+        scanFetchStatus: FetchStatus.Fetching,
       };
 
       // Update interface (silently ignores if interface was dismissed)
@@ -433,12 +434,12 @@ export class CronHandler {
           options,
           account: scanAccount,
         });
-        scanFetchStatus = scan ? 'fetched' : 'error';
+        scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
         this.#logger.info('Successfully refreshed send confirmation scan');
       } catch (error) {
         this.#logger.error('Error refreshing send confirmation scan:', error);
         scan = null;
-        scanFetchStatus = 'error';
+        scanFetchStatus = FetchStatus.Error;
       }
 
       // Get the latest context (returns null if dismissed during scan)
@@ -490,7 +491,7 @@ export class CronHandler {
       if (currentContext) {
         const errorContext: ConfirmTransactionRequestContext = {
           ...currentContext,
-          scanFetchStatus: 'error',
+          scanFetchStatus: FetchStatus.Error,
         };
 
         await this.#snapClient.updateInterfaceIfExists(
@@ -573,7 +574,7 @@ export class CronHandler {
       const fetchingContext: ConfirmSignTransactionContext = {
         ...interfaceContext,
         scanFetchStatus: shouldRefreshScan
-          ? 'fetching'
+          ? FetchStatus.Fetching
           : interfaceContext.scanFetchStatus,
       };
 
@@ -612,12 +613,12 @@ export class CronHandler {
             options,
             account,
           });
-          scanFetchStatus = scan ? 'fetched' : 'error';
+          scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
           this.#logger.info('Successfully refreshed signTransaction scan');
         } catch (error) {
           this.#logger.error('Error refreshing signTransaction scan:', error);
           scan = null;
-          scanFetchStatus = 'error';
+          scanFetchStatus = FetchStatus.Error;
         }
       }
 
@@ -671,7 +672,7 @@ export class CronHandler {
         const errorContext: ConfirmSignTransactionContext = {
           ...currentContext,
           scanFetchStatus: shouldRefreshScan
-            ? 'error'
+            ? FetchStatus.Error
             : currentContext.scanFetchStatus,
         };
 

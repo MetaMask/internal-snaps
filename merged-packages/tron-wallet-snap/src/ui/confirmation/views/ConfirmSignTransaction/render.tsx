@@ -13,6 +13,7 @@ import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
+import { FetchStatus } from '../../../../types/snap';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
@@ -26,11 +27,11 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   origin: '',
   networkImage: TRX_IMAGE_SVG,
   scan: null,
-  scanFetchStatus: 'initial',
+  scanFetchStatus: FetchStatus.Initial,
   tokenPrices: {},
-  tokenPricesFetchStatus: 'initial',
+  tokenPricesFetchStatus: FetchStatus.Initial,
   fees: [],
-  feesFetchStatus: 'initial',
+  feesFetchStatus: FetchStatus.Initial,
   preferences: {
     locale: 'en',
     currency: 'usd',
@@ -76,9 +77,9 @@ export async function render(
     account,
     transaction,
     origin: origin ?? 'Unknown',
-    scanFetchStatus: 'fetching',
-    tokenPricesFetchStatus: 'initial',
-    feesFetchStatus: 'initial',
+    scanFetchStatus: FetchStatus.Fetching,
+    tokenPricesFetchStatus: FetchStatus.Initial,
+    feesFetchStatus: FetchStatus.Initial,
   };
 
   const { assetsService, feeCalculatorService, priceApiClient } = snapContext;
@@ -147,14 +148,14 @@ export async function render(
       : {};
 
     context.fees = fees;
-    context.feesFetchStatus = 'fetched';
+    context.feesFetchStatus = FetchStatus.Fetched;
     context.tokenPrices = tokenPrices;
-    context.tokenPricesFetchStatus = 'fetched';
+    context.tokenPricesFetchStatus = FetchStatus.Fetched;
   } catch {
     context.fees = [];
-    context.feesFetchStatus = 'error';
+    context.feesFetchStatus = FetchStatus.Error;
     context.tokenPrices = {};
-    context.tokenPricesFetchStatus = 'error';
+    context.tokenPricesFetchStatus = FetchStatus.Error;
   }
 
   // Create initial interface with loading state
@@ -193,10 +194,10 @@ export async function render(
       });
 
       context.scan = scan;
-      context.scanFetchStatus = scan ? 'fetched' : 'error';
+      context.scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
     } catch {
       context.scan = null;
-      context.scanFetchStatus = 'error';
+      context.scanFetchStatus = FetchStatus.Error;
     }
 
     // Ensure interface ID is stored before updating
@@ -220,7 +221,7 @@ export async function render(
     });
   } else {
     // No scanning, mark as fetched immediately
-    context.scanFetchStatus = 'fetched';
+    context.scanFetchStatus = FetchStatus.Fetched;
 
     // Ensure interface ID is stored before updating
     await storeIdPromise;

@@ -10,6 +10,7 @@ import {
   SimulationStatus,
   type TransactionScanResult,
 } from '../services/transaction-scan/types';
+import { FetchStatus } from '../types/snap';
 import type { ConfirmTransactionRequestContext } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ILogger } from '../utils/logger';
 
@@ -118,9 +119,9 @@ function buildMockInterfaceContext(
     },
     networkImage: '',
     tokenPrices: {},
-    tokenPricesFetchStatus: 'fetched',
+    tokenPricesFetchStatus: FetchStatus.Fetched,
     scan: null,
-    scanFetchStatus: 'initial',
+    scanFetchStatus: FetchStatus.Initial,
 
     transactionRawData: {
       contract: [
@@ -396,11 +397,11 @@ describe('CronHandler', () => {
             2,
           );
 
-          // The final update should have scanFetchStatus: 'error'
+          // The final update should have scanFetchStatus: FetchStatus.Error
           const lastUpdateCall =
             mockSnapClient.updateInterfaceIfExists.mock.calls[1];
           const contextArg = lastUpdateCall?.[2] as any;
-          expect(contextArg?.scanFetchStatus).toBe('error');
+          expect(contextArg?.scanFetchStatus).toBe(FetchStatus.Error);
         },
       );
     });
