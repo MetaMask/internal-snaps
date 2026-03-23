@@ -1,5 +1,3 @@
-import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
-
 export type TransactionScanStatus = 'SUCCESS' | 'ERROR';
 
 export type TransactionScanAssetChange = {
@@ -17,12 +15,8 @@ export type TransactionScanEstimatedChanges = {
 };
 
 export type TransactionScanValidation = {
-  type:
-    | SecurityAlertSimulationValidationResponse['validation']['result_type']
-    | null;
-  reason:
-    | SecurityAlertSimulationValidationResponse['validation']['reason']
-    | null;
+  type: 'Benign' | 'Warning' | 'Malicious' | 'Error' | null;
+  reason: string | null;
 };
 
 export type TransactionScanError = {

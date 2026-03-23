@@ -4,7 +4,7 @@ import type { Types } from 'tronweb';
 import type { TransactionScanResult, TransactionScanValidation } from './types';
 import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
-import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
+import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities';
@@ -256,16 +256,9 @@ export class TransactionScanService {
 
               return {
                 type: inChange ? ('in' as const) : ('out' as const),
-                symbol:
-                  'symbol' in asset.asset
-                    ? asset.asset.symbol
-                    : asset.asset_type,
-                name:
-                  'name' in asset.asset ? asset.asset.name : asset.asset_type,
-                logo:
-                  'logo_url' in asset.asset
-                    ? (asset.asset.logo_url ?? null)
-                    : null,
+                symbol: asset.asset.symbol ?? asset.asset_type,
+                name: asset.asset.name ?? asset.asset_type,
+                logo: asset.asset.logo_url ?? null,
                 value: change?.value ?? '0',
                 price: change?.usd_price ?? null,
                 assetType: asset.asset_type,
@@ -279,8 +272,16 @@ export class TransactionScanService {
       error:
         result.simulation?.error || result.simulation?.error_details
           ? {
-              type: result.simulation?.error_details?.type ?? null,
-              code: result.simulation?.error_details?.code ?? null,
+              type:
+                result.simulation?.error_details &&
+                'type' in result.simulation.error_details
+                  ? result.simulation.error_details.type
+                  : null,
+              code:
+                result.simulation?.error_details &&
+                'code' in result.simulation.error_details
+                  ? result.simulation.error_details.code
+                  : null,
               message: result.simulation?.error ?? null,
             }
           : null,
