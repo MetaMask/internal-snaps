@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Avoid `onAmountInput` fee estimation failures by skipping fee validation until a recipient address is available ([#259](https://github.com/MetaMask/snap-tron-wallet/pull/259))
 - Assert transaction structure at all entry points, rejecting malformed transactions ([#237](https://github.com/MetaMask/snap-tron-wallet/pull/237))
 - Disable scanning of unsupported contract types, preventing incorrect security alerts from blocking user flows ([#238](https://github.com/MetaMask/snap-tron-wallet/pull/238))
   - Supported transactions are those single-contract interaction transactions of the following types: `TransferContract`, `CreateSmartContract`, `TriggerSmartContract`.

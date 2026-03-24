@@ -34,7 +34,7 @@ import {
 } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Network, Networks, NULL_ADDRESS, ZERO } from '../../constants';
+import { Network, Networks, ZERO } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
@@ -307,7 +307,7 @@ export class ClientRequestHandler {
     try {
       assert(request, OnAmountInputRequestStruct);
 
-      const { accountId, assetId, value } = request.params;
+      const { accountId, assetId, value, toAddress } = request.params;
 
       const account = await this.#accountsService.findById(accountId);
 
@@ -354,12 +354,19 @@ export class ClientRequestHandler {
         };
       }
 
+      if (!toAddress) {
+        return {
+          valid: true,
+          errors: [],
+        };
+      }
+
       /**
        * Estimate the fees
        */
       const sendTransaction = await this.#sendService.buildTransaction({
         fromAccountId: accountId,
-        toAddress: NULL_ADDRESS,
+        toAddress,
         asset,
         amount: valueBN.toNumber(),
       });
