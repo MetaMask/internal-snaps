@@ -527,6 +527,7 @@ export class ClientRequestHandler {
         asset,
         accountType: account.type,
         origin: 'MetaMask',
+        transactionRawData: transaction.raw_data,
       },
     );
 

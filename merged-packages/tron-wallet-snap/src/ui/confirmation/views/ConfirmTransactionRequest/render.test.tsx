@@ -1,4 +1,10 @@
+import { Types } from 'tronweb';
+
 import { render } from './render';
+import {
+  buildTransactionRawData,
+  extractScanParametersFromTransactionData,
+} from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { AssetEntity } from '../../../../entities/assets';
@@ -108,6 +114,13 @@ const defaultScanResult: TransactionScanResult = {
   error: null,
 };
 
+const defaultTransactionRawData = buildTransactionRawData({
+  from: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+  to: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
+  amount: 1000000,
+  contractType: Types.ContractType.TransferContract,
+});
+
 const defaultIncomingContext = {
   scope: Network.Mainnet,
   fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
@@ -117,6 +130,7 @@ const defaultIncomingContext = {
   asset: mockAsset,
   origin: 'MetaMask',
   accountType: 'tron:eoa',
+  transactionRawData: defaultTransactionRawData,
 };
 
 // ---------------------------------------------------------------------------
@@ -372,22 +386,27 @@ describe('ConfirmTransactionRequest render', () => {
     );
   });
 
-  it('builds correct scan parameters for TRC20 tokens', async () => {
+  it('forwards TRC20 transaction raw data to the scan service', async () => {
     await withRender(async ({ callRender, mockTransactionScanService }) => {
-      const trc20Asset: AssetEntity = {
-        ...mockAsset,
-        assetType: `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
-        symbol: 'USDT',
-        decimals: 6,
-      };
+      const trc20RawData = buildTransactionRawData({
+        from: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+        to: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+        amount: 0,
+        data: 'a9059cbb0000000000000000000000004f32e5a36a5e1fc1c5c327a522cdfbc78e400f5500000000000000000000000000000000000000000000000000000000000f4240',
+        contractType: Types.ContractType.TriggerSmartContract,
+      });
 
-      await callRender({ asset: trc20Asset });
+      await callRender({ transactionRawData: trc20RawData });
 
-      expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          transactionRawData: expect.any(Object),
-        }),
-      );
+      const callArgs = mockTransactionScanService.scanTransaction.mock
+        .calls[0]?.[0] as any;
+      const rawData = callArgs?.transactionRawData;
+
+      expect(rawData?.contract[0]?.type).toBe('TriggerSmartContract');
+
+      const scanParams = extractScanParametersFromTransactionData(rawData);
+      expect(scanParams?.data).toBeDefined();
+      expect(scanParams?.data).toMatch(/^0xa9059cbb/u);
     });
   });
 

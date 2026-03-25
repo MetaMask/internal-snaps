@@ -1,14 +1,11 @@
 import type { DialogResult, Json } from '@metamask/snaps-sdk';
-import { parseCaipAssetType } from '@metamask/utils';
-import { BigNumber } from 'bignumber.js';
-import { Types } from 'tronweb';
+import type { Types } from 'tronweb';
 
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import {
   CONFIRM_TRANSACTION_INTERFACE_NAME,
   type ConfirmTransactionRequestContext,
 } from './types';
-import { buildTransactionRawData } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
@@ -63,48 +60,6 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
 };
 
 /**
- * Builds a minimal raw transaction data object from the send details,
- * suitable for security scanning via the Security Alerts API.
- *
- * @param fromAddress - The sender address (base58).
- * @param toAddress - The recipient address (base58).
- * @param amount - The amount to send (display units).
- * @param asset - The asset being sent.
- * @returns A minimal raw transaction data object.
- */
-function buildScanTransactionRawData(
-  fromAddress: string,
-  toAddress: string,
-  amount: string,
-  asset: AssetEntity,
-): ReturnType<typeof buildTransactionRawData> {
-  const { assetNamespace, assetReference } = parseCaipAssetType(
-    asset.assetType,
-  );
-  const isTrc20 = assetNamespace === 'trc20';
-
-  if (isTrc20) {
-    return buildTransactionRawData({
-      from: fromAddress,
-      to: assetReference,
-      amount: 0,
-      contractType: Types.ContractType.TriggerSmartContract,
-    });
-  }
-
-  const rawValue = new BigNumber(amount)
-    .multipliedBy(new BigNumber(10).pow(asset.decimals))
-    .toNumber();
-
-  return buildTransactionRawData({
-    from: fromAddress,
-    to: toAddress,
-    amount: rawValue,
-    contractType: Types.ContractType.TransferContract,
-  });
-}
-
-/**
  * Render the ConfirmTransactionRequest UI and show a dialog resolving to the user's choice.
  *
  * @param snapClient - The SnapClient instance for API interactions.
@@ -118,6 +73,7 @@ function buildScanTransactionRawData(
  * @param incomingContext.asset - The asset involved in the transaction.
  * @param incomingContext.origin - The origin string to display.
  * @param incomingContext.accountType - The account type for analytics.
+ * @param incomingContext.transactionRawData - The raw transaction data for security scanning.
  * @returns A dialog result with the user's decision.
  */
 export async function render(
@@ -132,14 +88,18 @@ export async function render(
     asset: AssetEntity;
     origin: string;
     accountType: string;
+    transactionRawData: Types.Transaction['raw_data'];
   },
 ): Promise<DialogResult> {
   const { transactionScanService } = snapContext;
+
+  const { transactionRawData } = incomingContext;
 
   // 1. Initial context with loading state
   const context: ConfirmTransactionRequestContext = {
     ...DEFAULT_CONFIRMATION_CONTEXT,
     ...incomingContext,
+    transactionRawData: transactionRawData as unknown as Json,
     tokenPricesFetchStatus: FetchStatus.Fetching, // Start as fetching
     scanFetchStatus: FetchStatus.Fetching, // Start as fetching
   };
@@ -158,15 +118,6 @@ export async function render(
   context.fees.forEach((fee) => {
     fee.asset.iconUrl = getIconUrlForKnownAsset(fee.asset.type);
   });
-
-  // Build a minimal raw transaction for security scanning
-  const transactionRawData = buildScanTransactionRawData(
-    incomingContext.fromAddress,
-    incomingContext.toAddress,
-    incomingContext.amount,
-    incomingContext.asset,
-  );
-  context.transactionRawData = transactionRawData as unknown as Json;
 
   // 2. Initial render with loading skeleton (always show loading if pricing enabled)
   const id = await snapClient.createInterface(
