@@ -1,5 +1,3 @@
-/* eslint-disable no-void */
-
 import type { ICache } from './ICache';
 import logger from '../utils/logger';
 import type { Serializable } from '../utils/serialization/types';
@@ -104,8 +102,7 @@ export const useCacheUntil = <
     const ttlMilliseconds = Math.max(0, newExpiresAt - now);
 
     // Store result in cache with calculated TTL
-    // We don't await this, allowing it to happen in the background
-    void cache.set(cacheKey, result, ttlMilliseconds).catch((error) => {
+    await cache.set(cacheKey, result, ttlMilliseconds).catch((error) => {
       logger.error(`Cache set error for key "${cacheKey}":`, error);
     });
 
