@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.25.0]
+
 ### Changed
 
 - Optimize account discovery by using a lightweight activity check (`limit=1`) instead of fetching full transaction history ([#252](https://github.com/MetaMask/snap-tron-wallet/pull/252))
@@ -453,7 +455,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.24.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.0...HEAD
+[1.25.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.1...v1.24.0
 [1.23.1]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.22.1...v1.23.0
