@@ -689,6 +689,91 @@ describe('SendService', () => {
           availableBandwidth: expect.any(BigNumber),
         });
       });
+
+      it('preserves fractional amount precision for TRX (no floating-point loss)', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber('0.99');
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '0' },
+        ]);
+
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // 0.99 TRX = 990000 SUN — not 989999 (which would happen with Number(0.99) * 1e6)
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          990000,
+          TEST_FROM_ADDRESS,
+        );
+      });
+
+      it('preserves fractional amount precision for TRC20 tokens', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber('0.99');
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '100000' },
+        ]);
+
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // 0.99 USDT with 6 decimals = 990000 raw — must be exact
+        expect(
+          mockTronWeb.transactionBuilder.triggerSmartContract,
+        ).toHaveBeenCalledWith(
+          'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          'transfer(address,uint256)',
+          {},
+          [
+            { type: 'address', value: TEST_TO_ADDRESS },
+            { type: 'uint256', value: '990000' },
+          ],
+          TEST_FROM_ADDRESS,
+        );
+      });
     });
   });
 });

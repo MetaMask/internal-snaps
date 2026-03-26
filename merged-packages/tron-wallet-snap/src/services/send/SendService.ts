@@ -142,7 +142,7 @@ export class SendService {
       fromAccountId,
       toAddress,
       asset,
-      amount: amount.toNumber(),
+      amount,
     });
 
     /**
@@ -208,7 +208,7 @@ export class SendService {
     fromAccountId: string;
     toAddress: string;
     asset: AssetEntity;
-    amount: number;
+    amount: BigNumber;
   }): Promise<
     | Transaction<TransferContract>
     | Transaction<TransferAssetContract>
@@ -271,7 +271,7 @@ export class SendService {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
-    amount: number;
+    amount: BigNumber;
   }): Promise<Transaction<TransferContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -296,7 +296,7 @@ export class SendService {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
-    amount: number;
+    amount: BigNumber;
     tokenId: string;
     decimals: number;
   }): Promise<Transaction<TransferAssetContract>> {
@@ -326,7 +326,7 @@ export class SendService {
     fromAccountId: string;
     toAddress: string;
     contractAddress: string;
-    amount: number;
+    amount: BigNumber;
     decimals: number;
   }): Promise<Transaction<TriggerSmartContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);

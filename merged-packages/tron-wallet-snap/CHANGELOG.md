@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Display correctly token icon size when sending TRC20 tokens ([#262](https://github.com/MetaMask/snap-tron-wallet/pull/262))
+- Display correctly decimal amount sent in confirmation dialog ([#264](https://github.com/MetaMask/snap-tron-wallet/pull/264))
 
 ## [1.25.0]
 

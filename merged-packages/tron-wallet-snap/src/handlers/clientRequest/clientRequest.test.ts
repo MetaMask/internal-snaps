@@ -999,7 +999,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
           fromAccountId: TEST_ACCOUNT_ID,
           toAddress: TEST_TO_ADDRESS,
           asset: mockAsset,
-          amount: 10,
+          amount: new BigNumber('10'),
         });
         expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
           scope,
@@ -1007,6 +1007,70 @@ describe('ClientRequestHandler - onAmountInput', () => {
           availableEnergy: BigNumber('100000'),
           availableBandwidth: BigNumber('5000'),
         });
+      },
+    );
+  });
+
+  it('passes amount as BigNumber (not number) to preserve decimal precision', async () => {
+    await withOnAmountInputHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request: OnAmountInputRequest = {
+          jsonrpc: '2.0' as const,
+          id: '5',
+          method: ClientRequestMethod.OnAmountInput,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: nativeTokenId,
+            value: '0.99',
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        const mockAsset = createNativeAsset('100', '100000000');
+        const mockAssets: [
+          NativeAsset,
+          NativeAsset,
+          ResourceAsset,
+          ResourceAsset,
+        ] = [
+          mockAsset,
+          mockAsset,
+          createResourceAsset(Networks[scope].bandwidth.id, '5000', '5000'),
+          createResourceAsset(Networks[scope].energy.id, '100000', '100000'),
+        ];
+        const builtTransaction = createMockTransferTransaction();
+        const mockFees: ComputeFeeResult = [
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ];
+
+        mockAccountsService.findById.mockResolvedValue(mockAccount);
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue(mockAssets);
+        mockSendService.buildTransaction.mockResolvedValue(builtTransaction);
+        mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
+
+        await handler.handle(request);
+
+        const calledAmount = mockSendService.buildTransaction.mock.calls[0]?.[0]
+          ?.amount as BigNumber;
+
+        // Must be a BigNumber, not a number — prevents IEEE 754 precision loss
+        expect(calledAmount).toBeInstanceOf(BigNumber);
+        // Must preserve exact decimal representation (0.99, not 0.98999999999999999...)
+        expect(calledAmount.toString()).toBe('0.99');
       },
     );
   });
@@ -1600,6 +1664,12 @@ describe('ClientRequestHandler - confirmSend validation', () => {
       transactionId: 'broadcast-tx-id',
       status: 'submitted',
     });
+
+    // buildTransaction must receive a BigNumber to preserve decimal precision
+    const calledAmount = mockSendService.buildTransaction.mock.calls[0]?.[0]
+      ?.amount as BigNumber;
+    expect(calledAmount).toBeInstanceOf(BigNumber);
+    expect(calledAmount.toString()).toBe('10');
   });
 
   it('returns Invalid error when account is not found', async () => {

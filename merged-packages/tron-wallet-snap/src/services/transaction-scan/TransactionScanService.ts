@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import { BigNumber } from 'bignumber.js';
 import type { Types } from 'tronweb';
 
 import type { TransactionScanResult, TransactionScanValidation } from './types';
@@ -254,12 +255,20 @@ export class TransactionScanService {
               const outChange = asset.out?.[0];
               const change = inChange ?? outChange;
 
+              const { decimals } = asset.asset;
+              let displayValue = '0';
+              if (change?.raw_value && decimals !== undefined) {
+                displayValue = new BigNumber(change.raw_value)
+                  .dividedBy(new BigNumber(10).pow(decimals))
+                  .toFixed();
+              }
+
               return {
                 type: inChange ? ('in' as const) : ('out' as const),
                 symbol: asset.asset.symbol ?? asset.asset_type,
                 name: asset.asset.name ?? asset.asset_type,
                 logo: asset.asset.logo_url ?? null,
-                value: change?.value ?? '0',
+                value: displayValue,
                 price: change?.usd_price ?? null,
                 assetType: asset.asset_type,
               };

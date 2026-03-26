@@ -368,7 +368,7 @@ export class ClientRequestHandler {
         fromAccountId: accountId,
         toAddress,
         asset,
-        amount: valueBN.toNumber(),
+        amount: valueBN,
       });
       const fees = await this.#feeCalculatorService.computeFee({
         scope,
@@ -495,7 +495,7 @@ export class ClientRequestHandler {
         fromAccountId,
         toAddress,
         asset,
-        amount: amountBN.toNumber(),
+        amount: amountBN,
       }),
     ]);
 
