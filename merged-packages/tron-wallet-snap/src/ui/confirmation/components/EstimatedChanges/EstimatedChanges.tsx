@@ -75,7 +75,9 @@ const AssetChange = ({ asset }: AssetChangeProps): ComponentOrElement => {
   return (
     <Box direction="horizontal" alignment="end">
       {asset.logo ? (
-        <Image src={asset.logo} borderRadius="full" height={16} width={16} />
+        <Box alignment="center" center>
+          <Image src={asset.logo} borderRadius="full" height={16} width={16} />
+        </Box>
       ) : null}
       <SnapText color={isOut ? 'error' : 'success'}>
         {isOut ? '-' : '+'}
