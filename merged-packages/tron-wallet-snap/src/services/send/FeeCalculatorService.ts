@@ -10,6 +10,7 @@ import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient
 import type { Network } from '../../constants';
 import {
   ACCOUNT_ACTIVATION_FEE_TRX,
+  MEMO_FEE_TRX,
   Networks,
   SUN_IN_TRX,
   ZERO,
@@ -620,6 +621,26 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Calculate memo/note fee for the transaction.
+   * Per Tron protocol, adding a memo/note incurs a flat 1 TRX fee.
+   * The memo is stored in `raw_data.data` at the transaction level,
+   * distinct from the contract-level `data` field used for smart contract calls.
+   *
+   * @see https://developers.tron.network/docs/tron-protocol-transaction
+   * @param transaction - The transaction to check for a memo
+   * @returns BigNumber - The memo fee in TRX (1 TRX if memo present, 0 otherwise)
+   */
+  #memoFee(transaction: Transaction): BigNumber {
+    const rawData = transaction.raw_data as Record<string, unknown>;
+    const memo = rawData.data as string | undefined;
+    if (memo && memo.length > 0) {
+      this.#logger.log('Transaction contains memo, adding 1 TRX memo fee');
+      return MEMO_FEE_TRX;
+    }
+    return ZERO;
+  }
+
+  /**
    * Calculate complete fee breakdown for a TRON transaction.
    * Supports both signed and unsigned transactions.
    * Handles both free resource consumption and TRX costs for overages.
@@ -716,6 +737,15 @@ export class FeeCalculatorService {
 
     if (accountActivationFees.isGreaterThan(0)) {
       totalTrxCost = totalTrxCost.plus(accountActivationFees);
+    }
+
+    /**
+     * Third, memo/note fee
+     */
+    const memoFee = this.#memoFee(transaction);
+
+    if (memoFee.isGreaterThan(0)) {
+      totalTrxCost = totalTrxCost.plus(memoFee);
     }
 
     /**

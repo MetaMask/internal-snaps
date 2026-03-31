@@ -1831,5 +1831,198 @@ describe('FeeCalculatorService', () => {
         });
       });
     });
+
+    describe('Memo fee scenarios', () => {
+      // Helper to add a memo (raw_data.data) to a transaction
+      const addMemoToTransaction = (
+        transaction: any,
+        memoHex: string,
+      ): any => ({
+        ...transaction,
+        raw_data: {
+          ...transaction.raw_data,
+          data: memoHex,
+        },
+      });
+
+      it('adds 1 TRX memo fee when transaction has a memo and enough bandwidth', async () => {
+        const transaction = addMemoToTransaction(
+          getTransactionExample('native'),
+          '48656c6c6f', // "Hello" in hex
+        );
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // TRX: 1 (memo fee), bandwidth consumed
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '1',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('adds 1 TRX memo fee on top of bandwidth cost when not enough bandwidth', async () => {
+        const transaction = addMemoToTransaction(
+          getTransactionExample('native'),
+          '48656c6c6f',
+        );
+        const availableEnergy = ZERO;
+        const availableBandwidth = ZERO;
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // Bandwidth cost: 266 * 1000 SUN = 0.266 TRX + 1 TRX memo = 1.266 TRX
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '1.266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('adds memo fee combined with account activation fee', async () => {
+        // Account not activated
+        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+          new Error('Account not found or no data returned'),
+        );
+
+        const transaction = addMemoToTransaction(
+          getTransactionExample('native'),
+          '48656c6c6f',
+        );
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // 1 TRX activation + 1 TRX memo = 2 TRX
+        expect(result).toStrictEqual([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: 'tron:728126428/slip44:195',
+              amount: '2',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: 'tron:728126428/slip44:bandwidth',
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+      });
+
+      it('does not add memo fee when data field is absent', async () => {
+        const transaction = getTransactionExample('native');
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // No memo fee, TRX should be 0
+        expect(result[0]?.asset.amount).toBe('0');
+      });
+
+      it('does not add memo fee when data field is empty string', async () => {
+        const transaction = addMemoToTransaction(
+          getTransactionExample('native'),
+          '',
+        );
+        const availableEnergy = ZERO;
+        const availableBandwidth = BigNumber(1000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // No memo fee, TRX should be 0
+        expect(result[0]?.asset.amount).toBe('0');
+      });
+
+      it('adds memo fee on TRC20 transaction with memo', async () => {
+        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
+          energy_used: 130000,
+          result: { result: true },
+          constant_result: [],
+          transaction: { ret: [{ ret: 'SUCCESS' }] },
+        });
+
+        const transaction = addMemoToTransaction(
+          getTransactionExample('trc20'),
+          '48656c6c6f',
+        );
+        const availableEnergy = BigNumber(130000); // Enough energy
+        const availableBandwidth = BigNumber(2000000);
+
+        const result = await feeCalculatorService.computeFee({
+          scope: Network.Mainnet,
+          transaction,
+          availableEnergy,
+          availableBandwidth,
+        });
+
+        // 1 TRX memo fee on top of energy (fully covered by staked)
+        expect(result[0]).toStrictEqual({
+          type: FeeType.Base,
+          asset: {
+            unit: 'TRX',
+            type: 'tron:728126428/slip44:195',
+            amount: '1',
+            fungible: true,
+          },
+        });
+      });
+    });
   });
 });
