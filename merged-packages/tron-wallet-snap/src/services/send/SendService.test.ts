@@ -3,7 +3,7 @@ import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 
 import { SendService } from './SendService';
-import { Network, Networks } from '../../constants';
+import { FEE_LIMIT, Network, Networks } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { mockLogger } from '../../utils/mockLogger';
@@ -93,6 +93,13 @@ describe('SendService', () => {
           triggerSmartContract: jest.fn().mockResolvedValue({
             transaction: createMockTransaction(),
           }),
+        },
+        utils: {
+          transaction: {
+            txJsonToPb: jest.fn().mockImplementation((tx) => tx),
+            txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
+            txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
+          },
         },
       };
 
@@ -771,6 +778,104 @@ describe('SendService', () => {
             { type: 'address', value: TEST_TO_ADDRESS },
             { type: 'uint256', value: '990000' },
           ],
+          TEST_FROM_ADDRESS,
+        );
+      });
+
+      it('propagates feeLimit through validateSend', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(10);
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '0' },
+        ]);
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+          feeLimit: FEE_LIMIT,
+        });
+
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          10 * 1e6,
+          TEST_FROM_ADDRESS,
+        );
+        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+          scope,
+          transaction: expect.objectContaining({
+            raw_data: expect.objectContaining({
+              fee_limit: FEE_LIMIT,
+            }),
+          }),
+          availableEnergy: expect.any(BigNumber),
+          availableBandwidth: expect.any(BigNumber),
+          feeLimit: FEE_LIMIT,
+        });
+      });
+
+      it('applies fee_limit to native transactions and refreshes derived fields', async () => {
+        const asset = createNativeAsset();
+        const result = await sendService.buildTransaction({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount: new BigNumber(10),
+          feeLimit: FEE_LIMIT,
+        });
+
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          10 * 1e6,
+          TEST_FROM_ADDRESS,
+        );
+        expect(result.raw_data.fee_limit).toBe(FEE_LIMIT);
+        expect(mockTronWeb.utils.transaction.txJsonToPb).toHaveBeenCalledWith(
+          expect.objectContaining({
+            raw_data: expect.objectContaining({
+              fee_limit: FEE_LIMIT,
+            }),
+          }),
+        );
+        expect(result.raw_data_hex).toBe('1234567890abcdef');
+        expect(result.txID).toBe('ck-tx-id');
+      });
+
+      it('passes feeLimit through when building TRC20 transactions', async () => {
+        const asset = createTrc20Asset();
+
+        await sendService.buildTransaction({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount: new BigNumber(10),
+          feeLimit: FEE_LIMIT,
+        });
+
+        expect(
+          mockTronWeb.transactionBuilder.triggerSmartContract,
+        ).toHaveBeenCalledWith(
+          'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          'transfer(address,uint256)',
+          { feeLimit: FEE_LIMIT },
+          expect.any(Array),
           TEST_FROM_ADDRESS,
         );
       });

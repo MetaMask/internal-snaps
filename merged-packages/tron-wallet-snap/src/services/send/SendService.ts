@@ -70,6 +70,7 @@ export class SendService {
    * @param params.toAddress - The recipient address.
    * @param params.asset - The asset being sent.
    * @param params.amount - The amount to send (in UI units, e.g., TRX not SUN).
+   * @param params.feeLimit - The feeLimit to set for the built transaction
    * @returns A validation result indicating if the send can proceed.
    */
   async validateSend({
@@ -78,12 +79,14 @@ export class SendService {
     toAddress,
     asset,
     amount,
+    feeLimit,
   }: {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
     asset: AssetEntity;
     amount: BigNumber;
+    feeLimit?: number;
   }): Promise<SendValidationResult> {
     this.#logger.log('Validating send', {
       scope,
@@ -143,6 +146,7 @@ export class SendService {
       toAddress,
       asset,
       amount,
+      feeLimit,
     });
 
     /**
@@ -156,6 +160,7 @@ export class SendService {
       transaction,
       availableEnergy,
       availableBandwidth,
+      feeLimit,
     });
 
     /**
@@ -204,11 +209,13 @@ export class SendService {
     toAddress,
     asset,
     amount,
+    feeLimit,
   }: {
     fromAccountId: string;
     toAddress: string;
     asset: AssetEntity;
     amount: BigNumber;
+    feeLimit?: number;
   }): Promise<
     | Transaction<TransferContract>
     | Transaction<TransferAssetContract>
@@ -227,6 +234,7 @@ export class SendService {
             fromAccountId,
             toAddress,
             amount,
+            feeLimit,
           });
 
         case 'trc10':
@@ -238,6 +246,7 @@ export class SendService {
             amount,
             tokenId: assetReference,
             decimals: asset.decimals,
+            feeLimit,
           });
 
         case 'trc20':
@@ -249,6 +258,7 @@ export class SendService {
             contractAddress: assetReference,
             amount,
             decimals: asset.decimals,
+            feeLimit,
           });
 
         default:
@@ -267,22 +277,26 @@ export class SendService {
     fromAccountId,
     toAddress,
     amount,
+    feeLimit,
   }: {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
     amount: BigNumber;
+    feeLimit?: number;
   }): Promise<Transaction<TransferContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
     const amountInSun = Number(trxToSun(amount));
-    return tronWeb.transactionBuilder.sendTrx(
+    const transaction = await tronWeb.transactionBuilder.sendTrx(
       toAddress,
       amountInSun,
       account.address,
     );
+    this.#setFeeLimit(tronWeb, transaction, feeLimit);
+    return transaction;
   }
 
   async buildSendTrc10Transaction({
@@ -292,6 +306,7 @@ export class SendService {
     amount,
     tokenId,
     decimals,
+    feeLimit,
   }: {
     scope: Network;
     fromAccountId: string;
@@ -299,6 +314,7 @@ export class SendService {
     amount: BigNumber;
     tokenId: string;
     decimals: number;
+    feeLimit?: number;
   }): Promise<Transaction<TransferAssetContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -306,12 +322,14 @@ export class SendService {
 
     const rawAmount = Number(toRawAmount(amount, decimals));
 
-    return tronWeb.transactionBuilder.sendToken(
+    const transaction = await tronWeb.transactionBuilder.sendToken(
       toAddress,
       rawAmount,
       tokenId,
       account.address,
     );
+    this.#setFeeLimit(tronWeb, transaction, feeLimit);
+    return transaction;
   }
 
   async buildSendTrc20Transaction({
@@ -321,6 +339,7 @@ export class SendService {
     contractAddress,
     amount,
     decimals,
+    feeLimit,
   }: {
     scope: Network;
     fromAccountId: string;
@@ -328,6 +347,7 @@ export class SendService {
     contractAddress: string;
     amount: BigNumber;
     decimals: number;
+    feeLimit?: number;
   }): Promise<Transaction<TriggerSmartContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
@@ -344,7 +364,7 @@ export class SendService {
       await tronWeb.transactionBuilder.triggerSmartContract(
         contractAddress,
         functionSelector,
-        {},
+        feeLimit ? { feeLimit } : {},
         parameter,
         account.address,
       );
@@ -455,5 +475,38 @@ export class SendService {
     });
 
     return result;
+  }
+
+  /**
+   * Applies a fee limit to a TRON transaction and rebuilds its derived fields.
+   *
+   * When `feeLimit` is provided, this method:
+   * - sets `transaction.raw_data.fee_limit`
+   * - regenerates `raw_data_hex`
+   * - recalculates `txID`
+   *
+   * @param tronWeb - TronWeb instance used to convert the transaction JSON into protobuf form and regenerate transaction metadata.
+   * @param transaction - The TRX or TRC10 transfer transaction to update.
+   * @param feeLimit - The fee limit to assign to the transaction in SUN (1 TRX = 1,000,000 SUN). Defaults to FEE_LIMIT (100 TRX).
+   * If `undefined` or falsy, the transaction is left unchanged.
+   */
+  #setFeeLimit(
+    tronWeb: TronWeb,
+    transaction:
+      | Transaction<TransferContract>
+      | Transaction<TransferAssetContract>,
+    feeLimit: number | undefined,
+  ): void {
+    if (feeLimit !== undefined) {
+      transaction.raw_data.fee_limit = feeLimit;
+
+      const transactionPb = tronWeb.utils.transaction.txJsonToPb(transaction);
+
+      transaction.raw_data_hex =
+        tronWeb.utils.transaction.txPbToRawDataHex(transactionPb);
+      transaction.txID = tronWeb.utils.transaction
+        .txPbToTxID(transactionPb)
+        .slice(2);
+    }
   }
 }
