@@ -3,6 +3,7 @@ import type { Infer } from '@metamask/superstruct';
 import {
   any,
   array,
+  boolean,
   enums,
   nullable,
   number,
@@ -12,12 +13,35 @@ import {
   union,
 } from '@metamask/superstruct';
 
-export const AssetChangeStruct = type({
-  usd_price: string(),
-  summary: string(),
-  value: string(),
+export const FungibleAssetChangeStruct = type({
+  usd_price: optional(string()),
+  summary: optional(string()),
+  value: optional(string()),
   raw_value: string(),
 });
+
+export const Erc721AssetChangeStruct = type({
+  summary: optional(string()),
+  token_id: string(),
+  arbitrary_collection_token: boolean(),
+  logo_url: optional(nullable(string())),
+  usd_price: optional(string()),
+});
+
+export const Erc1155AssetChangeStruct = type({
+  summary: optional(string()),
+  token_id: string(),
+  value: string(),
+  arbitrary_collection_token: boolean(),
+  logo_url: optional(nullable(string())),
+  usd_price: optional(string()),
+});
+
+export const AssetChangeStruct = union([
+  FungibleAssetChangeStruct,
+  Erc721AssetChangeStruct,
+  Erc1155AssetChangeStruct,
+]);
 
 export const AssetStruct = type({
   type: string(),

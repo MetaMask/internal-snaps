@@ -352,5 +352,182 @@ describe('TransactionScanService', () => {
       expect(result?.estimatedChanges.assets[0]?.value).toBe('1.5');
       expect(result?.estimatedChanges.assets[0]?.type).toBe('in');
     });
+
+    it('maps ERC721 NFT asset changes with token_id', async () => {
+      const mockApiResponse: SecurityAlertSimulationValidationResponse = {
+        simulation: {
+          status: 'Success',
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          account_summary: {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            assets_diffs: [
+              {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                asset_type: 'NATIVE',
+                asset: {
+                  type: 'NATIVE',
+                  symbol: 'TRX',
+                  name: 'TRX',
+                  decimals: 6,
+                },
+                in: [],
+                out: [
+                  {
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    usd_price: '0.315',
+                    summary: 'Sending 1 TRX',
+                    value: '1.0',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    raw_value: '0xf4240',
+                  },
+                ],
+              },
+              {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                asset_type: 'ERC721',
+                asset: {
+                  type: 'ERC721',
+                  symbol: 'SUN-V3-POS',
+                  name: 'Sunswap V3 Positions NFT-V1',
+                  // eslint-disable-next-line @typescript-eslint/naming-convention
+                  logo_url:
+                    'https://cdn.blockaid.io/nft/0x72DB65b2e023E4783D46023e7135c692E527F6CB/tron/sec/example',
+                },
+                in: [
+                  {
+                    summary: 'Receiving Sunswap V3 Positions NFT-V1 #1495',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    token_id: '0x5d7',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    arbitrary_collection_token: false,
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    logo_url:
+                      'https://cdn.blockaid.io/nft/0x72DB65b2e023E4783D46023e7135c692E527F6CB/1495/tron/sec/example',
+                  },
+                ],
+                out: [],
+              },
+            ],
+          },
+        },
+        validation: {
+          status: 'Success',
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          result_type: 'Benign',
+        },
+      };
+
+      const mockSecurityAlertsApiClient =
+        createMockSecurityAlertsApiClient(mockApiResponse);
+      const mockSnapClient = createMockSnapClient();
+
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        mockSnapClient as unknown as SnapClient,
+        mockLogger,
+      );
+
+      const result = await service.scanTransaction({
+        accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://tm2.sun.io',
+        scope: Network.Mainnet,
+        options: ['simulation'],
+      });
+
+      expect(result?.status).toBe('SUCCESS');
+      expect(result?.estimatedChanges.assets).toHaveLength(2);
+
+      // Native TRX out
+      expect(result?.estimatedChanges.assets[0]).toStrictEqual({
+        type: 'out',
+        symbol: 'TRX',
+        name: 'TRX',
+        logo: null,
+        value: '1',
+        price: '0.315',
+        assetType: 'NATIVE',
+      });
+
+      // ERC721 NFT in — value should be "1" for a single NFT
+      expect(result?.estimatedChanges.assets[1]).toStrictEqual({
+        type: 'in',
+        symbol: 'SUN-V3-POS',
+        name: 'Sunswap V3 Positions NFT-V1',
+        logo: 'https://cdn.blockaid.io/nft/0x72DB65b2e023E4783D46023e7135c692E527F6CB/tron/sec/example',
+        value: '1',
+        price: null,
+        assetType: 'ERC721',
+      });
+    });
+
+    it('maps ERC1155 asset changes with token_id and value', async () => {
+      const mockApiResponse: SecurityAlertSimulationValidationResponse = {
+        simulation: {
+          status: 'Success',
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          account_summary: {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            assets_diffs: [
+              {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                asset_type: 'ERC1155',
+                asset: {
+                  type: 'ERC1155',
+                  symbol: 'ITEM',
+                  name: 'Game Item',
+                },
+                in: [],
+                out: [
+                  {
+                    summary: 'Sending 5 Game Item',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    token_id: '0x1',
+                    value: '5',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    arbitrary_collection_token: false,
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    usd_price: '10.00',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        validation: {
+          status: 'Success',
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          result_type: 'Benign',
+        },
+      };
+
+      const mockSecurityAlertsApiClient =
+        createMockSecurityAlertsApiClient(mockApiResponse);
+      const mockSnapClient = createMockSnapClient();
+
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        mockSnapClient as unknown as SnapClient,
+        mockLogger,
+      );
+
+      const result = await service.scanTransaction({
+        accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+        options: ['simulation'],
+      });
+
+      expect(result?.estimatedChanges.assets[0]).toStrictEqual({
+        type: 'out',
+        symbol: 'ITEM',
+        name: 'Game Item',
+        logo: null,
+        value: '5',
+        price: '10.00',
+        assetType: 'ERC1155',
+      });
+    });
   });
 });

@@ -2,10 +2,19 @@
 import { BigNumber } from 'bignumber.js';
 import type { Types } from 'tronweb';
 
-import type { TransactionScanResult, TransactionScanValidation } from './types';
+import type {
+  TransactionScanAssetChange,
+  TransactionScanError,
+  TransactionScanResult,
+  TransactionScanValidation,
+} from './types';
 import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
-import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
+import type {
+  AssetChange,
+  AssetDiff,
+  SecurityAlertSimulationValidationResponse,
+} from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
@@ -226,78 +235,157 @@ export class TransactionScanService {
       return null;
     }
 
-    // Determine status: ERROR only if explicitly marked as Error
-    // SUCCESS if either is Success or if statuses are missing
-    const apiSimulationStatus = result.simulation?.status;
-    const apiValidationStatus = result.validation?.status;
-
-    const status =
-      apiSimulationStatus === 'Error' || apiValidationStatus === 'Error'
-        ? 'ERROR'
-        : 'SUCCESS';
+    const status = this.#resolveStatus(result);
 
     return {
       status,
       estimatedChanges: {
-        assets:
-          result.simulation?.account_summary?.assets_diffs
-            // Filter out assets without a displayable value (e.g., NONERC tokens
-            // that only have raw_value but no human-readable value from the API)
-            ?.filter((asset) => {
-              const inChange = asset.in?.[0];
-              const outChange = asset.out?.[0];
-              const change = inChange ?? outChange;
-              return change?.value !== undefined;
-            })
-            .map((asset) => {
-              // Get the first in/out change value (arrays now)
-              const inChange = asset.in?.[0];
-              const outChange = asset.out?.[0];
-              const change = inChange ?? outChange;
-
-              const { decimals } = asset.asset;
-              let displayValue = '0';
-              if (change?.raw_value && decimals !== undefined) {
-                displayValue = new BigNumber(change.raw_value)
-                  .dividedBy(new BigNumber(10).pow(decimals))
-                  .toFixed();
-              }
-
-              return {
-                type: inChange ? ('in' as const) : ('out' as const),
-                symbol: asset.asset.symbol ?? asset.asset_type,
-                name: asset.asset.name ?? asset.asset_type,
-                logo: asset.asset.logo_url ?? null,
-                value: displayValue,
-                price: change?.usd_price ?? null,
-                assetType: asset.asset_type,
-              };
-            }) ?? [],
+        assets: this.#mapAssetDiffs(
+          result.simulation?.account_summary?.assets_diffs,
+        ),
       },
       validation: {
         type: result.validation?.result_type ?? null,
         reason: result.validation?.reason ?? null,
       },
-      error:
-        result.simulation?.error || result.simulation?.error_details
-          ? {
-              type:
-                result.simulation?.error_details &&
-                'type' in result.simulation.error_details
-                  ? result.simulation.error_details.type
-                  : null,
-              code:
-                result.simulation?.error_details &&
-                'code' in result.simulation.error_details
-                  ? result.simulation.error_details.code
-                  : null,
-              message: result.simulation?.error ?? null,
-            }
-          : null,
+      error: this.#mapSimulationError(result.simulation),
       simulationStatus:
         status === 'ERROR'
           ? SimulationStatus.Failed
           : SimulationStatus.Completed,
+    };
+  }
+
+  /**
+   * Resolves the scan status from API simulation and validation statuses.
+   * Returns ERROR only if either status is explicitly 'Error'.
+   *
+   * @param result - The raw API response.
+   * @returns The resolved scan status.
+   */
+  #resolveStatus(
+    result: SecurityAlertSimulationValidationResponse,
+  ): TransactionScanResult['status'] {
+    return result.simulation?.status === 'Error' ||
+      result.validation?.status === 'Error'
+      ? 'ERROR'
+      : 'SUCCESS';
+  }
+
+  /**
+   * Maps raw asset diffs from the API into internal asset change representations.
+   *
+   * @param assetDiffs - The raw asset diffs from the simulation.
+   * @returns The mapped asset changes.
+   */
+  #mapAssetDiffs(
+    assetDiffs: AssetDiff[] | undefined,
+  ): TransactionScanAssetChange[] {
+    if (!assetDiffs) {
+      return [];
+    }
+
+    return assetDiffs
+      .filter((asset) => this.#hasDisplayableChange(asset))
+      .map((asset) => this.#mapAssetDiff(asset));
+  }
+
+  /**
+   * Checks whether an asset diff has a displayable change (value or token_id).
+   *
+   * @param asset - The asset diff to check.
+   * @returns True if the asset diff has a displayable change.
+   */
+  #hasDisplayableChange(asset: AssetDiff): boolean {
+    const change = asset.in?.[0] ?? asset.out?.[0];
+    if (!change) {
+      return false;
+    }
+    // NFT types (ERC721/ERC1155) use token_id instead of value
+    if ('token_id' in change) {
+      return true;
+    }
+    return change?.value !== undefined;
+  }
+
+  /**
+   * Maps a single asset diff to our internal asset change format.
+   *
+   * @param asset - The asset diff to map.
+   * @returns The mapped asset change.
+   */
+  #mapAssetDiff(asset: AssetDiff): TransactionScanAssetChange {
+    const inChange = asset.in?.[0];
+    const outChange = asset.out?.[0];
+    const change = inChange ?? outChange;
+
+    return {
+      type: inChange ? ('in' as const) : ('out' as const),
+      symbol: asset.asset.symbol ?? asset.asset_type,
+      name: asset.asset.name ?? asset.asset_type,
+      logo: asset.asset.logo_url ?? null,
+      value: this.#computeDisplayValue(change, asset.asset.decimals),
+      price: change?.usd_price ?? null,
+      assetType: asset.asset_type,
+    };
+  }
+
+  /**
+   * Computes the human-readable display value for an asset change.
+   * Handles NFT types (ERC721/ERC1155) and fungible tokens differently.
+   *
+   * @param change - The asset change from the API.
+   * @param decimals - The token decimals (for fungible tokens).
+   * @returns The display value string.
+   */
+  #computeDisplayValue(
+    change: AssetChange | undefined,
+    decimals: number | undefined,
+  ): string {
+    if (!change) {
+      return '0';
+    }
+
+    if ('token_id' in change) {
+      // NFT assets (ERC721): each token is a single unit
+      // ERC1155: use the value field if present
+      return 'value' in change && typeof change.value === 'string'
+        ? change.value
+        : '1';
+    }
+
+    if (change.raw_value && decimals !== undefined) {
+      return new BigNumber(change.raw_value)
+        .dividedBy(new BigNumber(10).pow(decimals))
+        .toFixed();
+    }
+
+    return '0';
+  }
+
+  /**
+   * Maps simulation error information from the API response.
+   *
+   * @param simulation - The simulation result from the API.
+   * @returns The mapped error, or null if no error.
+   */
+  #mapSimulationError(
+    simulation: SecurityAlertSimulationValidationResponse['simulation'],
+  ): TransactionScanError | null {
+    if (!simulation?.error && !simulation?.error_details) {
+      return null;
+    }
+
+    return {
+      type:
+        simulation.error_details && 'type' in simulation.error_details
+          ? simulation.error_details.type
+          : null,
+      code:
+        simulation.error_details && 'code' in simulation.error_details
+          ? simulation.error_details.code
+          : null,
+      message: simulation.error ?? null,
     };
   }
 }
