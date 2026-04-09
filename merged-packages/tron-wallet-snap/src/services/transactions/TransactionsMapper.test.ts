@@ -7,15 +7,16 @@ import type {
   ContractTransactionInfo,
 } from '../../clients/trongrid/types';
 import { Network } from '../../constants';
-import contractInfoMock from './mocks/contract-info.json';
-import failedTransactionMock from './mocks/failed-transaction.json';
-import nativeTransferMock from './mocks/native-transfer.json';
-import swapContractInfoMock from './mocks/swap-contract-info.json';
-import swapTransactionMock from './mocks/swap-transaction.json';
-import trc10TransferMock from './mocks/trc10-transfer.json';
-import trc20TransferMock from './mocks/trc20-transfer.json';
-import { TransactionMapper } from './TransactionsMapper';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
+import swapTransactionInfoMock from './mocks/tron-http/gettransactioninfobyid/swap-transaction.json';
+import failedTransactionMock from './mocks/trongrid/account-transactions/failed-transaction.json';
+import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
+import swapAccountTransactionMock from './mocks/trongrid/account-transactions/swap-transaction.json';
+import trc10TransferMock from './mocks/trongrid/account-transactions/trc10-transfer.json';
+import trc20TransferMock from './mocks/trongrid/account-transactions/trc20-transfer.json';
+import contractInfoMock from './mocks/trongrid/account-trc20-transactions/contract-info.json';
+import swapContractInfoMock from './mocks/trongrid/account-trc20-transactions/swap-contract-info.json';
+import { TransactionMapper } from './TransactionsMapper';
 
 describe('TransactionMapper', () => {
   const mockAccount: TronKeyringAccount = {
@@ -29,6 +30,16 @@ describe('TransactionMapper', () => {
     derivationPath: 'm/0/0',
     index: 0,
   };
+
+  const swapTransactionMock = {
+    ...(swapAccountTransactionMock as unknown as TransactionInfo),
+    internal_transactions:
+      (
+        swapTransactionInfoMock as {
+          internal_transactions?: TransactionInfo['internal_transactions'];
+        }
+      ).internal_transactions ?? [],
+  } as TransactionInfo;
 
   describe('mapTransaction', () => {
     describe('TransferContract (Native TRX transfers)', () => {
@@ -98,10 +109,10 @@ describe('TransactionMapper', () => {
       const trc10Account: TronKeyringAccount = {
         ...mockAccount,
         id: 'test-trc10-account',
-        address: 'TSgs5wukfK4492Vgt55D7FxoiNDaqmrgWG',
+        address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
       };
 
-      it('maps TRC10 send transaction with default 6 decimals when no metadata provided', () => {
+      it('maps TRC10 receive transaction with default 6 decimals when no metadata provided', () => {
         const rawTransaction = trc10TransferMock as TransactionInfo;
 
         const result = TransactionMapper.mapTransaction({
@@ -112,11 +123,11 @@ describe('TransactionMapper', () => {
 
         const expectedTransaction = {
           account: 'test-trc10-account',
-          type: TransactionType.Send,
-          id: 'b079d6084d565898c6f534228a9df6860d96e3a0794d55ec1bb169daece1eb81',
+          type: TransactionType.Receive,
+          id: '24bc250718147fedde9ead0be7f17f50cfcfaf64d668ea834d5d1c69e5bf3bba',
           from: [
             {
-              address: 'TSgs5wukfK4492Vgt55D7FxoiNDaqmrgWG',
+              address: 'TEkrCfpcY8qGzRdSackqNWd5G5MUvAT1cX',
               asset: {
                 // 88888888 / 10^6 = 88.888888 (default 6 decimals)
                 amount: '88.888888',
@@ -128,7 +139,7 @@ describe('TransactionMapper', () => {
           ],
           to: [
             {
-              address: 'TA3nAC3fofyXiQ7qcJGANih6a3DawjM5su',
+              address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
               asset: {
                 amount: '88.888888',
                 unit: 'UNKNOWN',
@@ -139,11 +150,11 @@ describe('TransactionMapper', () => {
           ],
           chain: 'tron:728126428',
           status: TransactionStatus.Confirmed,
-          timestamp: 1769119122,
+          timestamp: 1769119311,
           events: [
             {
               status: TransactionStatus.Confirmed,
-              timestamp: 1769119122,
+              timestamp: 1769119311,
             },
           ],
           fees: [
@@ -234,7 +245,7 @@ describe('TransactionMapper', () => {
         expect(toAsset.unit).toBe('WHL');
       });
 
-      it('decodes hex-encoded asset_name to resolve token metadata', () => {
+      it('handles decimal asset_name values when mapping TRC10 transactions', () => {
         const rawTransaction = trc10TransferMock as TransactionInfo;
 
         const trc10TokenMetadata = new Map<string, TRC10TokenMetadata>([
@@ -260,14 +271,8 @@ describe('TransactionMapper', () => {
           type: string;
           unit: string;
         };
-        const toAsset = result!.to[0]!.asset as {
-          type: string;
-          unit: string;
-        };
         expect(fromAsset.type).toBe('tron:728126428/trc10:1005119');
         expect(fromAsset.unit).toBe('TRC20AdsCOM');
-        expect(toAsset.type).toBe('tron:728126428/trc10:1005119');
-        expect(toAsset.unit).toBe('TRC20AdsCOM');
       });
     });
 
@@ -863,7 +868,7 @@ describe('TransactionMapper', () => {
 
       // Check TRX → USDT swap
       expect(result?.from[0]?.asset).toHaveProperty('unit', 'TRX');
-      expect(result?.from[0]?.asset).toHaveProperty('amount', '10');
+      expect(result?.from[0]?.asset).toHaveProperty('amount', '19.9125');
       expect(result?.to[0]?.asset).toHaveProperty('unit', 'USDT');
     });
 

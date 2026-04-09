@@ -5,9 +5,9 @@ import { BigNumber } from 'bignumber.js';
 import { FeeCalculatorService } from './FeeCalculatorService';
 import { Network, ZERO } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
-import nativeTransferMock from '../transactions/mocks/native-transfer.json';
-import trc10TransferMock from '../transactions/mocks/trc10-transfer.json';
-import trc20TransferMock from '../transactions/mocks/trc20-transfer.json';
+import nativeTransferMock from '../transactions/mocks/trongrid/account-transactions/native-transfer.json';
+import trc10TransferMock from '../transactions/mocks/trongrid/account-transactions/trc10-transfer.json';
+import trc20TransferMock from '../transactions/mocks/trongrid/account-transactions/trc20-transfer.json';
 
 const mockTronWebFactory = {
   createClient: jest.fn(),

@@ -37,28 +37,5 @@
     "fee_limit": 100000000,
     "timestamp": 1763586027000
   },
-  "internal_transactions": [
-    {
-      "hash": "a00dc01a55e7b2babebdf13d2c94c36ae584ffe1956bf5274db879dca9839133",
-      "caller_address": "41f742f4589459f0923fa579600815763d1646bec3",
-      "transferTo_address": "4170b0f2955dde7dca6567187d0a74d532043fc2a2",
-      "callValueInfo": [
-        {
-          "callValue": 87500
-        }
-      ],
-      "note": "63616c6c"
-    },
-    {
-      "hash": "08231878f4b258e31570654a6f3705ba734355b91e31ceb5812334812c35cd5d",
-      "caller_address": "41f742f4589459f0923fa579600815763d1646bec3",
-      "transferTo_address": "4118ff186cb1973d4b29700f2aac6b1eec9e55ffbd",
-      "callValueInfo": [
-        {
-          "callValue": 9912500
-        }
-      ],
-      "note": "63616c6c"
-    }
-  ]
+  "internal_transactions": []
 }

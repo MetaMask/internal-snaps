@@ -126,20 +126,22 @@ export const ContractInfoStruct = type({
 
 export const InternalTransactionCallValueStruct = type({
   // eslint-disable-next-line id-length
-  _: number(),
+  _: optional(number()),
+  callValue: optional(min(number(), 0)),
+  tokenId: optional(string()),
 });
 
 export const InternalTransactionDataStruct = type({
-  note: string(),
-  rejected: boolean(),
+  note: optional(string()),
+  rejected: optional(boolean()),
   call_value: optional(InternalTransactionCallValueStruct),
 });
 
 export const InternalTransactionStruct = type({
-  internal_tx_id: string(),
-  data: InternalTransactionDataStruct,
-  to_address: string(),
-  from_address: string(),
+  internal_tx_id: optional(string()),
+  data: optional(InternalTransactionDataStruct),
+  to_address: optional(string()),
+  from_address: optional(string()),
 });
 
 export const RawTransactionDataStruct = type({
@@ -147,7 +149,7 @@ export const RawTransactionDataStruct = type({
   ref_block_bytes: string(),
   ref_block_hash: string(),
   expiration: min(number(), 0),
-  timestamp: min(number(), 0),
+  timestamp: optional(min(number(), 0)),
   fee_limit: optional(min(number(), 0)),
 });
 

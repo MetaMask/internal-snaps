@@ -1,21 +1,21 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
 
+import type { TransactionsRepository } from './TransactionsRepository';
+import { TransactionsService } from './TransactionsService';
+import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type {
   ContractTransactionInfo,
   TransactionInfo,
 } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network } from '../../constants';
-import contractInfoMock from './mocks/contract-info.json';
-import nativeTransferMock from './mocks/native-transfer.json';
-import trc10TransferMock from './mocks/trc10-transfer.json';
-import trc20TransferMock from './mocks/trc20-transfer.json';
-import type { TransactionsRepository } from './TransactionsRepository';
-import { TransactionsService } from './TransactionsService';
-import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
+import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
+import trc10TransferMock from './mocks/trongrid/account-transactions/trc10-transfer.json';
+import trc20TransferMock from './mocks/trongrid/account-transactions/trc20-transfer.json';
+import contractInfoMock from './mocks/trongrid/account-trc20-transactions/contract-info.json';
 
 // Import simplified mock data (each file now contains only one transaction)
 
@@ -225,6 +225,42 @@ describe('TransactionsService', () => {
       expect(fromAsset.unit).toBe('TRC20AdsCOM');
       expect(toAsset.amount).toBe('88888.888');
       expect(toAsset.unit).toBe('TRC20AdsCOM');
+    });
+
+    it('handles decimal TRC10 asset_name values without throwing', async () => {
+      const trc10TransferWithDecimalTokenId = JSON.parse(
+        JSON.stringify(trc10TransferMock),
+      ) as TransactionInfo;
+
+      const transferAssetContract = trc10TransferWithDecimalTokenId.raw_data
+        .contract[0] as unknown as {
+        parameter: { value: Record<string, unknown> };
+      };
+      transferAssetContract.parameter.value.asset_name = '1005119';
+
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+        trc10TransferWithDecimalTokenId,
+      ]);
+      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+        [],
+      );
+      mockTronHttpClient.getTRC10TokenMetadata.mockResolvedValue({
+        name: 'BestAdsCoin',
+        symbol: 'TRC20AdsCOM',
+        decimals: 3,
+      });
+
+      const transactions =
+        await transactionsService.fetchNewTransactionsForAccount(
+          Network.Mainnet,
+          mockAccount2,
+        );
+
+      expect(mockTronHttpClient.getTRC10TokenMetadata).toHaveBeenCalledWith(
+        '1005119',
+        Network.Mainnet,
+      );
+      expect(transactions).toHaveLength(1);
     });
 
     it('falls back to defaults when TRC10 metadata fetch fails', async () => {

@@ -358,7 +358,7 @@ export class AccountsService {
   }
 
   async synchronize(accounts: TronKeyringAccount[]): Promise<void> {
-    await Promise.all([
+    await Promise.allSettled([
       this.synchronizeAssets(accounts),
       this.synchronizeTransactions(accounts),
     ]);

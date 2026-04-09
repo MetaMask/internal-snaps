@@ -4,7 +4,8 @@ import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { Network } from '../../constants';
 import { ConfigProvider } from '../../services/config';
-import nativeTransferMock from '../../services/transactions/mocks/native-transfer.json';
+import nativeTransferWithoutTimestampMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer-without-timestamp.json';
+import nativeTransferMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer.json';
 import { mockLogger } from '../../utils/mockLogger';
 import type { Serializable } from '../../utils/serialization/types';
 import { TronHttpClient } from '../tron-http/TronHttpClient';
@@ -359,6 +360,72 @@ describe('TrongridApiClient', () => {
           `https://api.trongrid.io/v1/accounts/${mockAddress}/transactions?limit=1`,
           expect.any(Object),
         );
+      });
+    });
+
+    it('accepts legacy internal_transactions entries with optional fields omitted', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        // Example seen live on tx aaff541203021b7398bfd29e0eeb28417eab93e113f2bf504d2169d1b8161500,
+        // where a legacy internal_transactions entry omitted data.call_value.
+        const transactionWithSparseInternalTransaction = {
+          ...mockTx,
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          internal_transactions: [
+            {
+              data: {
+                note: '63616c6c',
+              },
+            },
+          ],
+        };
+
+        // eslint-disable-next-line no-restricted-globals
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response(
+            JSON.stringify({
+              data: [transactionWithSparseInternalTransaction],
+              success: true,
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              meta: { at: 1770121997373, page_size: 1 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+        const result = await client.getTransactionInfoByAddress(
+          Network.Mainnet,
+          mockAddress,
+        );
+
+        expect(result).toHaveLength(1);
+      });
+    });
+
+    it('accepts raw transactions when raw_data.timestamp is omitted', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        // Example seen live on tx c4e8c4a45830e882e92062ede0ecd09702c51e4732385b9cf33590d470b08357,
+        // where Trongrid omitted raw_data.timestamp entirely.
+        // eslint-disable-next-line no-restricted-globals
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response(
+            JSON.stringify({
+              data: [nativeTransferWithoutTimestampMock],
+              success: true,
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              meta: { at: 1770121997373, page_size: 1 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+        const result = await client.getTransactionInfoByAddress(
+          Network.Mainnet,
+          mockAddress,
+        );
+
+        expect(result).toHaveLength(1);
       });
     });
   });

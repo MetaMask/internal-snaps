@@ -90,7 +90,7 @@ export type RawTransactionData = {
   ref_block_bytes: string;
   ref_block_hash: string;
   expiration: number;
-  timestamp: number;
+  timestamp?: number;
   fee_limit?: number;
 };
 
@@ -162,18 +162,22 @@ export type ContractVote = {
 };
 
 export type InternalTransaction = {
-  internal_tx_id: string;
-  data: InternalTransactionData;
-  to_address: string;
-  from_address: string;
+  internal_tx_id?: string;
+  data?: InternalTransactionData;
+  to_address?: string;
+  from_address?: string;
 };
 
 export type InternalTransactionData = {
-  note: string;
-  rejected: boolean;
-  call_value?: {
-    _: number;
-  };
+  note?: string;
+  rejected?: boolean;
+  call_value?: InternalTransactionCallValue;
+};
+
+export type InternalTransactionCallValue = {
+  _?: number;
+  callValue?: number;
+  tokenId?: string;
 };
 
 export type ContractTransactionInfo = {

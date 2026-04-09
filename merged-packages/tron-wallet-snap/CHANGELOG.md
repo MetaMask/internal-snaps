@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Relax Trongrid `internal_transactions` validation to avoid sync failures on sparse legacy payloads ([#289](https://github.com/MetaMask/snap-tron-wallet/pull/289))
+- Handle TRC10 token identifiers correctly in the current Trongrid account-history transaction flow, without mis-parsing endpoint-specific `asset_name` formats ([#289](https://github.com/MetaMask/snap-tron-wallet/pull/289))
+- Decouple assets and transactions synchronization so one failure does not prevent the other from completing ([#289](https://github.com/MetaMask/snap-tron-wallet/pull/289))
+
 ## [1.25.1]
 
 ### Fixed
