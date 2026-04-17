@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Remove interface ID after it is no longer needed ([#284](https://github.com/MetaMask/snap-tron-wallet/pull/284))
+
 ## [1.25.2]
 
 ### Fixed

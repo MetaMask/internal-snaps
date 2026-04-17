@@ -4,9 +4,10 @@ import { BigNumber } from 'bignumber.js';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { KnownCaip19Id, Network, Networks, ZERO } from '../../constants';
-import type { ResourceAsset } from '../../entities/assets';
+import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
+import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
@@ -72,7 +73,18 @@ const defaultFees: ComputeFeeResult = [
 type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
   handler: InstanceType<typeof ConfirmationHandler>;
   mockSnapClient: jest.Mocked<
-    Pick<SnapClient, 'getPreferences' | 'createInterface' | 'showDialog'>
+    Pick<
+      SnapClient,
+      | 'getPreferences'
+      | 'createInterface'
+      | 'showDialog'
+      | 'trackTransactionAdded'
+      | 'trackTransactionApproved'
+      | 'trackTransactionRejected'
+    >
+  >;
+  mockState: jest.Mocked<
+    Pick<State<UnencryptedStateValue>, 'getKey' | 'setKey'>
   >;
   mockTronWebFactory: jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
   mockTronWeb: {
@@ -123,7 +135,15 @@ async function withConfirmationHandler<ReturnValue>(
   };
 
   const mockSnapClient: jest.Mocked<
-    Pick<SnapClient, 'getPreferences' | 'createInterface' | 'showDialog'>
+    Pick<
+      SnapClient,
+      | 'getPreferences'
+      | 'createInterface'
+      | 'showDialog'
+      | 'trackTransactionAdded'
+      | 'trackTransactionApproved'
+      | 'trackTransactionRejected'
+    >
   > = {
     getPreferences: jest.fn().mockResolvedValue({
       locale: 'en',
@@ -139,6 +159,9 @@ async function withConfirmationHandler<ReturnValue>(
     }),
     createInterface: jest.fn().mockResolvedValue('mock-interface-id'),
     showDialog: jest.fn().mockResolvedValue(true),
+    trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
+    trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
+    trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockState: jest.Mocked<
@@ -159,6 +182,7 @@ async function withConfirmationHandler<ReturnValue>(
   return await testFunction({
     handler,
     mockSnapClient,
+    mockState,
     mockTronWebFactory,
     mockTronWeb,
     mockAssetsService,
@@ -336,6 +360,132 @@ describe('ConfirmationHandler', () => {
           );
         },
       );
+    });
+  });
+
+  describe('confirmTransactionRequest', () => {
+    const mockRenderConfirmTransactionRequest = jest.mocked(
+      renderConfirmTransactionRequest,
+    );
+
+    const mockAsset: AssetEntity = {
+      assetType: `${Network.Mainnet}/slip44:195`,
+      keyringAccountId: TEST_ACCOUNT_ID,
+      network: Network.Mainnet,
+      symbol: 'TRX',
+      decimals: 6,
+      rawAmount: '1000000',
+      uiAmount: '1',
+      iconUrl: '',
+    };
+
+    const mockTransactionRawData = {
+      contract: [{ parameter: { value: {} }, type: 'TransferContract' }],
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      ref_block_bytes: 'abcd',
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      ref_block_hash: '12345678',
+      expiration: 1700000000000,
+      timestamp: 1699999000000,
+    };
+
+    const defaultParams = {
+      scope: Network.Mainnet,
+      fromAddress: mockAccount.address,
+      toAddress: 'TDestinationAddress123456789012345',
+      amount: '1000000',
+      fees: defaultFees,
+      asset: mockAsset,
+      accountType: 'tron:eoa',
+      origin: 'MetaMask',
+      transactionRawData: mockTransactionRawData,
+    };
+
+    it('returns true and tracks approval when user confirms', async () => {
+      await withConfirmationHandler(async ({ handler, mockSnapClient }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+
+        const result = await handler.confirmTransactionRequest(defaultParams);
+
+        expect(result).toBe(true);
+        expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith({
+          origin: 'MetaMask',
+          accountType: 'tron:eoa',
+          chainIdCaip: Network.Mainnet,
+        });
+        expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith({
+          origin: 'MetaMask',
+          accountType: 'tron:eoa',
+          chainIdCaip: Network.Mainnet,
+        });
+        expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+      });
+    });
+
+    it('returns false and tracks rejection when user rejects', async () => {
+      await withConfirmationHandler(async ({ handler, mockSnapClient }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(null);
+
+        const result = await handler.confirmTransactionRequest(defaultParams);
+
+        expect(result).toBe(false);
+        expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith({
+          origin: 'MetaMask',
+          accountType: 'tron:eoa',
+          chainIdCaip: Network.Mainnet,
+        });
+        expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+      });
+    });
+
+    it('passes formatted origin and transactionRawData to render', async () => {
+      await withConfirmationHandler(
+        async ({ handler, mockSnapClient, mockState }) => {
+          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+
+          await handler.confirmTransactionRequest({
+            ...defaultParams,
+            origin: 'https://example.com',
+          });
+
+          expect(mockRenderConfirmTransactionRequest).toHaveBeenCalledWith(
+            mockSnapClient,
+            mockState,
+            expect.objectContaining({
+              origin: 'example.com',
+              transactionRawData: mockTransactionRawData,
+            }),
+          );
+        },
+      );
+    });
+
+    it('clears the interface ID after render completes', async () => {
+      await withConfirmationHandler(async ({ handler, mockState }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+
+        await handler.confirmTransactionRequest(defaultParams);
+
+        expect(mockState.setKey).toHaveBeenCalledWith(
+          'mapInterfaceNameToId.confirmTransaction',
+          null,
+        );
+      });
+    });
+
+    it('logs error but does not throw when clearing interface ID fails', async () => {
+      await withConfirmationHandler(async ({ handler, mockState }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+        mockState.setKey.mockRejectedValue(new Error('state write failed'));
+
+        const result = await handler.confirmTransactionRequest(defaultParams);
+
+        expect(result).toBe(true);
+        expect(mockState.setKey).toHaveBeenCalledWith(
+          'mapInterfaceNameToId.confirmTransaction',
+          null,
+        );
+      });
     });
   });
 });
