@@ -1236,6 +1236,17 @@ export class AssetsService {
     return savedAsset.rawAmount !== asset.rawAmount;
   }
 
+  /**
+   * Persist the latest fetched assets and emit the corresponding keyring events.
+   *
+   * The input is treated as the latest snapshot for the account/network pairs
+   * included in this sync. The method compares that snapshot with the
+   * previously saved state to detect disappeared assets, emits asset-list
+   * updates, and emits balance updates including synthetic zero balances for
+   * assets that vanished from the latest response.
+   *
+   * @param assets - The latest asset snapshot returned by the refresh flow.
+   */
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
@@ -1253,9 +1264,42 @@ export class AssetsService {
       !hasZeroAmount(asset);
 
     const savedAssets = await this.getAll();
+    const isEssentialAsset = (asset: AssetEntity): boolean =>
+      ESSENTIAL_ASSETS.includes(asset.assetType);
 
-    // Save assets using repository
-    await this.#assetsRepository.saveMany(assets);
+    // Track only the account/network pairs refreshed in this run.
+    // That prevents us from treating assets from untouched networks as disappeared.
+    const syncedNetworksByAccount = assets.reduce<Record<string, Set<Network>>>(
+      (acc, asset) => {
+        acc[asset.keyringAccountId] ??= new Set();
+        acc[asset.keyringAccountId]?.add(asset.network);
+        return acc;
+      },
+      {},
+    );
+
+    const incomingAssetKeys = new Set(
+      assets.map((asset) => `${asset.keyringAccountId}:${asset.assetType}`),
+    );
+
+    // A saved asset is considered disappeared only if its network was part of
+    // this sync, it is not essential, and it is missing from the latest
+    // snapshot for that account.
+    const disappearedAssets = savedAssets.filter((savedAsset) => {
+      const syncedNetworks =
+        syncedNetworksByAccount[savedAsset.keyringAccountId];
+
+      if (
+        !syncedNetworks?.has(savedAsset.network) ||
+        isEssentialAsset(savedAsset)
+      ) {
+        return false;
+      }
+
+      return !incomingAssetKeys.has(
+        `${savedAsset.keyringAccountId}:${savedAsset.assetType}`,
+      );
+    });
 
     // Notify the extension about the new assets in a single event
     const isNew = (asset: AssetEntity): boolean =>
@@ -1275,36 +1319,57 @@ export class AssetsService {
       return Boolean(savedAsset && hasZeroAmount(savedAsset));
     };
 
-    const isEssentialAsset = (asset: AssetEntity): boolean =>
-      ESSENTIAL_ASSETS.includes(asset.assetType);
-
+    // A token should be removed from the visible asset list only when the latest
+    // snapshot says its balance is zero. Essential assets stay visible even at
+    // zero because they are part of the permanent Tron account model.
     const shouldBeInRemovedList = (asset: AssetEntity): boolean =>
       hasZeroAmount(asset) && !isEssentialAsset(asset); // Never remove essential assets (including energy & bandwidth) from the account asset list
 
+    // Assets are added to the visible list when they are non-zero and either:
+    // - we are doing a full non-incremental broadcast, or
+    // - they are brand new, or
+    // - they existed before with zero balance and now became non-zero.
     const shouldBeInAddedList = (asset: AssetEntity): boolean =>
       !shouldBeInRemovedList(asset) &&
       (!isIncremental ||
         ((isNew(asset) || wasSavedWithZeroAmount(asset)) &&
           hasNonZeroAmount(asset)));
 
-    const assetListUpdatedPayload = assets.reduce<
+    // Build the asset-list payload in two stages:
+    // 1. seed the removed list with assets that vanished from the latest
+    //    snapshot entirely
+    // 2. fold in the current assets to report additions and explicit zero-balance
+    //    removals in the same event
+    const assetListUpdatedPayload = disappearedAssets.reduce<
       AccountAssetListUpdatedEvent['params']['assets']
     >(
       (acc, asset) => ({
         ...acc,
         [asset.keyringAccountId]: {
-          added: [
-            ...(acc[asset.keyringAccountId]?.added ?? []),
-            ...(shouldBeInAddedList(asset) ? [asset.assetType] : []),
-          ],
+          added: [...(acc[asset.keyringAccountId]?.added ?? [])],
           removed: [
             ...(acc[asset.keyringAccountId]?.removed ?? []),
-            ...(shouldBeInRemovedList(asset) ? [asset.assetType] : []),
+            asset.assetType,
           ],
         },
       }),
       {},
     );
+
+    for (const asset of assets) {
+      // Merge the current snapshot into the pre-seeded payload so each account
+      // ends up with one consolidated added/removed diff.
+      assetListUpdatedPayload[asset.keyringAccountId] = {
+        added: [
+          ...(assetListUpdatedPayload[asset.keyringAccountId]?.added ?? []),
+          ...(shouldBeInAddedList(asset) ? [asset.assetType] : []),
+        ],
+        removed: [
+          ...(assetListUpdatedPayload[asset.keyringAccountId]?.removed ?? []),
+          ...(shouldBeInRemovedList(asset) ? [asset.assetType] : []),
+        ],
+      };
+    }
 
     // If no assets were added or removed, don't emit the event.
     const isEmptyAccountAssetListUpdatedPayload = Object.values(
@@ -1323,21 +1388,45 @@ export class AssetsService {
     const hasChanged = (asset: AssetEntity): boolean =>
       AssetsService.hasChanged(asset, savedAssets);
 
-    const balancesUpdatedPayload = assets
-      .filter(isIncremental ? hasChanged : (): boolean => true)
-      .reduce<AccountBalancesUpdatedEvent['params']['balances']>(
-        (acc, asset) => ({
-          ...acc,
-          [asset.keyringAccountId]: {
-            ...(acc[asset.keyringAccountId] ?? {}),
-            [asset.assetType]: {
-              unit: asset.symbol,
-              amount: asset.uiAmount,
-            },
+    // Emit synthetic zero-balance entries for disappeared assets so clients can
+    // clear cached balances even when the backend omits zero-balance tokens
+    // instead of returning them explicitly.
+    const removedAssetsWithZeroBalance = disappearedAssets.map((asset) => ({
+      ...asset,
+      rawAmount: '0',
+      uiAmount: '0',
+    }));
+
+    const assetsToSave = [...assets, ...removedAssetsWithZeroBalance].filter(
+      (asset) =>
+        isIncremental
+          ? removedAssetsWithZeroBalance.some(
+              (removedAsset) =>
+                removedAsset.keyringAccountId === asset.keyringAccountId &&
+                removedAsset.assetType === asset.assetType,
+            ) || hasChanged(asset)
+          : true,
+    );
+    // Save assets using repository
+    await this.#assetsRepository.saveMany(assetsToSave);
+
+    // Broadcast the current snapshot plus synthetic zero-balance removals so the
+    // client can reconcile both visible assets and cached balances in one pass.
+    const balancesUpdatedPayload = assetsToSave.reduce<
+      AccountBalancesUpdatedEvent['params']['balances']
+    >(
+      (acc, asset) => ({
+        ...acc,
+        [asset.keyringAccountId]: {
+          ...(acc[asset.keyringAccountId] ?? {}),
+          [asset.assetType]: {
+            unit: asset.symbol,
+            amount: asset.uiAmount,
           },
-        }),
-        {},
-      );
+        },
+      }),
+      {},
+    );
 
     // Traverse the balancesUpdatedPayload object to check if we have at least 1 account that has at least 1 balance updated.
     const isSomeBalanceChanged = Object.values(balancesUpdatedPayload)
