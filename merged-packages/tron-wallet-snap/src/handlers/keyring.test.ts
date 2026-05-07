@@ -1,5 +1,8 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
-import { UserRejectedRequestError } from '@metamask/snaps-sdk';
+import {
+  InvalidParamsError,
+  UserRejectedRequestError,
+} from '@metamask/snaps-sdk';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
@@ -59,11 +62,14 @@ describe('KeyringHandler', () => {
   let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
 
   beforeEach(() => {
-    mockSnapClient = {} as any;
+    mockSnapClient = {
+      scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
+    } as any;
     mockAccountsService = {
       findById: jest.fn().mockResolvedValue(mockAccount),
       findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
       deriveAccount: jest.fn(),
+      getAll: jest.fn().mockResolvedValue([mockAccount]),
     } as any;
     mockAssetsService = {} as any;
     mockTransactionsService = {
@@ -580,6 +586,39 @@ describe('KeyringHandler', () => {
       expect(
         mockTransactionsService.checkAddressActivity,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setSelectedAccounts', () => {
+    const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174999';
+
+    it('schedules a background sync for known accounts', async () => {
+      await keyringHandler.setSelectedAccounts([mockAccount.id]);
+
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: 'onSynchronizeSelectedAccounts',
+        params: { accountIds: [mockAccount.id] },
+        duration: 'PT1S',
+      });
+    });
+
+    it('rejects if an account id is not a valid UUID', async () => {
+      await expect(
+        keyringHandler.setSelectedAccounts([mockAccount.id, 'not-a-uuid']),
+      ).rejects.toThrow(InvalidParamsError);
+
+      expect(mockSnapClient.scheduleBackgroundEvent).not.toHaveBeenCalled();
+    });
+
+    it('rejects if an account id is not part of existing accounts', async () => {
+      await expect(
+        keyringHandler.setSelectedAccounts([
+          mockAccount.id,
+          NON_EXISTENT_ACCOUNT_ID,
+        ]),
+      ).rejects.toThrow(InvalidParamsError);
+
+      expect(mockSnapClient.scheduleBackgroundEvent).not.toHaveBeenCalled();
     });
   });
 });

@@ -17,7 +17,11 @@ import {
   emitSnapKeyringEvent,
   handleKeyringRequest,
 } from '@metamask/keyring-snap-sdk';
-import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
+import {
+  InvalidParamsError,
+  SnapError,
+  UserRejectedRequestError,
+} from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type {
@@ -469,6 +473,16 @@ export class KeyringHandler implements Keyring {
    */
   async setSelectedAccounts(accountIds: string[]): Promise<void> {
     validateRequest(accountIds, array(UuidStruct));
+
+    const existingIds = new Set(
+      (await this.#listAccounts()).map((account) => account.id),
+    );
+    if (!accountIds.every((id) => existingIds.has(id))) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw new InvalidParamsError(
+        'Account IDs were not part of existing accounts.',
+      );
+    }
 
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.SynchronizeSelectedAccounts,
