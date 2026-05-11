@@ -216,44 +216,34 @@ export class CronHandler {
   async #refreshTransactionRequestPrices(
     confirmationInterfaceId: string,
   ): Promise<void> {
-    // Get the current interface context (returns null if dismissed)
     const interfaceContext =
-      await this.#snapClient.getInterfaceContextIfExists<ConfirmTransactionRequestContext>(
+      await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
         confirmationInterfaceId,
       );
 
-    // Interface was dismissed, clean up and exit
     if (!interfaceContext) {
-      this.#logger.info('Interface no longer exists, cleaning up');
-      await this.#state.setKey(
-        `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
-        null,
-      );
+      this.#logger.info('Interface context no longer exists, skipping refresh');
       return;
     }
 
     try {
-      // Extract CAIP IDs from context (main asset + fee assets)
       const assetCaipIds = [
         interfaceContext.asset.assetType,
         ...interfaceContext.fees.map((fee) => fee.asset.type),
       ];
       const uniqueAssetCaipIds = [...new Set(assetCaipIds)];
 
-      // First, update UI to show loading skeletons (Solana pattern)
       const fetchingContext: ConfirmTransactionRequestContext = {
         ...interfaceContext,
         tokenPricesFetchStatus: FetchStatus.Fetching,
       };
 
-      // Update interface (silently ignores if interface was dismissed)
-      await this.#snapClient.updateInterfaceIfExists(
+      await this.#snapClient.updateInterface(
         confirmationInterfaceId,
         <ConfirmTransactionRequest context={fetchingContext} />,
         fetchingContext,
       );
 
-      // Fetch fresh prices
       this.#logger.info(
         `Fetching fresh prices for ${uniqueAssetCaipIds.length} assets`,
       );
@@ -264,33 +254,25 @@ export class CronHandler {
         interfaceContext.preferences.currency,
       );
 
-      // Get the latest context (returns null if dismissed during price fetch)
       const latestContext =
-        await this.#snapClient.getInterfaceContextIfExists<ConfirmTransactionRequestContext>(
+        await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
           confirmationInterfaceId,
         );
 
-      // Interface was dismissed during price fetch, clean up and exit
       if (!latestContext) {
         this.#logger.info(
-          'Interface dismissed during price fetch, cleaning up',
-        );
-        await this.#state.setKey(
-          `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
-          null,
+          'Interface context no longer exists after fetch, skipping update',
         );
         return;
       }
 
-      // Update context with fresh prices
       const updatedContext: ConfirmTransactionRequestContext = {
         ...latestContext,
         tokenPrices: prices,
         tokenPricesFetchStatus: FetchStatus.Fetched,
       };
 
-      // Update the interface with new UI and context (silently ignores if dismissed)
-      await this.#snapClient.updateInterfaceIfExists(
+      await this.#snapClient.updateInterface(
         confirmationInterfaceId,
         <ConfirmTransactionRequest context={updatedContext} />,
         updatedContext,
@@ -298,45 +280,17 @@ export class CronHandler {
 
       this.#logger.info('Successfully refreshed confirmation prices');
 
-      // Schedule the next refresh (20 seconds like Solana)
       await this.#snapClient.scheduleBackgroundEvent({
         method: BackgroundEventMethod.RefreshConfirmationPrices,
         duration: 'PT20S',
       });
     } catch (error) {
-      this.#logger.error('Error refreshing confirmation prices:', error);
-
-      // Try to update the UI to show error state if possible
-      const currentContext =
-        await this.#snapClient.getInterfaceContextIfExists<ConfirmTransactionRequestContext>(
-          confirmationInterfaceId,
-        );
-
-      if (currentContext) {
-        const errorContext: ConfirmTransactionRequestContext = {
-          ...currentContext,
-          tokenPricesFetchStatus: FetchStatus.Error,
-        };
-
-        await this.#snapClient.updateInterfaceIfExists(
-          confirmationInterfaceId,
-          <ConfirmTransactionRequest context={errorContext} />,
-          errorContext,
-        );
-      } else {
-        await this.#state.setKey(
-          `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
-          null,
-        );
-      }
-
-      // Don't schedule another refresh on error - the dialog might be gone
+      this.#logger.warn({ error }, 'Could not refresh confirmation prices');
     }
   }
 
   /**
    * Background job to refresh the security scan for simple send confirmation dialogs.
-   * Follows Solana's snap pattern: get interface ID from map, refresh scan data, update UI.
    */
   async refreshConfirmationSend(): Promise<void> {
     this.#logger.info(
@@ -351,29 +305,21 @@ export class CronHandler {
     const confirmationInterfaceId =
       mapInterfaceNameToId[CONFIRM_TRANSACTION_INTERFACE_NAME];
 
-    // Don't do anything if the confirmation interface is not open
     if (!confirmationInterfaceId) {
       this.#logger.info('No active send confirmation interface found');
       return;
     }
 
-    // Get the current interface context (returns null if dismissed)
     const interfaceContext =
-      await this.#snapClient.getInterfaceContextIfExists<ConfirmTransactionRequestContext>(
+      await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
         confirmationInterfaceId,
       );
 
-    // Interface was dismissed, clean up and exit
     if (!interfaceContext) {
-      this.#logger.info('Interface no longer exists, cleaning up');
-      await this.#state.setKey(
-        `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
-        null,
-      );
+      this.#logger.info('Interface context no longer exists, skipping refresh');
       return;
     }
 
-    // Skip if required fields are missing
     if (!interfaceContext.fromAddress || !interfaceContext.scope) {
       this.#logger.info('Context is missing required fields for scan refresh');
       return;
@@ -396,27 +342,22 @@ export class CronHandler {
     }
 
     try {
-      // Update UI to show fetching state for scan
       const fetchingContext: ConfirmTransactionRequestContext = {
         ...interfaceContext,
         scanFetchStatus: FetchStatus.Fetching,
       };
 
-      // Update interface (silently ignores if interface was dismissed)
-      await this.#snapClient.updateInterfaceIfExists(
+      await this.#snapClient.updateInterface(
         confirmationInterfaceId,
         <ConfirmTransactionRequest context={fetchingContext} />,
         fetchingContext,
       );
 
-      // Always request simulation for estimated changes;
-      // conditionally add validation based on user preference
       const options: string[] = ['simulation'];
       if (preferences.useSecurityAlerts) {
         options.push('validation');
       }
 
-      // Create a minimal account object for analytics tracking
       const scanAccount = {
         type: interfaceContext.accountType,
         address: fromAddress,
@@ -442,31 +383,25 @@ export class CronHandler {
         scanFetchStatus = FetchStatus.Error;
       }
 
-      // Get the latest context (returns null if dismissed during scan)
       const latestContext =
-        await this.#snapClient.getInterfaceContextIfExists<ConfirmTransactionRequestContext>(
+        await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
           confirmationInterfaceId,
         );
 
-      // Interface was dismissed during scan, clean up and exit
       if (!latestContext) {
-        this.#logger.info('Interface dismissed during scan, cleaning up');
-        await this.#state.setKey(
-          `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
-          null,
+        this.#logger.info(
+          'Interface context no longer exists after scan, skipping update',
         );
         return;
       }
 
-      // Update with scan results
       const updatedContext: ConfirmTransactionRequestContext = {
         ...latestContext,
         scan,
         scanFetchStatus,
       };
 
-      // Update the interface with new UI and context (silently ignores if dismissed)
-      await this.#snapClient.updateInterfaceIfExists(
+      await this.#snapClient.updateInterface(
         confirmationInterfaceId,
         <ConfirmTransactionRequest context={updatedContext} />,
         updatedContext,
@@ -474,46 +409,17 @@ export class CronHandler {
 
       this.#logger.info('Successfully refreshed send confirmation');
 
-      // Schedule the next refresh (20 seconds matching Solana pattern)
       await this.#snapClient.scheduleBackgroundEvent({
         method: BackgroundEventMethod.RefreshConfirmationSend,
         duration: 'PT20S',
       });
     } catch (error) {
-      this.#logger.error('Error refreshing send confirmation:', error);
-
-      // Try to update the UI to show error state if possible
-      const currentContext =
-        await this.#snapClient.getInterfaceContextIfExists<ConfirmTransactionRequestContext>(
-          confirmationInterfaceId,
-        );
-
-      if (currentContext) {
-        const errorContext: ConfirmTransactionRequestContext = {
-          ...currentContext,
-          scanFetchStatus: FetchStatus.Error,
-        };
-
-        await this.#snapClient.updateInterfaceIfExists(
-          confirmationInterfaceId,
-          <ConfirmTransactionRequest context={errorContext} />,
-          errorContext,
-        );
-      } else {
-        await this.#state.setKey(
-          `mapInterfaceNameToId.${CONFIRM_TRANSACTION_INTERFACE_NAME}`,
-          null,
-        );
-      }
-
-      // Don't schedule another refresh on error - the dialog might be gone
+      this.#logger.warn({ error }, 'Could not refresh send confirmation');
     }
   }
 
   /**
-   * Background job to refresh security scan and prices for signTransaction confirmation dialogs.
-   * Handles both security scanning and price fetching in a single method.
-   * Follows Solana's pattern: get interface ID from map, refresh data, update UI.
+   * Background job to refresh security scan for signTransaction confirmation dialogs.
    */
   async refreshSignTransaction(): Promise<void> {
     this.#logger.info(
@@ -528,7 +434,6 @@ export class CronHandler {
     const confirmationInterfaceId =
       mapInterfaceNameToId[CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME];
 
-    // Don't do anything if the confirmation interface is not open
     if (!confirmationInterfaceId) {
       this.#logger.info(
         'No active signTransaction confirmation interface found',
@@ -536,23 +441,16 @@ export class CronHandler {
       return;
     }
 
-    // Get the current interface context (returns null if dismissed)
     const interfaceContext =
-      await this.#snapClient.getInterfaceContextIfExists<ConfirmSignTransactionContext>(
+      await this.#snapClient.getInterfaceContext<ConfirmSignTransactionContext>(
         confirmationInterfaceId,
       );
 
-    // Interface was dismissed, clean up and exit
     if (!interfaceContext) {
-      this.#logger.info('Interface no longer exists, cleaning up');
-      await this.#state.setKey(
-        `mapInterfaceNameToId.${CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME}`,
-        null,
-      );
+      this.#logger.info('Interface context no longer exists, skipping refresh');
       return;
     }
 
-    // Skip if required fields are missing
     if (
       !interfaceContext.account?.address ||
       !interfaceContext.transaction ||
@@ -565,12 +463,10 @@ export class CronHandler {
     const { preferences, scope, account, origin, transaction } =
       interfaceContext;
 
-    // Determine what needs to be refreshed
     const shouldRefreshScan =
       preferences.simulateOnChainActions || preferences.useSecurityAlerts;
 
     try {
-      // Update UI to show fetching state for scan
       const fetchingContext: ConfirmSignTransactionContext = {
         ...interfaceContext,
         scanFetchStatus: shouldRefreshScan
@@ -578,18 +474,15 @@ export class CronHandler {
           : interfaceContext.scanFetchStatus,
       };
 
-      // Update interface (silently ignores if interface was dismissed)
-      await this.#snapClient.updateInterfaceIfExists(
+      await this.#snapClient.updateInterface(
         confirmationInterfaceId,
         <ConfirmSignTransaction context={fetchingContext} />,
         fetchingContext,
       );
 
-      // Perform security scan if enabled
       let { scan, scanFetchStatus } = interfaceContext;
 
       if (shouldRefreshScan) {
-        // Build options based on preferences
         const options: string[] = [];
         if (preferences.simulateOnChainActions) {
           options.push('simulation');
@@ -622,31 +515,25 @@ export class CronHandler {
         }
       }
 
-      // Get the latest context (returns null if dismissed during scan)
       const latestContext =
-        await this.#snapClient.getInterfaceContextIfExists<ConfirmSignTransactionContext>(
+        await this.#snapClient.getInterfaceContext<ConfirmSignTransactionContext>(
           confirmationInterfaceId,
         );
 
-      // Interface was dismissed during scan, clean up and exit
       if (!latestContext) {
-        this.#logger.info('Interface dismissed during scan, cleaning up');
-        await this.#state.setKey(
-          `mapInterfaceNameToId.${CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME}`,
-          null,
+        this.#logger.info(
+          'Interface context no longer exists after scan, skipping update',
         );
         return;
       }
 
-      // Update with scan results
       const updatedContext: ConfirmSignTransactionContext = {
         ...latestContext,
         scan,
         scanFetchStatus,
       };
 
-      // Update interface (silently ignores if interface was dismissed)
-      await this.#snapClient.updateInterfaceIfExists(
+      await this.#snapClient.updateInterface(
         confirmationInterfaceId,
         <ConfirmSignTransaction context={updatedContext} />,
         updatedContext,
@@ -654,41 +541,12 @@ export class CronHandler {
 
       this.#logger.info('Successfully refreshed signTransaction confirmation');
 
-      // Schedule the next refresh (20 seconds like Solana)
       await this.#snapClient.scheduleBackgroundEvent({
         method: BackgroundEventMethod.RefreshSignTransaction,
         duration: 'PT20S',
       });
     } catch (error) {
-      this.#logger.error('Error refreshing signTransaction:', error);
-
-      // Try to update the UI to show error state
-      const currentContext =
-        await this.#snapClient.getInterfaceContextIfExists<ConfirmSignTransactionContext>(
-          confirmationInterfaceId,
-        );
-
-      if (currentContext) {
-        const errorContext: ConfirmSignTransactionContext = {
-          ...currentContext,
-          scanFetchStatus: shouldRefreshScan
-            ? FetchStatus.Error
-            : currentContext.scanFetchStatus,
-        };
-
-        await this.#snapClient.updateInterfaceIfExists(
-          confirmationInterfaceId,
-          <ConfirmSignTransaction context={errorContext} />,
-          errorContext,
-        );
-      } else {
-        await this.#state.setKey(
-          `mapInterfaceNameToId.${CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME}`,
-          null,
-        );
-      }
-
-      // Don't schedule another refresh on error - the dialog might be gone
+      this.#logger.warn({ error }, 'Could not refresh signTransaction');
     }
   }
 

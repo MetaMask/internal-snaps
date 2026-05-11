@@ -172,7 +172,6 @@ export async function render(
     id,
   );
 
-  // If security scanning is enabled, scan the transaction
   if (transactionScanService && (useSecurityAlerts || simulateOnChainActions)) {
     const options: string[] = [];
 
@@ -200,34 +199,24 @@ export async function render(
       context.scanFetchStatus = FetchStatus.Error;
     }
 
-    // Ensure interface ID is stored before updating
     await storeIdPromise;
 
-    // Update interface with scan results (silently ignores if interface was dismissed)
-    const updated = await snapClient.updateInterfaceIfExists(
+    await snapClient.updateInterface(
       id,
       <ConfirmSignTransaction context={context} />,
       context,
     );
-
-    // If interface was dismissed during scan, exit early
-    if (!updated) {
-      return dialogPromise;
-    }
 
     await snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshSignTransaction,
       duration: 'PT20S',
     });
   } else {
-    // No scanning, mark as fetched immediately
     context.scanFetchStatus = FetchStatus.Fetched;
 
-    // Ensure interface ID is stored before updating
     await storeIdPromise;
 
-    // Update interface (silently ignores if interface was dismissed)
-    await snapClient.updateInterfaceIfExists(
+    await snapClient.updateInterface(
       id,
       <ConfirmSignTransaction context={context} />,
       context,
