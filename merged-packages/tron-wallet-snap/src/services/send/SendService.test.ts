@@ -1,14 +1,172 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
+import { TronWeb } from 'tronweb';
 
 import { SendService } from './SendService';
 import { FEE_LIMIT, Network, Networks } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
+import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
 
 describe('SendService', () => {
+  describe('signAndSendTransaction', () => {
+    const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+    const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+    const TEST_OWNER_HEX = '41a614f803b6fd780986a42c78ec9c7f77e6ded13c';
+    const TEST_FROM_ADDRESS = TronWeb.address.fromHex(TEST_OWNER_HEX);
+    const ALT_OWNER_HEX = '41bace09b0c75ff01da2cb86cf05bc0d6d1af21f5d';
+    const ALT_ADDRESS = TronWeb.address.fromHex(ALT_OWNER_HEX);
+
+    let sendService: SendService;
+    let mockAccountsService: any;
+    let mockAssetsService: any;
+    let mockTronWebFactory: any;
+    let mockFeeCalculatorService: any;
+    let mockSnapClient: any;
+    let mockTronWeb: any;
+
+    const createMockTransaction = (ownerAddress = TEST_OWNER_HEX) => ({
+      visible: false,
+      txID: 'mock-tx-id',
+      raw_data: {
+        contract: [
+          {
+            type: 'TransferContract',
+            parameter: {
+              value: {
+                owner_address: ownerAddress,
+                to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+      },
+      raw_data_hex: 'mock-hex',
+    });
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      mockAccountsService = {
+        findByIdOrThrow: jest.fn().mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: TEST_FROM_ADDRESS,
+          type: 'tron:eoa',
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        }),
+        deriveTronKeypair: jest.fn().mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: TEST_FROM_ADDRESS,
+        }),
+      };
+
+      mockAssetsService = {
+        getAssetsByAccountId: jest.fn(),
+      };
+
+      mockTronWeb = {
+        trx: {
+          sign: jest.fn().mockResolvedValue({
+            ...createMockTransaction(),
+            signature: ['test-signature'],
+          }),
+          sendRawTransaction: jest.fn().mockResolvedValue({
+            result: true,
+            txid: 'broadcast-tx-id',
+          }),
+        },
+      };
+
+      mockTronWebFactory = {
+        createClient: jest.fn().mockReturnValue(mockTronWeb),
+      };
+
+      mockFeeCalculatorService = {
+        computeFee: jest.fn(),
+      };
+
+      mockSnapClient = {
+        trackTransactionSubmitted: jest.fn(),
+        scheduleBackgroundEvent: jest.fn(),
+      };
+
+      sendService = new SendService({
+        accountsService: mockAccountsService,
+        assetsService: mockAssetsService,
+        tronWebFactory: mockTronWebFactory,
+        feeCalculatorService: mockFeeCalculatorService,
+        logger: mockLogger,
+        snapClient: mockSnapClient,
+      });
+    });
+
+    it('signs, broadcasts, and tracks a transaction when signer matches owner_address', async () => {
+      const transaction = createMockTransaction() as any;
+
+      const result = await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction,
+      });
+
+      expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
+        TEST_ACCOUNT_ID,
+      );
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: 'test-entropy',
+        derivationPath: [],
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        'test-private-key',
+      );
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(transaction);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          signature: ['test-signature'],
+        }),
+      );
+      expect(mockSnapClient.trackTransactionSubmitted).toHaveBeenCalledWith({
+        origin: 'MetaMask',
+        accountType: 'tron:eoa',
+        chainIdCaip: Network.Mainnet,
+      });
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: 'broadcast-tx-id',
+          scope: Network.Mainnet,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+        },
+        duration: 'PT1S',
+      });
+      expect(result).toStrictEqual({
+        result: true,
+        txid: 'broadcast-tx-id',
+      });
+    });
+
+    it('rejects transactions whose owner_address does not match the signer', async () => {
+      await expect(
+        sendService.signAndSendTransaction({
+          scope: Network.Mainnet,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: createMockTransaction(ALT_OWNER_HEX) as any,
+        }),
+      ).rejects.toThrow(
+        `Transaction owner_address (${ALT_ADDRESS}) does not match derived signer address (${TEST_FROM_ADDRESS})`,
+      );
+
+      expect(mockTronWeb.trx.sign).not.toHaveBeenCalled();
+      expect(mockTronWeb.trx.sendRawTransaction).not.toHaveBeenCalled();
+    });
+  });
+
   describe('validateSend', () => {
     let sendService: SendService;
     let mockAccountsService: any;

@@ -1,5 +1,6 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { assert, define, is } from '@metamask/superstruct';
+import { TronWeb } from 'tronweb';
 import type { Types } from 'tronweb';
 
 /**
@@ -62,5 +63,55 @@ export function assertTransactionStructure(
       error instanceof Error ? error.message : 'Unknown validation error';
     // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw new InvalidParamsError(`Malformed transaction: ${message}`);
+  }
+}
+
+/**
+ * Extracts the base58 owner address from raw transaction data.
+ *
+ * @param rawData - The raw transaction data.
+ * @returns The owner address in base58 format, or null if not found / invalid.
+ */
+export function extractTransactionOwnerAddress(
+  rawData: Types.Transaction['raw_data'],
+): string | null {
+  const contract = rawData.contract[0];
+  const ownerAddressHex = contract?.parameter?.value?.owner_address;
+
+  if (!ownerAddressHex) {
+    return null;
+  }
+
+  try {
+    return TronWeb.address.fromHex(ownerAddressHex);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verifies that the `owner_address` extracted from the transaction's `raw_data` matches the persisted account address
+ *
+ * @param rawData - The raw transaction data.
+ * @param signerAddress - The address derived from the private key used to sign.
+ */
+export function assertTransactionSignerConsistency(
+  rawData: Types.Transaction['raw_data'],
+  signerAddress: string,
+): void {
+  const transactionOwnerAddress = extractTransactionOwnerAddress(rawData);
+
+  if (!transactionOwnerAddress) {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
+    throw new InvalidParamsError(
+      `'Transaction is missing owner_address - cannot verify sender`,
+    );
+  }
+
+  if (transactionOwnerAddress !== signerAddress) {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
+    throw new InvalidParamsError(
+      `Transaction owner_address (${transactionOwnerAddress}) does not match derived signer address (${signerAddress})`,
+    );
   }
 }

@@ -52,7 +52,10 @@ import { assertOrThrow } from '../../utils/assertOrThrow';
 import { trxToSun } from '../../utils/conversion';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
-import { assertTransactionStructure } from '../../validation/transaction';
+import {
+  assertTransactionSignerConsistency,
+  assertTransactionStructure,
+} from '../../validation/transaction';
 import { BackgroundEventMethod } from '../cronjob';
 
 type TransactionRawData = Types.Transaction['raw_data'] & {
@@ -213,10 +216,11 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
+    const { privateKeyHex, address: signerAddress } =
+      await this.#accountsService.deriveTronKeypair({
+        entropySource: account.entropySource,
+        derivationPath: account.derivationPath,
+      });
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     /**
@@ -231,6 +235,7 @@ export class ClientRequestHandler {
     rawDataHex = this.#setRawDataFeeLimit(tronWeb, rawData);
 
     assertTransactionStructure(rawData);
+    assertTransactionSignerConsistency(rawData, signerAddress);
 
     const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
     const transaction = {

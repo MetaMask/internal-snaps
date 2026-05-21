@@ -1,6 +1,6 @@
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import { TronWeb } from 'tronweb';
+import type { TronWeb } from 'tronweb';
 import type {
   BroadcastReturn,
   Transaction,
@@ -20,6 +20,7 @@ import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
 
@@ -372,35 +373,6 @@ export class SendService {
     return contractResult.transaction;
   }
 
-  /**
-   * Extracts the owner address (sender) from a transaction.
-   * The owner_address is stored in hex format in the transaction's raw_data.
-   *
-   * @param transaction - The transaction to extract the owner address from.
-   * @returns The owner address in base58 format, or null if not found.
-   */
-  #extractTransactionOwnerAddress(
-    transaction:
-      | Transaction<TransferContract>
-      | Transaction<TransferAssetContract>
-      | Transaction<TriggerSmartContract>,
-  ): string | null {
-    const contract = transaction.raw_data?.contract?.[0];
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ownerAddressHex = (contract?.parameter?.value as any)?.owner_address;
-
-    if (!ownerAddressHex) {
-      return null;
-    }
-
-    try {
-      return TronWeb.address.fromHex(ownerAddressHex);
-    } catch {
-      return null;
-    }
-  }
-
   async signAndSendTransaction({
     scope,
     fromAccountId,
@@ -417,34 +389,19 @@ export class SendService {
     // TODO: Replace `any` with type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }): Promise<BroadcastReturn<any>> {
-    /**
-     * Validate that the fromAccountId resolves to a snap-managed account
-     * and that its address matches the transaction's owner_address.
-     */
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
-
-    const transactionOwnerAddress =
-      this.#extractTransactionOwnerAddress(transaction);
-
-    if (!transactionOwnerAddress) {
-      throw new Error(
-        'Transaction is missing owner_address - cannot verify sender',
-      );
-    }
-
-    if (transactionOwnerAddress !== account.address) {
-      throw new Error(
-        `Transaction owner_address (${transactionOwnerAddress}) does not match the account address (${account.address})`,
-      );
-    }
 
     /**
      * Derive the private key for signing
      */
-    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
-      entropySource: account.entropySource,
-      derivationPath: account.derivationPath,
-    });
+    const { privateKeyHex, address: signerAddress } =
+      await this.#accountsService.deriveTronKeypair({
+        entropySource: account.entropySource,
+        derivationPath: account.derivationPath,
+      });
+
+    assertTransactionSignerConsistency(transaction.raw_data, signerAddress);
+
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
     /**

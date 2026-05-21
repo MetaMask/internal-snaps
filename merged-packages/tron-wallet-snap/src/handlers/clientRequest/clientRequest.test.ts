@@ -2,6 +2,7 @@ import { FeeType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
+import { TronWeb } from 'tronweb';
 import type { Transaction, TransferContract } from 'tronweb/lib/esm/types';
 
 import { ClientRequestHandler } from './clientRequest';
@@ -128,6 +129,7 @@ describe('ClientRequestHandler', () => {
 
         mockAccountsService.deriveTronKeypair.mockResolvedValue({
           privateKeyHex: 'test-private-key',
+          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
         } as any);
 
         const mockRawData = {
@@ -137,7 +139,9 @@ describe('ClientRequestHandler', () => {
               parameter: {
                 value: {
                   // eslint-disable-next-line @typescript-eslint/naming-convention
-                  owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+                  owner_address: TronWeb.address.toHex(
+                    'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+                  ),
                 },
               },
             },
@@ -837,6 +841,192 @@ describe('ClientRequestHandler', () => {
         ).rejects.toThrow('Invalid method parameter(s)');
       });
     });
+  });
+});
+
+describe('ClientRequestHandler - signAndSendTransaction', () => {
+  let clientRequestHandler: ClientRequestHandler;
+  let mockAccountsService: jest.Mocked<AccountsService>;
+  let mockAssetsService: jest.Mocked<AssetsService>;
+  let mockSendService: jest.Mocked<SendService>;
+  let mockFeeCalculatorService: jest.Mocked<FeeCalculatorService>;
+  let mockTronWebFactory: jest.Mocked<TronWebFactory>;
+  let mockSnapClient: jest.Mocked<SnapClient>;
+  let mockStakingService: jest.Mocked<StakingService>;
+  let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
+  let mockTransactionsService: jest.Mocked<TransactionsService>;
+  let mockTronWeb: any;
+
+  const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+  const TEST_TRANSACTION_BASE64 =
+    'CgK0FiII40phBu42/OZAkJyY96YzWrADCB8SqwMKMXR5cGUuZ29vZ2xlYXBpcy5jb20vcHJvdG9jb2wuVHJpZ2dlclNtYXJ0Q29udHJhY3QS9QIKFUEU0B62M0bakw7g2jDVhRrBTODEeRIVQZlGn9WqCM/oNjlc6ZPA69Vn4sFPIsQCnd+TuwAAAAAAAAAAAAAAAKYU+AO2/XgJhqQseOycf3fm3tE8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+vCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnq6OQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1RSWHxzeWtuZjl8MC41fGJyaWRnZXJzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACJUQnNGcUttbVJ5WWNuWUphOFlEeFk1ZDJKQVJhSGVxdUJKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcLzdlPemMw==';
+  const CORRECT_OWNER_ADDRESS_HEX =
+    '41458437be39f3a8bfdbfee7bef93e2c5f632ceff4';
+  const WRONG_OWNER_ADDRESS_HEX = '41a614f803b6fd780986a42c78ec9c7f77e6ded13c';
+  const CORRECT_OWNER_ADDRESS_BASE58 = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+  const transactionId = 'mock-tx-id';
+
+  beforeEach(() => {
+    mockAccountsService = {
+      findByIdOrThrow: jest.fn(),
+      deriveTronKeypair: jest.fn(),
+    } as unknown as jest.Mocked<AccountsService>;
+
+    mockAssetsService = {
+      getAssetsByAccountId: jest.fn(),
+    } as unknown as jest.Mocked<AssetsService>;
+
+    mockSendService = {} as unknown as jest.Mocked<SendService>;
+
+    mockFeeCalculatorService = {
+      computeFee: jest.fn(),
+    } as unknown as jest.Mocked<FeeCalculatorService>;
+
+    mockTronWeb = {
+      utils: {
+        deserializeTx: {
+          deserializeTransaction: jest.fn(),
+        },
+        transaction: {
+          txJsonToPb: jest.fn().mockImplementation((tx) => tx),
+          txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
+          txPbToTxID: jest.fn().mockReturnValue(transactionId),
+        },
+      },
+      trx: {
+        sign: jest.fn().mockReturnValue({}),
+        sendRawTransaction: jest
+          .fn()
+          .mockReturnValue({ result: true, txid: transactionId }),
+      },
+    };
+
+    mockTronWebFactory = {
+      createClient: jest.fn().mockReturnValue(mockTronWeb),
+    } as unknown as jest.Mocked<TronWebFactory>;
+
+    mockSnapClient = {
+      scheduleBackgroundEvent: jest.fn(),
+    } as unknown as jest.Mocked<SnapClient>;
+
+    mockStakingService = {} as unknown as jest.Mocked<StakingService>;
+
+    mockConfirmationHandler = {} as unknown as jest.Mocked<ConfirmationHandler>;
+
+    mockTransactionsService = {
+      save: jest.fn(),
+    } as unknown as jest.Mocked<TransactionsService>;
+
+    clientRequestHandler = new ClientRequestHandler({
+      logger: mockLogger,
+      accountsService: mockAccountsService,
+      assetsService: mockAssetsService,
+      sendService: mockSendService,
+      feeCalculatorService: mockFeeCalculatorService,
+      tronWebFactory: mockTronWebFactory,
+      snapClient: mockSnapClient,
+      stakingService: mockStakingService,
+      confirmationHandler: mockConfirmationHandler,
+      transactionsService: mockTransactionsService,
+    });
+  });
+
+  it('rejects signAndSendTransaction when owner_address does not match the signer', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+
+    mockAccountsService.findByIdOrThrow.mockResolvedValue({
+      id: TEST_ACCOUNT_ID,
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+      entropySource: 'test-entropy',
+      derivationPath: [],
+    } as any);
+
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+    } as any);
+
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: {
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              owner_address: WRONG_OWNER_ADDRESS_HEX,
+            },
+          },
+        },
+      ],
+    });
+
+    await expect(
+      clientRequestHandler.handle(request as JsonRpcRequest),
+    ).rejects.toThrow(
+      `Transaction owner_address (${TronWeb.address.fromHex(WRONG_OWNER_ADDRESS_HEX)}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
+    );
+  });
+
+  it('accepts signAndSendTransaction when owner_address matches the signer', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+
+    mockAccountsService.findByIdOrThrow.mockResolvedValue({
+      id: TEST_ACCOUNT_ID,
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+      entropySource: 'test-entropy',
+      derivationPath: [],
+    } as any);
+
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+    } as any);
+
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: {
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              owner_address: CORRECT_OWNER_ADDRESS_HEX,
+            },
+          },
+        },
+      ],
+    });
+
+    const result = await clientRequestHandler.handle(request as JsonRpcRequest);
+
+    expect(result).toStrictEqual({ transactionId });
   });
 });
 
