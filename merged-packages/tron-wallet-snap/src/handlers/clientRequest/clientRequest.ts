@@ -46,6 +46,7 @@ import type { ConfirmationHandler } from '../../services/confirmation/Confirmati
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
 import type { StakingService } from '../../services/staking/StakingService';
+import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { TransactionMapper } from '../../services/transactions/TransactionsMapper';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
@@ -84,6 +85,8 @@ export class ClientRequestHandler {
 
   readonly #transactionsService: TransactionsService;
 
+  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+
   constructor({
     logger,
     accountsService,
@@ -95,6 +98,7 @@ export class ClientRequestHandler {
     stakingService,
     confirmationHandler,
     transactionsService,
+    transactionExpirationRefresherService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
@@ -106,6 +110,7 @@ export class ClientRequestHandler {
     stakingService: StakingService;
     confirmationHandler: ConfirmationHandler;
     transactionsService: TransactionsService;
+    transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
@@ -117,6 +122,8 @@ export class ClientRequestHandler {
     this.#stakingService = stakingService;
     this.#confirmationHandler = confirmationHandler;
     this.#transactionsService = transactionsService;
+    this.#transactionExpirationRefresherService =
+      transactionExpirationRefresherService;
   }
 
   /**
@@ -249,7 +256,14 @@ export class ClientRequestHandler {
       // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data_hex: rawDataHex,
     };
-    const signedTx = await tronWeb.trx.sign(transaction);
+
+    const freshTransaction =
+      await this.#transactionExpirationRefresherService.ensureFreshMetadata({
+        scope,
+        transaction,
+      });
+
+    const signedTx = await tronWeb.trx.sign(freshTransaction);
     const result = await tronWeb.trx.sendRawTransaction(signedTx);
 
     if (!result.result) {
@@ -531,6 +545,12 @@ export class ClientRequestHandler {
       feeLimit: FEE_LIMIT,
     });
 
+    const freshTransactionRawData =
+      await this.#transactionExpirationRefresherService.ensureFreshRawData({
+        scope,
+        rawData: transaction.raw_data,
+      });
+
     /**
      * Show the confirmation UI.
      * Origin is 'MetaMask' because client requests come from MetaMask's own unified send flow.
@@ -545,7 +565,7 @@ export class ClientRequestHandler {
         asset,
         accountType: account.type,
         origin: 'MetaMask',
-        transactionRawData: transaction.raw_data,
+        transactionRawData: freshTransactionRawData,
       },
     );
 

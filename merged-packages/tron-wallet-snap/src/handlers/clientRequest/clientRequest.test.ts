@@ -20,9 +20,22 @@ import type { FeeCalculatorService } from '../../services/send/FeeCalculatorServ
 import type { SendService } from '../../services/send/SendService';
 import type { ComputeFeeResult } from '../../services/send/types';
 import type { StakingService } from '../../services/staking/StakingService';
+import { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
+
+const createPassThroughTransactionExpirationRefresherService = () =>
+  ({
+    ensureFreshMetadata: jest.fn(
+      async <TransactionType>({
+        transaction,
+      }: {
+        transaction: TransactionType;
+      }) => transaction,
+    ),
+    ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
+  }) as unknown as TransactionExpirationRefresherService;
 
 describe('ClientRequestHandler', () => {
   describe('computeFee', () => {
@@ -37,10 +50,36 @@ describe('ClientRequestHandler', () => {
     let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
     let mockTronWeb: any;
     let mockTransactionsService: jest.Mocked<TransactionsService>;
+    let mockTransactionExpirationRefresherService: {
+      ensureFreshMetadata: jest.Mock;
+    };
 
     const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
     const TEST_TRANSACTION_BASE64 =
       'CgK0FiII40phBu42/OZAkJyY96YzWrADCB8SqwMKMXR5cGUuZ29vZ2xlYXBpcy5jb20vcHJvdG9jb2wuVHJpZ2dlclNtYXJ0Q29udHJhY3QS9QIKFUEU0B62M0bakw7g2jDVhRrBTODEeRIVQZlGn9WqCM/oNjlc6ZPA69Vn4sFPIsQCnd+TuwAAAAAAAAAAAAAAAKYU+AO2/XgJhqQseOycf3fm3tE8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+vCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnq6OQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1RSWHxzeWtuZjl8MC41fGJyaWRnZXJzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACJUQnNGcUttbVJ5WWNuWUphOFlEeFk1ZDJKQVJhSGVxdUJKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcLzdlPemMw==';
+
+    const createBlock = ({
+      number,
+      timestamp,
+      hashSegment = '1122334455667788',
+    }: {
+      number: number;
+      timestamp: number;
+      hashSegment?: string;
+    }) => ({
+      blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      block_header: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        raw_data: {
+          number,
+          timestamp,
+        },
+      },
+    });
+
+    const getRefBlockBytes = (number: number) =>
+      number.toString(16).slice(-4).padStart(4, '0');
 
     beforeEach(() => {
       mockAccountsService = {
@@ -70,6 +109,13 @@ describe('ClientRequestHandler', () => {
           },
         },
         trx: {
+          getCurrentBlock: jest.fn().mockResolvedValue(
+            createBlock({
+              number: 200_000,
+              timestamp: Date.now(),
+            }),
+          ),
+          getBlockByNumber: jest.fn(),
           sign: jest.fn(),
           sendRawTransaction: jest.fn(),
         },
@@ -88,6 +134,15 @@ describe('ClientRequestHandler', () => {
       mockTransactionsService = {
         save: jest.fn(),
       } as unknown as jest.Mocked<TransactionsService>;
+      mockTransactionExpirationRefresherService = {
+        ensureFreshMetadata: jest.fn(
+          async <TransactionType>({
+            transaction,
+          }: {
+            transaction: TransactionType;
+          }) => transaction,
+        ),
+      };
       clientRequestHandler = new ClientRequestHandler({
         logger: mockLogger,
         accountsService: mockAccountsService,
@@ -99,6 +154,8 @@ describe('ClientRequestHandler', () => {
         stakingService: mockStakingService,
         confirmationHandler: mockConfirmationHandler,
         transactionsService: mockTransactionsService,
+        transactionExpirationRefresherService:
+          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
       });
     });
 
@@ -188,6 +245,198 @@ describe('ClientRequestHandler', () => {
           mockTronWeb.utils.transaction.txPbToRawDataHex,
         ).toHaveBeenCalled();
         expect(mockTronWeb.trx.sign).toHaveBeenCalled();
+      });
+
+      it('refreshes stale transaction metadata before signing and sending an external transaction', async () => {
+        const currentTimestamp = Date.now();
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+          hashSegment: '0011223344556677',
+        });
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
+            },
+          },
+        };
+
+        mockAccountsService.findByIdOrThrow.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        } as any);
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+        } as any);
+
+        const mockRawData = {
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: {
+                  // eslint-disable-next-line @typescript-eslint/naming-convention
+                  owner_address: TronWeb.address.toHex(
+                    'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+                  ),
+                },
+              },
+            },
+          ],
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          ref_block_bytes: '0000',
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          ref_block_hash: '0000000000000000',
+          expiration: currentTimestamp - 1,
+          timestamp: currentTimestamp - 60_000,
+        };
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          mockRawData,
+        );
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+        mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
+          ...transaction,
+          signature: ['test-signature'],
+        }));
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          result: true,
+          txid: 'broadcast-tx-id',
+        });
+        const originalRawData = structuredClone(mockRawData);
+        clientRequestHandler = new ClientRequestHandler({
+          logger: mockLogger,
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          sendService: mockSendService,
+          feeCalculatorService: mockFeeCalculatorService,
+          tronWebFactory: mockTronWebFactory,
+          snapClient: mockSnapClient,
+          stakingService: mockStakingService,
+          confirmationHandler: mockConfirmationHandler,
+          transactionsService: mockTransactionsService,
+          transactionExpirationRefresherService:
+            new TransactionExpirationRefresherService({
+              tronWebFactory: mockTronWebFactory,
+            }),
+        });
+
+        await clientRequestHandler.handle(request as JsonRpcRequest);
+
+        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+        expect(signedTransaction.raw_data).not.toBe(mockRawData);
+        expect(signedTransaction.raw_data.ref_block_bytes).toBe(
+          getRefBlockBytes(200_000),
+        );
+        expect(signedTransaction.raw_data.ref_block_hash).toBe(
+          '0011223344556677',
+        );
+        expect(signedTransaction.raw_data.expiration).toBe(
+          currentTimestamp + 60_000,
+        );
+        expect(signedTransaction.raw_data.timestamp).toBe(currentTimestamp);
+        expect(signedTransaction.raw_data_hex).toBe('1234567890abcdef');
+        expect(signedTransaction.txID).toBe('mock-tx-id');
+        expect(mockRawData.ref_block_bytes).toBe(
+          originalRawData.ref_block_bytes,
+        );
+        expect(mockRawData.ref_block_hash).toBe(originalRawData.ref_block_hash);
+        expect(mockRawData.expiration).toBe(originalRawData.expiration);
+        expect(mockRawData.timestamp).toBe(originalRawData.timestamp);
+      });
+
+      it('signs the external transaction returned by the injected expiration refresher', async () => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
+            },
+          },
+        };
+
+        mockAccountsService.findByIdOrThrow.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        } as any);
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+        } as any);
+
+        const mockRawData = {
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: {
+                  // eslint-disable-next-line @typescript-eslint/naming-convention
+                  owner_address: TronWeb.address.toHex(
+                    'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+                  ),
+                },
+              },
+            },
+          ],
+        };
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          mockRawData,
+        );
+        const freshTransaction = {
+          visible: false,
+          txID: 'fresh-tx-id',
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          raw_data: mockRawData,
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          raw_data_hex: 'fresh-raw-data-hex',
+        };
+        mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
+          freshTransaction,
+        );
+        mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
+          ...transaction,
+          signature: ['test-signature'],
+        }));
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          result: true,
+          txid: 'broadcast-tx-id',
+        });
+
+        await clientRequestHandler.handle(request as JsonRpcRequest);
+
+        expect(
+          mockTransactionExpirationRefresherService.ensureFreshMetadata,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            scope,
+            transaction: expect.objectContaining({
+              txID: expect.any(String),
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              raw_data: mockRawData,
+            }),
+          }),
+        );
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(freshTransaction);
       });
 
       it('computes fee breakdown for TRC20 transfer transaction', async () => {
@@ -674,6 +923,8 @@ describe('ClientRequestHandler', () => {
         stakingService: mockStakingService,
         confirmationHandler: mockConfirmationHandler,
         transactionsService: mockTransactionsService,
+        transactionExpirationRefresherService:
+          createPassThroughTransactionExpirationRefresherService(),
       });
     });
 
@@ -928,6 +1179,8 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
       stakingService: mockStakingService,
       confirmationHandler: mockConfirmationHandler,
       transactionsService: mockTransactionsService,
+      transactionExpirationRefresherService:
+        createPassThroughTransactionExpirationRefresherService(),
     });
   });
 
@@ -1169,6 +1422,8 @@ describe('ClientRequestHandler - onAmountInput', () => {
       stakingService: {} as StakingService,
       confirmationHandler: {} as ConfirmationHandler,
       transactionsService: {} as TransactionsService,
+      transactionExpirationRefresherService:
+        createPassThroughTransactionExpirationRefresherService(),
     });
 
     return await testFunction({
@@ -1533,6 +1788,8 @@ describe('ClientRequestHandler - computeStakeFee', () => {
       stakingService: mockStakingService,
       confirmationHandler: mockConfirmationHandler,
       transactionsService: mockTransactionsService,
+      transactionExpirationRefresherService:
+        createPassThroughTransactionExpirationRefresherService(),
     });
   });
 
@@ -1690,6 +1947,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
   let mockStakingService: jest.Mocked<StakingService>;
   let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
   let mockTransactionsService: jest.Mocked<TransactionsService>;
+  let mockTransactionExpirationRefresherService: jest.Mocked<
+    Pick<TransactionExpirationRefresherService, 'ensureFreshRawData'>
+  >;
 
   const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
   const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
@@ -1729,6 +1989,11 @@ describe('ClientRequestHandler - confirmSend validation', () => {
     mockTransactionsService = {
       save: jest.fn(),
     } as unknown as jest.Mocked<TransactionsService>;
+    mockTransactionExpirationRefresherService = {
+      ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
+    } as unknown as jest.Mocked<
+      Pick<TransactionExpirationRefresherService, 'ensureFreshRawData'>
+    >;
 
     clientRequestHandler = new ClientRequestHandler({
       logger: mockLogger,
@@ -1741,6 +2006,8 @@ describe('ClientRequestHandler - confirmSend validation', () => {
       stakingService: mockStakingService,
       confirmationHandler: mockConfirmationHandler,
       transactionsService: mockTransactionsService,
+      transactionExpirationRefresherService:
+        mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
     });
   });
 
@@ -1862,7 +2129,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('proceeds to confirmation when validateSend returns valid', async () => {
+  it('refreshes transaction raw data before send confirmation when validateSend returns valid', async () => {
     const request = {
       jsonrpc: '2.0' as const,
       id: '1',
@@ -1895,10 +2162,10 @@ describe('ClientRequestHandler - confirmSend validation', () => {
       mockAsset,
     );
 
-    // validateSend returns valid
+    // validateSend returns valid.
     mockSendService.validateSend.mockResolvedValue({ valid: true });
 
-    // Mock the rest of the flow
+    // Mock the rest of the flow.
     mockAssetsService.getAssetsByAccountId.mockResolvedValue([
       { rawAmount: '1000' }, // Bandwidth
       { rawAmount: '50000' }, // Energy
@@ -1912,6 +2179,10 @@ describe('ClientRequestHandler - confirmSend validation', () => {
       raw_data_hex: 'test-hex',
     };
     mockSendService.buildTransaction.mockResolvedValue(mockTransaction as any);
+    const freshTransactionRawData = { expiration: 1_700_000_060_000 };
+    mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
+      freshTransactionRawData as any,
+    );
 
     const mockFees = [
       {
@@ -1926,10 +2197,10 @@ describe('ClientRequestHandler - confirmSend validation', () => {
     ];
     mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees as any);
 
-    // User confirms
+    // User confirms.
     mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue(true);
 
-    // Transaction sent successfully
+    // Transaction sent successfully.
     mockSendService.signAndSendTransaction.mockResolvedValue({
       result: true,
       txid: 'broadcast-tx-id',
@@ -1937,7 +2208,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
 
     const result = await clientRequestHandler.handle(request as JsonRpcRequest);
 
-    // Should have proceeded through the full flow
+    // Verify the full send flow.
     expect(mockSendService.validateSend).toHaveBeenCalledWith({
       scope,
       fromAccountId: TEST_ACCOUNT_ID,
@@ -1961,11 +2232,21 @@ describe('ClientRequestHandler - confirmSend validation', () => {
       feeLimit: FEE_LIMIT,
     });
     expect(
+      mockTransactionExpirationRefresherService.ensureFreshRawData,
+    ).toHaveBeenCalledWith({
+      scope,
+      rawData: mockTransaction.raw_data,
+    });
+    expect(
       mockConfirmationHandler.confirmTransactionRequest,
-    ).toHaveBeenCalled();
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionRawData: freshTransactionRawData,
+      }),
+    );
     expect(mockSendService.signAndSendTransaction).toHaveBeenCalled();
 
-    // Result should be the transaction result
+    // Verify the handler returns the submitted transaction.
     expect(result).toMatchObject({
       transactionId: 'broadcast-tx-id',
       status: 'submitted',
@@ -2100,6 +2381,8 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
       stakingService: mockStakingService,
       confirmationHandler: mockConfirmationHandler,
       transactionsService: mockTransactionsService,
+      transactionExpirationRefresherService:
+        createPassThroughTransactionExpirationRefresherService(),
     });
   });
 
@@ -2230,6 +2513,8 @@ describe('ClientRequestHandler - claimTrxStakingRewards', () => {
       stakingService: mockStakingService,
       confirmationHandler: mockConfirmationHandler,
       transactionsService: mockTransactionsService,
+      transactionExpirationRefresherService:
+        createPassThroughTransactionExpirationRefresherService(),
     });
   });
 

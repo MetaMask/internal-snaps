@@ -1,5 +1,4 @@
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
-import { type Types, utils } from 'tronweb';
 
 import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';
@@ -8,6 +7,8 @@ import type { Network } from '../constants';
 import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
+import type { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
+import type { JsonTransactionRawData } from '../services/transaction-expiration-refresher/types';
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
 import { FetchStatus } from '../types/snap';
 import { ConfirmSignTransaction } from '../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
@@ -53,6 +54,8 @@ export class CronHandler {
 
   readonly #transactionScanService: TransactionScanService;
 
+  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+
   constructor({
     logger,
     accountsService,
@@ -61,6 +64,7 @@ export class CronHandler {
     priceApiClient,
     tronHttpClient,
     transactionScanService,
+    transactionExpirationRefresherService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
@@ -69,6 +73,7 @@ export class CronHandler {
     priceApiClient: PriceApiClient;
     tronHttpClient: TronHttpClient;
     transactionScanService: TransactionScanService;
+    transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[⏰ CronHandler]');
     this.#accountsService = accountsService;
@@ -77,6 +82,8 @@ export class CronHandler {
     this.#priceApiClient = priceApiClient;
     this.#tronHttpClient = tronHttpClient;
     this.#transactionScanService = transactionScanService;
+    this.#transactionExpirationRefresherService =
+      transactionExpirationRefresherService;
   }
 
   async handle(request: JsonRpcRequest): Promise<void> {
@@ -326,13 +333,8 @@ export class CronHandler {
     }
 
     const { preferences, scope, fromAddress, origin } = interfaceContext;
-    /**
-     * We know that the `transactionRawData` object is valid JSON but Tronweb returns some
-     * fields as `unknown` so we must manually cast it to the correct type.
-     */
-    const transactionRawData = interfaceContext.transactionRawData as
-      | Types.Transaction['raw_data']
-      | null;
+    const transactionRawData =
+      interfaceContext.transactionRawData as JsonTransactionRawData | null;
 
     if (!transactionRawData) {
       this.#logger.info(
@@ -365,11 +367,18 @@ export class CronHandler {
 
       let { scan } = interfaceContext;
       let { scanFetchStatus } = interfaceContext;
+      let freshTransactionRawData = transactionRawData;
 
       try {
+        freshTransactionRawData =
+          await this.#transactionExpirationRefresherService.ensureFreshRawData({
+            scope,
+            rawData: transactionRawData,
+          });
+
         scan = await this.#transactionScanService.scanTransaction({
           accountAddress: fromAddress,
-          transactionRawData,
+          transactionRawData: freshTransactionRawData,
           origin,
           scope,
           options,
@@ -399,6 +408,7 @@ export class CronHandler {
         ...latestContext,
         scan,
         scanFetchStatus,
+        transactionRawData: freshTransactionRawData,
       };
 
       await this.#snapClient.updateInterface(
@@ -481,6 +491,7 @@ export class CronHandler {
       );
 
       let { scan, scanFetchStatus } = interfaceContext;
+      let freshTransactionHex = transaction.rawDataHex;
 
       if (shouldRefreshScan) {
         const options: string[] = [];
@@ -491,16 +502,20 @@ export class CronHandler {
           options.push('validation');
         }
 
-        const transactionRawData: Types.Transaction['raw_data'] =
-          utils.deserializeTx.deserializeTransaction(
-            transaction.type,
-            transaction.rawDataHex,
-          );
-
         try {
+          const freshTransaction =
+            await this.#transactionExpirationRefresherService.ensureFreshSerializedTransaction(
+              {
+                scope,
+                type: transaction.type,
+                rawDataHex: transaction.rawDataHex,
+              },
+            );
+          freshTransactionHex = freshTransaction.raw_data_hex;
+
           scan = await this.#transactionScanService.scanTransaction({
             accountAddress: account.address,
-            transactionRawData,
+            transactionRawData: freshTransaction.raw_data,
             origin,
             scope,
             options,
@@ -531,6 +546,10 @@ export class CronHandler {
         ...latestContext,
         scan,
         scanFetchStatus,
+        transaction: {
+          ...latestContext.transaction,
+          rawDataHex: freshTransactionHex,
+        },
       };
 
       await this.#snapClient.updateInterface(

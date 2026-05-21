@@ -12,6 +12,43 @@ import {
 } from '../../handlers/keyring-types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+
+const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
+
+/**
+ * Builds a mock TRON block response.
+ *
+ * @param options - The block options.
+ * @param options.number - The block number.
+ * @param options.timestamp - The block timestamp.
+ * @param options.hashSegment - The hash segment used for ref_block_hash.
+ * @returns A mock TRON block response.
+ */
+function createBlock({
+  number,
+  timestamp,
+  hashSegment = '1122334455667788',
+}: {
+  number: number;
+  timestamp: number;
+  hashSegment?: string;
+}) {
+  return {
+    blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    block_header: {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data: {
+        number,
+        timestamp,
+      },
+    },
+  };
+}
+
+const getRefBlockBytes = (number: number) =>
+  number.toString(16).slice(-4).padStart(4, '0');
 
 /**
  * Helper function to convert string to base64.
@@ -34,7 +71,7 @@ function toHex(str: string): string {
 }
 
 describe('WalletService', () => {
-  const TEST_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+  const TEST_ADDRESS = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
   const ALT_OWNER_HEX = '41a614f803b6fd780986a42c78ec9c7f77e6ded13c';
   const ALT_ADDRESS = TronWeb.address.fromHex(ALT_OWNER_HEX);
   const mockTronKeypair = {
@@ -65,6 +102,13 @@ describe('WalletService', () => {
     mockTronWeb = {
       trx: {
         signMessageV2: jest.fn().mockReturnValue('0xsignature123'),
+        getCurrentBlock: jest.fn().mockResolvedValue(
+          createBlock({
+            number: 200_000,
+            timestamp: MOCK_BLOCK_TIMESTAMP,
+          }),
+        ),
+        getBlockByNumber: jest.fn(),
         sign: jest.fn().mockResolvedValue({
           signature: ['abcd1234signature'],
         }),
@@ -76,8 +120,7 @@ describe('WalletService', () => {
               {
                 type: 'TransferContract',
                 parameter: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
-                  type_url: 'type.googleapis.com/protocol.TransferContract',
+                  type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
                   value: {
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     owner_address: TronWeb.address.toHex(TEST_ADDRESS),
@@ -88,7 +131,18 @@ describe('WalletService', () => {
                 },
               },
             ],
+            ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
+            ref_block_hash: '1122334455667788', // eslint-disable-line @typescript-eslint/naming-convention
+            expiration: MOCK_BLOCK_TIMESTAMP + 45_000,
+            timestamp: MOCK_BLOCK_TIMESTAMP,
           }),
+        },
+        transaction: {
+          txJsonToPb: jest
+            .fn()
+            .mockImplementation((transaction) => transaction),
+          txPbToRawDataHex: jest.fn().mockReturnValue('refreshed-raw-data-hex'),
+          txPbToTxID: jest.fn().mockReturnValue('0xrefreshed-tx-id'),
         },
       },
       isAddress: jest.fn().mockReturnValue(true),
@@ -106,6 +160,9 @@ describe('WalletService', () => {
       logger: mockLogger,
       accountsService: mockAccountsService,
       tronWebFactory: mockTronWebFactory,
+      transactionExpirationRefresherService: {
+        ensureFreshMetadata: jest.fn(async ({ transaction }) => transaction),
+      } as unknown as TransactionExpirationRefresherService,
     });
   });
 
@@ -258,7 +315,7 @@ describe('WalletService', () => {
     it('signs a transaction successfully', async () => {
       const transactionData = 'transaction-data-bytes';
       const params = {
-        address: TEST_ADDRESS,
+        address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
         transaction: {
           rawDataHex: toHex(transactionData),
           type: 'TransferContract',
@@ -280,7 +337,7 @@ describe('WalletService', () => {
 
     it('deserializes transaction from hex', async () => {
       const params = {
-        address: TEST_ADDRESS,
+        address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
         transaction: {
           rawDataHex: toHex('tx-data'),
           type: 'TransferContract',
@@ -299,6 +356,69 @@ describe('WalletService', () => {
       expect(mockTronWeb.trx.sign).toHaveBeenCalled();
     });
 
+    it('refreshes transaction metadata before signing stale transactions', async () => {
+      walletService = new WalletService({
+        logger: mockLogger,
+        accountsService: mockAccountsService,
+        tronWebFactory: mockTronWebFactory,
+        transactionExpirationRefresherService:
+          new TransactionExpirationRefresherService({
+            tronWebFactory: mockTronWebFactory,
+          }),
+      });
+      mockTronWeb.trx.getCurrentBlock.mockResolvedValue(
+        createBlock({
+          number: 200_000,
+          timestamp: MOCK_BLOCK_TIMESTAMP,
+          hashSegment: '0011223344556677',
+        }),
+      );
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+        contract: [
+          {
+            type: 'TransferContract',
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+              value: {
+                owner_address: TronWeb.address.toHex(TEST_ADDRESS), // eslint-disable-line @typescript-eslint/naming-convention
+                to_address: '41123456', // eslint-disable-line @typescript-eslint/naming-convention
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
+        ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+        expiration: MOCK_BLOCK_TIMESTAMP - 1,
+        timestamp: MOCK_BLOCK_TIMESTAMP - 60_000,
+      });
+
+      await walletService.signTransaction({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params: {
+          address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
+        },
+      });
+
+      const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+
+      expect(signedTransaction.raw_data).toStrictEqual(
+        expect.objectContaining({
+          ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
+          ref_block_hash: '0011223344556677', // eslint-disable-line @typescript-eslint/naming-convention
+          expiration: MOCK_BLOCK_TIMESTAMP + 60_000,
+          timestamp: MOCK_BLOCK_TIMESTAMP,
+        }),
+      );
+      expect(signedTransaction.raw_data_hex).toBe('refreshed-raw-data-hex');
+      expect(signedTransaction.txID).toBe('refreshed-tx-id');
+    });
+
     it('handles transaction format errors', async () => {
       mockTronWeb.utils.deserializeTx.deserializeTransaction.mockImplementation(
         () => {
@@ -311,7 +431,7 @@ describe('WalletService', () => {
           account: mockAccount,
           scope: Network.Mainnet,
           params: {
-            address: TEST_ADDRESS,
+            address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
             transaction: {
               rawDataHex: toHex('valid-but-unparseable-transaction-data'),
               type: 'TransferContract',
@@ -342,7 +462,7 @@ describe('WalletService', () => {
         account: mockAccount,
         scope: Network.Mainnet,
         params: {
-          address: TEST_ADDRESS,
+          address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
           transaction: {
             rawDataHex: toHex('transaction-data'),
             type: 'TransferContract',
@@ -363,7 +483,7 @@ describe('WalletService', () => {
         account: mockAccount,
         scope: Network.Mainnet,
         params: {
-          address: TEST_ADDRESS,
+          address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
           transaction: {
             rawDataHex: toHex('transaction-data'),
             type: 'TransferContract',

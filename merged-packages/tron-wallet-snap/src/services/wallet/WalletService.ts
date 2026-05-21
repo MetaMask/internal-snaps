@@ -24,6 +24,7 @@ import {
 } from '../../validation/transaction';
 import { validateRequest, validateResponse } from '../../validation/validators';
 import type { AccountsService } from '../accounts/AccountsService';
+import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 /**
  * Service responsible for handling wallet operations like signing messages and transactions.
  */
@@ -34,18 +35,24 @@ export class WalletService {
 
   readonly #tronWebFactory: TronWebFactory;
 
+  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+
   constructor({
     logger,
     accountsService,
     tronWebFactory,
+    transactionExpirationRefresherService,
   }: {
     logger: ILogger;
     accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
+    transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#logger = createPrefixedLogger(logger, '[💼 WalletService]');
     this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
+    this.#transactionExpirationRefresherService =
+      transactionExpirationRefresherService;
   }
 
   /**
@@ -235,9 +242,14 @@ export class WalletService {
         // eslint-disable-next-line @typescript-eslint/naming-convention
         raw_data_hex: rawDataHex,
       };
+      const freshTransaction =
+        await this.#transactionExpirationRefresherService.ensureFreshMetadata({
+          scope,
+          transaction,
+        });
 
       // Sign the rebuilt transaction
-      const signedTx = await tronWeb.trx.sign(transaction, privateKeyHex);
+      const signedTx = await tronWeb.trx.sign(freshTransaction, privateKeyHex);
 
       // Extract the signature from the signed transaction
       // signedTx.signature is an array of hex strings

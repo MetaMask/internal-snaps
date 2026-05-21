@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Refresh stale TRON transaction expiration and reference block metadata before confirmation security scans, signing, and broadcasting ([#299](https://github.com/MetaMask/snap-tron-wallet/pull/299))
+
 ## [1.25.5]
 
 ### Fixed
@@ -493,8 +497,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.5...HEAD
-[1.25.5]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.4...v1.25.5
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.4...HEAD
 [1.25.4]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.3...v1.25.4
 [1.25.3]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.2...v1.25.3
 [1.25.2]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.1...v1.25.2

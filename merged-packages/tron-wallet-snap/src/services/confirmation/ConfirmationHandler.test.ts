@@ -6,7 +6,9 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { KnownCaip19Id, Network, Networks, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
+import { TronMultichainMethod } from '../../handlers/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
+import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
@@ -91,6 +93,11 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
     transactionBuilder: {
       withdrawExpireUnfreeze: jest.Mock;
     };
+    utils: {
+      deserializeTx: {
+        deserializeTransaction: jest.Mock;
+      };
+    };
   };
   mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAssetsByAccountId'>>;
   mockFeeCalculatorService: jest.Mocked<
@@ -114,6 +121,11 @@ async function withConfirmationHandler<ReturnValue>(
         .fn()
         // eslint-disable-next-line @typescript-eslint/naming-convention
         .mockResolvedValue({ raw_data: {} }),
+    },
+    utils: {
+      deserializeTx: {
+        deserializeTransaction: jest.fn(),
+      },
     },
   };
 
@@ -484,6 +496,65 @@ describe('ConfirmationHandler', () => {
         expect(mockState.setKey).toHaveBeenCalledWith(
           'mapInterfaceNameToId.confirmTransaction',
           null,
+        );
+      });
+    });
+  });
+
+  describe('handleKeyringRequest', () => {
+    const mockRenderConfirmSignTransaction = jest.mocked(
+      renderConfirmSignTransaction,
+    );
+
+    const rawData = {
+      contract: [{ parameter: { value: {} }, type: 'TransferContract' }],
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      ref_block_bytes: 'abcd',
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      ref_block_hash: '12345678',
+      expiration: 1_700_000_000_000,
+      timestamp: 1_699_999_000_000,
+    };
+
+    const request = {
+      id: '00000000-0000-4000-8000-000000000001',
+      origin: 'https://test-origin.com',
+      account: TEST_ACCOUNT_ID,
+      scope: Network.Mainnet,
+      request: {
+        method: TronMultichainMethod.SignTransaction,
+        params: {
+          address: mockAccount.address,
+          transaction: {
+            rawDataHex: 'original-raw-data-hex',
+            type: 'TransferContract',
+          },
+        },
+      },
+    };
+
+    it('passes deserialized raw data when rendering signTransaction confirmation', async () => {
+      await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          rawData,
+        );
+        mockRenderConfirmSignTransaction.mockResolvedValue(true);
+
+        await handler.handleKeyringRequest({
+          request,
+          account: mockAccount,
+        });
+
+        expect(
+          mockTronWeb.utils.deserializeTx.deserializeTransaction,
+        ).toHaveBeenCalledWith(
+          request.request.params.transaction.type,
+          request.request.params.transaction.rawDataHex,
+        );
+        expect(mockRenderConfirmSignTransaction).toHaveBeenCalledWith(
+          request,
+          mockAccount,
+          rawData,
         );
       });
     });

@@ -2,6 +2,7 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
+import type { Transaction, TransferContract } from 'tronweb/lib/esm/types';
 
 import { SendService } from './SendService';
 import { FEE_LIMIT, Network, Networks } from '../../constants';
@@ -9,8 +10,18 @@ import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
+import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 
 describe('SendService', () => {
+  type MockTransferContract =
+    Transaction<TransferContract>['raw_data']['contract'][number];
+
+  type MockTransferTransaction = Transaction<TransferContract> & {
+    raw_data: Omit<Transaction<TransferContract>['raw_data'], 'contract'> & {
+      contract: [MockTransferContract];
+    };
+  };
+
   describe('signAndSendTransaction', () => {
     const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
     const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
@@ -26,6 +37,7 @@ describe('SendService', () => {
     let mockFeeCalculatorService: any;
     let mockSnapClient: any;
     let mockTronWeb: any;
+    let mockTransactionExpirationRefresherService: any;
 
     const createMockTransaction = (ownerAddress = TEST_OWNER_HEX) => ({
       visible: false,
@@ -94,6 +106,12 @@ describe('SendService', () => {
         scheduleBackgroundEvent: jest.fn(),
       };
 
+      mockTransactionExpirationRefresherService = {
+        ensureFreshMetadata: jest.fn(
+          async ({ transaction }: { transaction: unknown }) => transaction,
+        ),
+      };
+
       sendService = new SendService({
         accountsService: mockAccountsService,
         assetsService: mockAssetsService,
@@ -101,6 +119,8 @@ describe('SendService', () => {
         feeCalculatorService: mockFeeCalculatorService,
         logger: mockLogger,
         snapClient: mockSnapClient,
+        transactionExpirationRefresherService:
+          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
       });
     });
 
@@ -175,6 +195,9 @@ describe('SendService', () => {
     let mockFeeCalculatorService: any;
     let mockSnapClient: any;
     let mockTronWeb: any;
+    let mockTransactionExpirationRefresherService: {
+      ensureFreshMetadata: jest.Mock;
+    };
 
     const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
     const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
@@ -209,13 +232,15 @@ describe('SendService', () => {
         iconUrl: '',
       }) as AssetEntity;
 
-    const createMockTransaction = () => ({
+    const createMockTransaction = (): MockTransferTransaction => ({
+      visible: false,
       txID: 'mock-tx-id',
       raw_data: {
         contract: [
           {
-            type: 'TransferContract',
+            type: 'TransferContract' as MockTransferContract['type'],
             parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
               value: {
                 owner_address: `41${'a'.repeat(40)}`,
                 to_address: `41${'b'.repeat(40)}`,
@@ -224,14 +249,40 @@ describe('SendService', () => {
             },
           },
         ],
+        ref_block_bytes: '0000',
+        ref_block_hash: '0000000000000000',
+        expiration: 0,
+        timestamp: 0,
       },
       raw_data_hex: 'mock-hex',
     });
+
+    const createBlock = ({
+      number,
+      timestamp,
+      hashSegment = '1122334455667788',
+    }: {
+      number: number;
+      timestamp: number;
+      hashSegment?: string;
+    }) => ({
+      blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
+      block_header: {
+        raw_data: {
+          number,
+          timestamp,
+        },
+      },
+    });
+
+    const getRefBlockBytes = (number: number) =>
+      number.toString(16).slice(-4).padStart(4, '0');
 
     beforeEach(() => {
       jest.clearAllMocks();
 
       mockAccountsService = {
+        deriveTronKeypair: jest.fn(),
         findByIdOrThrow: jest.fn().mockResolvedValue({
           id: TEST_ACCOUNT_ID,
           address: TEST_FROM_ADDRESS,
@@ -259,6 +310,12 @@ describe('SendService', () => {
             txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
           },
         },
+        trx: {
+          getCurrentBlock: jest.fn(),
+          getBlockByNumber: jest.fn(),
+          sign: jest.fn(),
+          sendRawTransaction: jest.fn(),
+        },
       };
 
       mockTronWebFactory = {
@@ -269,7 +326,16 @@ describe('SendService', () => {
         computeFee: jest.fn(),
       };
 
-      mockSnapClient = {};
+      mockSnapClient = {
+        scheduleBackgroundEvent: jest.fn(),
+        trackTransactionSubmitted: jest.fn(),
+      };
+
+      mockTransactionExpirationRefresherService = {
+        ensureFreshMetadata: jest.fn(
+          async ({ transaction }: { transaction: unknown }) => transaction,
+        ),
+      };
 
       sendService = new SendService({
         accountsService: mockAccountsService,
@@ -278,6 +344,8 @@ describe('SendService', () => {
         feeCalculatorService: mockFeeCalculatorService,
         logger: mockLogger,
         snapClient: mockSnapClient,
+        transactionExpirationRefresherService:
+          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
       });
     });
 
@@ -1036,6 +1104,212 @@ describe('SendService', () => {
           expect.any(Array),
           TEST_FROM_ADDRESS,
         );
+      });
+    });
+
+    describe('signAndSendTransaction', () => {
+      const ownerAddressHex = `41${'a'.repeat(40)}`;
+      const ownerAddress = 'TRXcKoEvHr6Y38VMcDYGBEYKznvH3XUX4g';
+
+      beforeEach(() => {
+        mockAccountsService.findByIdOrThrow.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: ownerAddress,
+          entropySource: 'test-entropy',
+          derivationPath: [],
+          type: 'tron:basic',
+        });
+        jest
+          .spyOn(mockAccountsService, 'deriveTronKeypair')
+          .mockImplementation()
+          .mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+            address: ownerAddress,
+          });
+        mockTronWeb.trx.sign.mockImplementation(
+          async (transaction: unknown) => ({
+            transaction,
+            signature: ['test-signature'],
+          }),
+        );
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          result: true,
+          txid: 'broadcast-tx-id',
+        });
+      });
+
+      it('refreshes stale transaction metadata before signing and broadcasting', async () => {
+        sendService = new SendService({
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          tronWebFactory: mockTronWebFactory,
+          feeCalculatorService: mockFeeCalculatorService,
+          logger: mockLogger,
+          snapClient: mockSnapClient,
+          transactionExpirationRefresherService:
+            new TransactionExpirationRefresherService({
+              tronWebFactory: mockTronWebFactory,
+            }),
+        });
+        const currentTimestamp = Date.now();
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+          hashSegment: '0011223344556677',
+        });
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        transaction.raw_data.ref_block_bytes = '0000';
+        transaction.raw_data.ref_block_hash = '0000000000000000';
+        transaction.raw_data.expiration = currentTimestamp - 1;
+        transaction.raw_data.timestamp = currentTimestamp - 60_000;
+        const originalTransaction = structuredClone(transaction);
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+        expect(signedTransaction).not.toBe(transaction);
+        expect(signedTransaction.raw_data.ref_block_bytes).toBe(
+          getRefBlockBytes(200_000),
+        );
+        expect(signedTransaction.raw_data.ref_block_hash).toBe(
+          '0011223344556677',
+        );
+        expect(signedTransaction.raw_data.expiration).toBe(
+          currentTimestamp + 60_000,
+        );
+        expect(signedTransaction.raw_data.timestamp).toBe(currentTimestamp);
+        expect(signedTransaction.raw_data_hex).toBe('1234567890abcdef');
+        expect(signedTransaction.txID).toBe('mock-tx-id');
+        expect(transaction.raw_data.ref_block_bytes).toBe(
+          originalTransaction.raw_data.ref_block_bytes,
+        );
+        expect(transaction.raw_data.ref_block_hash).toBe(
+          originalTransaction.raw_data.ref_block_hash,
+        );
+        expect(transaction.raw_data.expiration).toBe(
+          originalTransaction.raw_data.expiration,
+        );
+        expect(transaction.raw_data.timestamp).toBe(
+          originalTransaction.raw_data.timestamp,
+        );
+        expect(transaction.raw_data_hex).toBe(originalTransaction.raw_data_hex);
+        expect(transaction.txID).toBe(originalTransaction.txID);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith({
+          transaction: signedTransaction,
+          signature: ['test-signature'],
+        });
+      });
+
+      it('signs the transaction returned by the injected expiration refresher', async () => {
+        const transaction = createMockTransaction();
+        const freshTransaction = {
+          ...createMockTransaction(),
+          txID: 'fresh-tx-id',
+        };
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        freshTransaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
+          freshTransaction,
+        );
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(
+          mockTransactionExpirationRefresherService.ensureFreshMetadata,
+        ).toHaveBeenCalledWith({ scope, transaction });
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(freshTransaction);
+      });
+
+      it('signs valid transaction metadata without unnecessary modification', async () => {
+        sendService = new SendService({
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          tronWebFactory: mockTronWebFactory,
+          feeCalculatorService: mockFeeCalculatorService,
+          logger: mockLogger,
+          snapClient: mockSnapClient,
+          transactionExpirationRefresherService:
+            new TransactionExpirationRefresherService({
+              tronWebFactory: mockTronWebFactory,
+            }),
+        });
+        const currentTimestamp = Date.now();
+        const referencedBlock = createBlock({
+          number: 199_990,
+          timestamp: currentTimestamp - 30_000,
+          hashSegment: 'abcdef1234567890',
+        });
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+        });
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        transaction.raw_data.ref_block_bytes = getRefBlockBytes(199_990);
+        transaction.raw_data.ref_block_hash = 'abcdef1234567890';
+        transaction.raw_data.expiration = currentTimestamp + 45_000;
+        transaction.raw_data.timestamp = currentTimestamp - 30_000;
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+        mockTronWeb.trx.getBlockByNumber.mockResolvedValue(referencedBlock);
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(transaction.raw_data.ref_block_bytes).toBe(
+          getRefBlockBytes(199_990),
+        );
+        expect(transaction.raw_data.ref_block_hash).toBe('abcdef1234567890');
+        expect(transaction.raw_data.expiration).toBe(currentTimestamp + 45_000);
+        expect(transaction.raw_data_hex).toBe('mock-hex');
+        expect(mockTronWeb.trx.getBlockByNumber).toHaveBeenCalledWith(199_990);
+        expect(mockTronWeb.utils.transaction.txJsonToPb).not.toHaveBeenCalled();
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(transaction);
+      });
+
+      it('throws when broadcasting a signed transaction fails', async () => {
+        const currentTimestamp = Date.now();
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+          hashSegment: 'abcdef1234567890',
+        });
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        transaction.raw_data.ref_block_bytes = getRefBlockBytes(200_000);
+        transaction.raw_data.ref_block_hash = 'abcdef1234567890';
+        transaction.raw_data.expiration = currentTimestamp + 45_000;
+        transaction.raw_data.timestamp = currentTimestamp;
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          result: false,
+          message: 'expired',
+        });
+
+        await expect(
+          sendService.signAndSendTransaction({
+            scope,
+            fromAccountId: TEST_ACCOUNT_ID,
+            transaction: transaction as never,
+          }),
+        ).rejects.toThrow('Failed to send transaction: expired');
       });
     });
   });

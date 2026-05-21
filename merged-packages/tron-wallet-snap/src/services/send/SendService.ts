@@ -23,6 +23,7 @@ import { createPrefixedLogger, type ILogger } from '../../utils/logger';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
+import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 
 export class SendService {
   readonly #accountsService: AccountsService;
@@ -37,6 +38,8 @@ export class SendService {
 
   readonly #snapClient: SnapClient;
 
+  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+
   constructor({
     accountsService,
     assetsService,
@@ -44,6 +47,7 @@ export class SendService {
     feeCalculatorService,
     logger,
     snapClient,
+    transactionExpirationRefresherService,
   }: {
     accountsService: AccountsService;
     assetsService: AssetsService;
@@ -51,6 +55,7 @@ export class SendService {
     feeCalculatorService: FeeCalculatorService;
     logger: ILogger;
     snapClient: SnapClient;
+    transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
@@ -58,6 +63,8 @@ export class SendService {
     this.#feeCalculatorService = feeCalculatorService;
     this.#logger = createPrefixedLogger(logger, '[💸 SendService]');
     this.#snapClient = snapClient;
+    this.#transactionExpirationRefresherService =
+      transactionExpirationRefresherService;
   }
 
   /**
@@ -404,10 +411,16 @@ export class SendService {
 
     const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
+    const freshTransaction =
+      await this.#transactionExpirationRefresherService.ensureFreshMetadata({
+        scope,
+        transaction,
+      });
+
     /**
      * Sign and send the transaction atomically after user confirmation
      */
-    const signedTransaction = await tronWeb.trx.sign(transaction);
+    const signedTransaction = await tronWeb.trx.sign(freshTransaction);
     const result = await tronWeb.trx.sendRawTransaction(signedTransaction);
 
     if (!result.result) {
