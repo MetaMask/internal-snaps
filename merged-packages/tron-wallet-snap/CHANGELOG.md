@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Filter native TRX receive spam from transaction history ([#301](https://github.com/MetaMask/snap-tron-wallet/pull/301))
+
 ### Fixed
 
 - Refresh stale TRON transaction expiration and reference block metadata before confirmation security scans, signing, and broadcasting ([#299](https://github.com/MetaMask/snap-tron-wallet/pull/299))

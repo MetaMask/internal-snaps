@@ -5,6 +5,7 @@ import { groupBy } from 'lodash';
 
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
+import { isSpam } from './utils/isSpam';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
@@ -282,11 +283,15 @@ export class TransactionsService {
       trc10TokenMetadata,
     });
 
-    this.#logger.info(
-      `Returning ${mappedTransactions.length} transactions for account ${account.address} on network ${scope}.`,
+    const filteredTransactions = mappedTransactions.filter(
+      (transaction) => !isSpam(transaction, account),
     );
 
-    return mappedTransactions;
+    this.#logger.info(
+      `Returning ${filteredTransactions.length} transactions for account ${account.address} on network ${scope}.`,
+    );
+
+    return filteredTransactions;
   }
 
   /**

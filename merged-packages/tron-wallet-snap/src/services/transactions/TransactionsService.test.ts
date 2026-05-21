@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 
+import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -9,7 +11,7 @@ import type {
   ContractTransactionInfo,
   TransactionInfo,
 } from '../../clients/trongrid/types';
-import { KnownCaip19Id, Network } from '../../constants';
+import { KnownCaip19Id, Network, Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
 import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
@@ -144,6 +146,72 @@ describe('TransactionsService', () => {
   });
 
   describe('fetchNewTransactionsForAccount', () => {
+    it('returns mapped transactions with spam removed', async () => {
+      const nativeAsset = (
+        amount: string,
+      ): Transaction['to'][number]['asset'] => ({
+        type: Networks[Network.Mainnet].nativeToken.id,
+        amount,
+        unit: Networks[Network.Mainnet].nativeToken.symbol,
+        fungible: true,
+      });
+
+      const spamTransaction: Transaction = {
+        id: 'spam-tx-id',
+        type: TransactionType.Receive,
+        account: mockAccount.id,
+        chain: Network.Mainnet,
+        status: TransactionStatus.Confirmed,
+        timestamp: 1,
+        from: [{ address: 'sender-address', asset: nativeAsset('0.0005') }],
+        to: [{ address: mockAccount.address, asset: nativeAsset('0.0005') }],
+        events: [],
+        fees: [],
+      };
+
+      const keptTransaction: Transaction = {
+        ...spamTransaction,
+        id: 'kept-tx-id',
+        to: [{ address: mockAccount.address, asset: nativeAsset('0.001') }],
+      };
+
+      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+        {
+          ...nativeTransferMock,
+          txID: 'spam-raw-tx-id',
+        },
+        {
+          ...nativeTransferMock,
+          txID: 'kept-raw-tx-id',
+        },
+      ] as TransactionInfo[]);
+      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+        [],
+      );
+
+      const mapTransactionsSpy = jest
+        .spyOn(TransactionMapper, 'mapTransactions')
+        .mockReturnValue([spamTransaction, keptTransaction]);
+
+      try {
+        const result = await transactionsService.fetchNewTransactionsForAccount(
+          Network.Mainnet,
+          mockAccount,
+        );
+
+        expect(mapTransactionsSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            scope: Network.Mainnet,
+            account: mockAccount,
+            trc20Transactions: [],
+          }),
+        );
+        expect(result).toStrictEqual([keptTransaction]);
+      } finally {
+        mapTransactionsSpy.mockRestore();
+      }
+    });
+
     it('should fetch and map transactions for an account using native transfers mock data', async () => {
       // Setup mock responses with simplified single-transaction structure
       mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
