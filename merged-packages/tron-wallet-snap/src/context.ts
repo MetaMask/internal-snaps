@@ -53,7 +53,7 @@ const state = new State({
   },
 });
 
-const snapClient = new SnapClient();
+const snapClient = new SnapClient({ logger });
 
 // Repositories - depend on State
 const accountsRepository = new AccountsRepository(state);

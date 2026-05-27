@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `SnapClient.trackError` wrapper around `snap_trackError` for reporting errors to Sentry ([#311](https://github.com/MetaMask/snap-tron-wallet/pull/311))
+
 ### Changed
 
 - Add `FetchStatus.Loading` in `FetchStatus` enum to represent first fetching state and add `isFetchStatusLoadingOrFetching` helper ([#302](https://github.com/MetaMask/snap-tron-wallet/pull/302))
