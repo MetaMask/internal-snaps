@@ -16,6 +16,7 @@ import type {
 } from '../../../../services/transaction-scan/types';
 import { FetchStatus, type Preferences } from '../../../../types/snap';
 import { i18n } from '../../../../utils/i18n';
+import { isFetchStatusLoadingOrFetching } from '../../../../utils/isFetchStatusLoadingOrFetching';
 
 export type TransactionAlertProps = {
   preferences: Preferences;
@@ -44,8 +45,9 @@ export const TransactionAlert = ({
 
   /**
    * Display a loading skeleton while fetching.
+   * Initial loading + subsequence fetches.
    */
-  if (scanFetchStatus === FetchStatus.Fetching) {
+  if (isFetchStatusLoadingOrFetching(scanFetchStatus)) {
     return (
       <Box>
         <Skeleton height="40px" />

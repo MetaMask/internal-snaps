@@ -68,6 +68,16 @@ describe('TransactionAlert', () => {
     expect(result).toBeDefined();
   });
 
+  it('renders without crashing when loading', () => {
+    const props: TransactionAlertProps = {
+      ...baseProps,
+      scanFetchStatus: FetchStatus.Loading,
+    };
+
+    const result = TransactionAlert(props);
+    expect(result).toBeDefined();
+  });
+
   it('renders without crashing on API error', () => {
     const props: TransactionAlertProps = {
       ...baseProps,

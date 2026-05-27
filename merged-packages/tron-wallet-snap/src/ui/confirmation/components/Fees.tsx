@@ -6,6 +6,7 @@ import type { SpotPrices } from '../../../clients/price-api/types';
 import type { ComputeFeeResult } from '../../../services/send/types';
 import { FetchStatus, type Preferences } from '../../../types/snap';
 import { i18n } from '../../../utils/i18n';
+import { isFetchStatusLoadingOrFetching } from '../../../utils/isFetchStatusLoadingOrFetching';
 
 type FeesProps = {
   fees: ComputeFeeResult;
@@ -21,7 +22,7 @@ export const Fees = ({
   tokenPricesFetchStatus = FetchStatus.Initial,
 }: FeesProps): ComponentOrElement => {
   const translate = i18n(preferences.locale);
-  const priceLoading = tokenPricesFetchStatus === FetchStatus.Fetching;
+  const priceLoading = isFetchStatusLoadingOrFetching(tokenPricesFetchStatus);
 
   /**
    * Make sure the TRX is shown first for cases where both

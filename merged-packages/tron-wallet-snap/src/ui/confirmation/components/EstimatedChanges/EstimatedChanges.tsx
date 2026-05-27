@@ -13,6 +13,7 @@ import type { TransactionScanEstimatedChanges } from '../../../../services/trans
 import { FetchStatus, type Preferences } from '../../../../types/snap';
 import { formatAmount } from '../../../../utils/formatAmount';
 import { i18n } from '../../../../utils/i18n';
+import { isFetchStatusLoadingOrFetching } from '../../../../utils/isFetchStatusLoadingOrFetching';
 
 type EstimatedChangesProps = {
   changes: TransactionScanEstimatedChanges | null;
@@ -94,7 +95,8 @@ export const EstimatedChanges = ({
 }: EstimatedChangesProps): ComponentOrElement => {
   const translate = i18n(preferences.locale);
 
-  const isFetching = scanFetchStatus === FetchStatus.Fetching;
+  // Keep "refreshing skeleton" for first loading + subsequent refreshes
+  const isFetching = isFetchStatusLoadingOrFetching(scanFetchStatus);
   const isFetched = scanFetchStatus === FetchStatus.Fetched;
   const isFetchError = scanFetchStatus === FetchStatus.Error;
 

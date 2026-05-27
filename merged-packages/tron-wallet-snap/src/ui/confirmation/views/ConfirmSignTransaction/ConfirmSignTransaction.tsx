@@ -44,8 +44,12 @@ export const ConfirmSignTransaction = ({
     tokenPricesFetchStatus,
   } = context;
 
+  /**
+   * Only disable confirm button upon first load (FetchStatus.Loading)
+   * as opposed to subsequent loads (FetchStatus.Fetching)
+   */
   const shouldDisableConfirmButton =
-    scanFetchStatus === FetchStatus.Fetching ||
+    scanFetchStatus === FetchStatus.Loading ||
     scan?.simulationStatus === SimulationStatus.Failed;
 
   const addressCaip10 = account ? `${scope}:${account.address}` : null;

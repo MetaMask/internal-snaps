@@ -100,8 +100,8 @@ export async function render(
     ...DEFAULT_CONFIRMATION_CONTEXT,
     ...incomingContext,
     transactionRawData: transactionRawData as unknown as Json,
-    tokenPricesFetchStatus: FetchStatus.Fetching, // Start as fetching
-    scanFetchStatus: FetchStatus.Fetching, // Start as fetching
+    tokenPricesFetchStatus: FetchStatus.Loading, // Start as Loading (first fetch) not Fetching
+    scanFetchStatus: FetchStatus.Loading, // Start as Loading (first fetch) not Fetching
   };
 
   try {

@@ -133,10 +133,10 @@ describe('ConfirmTransactionRequest', () => {
     );
   });
 
-  it('disables confirm button when scanFetchStatus is fetching', () => {
+  it('disables confirm button when scanFetchStatus is loading', () => {
     const context: ConfirmTransactionRequestContext = {
       ...baseContext,
-      scanFetchStatus: FetchStatus.Fetching,
+      scanFetchStatus: FetchStatus.Loading,
       scan: null,
     };
 
@@ -174,6 +174,20 @@ describe('ConfirmTransactionRequest', () => {
     // The confirm button should NOT have disabled=true
     // When disabled is false/undefined, it shouldn't be in the serialized output
     // or it should be false
+    expect(serialized).not.toContain('"disabled":true');
+  });
+
+  it('enables confirm button when scanFetchStatus is fetching', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      scanFetchStatus: FetchStatus.Fetching,
+      scan: null,
+    };
+
+    const result = ConfirmTransactionRequest({ context });
+    const serialized = JSON.stringify(result);
+
+    // The confirm button should not have disabled=true
     expect(serialized).not.toContain('"disabled":true');
   });
 

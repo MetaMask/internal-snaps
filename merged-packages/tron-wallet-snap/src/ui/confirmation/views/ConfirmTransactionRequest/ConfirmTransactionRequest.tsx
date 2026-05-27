@@ -45,8 +45,12 @@ export const ConfirmTransactionRequest = ({
 }): ComponentOrElement => {
   const translate = i18n(preferences.locale);
 
+  /**
+   * Only disable confirm button upon first load (FetchStatus.Loading)
+   * as opposed to subsequent loads (FetchStatus.Fetching)
+   */
   const shouldDisableConfirmButton =
-    scanFetchStatus === FetchStatus.Fetching ||
+    scanFetchStatus === FetchStatus.Loading ||
     scan?.simulationStatus === SimulationStatus.Failed;
 
   let estimatedChangesSection: ComponentOrElement | null = null;

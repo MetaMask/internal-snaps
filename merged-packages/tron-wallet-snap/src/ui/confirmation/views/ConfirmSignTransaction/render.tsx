@@ -77,7 +77,7 @@ export async function render(
     account,
     transaction,
     origin: origin ?? 'Unknown',
-    scanFetchStatus: FetchStatus.Fetching,
+    scanFetchStatus: FetchStatus.Loading, // Start as Loading (first fetch) not Fetching
     tokenPricesFetchStatus: FetchStatus.Initial,
     feesFetchStatus: FetchStatus.Initial,
   };
