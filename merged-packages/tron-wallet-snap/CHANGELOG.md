@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Removed `snap_trackError` permission from snap manifest ([#320](https://github.com/MetaMask/snap-tron-wallet/pull/320))
+  - This permission was causing errors during snap installation and is not necessary for the snap's functionality.
+
 ## [1.25.7]
 
 ### Added
