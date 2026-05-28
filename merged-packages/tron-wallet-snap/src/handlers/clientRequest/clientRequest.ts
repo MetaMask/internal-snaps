@@ -312,7 +312,8 @@ export class ClientRequestHandler {
         valid: true,
         errors: [],
       };
-    } catch {
+    } catch (error) {
+      await this.#snapClient.trackError(error as Error);
       return {
         valid: false,
         errors: [{ code: SendErrorCodes.Invalid }],
@@ -436,6 +437,7 @@ export class ClientRequestHandler {
         errors: [],
       };
     } catch (error) {
+      await this.#snapClient.trackError(error as Error);
       this.#logger.error('Error in #handleOnAmountInput:', error);
       return {
         valid: false,

@@ -37,6 +37,76 @@ const createPassThroughTransactionExpirationRefresherService = () =>
     ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
   }) as unknown as TransactionExpirationRefresherService;
 
+type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
+  handler: ClientRequestHandler;
+  mockAccountsService: jest.Mocked<Pick<AccountsService, 'findById'>>;
+  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAssetsByAccountId'>>;
+  mockSendService: jest.Mocked<Pick<SendService, 'buildTransaction'>>;
+  mockFeeCalculatorService: jest.Mocked<
+    Pick<FeeCalculatorService, 'computeFee'>
+  >;
+  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+}) => Promise<ReturnValue> | ReturnValue;
+
+/**
+ * Wraps tests by creating a fresh handler and fresh mocks.
+ *
+ * @param testFunction - The test body receiving the handler and relevant mocks.
+ * @returns The return value of the callback.
+ */
+async function withClientRequestHandler<ReturnValue>(
+  testFunction: WithClientRequestHandlerCallback<ReturnValue>,
+): Promise<ReturnValue> {
+  const mockAccountsService: jest.Mocked<Pick<AccountsService, 'findById'>> = {
+    findById: jest.fn(),
+  };
+
+  const mockAssetsService: jest.Mocked<
+    Pick<AssetsService, 'getAssetsByAccountId'>
+  > = {
+    getAssetsByAccountId: jest.fn(),
+  };
+
+  const mockSendService: jest.Mocked<Pick<SendService, 'buildTransaction'>> = {
+    buildTransaction: jest.fn(),
+  };
+
+  const mockFeeCalculatorService: jest.Mocked<
+    Pick<FeeCalculatorService, 'computeFee'>
+  > = {
+    computeFee: jest.fn(),
+  };
+
+  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: jest.fn(),
+  };
+
+  const handler = new ClientRequestHandler({
+    logger: mockLogger,
+    accountsService: mockAccountsService as unknown as AccountsService,
+    assetsService: mockAssetsService as unknown as AssetsService,
+    sendService: mockSendService as unknown as SendService,
+    feeCalculatorService:
+      mockFeeCalculatorService as unknown as FeeCalculatorService,
+    tronWebFactory: {} as TronWebFactory,
+    snapClient: mockSnapClient as unknown as SnapClient,
+    stakingService: {} as StakingService,
+    confirmationHandler: {} as ConfirmationHandler,
+    transactionsService: {} as TransactionsService,
+    transactionExpirationRefresherService:
+      createPassThroughTransactionExpirationRefresherService(),
+  });
+
+  return await testFunction({
+    handler,
+    mockAccountsService,
+    mockAssetsService,
+    mockSendService,
+    mockFeeCalculatorService,
+    mockSnapClient,
+  });
+}
+
 describe('ClientRequestHandler', () => {
   describe('computeFee', () => {
     let clientRequestHandler: ClientRequestHandler;
@@ -1290,15 +1360,6 @@ describe('ClientRequestHandler - onAmountInput', () => {
   const nativeTokenId = Networks[scope].nativeToken.id;
 
   type OnAmountInputRequest = Infer<typeof OnAmountInputRequestStruct>;
-  type WithOnAmountInputHandlerCallback<ReturnValue> = (payload: {
-    handler: ClientRequestHandler;
-    mockAccountsService: jest.Mocked<Pick<AccountsService, 'findById'>>;
-    mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAssetsByAccountId'>>;
-    mockSendService: jest.Mocked<Pick<SendService, 'buildTransaction'>>;
-    mockFeeCalculatorService: jest.Mocked<
-      Pick<FeeCalculatorService, 'computeFee'>
-    >;
-  }) => Promise<ReturnValue> | ReturnValue;
 
   const mockAccount: TronKeyringAccount = {
     id: TEST_ACCOUNT_ID,
@@ -1379,64 +1440,8 @@ describe('ClientRequestHandler - onAmountInput', () => {
     raw_data_hex: 'mock-hex',
   });
 
-  /**
-   * Wraps `onAmountInput` tests by creating a fresh handler and fresh mocks.
-   *
-   * @param testFunction - The test body receiving the handler and relevant mocks.
-   * @returns The return value of the callback.
-   */
-  async function withOnAmountInputHandler<ReturnValue>(
-    testFunction: WithOnAmountInputHandlerCallback<ReturnValue>,
-  ): Promise<ReturnValue> {
-    const mockAccountsService: jest.Mocked<Pick<AccountsService, 'findById'>> =
-      {
-        findById: jest.fn(),
-      };
-
-    const mockAssetsService: jest.Mocked<
-      Pick<AssetsService, 'getAssetsByAccountId'>
-    > = {
-      getAssetsByAccountId: jest.fn(),
-    };
-
-    const mockSendService: jest.Mocked<Pick<SendService, 'buildTransaction'>> =
-      {
-        buildTransaction: jest.fn(),
-      };
-
-    const mockFeeCalculatorService: jest.Mocked<
-      Pick<FeeCalculatorService, 'computeFee'>
-    > = {
-      computeFee: jest.fn(),
-    };
-
-    const handler = new ClientRequestHandler({
-      logger: mockLogger,
-      accountsService: mockAccountsService as unknown as AccountsService,
-      assetsService: mockAssetsService as unknown as AssetsService,
-      sendService: mockSendService as unknown as SendService,
-      feeCalculatorService:
-        mockFeeCalculatorService as unknown as FeeCalculatorService,
-      tronWebFactory: {} as TronWebFactory,
-      snapClient: {} as SnapClient,
-      stakingService: {} as StakingService,
-      confirmationHandler: {} as ConfirmationHandler,
-      transactionsService: {} as TransactionsService,
-      transactionExpirationRefresherService:
-        createPassThroughTransactionExpirationRefresherService(),
-    });
-
-    return await testFunction({
-      handler,
-      mockAccountsService,
-      mockAssetsService,
-      mockSendService,
-      mockFeeCalculatorService,
-    });
-  }
-
   it('returns valid and skips fee validation when toAddress is missing', async () => {
-    await withOnAmountInputHandler(
+    await withClientRequestHandler(
       async ({
         handler,
         mockAccountsService,
@@ -1481,7 +1486,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
   });
 
   it('uses provided toAddress when building the transaction for fee estimation', async () => {
-    await withOnAmountInputHandler(
+    await withClientRequestHandler(
       async ({
         handler,
         mockAccountsService,
@@ -1553,7 +1558,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
   });
 
   it('passes amount as BigNumber (not number) to preserve decimal precision', async () => {
-    await withOnAmountInputHandler(
+    await withClientRequestHandler(
       async ({
         handler,
         mockAccountsService,
@@ -1617,7 +1622,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
   });
 
   it('returns insufficient balance when the asset balance is too low and toAddress is missing', async () => {
-    await withOnAmountInputHandler(
+    await withClientRequestHandler(
       async ({
         handler,
         mockAccountsService,
@@ -1665,7 +1670,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
   });
 
   it('returns insufficient balance to cover fee when toAddress is provided and fees exceed the native balance', async () => {
-    await withOnAmountInputHandler(
+    await withClientRequestHandler(
       async ({
         handler,
         mockAccountsService,
@@ -1721,6 +1726,29 @@ describe('ClientRequestHandler - onAmountInput', () => {
           valid: false,
           errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
         });
+      },
+    );
+  });
+
+  it('tracks the error', async () => {
+    await withClientRequestHandler(
+      async ({ handler, mockAccountsService, mockSnapClient }) => {
+        const error = new Error('Test error');
+
+        mockAccountsService.findById.mockRejectedValue(error);
+
+        await handler.handle({
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.OnAmountInput,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: nativeTokenId,
+            value: '10',
+          },
+        });
+
+        expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
       },
     );
   });
@@ -2555,5 +2583,22 @@ describe('ClientRequestHandler - claimTrxStakingRewards', () => {
     await expect(
       clientRequestHandler.handle(request as JsonRpcRequest),
     ).rejects.toThrow('Invalid method parameter(s)');
+  });
+});
+
+describe('ClientRequestHandler - onAddressInput', () => {
+  it('tracks the error', async () => {
+    await withClientRequestHandler(async ({ handler, mockSnapClient }) => {
+      await handler.handle({
+        jsonrpc: '2.0',
+        id: '1',
+        method: ClientRequestMethod.OnAddressInput,
+        params: {
+          value: 'invalid-address',
+        },
+      });
+
+      expect(mockSnapClient.trackError).toHaveBeenCalledWith(expect.any(Error));
+    });
   });
 });
