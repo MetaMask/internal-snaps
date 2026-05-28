@@ -15,9 +15,10 @@ describe('TransactionScanService', () => {
   });
 
   const createMockSnapClient = (): jest.Mocked<
-    Pick<SnapClient, 'trackSecurityScanCompleted'>
+    Pick<SnapClient, 'trackSecurityScanCompleted' | 'trackError'>
   > => ({
     trackSecurityScanCompleted: jest.fn(),
+    trackError: jest.fn(),
   });
 
   const createWellFormedTransactionRawData =
@@ -528,6 +529,37 @@ describe('TransactionScanService', () => {
         price: '10.00',
         assetType: 'ERC1155',
       });
+    });
+  });
+
+  describe('failed transaction scan', () => {
+    it('tracks the error', async () => {
+      const error = new Error('Scan failed');
+
+      const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
+        simulation: { status: 'Success' },
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        validation: { status: 'Success', result_type: 'Benign' },
+      });
+      mockSecurityAlertsApiClient.scanTransaction.mockRejectedValueOnce(error);
+
+      const mockSnapClient = createMockSnapClient();
+
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        mockSnapClient as unknown as SnapClient,
+        mockLogger,
+      );
+
+      await service.scanTransaction({
+        accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://tronscan.on.btfs.io',
+        scope: Network.Mainnet,
+        options: ['simulation'],
+      });
+
+      expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
     });
   });
 });

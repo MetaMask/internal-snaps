@@ -176,6 +176,7 @@ export class TransactionScanService {
 
       return scan;
     } catch (error) {
+      await this.#snapClient.trackError(error as Error);
       this.#logger.error(error);
 
       // Track error if account is provided
