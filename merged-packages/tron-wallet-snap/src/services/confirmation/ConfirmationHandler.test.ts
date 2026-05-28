@@ -13,7 +13,15 @@ import { render as renderConfirmTransactionRequest } from '../../ui/confirmation
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
-import type { State, UnencryptedStateValue } from '../state/State';
+
+/**
+ * Subset of State methods.
+ */
+type MockState = {
+  getKey: jest.Mock;
+  setKey: jest.Mock;
+  setKeyWith: jest.Mock;
+};
 
 jest.mock(
   '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction',
@@ -85,9 +93,7 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
       | 'trackTransactionRejected'
     >
   >;
-  mockState: jest.Mocked<
-    Pick<State<UnencryptedStateValue>, 'getKey' | 'setKey'>
-  >;
+  mockState: MockState;
   mockTronWebFactory: jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
   mockTronWeb: {
     transactionBuilder: {
@@ -176,11 +182,10 @@ async function withConfirmationHandler<ReturnValue>(
     trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
   };
 
-  const mockState: jest.Mocked<
-    Pick<State<UnencryptedStateValue>, 'getKey' | 'setKey'>
-  > = {
+  const mockState: MockState = {
     getKey: jest.fn(),
     setKey: jest.fn(),
+    setKeyWith: jest.fn(),
   };
 
   const handler = new ConfirmationHandler({

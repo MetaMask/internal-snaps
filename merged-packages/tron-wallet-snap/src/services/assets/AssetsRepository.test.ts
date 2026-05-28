@@ -103,6 +103,7 @@ describe('AssetsRepository', () => {
         return undefined;
       },
       setKey: async () => undefined,
+      setKeyWith: async () => undefined,
       update: async (updater) => {
         stateValue = updater(stateValue);
         return stateValue;

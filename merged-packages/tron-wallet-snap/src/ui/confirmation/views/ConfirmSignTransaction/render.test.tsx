@@ -104,6 +104,7 @@ describe('ConfirmSignTransaction render', () => {
 
     const mockState = {
       setKey: jest.fn().mockResolvedValue(undefined),
+      setKeyWith: jest.fn().mockResolvedValue(undefined),
       getKey: jest.fn().mockResolvedValue({}),
     } as any;
 

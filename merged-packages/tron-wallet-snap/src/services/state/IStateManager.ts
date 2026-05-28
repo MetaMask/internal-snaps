@@ -51,6 +51,24 @@ export type IStateManager<TStateValue extends Record<string, Serializable>> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setKey(key: string, value: any): Promise<void>;
   /**
+   * Atomically reads the current value at `key`, applies `updater`, and writes the result back.
+   *
+   * Implementations must ensure that no concurrent state write can interleave between the
+   * read and the write. This makes the method safe for updates where the next value depends
+   * on the current value, such as merging objects.
+   *
+   * Prefer this over a manual `getKey` + `setKey` sequence whenever the new value depends on
+   * the current one.
+   *
+   * @param key - The json-path key to update.
+   * @param updater - Receives the current value (or `undefined` when the key is absent) and
+   * returns the new value to store.
+   */
+  setKeyWith<TValue extends Serializable>(
+    key: string,
+    updater: (currentValue: TValue | undefined) => TValue,
+  ): Promise<void>;
+  /**
    * Updates the whole state object.
    *
    * Typically used for bulk `set`s or `delete`s, because:

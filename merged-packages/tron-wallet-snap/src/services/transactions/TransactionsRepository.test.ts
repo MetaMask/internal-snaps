@@ -51,6 +51,7 @@ describe('TransactionsRepository', () => {
     mockState = {
       getKey: jest.fn(),
       setKey: jest.fn(),
+      setKeyWith: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<State<UnencryptedStateValue>>;
 

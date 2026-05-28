@@ -59,9 +59,11 @@ type MockTransactionScanService = jest.Mocked<
 /**
  * Subset of State methods exercised by `render`.
  */
-type MockState = jest.Mocked<
-  Pick<State<UnencryptedStateValue>, 'setKey' | 'getKey'>
->;
+type MockState = {
+  getKey: jest.Mock;
+  setKey: jest.Mock;
+  setKeyWith: jest.Mock;
+};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -174,6 +176,7 @@ function buildMockTransactionScanService(): MockTransactionScanService {
 function buildMockState(): MockState {
   return {
     setKey: jest.fn().mockResolvedValue(undefined),
+    setKeyWith: jest.fn().mockResolvedValue(undefined),
     getKey: jest.fn().mockResolvedValue({}),
   };
 }

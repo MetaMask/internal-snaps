@@ -46,6 +46,8 @@ class StateLock {
 
   readonly #regularStateUpdateMutex = new Mutex();
 
+  readonly #regularStateWriteMutex = new Mutex();
+
   #pendingRegularStateUpdates = 0;
 
   #releaseRegularStateUpdateMutex: MutexInterface.Releaser | null = null;
@@ -81,6 +83,14 @@ class StateLock {
         this.#releaseRegularStateUpdateMutex();
       }
     }
+  }
+
+  async wrapRegularStateWriteOperation<ReturnType>(
+    callback: MutexInterface.Worker<ReturnType>,
+  ): Promise<ReturnType> {
+    return await this.#regularStateWriteMutex.runExclusive(async () =>
+      this.wrapRegularStateOperation(callback),
+    );
   }
 
   async wrapManageStateOperation<ReturnType>(
@@ -163,12 +173,45 @@ export class State<
   }
 
   async setKey(key: string, value: Serializable): Promise<void> {
-    await this.#lock.wrapRegularStateOperation(async () => {
+    await this.#lock.wrapRegularStateWriteOperation(async () => {
+      const serializedValue = serialize(value);
+
       await snap.request({
         method: 'snap_setState',
         params: {
           key,
-          value: serialize(value),
+          value: serializedValue,
+          encrypted: this.#config.encrypted,
+        },
+      });
+    });
+  }
+
+  async setKeyWith<TValue extends Serializable>(
+    key: string,
+    updater: (currentValue: TValue | undefined) => TValue,
+  ): Promise<void> {
+    await this.#lock.wrapRegularStateWriteOperation(async () => {
+      const rawValue = await snap.request({
+        method: 'snap_getState',
+        params: {
+          key,
+          encrypted: this.#config.encrypted,
+        },
+      });
+
+      const oldValue =
+        rawValue === null ? undefined : (deserialize(rawValue) as TValue);
+
+      const newValue = updater(oldValue);
+
+      const serializedValue = serialize(newValue);
+
+      await snap.request({
+        method: 'snap_setState',
+        params: {
+          key,
+          value: serializedValue,
           encrypted: this.#config.encrypted,
         },
       });

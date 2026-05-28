@@ -13,7 +13,15 @@ import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { mockLogger } from '../../utils/mockLogger';
-import type { State, UnencryptedStateValue } from '../state/State';
+
+/**
+ * Subset of State methods.
+ */
+type MockState = {
+  getKey: jest.Mock;
+  setKey: jest.Mock;
+  setKeyWith: jest.Mock;
+};
 
 jest.mock('../../context', () => ({
   configProvider: {
@@ -161,9 +169,7 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
       | 'getByAccountIdAndAssetTypes'
     >
   >;
-  mockState: jest.Mocked<
-    Pick<State<UnencryptedStateValue>, 'getKey' | 'setKey'>
-  >;
+  mockState: MockState;
   mockTrongridApiClient: jest.Mocked<
     Pick<
       TrongridApiClient,
@@ -208,11 +214,10 @@ async function withAssetsService<ReturnValue>(
     getByAccountIdAndAssetTypes: jest.fn().mockResolvedValue([]),
   };
 
-  const mockState: jest.Mocked<
-    Pick<State<UnencryptedStateValue>, 'getKey' | 'setKey'>
-  > = {
+  const mockState: MockState = {
     getKey: jest.fn().mockResolvedValue({}),
     setKey: jest.fn().mockResolvedValue(undefined),
+    setKeyWith: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockTrongridApiClient: jest.Mocked<
