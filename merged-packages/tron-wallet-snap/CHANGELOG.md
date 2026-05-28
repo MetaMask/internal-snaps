@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.25.8]
+
 ### Fixed
 
 - Removed `snap_trackError` permission from snap manifest ([#320](https://github.com/MetaMask/snap-tron-wallet/pull/320))
@@ -521,7 +523,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.7...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.8...HEAD
+[1.25.8]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.7...v1.25.8
 [1.25.7]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.6...v1.25.7
 [1.25.6]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.5...v1.25.6
 [1.25.5]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.4...v1.25.5
