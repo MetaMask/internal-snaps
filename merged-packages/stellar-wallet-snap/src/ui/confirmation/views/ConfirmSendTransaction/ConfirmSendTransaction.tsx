@@ -8,42 +8,48 @@ import {
   Heading,
   Icon,
   Image,
+  Link,
   Section,
   Text as SnapText,
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 import { parseCaipAssetType } from '@metamask/utils';
 
-import { ConfirmSignChangeTrustOptOutFormNames } from './events';
+import { ConfirmSendTransactionFormNames } from './events';
 import type { StellarKeyringAccount } from '../../../../services/account';
 import type { StellarAssetMetadata } from '../../../../services/asset-metadata';
-import { i18n } from '../../../../utils';
+import { isSlip44Id, i18n } from '../../../../utils';
+import { xlmIcon } from '../../../images';
 import { STELLAR_IMAGE } from '../../../images/icon';
-import usdtSvg from '../../../images/usdt.svg';
 import type {
-  ConfirmationBaseProps,
   ContextWithPrices,
+  ConfirmationBaseProps,
   FeeData,
 } from '../../api';
 import { FetchStatus } from '../../api';
-import { Asset, AssetIcon, FeeRow, TransactionAlert } from '../../components';
+import { Asset, FeeRow } from '../../components';
 import {
+  getAccountExplorerUrl,
   getAccountName,
   getClassicAssetExplorerUrl,
-  hasEnabledTransactionScan,
-  isConfirmDisabledByScan,
   getNetworkName,
+  getSepAssetExplorerUrl,
 } from '../../utils';
 
-export type ConfirmSignChangeTrustOptOutProps = ConfirmationBaseProps &
+export type ConfirmSendTransactionProps = ConfirmationBaseProps &
   ContextWithPrices & {
     account: StellarKeyringAccount;
     assetMetadata: StellarAssetMetadata;
     feeData: FeeData;
+  } & {
+    toAddress: string;
+    amount: string;
   };
 
-export const ConfirmSignChangeTrustOptOut = ({
+export const ConfirmSendTransaction = ({
   account,
+  toAddress,
+  amount,
   scope,
   assetMetadata,
   locale,
@@ -53,42 +59,31 @@ export const ConfirmSignChangeTrustOptOut = ({
   origin,
   preferences,
   tokenPricesFetchStatus = FetchStatus.Initial,
-  scan,
-  scanFetchStatus = FetchStatus.Initial,
-}: ConfirmSignChangeTrustOptOutProps): ComponentOrElement => {
+}: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
   const { address } = account;
-  const shouldDisableConfirmButton = isConfirmDisabledByScan({
-    preferences,
-    scan,
-    scanFetchStatus,
-  });
+  const { assetId, symbol } = assetMetadata;
+  const parsedAsset = parseCaipAssetType(assetId);
+  let assetLink: string | undefined;
+  if (!isSlip44Id(assetId)) {
+    assetLink =
+      parsedAsset.assetNamespace === 'sep41'
+        ? getSepAssetExplorerUrl(parsedAsset.assetReference)
+        : getClassicAssetExplorerUrl(parsedAsset.assetReference);
+  }
+  const assetIconUrl = isSlip44Id(assetId) ? xlmIcon : assetMetadata.iconUrl;
+  const assetPrice = tokenPrices?.[assetId] ?? null;
 
   return (
     <Container>
       <Box>
-        {hasEnabledTransactionScan(preferences) ? (
-          <TransactionAlert
-            scanFetchStatus={scanFetchStatus}
-            validation={scan?.validation ?? null}
-            error={scan?.error ?? null}
-            preferences={preferences}
-          />
-        ) : null}
         <Box alignment="center" center>
           <Box>{null}</Box>
-          <Heading size="lg">
-            {t('confirmation.signChangeTrustOptOut.title', {
-              asset: assetMetadata.symbol,
-            })}
-          </Heading>
-          <Box>
-            {/* TODO: Replace with the asset icon, dummy for testing */}
-            <AssetIcon iconUrl={usdtSvg} size="xl" />
-          </Box>
-          <Box>{null}</Box>
+          <Heading size="lg">{t(`confirmation.transaction.title`)}</Heading>
           <Box>{null}</Box>
         </Box>
+
+        {/* TODO: add security alert / transaction simulation result */}
 
         <Section>
           {origin ? (
@@ -109,28 +104,47 @@ export const ConfirmSignChangeTrustOptOut = ({
             <SnapText fontWeight="medium" color="alternative">
               {t('confirmation.account')}
             </SnapText>
-            <Address
-              address={getAccountName(scope, address)}
-              truncate
-              displayName
-              avatar
-            />
+            <Link href={getAccountExplorerUrl(address)}>
+              <Address
+                address={`${scope}:${address}`}
+                truncate
+                displayName
+                avatar
+              />
+            </Link>
+          </Box>
+          {/* To */}
+          <Box alignment="space-between" direction="horizontal">
+            <SnapText fontWeight="medium" color="alternative">
+              {t('confirmation.to')}
+            </SnapText>
+            <Link href={getAccountExplorerUrl(toAddress)}>
+              <Address
+                address={getAccountName(scope, toAddress)}
+                truncate
+                displayName
+                avatar
+              />
+            </Link>
           </Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.asset')}
+              {t('confirmation.estimatedChanges.send')}
             </SnapText>
-
-            {/* TODO: Replace with the asset icon, dummy for testing */}
             <Asset
-              symbol={assetMetadata.symbol}
-              iconUrl={usdtSvg}
-              link={getClassicAssetExplorerUrl(
-                parseCaipAssetType(assetMetadata.assetId).assetReference,
-              )}
+              symbol={symbol}
+              amount={amount}
+              iconUrl={assetIconUrl}
+              link={assetLink}
+              price={assetPrice}
+              preferences={preferences}
+              priceLoading={
+                preferences?.useExternalPricingData &&
+                tokenPricesFetchStatus === FetchStatus.Fetching
+              }
             />
           </Box>
-
+          {/* Network */}
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
               {t('confirmation.network')}
@@ -156,13 +170,10 @@ export const ConfirmSignChangeTrustOptOut = ({
         </Section>
       </Box>
       <Footer>
-        <Button name={ConfirmSignChangeTrustOptOutFormNames.Cancel}>
+        <Button name={ConfirmSendTransactionFormNames.Cancel}>
           {t('confirmation.cancelButton')}
         </Button>
-        <Button
-          name={ConfirmSignChangeTrustOptOutFormNames.Confirm}
-          disabled={shouldDisableConfirmButton}
-        >
+        <Button name={ConfirmSendTransactionFormNames.Confirm}>
           {t('confirmation.confirmButton')}
         </Button>
       </Footer>
