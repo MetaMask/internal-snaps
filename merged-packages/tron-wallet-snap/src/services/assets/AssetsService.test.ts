@@ -6,6 +6,7 @@ import type { AssetsRepository } from './AssetsRepository';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
+import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources, TronHttpClient } from '../../clients/tron-http';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
@@ -186,6 +187,7 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
     >
   >;
   mockTokenApiClient: jest.Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
+  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -254,6 +256,10 @@ async function withAssetsService<ReturnValue>(
     getTokensMetadata: jest.fn().mockResolvedValue({}),
   };
 
+  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: jest.fn().mockResolvedValue(undefined),
+  };
+
   const assetsService = new AssetsService({
     logger: mockLogger,
     assetsRepository: mockAssetsRepository,
@@ -262,6 +268,7 @@ async function withAssetsService<ReturnValue>(
     tronHttpClient: mockTronHttpClient,
     priceApiClient: mockPriceApiClient,
     tokenApiClient: mockTokenApiClient,
+    snapClient: mockSnapClient,
   });
 
   return await testFunction({
@@ -272,6 +279,7 @@ async function withAssetsService<ReturnValue>(
     mockTronHttpClient,
     mockPriceApiClient,
     mockTokenApiClient,
+    mockSnapClient,
   });
 }
 
@@ -410,6 +418,36 @@ describe('AssetsService', () => {
             );
             expect(trxAsset).toBeDefined();
             expect(trxAsset?.rawAmount).toBe('0');
+          },
+        );
+      });
+
+      it('tracks fallback endpoint errors', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockSnapClient,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const error = new Error('Network error');
+
+            mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new Error('Account not found or no data returned'),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue(
+              emptyAccountResources,
+            );
+            mockTrongridApiClient.getTrc20BalancesByAddress.mockRejectedValue(
+              error,
+            );
+
+            await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
           },
         );
       });
@@ -562,6 +600,38 @@ describe('AssetsService', () => {
             );
             expect(bandwidthAsset).toBeDefined();
             expect(bandwidthAsset?.rawAmount).toBe('0');
+          },
+        );
+      });
+
+      it('tracks spot price errors', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockSnapClient,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+            mockPriceApiClient,
+          }) => {
+            const error = new Error('Spot price endpoint unavailable');
+
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              createMockTronAccount({
+                address: mockAccount.address,
+                balance: 1000000,
+              }),
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue(
+              emptyAccountResources,
+            );
+            mockPriceApiClient.getMultipleSpotPrices.mockRejectedValue(error);
+
+            await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
           },
         );
       });
@@ -1386,6 +1456,25 @@ describe('AssetsService', () => {
           },
         );
       });
+    });
+  });
+
+  describe('getHistoricalPrice', () => {
+    it('tracks historical price errors', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockSnapClient, mockPriceApiClient }) => {
+          const error = new Error('Price error');
+
+          mockPriceApiClient.getHistoricalPrices.mockRejectedValue(error);
+
+          await assetsService.getHistoricalPrice(
+            KnownCaip19Id.TrxMainnet,
+            'tron:728126428/slip44:usd',
+          );
+
+          expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+        },
+      );
     });
   });
 

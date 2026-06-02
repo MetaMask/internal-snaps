@@ -39,6 +39,7 @@ import {
   GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
   VsCurrencyParamStruct,
 } from '../../clients/price-api/types';
+import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -109,6 +110,8 @@ export class AssetsService {
 
   readonly #tokenApiClient: TokenApiClient;
 
+  readonly #snapClient: SnapClient;
+
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -123,6 +126,7 @@ export class AssetsService {
     tronHttpClient,
     priceApiClient,
     tokenApiClient,
+    snapClient,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -131,6 +135,7 @@ export class AssetsService {
     tronHttpClient: TronHttpClient;
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
+    snapClient: SnapClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 AssetsService]');
     this.#assetsRepository = assetsRepository;
@@ -139,6 +144,7 @@ export class AssetsService {
     this.#tronHttpClient = tronHttpClient;
     this.#priceApiClient = priceApiClient;
     this.#tokenApiClient = tokenApiClient;
+    this.#snapClient = snapClient;
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
@@ -222,7 +228,8 @@ export class AssetsService {
     const trc20BalancesFallback = isInactiveAccount
       ? await this.#trongridApiClient
           .getTrc20BalancesByAddress(scope, account.address)
-          .catch((error) => {
+          .catch(async (error) => {
+            await this.#snapClient.trackError(error as Error);
             this.#logger.warn(
               'Failed to fetch TRC20 balances for inactive account',
               { error, account, scope },
@@ -247,7 +254,10 @@ export class AssetsService {
       this.getAssetsMetadata(assetTypes),
       this.#priceApiClient
         .getMultipleSpotPrices(priceableAssetTypes, 'usd')
-        .catch(() => ({})),
+        .catch(async (error) => {
+          await this.#snapClient.trackError(error as Error);
+          return {};
+        }),
     ]);
 
     const enrichedAssets = this.#enrichAssetsWithMetadata(
@@ -1838,7 +1848,8 @@ export class AssetsService {
           response,
         }))
         // Gracefully handle individual errors to avoid breaking the entire operation
-        .catch((error) => {
+        .catch(async (error) => {
+          await this.#snapClient.trackError(error as Error);
           this.#logger.warn(
             `Error fetching historical prices for ${from} to ${to} with time period ${timePeriod}. Returning null object.`,
             error,

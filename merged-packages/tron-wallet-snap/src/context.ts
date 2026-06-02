@@ -97,6 +97,7 @@ const assetsService = new AssetsService({
   tronHttpClient,
   priceApiClient,
   tokenApiClient,
+  snapClient,
 });
 
 const transactionsService = new TransactionsService({
