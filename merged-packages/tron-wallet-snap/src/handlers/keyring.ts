@@ -133,7 +133,7 @@ export class KeyringHandler implements Keyring {
       return sortBy(keyringAccounts, ['entropySource', 'index']);
     } catch (error) {
       this.#logger.error({ error }, 'Error listing accounts');
-      throw new Error('Error listing accounts');
+      throw new Error('Error listing accounts', { cause: error });
     }
   }
 
@@ -184,7 +184,9 @@ export class KeyringHandler implements Keyring {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error creating account');
-      throw new Error(`Error creating account: ${error.message}`);
+      throw new Error(`Error creating account: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 

@@ -91,6 +91,7 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
       | 'trackTransactionAdded'
       | 'trackTransactionApproved'
       | 'trackTransactionRejected'
+      | 'trackError'
     >
   >;
   mockState: MockState;
@@ -161,6 +162,7 @@ async function withConfirmationHandler<ReturnValue>(
       | 'trackTransactionAdded'
       | 'trackTransactionApproved'
       | 'trackTransactionRejected'
+      | 'trackError'
     >
   > = {
     getPreferences: jest.fn().mockResolvedValue({
@@ -180,6 +182,7 @@ async function withConfirmationHandler<ReturnValue>(
     trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
     trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
     trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
+    trackError: jest.fn(),
   };
 
   const mockState: MockState = {
@@ -337,16 +340,18 @@ describe('ConfirmationHandler', () => {
 
     it('throws InternalError when getPreferences fails', async () => {
       await withConfirmationHandler(async ({ handler, mockSnapClient }) => {
-        mockSnapClient.getPreferences.mockRejectedValue(
-          new Error('preferences unavailable'),
-        );
+        const error = new Error('preferences unavailable');
+
+        mockSnapClient.getPreferences.mockRejectedValue(error);
 
         await expect(
           handler.confirmClaimUnstakedTrx({
             account: mockAccount,
             scope: Network.Mainnet,
           }),
-        ).rejects.toThrow('Failed to retrieve Snap preferences.');
+        ).rejects.toThrow(
+          `Failed to retrieve Snap preferences: ${error.message}`,
+        );
       });
     });
 
