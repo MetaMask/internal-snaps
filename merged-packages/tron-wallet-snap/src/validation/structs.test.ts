@@ -63,6 +63,12 @@ describe('structs', () => {
       });
     });
 
+    it('includes the real parser reason when URL format is invalid', () => {
+      expect(() => assert('http:// example.com', UrlStruct)).toThrow(
+        'Invalid URL format: Invalid URL',
+      );
+    });
+
     it('rejects malicious URLs', () => {
       const maliciousUrls = [
         // XSS Attacks

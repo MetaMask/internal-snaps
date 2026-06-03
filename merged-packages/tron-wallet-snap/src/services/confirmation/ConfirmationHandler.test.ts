@@ -182,7 +182,7 @@ async function withConfirmationHandler<ReturnValue>(
     trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
     trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
     trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
-    trackError: jest.fn(),
+    trackError: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockState: MockState = {
@@ -508,6 +508,21 @@ describe('ConfirmationHandler', () => {
           null,
         );
       });
+    });
+
+    it('tracks the error', async () => {
+      await withConfirmationHandler(
+        async ({ handler, mockSnapClient, mockState }) => {
+          const error = new Error('state write failed');
+
+          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+          mockState.setKey.mockRejectedValue(error);
+
+          await handler.confirmTransactionRequest(defaultParams);
+
+          expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+        },
+      );
     });
   });
 

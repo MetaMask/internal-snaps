@@ -72,6 +72,7 @@ export class ConfirmationHandler {
     try {
       await this.#state.setKey(`mapInterfaceNameToId.${interfaceName}`, null);
     } catch (error) {
+      await this.#snapClient.trackError(error as Error);
       this.#logger.error({ error }, 'Failed to clear interface ID');
     }
   }

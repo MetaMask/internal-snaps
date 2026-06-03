@@ -167,9 +167,8 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
     }
 
     return true;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
-    return 'Invalid URL format';
+    return `Invalid URL format: ${(error as Error).message}`;
   }
 });
 
