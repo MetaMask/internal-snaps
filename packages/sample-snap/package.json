@@ -2,6 +2,14 @@
   "name": "@metamask/sample-snap",
   "version": "0.0.0",
   "description": "The 'Hello, world!' of MetaMask Snaps, now written in TypeScript",
+  "keywords": [
+    "Ethereum",
+    "MetaMask"
+  ],
+  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/sample-snap#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/internal-snaps/issues"
+  },
   "license": "(MIT-0 OR Apache-2.0)",
   "repository": {
     "type": "git",
@@ -22,6 +30,8 @@
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build",
     "build:clean": "yarn clean && yarn build",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/sample-snap",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/sample-snap",
     "clean": "rimraf dist",
     "lint": "yarn lint:eslint && yarn lint:misc --check",
     "lint:eslint": "eslint . --cache --ext js,ts",
@@ -50,13 +60,5 @@
   },
   "engines": {
     "node": "^18.18 || >=20"
-  },
-  "keywords": [
-    "Ethereum",
-    "MetaMask"
-  ],
-  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/sample-snap#readme",
-  "bugs": {
-    "url": "https://github.com/MetaMask/internal-snaps/issues"
   }
 }
