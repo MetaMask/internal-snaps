@@ -10,6 +10,6 @@ Each snap in this repository has its own README with installation and usage inst
 
 <!-- start package list -->
 
-_No published packages yet._
+
 
 <!-- end package list -->
