@@ -4,4 +4,4 @@
 # Note: Please keep this synchronized with the `teams.json` file in the repository root.
 # That file is used for some automated workflows, and maps controller to owning team(s).
 
-* @MetaMask/core-platform @MetaMask/network
+* @MetaMask/core-platform @MetaMask/networks
