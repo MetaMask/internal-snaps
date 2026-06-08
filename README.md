@@ -10,6 +10,4 @@ Each snap in this repository has its own README with installation and usage inst
 
 <!-- start package list -->
 
-
-
 <!-- end package list -->
