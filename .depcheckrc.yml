@@ -14,6 +14,7 @@ ignores:
   - 'eslint-interactive'
   - 'rimraf'
   - 'simple-git-hooks'
+  - 'ts-jest'
   - 'ts-node'
   - 'typedoc'
   # Ignore plugins for tools

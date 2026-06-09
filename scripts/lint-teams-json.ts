@@ -65,5 +65,5 @@ async function getPublicWorkspaces(): Promise<Workspace[]> {
     '--no-private',
   ]);
 
-  return stdout.split('\n').map((line) => JSON.parse(line));
+  return stdout ? stdout.split('\n').map((line) => JSON.parse(line)) : [];
 }
