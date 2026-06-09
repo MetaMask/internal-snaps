@@ -2,6 +2,7 @@
   "name": "@metamask/sample-snap",
   "version": "0.0.0",
   "description": "The 'Hello, world!' of MetaMask Snaps, now written in TypeScript",
+  "private": true,
   "keywords": [
     "Ethereum",
     "MetaMask"
