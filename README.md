@@ -10,4 +10,6 @@ Each snap in this repository has its own README with installation and usage inst
 
 <!-- start package list -->
 
+- [`@metamask/sample-snap`](packages/sample-snap)
+
 <!-- end package list -->
