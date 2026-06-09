@@ -1,0 +1,736 @@
+import { SnapError } from '@metamask/snaps-sdk';
+import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
+import { TronWeb } from 'tronweb';
+
+import { WalletService } from './WalletService';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+import { Network } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
+import {
+  TronMultichainErrors,
+  TronMultichainMethod,
+} from '../../handlers/keyring-types';
+import { mockLogger } from '../../utils/mockLogger';
+import type { AccountsService } from '../accounts/AccountsService';
+import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+
+const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
+
+/**
+ * Builds a mock TRON block response.
+ *
+ * @param options - The block options.
+ * @param options.number - The block number.
+ * @param options.timestamp - The block timestamp.
+ * @param options.hashSegment - The hash segment used for ref_block_hash.
+ * @returns A mock TRON block response.
+ */
+function createBlock({
+  number,
+  timestamp,
+  hashSegment = '1122334455667788',
+}: {
+  number: number;
+  timestamp: number;
+  hashSegment?: string;
+}) {
+  return {
+    blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    block_header: {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      raw_data: {
+        number,
+        timestamp,
+      },
+    },
+  };
+}
+
+const getRefBlockBytes = (number: number) =>
+  number.toString(16).slice(-4).padStart(4, '0');
+
+/**
+ * Helper function to convert string to base64.
+ *
+ * @param str - The string to convert.
+ * @returns Base64 encoded string.
+ */
+function toBase64(str: string): string {
+  return bytesToBase64(stringToBytes(str));
+}
+
+/**
+ * Helper function to convert string to hex.
+ *
+ * @param str - The string to convert.
+ * @returns Hex encoded string (without 0x prefix).
+ */
+function toHex(str: string): string {
+  return bytesToHex(stringToBytes(str)).slice(2);
+}
+
+describe('WalletService', () => {
+  const TEST_ADDRESS = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+  const ALT_OWNER_HEX = '41a614f803b6fd780986a42c78ec9c7f77e6ded13c';
+  const ALT_ADDRESS = TronWeb.address.fromHex(ALT_OWNER_HEX);
+  const mockTronKeypair = {
+    privateKeyBytes: new Uint8Array(32),
+    publicKeyBytes: new Uint8Array(33),
+    privateKeyHex: 'abcd1234privatekey',
+    address: TEST_ADDRESS,
+  };
+
+  const mockAccount: TronKeyringAccount = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    address: TEST_ADDRESS,
+    options: {},
+    methods: ['signMessage', 'signTransaction'],
+    type: 'tron:eoa',
+    scopes: [Network.Mainnet, Network.Shasta],
+    entropySource: 'entropy-source-1' as any,
+    derivationPath: "m/44'/195'/0'/0/0",
+    index: 0,
+  };
+
+  let walletService: WalletService;
+  let mockAccountsService: jest.Mocked<AccountsService>;
+  let mockTronWebFactory: jest.Mocked<TronWebFactory>;
+  let mockTronWeb: any;
+
+  beforeEach(() => {
+    mockTronWeb = {
+      trx: {
+        signMessageV2: jest.fn().mockReturnValue('0xsignature123'),
+        getCurrentBlock: jest.fn().mockResolvedValue(
+          createBlock({
+            number: 200_000,
+            timestamp: MOCK_BLOCK_TIMESTAMP,
+          }),
+        ),
+        getBlockByNumber: jest.fn(),
+        sign: jest.fn().mockResolvedValue({
+          signature: ['abcd1234signature'],
+        }),
+      },
+      utils: {
+        deserializeTx: {
+          deserializeTransaction: jest.fn().mockReturnValue({
+            contract: [
+              {
+                type: 'TransferContract',
+                parameter: {
+                  type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+                  value: {
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    owner_address: TronWeb.address.toHex(TEST_ADDRESS),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    to_address: '41123456',
+                    amount: 1000000,
+                  },
+                },
+              },
+            ],
+            ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
+            ref_block_hash: '1122334455667788', // eslint-disable-line @typescript-eslint/naming-convention
+            expiration: MOCK_BLOCK_TIMESTAMP + 45_000,
+            timestamp: MOCK_BLOCK_TIMESTAMP,
+          }),
+        },
+        transaction: {
+          txJsonToPb: jest
+            .fn()
+            .mockImplementation((transaction) => transaction),
+          txPbToRawDataHex: jest.fn().mockReturnValue('refreshed-raw-data-hex'),
+          txPbToTxID: jest.fn().mockReturnValue('0xrefreshed-tx-id'),
+        },
+      },
+      isAddress: jest.fn().mockReturnValue(true),
+    };
+
+    mockAccountsService = {
+      deriveTronKeypair: jest.fn().mockResolvedValue(mockTronKeypair),
+    } as any;
+
+    mockTronWebFactory = {
+      createClient: jest.fn().mockReturnValue(mockTronWeb),
+    } as any;
+
+    walletService = new WalletService({
+      logger: mockLogger,
+      accountsService: mockAccountsService,
+      tronWebFactory: mockTronWebFactory,
+      transactionExpirationRefresherService: {
+        ensureFreshMetadata: jest.fn(async ({ transaction }) => transaction),
+      } as unknown as TransactionExpirationRefresherService,
+    });
+  });
+
+  describe('handleKeyringRequest', () => {
+    it('routes signMessage requests correctly', async () => {
+      const params = {
+        address: TEST_ADDRESS,
+        message: toBase64('Hello World'),
+      };
+
+      const result = await walletService.handleKeyringRequest({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        method: TronMultichainMethod.SignMessage,
+        params,
+      });
+
+      expect(result).toStrictEqual({ signature: '0xsignature123' });
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: mockAccount.entropySource,
+        derivationPath: mockAccount.derivationPath,
+      });
+    });
+
+    it('routes signTransaction requests correctly', async () => {
+      const params = {
+        address: TEST_ADDRESS,
+        transaction: {
+          rawDataHex: toHex('transaction-data'),
+          type: 'TransferContract',
+        },
+      };
+
+      const result = await walletService.handleKeyringRequest({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        method: TronMultichainMethod.SignTransaction,
+        params,
+      });
+
+      expect(result).toStrictEqual({ signature: '0xabcd1234signature' });
+    });
+
+    it('throws SnapError for unsupported methods', async () => {
+      await expect(
+        walletService.handleKeyringRequest({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          method: 'unsupportedMethod' as any,
+          params: {},
+        }),
+      ).rejects.toThrow(SnapError);
+    });
+
+    it('handles user rejection errors', async () => {
+      mockTronWeb.trx.signMessageV2.mockImplementation(() => {
+        const error: any = new Error('User rejected');
+        error.code = 4100;
+        throw error;
+      });
+
+      await expect(
+        walletService.handleKeyringRequest({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          method: TronMultichainMethod.SignMessage,
+          params: {
+            address: TEST_ADDRESS,
+            message: toBase64('Hello'),
+          },
+        }),
+      ).rejects.toThrow(TronMultichainErrors.UserRejected.message);
+    });
+
+    it('handles invalid parameter errors', async () => {
+      await expect(
+        walletService.handleKeyringRequest({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          method: TronMultichainMethod.SignMessage,
+          params: {
+            // Missing required fields
+          },
+        }),
+      ).rejects.toThrow('Expected a');
+    });
+  });
+
+  describe('signMessage', () => {
+    it('signs a message successfully', async () => {
+      const params = {
+        address: TEST_ADDRESS,
+        message: toBase64('Hello World'),
+      };
+
+      const result = await walletService.signMessage({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params,
+      });
+
+      expect(result).toStrictEqual({ signature: '0xsignature123' });
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: mockAccount.entropySource,
+        derivationPath: mockAccount.derivationPath,
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        mockTronKeypair.privateKeyHex,
+      );
+      expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+        'Hello World',
+        mockTronKeypair.privateKeyHex,
+      );
+    });
+
+    it('decodes base64 message before signing', async () => {
+      const originalMessage = 'Test Message 123';
+      const params = {
+        address: TEST_ADDRESS,
+        message: toBase64(originalMessage),
+      };
+
+      await walletService.signMessage({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params,
+      });
+
+      expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+        originalMessage,
+        expect.any(String),
+      );
+    });
+
+    it('throws error for invalid params', async () => {
+      await expect(
+        walletService.signMessage({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          params: {
+            // Missing required fields
+          },
+        }),
+      ).rejects.toThrow('Expected a');
+    });
+  });
+
+  describe('signTransaction', () => {
+    it('signs a transaction successfully', async () => {
+      const transactionData = 'transaction-data-bytes';
+      const params = {
+        address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+        transaction: {
+          rawDataHex: toHex(transactionData),
+          type: 'TransferContract',
+        },
+      };
+
+      const result = await walletService.signTransaction({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params,
+      });
+
+      expect(result).toStrictEqual({ signature: '0xabcd1234signature' });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        mockTronKeypair.privateKeyHex,
+      );
+    });
+
+    it('deserializes transaction from hex', async () => {
+      const params = {
+        address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+        transaction: {
+          rawDataHex: toHex('tx-data'),
+          type: 'TransferContract',
+        },
+      };
+
+      await walletService.signTransaction({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params,
+      });
+
+      expect(
+        mockTronWeb.utils.deserializeTx.deserializeTransaction,
+      ).toHaveBeenCalled();
+      expect(mockTronWeb.trx.sign).toHaveBeenCalled();
+    });
+
+    it('refreshes transaction metadata before signing stale transactions', async () => {
+      walletService = new WalletService({
+        logger: mockLogger,
+        accountsService: mockAccountsService,
+        tronWebFactory: mockTronWebFactory,
+        transactionExpirationRefresherService:
+          new TransactionExpirationRefresherService({
+            tronWebFactory: mockTronWebFactory,
+          }),
+      });
+      mockTronWeb.trx.getCurrentBlock.mockResolvedValue(
+        createBlock({
+          number: 200_000,
+          timestamp: MOCK_BLOCK_TIMESTAMP,
+          hashSegment: '0011223344556677',
+        }),
+      );
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+        contract: [
+          {
+            type: 'TransferContract',
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+              value: {
+                owner_address: TronWeb.address.toHex(TEST_ADDRESS), // eslint-disable-line @typescript-eslint/naming-convention
+                to_address: '41123456', // eslint-disable-line @typescript-eslint/naming-convention
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
+        ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+        expiration: MOCK_BLOCK_TIMESTAMP - 1,
+        timestamp: MOCK_BLOCK_TIMESTAMP - 60_000,
+      });
+
+      await walletService.signTransaction({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params: {
+          address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
+        },
+      });
+
+      const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+
+      expect(signedTransaction.raw_data).toStrictEqual(
+        expect.objectContaining({
+          ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
+          ref_block_hash: '0011223344556677', // eslint-disable-line @typescript-eslint/naming-convention
+          expiration: MOCK_BLOCK_TIMESTAMP + 60_000,
+          timestamp: MOCK_BLOCK_TIMESTAMP,
+        }),
+      );
+      expect(signedTransaction.raw_data_hex).toBe('refreshed-raw-data-hex');
+      expect(signedTransaction.txID).toBe('refreshed-tx-id');
+    });
+
+    it('handles transaction format errors', async () => {
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockImplementation(
+        () => {
+          throw new Error('Failed to deserialize transaction');
+        },
+      );
+
+      await expect(
+        walletService.signTransaction({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          params: {
+            address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+            transaction: {
+              rawDataHex: toHex('valid-but-unparseable-transaction-data'),
+              type: 'TransferContract',
+            },
+          },
+        }),
+      ).rejects.toThrow('Failed to deserialize transaction');
+    });
+
+    it('throws error for invalid params', async () => {
+      await expect(
+        walletService.signTransaction({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          params: {
+            // Missing required fields
+          },
+        }),
+      ).rejects.toThrow('Expected');
+    });
+
+    it('prefixes signature with 0x', async () => {
+      mockTronWeb.trx.sign.mockResolvedValue({
+        signature: ['abcdef123456'],
+      });
+
+      const result = await walletService.signTransaction({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params: {
+          address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
+        },
+      });
+
+      expect(result.signature).toMatch(/^0x/u);
+      expect(result.signature).toBe('0xabcdef123456');
+    });
+
+    it('handles empty signature array', async () => {
+      mockTronWeb.trx.sign.mockResolvedValue({
+        signature: [],
+      });
+
+      const result = await walletService.signTransaction({
+        account: mockAccount,
+        scope: Network.Mainnet,
+        params: {
+          address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
+        },
+      });
+
+      expect(result.signature).toBe('0x');
+    });
+
+    it('rejects transactions whose owner_address does not match the signer', async () => {
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+        contract: [
+          {
+            type: 'TransferContract',
+            parameter: {
+              value: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                owner_address: ALT_OWNER_HEX,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                to_address: '41123456',
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+      });
+
+      await expect(
+        walletService.signTransaction({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          params: {
+            address: TEST_ADDRESS,
+            transaction: {
+              rawDataHex: toHex('transaction-data'),
+              type: 'TransferContract',
+            },
+          },
+        }),
+      ).rejects.toThrow(
+        `Transaction owner_address (${ALT_ADDRESS}) does not match derived signer address (${TEST_ADDRESS})`,
+      );
+    });
+
+    it('rejects when the resolved account address does not match the derived signer', async () => {
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        ...mockTronKeypair,
+        address: ALT_ADDRESS,
+      });
+
+      await expect(
+        walletService.signTransaction({
+          account: mockAccount,
+          scope: Network.Mainnet,
+          params: {
+            address: TEST_ADDRESS,
+            transaction: {
+              rawDataHex: toHex('transaction-data'),
+              type: 'TransferContract',
+            },
+          },
+        }),
+      ).rejects.toThrow(
+        `Transaction owner_address (${TEST_ADDRESS}) does not match derived signer address (${ALT_ADDRESS})`,
+      );
+    });
+  });
+
+  describe('resolveAccountAddress', () => {
+    const keyringAccounts = [
+      {
+        ...mockAccount,
+        address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+        scopes: [Network.Mainnet, Network.Shasta],
+      },
+      {
+        ...mockAccount,
+        id: '987e6543-e89b-42d3-a456-426614174999',
+        address: 'TGehVcNhud84JDCGrNHKVz9jEAVKUpbuiv',
+        scopes: [Network.Mainnet],
+      },
+    ];
+
+    it('resolves valid Tron address for signMessage', async () => {
+      const scope = Network.Mainnet;
+      const address = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signMessage',
+        params: { address, message: toBase64('test') },
+      };
+
+      mockTronWeb.isAddress.mockReturnValue(true);
+
+      const result = await walletService.resolveAccountAddress(
+        keyringAccounts,
+        scope,
+        request,
+      );
+
+      expect(result).toStrictEqual({ address: `${scope}:${address}` });
+      expect(mockTronWeb.isAddress).toHaveBeenCalledWith(address);
+    });
+
+    it('resolves valid Tron address for signTransaction', async () => {
+      const scope = Network.Mainnet;
+      const address = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signTransaction',
+        params: {
+          scope,
+          address,
+          transaction: {
+            rawDataHex: toHex('transaction-data'),
+            type: 'TransferContract',
+          },
+        },
+      };
+
+      mockTronWeb.isAddress.mockReturnValue(true);
+
+      const result = await walletService.resolveAccountAddress(
+        keyringAccounts,
+        scope,
+        request,
+      );
+
+      expect(result).toStrictEqual({ address: `${scope}:${address}` });
+      expect(mockTronWeb.isAddress).toHaveBeenCalledWith(address);
+    });
+
+    it('throws error for invalid address', async () => {
+      const scope = Network.Mainnet;
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signMessage',
+        params: { address: 'invalid-address', message: toBase64('test') },
+      };
+
+      mockTronWeb.isAddress.mockReturnValue(false);
+
+      await expect(
+        walletService.resolveAccountAddress(keyringAccounts, scope, request),
+      ).rejects.toThrow('Invalid Tron address');
+    });
+
+    it('throws error for missing address parameter', async () => {
+      const scope = Network.Mainnet;
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signMessage',
+        params: { message: toBase64('test') },
+      };
+
+      await expect(
+        walletService.resolveAccountAddress(keyringAccounts, scope, request),
+      ).rejects.toThrow('Address parameter is required');
+    });
+
+    it('throws error for account not in keyring', async () => {
+      const scope = Network.Mainnet;
+      const address = 'TUnknownAddressNotInKeyring1234567890';
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signMessage',
+        params: { address, message: toBase64('test') },
+      };
+
+      mockTronWeb.isAddress.mockReturnValue(true);
+
+      await expect(
+        walletService.resolveAccountAddress(keyringAccounts, scope, request),
+      ).rejects.toThrow('Account not found in keyring');
+    });
+
+    it('throws error for no accounts with scope', async () => {
+      const scope = Network.Nile;
+      const address = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signMessage',
+        params: { address, message: toBase64('test') },
+      };
+
+      await expect(
+        walletService.resolveAccountAddress(keyringAccounts, scope, request),
+      ).rejects.toThrow('No accounts with scope');
+    });
+
+    it('throws error for unsupported method', async () => {
+      const scope = Network.Mainnet;
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'unsupportedMethod',
+        params: { address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8' },
+      };
+
+      await expect(
+        walletService.resolveAccountAddress(keyringAccounts, scope, request),
+      ).rejects.toThrow('Expected one of');
+    });
+
+    it('resolves address for different networks', async () => {
+      const address = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'signMessage',
+        params: { address, message: toBase64('test') },
+      };
+
+      mockTronWeb.isAddress.mockReturnValue(true);
+
+      const shastaResult = await walletService.resolveAccountAddress(
+        keyringAccounts,
+        Network.Shasta,
+        request,
+      );
+
+      expect(shastaResult).toStrictEqual({
+        address: `${Network.Shasta}:${address}`,
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Shasta,
+      );
+    });
+
+    it('throws error for missing method', async () => {
+      const scope = Network.Mainnet;
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        params: { address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8' },
+      } as any;
+
+      await expect(
+        walletService.resolveAccountAddress(keyringAccounts, scope, request),
+      ).rejects.toThrow('Expected one of');
+    });
+  });
+});

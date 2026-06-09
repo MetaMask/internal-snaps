@@ -1,0 +1,107 @@
+{
+  "locale": "vi",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Yêu cầu giao dịch"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Thay đổi ước tính"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Thay đổi ước tính là những gì có thể xảy ra nếu bạn thực hiện giao dịch này. Đây chỉ là dự đoán, không phải là đảm bảo."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Bạn gửi"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Băng thông đã sử dụng"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Bạn nhận được"
+    },
+    "confirmation.origin": {
+      "message": "Yêu cầu từ"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Đây là trang web yêu cầu xác nhận của bạn."
+    },
+    "confirmation.from": {
+      "message": "Từ"
+    },
+    "confirmation.to": {
+      "message": "Đến"
+    },
+    "confirmation.network": {
+      "message": "Mạng"
+    },
+    "confirmation.transactionFee": {
+      "message": "Phí mạng"
+    },
+    "confirmation.confirmButton": {
+      "message": "Xác nhận"
+    },
+    "confirmation.cancelButton": {
+      "message": "Hủy"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Ký tin nhắn"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Tin nhắn"
+    },
+    "confirmation.account": {
+      "message": "Tài khoản"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Ký giao dịch"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Thay đổi ước tính không khả dụng"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Không có thay đổi ước tính"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Do lỗi, chúng tôi không thể kiểm tra cảnh báo bảo mật."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Chỉ tiếp tục nếu bạn tin tưởng mọi địa chỉ liên quan."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Giao dịch này đã bị hoàn nguyên trong quá trình mô phỏng."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Đây là một yêu cầu lừa đảo"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Nếu bạn phê duyệt yêu cầu này, một bên thứ ba được biết đến với các vụ lừa đảo sẽ lấy tất cả tài sản của bạn."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Tìm hiểu thêm"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Tư vấn bảo mật bởi"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Đã xảy ra lỗi không xác định"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Số dư không đủ"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Giao dịch không hợp lệ"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Không đủ tiền"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Địa chỉ không hợp lệ"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Phương thức không được hỗ trợ"
+    }
+  }
+}

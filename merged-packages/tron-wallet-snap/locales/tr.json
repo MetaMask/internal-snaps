@@ -1,0 +1,107 @@
+{
+  "locale": "tr",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "İşlem talebi"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Tahmini değişiklikler"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Tahmini değişiklikler bu işlemi gerçekleştirirseniz meydana gelebilecek değişikliklerdir. Bu bir garanti değil, sadece bir tahmindir."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Gönderdiğiniz"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Kullanılan bant genişliği"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Aldığınız"
+    },
+    "confirmation.origin": {
+      "message": "Talebi gönderen"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Bu, onayınızı isteyen sitedir."
+    },
+    "confirmation.from": {
+      "message": "Gönderen"
+    },
+    "confirmation.to": {
+      "message": "Alıcı"
+    },
+    "confirmation.network": {
+      "message": "Ağ"
+    },
+    "confirmation.transactionFee": {
+      "message": "Ağ ücreti"
+    },
+    "confirmation.confirmButton": {
+      "message": "Onayla"
+    },
+    "confirmation.cancelButton": {
+      "message": "İptal"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Mesajı imzala"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mesaj"
+    },
+    "confirmation.account": {
+      "message": "Hesap"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "İşlemi imzala"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Tahmini değişiklikler mevcut değil"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Tahmini değişiklik yok"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Bir hata nedeniyle güvenlik uyarılarını kontrol edemedik."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Yalnızca ilgili her adrese güveniyorsanız devam edin."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Bu işlem simülasyon sırasında geri alındı."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Bu aldatıcı bir istektir"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Bu isteği onaylarsanız, dolandırıcılıkla bilinen bir üçüncü taraf tüm varlıklarınızı alacaktır."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Daha fazla bilgi"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Güvenlik tavsiyesi sağlayan"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Bilinmeyen bir hata oluştu"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Yetersiz bakiye"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Geçersiz işlem"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Yetersiz fon"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Geçersiz adres"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Desteklenmeyen yöntem"
+    }
+  }
+}

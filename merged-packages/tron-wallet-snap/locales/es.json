@@ -1,0 +1,110 @@
+{
+  "locale": "es",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Solicitud de transacción"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Cambios estimados"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Los cambios estimados son los que podrían producirse si sigue adelante con esta transacción. Esto es solo una predicción, no una garantía."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Usted envía"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Ancho de banda consumido"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Usted recibe"
+    },
+    "confirmation.origin": {
+      "message": "Solicitud de"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Este es el sitio que solicita su confirmación."
+    },
+    "confirmation.from": {
+      "message": "De"
+    },
+    "confirmation.to": {
+      "message": "A"
+    },
+    "confirmation.network": {
+      "message": "Red"
+    },
+    "confirmation.transactionFee": {
+      "message": "Tarifa de red"
+    },
+    "confirmation.confirmButton": {
+      "message": "Confirmar"
+    },
+    "confirmation.cancelButton": {
+      "message": "Cancelar"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Firmar mensaje"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mensaje"
+    },
+    "confirmation.account": {
+      "message": "Cuenta"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Firmar transacción"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Los cambios estimados no están disponibles"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Sin cambios estimados"
+    },
+    "confirmation.estimatedChanges.unsupportedContract": {
+      "message": "Contrato no compatible con simulación"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Debido a un error, no pudimos verificar alertas de seguridad."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Solo continúe si confía en cada dirección involucrada."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Esta transacción se revirtió durante la simulación."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Esta es una solicitud engañosa"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Si aprueba esta solicitud, un tercero conocido por estafas tomará todos sus activos."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Más información"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Asesoramiento de seguridad por"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Ocurrió un error desconocido"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Saldo insuficiente"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transacción inválida"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Fondos insuficientes"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Dirección inválida"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Método no compatible"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "locale": "ru",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Запрос транзакции"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Прогнозируемые изменения"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Прогнозируемые изменения — это то, что может произойти, если вы завершите эту транзакцию. Это всего лишь прогноз, а не гарантия."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Вы отправляете"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Использованная пропускная способность"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Вы получаете"
+    },
+    "confirmation.origin": {
+      "message": "Запрос от"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Это сайт, запрашивающий ваше подтверждение."
+    },
+    "confirmation.from": {
+      "message": "От"
+    },
+    "confirmation.to": {
+      "message": "Кому"
+    },
+    "confirmation.network": {
+      "message": "Сеть"
+    },
+    "confirmation.transactionFee": {
+      "message": "Комиссия сети"
+    },
+    "confirmation.confirmButton": {
+      "message": "Подтвердить"
+    },
+    "confirmation.cancelButton": {
+      "message": "Отмена"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Подписать сообщение"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Сообщение"
+    },
+    "confirmation.account": {
+      "message": "Аккаунт"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Подписать транзакцию"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Прогнозируемые изменения недоступны"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Нет прогнозируемых изменений"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Из-за ошибки мы не смогли проверить предупреждения безопасности."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Продолжайте только если доверяете каждому адресу."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Эта транзакция была отменена во время симуляции."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Это обманчивый запрос"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Если вы одобрите этот запрос, третья сторона, известная мошенничеством, заберет все ваши активы."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Узнать больше"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Совет по безопасности от"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Произошла неизвестная ошибка"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Недостаточный баланс"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Недействительная транзакция"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Недостаточно средств"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Неверный адрес"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Неподдерживаемый метод"
+    }
+  }
+}

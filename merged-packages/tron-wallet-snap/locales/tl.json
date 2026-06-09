@@ -1,0 +1,107 @@
+{
+  "locale": "tl",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Hiling na transaksyon"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Tinatayang mga pagbabago"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Ang tinatayang mga pagbabago ay ang maaaring mangyari kung magpapatuloy ka sa transaksyong ito. Ito ay isang hula lamang, hindi isang garantiya."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Nagpadala ka ng"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Ginamit na bandwidth"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Nakatanggap ka ng"
+    },
+    "confirmation.origin": {
+      "message": "Kahilingan mula sa/kay"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Ito ang site na humihiling ng iyong kumpirmasyon."
+    },
+    "confirmation.from": {
+      "message": "Mula sa"
+    },
+    "confirmation.to": {
+      "message": "Papunta sa"
+    },
+    "confirmation.network": {
+      "message": "Network"
+    },
+    "confirmation.transactionFee": {
+      "message": "Bayad sa network"
+    },
+    "confirmation.confirmButton": {
+      "message": "Kumpirmahin"
+    },
+    "confirmation.cancelButton": {
+      "message": "Kanselahin"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Pirmahan ang mensahe"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mensahe"
+    },
+    "confirmation.account": {
+      "message": "Account"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Pirmahan ang transaksyon"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Hindi available ang tinatayang mga pagbabago"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Walang tinatayang mga pagbabago"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Dahil sa isang error, hindi namin masuri ang mga alerto sa seguridad."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Magpatuloy lamang kung nagtitiwala ka sa bawat address na kasangkot."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Ang transaksyong ito ay na-revert sa panahon ng simulation."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Ito ay isang mapanlinlang na kahilingan"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Kung aprubahan mo ang kahilingang ito, isang third party na kilala sa mga scam ay kukuha ng lahat ng iyong assets."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Matuto pa"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Payo sa seguridad mula sa"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Naganap ang hindi kilalang error"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Kulang ang balanse"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Hindi wastong transaksyon"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Kulang ang pondo"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Hindi wastong address"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Hindi suportadong paraan"
+    }
+  }
+}
