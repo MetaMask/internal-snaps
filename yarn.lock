@@ -1684,7 +1684,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/auto-changelog@npm:^6.1.1":
+"@metamask/auto-changelog@npm:^6.1.0, @metamask/auto-changelog@npm:^6.1.1":
   version: 6.1.1
   resolution: "@metamask/auto-changelog@npm:6.1.1"
   dependencies:
@@ -2786,6 +2786,7 @@ __metadata:
   resolution: "@metamask/sample-snap@workspace:packages/sample-snap"
   dependencies:
     "@jest/globals": "npm:^29.5.0"
+    "@metamask/auto-changelog": "npm:^6.1.0"
     "@metamask/snaps-cli": "npm:^8.3.0"
     "@metamask/snaps-jest": "npm:^9.8.0"
     "@metamask/snaps-sdk": "npm:~10.3.0"
