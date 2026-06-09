@@ -1,0 +1,107 @@
+{
+  "locale": "hi",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "ट्रांसेक्शन रिक्वेस्ट"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "अनुमानित बदलाव"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "अगर आप यह ट्रांसेक्शन करते हैं तो अनुमानित परिवर्तन हो सकते हैं। यह सिर्फ एक प्रेडिक्शन है, कोई गारंटी नहीं।"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "आप भेजते हैं"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "खपत की गई बैंडविड्थ"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "आप प्राप्त करते हैं"
+    },
+    "confirmation.origin": {
+      "message": "इनसे मिला अनुरोध"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "यह वह साइट है जो आपकी पुष्टि मांग रही है।"
+    },
+    "confirmation.from": {
+      "message": "से"
+    },
+    "confirmation.to": {
+      "message": "को"
+    },
+    "confirmation.network": {
+      "message": "नेटवर्क"
+    },
+    "confirmation.transactionFee": {
+      "message": "नेटवर्क फीस"
+    },
+    "confirmation.confirmButton": {
+      "message": "कन्फर्म करें"
+    },
+    "confirmation.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "confirmation.signMessage.title": {
+      "message": "संदेश साइन करें"
+    },
+    "confirmation.signMessage.message": {
+      "message": "संदेश"
+    },
+    "confirmation.account": {
+      "message": "अकाउंट"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "ट्रांसेक्शन साइन करें"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "अनुमानित बदलाव उपलब्ध नहीं हैं"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "कोई अनुमानित बदलाव नहीं"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "एक त्रुटि के कारण, हम सुरक्षा अलर्ट की जांच नहीं कर सके।"
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "केवल तभी जारी रखें जब आप हर शामिल पते पर भरोसा करते हैं।"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "यह ट्रांसेक्शन सिमुलेशन के दौरान वापस कर दिया गया था।"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "यह एक धोखाधड़ी वाला अनुरोध है"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "यदि आप इस अनुरोध को स्वीकृत करते हैं, तो घोटालों के लिए जानी जाने वाली एक तीसरी पार्टी आपकी सभी संपत्तियां ले लेगी।"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "और जानें"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "सुरक्षा सलाह द्वारा"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "एक अज्ञात त्रुटि हुई"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "अपर्याप्त शेष राशि"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "अमान्य ट्रांसेक्शन"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "अपर्याप्त धनराशि"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "अमान्य पता"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "असमर्थित विधि"
+    }
+  }
+}

@@ -1,0 +1,1316 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+import { FeeType } from '@metamask/keyring-api';
+import { BigNumber } from 'bignumber.js';
+import { TronWeb } from 'tronweb';
+import type { Transaction, TransferContract } from 'tronweb/lib/esm/types';
+
+import { SendService } from './SendService';
+import { FEE_LIMIT, Network, Networks } from '../../constants';
+import type { AssetEntity } from '../../entities/assets';
+import { SendErrorCodes } from '../../handlers/clientRequest/types';
+import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { mockLogger } from '../../utils/mockLogger';
+import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+
+describe('SendService', () => {
+  type MockTransferContract =
+    Transaction<TransferContract>['raw_data']['contract'][number];
+
+  type MockTransferTransaction = Transaction<TransferContract> & {
+    raw_data: Omit<Transaction<TransferContract>['raw_data'], 'contract'> & {
+      contract: [MockTransferContract];
+    };
+  };
+
+  describe('signAndSendTransaction', () => {
+    const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+    const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+    const TEST_OWNER_HEX = '41a614f803b6fd780986a42c78ec9c7f77e6ded13c';
+    const TEST_FROM_ADDRESS = TronWeb.address.fromHex(TEST_OWNER_HEX);
+    const ALT_OWNER_HEX = '41bace09b0c75ff01da2cb86cf05bc0d6d1af21f5d';
+    const ALT_ADDRESS = TronWeb.address.fromHex(ALT_OWNER_HEX);
+
+    let sendService: SendService;
+    let mockAccountsService: any;
+    let mockAssetsService: any;
+    let mockTronWebFactory: any;
+    let mockFeeCalculatorService: any;
+    let mockSnapClient: any;
+    let mockTronWeb: any;
+    let mockTransactionExpirationRefresherService: any;
+
+    const createMockTransaction = (ownerAddress = TEST_OWNER_HEX) => ({
+      visible: false,
+      txID: 'mock-tx-id',
+      raw_data: {
+        contract: [
+          {
+            type: 'TransferContract',
+            parameter: {
+              value: {
+                owner_address: ownerAddress,
+                to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+      },
+      raw_data_hex: 'mock-hex',
+    });
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      mockAccountsService = {
+        findByIdOrThrow: jest.fn().mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: TEST_FROM_ADDRESS,
+          type: 'tron:eoa',
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        }),
+        deriveTronKeypair: jest.fn().mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: TEST_FROM_ADDRESS,
+        }),
+      };
+
+      mockAssetsService = {
+        getAssetsByAccountId: jest.fn(),
+      };
+
+      mockTronWeb = {
+        trx: {
+          sign: jest.fn().mockResolvedValue({
+            ...createMockTransaction(),
+            signature: ['test-signature'],
+          }),
+          sendRawTransaction: jest.fn().mockResolvedValue({
+            result: true,
+            txid: 'broadcast-tx-id',
+          }),
+        },
+      };
+
+      mockTronWebFactory = {
+        createClient: jest.fn().mockReturnValue(mockTronWeb),
+      };
+
+      mockFeeCalculatorService = {
+        computeFee: jest.fn(),
+      };
+
+      mockSnapClient = {
+        trackTransactionSubmitted: jest.fn(),
+        scheduleBackgroundEvent: jest.fn(),
+      };
+
+      mockTransactionExpirationRefresherService = {
+        ensureFreshMetadata: jest.fn(
+          async ({ transaction }: { transaction: unknown }) => transaction,
+        ),
+      };
+
+      sendService = new SendService({
+        accountsService: mockAccountsService,
+        assetsService: mockAssetsService,
+        tronWebFactory: mockTronWebFactory,
+        feeCalculatorService: mockFeeCalculatorService,
+        logger: mockLogger,
+        snapClient: mockSnapClient,
+        transactionExpirationRefresherService:
+          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+      });
+    });
+
+    it('signs, broadcasts, and tracks a transaction when signer matches owner_address', async () => {
+      const transaction = createMockTransaction() as any;
+
+      const result = await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction,
+      });
+
+      expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
+        TEST_ACCOUNT_ID,
+      );
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: 'test-entropy',
+        derivationPath: [],
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        'test-private-key',
+      );
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(transaction);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          signature: ['test-signature'],
+        }),
+      );
+      expect(mockSnapClient.trackTransactionSubmitted).toHaveBeenCalledWith({
+        origin: 'MetaMask',
+        accountType: 'tron:eoa',
+        chainIdCaip: Network.Mainnet,
+      });
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: 'broadcast-tx-id',
+          scope: Network.Mainnet,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+        },
+        duration: 'PT1S',
+      });
+      expect(result).toStrictEqual({
+        result: true,
+        txid: 'broadcast-tx-id',
+      });
+    });
+
+    it('rejects transactions whose owner_address does not match the signer', async () => {
+      await expect(
+        sendService.signAndSendTransaction({
+          scope: Network.Mainnet,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: createMockTransaction(ALT_OWNER_HEX) as any,
+        }),
+      ).rejects.toThrow(
+        `Transaction owner_address (${ALT_ADDRESS}) does not match derived signer address (${TEST_FROM_ADDRESS})`,
+      );
+
+      expect(mockTronWeb.trx.sign).not.toHaveBeenCalled();
+      expect(mockTronWeb.trx.sendRawTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateSend', () => {
+    let sendService: SendService;
+    let mockAccountsService: any;
+    let mockAssetsService: any;
+    let mockTronWebFactory: any;
+    let mockFeeCalculatorService: any;
+    let mockSnapClient: any;
+    let mockTronWeb: any;
+    let mockTransactionExpirationRefresherService: {
+      ensureFreshMetadata: jest.Mock;
+    };
+
+    const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+    const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+    const TEST_FROM_ADDRESS = 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT';
+
+    const scope = Network.Mainnet;
+    const nativeTokenId = Networks[scope].nativeToken.id;
+    const bandwidthId = Networks[scope].bandwidth.id;
+    const energyId = Networks[scope].energy.id;
+
+    const createNativeAsset = (): AssetEntity =>
+      ({
+        assetType: nativeTokenId,
+        keyringAccountId: TEST_ACCOUNT_ID,
+        network: scope,
+        symbol: 'TRX',
+        decimals: 6,
+        rawAmount: '0',
+        uiAmount: '0',
+        iconUrl: '',
+      }) as AssetEntity;
+
+    const createTrc20Asset = (): AssetEntity =>
+      ({
+        assetType: `${scope}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
+        keyringAccountId: TEST_ACCOUNT_ID,
+        network: scope,
+        symbol: 'USDT',
+        decimals: 6,
+        rawAmount: '0',
+        uiAmount: '0',
+        iconUrl: '',
+      }) as AssetEntity;
+
+    const createMockTransaction = (): MockTransferTransaction => ({
+      visible: false,
+      txID: 'mock-tx-id',
+      raw_data: {
+        contract: [
+          {
+            type: 'TransferContract' as MockTransferContract['type'],
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
+              value: {
+                owner_address: `41${'a'.repeat(40)}`,
+                to_address: `41${'b'.repeat(40)}`,
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '0000',
+        ref_block_hash: '0000000000000000',
+        expiration: 0,
+        timestamp: 0,
+      },
+      raw_data_hex: 'mock-hex',
+    });
+
+    const createBlock = ({
+      number,
+      timestamp,
+      hashSegment = '1122334455667788',
+    }: {
+      number: number;
+      timestamp: number;
+      hashSegment?: string;
+    }) => ({
+      blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
+      block_header: {
+        raw_data: {
+          number,
+          timestamp,
+        },
+      },
+    });
+
+    const getRefBlockBytes = (number: number) =>
+      number.toString(16).slice(-4).padStart(4, '0');
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      mockAccountsService = {
+        deriveTronKeypair: jest.fn(),
+        findByIdOrThrow: jest.fn().mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: TEST_FROM_ADDRESS,
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        }),
+      };
+
+      mockAssetsService = {
+        getAssetsByAccountId: jest.fn(),
+      };
+
+      mockTronWeb = {
+        transactionBuilder: {
+          sendTrx: jest.fn().mockResolvedValue(createMockTransaction()),
+          sendToken: jest.fn().mockResolvedValue(createMockTransaction()),
+          triggerSmartContract: jest.fn().mockResolvedValue({
+            transaction: createMockTransaction(),
+          }),
+        },
+        utils: {
+          transaction: {
+            txJsonToPb: jest.fn().mockImplementation((tx) => tx),
+            txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
+            txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
+          },
+        },
+        trx: {
+          getCurrentBlock: jest.fn(),
+          getBlockByNumber: jest.fn(),
+          sign: jest.fn(),
+          sendRawTransaction: jest.fn(),
+        },
+      };
+
+      mockTronWebFactory = {
+        createClient: jest.fn().mockReturnValue(mockTronWeb),
+      };
+
+      mockFeeCalculatorService = {
+        computeFee: jest.fn(),
+      };
+
+      mockSnapClient = {
+        scheduleBackgroundEvent: jest.fn(),
+        trackTransactionSubmitted: jest.fn(),
+      };
+
+      mockTransactionExpirationRefresherService = {
+        ensureFreshMetadata: jest.fn(
+          async ({ transaction }: { transaction: unknown }) => transaction,
+        ),
+      };
+
+      sendService = new SendService({
+        accountsService: mockAccountsService,
+        assetsService: mockAssetsService,
+        tronWebFactory: mockTronWebFactory,
+        feeCalculatorService: mockFeeCalculatorService,
+        logger: mockLogger,
+        snapClient: mockSnapClient,
+        transactionExpirationRefresherService:
+          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+      });
+    });
+
+    describe('native TRX transfers', () => {
+      it('returns valid when user has enough TRX to cover amount and fees', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(10); // Sending 10 TRX
+
+        // User has 100 TRX, 1000 bandwidth, 0 energy
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (asset being sent)
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (native token)
+          { rawAmount: '1000' }, // Bandwidth
+          { rawAmount: '0' }, // Energy
+        ]);
+
+        // Fee is 0 TRX (user has enough bandwidth)
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: bandwidthId,
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({ valid: true });
+        expect(mockAssetsService.getAssetsByAccountId).toHaveBeenCalledWith(
+          TEST_ACCOUNT_ID,
+          [nativeTokenId, nativeTokenId, bandwidthId, energyId],
+        );
+      });
+
+      it('returns InsufficientBalance when user does not have enough TRX to send', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(100); // Trying to send 100 TRX
+
+        // User only has 50 TRX
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '50', rawAmount: '50000000' }, // TRX balance (asset being sent)
+          { uiAmount: '50', rawAmount: '50000000' }, // TRX balance (native token)
+          { rawAmount: '1000' }, // Bandwidth
+          { rawAmount: '0' }, // Energy
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({
+          valid: false,
+          errorCode: SendErrorCodes.InsufficientBalance,
+        });
+        // Should not call feeCalculatorService since we fail early
+        expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
+      });
+
+      it('returns InsufficientBalanceToCoverFee when TRX amount + fees exceed balance', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(99); // Sending 99 TRX
+
+        // User has 100 TRX but no bandwidth (fees will be charged in TRX)
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (asset being sent)
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (native token)
+          { rawAmount: '0' }, // No bandwidth
+          { rawAmount: '0' }, // No energy
+        ]);
+
+        // Fee is 2 TRX (user has no bandwidth, must pay in TRX)
+        // Total needed: 99 + 2 = 101 TRX, but user only has 100
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '2',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({
+          valid: false,
+          errorCode: SendErrorCodes.InsufficientBalanceToCoverFee,
+        });
+      });
+
+      it('returns valid when sending exact balance minus fees', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(98); // Sending 98 TRX
+
+        // User has 100 TRX, no bandwidth
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (native token)
+          { rawAmount: '0' }, // No bandwidth
+          { rawAmount: '0' }, // No energy
+        ]);
+
+        // Fee is 2 TRX
+        // Total needed: 98 + 2 = 100 TRX, user has exactly 100
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '2',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({ valid: true });
+      });
+    });
+
+    describe('TRC20 token transfers', () => {
+      it('returns valid when user has enough tokens and TRX for fees', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber(50); // Sending 50 USDT
+
+        // User has 100 USDT, 10 TRX for fees, some energy
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance (asset being sent)
+          { uiAmount: '10', rawAmount: '10000000' }, // TRX balance (native token for fees)
+          { rawAmount: '500' }, // Bandwidth
+          { rawAmount: '50000' }, // Energy
+        ]);
+
+        // Fee is 3 TRX (energy overage)
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '3',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'ENERGY',
+              type: energyId,
+              amount: '50000',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: bandwidthId,
+              amount: '345',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({ valid: true });
+      });
+
+      it('returns InsufficientBalance when user does not have enough tokens', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber(100); // Trying to send 100 USDT
+
+        // User only has 50 USDT
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '50', rawAmount: '50000000' }, // USDT balance (not enough)
+          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (plenty for fees)
+          { rawAmount: '1000' }, // Bandwidth
+          { rawAmount: '100000' }, // Energy
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({
+          valid: false,
+          errorCode: SendErrorCodes.InsufficientBalance,
+        });
+        expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
+      });
+
+      it('returns InsufficientBalanceToCoverFee when user has tokens but not enough TRX for fees', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber(50); // Sending 50 USDT
+
+        // User has 100 USDT but only 1 TRX (not enough for fees)
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance (plenty)
+          { uiAmount: '1', rawAmount: '1000000' }, // TRX balance (not enough for fees)
+          { rawAmount: '0' }, // No bandwidth
+          { rawAmount: '0' }, // No energy
+        ]);
+
+        // Fee is 10 TRX (no energy/bandwidth, everything paid in TRX)
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '10',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({
+          valid: false,
+          errorCode: SendErrorCodes.InsufficientBalanceToCoverFee,
+        });
+      });
+
+      it('returns valid when user has tokens and exact TRX for fees', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber(50); // Sending 50 USDT
+
+        // User has 100 USDT and exactly 5 TRX for fees
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance
+          { uiAmount: '5', rawAmount: '5000000' }, // TRX balance (exact for fees)
+          { rawAmount: '0' }, // No bandwidth
+          { rawAmount: '0' }, // No energy
+        ]);
+
+        // Fee is exactly 5 TRX
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '5',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({ valid: true });
+      });
+    });
+
+    describe('edge cases', () => {
+      it('handles missing asset balances (undefined)', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(10);
+
+        // All balances are undefined
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          undefined, // No asset balance
+          undefined, // No native token balance
+          undefined, // No bandwidth
+          undefined, // No energy
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // Should fail because user has 0 balance
+        expect(result).toStrictEqual({
+          valid: false,
+          errorCode: SendErrorCodes.InsufficientBalance,
+        });
+      });
+
+      it('handles zero amount send with fees', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(0); // Sending 0 TRX
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '1', rawAmount: '1000000' }, // 1 TRX balance
+          { uiAmount: '1', rawAmount: '1000000' }, // 1 TRX native
+          { rawAmount: '0' }, // No bandwidth
+          { rawAmount: '0' }, // No energy
+        ]);
+
+        // Fee is 0.5 TRX
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0.5',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // Total needed: 0 + 0.5 = 0.5 TRX, user has 1 TRX
+        expect(result).toStrictEqual({ valid: true });
+      });
+
+      it('handles fee calculation with no TRX fee (all covered by resources)', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber(10);
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance
+          { uiAmount: '0', rawAmount: '0' }, // 0 TRX balance
+          { rawAmount: '10000' }, // Plenty of bandwidth
+          { rawAmount: '200000' }, // Plenty of energy
+        ]);
+
+        // Fee is 0 TRX (user has enough bandwidth and energy)
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'ENERGY',
+              type: energyId,
+              amount: '65000',
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: bandwidthId,
+              amount: '345',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // User can send tokens even with 0 TRX because fees are covered by resources
+        expect(result).toStrictEqual({ valid: true });
+      });
+
+      it('handles account activation fee (1 TRX) for new recipient', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(1); // Sending 1 TRX to new account
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX balance
+          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX native
+          { rawAmount: '1000' }, // Bandwidth (enough)
+          { rawAmount: '0' }, // No energy needed for native transfer
+        ]);
+
+        // Fee includes 1 TRX activation fee
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '1', // 1 TRX activation fee
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: bandwidthId,
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // Total needed: 1 (amount) + 1 (activation) = 2 TRX, user has exactly 2
+        expect(result).toStrictEqual({ valid: true });
+      });
+
+      it('fails when account activation fee causes insufficient balance', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(1.5); // Sending 1.5 TRX to new account
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX balance
+          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX native
+          { rawAmount: '1000' }, // Bandwidth (enough)
+          { rawAmount: '0' }, // No energy
+        ]);
+
+        // Fee includes 1 TRX activation fee
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '1', // 1 TRX activation fee
+              fungible: true,
+            },
+          },
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'BANDWIDTH',
+              type: bandwidthId,
+              amount: '266',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // Total needed: 1.5 (amount) + 1 (activation) = 2.5 TRX, user only has 2
+        expect(result).toStrictEqual({
+          valid: false,
+          errorCode: SendErrorCodes.InsufficientBalanceToCoverFee,
+        });
+      });
+    });
+
+    describe('transaction building', () => {
+      it('builds transaction with correct toAddress for fee calculation', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(10);
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '0' },
+        ]);
+
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // Verify transaction was built with the actual toAddress
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          10 * 1e6, // Amount in SUN
+          TEST_FROM_ADDRESS,
+        );
+
+        // Verify fee calculator was called with the built transaction
+        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+          scope,
+          transaction: expect.objectContaining({ txID: 'mock-tx-id' }),
+          availableEnergy: expect.any(BigNumber),
+          availableBandwidth: expect.any(BigNumber),
+        });
+      });
+
+      it('preserves fractional amount precision for TRX (no floating-point loss)', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber('0.99');
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '0' },
+        ]);
+
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // 0.99 TRX = 990000 SUN — not 989999 (which would happen with Number(0.99) * 1e6)
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          990000,
+          TEST_FROM_ADDRESS,
+        );
+      });
+
+      it('preserves fractional amount precision for TRC20 tokens', async () => {
+        const asset = createTrc20Asset();
+        const amount = new BigNumber('0.99');
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '100000' },
+        ]);
+
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+        });
+
+        // 0.99 USDT with 6 decimals = 990000 raw — must be exact
+        expect(
+          mockTronWeb.transactionBuilder.triggerSmartContract,
+        ).toHaveBeenCalledWith(
+          'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          'transfer(address,uint256)',
+          {},
+          [
+            { type: 'address', value: TEST_TO_ADDRESS },
+            { type: 'uint256', value: '990000' },
+          ],
+          TEST_FROM_ADDRESS,
+        );
+      });
+
+      it('propagates feeLimit through validateSend', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(10);
+
+        mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          { uiAmount: '100', rawAmount: '100000000' },
+          { uiAmount: '100', rawAmount: '100000000' },
+          { rawAmount: '1000' },
+          { rawAmount: '0' },
+        ]);
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount,
+          feeLimit: FEE_LIMIT,
+        });
+
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          10 * 1e6,
+          TEST_FROM_ADDRESS,
+        );
+        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+          scope,
+          transaction: expect.objectContaining({
+            raw_data: expect.objectContaining({
+              fee_limit: FEE_LIMIT,
+            }),
+          }),
+          availableEnergy: expect.any(BigNumber),
+          availableBandwidth: expect.any(BigNumber),
+          feeLimit: FEE_LIMIT,
+        });
+      });
+
+      it('applies fee_limit to native transactions and refreshes derived fields', async () => {
+        const asset = createNativeAsset();
+        const result = await sendService.buildTransaction({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount: new BigNumber(10),
+          feeLimit: FEE_LIMIT,
+        });
+
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_TO_ADDRESS,
+          10 * 1e6,
+          TEST_FROM_ADDRESS,
+        );
+        expect(result.raw_data.fee_limit).toBe(FEE_LIMIT);
+        expect(mockTronWeb.utils.transaction.txJsonToPb).toHaveBeenCalledWith(
+          expect.objectContaining({
+            raw_data: expect.objectContaining({
+              fee_limit: FEE_LIMIT,
+            }),
+          }),
+        );
+        expect(result.raw_data_hex).toBe('1234567890abcdef');
+        expect(result.txID).toBe('ck-tx-id');
+      });
+
+      it('passes feeLimit through when building TRC20 transactions', async () => {
+        const asset = createTrc20Asset();
+
+        await sendService.buildTransaction({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset,
+          amount: new BigNumber(10),
+          feeLimit: FEE_LIMIT,
+        });
+
+        expect(
+          mockTronWeb.transactionBuilder.triggerSmartContract,
+        ).toHaveBeenCalledWith(
+          'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          'transfer(address,uint256)',
+          { feeLimit: FEE_LIMIT },
+          expect.any(Array),
+          TEST_FROM_ADDRESS,
+        );
+      });
+    });
+
+    describe('signAndSendTransaction', () => {
+      const ownerAddressHex = `41${'a'.repeat(40)}`;
+      const ownerAddress = 'TRXcKoEvHr6Y38VMcDYGBEYKznvH3XUX4g';
+
+      beforeEach(() => {
+        mockAccountsService.findByIdOrThrow.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: ownerAddress,
+          entropySource: 'test-entropy',
+          derivationPath: [],
+          type: 'tron:basic',
+        });
+        jest
+          .spyOn(mockAccountsService, 'deriveTronKeypair')
+          .mockImplementation()
+          .mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+            address: ownerAddress,
+          });
+        mockTronWeb.trx.sign.mockImplementation(
+          async (transaction: unknown) => ({
+            transaction,
+            signature: ['test-signature'],
+          }),
+        );
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          result: true,
+          txid: 'broadcast-tx-id',
+        });
+      });
+
+      it('refreshes stale transaction metadata before signing and broadcasting', async () => {
+        sendService = new SendService({
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          tronWebFactory: mockTronWebFactory,
+          feeCalculatorService: mockFeeCalculatorService,
+          logger: mockLogger,
+          snapClient: mockSnapClient,
+          transactionExpirationRefresherService:
+            new TransactionExpirationRefresherService({
+              tronWebFactory: mockTronWebFactory,
+            }),
+        });
+        const currentTimestamp = Date.now();
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+          hashSegment: '0011223344556677',
+        });
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        transaction.raw_data.ref_block_bytes = '0000';
+        transaction.raw_data.ref_block_hash = '0000000000000000';
+        transaction.raw_data.expiration = currentTimestamp - 1;
+        transaction.raw_data.timestamp = currentTimestamp - 60_000;
+        const originalTransaction = structuredClone(transaction);
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+        expect(signedTransaction).not.toBe(transaction);
+        expect(signedTransaction.raw_data.ref_block_bytes).toBe(
+          getRefBlockBytes(200_000),
+        );
+        expect(signedTransaction.raw_data.ref_block_hash).toBe(
+          '0011223344556677',
+        );
+        expect(signedTransaction.raw_data.expiration).toBe(
+          currentTimestamp + 60_000,
+        );
+        expect(signedTransaction.raw_data.timestamp).toBe(currentTimestamp);
+        expect(signedTransaction.raw_data_hex).toBe('1234567890abcdef');
+        expect(signedTransaction.txID).toBe('mock-tx-id');
+        expect(transaction.raw_data.ref_block_bytes).toBe(
+          originalTransaction.raw_data.ref_block_bytes,
+        );
+        expect(transaction.raw_data.ref_block_hash).toBe(
+          originalTransaction.raw_data.ref_block_hash,
+        );
+        expect(transaction.raw_data.expiration).toBe(
+          originalTransaction.raw_data.expiration,
+        );
+        expect(transaction.raw_data.timestamp).toBe(
+          originalTransaction.raw_data.timestamp,
+        );
+        expect(transaction.raw_data_hex).toBe(originalTransaction.raw_data_hex);
+        expect(transaction.txID).toBe(originalTransaction.txID);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith({
+          transaction: signedTransaction,
+          signature: ['test-signature'],
+        });
+      });
+
+      it('signs the transaction returned by the injected expiration refresher', async () => {
+        const transaction = createMockTransaction();
+        const freshTransaction = {
+          ...createMockTransaction(),
+          txID: 'fresh-tx-id',
+        };
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        freshTransaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
+          freshTransaction,
+        );
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(
+          mockTransactionExpirationRefresherService.ensureFreshMetadata,
+        ).toHaveBeenCalledWith({ scope, transaction });
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(freshTransaction);
+      });
+
+      it('signs valid transaction metadata without unnecessary modification', async () => {
+        sendService = new SendService({
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          tronWebFactory: mockTronWebFactory,
+          feeCalculatorService: mockFeeCalculatorService,
+          logger: mockLogger,
+          snapClient: mockSnapClient,
+          transactionExpirationRefresherService:
+            new TransactionExpirationRefresherService({
+              tronWebFactory: mockTronWebFactory,
+            }),
+        });
+        const currentTimestamp = Date.now();
+        const referencedBlock = createBlock({
+          number: 199_990,
+          timestamp: currentTimestamp - 30_000,
+          hashSegment: 'abcdef1234567890',
+        });
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+        });
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        transaction.raw_data.ref_block_bytes = getRefBlockBytes(199_990);
+        transaction.raw_data.ref_block_hash = 'abcdef1234567890';
+        transaction.raw_data.expiration = currentTimestamp + 45_000;
+        transaction.raw_data.timestamp = currentTimestamp - 30_000;
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+        mockTronWeb.trx.getBlockByNumber.mockResolvedValue(referencedBlock);
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(transaction.raw_data.ref_block_bytes).toBe(
+          getRefBlockBytes(199_990),
+        );
+        expect(transaction.raw_data.ref_block_hash).toBe('abcdef1234567890');
+        expect(transaction.raw_data.expiration).toBe(currentTimestamp + 45_000);
+        expect(transaction.raw_data_hex).toBe('mock-hex');
+        expect(mockTronWeb.trx.getBlockByNumber).toHaveBeenCalledWith(199_990);
+        expect(mockTronWeb.utils.transaction.txJsonToPb).not.toHaveBeenCalled();
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(transaction);
+      });
+
+      it('throws when broadcasting a signed transaction fails', async () => {
+        const currentTimestamp = Date.now();
+        const currentBlock = createBlock({
+          number: 200_000,
+          timestamp: currentTimestamp,
+          hashSegment: 'abcdef1234567890',
+        });
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        transaction.raw_data.ref_block_bytes = getRefBlockBytes(200_000);
+        transaction.raw_data.ref_block_hash = 'abcdef1234567890';
+        transaction.raw_data.expiration = currentTimestamp + 45_000;
+        transaction.raw_data.timestamp = currentTimestamp;
+        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          result: false,
+          message: 'expired',
+        });
+
+        await expect(
+          sendService.signAndSendTransaction({
+            scope,
+            fromAccountId: TEST_ACCOUNT_ID,
+            transaction: transaction as never,
+          }),
+        ).rejects.toThrow('Failed to send transaction: expired');
+      });
+    });
+  });
+});

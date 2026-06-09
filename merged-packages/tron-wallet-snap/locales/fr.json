@@ -1,0 +1,107 @@
+{
+  "locale": "fr",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Demande de transaction"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Changements estimés"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Les changements estimés représentent ce qui pourrait se produire si vous effectuez cette transaction. Il s’agit juste d’une estimation fournie à titre d’information."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Vous envoyez"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Bande passante utilisée"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Vous recevez"
+    },
+    "confirmation.origin": {
+      "message": "Demande de la part de"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Ceci est le site qui demande votre confirmation."
+    },
+    "confirmation.from": {
+      "message": "De"
+    },
+    "confirmation.to": {
+      "message": "À"
+    },
+    "confirmation.network": {
+      "message": "Réseau"
+    },
+    "confirmation.transactionFee": {
+      "message": "Frais de réseau"
+    },
+    "confirmation.confirmButton": {
+      "message": "Confirmer"
+    },
+    "confirmation.cancelButton": {
+      "message": "Annuler"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Signer le message"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Message"
+    },
+    "confirmation.account": {
+      "message": "Compte"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signer la transaction"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Les changements estimés ne sont pas disponibles"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Aucun changement estimé"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "En raison d'une erreur, nous n'avons pas pu vérifier les alertes de sécurité."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Ne continuez que si vous faites confiance à chaque adresse impliquée."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Cette transaction a été annulée lors de la simulation."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Il s'agit d'une demande trompeuse"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Si vous approuvez cette demande, un tiers connu pour des escroqueries prendra tous vos actifs."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "En savoir plus"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Conseils de sécurité par"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Une erreur inconnue s'est produite"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Solde insuffisant"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transaction invalide"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Fonds insuffisants"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Adresse invalide"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Méthode non prise en charge"
+    }
+  }
+}

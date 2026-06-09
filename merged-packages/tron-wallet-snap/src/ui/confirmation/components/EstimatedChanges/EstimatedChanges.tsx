@@ -1,0 +1,164 @@
+import type { ComponentOrElement } from '@metamask/snaps-sdk';
+import {
+  Box,
+  Section,
+  Text as SnapText,
+  Icon,
+  Tooltip,
+  Image,
+  Skeleton,
+} from '@metamask/snaps-sdk/jsx';
+
+import type { TransactionScanEstimatedChanges } from '../../../../services/transaction-scan/types';
+import { FetchStatus, type Preferences } from '../../../../types/snap';
+import { formatAmount } from '../../../../utils/formatAmount';
+import { i18n } from '../../../../utils/i18n';
+import { isFetchStatusLoadingOrFetching } from '../../../../utils/isFetchStatusLoadingOrFetching';
+
+type EstimatedChangesProps = {
+  changes: TransactionScanEstimatedChanges | null;
+  preferences: Preferences;
+  scanFetchStatus: FetchStatus;
+};
+
+const EstimatedChangesSkeleton = ({
+  preferences,
+}: {
+  preferences: Preferences;
+}): ComponentOrElement => {
+  const translate = i18n(preferences.locale);
+
+  return (
+    <Section direction="vertical">
+      <Box direction="horizontal" alignment="start">
+        <SnapText fontWeight="medium">
+          {translate('confirmation.estimatedChanges.title')}
+        </SnapText>
+        <Tooltip content={translate('confirmation.estimatedChanges.tooltip')}>
+          <Icon name="info" />
+        </Tooltip>
+      </Box>
+      <Box alignment="space-between" direction="horizontal">
+        <Skeleton width={60} />
+        <Skeleton width={100} />
+      </Box>
+    </Section>
+  );
+};
+
+const EstimatedChangesHeader = ({
+  preferences,
+}: {
+  preferences: Preferences;
+}): ComponentOrElement => {
+  const translate = i18n(preferences.locale);
+
+  return (
+    <Box direction="horizontal" alignment="start">
+      <SnapText fontWeight="medium">
+        {translate('confirmation.estimatedChanges.title')}
+      </SnapText>
+      <Tooltip content={translate('confirmation.estimatedChanges.tooltip')}>
+        <Icon name="info" />
+      </Tooltip>
+    </Box>
+  );
+};
+
+type AssetChangeProps = {
+  asset: TransactionScanEstimatedChanges['assets'][0];
+};
+
+const AssetChange = ({ asset }: AssetChangeProps): ComponentOrElement => {
+  const formattedValue = formatAmount(asset.value);
+  const isOut = asset.type === 'out';
+
+  return (
+    <Box direction="horizontal" alignment="end">
+      {asset.logo ? (
+        <Box alignment="center" center>
+          <Image src={asset.logo} borderRadius="full" height={16} width={16} />
+        </Box>
+      ) : null}
+      <SnapText color={isOut ? 'error' : 'success'}>
+        {isOut ? '-' : '+'}
+        {formattedValue} {asset.symbol}
+      </SnapText>
+    </Box>
+  );
+};
+
+export const EstimatedChanges = ({
+  changes,
+  preferences,
+  scanFetchStatus,
+}: EstimatedChangesProps): ComponentOrElement => {
+  const translate = i18n(preferences.locale);
+
+  // Keep "refreshing skeleton" for first loading + subsequent refreshes
+  const isFetching = isFetchStatusLoadingOrFetching(scanFetchStatus);
+  const isFetched = scanFetchStatus === FetchStatus.Fetched;
+  const isFetchError = scanFetchStatus === FetchStatus.Error;
+
+  if (isFetching) {
+    return <EstimatedChangesSkeleton preferences={preferences} />;
+  }
+
+  // API fetch error (network failure, etc.) - show "not available"
+  if (isFetchError) {
+    return (
+      <Section direction="vertical">
+        <EstimatedChangesHeader preferences={preferences} />
+        <SnapText color="alternative">
+          {translate('confirmation.estimatedChanges.notAvailable')}
+        </SnapText>
+      </Section>
+    );
+  }
+
+  const send = changes?.assets.filter((asset) => asset.type === 'out') ?? [];
+  const receive = changes?.assets.filter((asset) => asset.type === 'in') ?? [];
+
+  const hasChanges = send.length > 0 || receive.length > 0;
+
+  if (isFetched && !hasChanges) {
+    return (
+      <Section direction="vertical">
+        <EstimatedChangesHeader preferences={preferences} />
+        <SnapText color="alternative">
+          {translate('confirmation.estimatedChanges.noChanges')}
+        </SnapText>
+      </Section>
+    );
+  }
+
+  return (
+    <Section>
+      <EstimatedChangesHeader preferences={preferences} />
+      {send?.length > 0 ? (
+        <Box alignment="space-between" direction="horizontal">
+          <SnapText fontWeight="medium" color="alternative">
+            {translate('confirmation.estimatedChanges.send')}
+          </SnapText>
+          <Box>
+            {send?.map((asset) => (
+              <AssetChange asset={asset} />
+            ))}
+          </Box>
+        </Box>
+      ) : null}
+      {receive?.length > 0 ? (
+        <Box alignment="space-between" direction="horizontal">
+          <SnapText fontWeight="medium" color="alternative">
+            {translate('confirmation.estimatedChanges.receive')}
+          </SnapText>
+          <Box>
+            {receive?.map((asset) => (
+              <AssetChange asset={asset} />
+            ))}
+          </Box>
+        </Box>
+      ) : null}
+    </Section>
+  );
+};
