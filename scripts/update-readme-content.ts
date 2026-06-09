@@ -87,7 +87,7 @@ async function retrieveWorkspaces(): Promise<Workspace[]> {
     '--verbose',
   ]);
 
-  return stdout.split('\n').map((line) => JSON.parse(line));
+  return stdout ? stdout.split('\n').map((line) => JSON.parse(line)) : [];
 }
 
 /**
@@ -204,7 +204,7 @@ async function generateNewReadmeContent(
       'su',
     ),
     (_match, startMarker, endMarker) =>
-      [startMarker, '', newPackageList, '', endMarker].join('\n'),
+      [startMarker, newPackageList, endMarker].join('\n'),
   );
 
   newReadmeContent = newReadmeContent.replace(
@@ -213,7 +213,7 @@ async function generateNewReadmeContent(
       'su',
     ),
     (_match, startMarker, endMarker) =>
-      [startMarker, '', newDependencyGraph, '', endMarker].join('\n'),
+      [startMarker, newDependencyGraph, endMarker].join('\n'),
   );
 
   return newReadmeContent;
