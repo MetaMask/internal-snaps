@@ -1,0 +1,28 @@
+{
+  "version": "0.0.0",
+  "description": "An example Snap written in TypeScript.",
+  "proposedName": "TypeScript Example",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
+  "source": {
+    "shasum": "GALf8du1qrGRyB3VLmG9mkxx9yC0ijCSFCJdQL8AKag=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "packageName": "@metamask/sample-snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "snap_dialog": {},
+    "endowment:rpc": {
+      "dapps": true,
+      "snaps": false
+    }
+  },
+  "platformVersion": "10.3.0",
+  "manifestVersion": "0.1"
+}
