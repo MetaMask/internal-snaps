@@ -148,6 +148,8 @@ jobs:
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
+      - name: Build for tests
+        run: yarn workspace ${{ matrix.package-name }} build
       - run: yarn workspace ${{ matrix.package-name }} run test
       - name: Require clean working directory
         shell: bash
