@@ -1,4 +1,8 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
+import {
+  AccountCreationType,
+  type CreateAccountOptions as KeyringBatchCreateAccountOptions,
+  type KeyringRequest,
+} from '@metamask/keyring-api';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
@@ -78,6 +82,7 @@ describe('KeyringHandler', () => {
       findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
       deriveAccount: jest.fn(),
       create: jest.fn(),
+      createAccounts: jest.fn(),
       getAll: jest.fn().mockResolvedValue([mockAccount]),
     } as any;
     mockAssetsService = {} as any;
@@ -711,6 +716,49 @@ describe('KeyringHandler', () => {
         message: `Error creating account: ${causeError.message}`,
         cause: causeError,
       });
+    });
+  });
+
+  describe('createAccounts', () => {
+    it('delegates to accountsService.createAccounts and returns the result', async () => {
+      const createdAccounts = [
+        {
+          id: mockAccount.id,
+          address: mockAccount.address,
+          type: mockAccount.type,
+          options: mockAccount.options,
+          methods: mockAccount.methods,
+          scopes: mockAccount.scopes,
+        },
+      ];
+      const options: KeyringBatchCreateAccountOptions = {
+        type: AccountCreationType.Bip44DeriveIndex,
+        entropySource: 'entropy-source-1',
+        groupIndex: 0,
+      };
+
+      mockAccountsService.createAccounts.mockResolvedValue(createdAccounts);
+
+      const result = await keyringHandler.createAccounts(options);
+
+      expect(mockAccountsService.createAccounts).toHaveBeenCalledWith(options);
+      expect(result).toStrictEqual(createdAccounts);
+    });
+
+    it('sanitizes errors before rethrowing from accountsService.createAccounts', async () => {
+      mockAccountsService.createAccounts.mockRejectedValue(
+        new Error('batch create failed'),
+      );
+
+      await expect(
+        keyringHandler.createAccounts({
+          type: AccountCreationType.Bip44DeriveIndex,
+          entropySource: 'entropy-source-1',
+          groupIndex: 0,
+        } satisfies KeyringBatchCreateAccountOptions),
+      ).rejects.toThrow(
+        'Key derivation failed. Please check your connection and try again.',
+      );
     });
   });
 });

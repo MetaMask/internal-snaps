@@ -3,6 +3,7 @@ import {
   KeyringEvent,
   ListAccountAssetsResponseStruct,
   type Balance,
+  type CreateAccountOptions as KeyringBatchCreateAccountOptions,
   type DiscoveredAccount,
   type EntropySourceId,
   type Keyring,
@@ -46,7 +47,10 @@ import type { ConfirmationHandler } from '../services/confirmation/ConfirmationH
 import type { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionsService } from '../services/transactions/TransactionsService';
 import type { WalletService } from '../services/wallet/WalletService';
-import { withCatchAndThrowSnapError } from '../utils/errors';
+import {
+  sanitizeSensitiveError,
+  withCatchAndThrowSnapError,
+} from '../utils/errors';
 import { createPrefixedLogger, type ILogger } from '../utils/logger';
 import {
   CreateAccountOptionsStruct,
@@ -187,6 +191,17 @@ export class KeyringHandler implements Keyring {
       throw new Error(`Error creating account: ${error.message}`, {
         cause: error,
       });
+    }
+  }
+
+  async createAccounts(
+    options: KeyringBatchCreateAccountOptions,
+  ): Promise<KeyringAccount[]> {
+    try {
+      return await this.#accountsService.createAccounts(options);
+    } catch (error: unknown) {
+      this.#logger.error({ error }, 'Error creating accounts');
+      throw sanitizeSensitiveError(error);
     }
   }
 

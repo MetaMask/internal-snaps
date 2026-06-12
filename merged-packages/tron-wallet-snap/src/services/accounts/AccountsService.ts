@@ -1,5 +1,16 @@
-import type { EntropySourceId, KeyringAccount } from '@metamask/keyring-api';
-import { KeyringEvent, TrxAccountType, TrxScope } from '@metamask/keyring-api';
+import type { JsonBIP44Node } from '@metamask/key-tree';
+import type {
+  CreateAccountOptions as KeyringBatchCreateAccountOptions,
+  EntropySourceId,
+  KeyringAccount,
+} from '@metamask/keyring-api';
+import {
+  AccountCreationType,
+  assertCreateAccountOptionIsSupported,
+  KeyringEvent,
+  TrxAccountType,
+  TrxScope,
+} from '@metamask/keyring-api';
 import {
   emitSnapKeyringEvent,
   getSelectedAccounts,
@@ -17,6 +28,7 @@ import {
   asStrictKeyringAccount,
   type TronKeyringAccount,
 } from '../../entities/keyring-account';
+import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
@@ -29,6 +41,61 @@ import type { TransactionsService } from '../transactions/TransactionsService';
  * Elliptic curve for TRON (same as Ethereum)
  */
 const CURVE = 'secp256k1' as const;
+
+/**
+ * Maximum BIP44 account index.
+ */
+const MAX_BIP44_ACCOUNT_INDEX = 0x7fffffff;
+
+/**
+ * Range of inclusive account indices to create.
+ *
+ * @param from - The starting index.
+ * @param to - The ending index.
+ */
+type AccountCreationRange = {
+  from: number;
+  to: number;
+};
+
+/**
+ * A function that derives a TRON address from a BIP44 account index.
+ */
+type TronAddressDeriver = Awaited<
+  ReturnType<typeof createTronBip44AddressDeriver>
+>;
+
+/**
+ * Validates account creation ranges before any expensive state or entropy work.
+ *
+ * @param range - Inclusive account index range to validate.
+ */
+function validateAccountCreationRange(range: AccountCreationRange): void {
+  if (!Number.isSafeInteger(range.from) || !Number.isSafeInteger(range.to)) {
+    throw new Error('Invalid account creation range: bounds must be integers');
+  }
+
+  if (range.from < 0 || range.to < 0) {
+    throw new Error(
+      'Invalid account creation range: bounds must be non-negative',
+    );
+  }
+
+  if (
+    range.from > MAX_BIP44_ACCOUNT_INDEX ||
+    range.to > MAX_BIP44_ACCOUNT_INDEX
+  ) {
+    throw new Error(
+      `Invalid account creation range: bounds must be at most ${MAX_BIP44_ACCOUNT_INDEX}`,
+    );
+  }
+
+  if (range.from > range.to) {
+    throw new Error(
+      'Invalid account creation range: "from" must be less than or equal to "to"',
+    );
+  }
+}
 
 export class AccountsService {
   readonly #accountsRepository: AccountsRepository;
@@ -209,7 +276,15 @@ export class AccountsService {
       },
     };
 
-    await this.#accountsRepository.create(tronKeyringAccount);
+    const persistedAccount =
+      await this.#accountsRepository.create(tronKeyringAccount);
+
+    if (persistedAccount.id !== tronKeyringAccount.id) {
+      this.#logger.warn(
+        '[🔑 Keyring] An account already exists with the same derivation path and entropy source. Skipping account creation.',
+      );
+      return asStrictKeyringAccount(persistedAccount);
+    }
 
     try {
       const keyringAccount = asStrictKeyringAccount(tronKeyringAccount);
@@ -250,6 +325,112 @@ export class AccountsService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Batch-creates Tron accounts for a BIP-44 index or index range. Existing accounts for the
+   * same entropy source and index are returned without duplicate state writes.
+   *
+   * @param options - The options for the account creation.
+   * @param options.entropySource - The entropy source to use for the account creation.
+   * @param options.type - The type of account creation.
+   * @param options.groupIndex - The group index to use for the account creation.
+   * @returns The created accounts.
+   */
+  async createAccounts(
+    options: KeyringBatchCreateAccountOptions,
+  ): Promise<KeyringAccount[]> {
+    assertCreateAccountOptionIsSupported(options, [
+      `${AccountCreationType.Bip44DeriveIndex}`,
+      `${AccountCreationType.Bip44DeriveIndexRange}`,
+    ]);
+
+    const { entropySource } = options;
+
+    // Get the range of accounts to create
+    const range =
+      options.type === AccountCreationType.Bip44DeriveIndex
+        ? { from: options.groupIndex, to: options.groupIndex }
+        : options.range;
+    validateAccountCreationRange(range);
+
+    // Get existing accounts for the same entropy source/range to avoid duplicate state writes.
+    const existingAccounts =
+      await this.#accountsRepository.findByEntropySourceAndRange(
+        entropySource,
+        range,
+      );
+
+    const allAccounts = new Map<number, TronKeyringAccount>();
+    for (const account of existingAccounts) {
+      allAccounts.set(account.index, account);
+    }
+
+    const missingIndices: number[] = [];
+    for (let groupIndex = range.from; groupIndex <= range.to; groupIndex += 1) {
+      if (!allAccounts.has(groupIndex)) {
+        missingIndices.push(groupIndex);
+      }
+    }
+
+    const newAccounts: Record<string, TronKeyringAccount> = {};
+
+    if (missingIndices.length > 0) {
+      const tronAddressDeriver =
+        await this.#createTronAddressDeriver(entropySource);
+
+      for (const groupIndex of missingIndices) {
+        const id = globalThis.crypto.randomUUID();
+        const derivationPath =
+          AccountsService.getDefaultDerivationPath(groupIndex);
+        const { address } = await tronAddressDeriver(groupIndex);
+
+        const tronKeyringAccount: TronKeyringAccount = {
+          id,
+          entropySource,
+          derivationPath,
+          index: groupIndex,
+          type: TrxAccountType.Eoa,
+          address,
+          scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+          options: {
+            entropy: {
+              type: 'mnemonic',
+              id: entropySource,
+              derivationPath,
+              groupIndex,
+            },
+            exportable: true,
+          },
+          methods: ['signMessage', 'signTransaction'],
+        };
+
+        allAccounts.set(groupIndex, tronKeyringAccount);
+        newAccounts[id] = tronKeyringAccount;
+      }
+
+      await this.#accountsRepository.mergeKeyringAccounts(newAccounts);
+
+      const persistedAccounts =
+        await this.#accountsRepository.findByEntropySourceAndRange(
+          entropySource,
+          range,
+        );
+
+      for (const account of persistedAccounts) {
+        allAccounts.set(account.index, account);
+      }
+    }
+
+    const result: KeyringAccount[] = [];
+    for (let groupIndex = range.from; groupIndex <= range.to; groupIndex += 1) {
+      const account = allAccounts.get(groupIndex);
+      if (account) {
+        result.push(asStrictKeyringAccount(account));
+      }
+    }
+
+    return result;
   }
 
   async getAll(): Promise<TronKeyringAccount[]> {
@@ -362,6 +543,18 @@ export class AccountsService {
       this.synchronizeAssets(accounts),
       this.synchronizeTransactions(accounts),
     ]);
+  }
+
+  async #createTronAddressDeriver(
+    entropySource: EntropySourceId,
+  ): Promise<TronAddressDeriver> {
+    const bip44Node = (await this.#snapClient.getBip32Entropy({
+      entropySource,
+      path: ['m', "44'", "195'"],
+      curve: CURVE,
+    })) as JsonBIP44Node;
+
+    return createTronBip44AddressDeriver(bip44Node);
   }
 
   #getLowestUnusedKeyringAccountIndex(
