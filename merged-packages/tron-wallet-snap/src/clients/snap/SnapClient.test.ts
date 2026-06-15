@@ -91,6 +91,36 @@ describe('SnapClient', () => {
     });
   });
 
+  describe('trackEvent', () => {
+    it('tracks event errors without propagating or recursing', async () => {
+      await withSnapClient(
+        async ({ snapClient, mockSnapRequest: mockRequest }) => {
+          const trackEventError = new Error('event tracking failed');
+          const trackErrorError = new Error('error tracking failed');
+
+          mockRequest
+            .mockRejectedValueOnce(trackEventError)
+            .mockRejectedValueOnce(trackErrorError);
+
+          const result = await snapClient.trackEvent('Test Event', {
+            property: 'value',
+          });
+
+          expect(result).toBeUndefined();
+          expect(mockRequest).toHaveBeenCalledTimes(2);
+          expect(mockRequest).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ method: 'snap_trackEvent' }),
+          );
+          expect(mockRequest).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ method: 'snap_trackError' }),
+          );
+        },
+      );
+    });
+  });
+
   describe('trackError', () => {
     it('returns the Sentry event ID and forwards the serialized error', async () => {
       await withSnapClient(

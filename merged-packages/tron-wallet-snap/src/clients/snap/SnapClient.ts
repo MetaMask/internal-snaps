@@ -242,8 +242,8 @@ export class SnapClient {
           },
         },
       });
-    } catch {
-      // Silently fail if tracking fails - we don't want to interrupt the user flow
+    } catch (error) {
+      await this.trackError(error as Error);
     }
   }
 
