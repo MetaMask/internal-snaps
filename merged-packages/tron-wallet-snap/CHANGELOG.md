@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.26.0]
+
 ### Added
 
 - Add `signProofOfOwnership` client request method ([#327](https://github.com/MetaMask/snap-tron-wallet/pull/327))
   - This method silently signs `metamask:proof-of-ownership:<nonce>:<address>` messages with the account's secp256k1 key via TronWeb's `signMessageV2`
-- Adds `setKeyWith` helper for state read-modify-write operations ([#307](https://github.com/MetaMask/snap-tron-wallet/pull/307))
 - Add support for `keyring_createAccounts` method to enable batch account creation ([#308](https://github.com/MetaMask/snap-tron-wallet/pull/308)).
 
 ## [1.25.8]
@@ -532,7 +533,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.8...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.26.0...HEAD
+[1.26.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.8...v1.26.0
 [1.25.8]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.7...v1.25.8
 [1.25.7]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.6...v1.25.7
 [1.25.6]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.5...v1.25.6
