@@ -21,6 +21,10 @@ export enum ClientRequestMethod {
    * Sign Rewards Message
    */
   SignRewardsMessage = 'signRewardsMessage',
+  /**
+   * Sign Proof of Ownership
+   */
+  SignProofOfOwnership = 'signProofOfOwnership',
 }
 
 export enum SendErrorCodes {

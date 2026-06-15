@@ -29,8 +29,10 @@ import {
   OnConfirmUnstakeRequestStruct,
   OnStakeAmountInputRequestStruct,
   OnUnstakeAmountInputRequestStruct,
+  parseProofOfOwnershipMessage,
   parseRewardsMessage,
   SignAndSendTransactionRequestStruct,
+  SignProofOfOwnershipRequestStruct,
   SignRewardsMessageRequestStruct,
 } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -180,6 +182,11 @@ export class ClientRequestHandler {
        */
       case ClientRequestMethod.SignRewardsMessage:
         return this.#handleSignRewardsMessage(request);
+      /**
+       * Sign Proof of Ownership
+       */
+      case ClientRequestMethod.SignProofOfOwnership:
+        return this.#handleSignProofOfOwnership(request);
       default:
         throw new MethodNotFoundError() as Error;
     }
@@ -1114,6 +1121,53 @@ export class ClientRequestHandler {
       signedMessage: message,
       signatureType: 'secp256k1',
     };
+  }
+
+  /**
+   * Handles signing a proof-of-ownership message without confirmation.
+   * Message format: `'metamask:proof-of-ownership:{nonce}:{address}'`.
+   *
+   * @param request - The JSON-RPC request containing the message to sign.
+   * @returns An object containing the signature.
+   */
+  async #handleSignProofOfOwnership(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      SignProofOfOwnershipRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const {
+      params: { accountId, message },
+    } = request;
+
+    const account = await this.#accountsService.findById(accountId);
+    if (!account) {
+      throw new InvalidParamsError(`Account not found: ${accountId}`) as Error;
+    }
+
+    const { address: messageAddress } = parseProofOfOwnershipMessage(message);
+
+    if (messageAddress !== account.address) {
+      throw new InvalidParamsError(
+        `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${account.address})`,
+      ) as Error;
+    }
+
+    const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+      entropySource: account.entropySource,
+      derivationPath: account.derivationPath,
+    });
+
+    // We can use any network scope since we're just signing a message.
+    const tronWeb = this.#tronWebFactory.createClient(
+      Network.Mainnet,
+      privateKeyHex,
+    );
+
+    const signature = tronWeb.trx.signMessageV2(message, privateKeyHex);
+
+    return { signature };
   }
 
   /**

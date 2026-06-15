@@ -1163,6 +1163,163 @@ describe('ClientRequestHandler', () => {
       });
     });
   });
+
+  describe('signProofOfOwnership', () => {
+    let clientRequestHandler: ClientRequestHandler;
+    let mockAccountsService: jest.Mocked<AccountsService>;
+    let mockTronWebFactory: jest.Mocked<TronWebFactory>;
+    let mockTronWeb: any;
+
+    const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+    const TEST_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+    const TEST_PRIVATE_KEY = 'test-private-key';
+    const TEST_NONCE = 'a1b2c3d4e5f6789012345678';
+
+    const buildProofMessage = (
+      address: string = TEST_ADDRESS,
+      nonce: string = TEST_NONCE,
+    ): string => `metamask:proof-of-ownership:${nonce}:${address}`;
+
+    const buildRequest = (
+      message: string,
+      accountId: string = TEST_ACCOUNT_ID,
+    ): JsonRpcRequest => ({
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId, message },
+    });
+
+    beforeEach(() => {
+      mockAccountsService = {
+        findById: jest.fn(),
+        deriveTronKeypair: jest.fn(),
+      } as unknown as jest.Mocked<AccountsService>;
+
+      mockTronWeb = {
+        trx: {
+          signMessageV2: jest.fn(),
+        },
+      };
+
+      mockTronWebFactory = {
+        createClient: jest.fn().mockReturnValue(mockTronWeb),
+      } as unknown as jest.Mocked<TronWebFactory>;
+
+      clientRequestHandler = new ClientRequestHandler({
+        logger: mockLogger,
+        accountsService: mockAccountsService,
+        assetsService: {} as unknown as jest.Mocked<AssetsService>,
+        sendService: {} as unknown as jest.Mocked<SendService>,
+        feeCalculatorService:
+          {} as unknown as jest.Mocked<FeeCalculatorService>,
+        tronWebFactory: mockTronWebFactory,
+        snapClient: {} as unknown as jest.Mocked<SnapClient>,
+        stakingService: {} as unknown as jest.Mocked<StakingService>,
+        confirmationHandler: {} as unknown as jest.Mocked<ConfirmationHandler>,
+        transactionsService: {} as unknown as jest.Mocked<TransactionsService>,
+        transactionExpirationRefresherService:
+          createPassThroughTransactionExpirationRefresherService(),
+      });
+    });
+
+    it('signs the proof message and returns the signature', async () => {
+      const mockSignature = '0xdeadbeef';
+
+      mockAccountsService.findById.mockResolvedValue({
+        id: TEST_ACCOUNT_ID,
+        address: TEST_ADDRESS,
+        entropySource: 'test-entropy',
+        derivationPath: [],
+      } as any);
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        privateKeyHex: TEST_PRIVATE_KEY,
+      } as any);
+      mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
+
+      const message = buildProofMessage();
+      const result = await clientRequestHandler.handle(buildRequest(message));
+
+      expect(mockAccountsService.findById).toHaveBeenCalledWith(
+        TEST_ACCOUNT_ID,
+      );
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: 'test-entropy',
+        derivationPath: [],
+      });
+      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+        Network.Mainnet,
+        TEST_PRIVATE_KEY,
+      );
+      expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+        message,
+        TEST_PRIVATE_KEY,
+      );
+      expect(result).toStrictEqual({ signature: mockSignature });
+    });
+
+    it('accepts a nonce that contains colons (splits on the last ":")', async () => {
+      const mockSignature = '0xdeadbeef';
+      mockAccountsService.findById.mockResolvedValue({
+        id: TEST_ACCOUNT_ID,
+        address: TEST_ADDRESS,
+        entropySource: 'test-entropy',
+        derivationPath: [],
+      } as any);
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        privateKeyHex: TEST_PRIVATE_KEY,
+      } as any);
+      mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
+
+      const message = buildProofMessage(TEST_ADDRESS, 'ns:abc:123');
+      const result = await clientRequestHandler.handle(buildRequest(message));
+
+      expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+        message,
+        TEST_PRIVATE_KEY,
+      );
+      expect(result).toStrictEqual({ signature: mockSignature });
+    });
+
+    it('throws when the message does not start with the proof prefix', async () => {
+      await expect(
+        clientRequestHandler.handle(
+          buildRequest(`rewards,${TEST_ADDRESS},1736660000`),
+        ),
+      ).rejects.toThrow('Invalid method parameter(s)');
+    });
+
+    it('throws when the message has an invalid Tron address', async () => {
+      const message = buildProofMessage('invalid-address');
+      await expect(
+        clientRequestHandler.handle(buildRequest(message)),
+      ).rejects.toThrow('Invalid method parameter(s)');
+    });
+
+    it('throws when the account is not found', async () => {
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        clientRequestHandler.handle(buildRequest(buildProofMessage())),
+      ).rejects.toThrow('Account not found');
+    });
+
+    it('throws when the address in the message does not match the signing account', async () => {
+      const otherAddress = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+      mockAccountsService.findById.mockResolvedValue({
+        id: TEST_ACCOUNT_ID,
+        address: TEST_ADDRESS,
+        entropySource: 'test-entropy',
+        derivationPath: [],
+      } as any);
+
+      await expect(
+        clientRequestHandler.handle(
+          buildRequest(buildProofMessage(otherAddress)),
+        ),
+      ).rejects.toThrow('does not match signing account address');
+    });
+  });
 });
 
 describe('ClientRequestHandler - signAndSendTransaction', () => {

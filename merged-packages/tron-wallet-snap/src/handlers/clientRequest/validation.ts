@@ -348,3 +348,81 @@ export const SignRewardsMessageRequestStruct = object({
   method: literal(ClientRequestMethod.SignRewardsMessage),
   params: SignRewardsMessageRequestParamsStruct,
 });
+
+export const PROOF_OF_OWNERSHIP_MESSAGE_PREFIX = 'metamask:proof-of-ownership:';
+
+/**
+ * Parses a plaintext proof-of-ownership message.
+ * Expected format: 'metamask:proof-of-ownership:{nonce}:{address}'
+ *
+ * @param message - The plaintext message to parse.
+ * @returns The parsed nonce and address.
+ * @throws Error if the message format is invalid.
+ */
+export function parseProofOfOwnershipMessage(message: string): {
+  nonce: string;
+  address: string;
+} {
+  if (!message.startsWith(PROOF_OF_OWNERSHIP_MESSAGE_PREFIX)) {
+    throw new Error(
+      `Message must start with "${PROOF_OF_OWNERSHIP_MESSAGE_PREFIX}"`,
+    );
+  }
+
+  const remainder = message.slice(PROOF_OF_OWNERSHIP_MESSAGE_PREFIX.length);
+  const separatorIdx = remainder.lastIndexOf(':');
+  if (separatorIdx === -1) {
+    throw new Error(
+      'Message must follow the format "metamask:proof-of-ownership:{nonce}:{address}"',
+    );
+  }
+
+  const nonce = remainder.slice(0, separatorIdx);
+  const address = remainder.slice(separatorIdx + 1);
+
+  if (nonce === '') {
+    throw new Error(
+      'Proof-of-ownership message must contain a non-empty nonce',
+    );
+  }
+
+  if (!is(address, TronAddressStruct)) {
+    throw new Error('Invalid Tron address in proof-of-ownership message');
+  }
+
+  return { nonce, address };
+}
+
+/**
+ * Validates that a plaintext message follows the proof-of-ownership format:
+ * 'metamask:proof-of-ownership:{nonce}:{address}'
+ */
+export const ProofOfOwnershipMessageStruct = refine(
+  string(),
+  'ProofOfOwnershipMessage',
+  (value: string) => {
+    try {
+      parseProofOfOwnershipMessage(value);
+      return true;
+    } catch (error) {
+      return error instanceof Error
+        ? error.message
+        : 'Invalid proof-of-ownership message';
+    }
+  },
+);
+
+/**
+ * signProofOfOwnership request/response validation.
+ */
+export const SignProofOfOwnershipRequestParamsStruct = object({
+  accountId: UuidStruct,
+  message: ProofOfOwnershipMessageStruct,
+});
+
+export const SignProofOfOwnershipRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignProofOfOwnership),
+  params: SignProofOfOwnershipRequestParamsStruct,
+});
