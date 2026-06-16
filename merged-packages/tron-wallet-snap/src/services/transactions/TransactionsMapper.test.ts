@@ -372,7 +372,7 @@ describe('TransactionMapper', () => {
         expect(result).toBeNull();
       });
 
-      it('should map a TRC20 approval transaction as Unknown type', () => {
+      it('maps a TRC20 approval transaction as TokenApprove type', () => {
         const rawTransaction = trc20TransferMock as TransactionInfo;
         const approvalTransfer: ContractTransactionInfo = {
           ...contractInfoMock.data[0],
@@ -387,7 +387,7 @@ describe('TransactionMapper', () => {
         });
 
         expect(result).not.toBeNull();
-        expect(result?.type).toBe(TransactionType.Unknown);
+        expect(result?.type).toBe(TransactionType.TokenApprove);
         expect(result?.id).toBe(approvalTransfer.transaction_id);
       });
 
@@ -412,7 +412,7 @@ describe('TransactionMapper', () => {
     });
 
     describe('TRC20-only transactions', () => {
-      it('should map a TRC20-only approval as Unknown type', () => {
+      it('maps a TRC20-only approval as TokenApprove type', () => {
         const approvalTrc20: ContractTransactionInfo = {
           transaction_id: 'approval-tx-id-123',
           token_info: {
@@ -436,7 +436,7 @@ describe('TransactionMapper', () => {
         });
 
         expect(result).toHaveLength(1);
-        expect(result[0]?.type).toBe(TransactionType.Unknown);
+        expect(result[0]?.type).toBe(TransactionType.TokenApprove);
         expect(result[0]?.id).toBe('approval-tx-id-123');
       });
 

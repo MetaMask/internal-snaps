@@ -235,7 +235,7 @@ export class TransactionMapper {
    * @param params.from - The sender address.
    * @param params.to - The receiver address.
    * @param params.trc20Type - Optional TRC20 transaction type from TronGrid API.
-   * @returns The transaction type (send/receive/swap/unknown).
+   * @returns The transaction type (send/receive/swap/tokenApprove/unknown).
    */
   static #computeTransactionType({
     accountAddress,
@@ -249,7 +249,7 @@ export class TransactionMapper {
     trc20Type?: string;
   }): TransactionType {
     if (trc20Type === TRC20_APPROVAL_TYPE) {
-      return TransactionType.Unknown;
+      return TransactionType.TokenApprove;
     }
     if (from === accountAddress && to === accountAddress) {
       return TransactionType.Swap; // This is a self-transfer, but in the context of a DEX, it's a swap

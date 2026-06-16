@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- TRC-20 approvals are now classified as `TransactionType.TokenApprove` ([#328](https://github.com/MetaMask/snap-tron-wallet/pull/328))
+  - Approvals were previously classified as `TransactionType.Unknown`.
+
 ## [1.26.0]
 
 ### Added
