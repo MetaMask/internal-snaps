@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.0]
+
 ### Changed
 
 - TRC-20 approvals are now classified as `TransactionType.TokenApprove` ([#328](https://github.com/MetaMask/snap-tron-wallet/pull/328))
   - Approvals were previously classified as `TransactionType.Unknown`.
+- chore: track errors in trackEvent handler of SnapClient WPN-366 ([#319](https://github.com/MetaMask/snap-tron-wallet/pull/319))
 
 ## [1.26.0]
 
@@ -538,7 +541,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.26.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.27.0...HEAD
+[1.27.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.8...v1.26.0
 [1.25.8]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.7...v1.25.8
 [1.25.7]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.6...v1.25.7
