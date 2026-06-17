@@ -4,9 +4,11 @@ import { BigNumber } from 'bignumber.js';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
 import type { ComputeFeeResult } from './types';
+import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { ContractInfo } from '../../clients/tron-http/types';
-import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
+import { type TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
 import {
   ACCOUNT_ACTIVATION_FEE_TRX,
@@ -122,18 +124,23 @@ export class FeeCalculatorService {
 
   readonly #tronHttpClient: TronHttpClient;
 
+  readonly #snapClient: SnapClient;
+
   constructor({
     logger,
     trongridApiClient,
     tronHttpClient,
+    snapClient,
   }: {
     logger: ILogger;
     trongridApiClient: TrongridApiClient;
     tronHttpClient: TronHttpClient;
+    snapClient: SnapClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[💸 FeeCalculatorService]');
     this.#trongridApiClient = trongridApiClient;
     this.#tronHttpClient = tronHttpClient;
+    this.#snapClient = snapClient;
   }
 
   /**
@@ -267,7 +274,10 @@ export class FeeCalculatorService {
     try {
       await this.#trongridApiClient.getAccountInfoByAddress(scope, address);
       return true;
-    } catch {
+    } catch (error) {
+      if (!(error instanceof TrongridAccountNotFoundError)) {
+        await this.#snapClient.trackError(error as Error);
+      }
       // If the account is not found, it means it's not activated
       this.#logger.log(`Account ${address} is not activated on ${scope}`);
       return false;
@@ -427,6 +437,7 @@ export class FeeCalculatorService {
 
       return availableEnergy;
     } catch (error) {
+      await this.#snapClient.trackError(error as Error);
       this.#logger.warn(
         { error, deployerAddress },
         'Failed to fetch deployer energy',
@@ -497,12 +508,15 @@ export class FeeCalculatorService {
           call_token_value: callTokenValue,
         }),
         // Graceful fallback: if getContract fails, contractInfo will be null
-        this.#tronHttpClient.getContract(scope, contractAddress).catch(() => {
-          this.#logger.warn(
-            'Failed to fetch contract info for energy sharing, assuming user pays all',
-          );
-          return null;
-        }),
+        this.#tronHttpClient
+          .getContract(scope, contractAddress)
+          .catch(async (error) => {
+            await this.#snapClient.trackError(error as Error);
+            this.#logger.warn(
+              'Failed to fetch contract info for energy sharing, assuming user pays all',
+            );
+            return null;
+          }),
       ]);
 
       /**
@@ -546,6 +560,7 @@ export class FeeCalculatorService {
       this.#logger.warn('No energy_used in result, using fallback');
       return this.#getFallbackEnergy(scope, feeLimit);
     } catch (error) {
+      await this.#snapClient.trackError(error as Error);
       this.#logger.error(
         { error },
         'Failed to estimate smart contract energy, using fallback',

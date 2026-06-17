@@ -1,5 +1,6 @@
 import { assert } from '@metamask/superstruct';
 
+import { TrongridAccountNotFoundError } from './errors';
 import {
   ContractTransactionInfoStruct,
   Trc20BalanceStruct,
@@ -88,7 +89,7 @@ export class TrongridApiClient {
    * @param scope - The network to query (e.g., 'mainnet', 'shasta')
    * @param address - The TRON address to query
    * @returns Promise<TronAccount> - Account data including balances.
-   * @throws Error - "Account not found or no data returned" for inactive accounts.
+   * @throws TrongridAccountNotFoundError - for inactive accounts.
    * @throws Error - HTTP errors or API failures.
    */
   async getAccountInfoByAddress(
@@ -121,14 +122,10 @@ export class TrongridApiClient {
     }
     assert(rawData.meta, TrongridApiMetaStruct);
 
-    if (!rawData.data || rawData.data.length === 0) {
-      throw new Error('Account not found or no data returned');
-    }
-
-    const account = rawData.data[0];
+    const account = rawData?.data?.[0];
 
     if (!account) {
-      throw new Error('No data');
+      throw new TrongridAccountNotFoundError();
     }
 
     // Validate account data schema

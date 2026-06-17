@@ -9,7 +9,8 @@ import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources, TronHttpClient } from '../../clients/tron-http';
-import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
+import { type TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
@@ -295,7 +296,7 @@ describe('AssetsService', () => {
             mockPriceApiClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new Error('Account not found or no data returned'),
+              new TrongridAccountNotFoundError(),
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue(
               emptyAccountResources,
@@ -351,7 +352,7 @@ describe('AssetsService', () => {
             mockTronHttpClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new Error('Account not found or no data returned'),
+              new TrongridAccountNotFoundError(),
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue(
               emptyAccountResources,
@@ -398,7 +399,7 @@ describe('AssetsService', () => {
             mockTronHttpClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new Error('Account not found or no data returned'),
+              new TrongridAccountNotFoundError(),
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue(
               emptyAccountResources,
@@ -461,7 +462,7 @@ describe('AssetsService', () => {
             mockPriceApiClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new Error('Account not found or no data returned'),
+              new TrongridAccountNotFoundError(),
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue(
               emptyAccountResources,
@@ -515,7 +516,7 @@ describe('AssetsService', () => {
             mockPriceApiClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new Error('Account not found or no data returned'),
+              new TrongridAccountNotFoundError(),
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({
               ...emptyAccountResources,
