@@ -14,6 +14,7 @@ import {
 import { SecurityEventType, TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
 import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { sanitizeSensitiveError } from '../../utils/sensitiveErrors';
 
 /**
  * Client for interacting with the Snap API.
@@ -261,7 +262,7 @@ export class SnapClient {
     try {
       return await snap.request({
         method: 'snap_trackError',
-        params: { error: getJsonError(error) },
+        params: { error: getJsonError(sanitizeSensitiveError(error)) },
       });
     } catch (rpcError) {
       this.#logger.warn(

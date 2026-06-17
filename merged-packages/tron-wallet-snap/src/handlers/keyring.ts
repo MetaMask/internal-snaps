@@ -47,10 +47,7 @@ import type { ConfirmationHandler } from '../services/confirmation/ConfirmationH
 import type { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionsService } from '../services/transactions/TransactionsService';
 import type { WalletService } from '../services/wallet/WalletService';
-import {
-  sanitizeSensitiveError,
-  withCatchAndThrowSnapError,
-} from '../utils/errors';
+import { sanitizeSensitiveError } from '../utils/errors';
 import { createPrefixedLogger, type ILogger } from '../utils/logger';
 import {
   CreateAccountOptionsStruct,
@@ -121,13 +118,8 @@ export class KeyringHandler implements Keyring {
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
     validateOrigin(origin, request.method);
-
-    const result =
-      (await withCatchAndThrowSnapError(async () =>
-        handleKeyringRequest(this, request),
-      )) ?? null;
-
-    return result;
+    const result = await handleKeyringRequest(this, request);
+    return result ?? null;
   }
 
   async #listAccounts(): Promise<TronKeyringAccount[]> {
