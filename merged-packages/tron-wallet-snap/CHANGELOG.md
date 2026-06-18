@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Filter spam TRC10/TRC20 token by excluding received token transactions whose token has no price data ([#332](https://github.com/MetaMask/snap-tron-wallet/pull/332))
+
 ## [1.27.0]
 
 ### Changed

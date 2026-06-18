@@ -6,6 +6,7 @@ import {
 } from '@metamask/keyring-api';
 
 import { isSpam } from './isSpam';
+import type { SpotPrices } from '../../../clients/price-api/types';
 import { Network, Networks } from '../../../constants';
 import type { TronKeyringAccount } from '../../../entities/keyring-account';
 
@@ -378,6 +379,132 @@ describe('isSpam', () => {
           account,
         ),
       ).toBe(false);
+    });
+  });
+
+  describe('isUnpricedReceivedToken detector', () => {
+    const spamTrc10Asset = (
+      amount: string,
+    ): Transaction['to'][number]['asset'] => ({
+      type: `${Network.Mainnet}/trc10:1005074`,
+      amount,
+      unit: 'GasFree4uCOM',
+      fungible: true,
+    });
+
+    const legitimateTrc20Asset = (
+      amount: string,
+    ): Transaction['to'][number]['asset'] => ({
+      type: `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
+      amount,
+      unit: 'USDT',
+      fungible: true,
+    });
+
+    const spotPricesWithUsdt: SpotPrices = {
+      [`${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`]: {
+        id: 'tether',
+        price: 1.0,
+      },
+    } as SpotPrices;
+
+    describe('Spam transactions', () => {
+      it('received TRC10 token with no price data', () => {
+        expect(
+          isSpam(
+            transaction({
+              to: [
+                { address: account.address, asset: spamTrc10Asset('2.2222') },
+              ],
+            }),
+            account,
+            { spotPrices: {} as SpotPrices },
+          ),
+        ).toBe(true);
+      });
+
+      it('received TRC20 token with no price data', () => {
+        expect(
+          isSpam(
+            transaction({
+              to: [
+                {
+                  address: account.address,
+                  asset: legitimateTrc20Asset('4444'),
+                },
+              ],
+            }),
+            account,
+            { spotPrices: {} as SpotPrices },
+          ),
+        ).toBe(true);
+      });
+    });
+
+    describe('Non-spam transactions', () => {
+      it('received TRC20 token with price data', () => {
+        expect(
+          isSpam(
+            transaction({
+              to: [
+                {
+                  address: account.address,
+                  asset: legitimateTrc20Asset('10'),
+                },
+              ],
+            }),
+            account,
+            { spotPrices: spotPricesWithUsdt },
+          ),
+        ).toBe(false);
+      });
+
+      it('received native TRX — no token movements, detector skips', () => {
+        expect(
+          isSpam(
+            transaction({
+              to: [
+                {
+                  address: account.address,
+                  asset: nativeAsset('10'),
+                },
+              ],
+            }),
+            account,
+            { spotPrices: {} as SpotPrices },
+          ),
+        ).toBe(false);
+      });
+
+      it('received token with no spotPrices context — detector skips (fail-open)', () => {
+        expect(
+          isSpam(
+            transaction({
+              to: [
+                { address: account.address, asset: spamTrc10Asset('2.2222') },
+              ],
+            }),
+            account,
+            {},
+          ),
+        ).toBe(false);
+      });
+
+      it("'Send' token transaction — detector skips non-receive", () => {
+        expect(
+          isSpam(
+            transaction({
+              type: TransactionType.Send,
+              from: [
+                { address: account.address, asset: spamTrc10Asset('2.2222') },
+              ],
+              to: [{ address: 'recipient', asset: spamTrc10Asset('2.2222') }],
+            }),
+            account,
+            { spotPrices: {} as SpotPrices },
+          ),
+        ).toBe(false);
+      });
     });
   });
 });

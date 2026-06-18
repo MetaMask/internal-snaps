@@ -105,6 +105,8 @@ const transactionsService = new TransactionsService({
   transactionsRepository,
   trongridApiClient,
   tronHttpClient,
+  priceApiClient,
+  snapClient,
 });
 
 const accountsService = new AccountsService({

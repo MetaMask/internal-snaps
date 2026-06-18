@@ -5,6 +5,8 @@ import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
+import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
+import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type {
@@ -27,6 +29,8 @@ describe('TransactionsService', () => {
   let mockTransactionsRepository: jest.Mocked<TransactionsRepository>;
   let mockTrongridApiClient: jest.Mocked<TrongridApiClient>;
   let mockTronHttpClient: jest.Mocked<TronHttpClient>;
+  let mockPriceApiClient: jest.Mocked<PriceApiClient>;
+  let mockSnapClient: jest.Mocked<SnapClient>;
 
   const mockAccount: TronKeyringAccount = {
     id: 'test-account-id',
@@ -91,12 +95,23 @@ describe('TransactionsService', () => {
       getTransactionInfoById: jest.fn(),
     } as unknown as jest.Mocked<TronHttpClient>;
 
+    // Create mock PriceApiClient — default: no price data (all tokens filtered unless overridden)
+    mockPriceApiClient = {
+      getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+    } as unknown as jest.Mocked<PriceApiClient>;
+
+    mockSnapClient = {
+      trackError: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<SnapClient>;
+
     // Create service instance
     transactionsService = new TransactionsService({
       logger: mockLogger,
       transactionsRepository: mockTransactionsRepository,
       trongridApiClient: mockTrongridApiClient,
       tronHttpClient: mockTronHttpClient,
+      priceApiClient: mockPriceApiClient,
+      snapClient: mockSnapClient,
     });
   });
 
@@ -257,6 +272,10 @@ describe('TransactionsService', () => {
         symbol: 'TRC20AdsCOM',
         decimals: 3,
       });
+      // Token has price data — should not be filtered as spam
+      mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({
+        [`${Network.Mainnet}/trc10:1005119`]: { id: '1005119', price: 0.001 },
+      } as never);
 
       const transactions =
         await transactionsService.fetchNewTransactionsForAccount(
@@ -317,6 +336,10 @@ describe('TransactionsService', () => {
         symbol: 'TRC20AdsCOM',
         decimals: 3,
       });
+      // Token has price data — should not be filtered as spam
+      mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({
+        [`${Network.Mainnet}/trc10:1005119`]: { id: '1005119', price: 0.001 },
+      } as never);
 
       const transactions =
         await transactionsService.fetchNewTransactionsForAccount(
@@ -343,6 +366,10 @@ describe('TransactionsService', () => {
       mockTronHttpClient.getTRC10TokenMetadata.mockRejectedValue(
         new Error('Token not found'),
       );
+      // Token has price data — should not be filtered as spam despite metadata failure
+      mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({
+        [`${Network.Mainnet}/trc10:1005119`]: { id: '1005119', price: 0.001 },
+      } as never);
 
       const transactions =
         await transactionsService.fetchNewTransactionsForAccount(
@@ -496,6 +523,211 @@ describe('TransactionsService', () => {
       // The pending transaction should be returned so it can be updated
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe(pendingTxId);
+    });
+
+    describe('filters unpriced received token transactions as spam', () => {
+      const trc10Asset = (
+        amount: string,
+      ): Transaction['to'][number]['asset'] => ({
+        type: `${Network.Mainnet}/trc10:1005074`,
+        amount,
+        unit: 'GasFree4uCOM',
+        fungible: true,
+      });
+
+      const trc20Asset = (
+        amount: string,
+      ): Transaction['to'][number]['asset'] => ({
+        type: `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
+        amount,
+        unit: 'USDT',
+        fungible: true,
+      });
+
+      const nativeAsset = (
+        amount: string,
+      ): Transaction['to'][number]['asset'] => ({
+        type: Networks[Network.Mainnet].nativeToken.id,
+        amount,
+        unit: Networks[Network.Mainnet].nativeToken.symbol,
+        fungible: true,
+      });
+
+      const receiveTransaction = (
+        id: string,
+        asset: Transaction['to'][number]['asset'],
+        accountAddress = mockAccount.address,
+      ): Transaction => ({
+        id,
+        type: TransactionType.Receive,
+        account: mockAccount.id,
+        chain: Network.Mainnet,
+        status: TransactionStatus.Confirmed,
+        timestamp: 1,
+        from: [{ address: 'sender-address', asset }],
+        to: [{ address: accountAddress, asset }],
+        events: [],
+        fees: [],
+      });
+
+      beforeEach(() => {
+        mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+          nativeTransferMock,
+        ] as TransactionInfo[]);
+        mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+          [],
+        );
+      });
+
+      it('filters received TRC10 tokens with no price data', async () => {
+        const spamTx = receiveTransaction('spam-trc10', trc10Asset('2.2222'));
+        const mapSpy = jest
+          .spyOn(TransactionMapper, 'mapTransactions')
+          .mockReturnValue([spamTx]);
+        mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({});
+
+        try {
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+          expect(result).toHaveLength(0);
+        } finally {
+          mapSpy.mockRestore();
+        }
+      });
+
+      it('filters received TRC20 tokens with no price data', async () => {
+        const spamTx = receiveTransaction(
+          'spam-trc20',
+          trc20Asset('4444.4444'),
+        );
+        const mapSpy = jest
+          .spyOn(TransactionMapper, 'mapTransactions')
+          .mockReturnValue([spamTx]);
+        mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({});
+
+        try {
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+          expect(result).toHaveLength(0);
+        } finally {
+          mapSpy.mockRestore();
+        }
+      });
+
+      it('keeps received tokens that have price data', async () => {
+        const legitimateTx = receiveTransaction('legit-usdt', trc20Asset('10'));
+        const mapSpy = jest
+          .spyOn(TransactionMapper, 'mapTransactions')
+          .mockReturnValue([legitimateTx]);
+        mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({
+          [`${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`]: {
+            id: 'tether',
+            price: 1.0,
+          },
+        } as never);
+
+        try {
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+          expect(result).toHaveLength(1);
+          expect(result[0]!.id).toBe('legit-usdt');
+        } finally {
+          mapSpy.mockRestore();
+        }
+      });
+
+      it('always keeps received native TRX transactions regardless of price', async () => {
+        const nativeTx = receiveTransaction('native-trx', nativeAsset('10'));
+        const mapSpy = jest
+          .spyOn(TransactionMapper, 'mapTransactions')
+          .mockReturnValue([nativeTx]);
+        // No price API call expected for native TRX — getMultipleSpotPrices default returns {}
+
+        try {
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+          expect(result).toHaveLength(1);
+          expect(
+            mockPriceApiClient.getMultipleSpotPrices,
+          ).not.toHaveBeenCalled();
+        } finally {
+          mapSpy.mockRestore();
+        }
+      });
+
+      it('always keeps non-receive transactions regardless of price', async () => {
+        const sendTx: Transaction = {
+          id: 'send-trc20',
+          type: TransactionType.Send,
+          account: mockAccount.id,
+          chain: Network.Mainnet,
+          status: TransactionStatus.Confirmed,
+          timestamp: 1,
+          from: [{ address: mockAccount.address, asset: trc20Asset('10') }],
+          to: [{ address: 'recipient', asset: trc20Asset('10') }],
+          events: [],
+          fees: [],
+        };
+        const mapSpy = jest
+          .spyOn(TransactionMapper, 'mapTransactions')
+          .mockReturnValue([sendTx]);
+        // No price API call expected — getMultipleSpotPrices default returns {}
+
+        try {
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+          expect(result).toHaveLength(1);
+          expect(
+            mockPriceApiClient.getMultipleSpotPrices,
+          ).not.toHaveBeenCalled();
+        } finally {
+          mapSpy.mockRestore();
+        }
+      });
+
+      it('keeps all transactions when the price API call fails', async () => {
+        const spamTx = receiveTransaction('spam-trc10', trc10Asset('2.2222'));
+        const mapSpy = jest
+          .spyOn(TransactionMapper, 'mapTransactions')
+          .mockReturnValue([spamTx]);
+        mockPriceApiClient.getMultipleSpotPrices.mockRejectedValue(
+          new Error('Price API unavailable'),
+        );
+
+        try {
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+          expect(result).toHaveLength(1);
+          expect(mockLogger.warn).toHaveBeenCalledWith(
+            '[🧾 TransactionsService]',
+            expect.objectContaining({ error: expect.any(Error) }),
+            'Failed to fetch spot prices for spam filtering, keeping all transactions',
+          );
+          expect(mockSnapClient.trackError).toHaveBeenCalledWith(
+            expect.any(Error),
+          );
+        } finally {
+          mapSpy.mockRestore();
+        }
+      });
     });
   });
 
