@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.0]
+
 ### Added
 
 - Filter spam TRC10/TRC20 token by excluding received token transactions whose token has no price data ([#332](https://github.com/MetaMask/snap-tron-wallet/pull/332))
+
+### Changed
+
+- Track error in signAndSendTransaction method of SendService ([#323](https://github.com/MetaMask/snap-tron-wallet/pull/323))
+- Track errors in FeeCalculationService ([#318](https://github.com/MetaMask/snap-tron-wallet/pull/318))
 
 ## [1.27.0]
 
@@ -545,7 +552,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.27.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.28.0...HEAD
+[1.28.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.8...v1.26.0
 [1.25.8]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.7...v1.25.8
