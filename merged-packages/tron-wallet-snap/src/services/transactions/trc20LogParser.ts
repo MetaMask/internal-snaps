@@ -1,6 +1,13 @@
+import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { TronWeb } from 'tronweb';
 
 import type { FullNodeTransactionInfo } from '../../clients/tron-http/types';
+import type { ContractTransactionInfo } from '../../clients/trongrid/types';
+import type { Network } from '../../constants';
+import type { TokenCaipAssetType } from '../assets/types';
+
+const UNKNOWN_TOKEN_SYMBOL = 'UNKNOWN';
+const DEFAULT_TOKEN_DECIMALS = 9;
 
 /**
  * keccak256("Transfer(address,address,uint256)") — the TRC20/ERC20 `Transfer`
@@ -154,4 +161,81 @@ export function parseTransferLogs(
   }
 
   return transfers;
+}
+
+/**
+ * Builds the CAIP-19 asset type for a TRC20 token contract on a given network.
+ *
+ * @param scope - The network scope.
+ * @param contractAddress - The TRC20 token contract address (base58).
+ * @returns The CAIP-19 asset type (e.g. `tron:728126428/trc20:T...`).
+ */
+function toTrc20AssetType(
+  scope: Network,
+  contractAddress: string,
+): TokenCaipAssetType {
+  return `${scope}/trc20:${contractAddress}` as TokenCaipAssetType;
+}
+
+/**
+ * Collects the unique TRC20 asset types referenced by the given transfers, so
+ * their metadata (symbol, decimals) can be resolved in a single batch.
+ *
+ * @param transfers - The reconstructed transfers.
+ * @param scope - The network scope.
+ * @returns The unique CAIP-19 asset types.
+ */
+export function getReconstructedTransferAssetTypes(
+  transfers: ParsedTransferLog[],
+  scope: Network,
+): TokenCaipAssetType[] {
+  const assetTypes = new Set<TokenCaipAssetType>();
+  for (const transfer of transfers) {
+    assetTypes.add(toTrc20AssetType(scope, transfer.contractAddress));
+  }
+  return [...assetTypes];
+}
+
+/**
+ * Converts log-reconstructed transfers into the same `ContractTransactionInfo`
+ * shape that TronGrid's address-level TRC20 endpoint returns, resolving each
+ * token's `token_info` from previously fetched metadata. Transfers whose
+ * metadata is missing fall back to UNKNOWN symbol and default decimals.
+ *
+ * @param transfers - The reconstructed transfers.
+ * @param scope - The network scope.
+ * @param metadataByAssetType - Token metadata keyed by CAIP-19 asset type.
+ * @returns The transfers as `ContractTransactionInfo` entries.
+ */
+export function buildContractTransactionInfos(
+  transfers: ParsedTransferLog[],
+  scope: Network,
+  metadataByAssetType: Record<
+    TokenCaipAssetType,
+    FungibleAssetMetadata | null | undefined
+  >,
+): ContractTransactionInfo[] {
+  return transfers.map((transfer) => {
+    const assetType = toTrc20AssetType(scope, transfer.contractAddress);
+    const metadata = metadataByAssetType[assetType];
+    const unit = metadata?.units?.[0];
+
+    return {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      transaction_id: transfer.transactionId,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      token_info: {
+        symbol: metadata?.symbol ?? UNKNOWN_TOKEN_SYMBOL,
+        address: transfer.contractAddress,
+        decimals: unit?.decimals ?? DEFAULT_TOKEN_DECIMALS,
+        name: metadata?.name ?? UNKNOWN_TOKEN_SYMBOL,
+      },
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      block_timestamp: transfer.blockTimestamp,
+      from: transfer.from,
+      to: transfer.to,
+      type: 'Transfer',
+      value: transfer.value,
+    };
+  });
 }

@@ -1,7 +1,14 @@
+import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
+
 import {
+  buildContractTransactionInfos,
+  getReconstructedTransferAssetTypes,
   parseTransferLogs,
   TRC20_TRANSFER_EVENT_SIGNATURE,
+  type ParsedTransferLog,
 } from './trc20LogParser';
+import { Network } from '../../constants';
+import type { TokenCaipAssetType } from '../assets/types';
 
 type EventLog = { address: string; topics: string[]; data: string };
 
@@ -167,5 +174,110 @@ describe('parseTransferLogs', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.contractAddress).toBe(USDT_CONTRACT_BASE58);
+  });
+});
+
+const transfer = (
+  contractAddress: string,
+  value = '2916449',
+): ParsedTransferLog => ({
+  transactionId: TX_ID,
+  contractAddress,
+  from: SENDER_BASE58,
+  to: RECIPIENT_BASE58,
+  value,
+  blockTimestamp: BLOCK_TIMESTAMP,
+});
+
+const usdtAssetType =
+  `${Network.Mainnet}/trc20:${USDT_CONTRACT_BASE58}` as TokenCaipAssetType;
+
+const usdtMetadata: FungibleAssetMetadata = {
+  name: 'Tether USD',
+  symbol: 'USDT',
+  fungible: true,
+  iconUrl: '',
+  units: [{ name: 'Tether USD', symbol: 'USDT', decimals: 6 }],
+};
+
+describe('getReconstructedTransferAssetTypes', () => {
+  it('returns the unique TRC20 asset types referenced by the transfers', () => {
+    const otherContract = 'TMwFHYXLJaRUPeW6421aqXL4ZEzPRFGkGT';
+
+    const result = getReconstructedTransferAssetTypes(
+      [
+        transfer(USDT_CONTRACT_BASE58),
+        transfer(USDT_CONTRACT_BASE58),
+        transfer(otherContract),
+      ],
+      Network.Mainnet,
+    );
+
+    expect(result).toStrictEqual([
+      usdtAssetType,
+      `${Network.Mainnet}/trc20:${otherContract}`,
+    ]);
+  });
+
+  it('returns an empty array when there are no transfers', () => {
+    expect(
+      getReconstructedTransferAssetTypes([], Network.Mainnet),
+    ).toStrictEqual([]);
+  });
+});
+
+describe('buildContractTransactionInfos', () => {
+  it('maps transfers to ContractTransactionInfo using resolved metadata', () => {
+    const result = buildContractTransactionInfos(
+      [transfer(USDT_CONTRACT_BASE58)],
+      Network.Mainnet,
+      { [usdtAssetType]: usdtMetadata },
+    );
+
+    expect(result).toStrictEqual([
+      {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        transaction_id: TX_ID,
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        token_info: {
+          symbol: 'USDT',
+          address: USDT_CONTRACT_BASE58,
+          decimals: 6,
+          name: 'Tether USD',
+        },
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        block_timestamp: BLOCK_TIMESTAMP,
+        from: SENDER_BASE58,
+        to: RECIPIENT_BASE58,
+        type: 'Transfer',
+        value: '2916449',
+      },
+    ]);
+  });
+
+  it('falls back to UNKNOWN symbol and default decimals when metadata is missing', () => {
+    const result = buildContractTransactionInfos(
+      [transfer(USDT_CONTRACT_BASE58)],
+      Network.Mainnet,
+      {},
+    );
+
+    expect(result[0]?.token_info).toStrictEqual({
+      symbol: 'UNKNOWN',
+      address: USDT_CONTRACT_BASE58,
+      decimals: 9,
+      name: 'UNKNOWN',
+    });
+  });
+
+  it('falls back to defaults when metadata is null', () => {
+    const result = buildContractTransactionInfos(
+      [transfer(USDT_CONTRACT_BASE58)],
+      Network.Mainnet,
+      { [usdtAssetType]: null },
+    );
+
+    expect(result[0]?.token_info.symbol).toBe('UNKNOWN');
+    expect(result[0]?.token_info.decimals).toBe(9);
   });
 });
