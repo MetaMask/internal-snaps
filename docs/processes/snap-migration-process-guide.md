@@ -13,7 +13,7 @@ This document outlines the process for migrating a MetaMask first-party Snap int
 Add this banner to the top of `README.md`:
 
 ```markdown
-<table><tr><td><p align="center"><b>⚠️ PLEASE READ ⚠️</b></p><p align="center">This package is currently being migrated to our <a href="<https://github.com/MetaMask/internal-snaps>"><code>internal-snaps</code></a> monorepo. Please do not make any commits to this repository while this migration is taking place, as they will not be transferred over. Also, please re-open PRs that are under active development in the <code>internal-snaps</code> repo.</p></td></tr></table>
+<table><tr><td><p align="center"><b>⚠️ PLEASE READ ⚠️</b></p><p align="center">This package is currently being migrated to our <a href="https://github.com/MetaMask/internal-snaps"><code>internal-snaps</code></a> monorepo. Please do not make any commits to this repository while this migration is taking place, as they will not be transferred over. Also, please re-open PRs that are under active development in the <code>internal-snaps</code> repo.</p></td></tr></table>
 ```
 
 ### [PR#2] Align dependency versions and TypeScript / ESLint / Prettier / Oxfmt configurations with `internal-snaps`
