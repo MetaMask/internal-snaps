@@ -429,4 +429,58 @@ describe('TrongridApiClient', () => {
       });
     });
   });
+
+  describe('peekCachedChainParameters', () => {
+    it('returns undefined when no chain parameters are cached for the scope', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        const peeked = await client.peekCachedChainParameters(Network.Mainnet);
+
+        expect(peeked).toBeUndefined();
+      });
+    });
+
+    it('returns the last-known cached chain parameters populated by getChainParameters', async () => {
+      const chainParameters = [
+        { key: 'getTransactionFee', value: 1000 },
+        { key: 'getEnergyFee', value: 100 },
+      ];
+
+      await withTrongridApiClient(async ({ client }) => {
+        // getChainParameters issues two fetches: chain parameters first, then
+        // next-maintenance-time (the cache TTL).
+        // eslint-disable-next-line no-restricted-globals
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response(JSON.stringify({ chainParameter: chainParameters }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+        // eslint-disable-next-line no-restricted-globals
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response(
+            JSON.stringify({
+              // eslint-disable-next-line id-denylist
+              num: Date.now() + 3_600_000,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+        // Populate the cache and capture exactly what was cached.
+        const live = await client.getChainParameters(Network.Mainnet);
+        const peeked = await client.peekCachedChainParameters(Network.Mainnet);
+
+        // Peek must return exactly what the live call cached (same reference and
+        // shape), without triggering another fetch.
+        expect(peeked).toStrictEqual(live);
+        expect(peeked).toHaveLength(chainParameters.length);
+        expect(peeked?.[0]?.key).toBe('getTransactionFee');
+        expect(peeked?.[0]?.value).toBe(1000);
+        expect(peeked?.[1]?.key).toBe('getEnergyFee');
+        expect(peeked?.[1]?.value).toBe(100);
+      });
+    });
+  });
 });

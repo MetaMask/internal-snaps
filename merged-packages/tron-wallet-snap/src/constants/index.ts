@@ -5,6 +5,9 @@ export const ZERO = BigNumber(0);
 export const ACCOUNT_ACTIVATION_FEE_TRX = BigNumber(1);
 export const MEMO_FEE_TRX = BigNumber(1);
 export const SUN_IN_TRX = 1_000_000;
+export const FALLBACK_GET_TRANSACTION_FEE_SUN = 1000;
+export const FALLBACK_GET_ENERGY_FEE_SUN = 100;
+export const FALLBACK_ENERGY_PRICE_SUN = 420;
 /**
  * 100 TRX
  */

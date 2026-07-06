@@ -1,6 +1,9 @@
 import { assert } from '@metamask/superstruct';
 
-import { TrongridAccountNotFoundError } from './errors';
+import {
+  createTrongridHttpError,
+  TrongridAccountNotFoundError,
+} from './errors';
 import {
   ContractTransactionInfoStruct,
   Trc20BalanceStruct,
@@ -26,6 +29,24 @@ import { buildUrl } from '../../utils/buildUrl';
 import type { Serializable } from '../../utils/serialization/types';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
+
+/**
+ * Function name used for the `useCacheUntil` cache key for `getChainParameters`.
+ * Also used by {@link TrongridApiClient.peekCachedChainParameters} so the peek
+ * reads the exact same entry the cached write produced.
+ */
+const CHAIN_PARAMETERS_FUNCTION_NAME = 'TrongridApiClient:getChainParameters';
+
+/**
+ * Build the cache key for `getChainParameters(scope)`. Must match the key
+ * produced by `useCacheUntil`'s default key generator
+ * (`${functionName}:${JSON.stringify(arg)}`).
+ *
+ * @param scope - The network scope to build the cache key for.
+ * @returns The cache key for the chain-parameters entry.
+ */
+const chainParametersCacheKey = (scope: Network): string =>
+  `${CHAIN_PARAMETERS_FUNCTION_NAME}:${JSON.stringify(scope)}`;
 
 export class TrongridApiClient {
   readonly #clients: Map<
@@ -77,8 +98,29 @@ export class TrongridApiClient {
     this.#cachedGetChainParameters = useCacheUntil(
       this.#fetchChainParametersWithExpiry.bind(this),
       this.#cache,
-      { functionName: 'TrongridApiClient:getChainParameters' },
+      {
+        functionName: CHAIN_PARAMETERS_FUNCTION_NAME,
+      },
     );
+  }
+
+  /**
+   * Peek at the last-known cached `getChainParameters` result for `scope`
+   * without triggering a live fetch. Intended for fail-safe fee estimation:
+   * when a live fetch fails, the last-known chain parameters are a better
+   * conservative floor than static fallback constants.
+   *
+   * Note: `peek` does not check expiry, so the returned value may be past its
+   * maintenance-period TTL. This is acceptable for a conservative floor.
+   *
+   * @param scope - The network to peek.
+   * @returns The cached chain parameters, or `undefined` if none are cached.
+   */
+  async peekCachedChainParameters(
+    scope: Network,
+  ): Promise<ChainParameter[] | undefined> {
+    const cached = await this.#cache.peek(chainParametersCacheKey(scope));
+    return cached as ChainParameter[] | undefined;
   }
 
   /**
@@ -111,7 +153,7 @@ export class TrongridApiClient {
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw createTrongridHttpError(response);
     }
 
     const rawData: TrongridApiResponse<TronAccount[]> = await response.json();
@@ -169,7 +211,7 @@ export class TrongridApiClient {
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw createTrongridHttpError(response);
     }
 
     const rawData: TrongridApiResponse<TransactionInfo[]> =
@@ -220,7 +262,7 @@ export class TrongridApiClient {
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw createTrongridHttpError(response);
     }
 
     const rawData: TrongridApiResponse<ContractTransactionInfo[]> =
@@ -272,7 +314,7 @@ export class TrongridApiClient {
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw createTrongridHttpError(response);
     }
 
     const rawData: TrongridApiResponse<Trc20Balance[]> = await response.json();

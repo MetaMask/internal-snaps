@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Make computeFee fail-safe on TronGrid failure ([#343](https://github.com/MetaMask/snap-tron-wallet/pull/343))
+
 ## [1.28.0]
 
 ### Added
