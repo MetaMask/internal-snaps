@@ -45,8 +45,10 @@ export const ConfirmSignTransaction = ({
   } = context;
 
   /**
-   * Only disable confirm button upon first load (FetchStatus.Loading)
-   * as opposed to subsequent loads (FetchStatus.Fetching)
+   * Only disable the confirm button on the first load (FetchStatus.Loading),
+   * not during subsequent cron re-scans (FetchStatus.Fetching), and whenever
+   * the simulation has failed — including the expired/TAPOS-expired case, so
+   * the user is blocked from confirming a transaction that won't broadcast.
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
@@ -88,8 +90,11 @@ export const ConfirmSignTransaction = ({
   return (
     <Container>
       <Box>
-        {/* Security Alert */}
-        {preferences.useSecurityAlerts ? (
+        {/* Security Alert / expiry banner.
+            Rendered when security alerts are enabled, or whenever a scan error
+            (e.g. the locally-detected TAPOS-expired case) is present, so the
+            expiry warning surfaces even with security alerts turned off. */}
+        {preferences.useSecurityAlerts || scan?.error ? (
           <TransactionAlert
             scanFetchStatus={scanFetchStatus}
             validation={scan?.validation ?? null}

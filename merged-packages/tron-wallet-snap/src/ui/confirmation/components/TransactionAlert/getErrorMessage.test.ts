@@ -1,4 +1,5 @@
 import { getErrorMessage } from './getErrorMessage';
+import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import type { TransactionScanError } from '../../../../services/transaction-scan/types';
 import type { Preferences } from '../../../../types/snap';
 
@@ -101,5 +102,41 @@ describe('getErrorMessage', () => {
     const result = getErrorMessage(error, mockPreferences);
 
     expect(result).toBe('An unknown error occurred');
+  });
+
+  it('returns the friendly deadline message when the message carries the marker', () => {
+    const error: TransactionScanError = {
+      type: null,
+      code: null,
+      message: "Reverted: 'TransactionDeadlinePassed'",
+    };
+
+    const result = getErrorMessage(error, mockPreferences);
+
+    expect(result).toBe('Please go back and try again');
+  });
+
+  it('returns the friendly deadline message when the error type is the marker', () => {
+    const error: TransactionScanError = {
+      type: 'TransactionDeadlinePassed',
+      code: null,
+      message: null,
+    };
+
+    const result = getErrorMessage(error, mockPreferences);
+
+    expect(result).toBe('Please go back and try again');
+  });
+
+  it('returns the friendly deadline message for the locally-detected TAPOS-expired marker', () => {
+    const error: TransactionScanError = {
+      type: TRANSACTION_TAPOS_EXPIRED,
+      code: null,
+      message: null,
+    };
+
+    const result = getErrorMessage(error, mockPreferences);
+
+    expect(result).toBe('Please go back and try again');
   });
 });

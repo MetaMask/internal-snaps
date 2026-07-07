@@ -159,16 +159,17 @@ describe('transaction metadata', () => {
     expect(tronWeb.utils.transaction.txJsonToPb).not.toHaveBeenCalled();
   });
 
-  it('returns a transaction from serialized raw data with fresh metadata', async () => {
+  it('deserializes a serialized transaction without modifying the payload', async () => {
     const currentBlock = createBlock({
       number: 200_000,
       timestamp: now,
       hashSegment: '0011223344556677',
     });
     const tronWeb = createTronWeb({ currentBlock });
+    // Even a stale transaction must be returned exactly as received.
     const transaction = createTransaction({
       block: currentBlock,
-      expiration: now + 5_000,
+      expiration: now - 1,
     });
     const rawDataHex = '1234567890abcdef';
     tronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
@@ -176,7 +177,7 @@ describe('transaction metadata', () => {
     );
     const { service } = createService(tronWeb);
 
-    const result = await service.ensureFreshSerializedTransaction({
+    const result = await service.deserializeTransaction({
       scope,
       type: 'TransferContract',
       rawDataHex,
@@ -185,41 +186,13 @@ describe('transaction metadata', () => {
     expect(
       tronWeb.utils.deserializeTx.deserializeTransaction,
     ).toHaveBeenCalledWith('TransferContract', rawDataHex);
-    expect(result.raw_data.ref_block_bytes).toBe(getRefBlockBytes(200_000));
-    expect(result.raw_data.ref_block_hash).toBe('0011223344556677');
-    expect(result.raw_data.expiration).toBe(now + 60_000);
-    expect(result.raw_data_hex).toBe('refreshed-raw-data-hex');
-    expect(result.txID).toBe('refreshed-tx-id');
-  });
-
-  it('returns original serialized transaction fields when metadata is already fresh', async () => {
-    const currentBlock = createBlock({
-      number: 200_000,
-      timestamp: now,
-      hashSegment: '0011223344556677',
-    });
-    const tronWeb = createTronWeb({ currentBlock });
-    const transaction = createTransaction({
-      block: currentBlock,
-      expiration: now + 45_000,
-    });
-    const rawDataHex = '1234567890abcdef';
-    tronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
-      transaction.raw_data,
-    );
-    const { service } = createService(tronWeb);
-
-    const result = await service.ensureFreshSerializedTransaction({
-      scope,
-      type: 'TransferContract',
-      rawDataHex,
-    });
-
     expect(result.raw_data).toBe(transaction.raw_data);
     expect(result.raw_data_hex).toBe(rawDataHex);
     expect(result.txID).toBe(
       'b09dc9a32de2d32bc21052a2f185044607d11cc58966ba7d7b299fabb7dcbd12',
     );
+    // Never refreshes: no block lookups, no transaction rebuild.
+    expect(tronWeb.trx.getCurrentBlock).not.toHaveBeenCalled();
     expect(tronWeb.utils.transaction.txJsonToPb).not.toHaveBeenCalled();
     expect(tronWeb.utils.transaction.txPbToRawDataHex).not.toHaveBeenCalled();
     expect(tronWeb.utils.transaction.txPbToTxID).not.toHaveBeenCalled();
@@ -472,5 +445,129 @@ describe('transaction metadata', () => {
 
     expect(tronWeb.trx.getBlockByNumber).not.toHaveBeenCalled();
     expect(tronWeb.utils.transaction.txJsonToPb).not.toHaveBeenCalled();
+  });
+
+  it('throws a clear error when ensureFreshRawData cannot fetch the current block', async () => {
+    const transaction = createTransaction({
+      block: createBlock({ number: 199_990, timestamp: now - 30_000 }),
+      expiration: now - 1,
+    });
+    const tronWeb = createTronWeb();
+    tronWeb.trx.getCurrentBlock.mockRejectedValue(new Error('node offline'));
+    const { service } = createService(tronWeb);
+
+    await expect(
+      service.ensureFreshRawData({ scope, rawData: transaction.raw_data }),
+    ).rejects.toThrow(TRANSACTION_METADATA_REFRESH_ERROR);
+  });
+
+  describe('isTransactionExpired', () => {
+    it('returns false for a fresh, broadcastable transaction', async () => {
+      const referencedBlock = createBlock({
+        number: 199_990,
+        timestamp: now - 30_000,
+        hashSegment: 'abcdef1234567890',
+      });
+      const currentBlock = createBlock({ number: 200_000, timestamp: now });
+      const tronWeb = createTronWeb({ currentBlock, referencedBlock });
+      const transaction = createTransaction({
+        block: referencedBlock,
+        expiration: now + 45_000,
+      });
+      const { service } = createService(tronWeb);
+
+      const expired = await service.isTransactionExpired({
+        scope,
+        rawData: transaction.raw_data,
+      });
+
+      expect(expired).toBe(false);
+    });
+
+    it('returns true when the expiration is in the past', async () => {
+      const currentBlock = createBlock({ number: 200_000, timestamp: now });
+      const tronWeb = createTronWeb({ currentBlock });
+      const transaction = createTransaction({
+        block: currentBlock,
+        expiration: now - 1,
+      });
+      const { service } = createService(tronWeb);
+
+      const expired = await service.isTransactionExpired({
+        scope,
+        rawData: transaction.raw_data,
+      });
+
+      expect(expired).toBe(true);
+      // No need to fetch the referenced block once expiration is already stale.
+      expect(tronWeb.trx.getBlockByNumber).not.toHaveBeenCalled();
+    });
+
+    it('returns true when the referenced block hash no longer matches', async () => {
+      const referencedBlock = createBlock({
+        number: 199_990,
+        timestamp: now - 30_000,
+        hashSegment: 'abcdef1234567890',
+      });
+      const currentBlock = createBlock({
+        number: 200_000,
+        timestamp: now,
+        hashSegment: '0011223344556677',
+      });
+      const tronWeb = createTronWeb({ currentBlock, referencedBlock });
+      const transaction = createTransaction({
+        block: referencedBlock,
+        expiration: now + 45_000,
+      });
+      transaction.raw_data.ref_block_hash = 'badbadbadbadbad0';
+      const { service } = createService(tronWeb);
+
+      const expired = await service.isTransactionExpired({
+        scope,
+        rawData: transaction.raw_data,
+      });
+
+      expect(expired).toBe(true);
+    });
+
+    it('returns true when the reference block bytes are outside the window', async () => {
+      const currentBlock = createBlock({
+        number: 10,
+        timestamp: now,
+        hashSegment: '0011223344556677',
+      });
+      const tronWeb = createTronWeb({ currentBlock });
+      const transaction = createTransaction({
+        block: currentBlock,
+        expiration: now + 45_000,
+      });
+      transaction.raw_data.ref_block_bytes = 'ffff';
+      const { service } = createService(tronWeb);
+
+      const expired = await service.isTransactionExpired({
+        scope,
+        rawData: transaction.raw_data,
+      });
+
+      expect(expired).toBe(true);
+      expect(tronWeb.trx.getBlockByNumber).not.toHaveBeenCalled();
+    });
+
+    it('throws when the current block cannot be fetched', async () => {
+      const tronWeb = createTronWeb();
+      tronWeb.trx.getCurrentBlock.mockRejectedValue(new Error('node offline'));
+      const transaction = createTransaction({
+        block: createBlock({ number: 199_990, timestamp: now - 30_000 }),
+        expiration: now - 1,
+      });
+      const { service } = createService(tronWeb);
+
+      await expect(
+        service.isTransactionExpired({
+          scope,
+          rawData: transaction.raw_data,
+        }),
+      ).rejects.toThrow('node offline');
+    });
   });
 });

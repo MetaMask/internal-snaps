@@ -17,7 +17,6 @@ import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { AssetsService } from '../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../services/confirmation/ConfirmationHandler';
-import type { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionsService } from '../services/transactions/TransactionsService';
 import type { WalletService } from '../services/wallet/WalletService';
 import { mockLogger } from '../utils/mockLogger';
@@ -65,12 +64,6 @@ describe('KeyringHandler', () => {
   let mockTransactionsService: jest.Mocked<TransactionsService>;
   let mockWalletService: jest.Mocked<WalletService>;
   let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
-  let mockTransactionExpirationRefresherService: jest.Mocked<
-    Pick<
-      TransactionExpirationRefresherService,
-      'ensureFreshSerializedTransaction'
-    >
-  >;
 
   beforeEach(() => {
     mockSnapClient = {
@@ -97,18 +90,6 @@ describe('KeyringHandler', () => {
     mockConfirmationHandler = {
       handleKeyringRequest: jest.fn().mockResolvedValue(true),
     } as any;
-    mockTransactionExpirationRefresherService = {
-      ensureFreshSerializedTransaction: jest.fn(
-        async ({ rawDataHex }) =>
-          ({
-            txID: 'test-tx-id',
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            raw_data: {},
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            raw_data_hex: rawDataHex,
-          }) as any,
-      ),
-    };
 
     keyringHandler = new KeyringHandler({
       logger: mockLogger,
@@ -118,8 +99,6 @@ describe('KeyringHandler', () => {
       transactionsService: mockTransactionsService,
       walletService: mockWalletService,
       confirmationHandler: mockConfirmationHandler,
-      transactionExpirationRefresherService:
-        mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
     });
   });
 
@@ -161,9 +140,6 @@ describe('KeyringHandler', () => {
           method: TronMultichainMethod.SignMessage,
           params: request.request.params,
         });
-        expect(
-          mockTransactionExpirationRefresherService.ensureFreshSerializedTransaction,
-        ).not.toHaveBeenCalled();
       });
 
       it('throws error if user rejects the request', async () => {
@@ -213,7 +189,7 @@ describe('KeyringHandler', () => {
     });
 
     describe('signTransaction', () => {
-      it('refreshes transaction metadata before confirming and signing a transaction', async () => {
+      it('confirms and signs the transaction without modifying its payload', async () => {
         const request: KeyringRequest = {
           id: '00000000-0000-4000-8000-000000000004',
           origin: 'https://test-origin.com',
@@ -236,15 +212,6 @@ describe('KeyringHandler', () => {
             type: string;
           };
         };
-        mockTransactionExpirationRefresherService.ensureFreshSerializedTransaction.mockResolvedValue(
-          {
-            txID: 'fresh-tx-id',
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            raw_data: {},
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            raw_data_hex: 'fresh-raw-data-hex',
-          } as any,
-        );
 
         const result = await keyringHandler.submitRequest(request);
 
@@ -252,13 +219,7 @@ describe('KeyringHandler', () => {
           pending: false,
           result: { signature: '0xsignature123' },
         });
-        expect(
-          mockTransactionExpirationRefresherService.ensureFreshSerializedTransaction,
-        ).toHaveBeenCalledWith({
-          scope: Network.Mainnet,
-          type: transactionParams.transaction.type,
-          rawDataHex: transactionParams.transaction.rawDataHex,
-        });
+        // The request reaching confirmation keeps the dApp's original payload.
         expect(
           mockConfirmationHandler.handleKeyringRequest,
         ).toHaveBeenCalledWith({
@@ -266,7 +227,7 @@ describe('KeyringHandler', () => {
             request: expect.objectContaining({
               params: expect.objectContaining({
                 transaction: expect.objectContaining({
-                  rawDataHex: 'fresh-raw-data-hex',
+                  rawDataHex: transactionParams.transaction.rawDataHex,
                 }),
               }),
             }),
@@ -279,7 +240,7 @@ describe('KeyringHandler', () => {
           method: TronMultichainMethod.SignTransaction,
           params: expect.objectContaining({
             transaction: expect.objectContaining({
-              rawDataHex: 'fresh-raw-data-hex',
+              rawDataHex: transactionParams.transaction.rawDataHex,
             }),
           }),
         });

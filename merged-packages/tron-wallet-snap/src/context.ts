@@ -151,7 +151,6 @@ const walletService = new WalletService({
   logger,
   accountsService,
   tronWebFactory,
-  transactionExpirationRefresherService,
 });
 
 const transactionScanService = new TransactionScanService(
@@ -206,7 +205,6 @@ const keyringHandler = new KeyringHandler({
   transactionsService,
   walletService,
   confirmationHandler,
-  transactionExpirationRefresherService,
 });
 const rpcHandler = new RpcHandler({
   logger,
@@ -236,6 +234,7 @@ export type SnapExecutionContext = {
   tronWebFactory: TronWebFactory;
   confirmationHandler: ConfirmationHandler;
   transactionScanService: TransactionScanService;
+  transactionExpirationRefresherService: TransactionExpirationRefresherService;
   /**
    * Handlers
    */
@@ -267,6 +266,7 @@ const snapContext: SnapExecutionContext = {
   tronWebFactory,
   confirmationHandler,
   transactionScanService,
+  transactionExpirationRefresherService,
   /**
    * Handlers
    */

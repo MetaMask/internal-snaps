@@ -1,3 +1,4 @@
+import { isTransactionDeadlinePassedError } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import type { TransactionScanError } from '../../../../services/transaction-scan/types';
 import type { Preferences } from '../../../../types/snap';
 import { i18n } from '../../../../utils/i18n';
@@ -24,6 +25,11 @@ export function getErrorMessage(
   preferences: Preferences,
 ): string {
   const translate = i18n(preferences.locale);
+
+  if (isTransactionDeadlinePassedError(error)) {
+    return translate('transactionScan.errors.transactionDeadlinePassed');
+  }
+
   const { code, type, message } = error;
 
   // Try to find a translation key for the error code

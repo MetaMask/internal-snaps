@@ -8,7 +8,11 @@ import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { State, UnencryptedStateValue } from '../services/state/State';
 import type { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
-import type { JsonTransactionRawData } from '../services/transaction-expiration-refresher/types';
+import type {
+  JsonTransactionRawData,
+  TransactionRawData,
+} from '../services/transaction-expiration-refresher/types';
+import { EXPIRED_TRANSACTION_SCAN } from '../services/transaction-scan/buildExpiredScanResult';
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
 import { FetchStatus } from '../types/snap';
 import { ConfirmSignTransaction } from '../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
@@ -491,9 +495,31 @@ export class CronHandler {
       );
 
       let { scan, scanFetchStatus } = interfaceContext;
-      let freshTransactionHex = transaction.rawDataHex;
 
-      if (shouldRefreshScan) {
+      // Deserialize the original payload once (read-only) for both the security
+      // re-scan and the local TAPOS-expiry check. The payload itself is never
+      // refreshed — re-scanning the unchanged transaction is what surfaces
+      // expiration over time in the warning banner.
+      let rawData: TransactionRawData | null = null;
+      try {
+        const deserialized =
+          await this.#transactionExpirationRefresherService.deserializeTransaction(
+            {
+              scope,
+              type: transaction.type,
+              rawDataHex: transaction.rawDataHex,
+            },
+          );
+        rawData = deserialized.raw_data;
+      } catch (error) {
+        this.#logger.error(
+          'Error deserializing transaction for signTransaction refresh:',
+          error,
+        );
+        await this.#snapClient.trackError(error as Error);
+      }
+
+      if (shouldRefreshScan && rawData) {
         const options: string[] = [];
         if (preferences.simulateOnChainActions) {
           options.push('simulation');
@@ -503,19 +529,9 @@ export class CronHandler {
         }
 
         try {
-          const freshTransaction =
-            await this.#transactionExpirationRefresherService.ensureFreshSerializedTransaction(
-              {
-                scope,
-                type: transaction.type,
-                rawDataHex: transaction.rawDataHex,
-              },
-            );
-          freshTransactionHex = freshTransaction.raw_data_hex;
-
           scan = await this.#transactionScanService.scanTransaction({
             accountAddress: account.address,
-            transactionRawData: freshTransaction.raw_data,
+            transactionRawData: rawData,
             origin,
             scope,
             options,
@@ -527,6 +543,31 @@ export class CronHandler {
           this.#logger.error('Error refreshing signTransaction scan:', error);
           scan = null;
           scanFetchStatus = FetchStatus.Error;
+        }
+      }
+
+      // Local TAPOS-expiry check: protocol-level validity, independent of the
+      // security preferences. The security-API simulation does not validate
+      // Tron TAPOS fields, so the snap surfaces expiry itself. It takes
+      // precedence over a benign scan — an expired transaction won't broadcast
+      // regardless of the contract simulation result.
+      if (rawData) {
+        try {
+          const expired =
+            await this.#transactionExpirationRefresherService.isTransactionExpired(
+              {
+                scope,
+                rawData,
+              },
+            );
+
+          if (expired) {
+            scan = EXPIRED_TRANSACTION_SCAN;
+            scanFetchStatus = FetchStatus.Fetched;
+          }
+        } catch (error) {
+          this.#logger.error('Error checking transaction expiration:', error);
+          await this.#snapClient.trackError(error as Error);
         }
       }
 
@@ -546,10 +587,6 @@ export class CronHandler {
         ...latestContext,
         scan,
         scanFetchStatus,
-        transaction: {
-          ...latestContext.transaction,
-          rawDataHex: freshTransactionHex,
-        },
       };
 
       await this.#snapClient.updateInterface(

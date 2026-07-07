@@ -49,16 +49,20 @@ export class TransactionExpirationRefresherService {
   }
 
   /**
-   * Ensures serialized TRON transaction raw data has fresh TAPOS and expiration
-   * metadata, returning the transaction fields needed by confirmation scans.
+   * Deserializes a serialized TRON transaction into the metadata fields needed
+   * by confirmation scans, **without** modifying the payload.
    *
-   * @param params - Refresh inputs.
+   * Used on the dApp signing path, where the dApp broadcasts using its original
+   * TxID: the payload (expiration/TAPOS) must never be refreshed here, otherwise
+   * the signed bytes and the broadcast would diverge.
+   *
+   * @param params - Deserialization inputs.
    * @param params.scope - Network scope used to create a TronWeb client.
    * @param params.type - Serialized transaction contract type.
    * @param params.rawDataHex - Serialized transaction raw data.
    * @returns Transaction metadata built from the serialized raw data.
    */
-  async ensureFreshSerializedTransaction({
+  async deserializeTransaction({
     scope,
     type,
     rawDataHex,
@@ -67,32 +71,72 @@ export class TransactionExpirationRefresherService {
     type: string;
     rawDataHex: string;
   }): Promise<TransactionWithMetadata> {
-    try {
-      const tronWeb = this.#tronWebFactory.createClient(scope);
-      const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
-        type,
-        rawDataHex,
-      ) as Types.Transaction['raw_data'];
-      const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
-      const transaction = {
-        txID,
-        raw_data: rawData,
-        raw_data_hex: rawDataHex,
-      };
-      const freshRawData = await this.#ensureFreshRawData(tronWeb, rawData);
+    const tronWeb = this.#tronWebFactory.createClient(scope);
+    const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
+      type,
+      rawDataHex,
+    ) as Types.Transaction['raw_data'];
+    const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
 
-      if (freshRawData === rawData) {
-        return transaction;
-      }
+    return {
+      txID,
+      raw_data: rawData,
+      raw_data_hex: rawDataHex,
+    };
+  }
 
-      return this.#rebuildTransactionWithRawData(
-        tronWeb,
-        transaction,
-        freshRawData,
-      );
-    } catch {
-      throw new Error(TRANSACTION_METADATA_REFRESH_ERROR);
+  /**
+   * Read-only check of whether a transaction is still broadcastable, based on
+   * its Tron TAPOS metadata (expiration, ref block, timestamp) relative to the
+   * current chain head. Unlike {@link ensureFreshMetadata}, it never mutates
+   * the payload.
+   *
+   * @param params - Expiration check inputs.
+   * @param params.scope - Network scope used to create a TronWeb client.
+   * @param params.rawData - Transaction raw data to inspect.
+   * @returns Whether the transaction is expired/stale and should be warned about.
+   */
+  async isTransactionExpired({
+    scope,
+    rawData,
+  }: {
+    scope: Network;
+    rawData: TransactionRawData;
+  }): Promise<boolean> {
+    const tronWeb = this.#tronWebFactory.createClient(scope);
+    const now = Date.now();
+    const currentBlock = await tronWeb.trx.getCurrentBlock();
+
+    if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
+      return true;
     }
+
+    const referenceBlockNumber = getReferenceBlockNumber({
+      currentBlockNumber: currentBlock.block_header.raw_data.number,
+      refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
+        .ref_block_bytes,
+    });
+
+    if (!hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })) {
+      return true;
+    }
+
+    const referencedBlock = await this.#getReferenceBlock({
+      tronWeb,
+      currentBlock,
+      referenceBlockNumber,
+    });
+
+    if (
+      !referencedBlockMatchesRawData({
+        rawData: rawData as TransactionRawDataWithExpirationMetadata,
+        referencedBlock,
+      })
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

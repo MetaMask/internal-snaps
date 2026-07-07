@@ -12,7 +12,6 @@ import {
 } from '../../handlers/keyring-types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
-import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 
 const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
 
@@ -160,9 +159,6 @@ describe('WalletService', () => {
       logger: mockLogger,
       accountsService: mockAccountsService,
       tronWebFactory: mockTronWebFactory,
-      transactionExpirationRefresherService: {
-        ensureFreshMetadata: jest.fn(async ({ transaction }) => transaction),
-      } as unknown as TransactionExpirationRefresherService,
     });
   });
 
@@ -356,24 +352,9 @@ describe('WalletService', () => {
       expect(mockTronWeb.trx.sign).toHaveBeenCalled();
     });
 
-    it('refreshes transaction metadata before signing stale transactions', async () => {
-      walletService = new WalletService({
-        logger: mockLogger,
-        accountsService: mockAccountsService,
-        tronWebFactory: mockTronWebFactory,
-        transactionExpirationRefresherService:
-          new TransactionExpirationRefresherService({
-            tronWebFactory: mockTronWebFactory,
-          }),
-      });
-      mockTronWeb.trx.getCurrentBlock.mockResolvedValue(
-        createBlock({
-          number: 200_000,
-          timestamp: MOCK_BLOCK_TIMESTAMP,
-          hashSegment: '0011223344556677',
-        }),
-      );
-      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+    it('signs the original dApp payload without modifying it', async () => {
+      const rawDataHex = toHex('transaction-data');
+      const deserializedRawData = {
         contract: [
           {
             type: 'TransferContract',
@@ -389,9 +370,14 @@ describe('WalletService', () => {
         ],
         ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
         ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+        // A stale expiration must NOT be refreshed: the dApp broadcasts using
+        // its original TxID, so the snap signs exactly what it received.
         expiration: MOCK_BLOCK_TIMESTAMP - 1,
         timestamp: MOCK_BLOCK_TIMESTAMP - 60_000,
-      });
+      };
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+        deserializedRawData,
+      );
 
       await walletService.signTransaction({
         account: mockAccount,
@@ -399,7 +385,7 @@ describe('WalletService', () => {
         params: {
           address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
           transaction: {
-            rawDataHex: toHex('transaction-data'),
+            rawDataHex,
             type: 'TransferContract',
           },
         },
@@ -407,16 +393,14 @@ describe('WalletService', () => {
 
       const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
 
-      expect(signedTransaction.raw_data).toStrictEqual(
-        expect.objectContaining({
-          ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
-          ref_block_hash: '0011223344556677', // eslint-disable-line @typescript-eslint/naming-convention
-          expiration: MOCK_BLOCK_TIMESTAMP + 60_000,
-          timestamp: MOCK_BLOCK_TIMESTAMP,
-        }),
-      );
-      expect(signedTransaction.raw_data_hex).toBe('refreshed-raw-data-hex');
-      expect(signedTransaction.txID).toBe('refreshed-tx-id');
+      // The payload signed is exactly the one submitted by the dApp.
+      expect(signedTransaction.raw_data).toStrictEqual(deserializedRawData);
+      expect(signedTransaction.raw_data_hex).toBe(rawDataHex);
+      // No refresh helpers are invoked on the dApp sign path.
+      expect(mockTronWeb.trx.getCurrentBlock).not.toHaveBeenCalled();
+      expect(
+        mockTronWeb.utils.transaction.txPbToRawDataHex,
+      ).not.toHaveBeenCalled();
     });
 
     it('handles transaction format errors', async () => {

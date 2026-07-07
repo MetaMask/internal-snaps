@@ -34,6 +34,7 @@ type MockSnapClient = jest.Mocked<
     | 'getInterfaceContext'
     | 'scheduleBackgroundEvent'
     | 'getPreferences'
+    | 'trackError'
   >
 >;
 
@@ -272,6 +273,7 @@ function buildMockSnapClient(
     getInterfaceContext: jest.fn().mockResolvedValue(interfaceContext),
     scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
     getPreferences: jest.fn().mockResolvedValue({}),
+    trackError: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -393,7 +395,7 @@ function buildCronHandler({
   mockTransactionScanService: MockTransactionScanService;
   transactionExpirationRefresherService: Pick<
     TransactionExpirationRefresherService,
-    'ensureFreshRawData' | 'ensureFreshSerializedTransaction'
+    'ensureFreshRawData' | 'deserializeTransaction' | 'isTransactionExpired'
   >;
 }): CronHandler {
   return new CronHandler({
@@ -421,14 +423,6 @@ type WithCronHandlerCallback = (payload: {
   mockTronWebFactory: MockTronWebFactory;
 }) => Promise<void> | void;
 
-type MockTronWebWithTransactionRebuild = {
-  utils: {
-    transaction: {
-      txJsonToPb: jest.Mock;
-    };
-  };
-};
-
 /**
  * Options for the `withCronHandler` factory function.
  */
@@ -440,6 +434,8 @@ type WithCronHandlerOptions = {
   currentBlockError?: Error;
   referencedBlock?: ReturnType<typeof createBlock>;
   refreshRawData?: boolean;
+  transactionExpired?: boolean;
+  transactionExpiredError?: Error;
 };
 
 /**
@@ -467,6 +463,8 @@ async function withCronHandler(
     currentBlockError,
     referencedBlock,
     refreshRawData = false,
+    transactionExpired = false,
+    transactionExpiredError,
   } = options;
 
   const mockSnapClient = buildMockSnapClient(interfaceContext);
@@ -484,10 +482,15 @@ async function withCronHandler(
     });
   const passThroughTransactionExpirationRefresherService = {
     ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
-    ensureFreshSerializedTransaction:
-      transactionExpirationRefresherService.ensureFreshSerializedTransaction.bind(
+    deserializeTransaction:
+      transactionExpirationRefresherService.deserializeTransaction.bind(
         transactionExpirationRefresherService,
       ),
+    isTransactionExpired: transactionExpiredError
+      ? jest.fn(async () => {
+          throw transactionExpiredError;
+        })
+      : jest.fn(async () => transactionExpired),
   };
 
   const cronHandler = buildCronHandler({
@@ -694,7 +697,7 @@ describe('CronHandler', () => {
   });
 
   describe('refreshSignTransaction', () => {
-    it('refreshes transaction metadata before refreshing security scan', async () => {
+    it('rescans the original payload without modifying it', async () => {
       const blockTimestamp = MOCK_BLOCK_TIMESTAMP;
       const currentBlock = createBlock({
         number: 200_000,
@@ -702,6 +705,7 @@ describe('CronHandler', () => {
         hashSegment: '0011223344556677',
       });
       const interfaceContext = buildMockSignTransactionInterfaceContext();
+      const originalRawDataHex = interfaceContext.transaction.rawDataHex;
 
       await withCronHandler(
         {
@@ -711,56 +715,47 @@ describe('CronHandler', () => {
             [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
           },
         },
-        async ({
-          cronHandler,
-          mockSnapClient,
-          mockTransactionScanService,
-          mockTronWebFactory,
-        }) => {
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
           await cronHandler.refreshSignTransaction();
 
           const scanPayload =
             mockTransactionScanService.scanTransaction.mock.calls[0]?.[0];
           const scannedRawData = scanPayload?.transactionRawData;
-          const mockTronWeb = mockTronWebFactory.createClient.mock.results[0]
-            ?.value as MockTronWebWithTransactionRebuild;
-          const transactionForRebuild =
-            mockTronWeb.utils.transaction.txJsonToPb.mock.calls[0]?.[0];
           const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
           const finalContext =
             finalUpdateCall?.[2] as ConfirmSignTransactionContext;
 
+          // The scanned payload is the deserialized original — never refreshed,
+          // so its stale TAPOS/expiration values are preserved as-is.
           expect(scannedRawData).toStrictEqual(
             expect.objectContaining({
-              ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
-              ref_block_hash: '0011223344556677', // eslint-disable-line @typescript-eslint/naming-convention
-              expiration: blockTimestamp + 60_000,
-              timestamp: blockTimestamp,
+              ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
+              ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+              expiration: blockTimestamp - 1,
+              timestamp: blockTimestamp - 60_000,
             }),
           );
-          expect(transactionForRebuild.txID).not.toBe('');
-          expect(finalContext.transaction.rawDataHex).toBe(
-            'refreshed-raw-data-hex',
-          );
+          // The stored serialized payload is left untouched.
+          expect(finalContext.transaction.rawDataHex).toBe(originalRawDataHex);
         },
       );
     });
 
-    it('sets error state when transaction metadata refresh fails', async () => {
+    it('sets error state when the scan fails', async () => {
       await withCronHandler(
         {
-          currentBlockError: new Error('node offline'),
           interfaceContext: buildMockSignTransactionInterfaceContext(),
           mapInterfaceNameToId: {
             [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
           },
         },
         async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          mockTransactionScanService.scanTransaction.mockRejectedValue(
+            new Error('Scan API error'),
+          );
+
           await cronHandler.refreshSignTransaction();
 
-          expect(
-            mockTransactionScanService.scanTransaction,
-          ).not.toHaveBeenCalled();
           expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(2);
 
           const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
@@ -773,6 +768,150 @@ describe('CronHandler', () => {
             method: BackgroundEventMethod.RefreshSignTransaction,
             duration: 'PT20S',
           });
+        },
+      );
+    });
+
+    it('surfaces an expired scan result when the TAPOS check detects expiry', async () => {
+      await withCronHandler(
+        {
+          interfaceContext: buildMockSignTransactionInterfaceContext(),
+          mapInterfaceNameToId: {
+            [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+          },
+          transactionExpired: true,
+        },
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          await cronHandler.refreshSignTransaction();
+
+          const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
+          const finalContext =
+            finalUpdateCall?.[2] as ConfirmSignTransactionContext;
+
+          // A benign security scan is overridden by the local TAPOS-expiry
+          // detection: an expired transaction won't broadcast regardless of the
+          // contract simulation result.
+          expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
+          expect(finalContext.scan?.simulationStatus).toBe(
+            SimulationStatus.Failed,
+          );
+          expect(finalContext.scan?.error?.type).toBe(
+            'TransactionTaposExpired',
+          );
+          expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
+        },
+      );
+    });
+
+    it('runs the TAPOS expiry check even when security scan is disabled', async () => {
+      const interfaceContext = buildMockSignTransactionInterfaceContext();
+      interfaceContext.preferences = {
+        ...interfaceContext.preferences,
+        useSecurityAlerts: false,
+        simulateOnChainActions: false,
+      };
+
+      await withCronHandler(
+        {
+          interfaceContext,
+          mapInterfaceNameToId: {
+            [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+          },
+          transactionExpired: true,
+        },
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          await cronHandler.refreshSignTransaction();
+
+          // The security scan is skipped...
+          expect(
+            mockTransactionScanService.scanTransaction,
+          ).not.toHaveBeenCalled();
+
+          // ...and the refresh does not enter the Fetching state when the
+          // security scan is disabled (matching main-branch behaviour), so the
+          // confirm button stays enabled while the TAPOS check is in flight.
+          const fetchingUpdateCall =
+            mockSnapClient.updateInterface.mock.calls[0];
+          const fetchingContext =
+            fetchingUpdateCall?.[2] as ConfirmSignTransactionContext;
+          expect(fetchingContext.scanFetchStatus).not.toBe(
+            FetchStatus.Fetching,
+          );
+
+          // The local TAPOS-expiry check still surfaces the expired result,
+          // which disables the confirm button once resolved (Failed simulation).
+          const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
+          const finalContext =
+            finalUpdateCall?.[2] as ConfirmSignTransactionContext;
+
+          expect(finalContext.scan?.error?.type).toBe(
+            'TransactionTaposExpired',
+          );
+          expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
+        },
+      );
+    });
+
+    it('tracks error and skips scan when deserialization fails', async () => {
+      const interfaceContext = buildMockSignTransactionInterfaceContext();
+      const mockSnapClient = buildMockSnapClient(interfaceContext);
+      const mockState = buildMockState({
+        [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+      });
+      const mockTransactionScanService = buildMockTransactionScanService(
+        buildMockScanResult(),
+      );
+      const cronHandler = buildCronHandler({
+        mockSnapClient,
+        mockState,
+        mockTransactionScanService,
+        transactionExpirationRefresherService: {
+          ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
+          deserializeTransaction: jest
+            .fn()
+            .mockRejectedValue(new Error('deserialize failed')),
+          isTransactionExpired: jest.fn().mockResolvedValue(false),
+        },
+      });
+
+      await cronHandler.refreshSignTransaction();
+
+      expect(mockTransactionScanService.scanTransaction).not.toHaveBeenCalled();
+      expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(2);
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.RefreshSignTransaction,
+        duration: 'PT20S',
+      });
+    });
+
+    it('preserves the scan result when the TAPOS check throws', async () => {
+      await withCronHandler(
+        {
+          interfaceContext: buildMockSignTransactionInterfaceContext(),
+          mapInterfaceNameToId: {
+            [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+          },
+          transactionExpiredError: new Error('tapos check failed'),
+        },
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          await cronHandler.refreshSignTransaction();
+
+          // The security re-scan still ran...
+          expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
+
+          // ...and the TAPOS check fails safe: it logs the error and keeps the
+          // benign scan instead of wiping it or synthesizing a false expired
+          // result.
+          const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
+          const finalContext =
+            finalUpdateCall?.[2] as ConfirmSignTransactionContext;
+
+          expect(finalContext.scan?.simulationStatus).toBe(
+            SimulationStatus.Completed,
+          );
+          expect(finalContext.scan?.error).toBeNull();
+          expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
         },
       );
     });

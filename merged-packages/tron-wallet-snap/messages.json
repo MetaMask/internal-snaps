@@ -103,5 +103,8 @@
   },
   "transactionScan.errors.unsupportedEIP712Message": {
     "message": "Unsupported method"
+  },
+  "transactionScan.errors.transactionDeadlinePassed": {
+    "message": "Please go back and try again"
   }
 }

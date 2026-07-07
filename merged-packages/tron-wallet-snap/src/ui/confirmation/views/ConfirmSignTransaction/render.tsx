@@ -12,8 +12,11 @@ import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob';
+import { EXPIRED_TRANSACTION_SCAN } from '../../../../services/transaction-scan/buildExpiredScanResult';
+import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
+import logger from '../../../../utils/logger';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
@@ -166,37 +169,72 @@ export async function render(
 
   const dialogPromise = snapClient.showDialog(id);
 
-  // Parallelize: Store interface ID + Start security scan
+  // Store the interface ID so the cron refresh can find this dialog.
   const storeIdPromise = snapContext.state.setKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME}`,
     id,
   );
 
-  if (transactionScanService && (useSecurityAlerts || simulateOnChainActions)) {
-    const options: string[] = [];
+  const securityScanEnabled =
+    Boolean(transactionScanService) &&
+    (useSecurityAlerts || simulateOnChainActions);
 
-    if (simulateOnChainActions) {
-      options.push('simulation');
+  try {
+    let scan: TransactionScanResult | null = null;
+
+    if (securityScanEnabled) {
+      const options: string[] = [];
+
+      if (simulateOnChainActions) {
+        options.push('simulation');
+      }
+
+      if (useSecurityAlerts) {
+        options.push('validation');
+      }
+
+      try {
+        scan = await transactionScanService.scanTransaction({
+          accountAddress: account.address,
+          transactionRawData: rawData,
+          origin,
+          scope: scope as Network,
+          options,
+        });
+      } catch {
+        scan = null;
+      }
     }
 
-    if (useSecurityAlerts) {
-      options.push('validation');
-    }
-
+    // Local TAPOS-expiry check. The security-API simulation does not validate
+    // Tron TAPOS fields (expiration / ref block), so the snap surfaces protocol
+    // expiry itself. This is independent of the security preferences: an expired
+    // transaction won't broadcast regardless of the contract simulation result,
+    // so it takes precedence over a benign scan.
     try {
-      const scan = await transactionScanService.scanTransaction({
-        accountAddress: account.address,
-        transactionRawData: rawData,
-        origin,
-        scope: scope as Network,
-        options,
-      });
+      const expired =
+        await snapContext.transactionExpirationRefresherService.isTransactionExpired(
+          {
+            scope: scope as Network,
+            rawData,
+          },
+        );
 
-      context.scan = scan;
-      context.scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
-    } catch {
-      context.scan = null;
+      if (expired) {
+        scan = EXPIRED_TRANSACTION_SCAN;
+      }
+    } catch (error) {
+      logger.error('Error checking transaction expiration:', error);
+      await snapClient.trackError(error as Error);
+    }
+
+    context.scan = scan;
+    if (scan) {
+      context.scanFetchStatus = FetchStatus.Fetched;
+    } else if (securityScanEnabled) {
       context.scanFetchStatus = FetchStatus.Error;
+    } else {
+      context.scanFetchStatus = FetchStatus.Fetched;
     }
 
     await storeIdPromise;
@@ -206,21 +244,34 @@ export async function render(
       <ConfirmSignTransaction context={context} />,
       context,
     );
+  } catch {
+    context.scan = null;
+    context.scanFetchStatus = FetchStatus.Error;
 
+    await storeIdPromise;
+
+    await snapClient.updateInterface(
+      id,
+      <ConfirmSignTransaction context={context} />,
+      context,
+    );
+  }
+
+  // Re-scan periodically so the expiry banner appears live as the transaction
+  // ages past its TAPOS validity window, regardless of security preferences.
+  // Scheduling is best-effort and isolated from the scan result: a failure here
+  // must not wipe out a valid scan or flip the UI into a scan error state — the
+  // user can still act on the current result, only live refreshes are skipped.
+  try {
     await snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshSignTransaction,
       duration: 'PT20S',
     });
-  } else {
-    context.scanFetchStatus = FetchStatus.Fetched;
-
-    await storeIdPromise;
-
-    await snapClient.updateInterface(
-      id,
-      <ConfirmSignTransaction context={context} />,
-      context,
-    );
+  } catch (error) {
+    logger.error('Error scheduling background refresh event:', error);
+    await snapClient.trackError(error as Error);
+    // Best-effort: live expiry refreshes won't run, but the rendered result
+    // stays intact.
   }
 
   return dialogPromise;
