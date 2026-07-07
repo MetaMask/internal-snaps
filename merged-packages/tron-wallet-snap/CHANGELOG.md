@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.29.0]
+
 ### Changed
 
 - Make computeFee fail-safe on TronGrid failure ([#343](https://github.com/MetaMask/snap-tron-wallet/pull/343))
-- Removed dApp transaction payload modification related to refresh ([#342](https://github.com/MetaMask/snap-tron-wallet/pull/342))
+- Remove dApp transaction payload modification related to refresh ([#342](https://github.com/MetaMask/snap-tron-wallet/pull/342))
+- Resolve token metadata for log-reconstructed TRC20 transfers [2/3] ([#338](https://github.com/MetaMask/snap-tron-wallet/pull/338))
+- Add TRC20 transfer event log parser [1/3] ([#337](https://github.com/MetaMask/snap-tron-wallet/pull/337))
 
 ## [1.28.0]
 
@@ -37,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `signProofOfOwnership` client request method ([#327](https://github.com/MetaMask/snap-tron-wallet/pull/327))
   - This method silently signs `metamask:proof-of-ownership:<nonce>:<address>` messages with the account's secp256k1 key via TronWeb's `signMessageV2`
-- Add support for `keyring_createAccounts` method to enable batch account creation ([#308](https://github.com/MetaMask/snap-tron-wallet/pull/308)).
+- Add support for `keyring_createAccounts` method to enable batch account creation. ([#308](https://github.com/MetaMask/snap-tron-wallet/pull/308))
 
 ## [1.25.8]
 
@@ -81,8 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Validate that account IDs passed to `keyring_setSelectedAccounts` belong to the snap, rejecting unknown IDs with `InvalidParamsError` ([#298](https://github.com/MetaMask/snap-tron-wallet/pull/298))
 - Simplify `SnapClient` interface methods by removing defensive `*IfExists` wrappers and aligning with the Solana snap's approach ([#257](https://github.com/MetaMask/snap-tron-wallet/pull/257))
-- Bump `@metamask/keyring-api` to `^22.0.0` ([#295](https://github.com/MetaMask/snap-tron-wallet/pull/295)).
-- Bump `@metamask/keyring-snap-sdk` to `^8.0.0` ([#295](https://github.com/MetaMask/snap-tron-wallet/pull/295)).
+- Bump `@metamask/keyring-api` to `^22.0.0`. ([#295](https://github.com/MetaMask/snap-tron-wallet/pull/295))
+- Bump `@metamask/keyring-snap-sdk` to `^8.0.0`. ([#295](https://github.com/MetaMask/snap-tron-wallet/pull/295))
 
 ## [1.25.3]
 
@@ -170,7 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Decode hex-encoded TRC10 token names and symbols from Full Node API responses ([#187](https://github.com/MetaMask/snap-tron-wallet/pull/187))
-- Gracefully handle dismissed interface contexts during background refresh operations ([#188](https://github.com/MetaMask/snap-tron-wallet/pull/188/changes))
+- Gracefully handle dismissed interface contexts during background refresh operations ([#188](https://github.com/MetaMask/snap-tron-wallet/pull/188))
 - Add spent bandwidth from staking as part of the calculation of current bandwidth levels. For both energy and bandwidth, clamp the result between maximum and 0 to avoid negative values ([#197](https://github.com/MetaMask/snap-tron-wallet/pull/197))
 
 ## [1.21.1]
@@ -387,7 +391,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Confirmation UI (#86) ([#86](https://github.com/MetaMask/snap-tron-wallet/pull/86))
+- Confirmation UI ([#86](https://github.com/MetaMask/snap-tron-wallet/pull/86))
 - Transactions analytics ([#90](https://github.com/MetaMask/snap-tron-wallet/pull/90))
 - Add `from` and `to` to confirmation ([#88](https://github.com/MetaMask/snap-tron-wallet/pull/88))
 
@@ -557,7 +561,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.28.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.29.0...HEAD
+[1.29.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.25.8...v1.26.0
