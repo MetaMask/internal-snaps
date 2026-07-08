@@ -1,15 +1,14 @@
-import { expect } from '@jest/globals';
 import type { SnapConfirmationInterface } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
-import { Box, Text, Bold } from '@metamask/snaps-sdk/jsx';
+import { Box, Text as SnapText, Bold } from '@metamask/snaps-sdk/jsx';
 
 describe('onRpcRequest', () => {
   describe('hello', () => {
     it('shows a confirmation dialog', async () => {
-      const { request } = await installSnap();
+      const snap = await installSnap();
 
       const origin = 'Jest';
-      const response = request({
+      const response = snap.request({
         method: 'hello',
         origin,
       });
@@ -18,14 +17,16 @@ describe('onRpcRequest', () => {
       expect(ui.type).toBe('confirmation');
       expect(ui).toRender(
         <Box>
-          <Text>
+          <SnapText>
             Hello, <Bold>{origin}</Bold>!
-          </Text>
-          <Text>This custom confirmation is just for display purposes.</Text>
-          <Text>
+          </SnapText>
+          <SnapText>
+            This custom confirmation is just for display purposes.
+          </SnapText>
+          <SnapText>
             But you can edit the snap source code to make it do something, if
             you want to!
-          </Text>
+          </SnapText>
         </Box>,
       );
 
@@ -36,9 +37,9 @@ describe('onRpcRequest', () => {
   });
 
   it('throws an error if the requested method does not exist', async () => {
-    const { request } = await installSnap();
+    const snap = await installSnap();
 
-    const response = await request({
+    const response = await snap.request({
       method: 'foo',
     });
 

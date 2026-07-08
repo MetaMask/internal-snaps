@@ -127,7 +127,7 @@ const config = createConfig([
     },
   },
   {
-    files: ['**/*.ts'],
+    files: ['**/*.{ts,tsx}'],
     extends: [typescript],
     languageOptions: {
       parserOptions: {
@@ -168,7 +168,7 @@ const config = createConfig([
     },
   },
   {
-    files: ['**/*.test.{js,ts}', '**/tests/**/*.{js,ts}'],
+    files: ['**/*.test.{js,ts,tsx}', '**/tests/**/*.{js,ts,tsx}'],
     extends: [jest],
     rules: {
       // TODO: Upgrade these from warning to error in shared config

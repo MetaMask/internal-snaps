@@ -1,5 +1,5 @@
 import type { OnRpcRequestHandler } from '@metamask/snaps-sdk';
-import { Box, Text, Bold } from '@metamask/snaps-sdk/jsx';
+import { Box, Text as SnapText, Bold } from '@metamask/snaps-sdk/jsx';
 
 /**
  * Handle incoming JSON-RPC requests, sent through `wallet_invokeSnap`.
@@ -23,16 +23,16 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
           type: 'confirmation',
           content: (
             <Box>
-              <Text>
+              <SnapText>
                 Hello, <Bold>{origin}</Bold>!
-              </Text>
-              <Text>
+              </SnapText>
+              <SnapText>
                 This custom confirmation is just for display purposes.
-              </Text>
-              <Text>
+              </SnapText>
+              <SnapText>
                 But you can edit the snap source code to make it do something,
                 if you want to!
-              </Text>
+              </SnapText>
             </Box>
           ),
         },
