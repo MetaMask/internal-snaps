@@ -1,0 +1,68 @@
+{
+  "name": "@metamask/bitcoin-wallet-snap",
+  "version": "1.14.2",
+  "description": "A Bitcoin wallet Snap.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/snap-bitcoin-wallet.git"
+  },
+  "license": "(MIT-0 OR Apache-2.0)",
+  "main": "./dist/bundle.js",
+  "files": [
+    "dist/",
+    "images/",
+    "snap.manifest.json",
+    "locales/"
+  ],
+  "scripts": {
+    "allow-scripts": "yarn workspace root allow-scripts",
+    "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build:clean": "yarn clean && yarn build:locale && yarn build",
+    "build:locale": "node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w",
+    "build:locale:watch": "npx nodemon --watch packages/snap/messages.json --exec \"node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w\"",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/bitcoin-wallet-snap",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/bitcoin-wallet-snap",
+    "clean": "rimraf dist",
+    "lint": "yarn lint:eslint && yarn lint:misc && yarn lint:deps && yarn lint:types",
+    "lint:deps": "depcheck && yarn dedupe --check",
+    "lint:deps:fix": "depcheck && yarn dedupe",
+    "lint:eslint": "eslint . --cache --ext js,jsx,ts,tsx",
+    "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write",
+    "lint:misc": "prettier '**/*.json' '**/*.md' --check",
+    "lint:types": "tsc --noEmit",
+    "publish:preview": "yarn npm publish --tag preview",
+    "prepublishOnly": "mm-snap manifest",
+    "serve": "mm-snap serve",
+    "start": "concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
+    "test": "jest",
+    "test:integration": "./integration-test/run-integration.sh"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.0.5",
+    "@metamask/auto-changelog": "^3.4.4",
+    "@metamask/bitcoindevkit": "^0.1.13",
+    "@metamask/key-tree": "^10.1.1",
+    "@metamask/keyring-api": "^22.0.0",
+    "@metamask/keyring-snap-sdk": "^8.0.0",
+    "@metamask/slip44": "^4.2.0",
+    "@metamask/snaps-cli": "^8.3.0",
+    "@metamask/snaps-jest": "^9.8.0",
+    "@metamask/snaps-sdk": "^11.0.0",
+    "@metamask/utils": "^11.9.0",
+    "bip322-js": "^3.0.0",
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.2.1",
+    "jest": "^30.0.5",
+    "jest-mock-extended": "^4.0.0",
+    "jest-transform-stub": "2.0.0",
+    "superstruct": "^2.0.2",
+    "ts-jest": "^29.4.1",
+    "uuid": "^14.0.0",
+    "wif": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

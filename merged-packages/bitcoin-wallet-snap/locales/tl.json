@@ -1,0 +1,191 @@
+{
+  "locale": "tl",
+  "messages": {
+    "reviewTransactionWarning": {
+      "message": "Suriin ang transaksyon bago magpatuloy"
+    },
+    "from": {
+      "message": "Mula sa"
+    },
+    "toAddress": {
+      "message": "To Address"
+    },
+    "continue": {
+      "message": "Continue"
+    },
+    "cancel": {
+      "message": "Kanselahin"
+    },
+    "clear": {
+      "message": "Clear"
+    },
+    "amount": {
+      "message": "Halaga"
+    },
+    "balance": {
+      "message": "Balanse"
+    },
+    "recipient": {
+      "message": "Tatanggap"
+    },
+    "network": {
+      "message": "Network"
+    },
+    "minutes": {
+      "message": "min"
+    },
+    "transactionSpeed": {
+      "message": "Bilis ng Transaksyon"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Ang tinatayang tagal ng transaksyon"
+    },
+    "networkFee": {
+      "message": "Network Fee"
+    },
+    "feeRate": {
+      "message": "Fee rate"
+    },
+    "networkFeeTooltip": {
+      "message": "The total network fee"
+    },
+    "total": {
+      "message": "Kabuuan"
+    },
+    "send": {
+      "message": "Ipadala"
+    },
+    "asset": {
+      "message": "Asset"
+    },
+    "sending": {
+      "message": "Ipinapadala"
+    },
+    "max": {
+      "message": "Max"
+    },
+    "recipientPlaceholder": {
+      "message": "Enter receiving address"
+    },
+    "review": {
+      "message": "Suriin"
+    },
+    "error": {
+      "message": "Error"
+    },
+    "unknownError": {
+      "message": "An unknown error occurred"
+    },
+    "feeTooLow": {
+      "message": "Fee too low"
+    },
+    "feeRateTooLow": {
+      "message": "Fee rate too low"
+    },
+    "noUtxosSelected": {
+      "message": "Failed to build transaction: missing UTXOs"
+    },
+    "outputBelowDustLimit": {
+      "message": "Amount below dust limit"
+    },
+    "insufficientFunds": {
+      "message": "Funds are insufficient to cover amount plus fee"
+    },
+    "noRecipients": {
+      "message": "Missing recipients"
+    },
+    "psbt": {
+      "message": "Invalid PSBT"
+    },
+    "unknownUtxo": {
+      "message": "Failed to build transaction: unknown UTXO"
+    },
+    "MmssingNonWitnessUtxo": {
+      "message": "Failed to build transaction: missing non-witness UTXO"
+    },
+    "base58": {
+      "message": "Invalid Bitcoin address"
+    },
+    "bech32": {
+      "message": "Invalid Bitcoin address"
+    },
+    "witnessVersion": {
+      "message": "Invalid Bitcoin address: witness version"
+    },
+    "witnessProgram": {
+      "message": "Invalid Bitcoin address: witness program"
+    },
+    "legacyAddressTooLong": {
+      "message": "Invalid Bitcoin address"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "Invalid Bitcoin address: invalid length"
+    },
+    "invalidLegacyPrefix": {
+      "message": "Invalid Bitcoin address: invalid legacy prefix"
+    },
+    "networkValidation": {
+      "message": "Invalid Bitcoin address: wrong network"
+    },
+    "outOfRange": {
+      "message": "Invalid amount: out of range"
+    },
+    "tooPrecise": {
+      "message": "Invalid amount: too precise"
+    },
+    "missingDigits": {
+      "message": "Invalid amount: missing digits"
+    },
+    "inputTooLarge": {
+      "message": "Invalid amount: too large"
+    },
+    "invalidCharacter": {
+      "message": "Invalid amount: invalid character"
+    },
+    "unexpected": {
+      "message": "An unexpected error occurred"
+    },
+    "error.internal": {
+      "message": "Panloob na error. Subukang muli mamaya o makipag-ugnayan sa suporta"
+    },
+    "confirmation.origin": {
+      "message": "Pinagmulan"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Ang dApp na humihingi ng lagda"
+    },
+    "confirmation.account": {
+      "message": "Account"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Lagdaan"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Lagdaan ang Mensahe"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mensahe"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Tinatayang mga pagbabago"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Nagpadala ka ng"
+    },
+    "confirmation.confirmButton": {
+      "message": "Kumpirmahin"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Hiling na transaksyon"
+    },
+    "confirmation.signAndSendTransaction.selfSend.title": {
+      "message": "Sending to your own address"
+    },
+    "confirmation.signAndSendTransaction.selfSend.description": {
+      "message": "The recipient address belongs to this wallet. The amount will stay in your account, but network fees still apply."
+    },
+    "confirmation.requestOrigin": {
+      "message": "Kahilingan mula sa/kay"
+    }
+  }
+}

@@ -1,0 +1,900 @@
+import type {
+  AddressType,
+  Amount,
+  Network,
+  Psbt,
+  Transaction,
+  Txid,
+  WalletTx,
+} from '@metamask/bitcoindevkit';
+import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
+import { Signer } from 'bip322-js';
+import { encode } from 'wif';
+
+import type {
+  BitcoinAccount,
+  BitcoinAccountRepository,
+  BlockchainClient,
+  ConfirmationRepository,
+  Logger,
+  MetaProtocolsClient,
+  SnapClient,
+  SyncResult,
+} from '../entities';
+import {
+  AccountCapability,
+  addressTypeToPurpose,
+  AssertionError,
+  canAccountTxidBeMalleated,
+  networkToCoinType,
+  NotFoundError,
+  PermissionError,
+  TrackingSnapEvent,
+  ValidationError,
+  WalletError,
+} from '../entities';
+import { CronMethod } from '../handlers/CronHandler';
+
+export type DiscoverAccountParams = {
+  network: Network;
+  index: number;
+  entropySource: string;
+  addressType: AddressType;
+};
+
+export type CreateAccountParams = DiscoverAccountParams & {
+  synchronize: boolean;
+  correlationId?: string;
+  accountName?: string;
+};
+
+// Snap entropy derivation can become very spiky under wider parallelism.
+const CREATE_ACCOUNTS_CONCURRENCY = 2;
+
+/**
+ * @param req - Account creation or discovery request.
+ * @returns The BIP-44 account derivation path.
+ */
+function getAccountDerivationPath(req: DiscoverAccountParams): string[] {
+  return [
+    req.entropySource,
+    `${addressTypeToPurpose[req.addressType]}'`,
+    `${networkToCoinType[req.network]}'`,
+    `${req.index}'`,
+  ];
+}
+
+/**
+ * @param derivationPath - Split derivation path.
+ * @returns Storage key for a derivation path.
+ */
+function getDerivationPathKey(derivationPath: string[]): string {
+  return derivationPath.join('/');
+}
+
+/**
+ * Map items to results with at most `concurrency` in-flight async operations.
+ * Output order matches `items` order.
+ *
+ * @param items - Values to map in pool order.
+ * @param concurrency - Maximum number of concurrent mapper executions.
+ * @param mapper - Async function applied to each item.
+ * @returns Results in the same order as `items`.
+ */
+async function runWithConcurrencyLimit<Item, Result>(
+  items: readonly Item[],
+  concurrency: number,
+  mapper: (item: Item, index: number) => Promise<Result>,
+): Promise<Result[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results: Result[] = new Array(items.length);
+  let next = 0;
+  let firstError: unknown;
+  let hasError = false;
+
+  const worker = async (): Promise<void> => {
+    while (!hasError) {
+      const idx = next;
+      next += 1;
+      if (idx >= items.length) {
+        return;
+      }
+
+      try {
+        results[idx] = await mapper(items[idx] as Item, idx);
+      } catch (error) {
+        if (!hasError) {
+          firstError = error;
+          hasError = true;
+        }
+        return;
+      }
+    }
+  };
+
+  const poolSize = Math.min(Math.max(1, concurrency), items.length);
+  await Promise.all(Array.from({ length: poolSize }, async () => worker()));
+
+  if (hasError) {
+    throw firstError;
+  }
+
+  return results;
+}
+
+/**
+ * Result of broadcasting a Bitcoin transaction.
+ *
+ * `canBeMalleable` is `true` when the source account's address type allows a
+ * third party to rewrite the txid before confirmation (currently only legacy
+ * P2PKH). Consumers that persist or surface the txid to the dApp should treat
+ * a `true` flag as a signal that the txid may change, and avoid trusting it
+ * for finality decisions before block confirmation.
+ *
+ * Limitation: the flag is computed from the snap account's address type, which
+ * is correct for transactions the snap builds itself (`sendTransfer`,
+ * `executeSendFlow`, `confirmSend`). For externally-provided PSBTs broadcast
+ * via `broadcastPsbt` or `signPsbt({ broadcast: true, fill: false })`, the
+ * transaction may include foreign inputs of any address type; if any foreign
+ * input is legacy non-witness, the txid is malleable even when the snap's
+ * account is P2WPKH. Callers building collaborative transactions must compute
+ * malleability per-input.
+ */
+export type BroadcastResult = {
+  txid: Txid;
+  canBeMalleable: boolean;
+};
+
+export class AccountUseCases {
+  readonly #logger: Logger;
+
+  readonly #snapClient: SnapClient;
+
+  readonly #repository: BitcoinAccountRepository;
+
+  readonly #confirmationRepository: ConfirmationRepository;
+
+  readonly #chain: BlockchainClient;
+
+  readonly #metaProtocols: MetaProtocolsClient | undefined;
+
+  readonly #fallbackFeeRate: number;
+
+  readonly #targetBlocksConfirmation: number;
+
+  #accountMutationQueue: Promise<void> = Promise.resolve();
+
+  constructor(
+    logger: Logger,
+    snapClient: SnapClient,
+    repository: BitcoinAccountRepository,
+    confirmationRepository: ConfirmationRepository,
+    chain: BlockchainClient,
+    fallbackFeeRate: number,
+    targetBlocksConfirmation: number,
+    metaProtocols?: MetaProtocolsClient,
+  ) {
+    this.#logger = logger;
+    this.#snapClient = snapClient;
+    this.#repository = repository;
+    this.#confirmationRepository = confirmationRepository;
+    this.#chain = chain;
+    this.#fallbackFeeRate = fallbackFeeRate;
+    this.#targetBlocksConfirmation = targetBlocksConfirmation;
+    this.#metaProtocols = metaProtocols;
+  }
+
+  async list(): Promise<BitcoinAccount[]> {
+    this.#logger.debug('Listing accounts');
+
+    const accounts = await this.#repository.getAll();
+
+    this.#logger.debug('Accounts listed successfully');
+    return accounts;
+  }
+
+  async get(id: string): Promise<BitcoinAccount> {
+    this.#logger.debug('Fetching account: %s', id);
+
+    const account = await this.#repository.get(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+
+    this.#logger.debug('Account found: %s', account.id);
+    return account;
+  }
+
+  async discover(req: DiscoverAccountParams): Promise<BitcoinAccount> {
+    this.#logger.debug('Discovering Bitcoin account. Request: %o', req);
+
+    const { addressType, network } = req;
+    const derivationPath = getAccountDerivationPath(req);
+
+    // Idempotent account creation + ensures only one account per derivation path
+    const account = await this.#repository.getByDerivationPath(derivationPath);
+    if (account && account.network === network) {
+      this.#logger.debug('Account already exists: %s,', account.id);
+      return account;
+    }
+
+    const newAccount = await this.#repository.create(
+      derivationPath,
+      network,
+      addressType,
+    );
+
+    // We need to do a full scan here to know if the account
+    // has any previous activity since later on we filter out
+    // accounts with no tx history
+    await this.#chain.fullScan(newAccount);
+
+    this.#logger.info(
+      'Bitcoin account discovered successfully. Request: %o',
+      req,
+    );
+    return newAccount;
+  }
+
+  async create(req: CreateAccountParams): Promise<BitcoinAccount> {
+    this.#logger.debug('Creating new Bitcoin account. Request: %o', req);
+
+    return this.#runAccountMutation(async () => {
+      const { addressType, network, correlationId, accountName, synchronize } =
+        req;
+      const derivationPath = getAccountDerivationPath(req);
+
+      // Idempotent account creation + ensures only one account per derivation path
+      const account =
+        await this.#repository.getByDerivationPath(derivationPath);
+      if (account && account.network === network) {
+        this.#logger.debug('Account already exists: %s,', account.id);
+        await this.#snapClient.emitAccountCreatedEvent(
+          account,
+          correlationId,
+          accountName,
+        );
+        return account;
+      }
+
+      const newAccount = await this.#repository.create(
+        derivationPath,
+        network,
+        addressType,
+      );
+
+      newAccount.revealNextAddress();
+
+      await this.#repository.insert(newAccount);
+
+      // First notify the event has been created, then schedule full scan.
+      await this.#snapClient.emitAccountCreatedEvent(
+        newAccount,
+        correlationId,
+        accountName,
+      );
+
+      if (synchronize) {
+        await this.#snapClient.scheduleBackgroundEvent({
+          duration: 'PT1S',
+          method: CronMethod.FullScanAccount,
+          params: { accountId: newAccount.id },
+        });
+      }
+
+      this.#logger.info(
+        'Bitcoin account created successfully: %s. Public address: %s, Request: %o',
+        newAccount.id,
+        newAccount.publicAddress,
+        req,
+      );
+      return newAccount;
+    });
+  }
+
+  async createMany(reqs: CreateAccountParams[]): Promise<BitcoinAccount[]> {
+    if (reqs.length === 0) {
+      return [];
+    }
+
+    const { accounts, createdAccountKeys } = await this.#runAccountMutation(
+      async () => {
+        const entries = reqs.map((req, index) => {
+          const derivationPath = getAccountDerivationPath(req);
+          return {
+            req,
+            index,
+            derivationPath,
+            pathKey: getDerivationPathKey(derivationPath),
+          };
+        });
+
+        const uniqueEntriesByPath = new Map<string, (typeof entries)[number]>();
+        for (const entry of entries) {
+          if (!uniqueEntriesByPath.has(entry.pathKey)) {
+            uniqueEntriesByPath.set(entry.pathKey, entry);
+          }
+        }
+        const uniqueEntries = [...uniqueEntriesByPath.values()];
+
+        const existingAccounts = await this.#repository.getByDerivationPaths(
+          uniqueEntries.map(({ derivationPath }) => derivationPath),
+        );
+        const existingAccountsByPath = new Map<string, BitcoinAccount>();
+
+        uniqueEntries.forEach((entry, index) => {
+          const account = existingAccounts[index];
+          if (account && account.network === entry.req.network) {
+            existingAccountsByPath.set(entry.pathKey, account);
+          }
+        });
+
+        const entriesToCreate = uniqueEntries.filter(
+          ({ pathKey }) => !existingAccountsByPath.has(pathKey),
+        );
+        const newAccounts = await runWithConcurrencyLimit(
+          entriesToCreate,
+          CREATE_ACCOUNTS_CONCURRENCY,
+          async ({ derivationPath, req }) => {
+            const newAccount = await this.#repository.create(
+              derivationPath,
+              req.network,
+              req.addressType,
+            );
+            newAccount.revealNextAddress();
+            return newAccount;
+          },
+        );
+
+        if (newAccounts.length > 0) {
+          await this.#repository.insertMany(newAccounts);
+        }
+
+        const newAccountsByPath = new Map(
+          entriesToCreate.map((entry, index) => [
+            entry.pathKey,
+            newAccounts[index] as BitcoinAccount,
+          ]),
+        );
+
+        const accountsInOrder = entries.map((entry) => {
+          const account =
+            existingAccountsByPath.get(entry.pathKey) ??
+            newAccountsByPath.get(entry.pathKey);
+
+          if (!account) {
+            throw new AssertionError('Failed to create account', {
+              index: entry.index,
+              derivationPath: entry.derivationPath,
+            });
+          }
+
+          return account;
+        });
+
+        return {
+          accounts: accountsInOrder,
+          createdAccountKeys: new Set(newAccountsByPath.keys()),
+        };
+      },
+    );
+
+    const scheduledAccountIds = new Set<string>();
+    for (const [index, account] of accounts.entries()) {
+      const req = reqs[index] as CreateAccountParams;
+      const pathKey = getDerivationPathKey(getAccountDerivationPath(req));
+      if (
+        req.synchronize &&
+        createdAccountKeys.has(pathKey) &&
+        !scheduledAccountIds.has(account.id)
+      ) {
+        scheduledAccountIds.add(account.id);
+        await this.#snapClient.scheduleBackgroundEvent({
+          duration: 'PT1S',
+          method: CronMethod.FullScanAccount,
+          params: { accountId: account.id },
+        });
+      }
+    }
+
+    return accounts;
+  }
+
+  async synchronize(
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<SyncResult> {
+    this.#logger.debug('Synchronizing account: %s', account.id);
+
+    const txsBeforeSync = account.listTransactions();
+    await this.#chain.sync(account);
+    const txsAfterSync = account.listTransactions();
+
+    // If new transactions appeared, fetch inscriptions; otherwise, just update.
+    if (txsAfterSync.length > txsBeforeSync.length) {
+      const inscriptions = this.#metaProtocols
+        ? await this.#metaProtocols.fetchInscriptions(account)
+        : [];
+      await this.#repository.update(account, inscriptions);
+    } else {
+      await this.#repository.update(account);
+    }
+
+    // Create a map for quick lookup of transactions before sync
+    const txMapBefore = new Map<string, WalletTx>();
+    for (const tx of txsBeforeSync) {
+      txMapBefore.set(tx.txid.toString(), tx);
+    }
+
+    const txsToNotify: WalletTx[] = [];
+
+    for (const tx of txsAfterSync) {
+      const prevTx = txMapBefore.get(tx.txid.toString());
+
+      if (!prevTx) {
+        txsToNotify.push(tx);
+
+        await this.#snapClient.emitTrackingEvent(
+          TrackingSnapEvent.TransactionReceived,
+          account,
+          tx,
+          origin,
+        );
+
+        continue;
+      }
+
+      const prevConfirmed = prevTx.chain_position.is_confirmed;
+      const currConfirmed = tx.chain_position.is_confirmed;
+
+      const statusChanged =
+        (prevConfirmed && !currConfirmed) || (!prevConfirmed && currConfirmed);
+
+      if (statusChanged) {
+        if (tx.chain_position.is_confirmed) {
+          txsToNotify.push(tx);
+
+          await this.#snapClient.emitTrackingEvent(
+            TrackingSnapEvent.TransactionFinalized,
+            account,
+            tx,
+            origin,
+          );
+        } else {
+          // if the status was changed, and now it's NOT confirmed
+          // it means the tx was reorged.
+          txsToNotify.push(tx);
+
+          await this.#snapClient.emitTrackingEvent(
+            TrackingSnapEvent.TransactionReorged,
+            account,
+            tx,
+            origin,
+          );
+        }
+      }
+    }
+
+    this.#logger.debug('Account synchronized successfully: %s', account.id);
+
+    return {
+      account,
+      transactionsToNotify: txsToNotify,
+    };
+  }
+
+  async fullScan(account: BitcoinAccount): Promise<SyncResult> {
+    this.#logger.debug('Performing initial full scan: %s', account.id);
+
+    await this.#chain.fullScan(account);
+
+    const inscriptions = this.#metaProtocols
+      ? await this.#metaProtocols.fetchInscriptions(account)
+      : [];
+    await this.#repository.update(account, inscriptions);
+
+    this.#logger.info(
+      'initial full scan performed successfully: %s',
+      account.id,
+    );
+
+    return {
+      account,
+      transactionsToNotify: account.listTransactions(),
+    };
+  }
+
+  async delete(id: string): Promise<void> {
+    this.#logger.debug('Deleting account: %s', id);
+
+    await this.#runAccountMutation(async () => {
+      const account = await this.#repository.get(id);
+      if (!account) {
+        throw new NotFoundError('Account not found', { id });
+      }
+
+      await this.#snapClient.emitAccountDeletedEvent(id);
+      await this.#repository.delete(id);
+
+      this.#logger.info('Account deleted successfully: %s', account.id);
+    });
+  }
+
+  async fillPsbt(
+    id: string,
+    templatePsbt: Psbt,
+    feeRate?: number,
+  ): Promise<Psbt> {
+    this.#logger.debug('Filling PSBT inputs: %s', id);
+
+    const account = await this.#repository.get(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+    this.#checkCapability(account, AccountCapability.FillPsbt);
+
+    const psbt = await this.#fillPsbt(account, templatePsbt, feeRate);
+
+    this.#logger.info(
+      'PSBT filled successfully: %s. Account: %s, Network: %s',
+      account.id,
+      account.network,
+    );
+
+    return psbt;
+  }
+
+  async signPsbt(
+    id: string,
+    psbt: Psbt,
+    origin: string,
+    options: { fill: boolean; broadcast: boolean },
+    feeRate?: number,
+  ): Promise<{ psbt: string; txid?: Txid; canBeMalleable?: boolean }> {
+    this.#logger.debug('Signing PSBT: %s', id, options);
+
+    const account = await this.#repository.getWithSigner(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+    this.#checkCapability(account, AccountCapability.SignPsbt);
+
+    const psbtToSign = options.fill
+      ? await this.#fillPsbt(account, psbt, feeRate)
+      : psbt;
+    const signedPsbt = account.sign(psbtToSign);
+
+    if (options.broadcast) {
+      const psbtString = signedPsbt.toString();
+      const tx = account.extractTransaction(signedPsbt);
+      const { txid, canBeMalleable } = await this.#broadcast(
+        account,
+        tx,
+        origin,
+      );
+
+      this.#logger.info(
+        'Transaction sent successfully: %s. Account: %s, Network: %s, Options: %o',
+        txid.toString(),
+        account.id,
+        account.network,
+        options,
+      );
+      return { psbt: psbtString, txid, canBeMalleable };
+    }
+
+    this.#logger.info(
+      'PSBT signed successfully. Account: %s, Network: %s, Options: %o',
+      account.id,
+      account.network,
+      options,
+    );
+    return { psbt: signedPsbt.toString() };
+  }
+
+  async computeFee(
+    id: string,
+    templatePsbt: Psbt,
+    feeRate?: number,
+  ): Promise<Amount> {
+    this.#logger.debug('Getting fee amount for Psbt for account id: %s', id);
+
+    const account = await this.#repository.get(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+    this.#checkCapability(account, AccountCapability.ComputeFee);
+
+    const psbt = await this.#fillPsbt(account, templatePsbt, feeRate);
+    return psbt.fee();
+  }
+
+  async broadcastPsbt(
+    id: string,
+    psbt: Psbt,
+    origin: string,
+  ): Promise<BroadcastResult> {
+    this.#logger.debug('Sending transaction: %s', id);
+
+    const account = await this.#repository.get(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+    this.#checkCapability(account, AccountCapability.BroadcastPsbt);
+
+    const tx = account.extractTransaction(psbt);
+    const result = await this.#broadcast(account, tx, origin);
+
+    this.#logger.info(
+      'Transaction sent successfully: %s. Account: %s, Network: %s',
+      result.txid,
+      account.id,
+      account.network,
+    );
+
+    return result;
+  }
+
+  async sendTransfer(
+    id: string,
+    recipients: { address: string; amount: string }[],
+    origin: string,
+    feeRate?: number,
+  ): Promise<BroadcastResult> {
+    this.#logger.debug(
+      'Transferring funds: %s. Recipients: %o',
+      id,
+      recipients,
+    );
+
+    if (!recipients[0] || recipients.length > 1) {
+      throw new ValidationError('There should be exactly one recipient', {
+        recipients,
+      });
+    }
+    const recipient = recipients[0];
+
+    const account = await this.#repository.getWithSigner(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+    this.#checkCapability(account, AccountCapability.SendTransfer);
+
+    const frozenUTXOs = await this.#repository.getFrozenUTXOs(account.id);
+    const feeRateToUse = feeRate ?? (await this.getFallbackFeeRate(account));
+
+    // Build PSBT with the recipient as output
+    const psbt = account
+      .buildTx()
+      .feeRate(feeRateToUse)
+      .unspendable(frozenUTXOs)
+      .addRecipient(recipient.amount, recipient.address)
+      .finish();
+
+    await this.#confirmationRepository.insertSendTransfer(
+      account,
+      psbt,
+      recipient,
+      origin,
+    );
+
+    const signedPsbt = account.sign(psbt);
+    const tx = account.extractTransaction(signedPsbt);
+    const result = await this.#broadcast(account, tx, origin);
+
+    this.#logger.info(
+      'Funds transferred successfully: %s. Account: %s, Network: %s',
+      result.txid.toString(),
+      account.id,
+      account.network,
+    );
+    return result;
+  }
+
+  async signMessage(
+    id: string,
+    message: string,
+    origin: string,
+    options: { skipConfirmation?: boolean } = {},
+  ): Promise<string> {
+    this.#logger.debug('Signing message: %s. Message: %s', id, message);
+
+    const account = await this.#repository.get(id);
+    if (!account) {
+      throw new NotFoundError('Account not found', { id });
+    }
+    this.#checkCapability(account, AccountCapability.SignMessage);
+
+    const { skipConfirmation = false } = options;
+    if (!skipConfirmation) {
+      await this.#confirmationRepository.insertSignMessage(
+        account,
+        message,
+        origin,
+      );
+    }
+
+    const entropy = await this.#snapClient.getPrivateEntropy(
+      account.derivationPath.concat(['0', '0']), // We sign with address index 0, which is the public address
+    );
+    if (!entropy.privateKey) {
+      // Should never happen when getting the private entropy
+      throw new AssertionError('Failed to get private entropy', {
+        id,
+      });
+    }
+
+    try {
+      // Private key is returned in "0x..." format, transform into WIF:
+      const wifPrivateKey = encode({
+        version: account.network === 'bitcoin' ? 128 : 239, // 128 for mainnet, 239 for testnets
+        // eslint-disable-next-line no-restricted-globals
+        privateKey: Buffer.from(entropy.privateKey.slice(2), 'hex'),
+        compressed: true,
+      });
+      const signature = Signer.sign(
+        wifPrivateKey,
+        account.publicAddress.toString(),
+        message,
+      );
+
+      this.#logger.info(
+        'Message signed successfully: %s. Message: %s, Signature: %s.',
+        id,
+        message,
+        signature,
+      );
+      return signature;
+    } catch (error) {
+      throw new WalletError(
+        'Failed to sign message',
+        {
+          id,
+          message,
+        },
+        error,
+      );
+    }
+  }
+
+  async getFrozenUTXOs(accountId: string): Promise<string[]> {
+    return this.#repository.getFrozenUTXOs(accountId);
+  }
+
+  async getFallbackFeeRate(account: BitcoinAccount): Promise<number> {
+    const feeEstimates = await this.#chain.getFeeEstimates(account.network);
+    return (
+      feeEstimates.get(this.#targetBlocksConfirmation) ?? this.#fallbackFeeRate
+    );
+  }
+
+  async #fillPsbt(
+    account: BitcoinAccount,
+    templatePsbt: Psbt,
+    feeRate?: number,
+  ): Promise<Psbt> {
+    const frozenUTXOs = await this.#repository.getFrozenUTXOs(account.id);
+    const feeRateToUse = feeRate ?? (await this.getFallbackFeeRate(account));
+
+    try {
+      let builder = account
+        .buildTx()
+        .feeRate(feeRateToUse)
+        .unspendable(frozenUTXOs)
+        .untouchedOrdering(); // we need to strictly adhere to the template output order. Many protocols use the order (e.g: 1: deposit, 2: OP_RETURN, 3: change)
+
+      for (const txout of templatePsbt.unsigned_tx.output) {
+        // if the PSBT contains an output that is sending to ourselves, we change its value. If the PSBT contains no change outputs, one will automatically be added.
+        if (account.isMine(txout.script_pubkey)) {
+          builder = builder.drainToByScript(txout.script_pubkey);
+        } else {
+          builder = builder.addRecipientByScript(
+            txout.value,
+            txout.script_pubkey,
+          );
+        }
+      }
+      let builtPsbt = builder.finish();
+
+      if (
+        builtPsbt.unsigned_tx.output.length <
+        templatePsbt.unsigned_tx.output.length
+      ) {
+        // Second attempt: use fixed recipients for all outputs
+        builder = account
+          .buildTx()
+          .feeRate(feeRateToUse)
+          .unspendable(frozenUTXOs)
+          .untouchedOrdering();
+
+        for (const txout of templatePsbt.unsigned_tx.output) {
+          builder = builder.addRecipientByScript(
+            txout.value,
+            txout.script_pubkey,
+          );
+        }
+        builtPsbt = builder.finish();
+      }
+
+      return builtPsbt;
+    } catch (error) {
+      const causeMessage = (error as Error)?.message ?? 'unknown cause';
+      throw new ValidationError(
+        `Failed to build PSBT from template: ${causeMessage}`,
+        {
+          id: account.id,
+          templatePsbt: templatePsbt.toString(),
+          feeRate: feeRateToUse,
+        },
+        error,
+      );
+    }
+  }
+
+  async #broadcast(
+    account: BitcoinAccount,
+    tx: Transaction,
+    origin: string,
+  ): Promise<BroadcastResult> {
+    const txid = tx.compute_txid();
+    await this.#chain.broadcast(account.network, tx.clone());
+    account.applyUnconfirmedTx(tx, getCurrentUnixTimestamp());
+    await this.#repository.update(account);
+
+    await this.#snapClient.emitAccountBalancesUpdatedEvent([account]);
+
+    const walletTx = account.getTransaction(txid.toString());
+    if (walletTx) {
+      // should always be true by assertion but needed for type checking
+      await this.#snapClient.emitAccountTransactionsUpdatedEvent(account, [
+        walletTx,
+      ]);
+
+      await this.#snapClient.emitTrackingEvent(
+        TrackingSnapEvent.TransactionSubmitted,
+        account,
+        walletTx,
+        origin,
+      );
+    }
+
+    return {
+      txid,
+      canBeMalleable: canAccountTxidBeMalleated(account.addressType),
+    };
+  }
+
+  async #runAccountMutation<Result>(
+    fn: () => Promise<Result>,
+  ): Promise<Result> {
+    const previousMutation = this.#accountMutationQueue;
+    let releaseMutation: () => void = () => undefined;
+    this.#accountMutationQueue = new Promise<void>((resolve) => {
+      releaseMutation = resolve;
+    });
+
+    await previousMutation;
+
+    try {
+      return await fn();
+    } finally {
+      releaseMutation();
+    }
+  }
+
+  #checkCapability(
+    account: BitcoinAccount,
+    capability: AccountCapability,
+  ): void {
+    if (!account.capabilities.includes(capability)) {
+      throw new PermissionError('Account missing given capability', {
+        id: account.id,
+        capability,
+        capabilities: account.capabilities,
+      });
+    }
+  }
+}
