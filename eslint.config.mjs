@@ -2,6 +2,8 @@ import base, { createConfig } from '@metamask/eslint-config';
 import jest from '@metamask/eslint-config-jest';
 import nodejs from '@metamask/eslint-config-nodejs';
 import typescript from '@metamask/eslint-config-typescript';
+// eslint-disable-next-line import-x/extensions
+import bitcoinWalletSnapOverrides from './packages/bitcoin-wallet-snap/eslint.overrides.mjs';
 
 const NODE_LTS_VERSION = 22;
 
@@ -351,6 +353,9 @@ const config = createConfig([
       'n/no-process-env': 'off',
     },
   },
+  // Temporary Bitcoin Wallet Snap migration overrides. Keep these isolated so
+  // they can be removed incrementally as the package is aligned to repo rules.
+  ...bitcoinWalletSnapOverrides,
 ]);
 
 export default config;
