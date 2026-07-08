@@ -98,13 +98,9 @@ export class PriceApiClient {
    */
   async #getMultipleSpotPrices_INTERNAL(
     tokenCaipAssetTypes: CaipAssetType[],
-    vsCurrency: VsCurrencyParam | string = 'usd',
+    vsCurrency: VsCurrencyParam | string,
   ): Promise<SpotPrices> {
     try {
-      if (tokenCaipAssetTypes.length === 0) {
-        return {};
-      }
-
       const uniqueTokenCaipAssetTypes = [...new Set(tokenCaipAssetTypes)];
 
       // Split uniqueTokenCaipAssetTypes into chunks
@@ -179,7 +175,7 @@ export class PriceApiClient {
    */
   async #getMultipleSpotPrices_CACHE(
     tokenCaip19Types: CaipAssetType[],
-    vsCurrency: VsCurrencyParam | string = 'usd',
+    vsCurrency: VsCurrencyParam | string,
   ): Promise<SpotPrices> {
     const uniqueTokenCaip19Types = [...new Set(tokenCaip19Types)];
 

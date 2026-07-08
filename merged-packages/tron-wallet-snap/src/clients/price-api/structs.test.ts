@@ -13,6 +13,22 @@ describe('structs', () => {
       expect(() => assert(spotPrices, SpotPricesStruct)).not.toThrow();
     });
 
+    it('accepts unknown fields from the Price API without throwing', () => {
+      const spotPricesWithUnknownField = {
+        ...MOCK_SPOT_PRICES,
+        'tron:728126428/slip44:195': {
+          ...MOCK_SPOT_PRICES[
+            'bip122:000000000019d6689c085ae165831e93/slip44:0'
+          ],
+          newUnknownField: false,
+        },
+      };
+
+      expect(() =>
+        assert(spotPricesWithUnknownField, SpotPricesStruct),
+      ).not.toThrow();
+    });
+
     it('should reject invalid spot prices', () => {
       const spotPricesWithInvalidPrice = cloneDeep(MOCK_SPOT_PRICES);
       spotPricesWithInvalidPrice[

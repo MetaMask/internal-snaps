@@ -59,6 +59,34 @@ describe('PriceApiClient', () => {
       );
       expect(result).toStrictEqual(MOCK_EXCHANGE_RATES);
     });
+
+    it('logs and throws when response is not ok', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(client.getFiatExchangeRates()).rejects.toThrow(
+        'HTTP error! status: 500',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        'Error fetching fiat exchange rates',
+      );
+    });
+
+    it('logs and throws when fetch fails', async () => {
+      const mockError = new Error('Network error');
+      mockFetch.mockRejectedValueOnce(mockError);
+
+      await expect(client.getFiatExchangeRates()).rejects.toThrow(
+        'Network error',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        mockError,
+        'Error fetching fiat exchange rates',
+      );
+    });
   });
 
   describe('getMultipleSpotPrices', () => {
@@ -254,6 +282,18 @@ describe('PriceApiClient', () => {
         expect(result).toStrictEqual(mockResponse);
         expect(mockFetch).not.toHaveBeenCalled();
         expect(mockCache.mset).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('when the cache returns an unexpected key', () => {
+      it('throws an invalid cache key error', async () => {
+        jest.spyOn(mockCache, 'mget').mockResolvedValueOnce({
+          INVALID_KEY: mockResponse[KnownCaip19Id.TrxMainnet]!,
+        });
+
+        await expect(
+          client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]),
+        ).rejects.toThrow('Invalid cache key');
       });
     });
 
