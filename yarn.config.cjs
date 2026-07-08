@@ -200,39 +200,33 @@ module.exports = defineConfig({
           '../../scripts/since-latest-release.sh',
         );
 
-        if (isSnap) {
-          // Snap packages need `jest` available but typically use
-          // `@metamask/snaps-jest`; the script wording is left to each snap.
-          expectWorkspaceField(workspace, 'scripts.test');
-        } else {
-          // All non-root packages must have the same "test" script.
-          expectWorkspaceField(
-            workspace,
-            'scripts.test',
-            'NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter',
-          );
+        // All non-root packages must have the same "test" script.
+        expectWorkspaceField(
+          workspace,
+          'scripts.test',
+          'NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter',
+        );
 
-          // All non-root packages must have the same "test:clean" script.
-          expectWorkspaceField(
-            workspace,
-            'scripts.test:clean',
-            'NODE_OPTIONS=--experimental-vm-modules jest --clearCache',
-          );
+        // All non-root packages must have the same "test:clean" script.
+        expectWorkspaceField(
+          workspace,
+          'scripts.test:clean',
+          'NODE_OPTIONS=--experimental-vm-modules jest --clearCache',
+        );
 
-          // All non-root packages must have the same "test:verbose" script.
-          expectWorkspaceField(
-            workspace,
-            'scripts.test:verbose',
-            'NODE_OPTIONS=--experimental-vm-modules jest --verbose',
-          );
+        // All non-root packages must have the same "test:verbose" script.
+        expectWorkspaceField(
+          workspace,
+          'scripts.test:verbose',
+          'NODE_OPTIONS=--experimental-vm-modules jest --verbose',
+        );
 
-          // All non-root packages must have the same "test:watch" script.
-          expectWorkspaceField(
-            workspace,
-            'scripts.test:watch',
-            'NODE_OPTIONS=--experimental-vm-modules jest --watch',
-          );
-        }
+        // All non-root packages must have the same "test:watch" script.
+        expectWorkspaceField(
+          workspace,
+          'scripts.test:watch',
+          'NODE_OPTIONS=--experimental-vm-modules jest --watch',
+        );
       }
 
       if (isChildWorkspace) {
