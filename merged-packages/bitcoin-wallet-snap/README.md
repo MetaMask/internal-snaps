@@ -27,9 +27,3 @@ yarn start
 ```bash
 yarn build:snap
 ```
-
-Further reading:
-
-- [Development](../../docs/development.md)
-- [Contributing](../../docs/contributing.md)
-- [Releasing](../../docs/release.md)
