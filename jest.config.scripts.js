@@ -33,10 +33,6 @@ module.exports = {
     },
   },
 
-  moduleNameMapper: {
-    '^uuid$': require.resolve('uuid'),
-  },
-
   preset: 'ts-jest',
 
   // The path to the Prettier executable used to format snapshots

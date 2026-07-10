@@ -85,14 +85,13 @@
     "tsx": "^4.20.5",
     "typescript": "~5.7.3",
     "typescript-eslint": "^8.48.0",
-    "uuid": "^14.0.0",
     "yargs": "^17.7.2"
   },
   "resolutions": {
+    "@metamask/snaps-sdk": "^11.0.0",
     "elliptic@6.5.4": "^6.5.7",
     "fast-xml-parser@^4.3.4": "^4.4.1",
-    "ws@7.4.6": "^7.5.10",
-    "@metamask/snaps-sdk": "^11.0.0"
+    "ws@7.4.6": "^7.5.10"
   },
   "simple-git-hooks": {
     "pre-push": "yarn lint"
