@@ -4,7 +4,11 @@
   "description": "A Bitcoin wallet Snap.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/snap-bitcoin-wallet.git"
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
+  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/bitcoin-wallet-snap#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/internal-snaps/issues"
   },
   "license": "(MIT-0 OR Apache-2.0)",
   "main": "./dist/bundle.js",
@@ -23,6 +27,7 @@
     "build:locale:watch": "npx nodemon --watch packages/snap/messages.json --exec \"node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w\"",
     "changelog:update": "../../scripts/update-changelog.sh @metamask/bitcoin-wallet-snap",
     "changelog:validate": "../../scripts/validate-changelog.sh @metamask/bitcoin-wallet-snap",
+    "since-latest-release": "../../scripts/since-latest-release.sh",
     "clean": "rimraf dist",
     "lint": "yarn lint:eslint && yarn lint:misc && yarn lint:deps && yarn lint:types",
     "lint:deps": "depcheck && yarn dedupe --check",
@@ -39,8 +44,8 @@
     "test:integration": "./integration-test/run-integration.sh"
   },
   "devDependencies": {
-    "@jest/globals": "^30.0.5",
-    "@metamask/auto-changelog": "^3.4.4",
+    "@jest/globals": "^29.5.0",
+    "@metamask/auto-changelog": "^6.1.0",
     "@metamask/bitcoindevkit": "^0.1.13",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^22.0.0",
@@ -53,7 +58,7 @@
     "bip322-js": "^3.0.0",
     "concurrently": "^9.2.1",
     "dotenv": "^17.2.1",
-    "jest": "^30.0.5",
+    "jest": "^29.7.0",
     "jest-mock-extended": "^4.0.0",
     "jest-transform-stub": "2.0.0",
     "superstruct": "^2.0.2",

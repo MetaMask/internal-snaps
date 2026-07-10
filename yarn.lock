@@ -2218,11 +2218,11 @@ __metadata:
     rimraf: "npm:^5.0.5"
     semver: "npm:^7.6.3"
     simple-git-hooks: "npm:^2.8.0"
-    ts-jest: "npm:^29.2.5"
+    ts-jest: "npm:^29.4.1"
     tsx: "npm:^4.20.5"
     typescript: "npm:~5.7.3"
     typescript-eslint: "npm:^8.48.0"
-    uuid: "npm:^8.3.2"
+    uuid: "npm:^14.0.0"
     yargs: "npm:^17.7.2"
   languageName: unknown
   linkType: soft
@@ -3046,21 +3046,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/snaps-sdk@npm:^10.3.0, @metamask/snaps-sdk@npm:^10.4.0":
-  version: 10.4.0
-  resolution: "@metamask/snaps-sdk@npm:10.4.0"
-  dependencies:
-    "@metamask/key-tree": "npm:^10.1.1"
-    "@metamask/providers": "npm:^22.1.1"
-    "@metamask/rpc-errors": "npm:^7.0.3"
-    "@metamask/superstruct": "npm:^3.2.1"
-    "@metamask/utils": "npm:^11.9.0"
-    luxon: "npm:^3.5.0"
-  checksum: 10/215a73f41f5043ca9767241da83308bb25b3faae96521ed71a63a9d29078461bcf278a01799e014bb20b49e34d96a05ea1822648c9bcf81e92f22e8c9b6c0f94
-  languageName: node
-  linkType: hard
-
-"@metamask/snaps-sdk@npm:^11.0.0, @metamask/snaps-sdk@npm:^11.1.0, @metamask/snaps-sdk@npm:^11.1.1":
+"@metamask/snaps-sdk@npm:^11.0.0":
   version: 11.1.1
   resolution: "@metamask/snaps-sdk@npm:11.1.1"
   dependencies:
@@ -3071,20 +3057,6 @@ __metadata:
     "@metamask/utils": "npm:^11.11.0"
     luxon: "npm:^3.5.0"
   checksum: 10/8419625775b83045d98c4ed920002ad884471e2303f6650104c97457c238f095ff35030663ddf111ebb6ce8f4cd915f57b7b9a5597d00288093701dbb79e787c
-  languageName: node
-  linkType: hard
-
-"@metamask/snaps-sdk@npm:~10.3.0":
-  version: 10.3.0
-  resolution: "@metamask/snaps-sdk@npm:10.3.0"
-  dependencies:
-    "@metamask/key-tree": "npm:^10.1.1"
-    "@metamask/providers": "npm:^22.1.1"
-    "@metamask/rpc-errors": "npm:^7.0.3"
-    "@metamask/superstruct": "npm:^3.2.1"
-    "@metamask/utils": "npm:^11.8.1"
-    luxon: "npm:^3.5.0"
-  checksum: 10/24efa7af91557d2365cd2199e0572566675efadbcc51a350938cb57e4b5c0861188c30d26a9ec3a42cb9059b37bba0f44a5486ec3ed32ac2e956cf48213d6485
   languageName: node
   linkType: hard
 
@@ -12098,7 +12070,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-jest@npm:^29.2.5":
+"ts-jest@npm:^29.4.1":
   version: 29.4.11
   resolution: "ts-jest@npm:29.4.11"
   dependencies:
@@ -12414,6 +12386,15 @@ __metadata:
   version: 1.0.1
   resolution: "utils-merge@npm:1.0.1"
   checksum: 10/5d6949693d58cb2e636a84f3ee1c6e7b2f9c16cb1d42d0ecb386d8c025c69e327205aa1c69e2868cc06a01e5e20681fbba55a4e0ed0cce913d60334024eae798
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^14.0.0":
+  version: 14.0.1
+  resolution: "uuid@npm:14.0.1"
+  bin:
+    uuid: dist-node/bin/uuid
+  checksum: 10/0f978fd5b0269d7acb615342aeb131f0b8d85eeb8ec34f2915d906baa3befcc14a079a430d0f8116aec6fd20c850cbfab65d1b3d1643fa81ed373c0cf9574f18
   languageName: node
   linkType: hard
 
