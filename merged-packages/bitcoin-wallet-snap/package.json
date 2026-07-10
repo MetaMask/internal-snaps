@@ -10,7 +10,7 @@
   "bugs": {
     "url": "https://github.com/MetaMask/internal-snaps/issues"
   },
-  "license": "(MIT-0 OR Apache-2.0)",
+  "license": "MIT",
   "main": "./dist/bundle.js",
   "files": [
     "dist/",
