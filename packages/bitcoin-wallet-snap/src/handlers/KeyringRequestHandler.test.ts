@@ -38,6 +38,35 @@ jest.mock('./mappings', () => ({
   mapToUtxo: jest.fn(),
 }));
 
+type TestKeyringRequest = {
+  account?: string;
+  id?: string;
+  origin?: string;
+  request: {
+    method: string;
+    params?: Record<string, unknown>;
+  };
+  scope?: string;
+};
+
+// `mock<KeyringRequest>` composes recursive mock utility types with
+// `superstruct`'s `Infer`, which can trigger TS2589 in nested request
+// fixtures.
+const createKeyringRequest = ({
+  account = 'account-id',
+  id = 'account-id',
+  origin: requestOrigin = 'metamask',
+  request,
+  scope = 'scope',
+}: TestKeyringRequest): KeyringRequest =>
+  ({
+    account,
+    id,
+    origin: requestOrigin,
+    request,
+    scope,
+  }) as KeyringRequest;
+
 describe('KeyringRequestHandler', () => {
   const mockAccountsUseCases = mock<AccountUseCases>();
   const mockConfirmationRepository = mock<ConfirmationRepository>();
@@ -58,9 +87,9 @@ describe('KeyringRequestHandler', () => {
   });
 
   describe('route', () => {
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
-      request: {},
+      request: { method: '' },
       id: 'account-id',
       scope: 'scope',
       account: 'account-id',
@@ -76,7 +105,7 @@ describe('KeyringRequestHandler', () => {
   describe('signPsbt', () => {
     const mockOptions = { fill: false, broadcast: true };
     const mockAccount = mock<BitcoinAccount>();
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.SignPsbt,
@@ -136,7 +165,7 @@ describe('KeyringRequestHandler', () => {
     });
 
     it('omits canBeMalleable when broadcast=false (no txid returned)', async () => {
-      const noBroadcastRequest = mock<KeyringRequest>({
+      const noBroadcastRequest = createKeyringRequest({
         origin,
         request: {
           method: AccountCapability.SignPsbt,
@@ -197,7 +226,7 @@ describe('KeyringRequestHandler', () => {
 
     it('fills the PSBT before showing the confirmation when options.fill is true', async () => {
       const fillOptions = { fill: true, broadcast: true };
-      const fillRequest = mock<KeyringRequest>({
+      const fillRequest = createKeyringRequest({
         origin,
         request: {
           method: AccountCapability.SignPsbt,
@@ -294,7 +323,7 @@ describe('KeyringRequestHandler', () => {
 
     it('does not show confirmation or sign if fillPsbt fails', async () => {
       const fillOptions = { fill: true, broadcast: true };
-      const fillRequest = mock<KeyringRequest>({
+      const fillRequest = createKeyringRequest({
         origin,
         request: {
           method: AccountCapability.SignPsbt,
@@ -350,7 +379,7 @@ describe('KeyringRequestHandler', () => {
   });
 
   describe('computeFee', () => {
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       request: {
         method: AccountCapability.ComputeFee,
         params: {
@@ -416,7 +445,7 @@ describe('KeyringRequestHandler', () => {
   });
 
   describe('fillPsbt', () => {
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       request: {
         method: AccountCapability.FillPsbt,
         params: {
@@ -481,7 +510,7 @@ describe('KeyringRequestHandler', () => {
   });
 
   describe('broadcastPsbt', () => {
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.BroadcastPsbt,
@@ -573,7 +602,7 @@ describe('KeyringRequestHandler', () => {
         amount: '1000',
       },
     ];
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.SendTransfer,
@@ -646,7 +675,7 @@ describe('KeyringRequestHandler', () => {
       getUtxo: () => mockLocalOutput,
       network: 'bitcoin',
     });
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.GetUtxo,
@@ -700,7 +729,7 @@ describe('KeyringRequestHandler', () => {
       listUnspent: () => [mockLocalOutput, mockLocalOutput],
       network: 'bitcoin',
     });
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.ListUtxos,
@@ -732,7 +761,7 @@ describe('KeyringRequestHandler', () => {
     const mockAccount = mock<BitcoinAccount>({
       publicDescriptor: 'publicDescriptor',
     });
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.PublicDescriptor,
@@ -753,7 +782,7 @@ describe('KeyringRequestHandler', () => {
   });
 
   describe('signMessage', () => {
-    const mockRequest = mock<KeyringRequest>({
+    const mockRequest = createKeyringRequest({
       origin,
       request: {
         method: AccountCapability.SignMessage,

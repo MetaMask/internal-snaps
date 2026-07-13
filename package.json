@@ -83,7 +83,7 @@
     "simple-git-hooks": "^2.8.0",
     "ts-jest": "^29.4.1",
     "tsx": "^4.20.5",
-    "typescript": "~5.7.3",
+    "typescript": "~5.8.3",
     "typescript-eslint": "^8.48.0",
     "yargs": "^17.7.2"
   },
