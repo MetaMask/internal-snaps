@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use a `37 TRX` fallback fee when the network fee cannot be estimated for a transaction ([#344](https://github.com/MetaMask/snap-tron-wallet/pull/344))
+
 ## [1.30.0]
 
 ### Changed

@@ -9,9 +9,13 @@ export const FALLBACK_GET_TRANSACTION_FEE_SUN = 1000;
 export const FALLBACK_GET_ENERGY_FEE_SUN = 100;
 export const FALLBACK_ENERGY_PRICE_SUN = 420;
 /**
- * 100 TRX
+ * 101 TRX
  */
-export const FEE_LIMIT = 100_000_000;
+export const FEE_LIMIT = 101_000_000;
+/**
+ * 37 TRX.
+ */
+export const FALLBACK_FEE = 37_000_000;
 
 export const NULL_ADDRESS = 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb';
 export const CONSENSYS_SR_NODE_ADDRESS = 'TVMwGfdDz58VvM7yTzGMWWSHsmofSxa9jH';

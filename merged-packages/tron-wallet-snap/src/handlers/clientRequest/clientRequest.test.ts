@@ -10,7 +10,7 @@ import { ClientRequestMethod, SendErrorCodes } from './types';
 import type { OnAmountInputRequestStruct } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { FEE_LIMIT, Network, Networks } from '../../constants';
+import { FALLBACK_FEE, FEE_LIMIT, Network, Networks } from '../../constants';
 import type { NativeAsset, ResourceAsset } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { AccountsService } from '../../services/accounts/AccountsService';
@@ -650,7 +650,7 @@ describe('ClientRequestHandler', () => {
           }),
           availableEnergy: BigNumber('100000'),
           availableBandwidth: BigNumber('5000'),
-          feeLimit: FEE_LIMIT,
+          feeLimit: FALLBACK_FEE,
         });
         expect(result).toStrictEqual(feeResult);
       });
@@ -764,7 +764,7 @@ describe('ClientRequestHandler', () => {
           }),
           availableEnergy: BigNumber('0'),
           availableBandwidth: BigNumber('1000'),
-          feeLimit: FEE_LIMIT,
+          feeLimit: FALLBACK_FEE,
         });
       });
 
@@ -852,7 +852,7 @@ describe('ClientRequestHandler', () => {
           transaction: expect.any(Object),
           availableEnergy: BigNumber('0'),
           availableBandwidth: BigNumber('0'),
-          feeLimit: FEE_LIMIT,
+          feeLimit: FALLBACK_FEE,
         });
       });
     });

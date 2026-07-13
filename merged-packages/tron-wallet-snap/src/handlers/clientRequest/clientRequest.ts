@@ -37,7 +37,13 @@ import {
 } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { FEE_LIMIT, Network, Networks, ZERO } from '../../constants';
+import {
+  FALLBACK_FEE,
+  FEE_LIMIT,
+  Network,
+  Networks,
+  ZERO,
+} from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
@@ -688,7 +694,7 @@ export class ClientRequestHandler {
       transaction,
       availableEnergy,
       availableBandwidth,
-      feeLimit: rawData.fee_limit,
+      feeLimit: FALLBACK_FEE,
     });
 
     assert(result, ComputeFeeResponseStruct);
