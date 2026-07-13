@@ -5,3 +5,5 @@
 # That file is used for some automated workflows, and maps controller to owning team(s).
 
 * @MetaMask/core-platform @MetaMask/networks
+
+packages/bitcoin-wallet-snap @MetaMask/networks

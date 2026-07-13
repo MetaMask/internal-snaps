@@ -1,3 +1,4 @@
 {
-  "metamask/sample-snap": "team-networks"
+  "metamask/sample-snap": "team-networks",
+  "metamask/bitcoin-wallet-snap": "team-networks"
 }
