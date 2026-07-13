@@ -3,6 +3,8 @@ import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
 
+import { AccountCapability, CurrencyUnit } from '../src/entities';
+import { Caip19Asset } from '../src/handlers/caip';
 import {
   FUNDING_TX,
   MNEMONIC,
@@ -12,8 +14,6 @@ import {
   scopeToCoinType,
   accountTypeToPurpose,
 } from './constants';
-import { AccountCapability, CurrencyUnit } from '../src/entities';
-import { Caip19Asset } from '../src/handlers/caip';
 
 const ACCOUNT_INDEX = 0;
 
@@ -35,7 +35,7 @@ describe('Keyring', () => {
     snap.mockJsonRpc((request) => {
       if (request.method === 'snap_manageAccounts') {
         const params = request.params as Record<string, unknown> | undefined;
-        if (params && params.method === 'getSelectedAccounts') {
+        if (params?.method === 'getSelectedAccounts') {
           return [];
         }
         return null;
@@ -105,7 +105,6 @@ describe('Keyring', () => {
       methods: Object.values(AccountCapability),
     });
 
-    // eslint-disable-next-line jest/no-conditional-in-test
     if ('result' in response.response) {
       accounts[TEST_ADDRESS_REGTEST] = response.response
         .result as KeyringAccount;
@@ -158,7 +157,6 @@ describe('Keyring', () => {
         methods: Object.values(AccountCapability),
       });
 
-      // eslint-disable-next-line jest/no-conditional-in-test
       if ('result' in response.response) {
         accounts[expectedAddress] = response.response.result as KeyringAccount;
       }
@@ -230,7 +228,6 @@ describe('Keyring', () => {
       methods: Object.values(AccountCapability),
     });
 
-    // eslint-disable-next-line jest/no-conditional-in-test
     if ('result' in response.response) {
       accounts[expectedAddress] = response.response.result as KeyringAccount;
     }

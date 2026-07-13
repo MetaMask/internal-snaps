@@ -9,6 +9,7 @@ import {
   InexistentMethodError,
   NotFoundError,
 } from '../entities';
+import type { AccountUseCases } from '../use-cases/AccountUseCases';
 import { mapToUtxo } from './mappings';
 import { parsePsbt } from './parsers';
 import {
@@ -20,7 +21,6 @@ import {
   SignMessageRequest,
   SignPsbtRequest,
 } from './validation';
-import type { AccountUseCases } from '../use-cases/AccountUseCases';
 
 export type SignPsbtResponse = {
   psbt: string;

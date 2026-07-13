@@ -26,12 +26,12 @@ import {
   CurrencyUnit,
   SendFormEvent,
 } from '../entities';
-import { SendFlowUseCases } from './SendFlowUseCases';
 import { CronMethod } from '../handlers';
 import type { AccountUseCases } from './AccountUseCases';
+import { SendFlowUseCases } from './SendFlowUseCases';
 
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
-/* eslint-disable @typescript-eslint/naming-convention */
+
 jest.mock('@metamask/bitcoindevkit', () => {
   return {
     Address: {

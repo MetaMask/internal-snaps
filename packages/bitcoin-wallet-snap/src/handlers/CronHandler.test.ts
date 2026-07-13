@@ -3,11 +3,7 @@ import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
-import {
-  type BitcoinAccount,
-  type SnapClient,
-  type SyncResult,
-} from '../entities';
+import type { BitcoinAccount, SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 import { CronHandler, CronMethod } from './CronHandler';
 

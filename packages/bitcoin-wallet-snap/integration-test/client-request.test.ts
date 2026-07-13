@@ -3,10 +3,10 @@ import { FeeType, BtcAccountType, BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
 
-import { BlockchainTestUtils } from './blockchain-utils';
-import { MNEMONIC, ORIGIN, TEST_ADDRESS_REGTEST } from './constants';
 import { CurrencyUnit, TrackingSnapEvent } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
+import { BlockchainTestUtils } from './blockchain-utils';
+import { MNEMONIC, ORIGIN, TEST_ADDRESS_REGTEST } from './constants';
 
 const ACCOUNT_INDEX = 1;
 
@@ -28,7 +28,7 @@ describe('OnClientRequestHandler', () => {
     snap.mockJsonRpc((request) => {
       if (request.method === 'snap_manageAccounts') {
         const params = request.params as Record<string, unknown> | undefined;
-        if (params && params.method === 'getSelectedAccounts') {
+        if (params?.method === 'getSelectedAccounts') {
           return createdAccountId ? [createdAccountId] : [];
         }
         return null;
@@ -90,7 +90,6 @@ describe('OnClientRequestHandler', () => {
       response.response as { result: { transactionId: string } }
     ).result;
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     expect(response).toTrackEvent({
       event: TrackingSnapEvent.TransactionSubmitted,
       properties: {
@@ -101,7 +100,6 @@ describe('OnClientRequestHandler', () => {
         tx_id: transactionId,
       },
     });
-    /* eslint-enable @typescript-eslint/naming-convention */
 
     await blockchain.mineBlocks(6);
 
@@ -112,7 +110,6 @@ describe('OnClientRequestHandler', () => {
 
     expect(finalSyncResponse).toRespondWith(null);
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     expect(finalSyncResponse).toTrackEvent({
       event: TrackingSnapEvent.TransactionFinalized,
       properties: {
@@ -123,7 +120,6 @@ describe('OnClientRequestHandler', () => {
         tx_id: transactionId,
       },
     });
-    /* eslint-enable @typescript-eslint/naming-convention */
   });
 
   it('fails if incorrect PSBT', async () => {

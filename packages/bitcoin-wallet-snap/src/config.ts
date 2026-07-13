@@ -2,7 +2,8 @@
 
 import type { AddressType } from '@metamask/bitcoindevkit';
 
-import { LogLevel, type SnapConfig } from './entities';
+import { LogLevel } from './entities';
+import type { SnapConfig } from './entities';
 
 const ENV = {
   LOG_LEVEL: process.env.LOG_LEVEL,

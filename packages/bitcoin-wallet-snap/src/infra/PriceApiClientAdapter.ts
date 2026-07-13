@@ -1,11 +1,11 @@
 import type { HistoricalPriceValue } from '@metamask/snaps-sdk';
 
-import {
-  ExternalServiceError,
-  type AssetRatesClient,
-  type PriceApiConfig,
-  type SpotPrice,
-  type TimePeriod,
+import { ExternalServiceError } from '../entities';
+import type {
+  AssetRatesClient,
+  PriceApiConfig,
+  SpotPrice,
+  TimePeriod,
 } from '../entities';
 
 type SpotPricesResponse = {

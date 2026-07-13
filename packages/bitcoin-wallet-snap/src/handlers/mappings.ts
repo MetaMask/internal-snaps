@@ -19,11 +19,8 @@ import {
   TransactionStatus,
 } from '@metamask/keyring-api';
 
-import {
-  type BitcoinAccount,
-  canAccountTxidBeMalleated,
-  networkToCurrencyUnit,
-} from '../entities';
+import { canAccountTxidBeMalleated, networkToCurrencyUnit } from '../entities';
+import type { BitcoinAccount } from '../entities';
 import type { Caip19Asset } from './caip';
 import { addressTypeToCaip, networkToCaip19, networkToScope } from './caip';
 

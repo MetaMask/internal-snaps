@@ -1,10 +1,5 @@
-import {
-  type Network,
-  Address,
-  Amount,
-  Psbt,
-  type Transaction,
-} from '@metamask/bitcoindevkit';
+import { Address, Amount, Psbt } from '@metamask/bitcoindevkit';
+import type { Network, Transaction } from '@metamask/bitcoindevkit';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
@@ -31,9 +26,9 @@ import {
   SendFormEvent,
   UserActionError,
 } from '../entities';
-import type { AccountUseCases } from './AccountUseCases';
 import { CronMethod } from '../handlers';
 import { parsePsbt } from '../handlers/parsers';
+import type { AccountUseCases } from './AccountUseCases';
 
 type SetAccountEventValue = {
   accountId: string;

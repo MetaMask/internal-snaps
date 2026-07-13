@@ -3,8 +3,13 @@ import type { KeyringRequest } from '@metamask/keyring-api';
 import { mock } from 'jest-mock-extended';
 import { assert } from 'superstruct';
 
+import type { BitcoinAccount, ConfirmationRepository } from '../entities';
+import { AccountCapability } from '../entities';
 import type { AccountUseCases } from '../use-cases';
 import { KeyringRequestHandler } from './KeyringRequestHandler';
+import type { Utxo } from './mappings';
+import { mapToUtxo } from './mappings';
+import { parsePsbt } from './parsers';
 import {
   BroadcastPsbtRequest,
   ComputeFeeRequest,
@@ -13,11 +18,6 @@ import {
   SendTransferRequest,
   SignPsbtRequest,
 } from './validation';
-import type { BitcoinAccount, ConfirmationRepository } from '../entities';
-import { AccountCapability } from '../entities';
-import type { Utxo } from './mappings';
-import { mapToUtxo } from './mappings';
-import { parsePsbt } from './parsers';
 
 /* eslint-disable @typescript-eslint/naming-convention */
 jest.mock('@metamask/bitcoindevkit', () => ({

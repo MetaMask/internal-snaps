@@ -20,9 +20,9 @@ import type {
   SpotPrice,
 } from '../entities';
 import { networkToCurrencyUnit } from '../entities';
-import { JSXConfirmationRepository } from './JSXConfirmationRepository';
 import { SignMessageConfirmationView } from '../infra/jsx';
 import { UnifiedSendFormView } from '../infra/jsx/unified-send-flow';
+import { JSXConfirmationRepository } from './JSXConfirmationRepository';
 
 /* eslint-disable @typescript-eslint/naming-convention */
 jest.mock('@metamask/bitcoindevkit', () => ({

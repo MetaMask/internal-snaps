@@ -1,1 +1,136 @@
-{}
+{
+  "packages/bitcoin-wallet-snap/integration-test/client-request.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "jest/no-disabled-tests": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/integration-test/cron-sync.test.ts": {
+    "n/no-sync": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/integration-test/keyring-request.test.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/integration-test/keyring.test.ts": {
+    "jest/no-disabled-tests": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "packages/bitcoin-wallet-snap/scripts/build-preinstalled-snap.js": {
+    "n/no-sync": {
+      "count": 2
+    }
+  },
+  "packages/bitcoin-wallet-snap/scripts/populate-en-locale.js": {
+    "n/no-sync": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/snap.config.ts": {
+    "import-x/no-nodejs-modules": {
+      "count": 1
+    },
+    "no-restricted-globals": {
+      "count": 14
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/handlers/KeyringHandler.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 4
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/handlers/RpcHandler.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 12
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/handlers/UserInputHandler.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/handlers/mappings.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 3
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 17
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/handlers/validation.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 4
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/SnapClientAdapter.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/jsx/components/SendForm.tsx": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/jsx/confirmations/SignMessageConfirmationView.tsx": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/jsx/confirmations/SignPsbtConfirmationView.tsx": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/jsx/send-flow/ReviewTransactionView.tsx": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/jsx/send-flow/SendFormView.tsx": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/infra/jsx/unified-send-flow/UnifiedSendFormView.tsx": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/store/BdkAccountRepository.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/store/InMemoryCache.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/bitcoin-wallet-snap/src/use-cases/SendFlowUseCases.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  }
+}

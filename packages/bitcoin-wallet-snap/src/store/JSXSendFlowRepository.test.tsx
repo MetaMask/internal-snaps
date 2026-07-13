@@ -7,9 +7,9 @@ import type {
   ReviewTransactionContext,
   Translator,
 } from '../entities';
-import { JSXSendFlowRepository } from './JSXSendFlowRepository';
 import { ReviewTransactionView, SendFormView } from '../infra/jsx';
 import { UnifiedSendFormView } from '../infra/jsx/unified-send-flow';
+import { JSXSendFlowRepository } from './JSXSendFlowRepository';
 
 jest.mock('../infra/jsx', () => ({
   SendFormView: jest.fn(),

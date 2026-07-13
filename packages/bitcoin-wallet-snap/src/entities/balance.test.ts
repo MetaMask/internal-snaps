@@ -56,7 +56,7 @@ describe('computeDisplayBalanceSats', () => {
     account.sentAndReceived.mockImplementation((tx) => {
       // Match by reference: find the txid whose mocked WalletTx.tx === tx.
       for (const [txid, walletTx] of Object.entries(overrides.txByTxid)) {
-        if (walletTx && walletTx.tx === tx) {
+        if (walletTx?.tx === tx) {
           return [sat(overrides.sentByTxid[txid] ?? 0n), sat(0n)];
         }
       }

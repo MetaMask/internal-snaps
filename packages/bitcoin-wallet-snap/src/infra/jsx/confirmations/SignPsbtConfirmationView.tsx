@@ -7,8 +7,8 @@ import {
   Footer,
   Section,
   Text as SnapText,
-  type SnapComponent,
 } from '@metamask/snaps-sdk/jsx';
+import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 
 import type { Messages, SignPsbtConfirmationContext } from '../../../entities';
 import { ConfirmationEvent } from '../../../entities';

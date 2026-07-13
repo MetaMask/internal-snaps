@@ -13,12 +13,11 @@ import {
 
 import {
   AssertionError,
-  type CodifiedError,
   FormatError,
   InexistentMethodError,
-  type Logger,
   ValidationError,
 } from '../entities';
+import type { CodifiedError, Logger } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { scopeToNetwork } from './caip';
 import type { TransactionFee } from './mappings';

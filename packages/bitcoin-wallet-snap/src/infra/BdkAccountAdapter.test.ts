@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type {
   ChangeSet,
   DescriptorPair,
@@ -39,7 +38,6 @@ describe('BdkAccountAdapter', () => {
   });
 
   describe('WebAssembly availability guard', () => {
-    // eslint-disable-next-line no-restricted-globals -- needed to save/restore the WebAssembly global in tests
     let originalWebAssembly: typeof WebAssembly;
 
     beforeEach(() => {

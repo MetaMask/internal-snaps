@@ -16,13 +16,12 @@ import type {
 } from '@metamask/bitcoindevkit';
 import { Address } from '@metamask/bitcoindevkit';
 
-import {
-  AccountCapability,
-  WalletError,
-  type AccountMetadata,
-  type AccountState,
-  type BitcoinAccount,
-  type TransactionBuilder,
+import { AccountCapability, WalletError } from '../entities';
+import type {
+  AccountMetadata,
+  AccountState,
+  BitcoinAccount,
+  TransactionBuilder,
 } from '../entities';
 
 type AccountStateWithMetadata = AccountState & {

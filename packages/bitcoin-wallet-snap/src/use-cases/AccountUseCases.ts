@@ -216,7 +216,7 @@ export class AccountUseCases {
 
     // Idempotent account creation + ensures only one account per derivation path
     const account = await this.#repository.getByDerivationPath(derivationPath);
-    if (account && account.network === network) {
+    if (account?.network === network) {
       this.#logger.debug('Account already exists: %s,', account.id);
       return account;
     }
@@ -250,7 +250,7 @@ export class AccountUseCases {
       // Idempotent account creation + ensures only one account per derivation path
       const account =
         await this.#repository.getByDerivationPath(derivationPath);
-      if (account && account.network === network) {
+      if (account?.network === network) {
         this.#logger.debug('Account already exists: %s,', account.id);
         await this.#snapClient.emitAccountCreatedEvent(
           account,
@@ -327,7 +327,7 @@ export class AccountUseCases {
 
         uniqueEntries.forEach((entry, index) => {
           const account = existingAccounts[index];
-          if (account && account.network === entry.req.network) {
+          if (account?.network === entry.req.network) {
             existingAccountsByPath.set(entry.pathKey, account);
           }
         });

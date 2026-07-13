@@ -5,12 +5,12 @@ import { BtcScope, FeeType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
+import type { Logger, BitcoinAccount } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { Caip19Asset } from './caip';
+import { mapPsbtToTransaction } from './mappings';
 import { RpcHandler } from './RpcHandler';
 import { RpcMethod, SendErrorCodes } from './validation';
-import type { Logger, BitcoinAccount } from '../entities';
-import { mapPsbtToTransaction } from './mappings';
 
 const mockPsbt = mock<Psbt>();
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818

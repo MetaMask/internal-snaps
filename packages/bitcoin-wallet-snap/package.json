@@ -1,23 +1,31 @@
 {
   "name": "@metamask/bitcoin-wallet-snap",
   "version": "1.15.0",
-  "description": "A Bitcoin wallet Snap.",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/MetaMask/internal-snaps.git"
-  },
+  "description": "A Bitcoin wallet Snap",
+  "keywords": [
+    "Ethereum",
+    "MetaMask"
+  ],
   "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/bitcoin-wallet-snap#readme",
   "bugs": {
     "url": "https://github.com/MetaMask/internal-snaps/issues"
   },
   "license": "MIT",
-  "main": "./dist/bundle.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
   "files": [
     "dist/",
     "images/",
     "snap.manifest.json",
     "locales/"
   ],
+  "main": "./dist/bundle.js",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
@@ -40,8 +48,11 @@
     "prepublishOnly": "mm-snap manifest",
     "serve": "mm-snap serve",
     "start": "concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
-    "test": "jest",
-    "test:integration": "./integration-test/run-integration.sh"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
+    "test:integration": "./integration-test/run-integration.sh",
+    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
+    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
@@ -66,8 +77,7 @@
     "uuid": "^14.0.0",
     "wif": "^5.0.0"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+  "engines": {
+    "node": ">=20"
   }
 }

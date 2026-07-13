@@ -32,14 +32,14 @@ import {
   Purpose,
   FormatError,
 } from '../entities';
-import { scopeToNetwork, caipToAddressType, Caip19Asset } from './caip';
-import { KeyringHandler, CreateAccountRequest } from './KeyringHandler';
-import type { KeyringRequestHandler } from './KeyringRequestHandler';
-import { mapToDiscoveredAccount } from './mappings';
 import type {
   AccountUseCases,
   CreateAccountParams,
 } from '../use-cases/AccountUseCases';
+import { scopeToNetwork, caipToAddressType, Caip19Asset } from './caip';
+import { KeyringHandler, CreateAccountRequest } from './KeyringHandler';
+import type { KeyringRequestHandler } from './KeyringRequestHandler';
+import { mapToDiscoveredAccount } from './mappings';
 
 jest.mock('superstruct', () => ({
   ...jest.requireActual('superstruct'),

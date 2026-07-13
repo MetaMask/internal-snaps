@@ -10,15 +10,15 @@ import {
 } from '@metamask/bitcoindevkit';
 import { v4 } from 'uuid';
 
-import {
-  type BitcoinAccountRepository,
-  type BitcoinAccount,
-  type SnapClient,
-  type Inscription,
-  type AccountState,
-  type AccountMetadata,
-  type SnapState,
-  StorageError,
+import { StorageError } from '../entities';
+import type {
+  BitcoinAccountRepository,
+  BitcoinAccount,
+  SnapClient,
+  Inscription,
+  AccountState,
+  AccountMetadata,
+  SnapState,
 } from '../entities';
 import { BdkAccountAdapter, StoredAccountAdapter } from '../infra';
 

@@ -285,7 +285,6 @@ export class SnapClientAdapter implements SnapClient {
         }
       };
 
-      /* eslint-disable @typescript-eslint/naming-convention */
       await snap.request({
         method: 'snap_trackEvent',
         params: {
@@ -301,7 +300,6 @@ export class SnapClientAdapter implements SnapClient {
           },
         },
       });
-      /* eslint-enable @typescript-eslint/naming-convention */
     } catch (error) {
       this.#logger.error(`Failed to track event: ${eventType}`, error);
     }

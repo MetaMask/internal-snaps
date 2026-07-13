@@ -1,13 +1,11 @@
 import { displayOrigin } from './format';
 
-/* eslint-disable @typescript-eslint/naming-convention */
 jest.mock('@metamask/bitcoindevkit', () => ({
   Amount: {
     from_sat: jest.fn(),
   },
   BdkErrorCode: {},
 }));
-/* eslint-enable @typescript-eslint/naming-convention */
 
 describe('displayOrigin', () => {
   it('returns the known label for the internal "metamask" origin', () => {

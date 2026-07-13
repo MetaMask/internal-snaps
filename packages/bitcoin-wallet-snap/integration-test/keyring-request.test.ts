@@ -3,11 +3,11 @@ import { BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { assertIsConfirmationDialog, installSnap } from '@metamask/snaps-jest';
 
-import { BlockchainTestUtils } from './blockchain-utils';
-import { MNEMONIC, ORIGIN } from './constants';
 import { AccountCapability } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
 import type { FillPsbtResponse } from '../src/handlers/KeyringRequestHandler';
+import { BlockchainTestUtils } from './blockchain-utils';
+import { MNEMONIC, ORIGIN } from './constants';
 
 const ACCOUNT_INDEX = 3;
 const submitRequestMethod = 'keyring_submitRequest';
@@ -30,7 +30,7 @@ describe('KeyringRequestHandler', () => {
     snap.mockJsonRpc((request) => {
       if (request.method === 'snap_manageAccounts') {
         const params = request.params as Record<string, unknown> | undefined;
-        if (params && params.method === 'getSelectedAccounts') {
+        if (params?.method === 'getSelectedAccounts') {
           return createdAccountId ? [createdAccountId] : [];
         }
         return null;

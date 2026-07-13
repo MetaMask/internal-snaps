@@ -25,13 +25,8 @@ import {
   OutPoint,
 } from '@metamask/bitcoindevkit';
 
-import {
-  AccountCapability,
-  ValidationError,
-  WalletError,
-  type BitcoinAccount,
-  type TransactionBuilder,
-} from '../entities';
+import { AccountCapability, ValidationError, WalletError } from '../entities';
+import type { BitcoinAccount, TransactionBuilder } from '../entities';
 import { BdkTxBuilderAdapter } from './BdkTxBuilderAdapter';
 
 /**

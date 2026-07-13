@@ -3,9 +3,9 @@ import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
 
+import { TrackingSnapEvent } from '../src/entities';
 import { BlockchainTestUtils } from './blockchain-utils';
 import { MNEMONIC, ORIGIN } from './constants';
-import { TrackingSnapEvent } from '../src/entities';
 
 const ACCOUNT_INDEX = 2;
 
@@ -30,7 +30,7 @@ describe('CronHandler', () => {
     snap.mockJsonRpc((request) => {
       if (request.method === 'snap_manageAccounts') {
         const params = request.params as Record<string, unknown> | undefined;
-        if (params && params.method === 'getSelectedAccounts') {
+        if (params?.method === 'getSelectedAccounts') {
           return [...accountsToSync];
         }
         return null;
@@ -89,7 +89,6 @@ describe('CronHandler', () => {
     });
     expect(syncResponse).toRespondWith(null);
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     expect(syncResponse).toTrackEvent({
       event: 'Transaction Received',
       properties: {
@@ -100,7 +99,6 @@ describe('CronHandler', () => {
         tx_id: txid,
       },
     });
-    /* eslint-enable @typescript-eslint/naming-convention */
 
     // send a transaction to the account
     txid = await blockchain.sendToAddress(account.address, 5);
@@ -114,7 +112,6 @@ describe('CronHandler', () => {
 
     expect(syncResponse).toRespondWith(null);
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     expect(syncResponse).toTrackEvent({
       event: TrackingSnapEvent.TransactionReceived,
       properties: {
@@ -125,6 +122,5 @@ describe('CronHandler', () => {
         tx_id: txid,
       },
     });
-    /* eslint-enable @typescript-eslint/naming-convention */
   });
 });

@@ -30,12 +30,12 @@ import {
   TrackingSnapEvent,
   ValidationError,
 } from '../entities';
+import { CronMethod } from '../handlers/CronHandler';
 import type {
   CreateAccountParams,
   DiscoverAccountParams,
 } from './AccountUseCases';
 import { AccountUseCases } from './AccountUseCases';
-import { CronMethod } from '../handlers/CronHandler';
 
 describe('AccountUseCases', () => {
   const mockLogger = mock<Logger>();
@@ -614,7 +614,6 @@ describe('AccountUseCases', () => {
 
     it('synchronizes with confirmed transactions', async () => {
       const mockTxPending = mock<WalletTx>({
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         chain_position: { is_confirmed: false },
         txid: {
           toString: () => 'txid',
@@ -622,7 +621,7 @@ describe('AccountUseCases', () => {
       });
       const mockTxConfirmed = mock<WalletTx>({
         ...mockTxPending,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         chain_position: { is_confirmed: true },
       });
       mockAccount.listTransactions
@@ -648,14 +647,12 @@ describe('AccountUseCases', () => {
 
     it('synchronizes with both new and confirmed transactions', async () => {
       const mockTxPending = mock<WalletTx>({
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         chain_position: { is_confirmed: false },
         txid: {
           toString: () => 'txid1',
         },
       });
       const mockTxNew = mock<WalletTx>({
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         chain_position: { is_confirmed: false },
         txid: {
           toString: () => 'txid2',
@@ -663,17 +660,16 @@ describe('AccountUseCases', () => {
       });
       const mockTxConfirmed = mock<WalletTx>({
         ...mockTxPending,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         chain_position: { is_confirmed: true },
       });
 
       const mockTxPreviouslyConfirmed = mock<WalletTx>({
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         chain_position: { is_confirmed: true },
       });
       const mockTxReorged = mock<WalletTx>({
         ...mockTxPreviouslyConfirmed,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         chain_position: { is_confirmed: false },
       });
 
@@ -728,7 +724,6 @@ describe('AccountUseCases', () => {
     });
 
     it('should emit TransactionReorged when a confirmed transaction becomes unconfirmed', async () => {
-      /* eslint-disable @typescript-eslint/naming-convention */
       const mockTxConfirmed = mock<WalletTx>({
         chain_position: { is_confirmed: true },
       });
@@ -1001,7 +996,7 @@ describe('AccountUseCases', () => {
     });
     const mockTransaction = mock<Transaction>({
       // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
-      /* eslint-disable @typescript-eslint/naming-convention */
+
       compute_txid: jest.fn(),
       clone: jest.fn(),
     });
@@ -1724,7 +1719,7 @@ describe('AccountUseCases', () => {
     });
     const mockTransaction = mock<Transaction>({
       // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
-      /* eslint-disable @typescript-eslint/naming-convention */
+
       compute_txid: jest.fn(),
       clone: jest.fn(),
     });

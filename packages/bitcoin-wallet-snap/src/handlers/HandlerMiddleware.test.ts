@@ -1,14 +1,8 @@
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
-import {
-  type Logger,
-  type SnapClient,
-  type Translator,
-  BaseError,
-  ExternalServiceError,
-  UserActionError,
-} from '../entities';
+import { BaseError, ExternalServiceError, UserActionError } from '../entities';
+import type { Logger, SnapClient, Translator } from '../entities';
 import { HandlerMiddleware, shouldTrackError } from './HandlerMiddleware';
 
 describe('HandlerMiddleware', () => {

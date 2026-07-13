@@ -13,11 +13,8 @@ import {
   Recipient,
 } from '@metamask/bitcoindevkit';
 
-import {
-  type CodifiedError,
-  ValidationError,
-  type TransactionBuilder,
-} from '../entities';
+import { ValidationError } from '../entities';
+import type { CodifiedError, TransactionBuilder } from '../entities';
 
 export class BdkTxBuilderAdapter implements TransactionBuilder {
   #builder: TxBuilder;

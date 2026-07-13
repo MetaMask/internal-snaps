@@ -46,14 +46,12 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "since-latest-release": "../../scripts/since-latest-release.sh"
   },
-  "dependencies": {
-    "@metamask/snaps-sdk": "~10.3.0"
-  },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
     "@metamask/auto-changelog": "^6.1.0",
     "@metamask/snaps-cli": "^8.3.0",
     "@metamask/snaps-jest": "^9.8.0",
+    "@metamask/snaps-sdk": "^11.0.0",
     "@types/react": "18.2.4",
     "@types/react-dom": "18.2.4",
     "eslint": "^9.39.1",

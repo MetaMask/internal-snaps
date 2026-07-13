@@ -6,7 +6,6 @@ import type { BitcoinAccount, Logger } from '../entities';
 import { TrackingSnapEvent } from '../entities';
 import { SnapClientAdapter } from './SnapClientAdapter';
 
-/* eslint-disable @typescript-eslint/naming-convention */
 jest.mock('@metamask/bitcoindevkit', () => ({
   Amount: {
     from_sat: jest.fn(() => ({
@@ -16,7 +15,6 @@ jest.mock('@metamask/bitcoindevkit', () => ({
     })),
   },
 }));
-/* eslint-enable @typescript-eslint/naming-convention */
 
 const setupTest = () => {
   const mockLogger = mock<Logger>();
@@ -56,7 +54,6 @@ describe('SnapClientAdapter', () => {
         ),
       ).toBeUndefined();
 
-      /* eslint-disable @typescript-eslint/naming-convention */
       expect(mockRequest).toHaveBeenCalledWith({
         method: 'snap_trackEvent',
         params: {
@@ -72,7 +69,7 @@ describe('SnapClientAdapter', () => {
           },
         },
       });
-      /* eslint-enable @typescript-eslint/naming-convention */
+
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Failed to track event: Transaction Received',
         trackingError,

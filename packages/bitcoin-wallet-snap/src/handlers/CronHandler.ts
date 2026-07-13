@@ -2,12 +2,8 @@ import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, object, string } from 'superstruct';
 
-import {
-  InexistentMethodError,
-  type SnapClient,
-  type SyncResult,
-  SynchronizationError,
-} from '../entities';
+import { InexistentMethodError, SynchronizationError } from '../entities';
+import type { SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export enum CronMethod {

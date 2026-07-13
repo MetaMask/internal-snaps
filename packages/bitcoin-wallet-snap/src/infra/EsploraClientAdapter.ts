@@ -5,11 +5,11 @@ import type {
 } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
 
-import {
-  type BitcoinAccount,
-  type ChainConfig,
-  type BlockchainClient,
-  ExternalServiceError,
+import { ExternalServiceError } from '../entities';
+import type {
+  BitcoinAccount,
+  ChainConfig,
+  BlockchainClient,
 } from '../entities';
 
 export class EsploraClientAdapter implements BlockchainClient {

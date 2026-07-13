@@ -7,9 +7,9 @@ import type {
   SnapClient,
   SpotPrice,
 } from '../entities';
-import { AssetsUseCases } from './AssetsUseCases';
 import { Caip19Asset } from '../handlers/caip';
 import type { ICache, Serializable } from '../store/ICache';
+import { AssetsUseCases } from './AssetsUseCases';
 
 describe('AssetsUseCases', () => {
   const mockLogger = mock<Logger>();

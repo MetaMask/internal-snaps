@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
 
-import { ConfirmationEvent, type Logger, type SnapClient } from '../entities';
+import { ConfirmationEvent } from '../entities';
+import type { Logger, SnapClient } from '../entities';
 import { ConfirmationUseCases } from './ConfirmationUseCases';
 
 describe('ConfirmationUseCases', () => {

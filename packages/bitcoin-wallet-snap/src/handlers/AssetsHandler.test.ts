@@ -4,10 +4,10 @@ import type {
 } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
+import type { Logger, SnapClient, SpotPrice } from '../entities';
 import type { AssetsUseCases } from '../use-cases';
 import { AssetsHandler } from './AssetsHandler';
 import { Caip19Asset } from './caip';
-import type { Logger, SnapClient, SpotPrice } from '../entities';
 
 describe('AssetsHandler', () => {
   const mockAssetsUseCases = mock<AssetsUseCases>();

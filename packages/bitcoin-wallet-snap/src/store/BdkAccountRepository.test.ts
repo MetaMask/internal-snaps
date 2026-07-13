@@ -21,7 +21,7 @@ import { BdkAccountAdapter } from '../infra';
 import { BdkAccountRepository } from './BdkAccountRepository';
 
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
-/* eslint-disable @typescript-eslint/naming-convention */
+
 jest.mock('@metamask/bitcoindevkit', () => {
   return {
     ChangeSet: {

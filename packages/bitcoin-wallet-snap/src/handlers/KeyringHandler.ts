@@ -49,16 +49,18 @@ import {
 } from 'superstruct';
 
 import {
-  type BitcoinAccount,
   computeDisplayBalanceSats,
   FormatError,
   InexistentMethodError,
-  type Logger,
   networkToCurrencyUnit,
   Purpose,
   purposeToAddressType,
-  type SnapClient,
 } from '../entities';
+import type { BitcoinAccount, Logger, SnapClient } from '../entities';
+import type {
+  AccountUseCases,
+  CreateAccountParams,
+} from '../use-cases/AccountUseCases';
 import {
   networkToCaip19,
   caipToAddressType,
@@ -74,10 +76,6 @@ import {
   mapToTransaction,
 } from './mappings';
 import { BtcWalletRequestStruct, validateSelectedAccounts } from './validation';
-import type {
-  AccountUseCases,
-  CreateAccountParams,
-} from '../use-cases/AccountUseCases';
 
 export const CreateAccountRequest = object({
   scope: enums(Object.values(BtcScope)),
