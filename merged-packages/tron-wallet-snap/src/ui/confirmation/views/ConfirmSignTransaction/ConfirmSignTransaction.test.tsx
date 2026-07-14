@@ -118,6 +118,7 @@ describe('ConfirmSignTransaction', () => {
       tokenPricesFetchStatus: FetchStatus.Fetched,
       fees: [] as any,
       feesFetchStatus: FetchStatus.Fetched,
+      isInsufficientBalance: false,
       ...overrides,
     }) as ConfirmSignTransactionContext;
 
@@ -175,6 +176,15 @@ describe('ConfirmSignTransaction', () => {
 
   it('enables the confirm button for a successful scan', () => {
     expect(isConfirmDisabled(buildContext())).toBe(false);
+  });
+
+  it('disables confirmation and displays an error when the TRX balance is insufficient', () => {
+    const context = buildContext({ isInsufficientBalance: true });
+
+    expect(isConfirmDisabled(context)).toBe(true);
+    expect(renderTexts(context)).toStrictEqual(
+      expect.arrayContaining(['Insufficient funds']),
+    );
   });
 
   it('disables the confirm button when the scan fails on a deadline (expired)', () => {

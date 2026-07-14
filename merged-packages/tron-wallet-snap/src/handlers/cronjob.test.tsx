@@ -234,6 +234,7 @@ function buildMockSignTransactionInterfaceContext(
     tokenPricesFetchStatus: FetchStatus.Fetched,
     fees: [],
     feesFetchStatus: FetchStatus.Fetched,
+    isInsufficientBalance: false,
     ...overrides,
   };
 }

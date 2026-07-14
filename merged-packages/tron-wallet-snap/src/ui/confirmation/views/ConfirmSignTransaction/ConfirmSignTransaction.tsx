@@ -1,6 +1,7 @@
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
+  Banner,
   Box,
   Button,
   Container,
@@ -42,6 +43,7 @@ export const ConfirmSignTransaction = ({
     fees,
     tokenPrices,
     tokenPricesFetchStatus,
+    isInsufficientBalance,
   } = context;
 
   /**
@@ -52,7 +54,8 @@ export const ConfirmSignTransaction = ({
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
-    scan?.simulationStatus === SimulationStatus.Failed;
+    scan?.simulationStatus === SimulationStatus.Failed ||
+    isInsufficientBalance;
 
   const addressCaip10 = account ? `${scope}:${account.address}` : null;
 
@@ -90,6 +93,15 @@ export const ConfirmSignTransaction = ({
   return (
     <Container>
       <Box>
+        {isInsufficientBalance ? (
+          <Banner
+            title={translate('transactionScan.errors.insufficientFunds')}
+            severity="danger"
+          >
+            <SnapText>{null}</SnapText>
+          </Banner>
+        ) : null}
+
         {/* Security Alert / expiry banner.
             Rendered when security alerts are enabled, or whenever a scan error
             (e.g. the locally-detected TAPOS-expired case) is present, so the

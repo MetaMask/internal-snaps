@@ -16,8 +16,10 @@ import { EXPIRED_TRANSACTION_SCAN } from '../../../../services/transaction-scan/
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
+import { sunToTrx } from '../../../../utils/conversion';
 import logger from '../../../../utils/logger';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
+import { getTransactionTrxValue } from '../../../../validation/transaction';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 
 export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
@@ -35,6 +37,7 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   tokenPricesFetchStatus: FetchStatus.Initial,
   fees: [],
   feesFetchStatus: FetchStatus.Initial,
+  isInsufficientBalance: false,
   preferences: {
     locale: 'en',
     currency: 'usd',
@@ -91,6 +94,7 @@ export async function render(
   const [preferences, accountAssets] = await Promise.all([
     snapClient.getPreferences().catch(() => DEFAULT_CONTEXT.preferences),
     assetsService.getAssetsByAccountId(account.id, [
+      Networks[scope as Network].nativeToken.id,
       Networks[scope as Network].bandwidth.id,
       Networks[scope as Network].energy.id,
     ]),
@@ -103,7 +107,7 @@ export async function render(
 
   // Calculate fees
   try {
-    const [bandwidthAsset, energyAsset] = accountAssets;
+    const [nativeTokenAsset, bandwidthAsset, energyAsset] = accountAssets;
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -152,11 +156,23 @@ export async function render(
 
     context.fees = fees;
     context.feesFetchStatus = FetchStatus.Fetched;
+    const trxFee = new BigNumber(
+      fees.find(
+        (fee) => fee.asset.type === Networks[scope as Network].nativeToken.id,
+      )?.asset.amount ?? '0',
+    );
+    const trxBalance = nativeTokenAsset
+      ? sunToTrx(nativeTokenAsset.rawAmount)
+      : ZERO;
+    context.isInsufficientBalance = getTransactionTrxValue(rawData)
+      .plus(trxFee)
+      .isGreaterThan(trxBalance);
     context.tokenPrices = tokenPrices;
     context.tokenPricesFetchStatus = FetchStatus.Fetched;
   } catch {
     context.fees = [];
     context.feesFetchStatus = FetchStatus.Error;
+    context.isInsufficientBalance = false;
     context.tokenPrices = {};
     context.tokenPricesFetchStatus = FetchStatus.Error;
   }

@@ -23,4 +23,5 @@ export type ConfirmSignTransactionContext = {
   tokenPricesFetchStatus: FetchStatus;
   fees: ComputeFeeResult;
   feesFetchStatus: FetchStatus;
+  isInsufficientBalance: boolean;
 };

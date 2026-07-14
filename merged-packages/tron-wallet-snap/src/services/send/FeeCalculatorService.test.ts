@@ -4,35 +4,20 @@ import { BigNumber } from 'bignumber.js';
 
 import { FeeUnavailableError } from './errors';
 import { FeeCalculatorService } from './FeeCalculatorService';
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TriggerConstantContractResponse } from '../../clients/tron-http';
+import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import {
   TrongridAccountNotFoundError,
   TrongridRateLimitError,
 } from '../../clients/trongrid/errors';
+import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import type { TronAccount } from '../../clients/trongrid/types';
 import { Network, ZERO } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from '../transactions/mocks/trongrid/account-transactions/native-transfer.json';
 import trc10TransferMock from '../transactions/mocks/trongrid/account-transactions/trc10-transfer.json';
 import trc20TransferMock from '../transactions/mocks/trongrid/account-transactions/trc20-transfer.json';
-
-const mockTronWebFactory = {
-  createClient: jest.fn(),
-} as any;
-
-const mockTrongridApiClient = {
-  getChainParameters: jest.fn(),
-  getAccountInfoByAddress: jest.fn(),
-  peekCachedChainParameters: jest.fn(),
-} as any;
-
-const mockTronHttpClient = {
-  triggerConstantContract: jest.fn(),
-  getContract: jest.fn(),
-  getAccountResources: jest.fn(),
-} as any;
-
-const mockSnapClient = {
-  trackError: jest.fn(),
-} as any;
 
 // Helper to get transaction examples in the expected format
 const getTransactionExample = (type: 'native' | 'trc10' | 'trc20'): any => {
@@ -87,121 +72,168 @@ const createLargeTransaction = (): any => {
   };
 };
 
+type MockTrongridApiClient = jest.Mocked<
+  Pick<
+    TrongridApiClient,
+    | 'getChainParameters'
+    | 'getAccountInfoByAddress'
+    | 'peekCachedChainParameters'
+  >
+>;
+
+type MockTronHttpClient = jest.Mocked<
+  Pick<
+    TronHttpClient,
+    'triggerConstantContract' | 'getContract' | 'getAccountResources'
+  >
+>;
+
+type WithFeeCalculatorServiceCallback<ReturnValue> = (payload: {
+  feeCalculatorService: FeeCalculatorService;
+  trongridApiClient: MockTrongridApiClient;
+  tronHttpClient: MockTronHttpClient;
+  snapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+}) => Promise<ReturnValue> | ReturnValue;
+
+/**
+ * Wraps a test with a freshly constructed `FeeCalculatorService` and mocked
+ * dependencies.
+ *
+ * The callback receives the service instance along with the mocks so each test
+ * can customize dependency behavior and assert interactions in isolation.
+ *
+ * @param testFunction - The test body to execute with the service and mocked dependencies.
+ * @returns The return value of the test callback.
+ */
+async function withFeeCalculatorService<ReturnValue>(
+  testFunction: WithFeeCalculatorServiceCallback<ReturnValue>,
+): Promise<ReturnValue> {
+  const mockTrongridApiClient: MockTrongridApiClient = {
+    getChainParameters: jest.fn().mockResolvedValue([
+      { key: 'getTransactionFee', value: 1000 },
+      { key: 'getEnergyFee', value: 100 },
+    ]),
+    getAccountInfoByAddress: jest.fn(),
+    peekCachedChainParameters: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockTronHttpClient: MockTronHttpClient = {
+    triggerConstantContract: jest.fn(),
+    getContract: jest.fn().mockResolvedValue(null),
+    getAccountResources: jest
+      .fn()
+      .mockRejectedValue(new Error('Account not found')),
+  };
+
+  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: jest.fn(),
+  };
+
+  const feeCalculatorService = new FeeCalculatorService({
+    logger: mockLogger,
+    trongridApiClient: mockTrongridApiClient as unknown as TrongridApiClient,
+    tronHttpClient: mockTronHttpClient as unknown as TronHttpClient,
+    snapClient: mockSnapClient as unknown as SnapClient,
+  });
+
+  return await testFunction({
+    feeCalculatorService,
+    trongridApiClient: mockTrongridApiClient,
+    tronHttpClient: mockTronHttpClient,
+    snapClient: mockSnapClient,
+  });
+}
+
 describe('FeeCalculatorService', () => {
-  let feeCalculatorService: FeeCalculatorService;
-  let mockTronWebClient: any;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-
-    mockTronWebClient = {
-      trx: {
-        getChainParameters: jest.fn(),
+  describe('computeFee', () => {
+    const expectedMainnetBandwidthFee = {
+      type: FeeType.Base,
+      asset: {
+        unit: 'BANDWIDTH',
+        type: 'tron:728126428/slip44:bandwidth',
+        amount: '266',
+        fungible: true,
       },
-      address: {
-        fromHex: jest.fn((hexAddress) => `base58_${hexAddress}`),
-      },
-      transactionBuilder: {
-        triggerConstantContract: jest.fn(),
+    };
+    const expectedMainnetContractBandwidthFee = {
+      type: FeeType.Base,
+      asset: {
+        unit: 'BANDWIDTH',
+        type: 'tron:728126428/slip44:bandwidth',
+        amount: '345',
+        fungible: true,
       },
     };
 
-    mockTronWebFactory.createClient.mockReturnValue(mockTronWebClient);
-
-    // Default: no energy sharing (user pays all)
-    mockTronHttpClient.getContract.mockResolvedValue(null);
-
-    // Default: deployer energy fetch fails
-    mockTronHttpClient.getAccountResources.mockRejectedValue(
-      new Error('Account not found'),
-    );
-
-    // Default: no cached chain parameters available for fee floor
-    mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue(
-      undefined,
-    );
-
-    feeCalculatorService = new FeeCalculatorService({
-      logger: mockLogger,
-      trongridApiClient: mockTrongridApiClient,
-      tronHttpClient: mockTronHttpClient,
-      snapClient: mockSnapClient,
-    });
-  });
-
-  describe('computeFee', () => {
-    beforeEach(() => {
-      // Mock chain parameters response
-      mockTrongridApiClient.getChainParameters.mockResolvedValue([
-        { key: 'getTransactionFee', value: 1000 },
-        { key: 'getEnergyFee', value: 100 },
-      ]);
-    });
-
     describe('TransferContract scenarios (no energy needed)', () => {
       it('has enough bandwidth', async () => {
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000); // More than needed
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('native');
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(1000000); // More than needed
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // TRX is always first (even if 0), then bandwidth consumption
+          // Native transfer: 132 bytes (raw_data_hex / 2) + 134 = 266 bytes
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                amount: '266',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        // TRX is always first (even if 0), then bandwidth consumption
-        // Native transfer: 132 bytes (raw_data_hex / 2) + 134 = 266 bytes
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('not enough bandwidth', async () => {
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(100); // Less than needed (266)
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('native');
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(100); // Less than needed (266)
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
 
-        // New behavior: When there's not enough bandwidth, ALL bandwidth is paid in TRX
-        // Bandwidth needed: 266 bytes
-        // No bandwidth consumed (since we don't have enough)
-        // TRX cost: 266 * 1000 SUN = 266,000 SUN = 0.266 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0.266',
-              fungible: true,
+          // New behavior: When there's not enough bandwidth, ALL bandwidth is paid in TRX
+          // Bandwidth needed: 266 bytes
+          // No bandwidth consumed (since we don't have enough)
+          // TRX cost: 266 * 1000 SUN = 266,000 SUN = 0.266 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0.266',
+                fungible: true,
+              },
             },
-          },
-        ]);
+            expectedMainnetBandwidthFee,
+          ]);
+        });
       });
     });
 
@@ -240,1737 +272,1899 @@ describe('FeeCalculatorService', () => {
         'AccountCreateContract',
         'AccountPermissionUpdateContract',
       ])('returns zero energy for %s', async (contractType) => {
-        const transaction = createSystemContractTransaction(contractType);
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000);
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = createSystemContractTransaction(contractType);
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(1000000);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // System contracts should only have TRX (0) and bandwidth, no energy
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                amount: '266',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        // System contracts should only have TRX (0) and bandwidth, no energy
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('charges bandwidth in TRX when not enough bandwidth for system contract', async () => {
-        const transaction = createSystemContractTransaction(
-          'FreezeBalanceV2Contract',
-        );
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(100); // Less than needed (266)
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = createSystemContractTransaction(
+            'FreezeBalanceV2Contract',
+          );
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(100); // Less than needed (266)
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
 
-        // System contracts should only pay for bandwidth in TRX, no energy cost
-        // Bandwidth needed: 266 bytes
-        // TRX cost: 266 * 1000 SUN = 266,000 SUN = 0.266 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0.266',
-              fungible: true,
+          // System contracts should only pay for bandwidth in TRX, no energy cost
+          // Bandwidth needed: 266 bytes
+          // TRX cost: 266 * 1000 SUN = 266,000 SUN = 0.266 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0.266',
+                fungible: true,
+              },
             },
-          },
-        ]);
+            expectedMainnetBandwidthFee,
+          ]);
+        });
       });
     });
 
     describe('TriggerSmartContract scenarios (energy needed)', () => {
-      beforeEach(() => {
-        // Mock energy calculation for smart contracts
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 130000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
-      });
-
       it('has enough bandwidth + has enough energy', async () => {
-        const transaction = getTransactionExample('trc20');
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('trc20');
 
-        const availableEnergy = BigNumber(100000); // More than needed (100000 fallback)
-        const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
+          const availableEnergy = BigNumber(100000); // More than needed (100000 fallback)
+          const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // Energy: 130000 (hardcoded), available: 100000
+          // Energy consumed: 100000, overage: 30000
+          // TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
+          // Bandwidth: 211 bytes (raw_data_hex / 2) + 134 = 345 bytes
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '3',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'ENERGY',
+                type: 'tron:728126428/slip44:energy',
+                amount: '130000',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                amount: '345',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        // Energy: 130000 (hardcoded), available: 100000
-        // Energy consumed: 100000, overage: 30000
-        // TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
-        // Bandwidth: 211 bytes (raw_data_hex / 2) + 134 = 345 bytes
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '100000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('has enough bandwidth + not enough energy', async () => {
-        const transaction = getTransactionExample('trc20');
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('trc20');
 
-        const availableEnergy = BigNumber(30000); // Less than needed (50000)
-        const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
+          const availableEnergy = BigNumber(30000); // Less than needed (50000)
+          const availableBandwidth = BigNumber(2000000); // More than needed for TRC20 transaction
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // Should have TRX first, then bandwidth consumption and energy
+          // Energy: 130000 (hardcoded), available: 30000
+          // Energy consumed: 30000, overage: 100000
+          // TRX cost: 100000 * 100 SUN = 10,000,000 SUN = 10 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '10',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'ENERGY',
+                type: 'tron:728126428/slip44:energy',
+                amount: '130000',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                amount: '345',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        // Should have TRX first, then bandwidth consumption and energy
-        // Energy: 130000 (hardcoded), available: 30000
-        // Energy consumed: 30000, overage: 100000
-        // TRX cost: 100000 * 100 SUN = 10,000,000 SUN = 10 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '10',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '30000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('not enough bandwidth + has enough energy', async () => {
-        const largeTransaction = createLargeTransaction();
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const largeTransaction = createLargeTransaction();
 
-        const availableEnergy = BigNumber(100000); // More than needed (50000)
-        const availableBandwidth = BigNumber(100); // Less than needed (345 bytes actual)
+          const availableEnergy = BigNumber(100000); // More than needed (50000)
+          const availableBandwidth = BigNumber(100); // Less than needed (345 bytes actual)
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: largeTransaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction: largeTransaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // Should have TRX first, then energy consumption
+          // Energy: 130000 (hardcoded), available: 100000
+          // Energy consumed: 100000, overage: 30000
+          // Energy TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
+          // Note: raw_data_hex doesn't change when we modify the data field,
+          // so bandwidth is still 345 bytes (not the larger theoretical size)
+          // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
+          // Bandwidth TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
+          // Total TRX cost: 3.345 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '3.345',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'ENERGY',
+                type: 'tron:728126428/slip44:energy',
+                amount: '130000',
+                fungible: true,
+              },
+            },
+            expectedMainnetContractBandwidthFee,
+          ]);
         });
-
-        // Should have TRX first, then energy consumption
-        // Energy: 130000 (hardcoded), available: 100000
-        // Energy consumed: 100000, overage: 30000
-        // Energy TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
-        // Note: raw_data_hex doesn't change when we modify the data field,
-        // so bandwidth is still 345 bytes (not the larger theoretical size)
-        // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
-        // Bandwidth TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
-        // Total TRX cost: 3.345 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3.345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '100000',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('not enough bandwidth + not enough energy', async () => {
-        const largeTransaction = createLargeTransaction();
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const largeTransaction = createLargeTransaction();
 
-        const availableEnergy = BigNumber(30000); // Less than needed (50000)
-        const availableBandwidth = BigNumber(100); // Less than needed (345)
+          const availableEnergy = BigNumber(30000); // Less than needed (50000)
+          const availableBandwidth = BigNumber(100); // Less than needed (345)
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: largeTransaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction: largeTransaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // Should have TRX first, then energy consumption
+          // Energy: 130000 (hardcoded), available: 30000
+          // Energy consumed: 30000, overage: 100000 → 10 TRX
+          // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
+          // Bandwidth TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
+          // Total: 10.345 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '10.345',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'ENERGY',
+                type: 'tron:728126428/slip44:energy',
+                amount: '130000',
+                fungible: true,
+              },
+            },
+            expectedMainnetContractBandwidthFee,
+          ]);
         });
-
-        // Should have TRX first, then energy consumption
-        // Energy: 130000 (hardcoded), available: 30000
-        // Energy consumed: 30000, overage: 100000 → 10 TRX
-        // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
-        // Bandwidth TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
-        // Total: 10.345 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '10.345',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '30000',
-              fungible: true,
-            },
-          },
-        ]);
       });
     });
 
     describe('Edge cases and error handling', () => {
       it('filters out zero amount fees', async () => {
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = ZERO;
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('native');
+          const availableEnergy = ZERO;
+          const availableBandwidth = ZERO;
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
 
-        // Should only have TRX cost, no zero amount fees
-        // 266 bandwidth * 1000 SUN = 266,000 SUN = 0.266 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0.266',
-              fungible: true,
+          // Should only have TRX cost, no zero amount fees
+          // 266 bandwidth * 1000 SUN = 266,000 SUN = 0.266 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0.266',
+                fungible: true,
+              },
             },
-          },
-        ]);
+            expectedMainnetBandwidthFee,
+          ]);
+        });
       });
 
       it('handles different networks correctly', async () => {
-        const transaction = getTransactionExample('native');
-        const availableEnergy = BigNumber(100000);
-        const availableBandwidth = BigNumber(1000000);
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('native');
+          const availableEnergy = BigNumber(100000);
+          const availableBandwidth = BigNumber(1000000);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Shasta,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Shasta,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:2494104990/slip44:195',
+                amount: '0',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:2494104990/slip44:bandwidth',
+                amount: '266',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:2494104990/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:2494104990/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('uses fallback values when chain parameters are missing', async () => {
-        mockTrongridApiClient.getChainParameters.mockResolvedValue([]);
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
+            trongridApiClient.getChainParameters.mockResolvedValue([]);
 
-        const transaction = getTransactionExample('trc20');
+            const transaction = getTransactionExample('trc20');
 
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 130000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 130000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const availableEnergy = BigNumber(100000);
-        const availableBandwidth = BigNumber(2000000); // Ensure enough bandwidth
+            const availableEnergy = BigNumber(100000);
+            const availableBandwidth = BigNumber(2000000); // Ensure enough bandwidth
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Should use fallback values: energyFee=100, bandwidthFee=1000
-        // Energy: 130000 (hardcoded), available: 100000
-        // Energy consumed: 100000, overage: 30000
-        // TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
-        // Bandwidth: 345 bytes consumed
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3',
-              fungible: true,
-            },
+            // Should use fallback values: energyFee=100, bandwidthFee=1000
+            // Energy: 130000 (hardcoded), available: 100000
+            // Energy consumed: 100000, overage: 30000
+            // TRX cost: 30000 * 100 SUN = 3,000,000 SUN = 3 TRX
+            // Bandwidth: 345 bytes consumed
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '3',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '130000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '100000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('handles very large transactions', async () => {
-        const veryLargeTransaction = createLargeTransaction();
-        // Make it even larger for this test
-        veryLargeTransaction.raw_data.contract[0].parameter.value.data =
-          'b'.repeat(10000);
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const veryLargeTransaction = createLargeTransaction();
+            // Make it even larger for this test
+            veryLargeTransaction.raw_data.contract[0].parameter.value.data =
+              'b'.repeat(10000);
 
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 130000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 130000,
+              result: { result: true },
+              constant_result: [],
+              transaction: {
+                ...veryLargeTransaction,
+                ret: [{ ret: 'SUCCESS' }],
+              },
+            });
 
-        const availableEnergy = BigNumber(100000);
-        const availableBandwidth = BigNumber(100); // Less than needed (345)
+            const availableEnergy = BigNumber(100000);
+            const availableBandwidth = BigNumber(100); // Less than needed (345)
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: veryLargeTransaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: veryLargeTransaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Energy: 130000 (hardcoded), available: 100000
-        // Energy consumed: 100000, overage: 30000
-        // Energy TRX cost: 30000 * 100 = 3,000,000 SUN = 3 TRX
-        // Note: Modifying the data field doesn't update raw_data_hex,
-        // so bandwidth is still calculated from the original hex (345 bytes)
-        // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
-        // Bandwidth TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
-        // Total TRX cost: 3.345 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3.345',
-              fungible: true,
-            },
+            // Energy: 130000 (hardcoded), available: 100000
+            // Energy consumed: 100000, overage: 30000
+            // Energy TRX cost: 30000 * 100 = 3,000,000 SUN = 3 TRX
+            // Note: Modifying the data field doesn't update raw_data_hex,
+            // so bandwidth is still calculated from the original hex (345 bytes)
+            // New behavior: Not enough bandwidth (100 < 345), so ALL bandwidth is paid in TRX
+            // Bandwidth TRX cost: 345 * 1000 SUN = 345,000 SUN = 0.345 TRX
+            // Total TRX cost: 3.345 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '3.345',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '130000',
+                  fungible: true,
+                },
+              },
+              expectedMainnetContractBandwidthFee,
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '100000',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('handles exact resource matches', async () => {
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(266); // Exact match for native transaction
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('native');
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(266); // Exact match for native transaction
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                amount: '266',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
       });
     });
 
     describe('Account activation fee scenarios', () => {
       it('adds 1 TRX activation fee when recipient account is not activated', async () => {
-        // Mock the account check to throw (account not found)
-        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-          new TrongridAccountNotFoundError(),
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            // Mock the account check to throw (account not found)
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
+
+            const transaction = getTransactionExample('native');
+            const availableEnergy = ZERO;
+            const availableBandwidth = BigNumber(1000000); // More than needed
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
+
+            // Should have TRX first (1 TRX activation fee), then bandwidth consumption
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '266',
+                  fungible: true,
+                },
+              },
+            ]);
+          },
         );
-
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000); // More than needed
-
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
-
-        // Should have TRX first (1 TRX activation fee), then bandwidth consumption
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('does not track error when recipient account is not activated', async () => {
-        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-          new TrongridAccountNotFoundError(),
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
+
+            await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('native'),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            expect(snapClient.trackError).not.toHaveBeenCalled();
+          },
         );
-
-        await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: getTransactionExample('native'),
-          availableEnergy: ZERO,
-          availableBandwidth: BigNumber(1000000),
-        });
-
-        expect(mockSnapClient.trackError).not.toHaveBeenCalled();
       });
 
       it('tracks unexpected errors when account activation check fails', async () => {
-        const error = new Error('Account activation check failed');
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            const error = new Error('Account activation check failed');
 
-        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(error);
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(error);
 
-        await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: getTransactionExample('native'),
-          availableEnergy: ZERO,
-          availableBandwidth: BigNumber(1000000),
-        });
+            await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('native'),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
 
-        expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+            expect(snapClient.trackError).toHaveBeenCalledWith(error);
+          },
+        );
       });
 
       it('adds activation fee to existing TRX cost when recipient is not activated', async () => {
-        // Mock the account check to throw (account not found)
-        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-          new TrongridAccountNotFoundError(),
-        );
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            // Mock the account check to throw (account not found)
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
 
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = ZERO; // Not enough bandwidth, triggers TRX cost
+            const transaction = getTransactionExample('native');
+            const availableEnergy = ZERO;
+            const availableBandwidth = ZERO; // Not enough bandwidth, triggers TRX cost
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Should have TRX cost for bandwidth (0.266) + activation fee (1) = 1.266 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1.266',
-              fungible: true,
-            },
+            // Should have TRX cost for bandwidth (0.266) + activation fee (1) = 1.266 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1.266',
+                  fungible: true,
+                },
+              },
+              expectedMainnetBandwidthFee,
+            ]);
           },
-        ]);
+        );
       });
 
       it('does not add activation fee when recipient account is already activated', async () => {
-        // Mock the account check to succeed (account exists)
-        mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue({
-          address: 'TExistingActiveAddress123456789012',
-          balance: 1000000,
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            // Mock the account check to succeed (account exists)
+            trongridApiClient.getAccountInfoByAddress.mockResolvedValue({
+              address: 'TExistingActiveAddress123456789012',
+              balance: 1000000,
+            } as TronAccount);
 
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000); // More than needed
+            const transaction = getTransactionExample('native');
+            const availableEnergy = ZERO;
+            const availableBandwidth = BigNumber(1000000); // More than needed
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Should have TRX first (0 since no activation fee), then bandwidth consumption
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
+            // Should have TRX first (0 since no activation fee), then bandwidth consumption
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '0',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '266',
+                  fungible: true,
+                },
+              },
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('does not check activation for TRC20 transfers (no TransferContract)', async () => {
-        // Mock energy calculation for smart contracts
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 130000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            tronHttpClient,
+            trongridApiClient,
+          }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(130000); // Enough energy
+            const availableBandwidth = BigNumber(2000000); // More than needed
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(130000); // Enough energy
-        const availableBandwidth = BigNumber(2000000); // More than needed
+            // Mock energy calculation for smart contracts
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 130000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Should have TRX first (0), then energy and bandwidth consumption
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
+            // Should have TRX first (0), then energy and bandwidth consumption
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '0',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '130000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
+
+            // getAccountInfoByAddress should not have been called for TRC20
+            expect(
+              trongridApiClient.getAccountInfoByAddress,
+            ).not.toHaveBeenCalled();
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '130000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
-
-        // getAccountInfoByAddress should not have been called for TRC20
-        expect(
-          mockTrongridApiClient.getAccountInfoByAddress,
-        ).not.toHaveBeenCalled();
+        );
       });
     });
 
     describe('FeeLimit fallback scenarios', () => {
       it('uses feeLimit to calculate fallback energy when simulation fails', async () => {
-        // Simulate triggerConstantContract failing
-        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
-          new Error('Simulation failed'),
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            // Simulate triggerConstantContract failing
+            tronHttpClient.triggerConstantContract.mockRejectedValue(
+              new Error('Simulation failed'),
+            );
+
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(50000);
+            const availableBandwidth = BigNumber(2000000);
+
+            // feeLimit of 10,000,000 SUN with energy price 100 SUN = 100,000 max energy
+            const feeLimit = 10_000_000;
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+              feeLimit,
+            });
+
+            // Energy from feeLimit: 10,000,000 / 100 = 100,000 energy
+            // Available energy: 50,000
+            // Energy consumed: 50,000, overage: 50,000
+            // TRX cost: 50,000 * 100 SUN = 5,000,000 SUN = 5 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '5',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '100000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
+          },
         );
-
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(50000);
-        const availableBandwidth = BigNumber(2000000);
-
-        // feeLimit of 10,000,000 SUN with energy price 100 SUN = 100,000 max energy
-        const feeLimit = 10_000_000;
-
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-          feeLimit,
-        });
-
-        // Energy from feeLimit: 10,000,000 / 100 = 100,000 energy
-        // Available energy: 50,000
-        // Energy consumed: 50,000, overage: 50,000
-        // TRX cost: 50,000 * 100 SUN = 5,000,000 SUN = 5 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '5',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '50000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('uses default 130000 fallback when simulation fails and no feeLimit provided', async () => {
-        // Simulate triggerConstantContract failing
-        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
-          new Error('Simulation failed'),
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            // Simulate triggerConstantContract failing
+            tronHttpClient.triggerConstantContract.mockRejectedValue(
+              new Error('Simulation failed'),
+            );
+
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(30000);
+            const availableBandwidth = BigNumber(2000000);
+
+            // No feeLimit provided
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
+
+            // Should use default 130,000 fallback energy
+            // Available energy: 30,000
+            // Energy consumed: 30,000, overage: 100,000
+            // TRX cost: 100,000 * 100 SUN = 10,000,000 SUN = 10 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '10',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '130000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
+          },
         );
-
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(30000);
-        const availableBandwidth = BigNumber(2000000);
-
-        // No feeLimit provided
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
-
-        // Should use default 130,000 fallback energy
-        // Available energy: 30,000
-        // Energy consumed: 30,000, overage: 100,000
-        // TRX cost: 100,000 * 100 SUN = 10,000,000 SUN = 10 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '10',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '30000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('uses fallback energy when simulation returns a FAILED result', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          result: { result: false },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'FAILED' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient, snapClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              result: { result: false },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'FAILED' }] },
+            } as unknown as TriggerConstantContractResponse);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Simulation FAILED → fallback 130000 energy, all owed by user
-        // TRX cost: 130000 * 100 SUN / 1,000,000 = 13 TRX
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '13',
-            fungible: true,
+            // Simulation FAILED → fallback 130000 energy, all owed by user
+            // TRX cost: 130000 * 100 SUN / 1,000,000 = 13 TRX
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '13',
+                fungible: true,
+              },
+            });
+            expect(snapClient.trackError).toHaveBeenCalledTimes(1);
           },
-        });
-        expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
+        );
       });
 
       it('tracks the error when contract info fetch fails', async () => {
-        const error = new Error('Contract info fetch failed');
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient, snapClient }) => {
+            const error = new Error('Contract info fetch failed');
 
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 65000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 65000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ret: [{ ret: 'SUCCESS' }] },
+            } as unknown as TriggerConstantContractResponse);
 
-        mockTronHttpClient.getContract.mockRejectedValue(error);
+            tronHttpClient.getContract.mockRejectedValue(error);
 
-        await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: getTransactionExample('trc20'),
-          availableEnergy: BigNumber(30000),
-          availableBandwidth: BigNumber(2000000),
-        });
+            await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('trc20'),
+              availableEnergy: BigNumber(30000),
+              availableBandwidth: BigNumber(2000000),
+            });
 
-        expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+            expect(snapClient.trackError).toHaveBeenCalledWith(error);
+          },
+        );
       });
 
       it('tracks the error when smart contract energy estimation fails', async () => {
-        const error = new Error('Simulation failed');
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient, snapClient }) => {
+            const error = new Error('Simulation failed');
 
-        mockTronHttpClient.triggerConstantContract.mockRejectedValue(error);
+            tronHttpClient.triggerConstantContract.mockRejectedValue(error);
 
-        await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction: getTransactionExample('trc20'),
-          availableEnergy: BigNumber(30000),
-          availableBandwidth: BigNumber(2000000),
-        });
+            await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('trc20'),
+              availableEnergy: BigNumber(30000),
+              availableBandwidth: BigNumber(2000000),
+            });
 
-        expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+            expect(snapClient.trackError).toHaveBeenCalledWith(error);
+          },
+        );
       });
 
       it('ignores feeLimit when simulation succeeds', async () => {
-        // Simulation succeeds with energy_used
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 65000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(50000);
+            const availableBandwidth = BigNumber(2000000);
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(50000);
-        const availableBandwidth = BigNumber(2000000);
+            // Simulation succeeds with energy_used
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 65000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        // Provide a large feeLimit that would calculate to 200,000 energy
-        const feeLimit = 20_000_000;
+            // Provide a large feeLimit that would calculate to 200,000 energy
+            const feeLimit = 20_000_000;
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-          feeLimit,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+              feeLimit,
+            });
 
-        // Should use the actual simulation result (65,000), not the feeLimit calculation
-        // Available energy: 50,000
-        // Energy consumed: 50,000, overage: 15,000
-        // TRX cost: 15,000 * 100 SUN = 1,500,000 SUN = 1.5 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1.5',
-              fungible: true,
-            },
+            // Should use the actual simulation result (65,000), not the feeLimit calculation
+            // Available energy: 50,000
+            // Energy consumed: 50,000, overage: 15,000
+            // TRX cost: 15,000 * 100 SUN = 1,500,000 SUN = 1.5 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1.5',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '65000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '50000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('handles energy_used of zero correctly without falling back', async () => {
-        // Simulation returns energy_used: 0 (legitimate zero energy consumption)
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 0,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(50000);
+            const availableBandwidth = BigNumber(2000000);
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(50000);
-        const availableBandwidth = BigNumber(2000000);
+            // Simulation returns energy_used: 0 (legitimate zero energy consumption)
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 0,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // Should use the actual simulation result (0 energy), not fall back
-        // Energy consumed: 0 from available, no overage
-        // TRX is 0 but still first
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '0',
-              fungible: true,
-            },
+            // Should use the actual simulation result (0 energy), not fall back
+            // Energy consumed: 0 from available, no overage
+            // TRX is 0 but still first
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '0',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('uses feeLimit fallback when simulation returns no energy_used', async () => {
-        // Simulation returns empty/no energy_used
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(20000);
+            const availableBandwidth = BigNumber(2000000);
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(20000);
-        const availableBandwidth = BigNumber(2000000);
+            // Simulation returns empty/no energy_used
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            } as unknown as TriggerConstantContractResponse);
 
-        // feeLimit of 5,000,000 SUN with energy price 100 SUN = 50,000 max energy
-        const feeLimit = 5_000_000;
+            // feeLimit of 5,000,000 SUN with energy price 100 SUN = 50,000 max energy
+            const feeLimit = 5_000_000;
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-          feeLimit,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+              feeLimit,
+            });
 
-        // Energy from feeLimit: 5,000,000 / 100 = 50,000 energy
-        // Available energy: 20,000
-        // Energy consumed: 20,000, overage: 30,000
-        // TRX cost: 30,000 * 100 SUN = 3,000,000 SUN = 3 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '3',
-              fungible: true,
-            },
+            // Energy from feeLimit: 5,000,000 / 100 = 50,000 energy
+            // Available energy: 20,000
+            // Energy consumed: 20,000, overage: 30,000
+            // TRX cost: 30,000 * 100 SUN = 3,000,000 SUN = 3 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '3',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '50000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'ENERGY',
-              type: 'tron:728126428/slip44:energy',
-              amount: '20000',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('uses fallback energy price (420 SUN) when chain parameters are missing', async () => {
-        // Simulate triggerConstantContract failing
-        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
-          new Error('Simulation failed'),
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            tronHttpClient,
+            trongridApiClient,
+          }) => {
+            // Simulate triggerConstantContract failing
+            tronHttpClient.triggerConstantContract.mockRejectedValue(
+              new Error('Simulation failed'),
+            );
+
+            // Chain parameters missing getEnergyFee
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              // No getEnergyFee
+            ]);
+
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
+
+            // feeLimit of 4,200,000 SUN with fallback energy price 420 SUN = 10,000 max energy
+            const feeLimit = 4_200_000;
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+              feeLimit,
+            });
+
+            // Energy from feeLimit: 4,200,000 / 420 = 10,000 energy
+            // Available energy: 0
+            // Energy consumed: 0, overage: 10,000
+            // TRX cost: 10,000 * 420 SUN / 1,000,000 = 4.2 TRX
+            // But getEnergyFee is missing from chain params, so it uses fallback 100 SUN
+            // TRX cost: 10,000 * 100 SUN / 1,000,000 = 1 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'ENERGY',
+                  type: 'tron:728126428/slip44:energy',
+                  amount: '10000',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '345',
+                  fungible: true,
+                },
+              },
+            ]);
+          },
         );
-
-        // Chain parameters missing getEnergyFee
-        mockTrongridApiClient.getChainParameters.mockResolvedValue([
-          { key: 'getTransactionFee', value: 1000 },
-          // No getEnergyFee
-        ]);
-
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
-
-        // feeLimit of 4,200,000 SUN with fallback energy price 420 SUN = 10,000 max energy
-        const feeLimit = 4_200_000;
-
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-          feeLimit,
-        });
-
-        // Energy from feeLimit: 4,200,000 / 420 = 10,000 energy
-        // Available energy: 0
-        // Energy consumed: 0, overage: 10,000
-        // TRX cost: 10,000 * 420 SUN / 1,000,000 = 4.2 TRX
-        // But getEnergyFee is missing from chain params, so it uses fallback 100 SUN
-        // TRX cost: 10,000 * 100 SUN / 1,000,000 = 1 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '345',
-              fungible: true,
-            },
-          },
-        ]);
       });
     });
 
     describe('Energy sharing mechanism', () => {
-      beforeEach(() => {
-        // Mock chain parameters response
-        mockTrongridApiClient.getChainParameters.mockResolvedValue([
-          { key: 'getTransactionFee', value: 1000 },
-          { key: 'getEnergyFee', value: 100 },
-        ]);
-      });
-
       it('applies 50% energy sharing when consume_user_resource_percent = 50', async () => {
-        // Total energy: 80000, user pays 50% = 40000
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          origin_address: 'TDeployerAddress123456789012345',
-          consume_user_resource_percent: 50,
-          origin_energy_limit: 100000,
-        });
+            // Total energy: 80000, user pays 50% = 40000
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        mockTronHttpClient.getAccountResources.mockResolvedValue({
-          EnergyLimit: 100000,
-          EnergyUsed: 0,
-        });
+            tronHttpClient.getContract.mockResolvedValue({
+              origin_address: 'TDeployerAddress123456789012345',
+              consume_user_resource_percent: 50,
+              origin_energy_limit: 100000,
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getAccountResources.mockResolvedValue({
+              EnergyLimit: 100000,
+              EnergyUsed: 0,
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 50% of 80000 = 40000 energy
-        // TRX cost: 40000 * 100 SUN = 4,000,000 SUN = 4 TRX
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '4',
-            fungible: true,
+            // User pays 50% of 80000 = 40000 energy
+            // TRX cost: 40000 * 100 SUN = 4,000,000 SUN = 4 TRX
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '4',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('caps deployer subsidy at origin_energy_limit', async () => {
-        // Total: 100000, user 10% = 10000, deployer 90% = 90000 but capped at 50000
-        // User actual: 100000 - 50000 = 50000
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 100000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          origin_address: 'TDeployerAddress123456789012345',
-          consume_user_resource_percent: 10, // User pays 10%, deployer 90%
-          origin_energy_limit: 50000, // But capped at 50000
-        });
+            // Total: 100000, user 10% = 10000, deployer 90% = 90000 but capped at 50000
+            // User actual: 100000 - 50000 = 50000
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 100000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        mockTronHttpClient.getAccountResources.mockResolvedValue({
-          EnergyLimit: 200000,
-          EnergyUsed: 0,
-        });
+            tronHttpClient.getContract.mockResolvedValue({
+              origin_address: 'TDeployerAddress123456789012345',
+              consume_user_resource_percent: 10, // User pays 10%, deployer 90%
+              origin_energy_limit: 50000, // But capped at 50000
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getAccountResources.mockResolvedValue({
+              EnergyLimit: 200000,
+              EnergyUsed: 0,
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 50000 energy (100000 - 50000 cap)
-        // TRX cost: 50000 * 100 SUN = 5,000,000 SUN = 5 TRX
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '5',
-            fungible: true,
+            // User pays 50000 energy (100000 - 50000 cap)
+            // TRX cost: 50000 * 100 SUN = 5,000,000 SUN = 5 TRX
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '5',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('user pays 100% when getContract returns null', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue(null);
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
+            tronHttpClient.getContract.mockResolvedValue(null);
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
-
-        // User pays 100% of 80000 energy
-        // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '8',
-            fungible: true,
+            // User pays 100% of 80000 energy
+            // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '8',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('user pays 100% when consume_user_resource_percent is missing', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          // No consume_user_resource_percent
-          origin_energy_limit: 100000,
-        });
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getContract.mockResolvedValue({
+              // No consume_user_resource_percent
+              origin_energy_limit: 100000,
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 100% (default when consume_user_resource_percent is missing)
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '8',
-            fungible: true,
+            // User pays 100% (default when consume_user_resource_percent is missing)
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '8',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('user pays 100% when origin_energy_limit is missing', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          consume_user_resource_percent: 50,
-          // No origin_energy_limit
-        });
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getContract.mockResolvedValue({
+              consume_user_resource_percent: 50,
+              // No origin_energy_limit
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 100% (no subsidy when origin_energy_limit is 0/missing)
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '8',
-            fungible: true,
+            // User pays 100% (no subsidy when origin_energy_limit is 0/missing)
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '8',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('user pays 100% when getContract throws error', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockRejectedValue(
-          new Error('Network error'),
-        );
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getContract.mockRejectedValue(
+              new Error('Network error'),
+            );
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 100% (fallback on error)
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '8',
-            fungible: true,
+            // User pays 100% (fallback on error)
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '8',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('user pays 0 energy when consume_user_resource_percent = 0', async () => {
-        // Deployer pays all energy (up to origin_energy_limit)
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          origin_address: 'TDeployerAddress123456789012345',
-          consume_user_resource_percent: 0,
-          origin_energy_limit: 100000,
-        });
+            // Deployer pays all energy (up to origin_energy_limit)
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        mockTronHttpClient.getAccountResources.mockResolvedValue({
-          EnergyLimit: 100000,
-          EnergyUsed: 0,
-        });
+            tronHttpClient.getContract.mockResolvedValue({
+              origin_address: 'TDeployerAddress123456789012345',
+              consume_user_resource_percent: 0,
+              origin_energy_limit: 100000,
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getAccountResources.mockResolvedValue({
+              EnergyLimit: 100000,
+              EnergyUsed: 0,
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 0 energy, only bandwidth
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '0',
-            fungible: true,
+            // User pays 0 energy, only bandwidth
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '0',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('user pays 100% when consume_user_resource_percent = 100', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 80000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          consume_user_resource_percent: 100,
-          origin_energy_limit: 50000, // origin_energy_limit is irrelevant when user pays 100%
-        });
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 80000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getContract.mockResolvedValue({
+              consume_user_resource_percent: 100,
+              origin_energy_limit: 50000, // origin_energy_limit is irrelevant when user pays 100%
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User pays 100%
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '8',
-            fungible: true,
+            // User pays 100%
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '8',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
 
       it('applies energy sharing before deducting available staked energy', async () => {
-        // Total: 100000, user pays 50% = 50000
-        // User has 30000 staked energy
-        // User burns TRX for remaining 20000
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 100000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(30000); // User has 30000 staked
+            const availableBandwidth = BigNumber(2000000);
 
-        mockTronHttpClient.getContract.mockResolvedValue({
-          origin_address: 'TDeployerAddress123456789012345',
-          consume_user_resource_percent: 50,
-          origin_energy_limit: 100000,
-        });
+            // Total: 100000, user pays 50% = 50000
+            // User has 30000 staked energy
+            // User burns TRX for remaining 20000
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 100000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        mockTronHttpClient.getAccountResources.mockResolvedValue({
-          EnergyLimit: 100000,
-          EnergyUsed: 0,
-        });
+            tronHttpClient.getContract.mockResolvedValue({
+              origin_address: 'TDeployerAddress123456789012345',
+              consume_user_resource_percent: 50,
+              origin_energy_limit: 100000,
+            });
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(30000); // User has 30000 staked
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.getAccountResources.mockResolvedValue({
+              EnergyLimit: 100000,
+              EnergyUsed: 0,
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // User needs 50000 (after 50% sharing)
-        // User has 30000 staked, burns TRX for 20000
-        // TRX cost: 20000 * 100 SUN = 2,000,000 SUN = 2 TRX
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '2',
-            fungible: true,
+            // User needs 50000 (after 50% sharing)
+            // User has 30000 staked, burns TRX for 20000
+            // TRX cost: 20000 * 100 SUN = 2,000,000 SUN = 2 TRX
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '2',
+                fungible: true,
+              },
+            });
+
+            // Energy consumed from staking
+            expect(result[1]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'ENERGY',
+                type: 'tron:728126428/slip44:energy',
+                amount: '50000',
+                fungible: true,
+              },
+            });
           },
-        });
-
-        // Energy consumed from staking
-        expect(result[1]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'ENERGY',
-            type: 'tron:728126428/slip44:energy',
-            amount: '30000',
-            fungible: true,
-          },
-        });
+        );
       });
 
       describe('deployer available energy constraint', () => {
         it('caps deployer subsidy at deployer available energy when lower than origin_energy_limit', async () => {
-          // Total: 100000, user 10%, deployer theoretical 90% = 90000
-          // origin_energy_limit: 100000 (not the limiting factor)
-          // deployer available energy: 30000 (this is the limiting factor)
-          // User pays: 100000 - 30000 = 70000
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 100000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient }) => {
+              const transaction = getTransactionExample('trc20');
+              const availableEnergy = BigNumber(0);
+              const availableBandwidth = BigNumber(2000000);
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            origin_address: 'TDeployerAddress123456789012345',
-            consume_user_resource_percent: 10,
-            origin_energy_limit: 100000,
-          });
+              // Total: 100000, user 10%, deployer theoretical 90% = 90000
+              // origin_energy_limit: 100000 (not the limiting factor)
+              // deployer available energy: 30000 (this is the limiting factor)
+              // User pays: 100000 - 30000 = 70000
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 100000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          mockTronHttpClient.getAccountResources.mockResolvedValue({
-            EnergyLimit: 50000,
-            EnergyUsed: 20000, // Available = 30000
-          });
+              tronHttpClient.getContract.mockResolvedValue({
+                origin_address: 'TDeployerAddress123456789012345',
+                consume_user_resource_percent: 10,
+                origin_energy_limit: 100000,
+              });
 
-          const transaction = getTransactionExample('trc20');
-          const availableEnergy = BigNumber(0);
-          const availableBandwidth = BigNumber(2000000);
+              tronHttpClient.getAccountResources.mockResolvedValue({
+                EnergyLimit: 50000,
+                EnergyUsed: 20000, // Available = 30000
+              });
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          });
+              const result = await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              });
 
-          // User pays 70000 energy (100000 - 30000 deployer available)
-          // TRX cost: 70000 * 100 SUN = 7,000,000 SUN = 7 TRX
-          expect(result[0]).toStrictEqual({
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '7',
-              fungible: true,
+              // User pays 70000 energy (100000 - 30000 deployer available)
+              // TRX cost: 70000 * 100 SUN = 7,000,000 SUN = 7 TRX
+              expect(result[0]).toStrictEqual({
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '7',
+                  fungible: true,
+                },
+              });
             },
-          });
+          );
         });
 
         it('uses origin_energy_limit when deployer has more available energy', async () => {
-          // Total: 100000, user 10%, deployer theoretical 90% = 90000
-          // origin_energy_limit: 50000 (this is the limiting factor)
-          // deployer available energy: 200000 (not the limiting factor)
-          // User pays: 100000 - 50000 = 50000
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 100000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient }) => {
+              const transaction = getTransactionExample('trc20');
+              const availableEnergy = BigNumber(0);
+              const availableBandwidth = BigNumber(2000000);
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            origin_address: 'TDeployerAddress123456789012345',
-            consume_user_resource_percent: 10,
-            origin_energy_limit: 50000,
-          });
+              // Total: 100000, user 10%, deployer theoretical 90% = 90000
+              // origin_energy_limit: 50000 (this is the limiting factor)
+              // deployer available energy: 200000 (not the limiting factor)
+              // User pays: 100000 - 50000 = 50000
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 100000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          mockTronHttpClient.getAccountResources.mockResolvedValue({
-            EnergyLimit: 200000,
-            EnergyUsed: 0, // Available = 200000
-          });
+              tronHttpClient.getContract.mockResolvedValue({
+                origin_address: 'TDeployerAddress123456789012345',
+                consume_user_resource_percent: 10,
+                origin_energy_limit: 50000,
+              });
 
-          const transaction = getTransactionExample('trc20');
-          const availableEnergy = BigNumber(0);
-          const availableBandwidth = BigNumber(2000000);
+              tronHttpClient.getAccountResources.mockResolvedValue({
+                EnergyLimit: 200000,
+                EnergyUsed: 0, // Available = 200000
+              });
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          });
+              const result = await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              });
 
-          // User pays 50000 energy (capped by origin_energy_limit, not deployer available)
-          // TRX cost: 50000 * 100 SUN = 5,000,000 SUN = 5 TRX
-          expect(result[0]).toStrictEqual({
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '5',
-              fungible: true,
+              // User pays 50000 energy (capped by origin_energy_limit, not deployer available)
+              // TRX cost: 50000 * 100 SUN = 5,000,000 SUN = 5 TRX
+              expect(result[0]).toStrictEqual({
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '5',
+                  fungible: true,
+                },
+              });
             },
-          });
+          );
         });
 
         it('user pays 100% when origin_address is missing', async () => {
-          // Contract info without origin_address
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 80000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient }) => {
+              const transaction = getTransactionExample('trc20');
+              const availableEnergy = BigNumber(0);
+              const availableBandwidth = BigNumber(2000000);
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            // No origin_address
-            consume_user_resource_percent: 50,
-            origin_energy_limit: 100000,
-          });
+              // Contract info without origin_address
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 80000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          const transaction = getTransactionExample('trc20');
-          const availableEnergy = BigNumber(0);
-          const availableBandwidth = BigNumber(2000000);
+              tronHttpClient.getContract.mockResolvedValue({
+                // No origin_address
+                consume_user_resource_percent: 50,
+                origin_energy_limit: 100000,
+              });
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          });
+              const result = await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              });
 
-          // Can't verify deployer energy, so user pays 100%
-          // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
-          expect(result[0]).toStrictEqual({
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '8',
-              fungible: true,
+              // Can't verify deployer energy, so user pays 100%
+              // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
+              expect(result[0]).toStrictEqual({
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '8',
+                  fungible: true,
+                },
+              });
+
+              // Verify getAccountResources was not called
+              expect(tronHttpClient.getAccountResources).not.toHaveBeenCalled();
             },
-          });
-
-          // Verify getAccountResources was not called
-          expect(mockTronHttpClient.getAccountResources).not.toHaveBeenCalled();
+          );
         });
 
         it('user pays 100% when deployer account fetch fails', async () => {
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 80000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient }) => {
+              const transaction = getTransactionExample('trc20');
+              const availableEnergy = BigNumber(0);
+              const availableBandwidth = BigNumber(2000000);
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            origin_address: 'TDeployerAddress123456789012345',
-            consume_user_resource_percent: 50,
-            origin_energy_limit: 100000,
-          });
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 80000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          // Deployer account fetch fails
-          mockTronHttpClient.getAccountResources.mockRejectedValue(
-            new Error('Network error'),
-          );
+              tronHttpClient.getContract.mockResolvedValue({
+                origin_address: 'TDeployerAddress123456789012345',
+                consume_user_resource_percent: 50,
+                origin_energy_limit: 100000,
+              });
 
-          const transaction = getTransactionExample('trc20');
-          const availableEnergy = BigNumber(0);
-          const availableBandwidth = BigNumber(2000000);
+              // Deployer account fetch fails
+              tronHttpClient.getAccountResources.mockRejectedValue(
+                new Error('Network error'),
+              );
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          });
+              const result = await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              });
 
-          // Can't verify deployer energy, so user pays 100%
-          // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
-          expect(result[0]).toStrictEqual({
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '8',
-              fungible: true,
+              // Can't verify deployer energy, so user pays 100%
+              // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
+              expect(result[0]).toStrictEqual({
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '8',
+                  fungible: true,
+                },
+              });
             },
-          });
+          );
         });
 
         it('tracks the error when deployer account fetch fails', async () => {
-          const error = new Error('Network error');
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient, snapClient }) => {
+              const error = new Error('Network error');
+              const transaction = getTransactionExample('trc20');
 
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 80000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 80000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            origin_address: 'TDeployerAddress123456789012345',
-            consume_user_resource_percent: 50,
-            origin_energy_limit: 100000,
-          });
+              tronHttpClient.getContract.mockResolvedValue({
+                origin_address: 'TDeployerAddress123456789012345',
+                consume_user_resource_percent: 50,
+                origin_energy_limit: 100000,
+              });
 
-          mockTronHttpClient.getAccountResources.mockRejectedValue(error);
+              tronHttpClient.getAccountResources.mockRejectedValue(error);
 
-          await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction: getTransactionExample('trc20'),
-            availableEnergy: BigNumber(0),
-            availableBandwidth: BigNumber(2000000),
-          });
+              await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy: BigNumber(0),
+                availableBandwidth: BigNumber(2000000),
+              });
 
-          expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+              expect(snapClient.trackError).toHaveBeenCalledWith(error);
+            },
+          );
         });
 
         it('handles deployer with zero available energy', async () => {
-          // Deployer has exhausted all their energy
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 80000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient }) => {
+              const transaction = getTransactionExample('trc20');
+              const availableEnergy = BigNumber(0);
+              const availableBandwidth = BigNumber(2000000);
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            origin_address: 'TDeployerAddress123456789012345',
-            consume_user_resource_percent: 0, // Deployer claims to pay all
-            origin_energy_limit: 100000,
-          });
+              // Deployer has exhausted all their energy
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 80000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          mockTronHttpClient.getAccountResources.mockResolvedValue({
-            EnergyLimit: 10000,
-            EnergyUsed: 10000, // Available = 0
-          });
+              tronHttpClient.getContract.mockResolvedValue({
+                origin_address: 'TDeployerAddress123456789012345',
+                consume_user_resource_percent: 0, // Deployer claims to pay all
+                origin_energy_limit: 100000,
+              });
 
-          const transaction = getTransactionExample('trc20');
-          const availableEnergy = BigNumber(0);
-          const availableBandwidth = BigNumber(2000000);
+              tronHttpClient.getAccountResources.mockResolvedValue({
+                EnergyLimit: 10000,
+                EnergyUsed: 10000, // Available = 0
+              });
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          });
+              const result = await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              });
 
-          // Deployer claims 100% but has 0 energy, so user pays 100%
-          // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
-          expect(result[0]).toStrictEqual({
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '8',
-              fungible: true,
+              // Deployer claims 100% but has 0 energy, so user pays 100%
+              // TRX cost: 80000 * 100 SUN = 8,000,000 SUN = 8 TRX
+              expect(result[0]).toStrictEqual({
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '8',
+                  fungible: true,
+                },
+              });
             },
-          });
+          );
         });
 
         it('handles deployer account with empty resources response', async () => {
-          mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-            energy_used: 80000,
-            result: { result: true },
-            constant_result: [],
-            transaction: { ret: [{ ret: 'SUCCESS' }] },
-          });
+          await withFeeCalculatorService(
+            async ({ feeCalculatorService, tronHttpClient }) => {
+              const transaction = getTransactionExample('trc20');
+              const availableEnergy = BigNumber(0);
+              const availableBandwidth = BigNumber(2000000);
 
-          mockTronHttpClient.getContract.mockResolvedValue({
-            origin_address: 'TDeployerAddress123456789012345',
-            consume_user_resource_percent: 50,
-            origin_energy_limit: 100000,
-          });
+              tronHttpClient.triggerConstantContract.mockResolvedValue({
+                energy_used: 80000,
+                result: { result: true },
+                constant_result: [],
+                transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              });
 
-          // Account doesn't exist (returns empty/partial data)
-          mockTronHttpClient.getAccountResources.mockResolvedValue({});
+              tronHttpClient.getContract.mockResolvedValue({
+                origin_address: 'TDeployerAddress123456789012345',
+                consume_user_resource_percent: 50,
+                origin_energy_limit: 100000,
+              });
 
-          const transaction = getTransactionExample('trc20');
-          const availableEnergy = BigNumber(0);
-          const availableBandwidth = BigNumber(2000000);
+              // Account doesn't exist (returns empty/partial data)
+              tronHttpClient.getAccountResources.mockResolvedValue({});
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          });
+              const result = await feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              });
 
-          // Deployer has 0 available energy (no EnergyLimit field)
-          // User pays 80000 - 0 = 80000 (all of it)
-          expect(result[0]).toStrictEqual({
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '8',
-              fungible: true,
+              // Deployer has 0 available energy (no EnergyLimit field)
+              // User pays 80000 - 0 = 80000 (all of it)
+              expect(result[0]).toStrictEqual({
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '8',
+                  fungible: true,
+                },
+              });
             },
-          });
+          );
         });
       });
     });
@@ -1989,182 +2183,200 @@ describe('FeeCalculatorService', () => {
       });
 
       it('adds 1 TRX memo fee when transaction has a memo and enough bandwidth', async () => {
-        const transaction = addMemoToTransaction(
-          getTransactionExample('native'),
-          '48656c6c6f', // "Hello" in hex
-        );
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000);
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = addMemoToTransaction(
+            getTransactionExample('native'),
+            '48656c6c6f', // "Hello" in hex
+          );
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(1000000);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // TRX: 1 (memo fee), bandwidth consumed
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '1',
+                fungible: true,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'BANDWIDTH',
+                type: 'tron:728126428/slip44:bandwidth',
+                amount: '266',
+                fungible: true,
+              },
+            },
+          ]);
         });
-
-        // TRX: 1 (memo fee), bandwidth consumed
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1',
-              fungible: true,
-            },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
       });
 
       it('adds 1 TRX memo fee on top of bandwidth cost when not enough bandwidth', async () => {
-        const transaction = addMemoToTransaction(
-          getTransactionExample('native'),
-          '48656c6c6f',
-        );
-        const availableEnergy = ZERO;
-        const availableBandwidth = ZERO;
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = addMemoToTransaction(
+            getTransactionExample('native'),
+            '48656c6c6f',
+          );
+          const availableEnergy = ZERO;
+          const availableBandwidth = ZERO;
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
 
-        // Bandwidth cost: 266 * 1000 SUN = 0.266 TRX + 1 TRX memo = 1.266 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '1.266',
-              fungible: true,
+          // Bandwidth cost: 266 * 1000 SUN = 0.266 TRX + 1 TRX memo = 1.266 TRX
+          expect(result).toStrictEqual([
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '1.266',
+                fungible: true,
+              },
             },
-          },
-        ]);
+            expectedMainnetBandwidthFee,
+          ]);
+        });
       });
 
       it('adds memo fee combined with account activation fee', async () => {
-        // Account not activated
-        mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-          new TrongridAccountNotFoundError(),
-        );
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            // Account not activated
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
 
-        const transaction = addMemoToTransaction(
-          getTransactionExample('native'),
-          '48656c6c6f',
-        );
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000);
+            const transaction = addMemoToTransaction(
+              getTransactionExample('native'),
+              '48656c6c6f',
+            );
+            const availableEnergy = ZERO;
+            const availableBandwidth = BigNumber(1000000);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
 
-        // 1 TRX activation + 1 TRX memo = 2 TRX
-        expect(result).toStrictEqual([
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'TRX',
-              type: 'tron:728126428/slip44:195',
-              amount: '2',
-              fungible: true,
-            },
+            // 1 TRX activation + 1 TRX memo = 2 TRX
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '2',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '266',
+                  fungible: true,
+                },
+              },
+            ]);
           },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: 'BANDWIDTH',
-              type: 'tron:728126428/slip44:bandwidth',
-              amount: '266',
-              fungible: true,
-            },
-          },
-        ]);
+        );
       });
 
       it('does not add memo fee when data field is absent', async () => {
-        const transaction = getTransactionExample('native');
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000);
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = getTransactionExample('native');
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(1000000);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // No memo fee, TRX should be 0
+          expect(result[0]?.asset.amount).toBe('0');
         });
-
-        // No memo fee, TRX should be 0
-        expect(result[0]?.asset.amount).toBe('0');
       });
 
       it('does not add memo fee when data field is empty string', async () => {
-        const transaction = addMemoToTransaction(
-          getTransactionExample('native'),
-          '',
-        );
-        const availableEnergy = ZERO;
-        const availableBandwidth = BigNumber(1000000);
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const transaction = addMemoToTransaction(
+            getTransactionExample('native'),
+            '',
+          );
+          const availableEnergy = ZERO;
+          const availableBandwidth = BigNumber(1000000);
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction,
+            availableEnergy,
+            availableBandwidth,
+          });
+
+          // No memo fee, TRX should be 0
+          expect(result[0]?.asset.amount).toBe('0');
         });
-
-        // No memo fee, TRX should be 0
-        expect(result[0]?.asset.amount).toBe('0');
       });
 
       it('adds memo fee on TRC20 transaction with memo', async () => {
-        mockTronHttpClient.triggerConstantContract.mockResolvedValue({
-          energy_used: 130000,
-          result: { result: true },
-          constant_result: [],
-          transaction: { ret: [{ ret: 'SUCCESS' }] },
-        });
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, tronHttpClient }) => {
+            const transaction = addMemoToTransaction(
+              getTransactionExample('trc20'),
+              '48656c6c6f',
+            );
 
-        const transaction = addMemoToTransaction(
-          getTransactionExample('trc20'),
-          '48656c6c6f',
-        );
-        const availableEnergy = BigNumber(130000); // Enough energy
-        const availableBandwidth = BigNumber(2000000);
+            tronHttpClient.triggerConstantContract.mockResolvedValue({
+              energy_used: 130000,
+              result: { result: true },
+              constant_result: [],
+              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+            });
 
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
+            const availableEnergy = BigNumber(130000); // Enough energy
+            const availableBandwidth = BigNumber(2000000);
 
-        // 1 TRX memo fee on top of energy (fully covered by staked)
-        expect(result[0]).toStrictEqual({
-          type: FeeType.Base,
-          asset: {
-            unit: 'TRX',
-            type: 'tron:728126428/slip44:195',
-            amount: '1',
-            fungible: true,
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
+
+            // 1 TRX memo fee on top of energy (fully covered by staked)
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '1',
+                fungible: true,
+              },
+            });
           },
-        });
+        );
       });
     });
 
@@ -2178,176 +2390,209 @@ describe('FeeCalculatorService', () => {
       });
 
       it('throws FeeUnavailableError when getChainParameters throws and no cache exists', async () => {
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          new TrongridRateLimitError(),
-        );
-        mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue(
-          undefined,
-        );
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new TrongridRateLimitError(),
+            );
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+              undefined,
+            );
 
-        const { transaction, availableEnergy, availableBandwidth } =
-          buildNativeTxWithBandwidthOverage();
+            const { transaction, availableEnergy, availableBandwidth } =
+              buildNativeTxWithBandwidthOverage();
 
-        await expect(
-          feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          }),
-        ).rejects.toThrow(FeeUnavailableError);
-        expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
+            expect(snapClient.trackError).toHaveBeenCalledTimes(1);
+          },
+        );
       });
 
       it('uses last-known cached chain parameters when live fetch fails', async () => {
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          new Error('HTTP error! status: 503'),
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new Error('HTTP error! status: 503'),
+            );
+            // Cached params carry a higher getTransactionFee than the static floor
+            // so we can assert the cached value (not the static 1000) was used.
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 2000 },
+              { key: 'getEnergyFee', value: 100 },
+            ]);
+
+            const { transaction, availableEnergy, availableBandwidth } =
+              buildNativeTxWithBandwidthOverage();
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
+
+            // Cached floor: 266 bytes * 2000 SUN / 1e6 = 0.532 TRX
+            expect(result[0]?.asset.amount).toBe('0.532');
+            expect(
+              trongridApiClient.peekCachedChainParameters,
+            ).toHaveBeenCalledWith(Network.Mainnet);
+            expect(snapClient.trackError).toHaveBeenCalledTimes(1);
+          },
         );
-        // Cached params carry a higher getTransactionFee than the static floor
-        // so we can assert the cached value (not the static 1000) was used.
-        mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue([
-          { key: 'getTransactionFee', value: 2000 },
-          { key: 'getEnergyFee', value: 100 },
-        ]);
-
-        const { transaction, availableEnergy, availableBandwidth } =
-          buildNativeTxWithBandwidthOverage();
-
-        const result = await feeCalculatorService.computeFee({
-          scope: Network.Mainnet,
-          transaction,
-          availableEnergy,
-          availableBandwidth,
-        });
-
-        // Cached floor: 266 bytes * 2000 SUN / 1e6 = 0.532 TRX
-        expect(result[0]?.asset.amount).toBe('0.532');
-        expect(
-          mockTrongridApiClient.peekCachedChainParameters,
-        ).toHaveBeenCalledWith(Network.Mainnet);
-        expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
       });
 
       it('throws FeeUnavailableError when both live fetch and cache fail', async () => {
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          new Error('HTTP error! status: 500'),
-        );
-        mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue(
-          undefined,
-        );
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new Error('HTTP error! status: 500'),
+            );
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+              undefined,
+            );
 
-        const { transaction, availableEnergy, availableBandwidth } =
-          buildNativeTxWithBandwidthOverage();
+            const { transaction, availableEnergy, availableBandwidth } =
+              buildNativeTxWithBandwidthOverage();
 
-        await expect(
-          feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          }),
-        ).rejects.toThrow(FeeUnavailableError);
-        expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
+            expect(snapClient.trackError).toHaveBeenCalledTimes(1);
+          },
+        );
       });
 
       it('throws FeeUnavailableError when live fetch fails and cache read throws', async () => {
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          new Error('HTTP error! status: 500'),
-        );
-        mockTrongridApiClient.peekCachedChainParameters.mockRejectedValue(
-          new Error('Cache read failed'),
-        );
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new Error('HTTP error! status: 500'),
+            );
+            trongridApiClient.peekCachedChainParameters.mockRejectedValue(
+              new Error('Cache read failed'),
+            );
 
-        const { transaction, availableEnergy, availableBandwidth } =
-          buildNativeTxWithBandwidthOverage();
+            const { transaction, availableEnergy, availableBandwidth } =
+              buildNativeTxWithBandwidthOverage();
 
-        await expect(
-          feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          }),
-        ).rejects.toThrow(FeeUnavailableError);
-        expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
+            expect(snapClient.trackError).toHaveBeenCalledTimes(1);
+          },
+        );
       });
 
       it('throws FeeUnavailableError when cached chain parameters are empty', async () => {
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          new Error('HTTP error! status: 500'),
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new Error('HTTP error! status: 500'),
+            );
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue([]);
+
+            const { transaction, availableEnergy, availableBandwidth } =
+              buildNativeTxWithBandwidthOverage();
+
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
+          },
         );
-        mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue([]);
-
-        const { transaction, availableEnergy, availableBandwidth } =
-          buildNativeTxWithBandwidthOverage();
-
-        await expect(
-          feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          }),
-        ).rejects.toThrow(FeeUnavailableError);
       });
 
       it('preserves 429 status in trackError and throws FeeUnavailableError when TronGrid returns 429', async () => {
-        const rateLimitError = new TrongridRateLimitError();
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          rateLimitError,
-        );
-        mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue(
-          undefined,
-        );
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+            const rateLimitError = new TrongridRateLimitError();
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              rateLimitError,
+            );
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+              undefined,
+            );
 
-        const { transaction, availableEnergy, availableBandwidth } =
-          buildNativeTxWithBandwidthOverage();
+            const { transaction, availableEnergy, availableBandwidth } =
+              buildNativeTxWithBandwidthOverage();
 
-        await expect(
-          feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-          }),
-        ).rejects.toThrow(FeeUnavailableError);
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
 
-        expect(mockSnapClient.trackError).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'TrongridRateLimitError',
-            status: 429,
-          }),
+            expect(snapClient.trackError).toHaveBeenCalledWith(
+              expect.objectContaining({
+                name: 'TrongridRateLimitError',
+                status: 429,
+              }),
+            );
+          },
         );
       });
 
       it('throws FeeUnavailableError when fallback energy calculation also hits a TronGrid failure', async () => {
-        // SC energy simulation fails AND chain-params fetch fails AND no cache.
-        // computeFee must fail gracefully instead of returning a feeLimit-derived fee.
-        mockTronHttpClient.triggerConstantContract.mockRejectedValue(
-          new Error('Simulation failed'),
-        );
-        mockTrongridApiClient.getChainParameters.mockRejectedValue(
-          new Error('HTTP error! status: 429'),
-        );
-        mockTrongridApiClient.peekCachedChainParameters.mockResolvedValue(
-          undefined,
-        );
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+            snapClient,
+          }) => {
+            // SC energy simulation fails AND chain-params fetch fails AND no cache.
+            // computeFee must fail gracefully instead of returning a feeLimit-derived fee.
+            tronHttpClient.triggerConstantContract.mockRejectedValue(
+              new Error('Simulation failed'),
+            );
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new Error('HTTP error! status: 429'),
+            );
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+              undefined,
+            );
 
-        const transaction = getTransactionExample('trc20');
-        const availableEnergy = BigNumber(0);
-        const availableBandwidth = BigNumber(2000000); // enough bandwidth
-        const feeLimit = 4_200_000;
+            const transaction = getTransactionExample('trc20');
+            const availableEnergy = BigNumber(0);
+            const availableBandwidth = BigNumber(2000000); // enough bandwidth
+            const feeLimit = 4_200_000;
 
-        await expect(
-          feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
-            feeLimit,
-          }),
-        ).rejects.toThrow(FeeUnavailableError);
-        expect(mockSnapClient.trackError).toHaveBeenCalled();
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction,
+                availableEnergy,
+                availableBandwidth,
+                feeLimit,
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
+            expect(snapClient.trackError).toHaveBeenCalled();
+          },
+        );
       });
     });
   });

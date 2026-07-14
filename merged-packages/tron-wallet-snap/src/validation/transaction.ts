@@ -1,7 +1,10 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { assert, define, is } from '@metamask/superstruct';
-import { TronWeb } from 'tronweb';
-import type { Types } from 'tronweb';
+import type { BigNumber } from 'bignumber.js';
+import { TronWeb, Types } from 'tronweb';
+
+import { ZERO } from '../constants';
+import { sunToTrx } from '../utils/conversion';
 
 /**
  * Superstruct validator for Tron transaction raw data.
@@ -64,6 +67,37 @@ export function assertTransactionStructure(
     // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw new InvalidParamsError(`Malformed transaction: ${message}`);
   }
+}
+
+/**
+ * Returns the native TRX value transferred by a transaction.
+ *
+ * TRX is carried in `amount` for native transfers and in `call_value` for
+ * smart-contract calls. Other contract amounts represent tokens or protocol
+ * values and must not be counted as TRX.
+ *
+ * @param rawData - The raw transaction data.
+ * @returns The transferred TRX amount.
+ */
+export function getTransactionTrxValue(
+  rawData: Types.Transaction['raw_data'],
+): BigNumber {
+  const contract = rawData.contract[0];
+  const value = contract?.parameter?.value;
+
+  if (!contract || !value) {
+    return ZERO;
+  }
+
+  if (contract.type === Types.ContractType.TransferContract) {
+    return sunToTrx('amount' in value ? (value.amount ?? 0) : 0);
+  }
+
+  if (contract.type === Types.ContractType.TriggerSmartContract) {
+    return sunToTrx('call_value' in value ? (value.call_value ?? 0) : 0);
+  }
+
+  return ZERO;
 }
 
 /**

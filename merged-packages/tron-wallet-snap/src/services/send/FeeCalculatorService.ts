@@ -738,6 +738,7 @@ export class FeeCalculatorService {
       JSON.stringify(transaction),
     );
 
+    // resources the transaction is expected to consume
     const bandwidthNeeded = this.#calculateBandwidth(transaction);
     const energyNeeded = await this.#calculateEnergy(
       scope,
@@ -748,14 +749,12 @@ export class FeeCalculatorService {
     /**
      * Calculate consumption and overages:
      * - Bandwidth: If we don't have enough, we pay for ALL of it in TRX (no partial consumption)
-     * - Energy: We consume what we have available, and pay TRX only for the overage
+     * - Energy: We consume what we have available and pay TRX only for the overage
      */
     const hasEnoughBandwidth =
       availableBandwidth.isGreaterThanOrEqualTo(bandwidthNeeded);
-    const bandwidthConsumed = hasEnoughBandwidth ? bandwidthNeeded : ZERO;
     const bandwidthToPayInTRX = hasEnoughBandwidth ? ZERO : bandwidthNeeded;
 
-    const energyConsumed = BigNumber.min(energyNeeded, availableEnergy);
     const energyToPayInTRX = BigNumber.max(
       energyNeeded.minus(availableEnergy),
       ZERO,
@@ -830,30 +829,32 @@ export class FeeCalculatorService {
     ];
 
     /**
-     * Add energy consumption fee if we're consuming any energy
+     * Add the estimated energy consumption, regardless of whether it is
+     * covered by staked energy or paid for in TRX.
      */
-    if (energyConsumed.isGreaterThan(0)) {
+    if (energyNeeded.isGreaterThan(0)) {
       result.push({
         type: FeeType.Base,
         asset: {
           unit: Networks[scope].energy.symbol,
           type: Networks[scope].energy.id,
-          amount: energyConsumed.toString(),
+          amount: energyNeeded.toString(),
           fungible: true as const,
         },
       });
     }
 
     /**
-     * Add bandwidth consumption fee if we're consuming any bandwidth
+     * Add the estimated bandwidth consumption, regardless of whether it is
+     * covered by free bandwidth or paid for in TRX.
      */
-    if (bandwidthConsumed.isGreaterThan(0)) {
+    if (bandwidthNeeded.isGreaterThan(0)) {
       result.push({
         type: FeeType.Base,
         asset: {
           unit: Networks[scope].bandwidth.symbol,
           type: Networks[scope].bandwidth.id,
-          amount: bandwidthConsumed.toString(),
+          amount: bandwidthNeeded.toString(),
           fungible: true as const,
         },
       });

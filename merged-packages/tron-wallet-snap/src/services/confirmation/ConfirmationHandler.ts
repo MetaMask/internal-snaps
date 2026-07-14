@@ -283,6 +283,7 @@ export class ConfirmationHandler {
       tokenPricesFetchStatus: FetchStatus.Fetched,
       fees,
       feesFetchStatus: FetchStatus.Fetched,
+      isInsufficientBalance: false,
     };
 
     const ui = ConfirmSignTransaction({ context });
