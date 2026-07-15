@@ -13,6 +13,7 @@ jobs:
     if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '@metamaskbot publish-preview') }}
     uses: MetaMask/github-tools/.github/workflows/publish-preview.yml@v1
     with:
+      rename-after-install-and-build: true
       environment: default-branch
       docs-url: 'https://github.com/MetaMask/core/blob/main/docs/processes/preview-builds.md'
     secrets:
