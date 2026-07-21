@@ -20,7 +20,7 @@ jobs:
       PUBLISH_PREVIEW_NPM_TOKEN: ${{ secrets.PUBLISH_PREVIEW_NPM_TOKEN }}
       BUILD_ENV: |
         {
-          "LOG_LEVEL": "all",
+          "LOG_LEVEL": "${{ secrets.LOG_LEVEL }}",
           "DEFAULT_ADDRESS_TYPE": "${{ secrets.DEFAULT_ADDRESS_TYPE }}",
           "ESPLORA_BITCOIN": "${{ secrets.ESPLORA_BITCOIN }}",
           "ESPLORA_TESTNET": "${{ secrets.ESPLORA_TESTNET }}",

@@ -7,22 +7,6 @@ on:
         required: false
       SLACK_WEBHOOK_URL:
         required: true
-      ESPLORA_BITCOIN:
-        required: false
-      ESPLORA_TESTNET:
-        required: false
-      ESPLORA_TESTNET4:
-        required: false
-      ESPLORA_SIGNET:
-        required: false
-      ESPLORA_REGTEST:
-        required: false
-      PRICE_API_URL:
-        required: false
-      LOG_LEVEL:
-        required: false
-      DEFAULT_ADDRESS_TYPE:
-        required: false
 
 permissions:
   contents: read
