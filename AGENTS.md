@@ -38,7 +38,6 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 ### Contributing teams and codeowners
 
 - `CODEOWNERS` defines which GitHub teams own which packages in the monorepo.
-- `teams.json` is used by CI and external actors to map packages to team labels.
 
 ### Yarn
 

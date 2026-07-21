@@ -37,7 +37,6 @@ jobs:
           - lint:misc:check
           - constraints
           - lint:dependencies
-          - lint:teams
           - readme-content:check
     steps:
       - name: Checkout and setup environment
