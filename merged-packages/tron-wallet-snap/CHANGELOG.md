@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.33.0]
+
 ### Changed
 
-- Align transaction-status polling with Tron's three-second block time, while preserving the existing 15-second tracking window ([#364](https://github.com/MetaMask/snap-tron-wallet/pull/364))
+- Align transaction-status polling with Tron's 3 second block time, while preserving the existing 15-second tracking window ([#364](https://github.com/MetaMask/snap-tron-wallet/pull/364))
 
 ## [1.32.0]
 
@@ -591,7 +593,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Tron wallet snap
 - Support for TRX and token assets balances ([#12](https://github.com/MetaMask/snap-tron-wallet/pull/12))
 
-[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.32.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.33.0...HEAD
+[1.33.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/MetaMask/snap-tron-wallet/compare/v1.29.1...v1.30.0
