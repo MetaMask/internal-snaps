@@ -219,3 +219,15 @@ When adding or updating data services in packages, follow these guidelines:
 - Make sure to write comprehensive tests for the service class.
 
 Use the `sample-gas-prices-service/` directory in the `sample-controllers` package as examples for implementation and tests.
+
+## Cursor Cloud specific instructions
+
+This repo is a Yarn 4 monorepo of MetaMask Snaps. The two products live in `packages/`: `@metamask/bitcoin-wallet-snap` and `@metamask/sample-snap`. Dependencies are already installed by the startup update script (`corepack enable` + `yarn install`), so no install step is needed at session start. Yarn is pinned via `packageManager` (`yarn@4.17.1`) and provisioned by corepack; use `yarn ...`, not the classic global yarn.
+
+Standard commands are documented above (see "Running tests", "Linting and formatting", "Building packages"). Non-obvious caveats for running things here:
+
+- **Build before testing.** A Snap's Jest suite (`@metamask/snaps-jest`) expects the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first.
+- **`yarn lint` deletes `dist/`.** `lint:eslint` runs `build:only-clean` (`rimraf -g 'packages/*/dist'`) before linting. After running `yarn lint`, re-run `yarn build` before serving a snap or running snap tests.
+- **Running a snap:** `yarn workspace <pkg> run serve` serves the pre-built bundle at `http://localhost:8080` (`/snap.manifest.json` and `/dist/bundle.js`); `yarn workspace <pkg> run start` (`mm-snap watch`) rebuilds on change. Both snaps use port 8080, so only run one at a time.
+- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Use the `snaps-jest` test suites (they install the snap and invoke its JSON-RPC methods, e.g. sample-snap's `hello`) to exercise core functionality without a browser.
+- **`.env` is optional** for `bitcoin-wallet-snap`; `snap.config.ts` reads it via dotenv but all values have sane defaults (see `.env.example`), so the snap builds and serves without one.
