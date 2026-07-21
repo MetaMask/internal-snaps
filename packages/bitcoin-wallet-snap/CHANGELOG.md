@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix CI wiring for Bitcoin snap build-time environment variables.
+- Fixed RPC endpoints for mainnet and testnet ([#37](https://github.com/MetaMask/internal-snaps/pull/37))
+- Endpoints introduced in version `1.15.1` were causing frequent 429 HTTP errors.
 
 ## [1.15.1]
 
