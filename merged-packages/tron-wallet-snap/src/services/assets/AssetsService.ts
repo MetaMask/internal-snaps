@@ -1260,18 +1260,8 @@ export class AssetsService {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
-    /**
-     * Should we save the assets incrementally?
-     * - If true, only saves and emits events for the assets that have changed (new or balance changed). Better performance because it only informs the client of what has changed.
-     * - If false, saves all assets. More reliable because it enforces that the client has the same state of assets as the snap.
-     */
-    const isIncremental = false;
-
     const hasZeroAmount = (asset: AssetEntity): boolean =>
       asset.rawAmount === '0' || asset.uiAmount === '0';
-
-    const hasNonZeroAmount = (asset: AssetEntity): boolean =>
-      !hasZeroAmount(asset);
 
     const savedAssets = await this.getAll();
     const isEssentialAsset = (asset: AssetEntity): boolean =>
@@ -1311,24 +1301,6 @@ export class AssetsService {
       );
     });
 
-    // Notify the extension about the new assets in a single event
-    const isNew = (asset: AssetEntity): boolean =>
-      !savedAssets.find(
-        (item) =>
-          item.keyringAccountId === asset.keyringAccountId &&
-          item.assetType === asset.assetType,
-      );
-
-    const wasSavedWithZeroAmount = (asset: AssetEntity): boolean => {
-      const savedAsset = savedAssets.find(
-        (item) =>
-          item.keyringAccountId === asset.keyringAccountId &&
-          item.assetType === asset.assetType,
-      );
-
-      return Boolean(savedAsset && hasZeroAmount(savedAsset));
-    };
-
     // A token should be removed from the visible asset list only when the latest
     // snapshot says its balance is zero. Essential assets stay visible even at
     // zero because they are part of the permanent Tron account model.
@@ -1340,10 +1312,7 @@ export class AssetsService {
     // - they are brand new, or
     // - they existed before with zero balance and now became non-zero.
     const shouldBeInAddedList = (asset: AssetEntity): boolean =>
-      !shouldBeInRemovedList(asset) &&
-      (!isIncremental ||
-        ((isNew(asset) || wasSavedWithZeroAmount(asset)) &&
-          hasNonZeroAmount(asset)));
+      !shouldBeInRemovedList(asset);
 
     // Build the asset-list payload in two stages:
     // 1. seed the removed list with assets that vanished from the latest
@@ -1394,10 +1363,6 @@ export class AssetsService {
       });
     }
 
-    // Notify the extension about the changed balances in a single event
-    const hasChanged = (asset: AssetEntity): boolean =>
-      AssetsService.hasChanged(asset, savedAssets);
-
     // Emit synthetic zero-balance entries for disappeared assets so clients can
     // clear cached balances even when the backend omits zero-balance tokens
     // instead of returning them explicitly.
@@ -1407,16 +1372,7 @@ export class AssetsService {
       uiAmount: '0',
     }));
 
-    const assetsToSave = [...assets, ...removedAssetsWithZeroBalance].filter(
-      (asset) =>
-        isIncremental
-          ? removedAssetsWithZeroBalance.some(
-              (removedAsset) =>
-                removedAsset.keyringAccountId === asset.keyringAccountId &&
-                removedAsset.assetType === asset.assetType,
-            ) || hasChanged(asset)
-          : true,
-    );
+    const assetsToSave = [...assets, ...removedAssetsWithZeroBalance];
     // Save assets using repository
     await this.#assetsRepository.saveMany(assetsToSave);
 
