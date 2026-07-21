@@ -16,7 +16,13 @@ import { ClientRequestMethod, SendErrorCodes } from './types';
 import type { OnAmountInputRequestStruct } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { FALLBACK_FEE, FEE_LIMIT, Network, Networks } from '../../constants';
+import {
+  FALLBACK_FEE,
+  FEE_LIMIT,
+  Network,
+  Networks,
+  TRACK_TX_INTERVAL,
+} from '../../constants';
 import type {
   AssetEntity,
   NativeAsset,
@@ -35,6 +41,7 @@ import type { TransactionRawData } from '../../services/transaction-expiration-r
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
+import { BackgroundEventMethod } from '../cronjob';
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -455,6 +462,16 @@ describe('ClientRequestHandler', () => {
           mockTronWeb.utils.transaction.txPbToRawDataHex,
         ).toHaveBeenCalled();
         expect(mockTronWeb.trx.sign).toHaveBeenCalled();
+        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+          method: BackgroundEventMethod.TrackTransaction,
+          params: {
+            txId: 'test-tx-id',
+            scope,
+            accountIds: [TEST_ACCOUNT_ID],
+            attempt: 0,
+          },
+          duration: TRACK_TX_INTERVAL,
+        });
       });
 
       it('refreshes stale transaction metadata before signing and sending an external transaction', async () => {

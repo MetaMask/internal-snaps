@@ -20,6 +20,18 @@ export const FALLBACK_FEE = 37_000_000;
 export const NULL_ADDRESS = 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb';
 export const CONSENSYS_SR_NODE_ADDRESS = 'TVMwGfdDz58VvM7yTzGMWWSHsmofSxa9jH';
 
+/**
+ * ISO 8601 duration for the initial transaction tracking delay.
+ * Aligned with Tron's ~3-second block time so the first poll isn't wasted.
+ */
+export const TRACK_TX_INTERVAL = 'PT3S';
+
+/**
+ * Maximum number of attempts to track a transaction confirmation.
+ * With a three-second poll interval and five attempts, this covers ~15 seconds.
+ */
+export const TRACK_TX_MAX_ATTEMPTS = 5;
+
 export enum Network {
   Mainnet = TrxScope.Mainnet,
   Nile = TrxScope.Nile,

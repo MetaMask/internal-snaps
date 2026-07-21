@@ -14,7 +14,7 @@ import type { SendValidationResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import { Networks, ZERO } from '../../constants';
+import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
@@ -441,7 +441,7 @@ export class SendService {
         accountIds: [fromAccountId],
         attempt: 0,
       },
-      duration: 'PT1S',
+      duration: TRACK_TX_INTERVAL,
     });
 
     return result;
