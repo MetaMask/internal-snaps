@@ -33,6 +33,7 @@ concurrency:
 
 jobs:
   publish-release:
+    environment: default-branch
     permissions:
       contents: write
     runs-on: ubuntu-latest
