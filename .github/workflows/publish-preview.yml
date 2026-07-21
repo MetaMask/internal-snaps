@@ -18,3 +18,14 @@ jobs:
       docs-url: 'https://github.com/MetaMask/core/blob/main/docs/processes/preview-builds.md'
     secrets:
       PUBLISH_PREVIEW_NPM_TOKEN: ${{ secrets.PUBLISH_PREVIEW_NPM_TOKEN }}
+      BUILD_ENV: |
+        {
+          "LOG_LEVEL": "all",
+          "DEFAULT_ADDRESS_TYPE": "${{ secrets.DEFAULT_ADDRESS_TYPE }}",
+          "ESPLORA_BITCOIN": "${{ secrets.ESPLORA_BITCOIN }}",
+          "ESPLORA_TESTNET": "${{ secrets.ESPLORA_TESTNET }}",
+          "ESPLORA_TESTNET4": "${{ secrets.ESPLORA_TESTNET4 }}",
+          "ESPLORA_SIGNET": "${{ secrets.ESPLORA_SIGNET }}",
+          "ESPLORA_REGTEST": "${{ secrets.ESPLORA_REGTEST }}",
+          "PRICE_API_URL": "${{ secrets.PRICE_API_URL }}"
+        }

@@ -116,16 +116,15 @@ jobs:
     uses: ./.github/workflows/publish-release.yml
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+      DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  create-update-issues:
-    name: Create update issues
-    needs: [is-release, publish-release]
-    if: needs.is-release.outputs.IS_RELEASE == 'true'
-    uses: ./.github/workflows/create-update-issues.yml
-    permissions:
-      contents: read
-      id-token: write
+      ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
+      ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}
+      ESPLORA_TESTNET4: ${{ secrets.ESPLORA_TESTNET4 }}
+      ESPLORA_SIGNET: ${{ secrets.ESPLORA_SIGNET }}
+      ESPLORA_REGTEST: ${{ secrets.ESPLORA_REGTEST }}
+      PRICE_API_URL: ${{ secrets.PRICE_API_URL }}
 
   all-jobs-complete:
     name: All jobs complete
