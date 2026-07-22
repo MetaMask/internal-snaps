@@ -6,6 +6,7 @@
     "Ethereum",
     "MetaMask"
   ],
+  "private": true,
   "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/sample-snap#readme",
   "bugs": {
     "url": "https://github.com/MetaMask/internal-snaps/issues"
