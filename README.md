@@ -11,6 +11,5 @@ Each snap in this repository has its own README with installation and usage inst
 <!-- start package list -->
 
 - [`@metamask/bitcoin-wallet-snap`](packages/bitcoin-wallet-snap)
-- [`@metamask/sample-snap`](packages/sample-snap)
 
 <!-- end package list -->

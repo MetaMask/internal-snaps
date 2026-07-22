@@ -1,6 +1,7 @@
 {
   "name": "@metamask/sample-snap",
   "version": "0.0.0",
+  "private": true,
   "description": "The 'Hello, world!' of MetaMask Snaps, now written in TypeScript",
   "keywords": [
     "Ethereum",
@@ -22,10 +23,6 @@
     "locales/"
   ],
   "main": "./dist/bundle.js",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build",
