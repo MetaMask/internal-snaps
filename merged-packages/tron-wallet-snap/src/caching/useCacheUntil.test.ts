@@ -112,6 +112,21 @@ describe('useCacheUntil', () => {
       expect(actualExecutionSpy).not.toHaveBeenCalled();
       expect(cache.set).toHaveBeenCalledTimes(1); // Only from first call
     });
+
+    it('hydrates the cached result when the wrapper is recreated', async () => {
+      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      await cachedTestFunction();
+
+      actualExecutionSpy.mockClear();
+      jest.spyOn(cache, 'get').mockResolvedValue('persisted-test');
+      const recreatedCachedFunction = useCacheUntil(testFunction, cache, {
+        ...cacheOptions,
+        functionName: 'testFunction',
+      });
+
+      expect(await recreatedCachedFunction()).toBe('persisted-test');
+      expect(actualExecutionSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('when the data is cached but expired', () => {

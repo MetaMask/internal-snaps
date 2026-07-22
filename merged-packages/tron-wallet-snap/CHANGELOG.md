@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Persist chain parameter cache across Snap restarts ([#365](https://github.com/MetaMask/snap-tron-wallet/pull/365))
+  - Fix `useCacheUntil` so it reuses still-valid `StateCache` entries after the Snap is recreated.
+
 ## [1.33.0]
 
 ### Changed

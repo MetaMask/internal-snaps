@@ -83,6 +83,21 @@ describe('StateCache', () => {
       expect(value).toBeUndefined();
     });
 
+    it('returns undefined when the cache entry expires at the current time', async () => {
+      const now = Date.now();
+      const stateWithCache = new InMemoryState({
+        __cache__default: {
+          someKey: {
+            value: 'someValue',
+            expiresAt: now,
+          },
+        },
+      });
+      const cache = new StateCache(stateWithCache);
+
+      expect(await cache.get('someKey')).toBeUndefined();
+    });
+
     it('deletes expired cache entries upon retrieval', async () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {

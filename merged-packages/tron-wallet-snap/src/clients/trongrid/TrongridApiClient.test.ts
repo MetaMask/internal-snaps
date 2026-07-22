@@ -430,6 +430,102 @@ describe('TrongridApiClient', () => {
     });
   });
 
+  describe('getChainParameters', () => {
+    it('returns fresh parameters when persisted cache operations fail', async () => {
+      await withTrongridApiClient(async ({ client, tronHttpClient, cache }) => {
+        const chainParameters = [{ key: 'getTransactionFee', value: 1000 }];
+        jest
+          .spyOn(cache, 'get')
+          .mockRejectedValueOnce(new Error('Cache read failed'));
+        jest
+          .spyOn(cache, 'set')
+          .mockRejectedValueOnce(new Error('Cache write failed'));
+        jest
+          .spyOn(tronHttpClient, 'getChainParameters')
+          .mockResolvedValueOnce(chainParameters);
+        jest
+          .spyOn(tronHttpClient, 'getNextMaintenanceTime')
+          .mockResolvedValueOnce(Date.now() + 3_600_000);
+
+        expect(await client.getChainParameters(Network.Mainnet)).toStrictEqual(
+          chainParameters,
+        );
+      });
+    });
+
+    it('reuses the cache across client recreation and isolates networks', async () => {
+      await withTrongridApiClient(
+        async ({ client, configProvider, tronHttpClient, cache }) => {
+          const mainnetParameters = [{ key: 'getTransactionFee', value: 1000 }];
+          const nileParameters = [{ key: 'getTransactionFee', value: 2000 }];
+          const getChainParameters = jest
+            .spyOn(tronHttpClient, 'getChainParameters')
+            .mockResolvedValueOnce(mainnetParameters)
+            .mockResolvedValueOnce(nileParameters);
+          jest
+            .spyOn(tronHttpClient, 'getNextMaintenanceTime')
+            .mockResolvedValue(Date.now() + 3_600_000);
+
+          expect(
+            await client.getChainParameters(Network.Mainnet),
+          ).toStrictEqual(mainnetParameters);
+
+          const recreatedClient = new TrongridApiClient({
+            configProvider,
+            tronHttpClient,
+            cache,
+          });
+
+          expect(
+            await recreatedClient.getChainParameters(Network.Mainnet),
+          ).toStrictEqual(mainnetParameters);
+          expect(
+            await recreatedClient.getChainParameters(Network.Nile),
+          ).toStrictEqual(nileParameters);
+          expect(getChainParameters).toHaveBeenCalledTimes(2);
+          expect(getChainParameters).toHaveBeenNthCalledWith(
+            1,
+            Network.Mainnet,
+          );
+          expect(getChainParameters).toHaveBeenNthCalledWith(2, Network.Nile);
+        },
+      );
+    });
+
+    it('refreshes a recreated client after the maintenance window', async () => {
+      await withTrongridApiClient(
+        async ({ client, configProvider, tronHttpClient, cache }) => {
+          const now = 1_700_000_000_000;
+          const maintenanceTime = now + 3_600_000;
+          const dateNow = jest.spyOn(Date, 'now').mockReturnValue(now);
+          const getChainParameters = jest
+            .spyOn(tronHttpClient, 'getChainParameters')
+            .mockResolvedValueOnce([{ key: 'getTransactionFee', value: 1000 }])
+            .mockResolvedValueOnce([{ key: 'getTransactionFee', value: 2000 }]);
+          jest
+            .spyOn(tronHttpClient, 'getNextMaintenanceTime')
+            .mockResolvedValueOnce(maintenanceTime)
+            .mockResolvedValueOnce(maintenanceTime + 3_600_000);
+
+          await client.getChainParameters(Network.Mainnet);
+          dateNow.mockReturnValue(maintenanceTime + 1);
+
+          const recreatedClient = new TrongridApiClient({
+            configProvider,
+            tronHttpClient,
+            cache,
+          });
+
+          expect(
+            await recreatedClient.getChainParameters(Network.Mainnet),
+          ).toStrictEqual([{ key: 'getTransactionFee', value: 2000 }]);
+          expect(getChainParameters).toHaveBeenCalledTimes(2);
+          dateNow.mockRestore();
+        },
+      );
+    });
+  });
+
   describe('peekCachedChainParameters', () => {
     it('returns undefined when no chain parameters are cached for the scope', async () => {
       await withTrongridApiClient(async ({ client }) => {
