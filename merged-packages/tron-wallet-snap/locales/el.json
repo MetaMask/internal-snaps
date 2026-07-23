@@ -1,0 +1,107 @@
+{
+  "locale": "el",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Αίτημα συναλλαγής"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Εκτιμώμενες αλλαγές"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Οι εκτιμώμενες αλλαγές είναι αυτές που μπορεί να συμβούν αν προχωρήσετε σε αυτή τη συναλλαγή. Πρόκειται απλώς για μια πρόβλεψη, δεν αποτελεί εγγύηση."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Θα στείλετε"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Καταναλωμένο εύρος ζώνης"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Θα λάβετε"
+    },
+    "confirmation.origin": {
+      "message": "Ζητήθηκε από"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Αυτός είναι ο ιστότοπος που ζητά την επιβεβαίωσή σας."
+    },
+    "confirmation.from": {
+      "message": "Από"
+    },
+    "confirmation.to": {
+      "message": "Προς"
+    },
+    "confirmation.network": {
+      "message": "Δίκτυο"
+    },
+    "confirmation.transactionFee": {
+      "message": "Τέλη δικτύου"
+    },
+    "confirmation.confirmButton": {
+      "message": "Επιβεβαίωση"
+    },
+    "confirmation.cancelButton": {
+      "message": "Άκυρο"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Υπογραφή μηνύματος"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Μήνυμα"
+    },
+    "confirmation.account": {
+      "message": "Λογαριασμός"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Sign transaction"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Estimated changes are not available"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "No estimated changes"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Because of an error, we couldn't check for security alerts."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Only continue if you trust every address involved."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "This transaction was reverted during simulation."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "This is a deceptive request"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "If you approve this request, a third party known for scams will take all your assets."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Learn more"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Security advice by"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Insufficient balance"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Invalid transaction"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Ανεπαρκή κεφάλαια"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Μη έγκυρη διεύθυνση"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Μη υποστηριζόμενη μέθοδος"
+    }
+  }
+}
