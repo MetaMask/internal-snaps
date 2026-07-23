@@ -5,6 +5,14 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "exactOptionalPropertyTypes": false,
+    "forceConsistentCasingInFileNames": true,
+    "noErrorTruncation": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "lib": ["ES2023", "DOM"],
+    "target": "es2023",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "types": ["jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
