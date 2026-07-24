@@ -1,11 +1,20 @@
 # Tron Snap
 
+The Tron Snap allows MetaMask and dapps to support all Tron-related networks and address types.
+
+## Installation
+
+```bash
+npm install @metamask/tron-wallet-snap
+# or
+yarn add @metamask/tron-wallet-snap
+```
+
 ## Configuration
 
-Rename `.env.example` to `.env`
-Configurations are setup though `.env`,
+Copy `.env.example` to `.env` and configure it as needed.
 
-## API:
+## Usage
 
 ### `keyring_createAccount`
 
@@ -83,3 +92,7 @@ provider.request({
   },
 });
 ```
+
+## Contributing
+
+This package is part of the Internal Snaps monorepo. See the [contribution processes](../../docs/processes/) for development, testing, building, and release instructions.
