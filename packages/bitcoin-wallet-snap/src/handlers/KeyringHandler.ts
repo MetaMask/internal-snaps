@@ -29,24 +29,23 @@ import { sensitive } from '@metamask/superstruct';
 import { assert, is, string } from 'superstruct';
 import { encode } from 'wif';
 
+import snapManifest from '../../snap.manifest.json';
+import type { Logger, SnapClient } from '../entities';
 import {
   computeDisplayBalanceSats,
   FormatError,
-  type Logger,
   networkToCurrencyUnit,
-  type SnapClient,
 } from '../entities';
+import type {
+  AccountUseCases,
+  CreateAccountParams,
+} from '../use-cases/AccountUseCases';
 import { NetworkStruct, networkToCaip19, scopeToNetwork } from './caip';
 import { CronMethod } from './CronHandler';
 import type { KeyringRequestHandler } from './KeyringRequestHandler';
 import { mapToKeyringAccount, mapToTransaction } from './mappings';
 import { parseDerivationPath } from './parsers';
 import { BtcWalletRequestStruct, validateSelectedAccounts } from './validation';
-import snapManifest from '../../snap.manifest.json';
-import type {
-  AccountUseCases,
-  CreateAccountParams,
-} from '../use-cases/AccountUseCases';
 
 /** Maximum number of accounts to create in one internal createMany call. */
 const MAX_CREATE_ACCOUNTS_PER_BATCH = 100;

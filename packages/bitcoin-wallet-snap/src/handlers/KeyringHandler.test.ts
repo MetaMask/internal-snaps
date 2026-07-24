@@ -26,10 +26,10 @@ import { assert } from 'superstruct';
 
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
 import { AccountCapability, CurrencyUnit } from '../entities';
+import type { AccountUseCases } from '../use-cases/AccountUseCases';
 import { Caip19Asset } from './caip';
 import { KeyringHandler } from './KeyringHandler';
 import type { KeyringRequestHandler } from './KeyringRequestHandler';
-import type { AccountUseCases } from '../use-cases/AccountUseCases';
 
 jest.mock('superstruct', () => ({
   ...jest.requireActual('superstruct'),
