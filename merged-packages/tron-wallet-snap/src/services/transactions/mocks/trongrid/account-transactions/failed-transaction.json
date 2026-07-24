@@ -1,0 +1,38 @@
+{
+  "ret": [
+    {
+      "contractRet": "OUT_OF_ENERGY",
+      "fee": 54171200
+    }
+  ],
+  "signature": ["placeholder_signature"],
+  "txID": "3892c8061153a45058de63b356dd84dd24410593dc8211311000732e09707205",
+  "net_usage": 0,
+  "raw_data_hex": "placeholder",
+  "net_fee": 2209000,
+  "energy_usage": 0,
+  "blockNumber": 77641671,
+  "block_timestamp": 1763586549000,
+  "energy_fee": 51962200,
+  "energy_usage_total": 519622,
+  "raw_data": {
+    "contract": [
+      {
+        "parameter": {
+          "value": {
+            "data": "placeholder_data",
+            "owner_address": "412efffc7686e54ab669a1cdb1e2cc17cf4b4eca96",
+            "contract_address": "41f742f4589459f0923fa579600815763d1646bec3"
+          },
+          "type_url": "type.googleapis.com/protocol.TriggerSmartContract"
+        },
+        "type": "TriggerSmartContract"
+      }
+    ],
+    "ref_block_bytes": "b30a",
+    "ref_block_hash": "fb8cad0722557435",
+    "expiration": 1763586606000,
+    "fee_limit": 100000000,
+    "timestamp": 1763586549313
+  }
+}

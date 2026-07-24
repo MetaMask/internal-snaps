@@ -1,0 +1,107 @@
+{
+  "locale": "ja",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "トランザクションリクエスト"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "予測される増減額"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "予測される増減額は、このトランザクションを実行すると発生する可能性がある増減額です。これは単に予測に過ぎず、保証されたものではありません。"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "送金額"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "消費された帯域幅"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "受取額"
+    },
+    "confirmation.origin": {
+      "message": "要求元"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "これは確認を求めているサイトです。"
+    },
+    "confirmation.from": {
+      "message": "送信元"
+    },
+    "confirmation.to": {
+      "message": "宛先"
+    },
+    "confirmation.network": {
+      "message": "ネットワーク"
+    },
+    "confirmation.transactionFee": {
+      "message": "ネットワーク手数料"
+    },
+    "confirmation.confirmButton": {
+      "message": "確定"
+    },
+    "confirmation.cancelButton": {
+      "message": "キャンセル"
+    },
+    "confirmation.signMessage.title": {
+      "message": "メッセージに署名"
+    },
+    "confirmation.signMessage.message": {
+      "message": "メッセージ"
+    },
+    "confirmation.account": {
+      "message": "アカウント"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "トランザクションに署名"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "予測される増減額は利用できません"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "予測される増減額はありません"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "エラーのため、セキュリティアラートを確認できませんでした。"
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "関係するすべてのアドレスを信頼できる場合にのみ続行してください。"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "このトランザクションはシミュレーション中に元に戻されました。"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "これは欺瞞的なリクエストです"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "このリクエストを承認すると、詐欺で知られる第三者があなたのすべての資産を取得します。"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "詳細を見る"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "セキュリティアドバイス提供元"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "不明なエラーが発生しました"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "残高不足"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "無効なトランザクション"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "資金不足"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "無効なアドレス"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "サポートされていないメソッド"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "locale": "de",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Transaktionsanfrage"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Geschätzte Änderungen"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Die geschätzten Änderungen beziehen sich auf das, was passieren könnte, wenn Sie diese Transaktion durchführen. Es handelt sich hierbei lediglich um eine Prognose, nicht um eine Garantie."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Sie senden"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Verbrauchte Bandbreite"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Sie empfangen"
+    },
+    "confirmation.origin": {
+      "message": "Anfrage von"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Dies ist die Website, die um Ihre Bestätigung bittet."
+    },
+    "confirmation.from": {
+      "message": "Von"
+    },
+    "confirmation.to": {
+      "message": "An"
+    },
+    "confirmation.network": {
+      "message": "Netzwerk"
+    },
+    "confirmation.transactionFee": {
+      "message": "Netzwerk-Gebühr"
+    },
+    "confirmation.confirmButton": {
+      "message": "Bestätigen"
+    },
+    "confirmation.cancelButton": {
+      "message": "Stornieren"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Nachricht signieren"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Nachricht"
+    },
+    "confirmation.account": {
+      "message": "Konto"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Transaktion signieren"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Geschätzte Änderungen sind nicht verfügbar"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Keine geschätzten Änderungen"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Aufgrund eines Fehlers konnten wir nicht auf Sicherheitswarnungen prüfen."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Fahren Sie nur fort, wenn Sie jeder beteiligten Adresse vertrauen."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Diese Transaktion wurde während der Simulation rückgängig gemacht."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Dies ist eine irreführende Anfrage"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Wenn Sie diese Anfrage genehmigen, wird ein Dritter, der für Betrügereien bekannt ist, alle Ihre Vermögenswerte nehmen."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Mehr erfahren"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Sicherheitsberatung von"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Ein unbekannter Fehler ist aufgetreten"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Unzureichendes Guthaben"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Ungültige Transaktion"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Unzureichende Mittel"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Ungültige Adresse"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Nicht unterstützte Methode"
+    }
+  }
+}
