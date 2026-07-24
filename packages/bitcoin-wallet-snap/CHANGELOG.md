@@ -9,15 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add support for keyring API v2, including `bip44:derive-path`, `bip44:derive-index`, `bip44:derive-index-range`, and `bip44:discover` account creation types
-- Add `exportAccount` method supporting WIF (base58) private key export
-- Add `parseDerivationPath` to validate and parse BIP-44 derivation paths for native segwit (BIP-84) accounts
+- Add support for keyring API v2, including `bip44:derive-path`, `bip44:derive-index`, `bip44:derive-index-range`, and `bip44:discover` account creation types ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
+- Add `exportAccount` method supporting WIF (base58) private key export ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
+- Add `parseDerivationPath` to validate and parse BIP-44 derivation paths for native segwit (BIP-84) accounts ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
 ### Changed
 
-- Migrate `KeyringHandler` to implement `KeyringSnapRpc` from `@metamask/keyring-api/v2`
-- Update `snap.manifest.json` to declare `derivePath` capability in the `bip44` keyring block
-- Mark accounts as exportable in the keyring account mapping
+- Migrate `KeyringHandler` to implement `KeyringSnapRpc` from `@metamask/keyring-api/v2` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
+- Update `snap.manifest.json` to declare `derivePath` capability in the `bip44` keyring block ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
+- Mark accounts as exportable in the keyring account mapping ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
 ## [1.15.2]
 
