@@ -26,9 +26,9 @@ export function parseDerivationPath(path: string): ParsedDerivationPath {
     );
   }
 
-  const purpose = parts[1]?.replace("'", '');
-  const coinType = parts[2]?.replace("'", '');
-  const accountSegment = parts[3]?.replace("'", '');
+  const purpose = parts[1]?.replaceAll("'", '');
+  const coinType = parts[2]?.replaceAll("'", '');
+  const accountSegment = parts[3]?.replaceAll("'", '');
 
   if (purpose !== '84') {
     throw new FormatError(
