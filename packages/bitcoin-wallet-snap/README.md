@@ -22,8 +22,6 @@ yarn start
 > [!WARNING]  
 > When snap updates you will need to still reconnect from the dapp to see changes
 
-## Building
+## Contributing
 
-```bash
-yarn build:snap
-```
+This package is part of the Internal Snaps monorepo. See the [contribution processes](../../docs/processes/) for development, testing, building, and release instructions.
