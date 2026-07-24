@@ -22,6 +22,7 @@ ignores:
   - 'eslint-config-*'
   - 'eslint-plugin-*'
   - 'jest-silent-reporter'
+  - 'jest-transform-stub'
   - 'prettier-plugin-packagejson'
   - 'typescript-eslint'
   # Jest environment referenced in `jest.config.scripts.js`
