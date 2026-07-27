@@ -242,8 +242,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     const account = await this.#accountsUseCases.get(accountId);
 
-    const accountType = this.#defaultAddressType;
-    if (accountType !== 'p2wpkh') {
+    const addressType = account.addressType ?? this.#defaultAddressType;
+    if (addressType !== this.#defaultAddressType) {
       throw new SnapError(
         `Only native segwit (${BtcAccountType.P2wpkh}) accounts are supported for private key export`,
       );
