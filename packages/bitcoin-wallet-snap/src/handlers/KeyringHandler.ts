@@ -241,21 +241,23 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     const account = await this.#accountsUseCases.get(accountId);
 
-    const entropy = await this.#snapClient.getPrivateEntropy(
-      // Export the private key for address index 0 (the primary address).
-      account.derivationPath.concat(['0', '0']),
-    );
-
-    if (!entropy.privateKey) {
-      throw new Error('Failed to get private entropy');
-    }
+    let privateKey;
 
     try {
+      const entropy = await this.#snapClient.getPrivateEntropy(
+        // Export the private key for address index 0 (the primary address).
+        account.derivationPath.concat(['0', '0']),
+      );
+
+      if (!entropy.privateKey) {
+        throw new Error('Failed to get private entropy');
+      }
+      privateKey = entropy.privateKey;
       // Private key is returned in "0x..." format; transform to WIF (Base58Check).
       const wifPrivateKey = encode({
         version: account.network === 'bitcoin' ? 128 : 239, // 128 mainnet, 239 testnets
         // eslint-disable-next-line no-restricted-globals
-        privateKey: Buffer.from(entropy.privateKey.slice(2), 'hex'),
+        privateKey: Buffer.from(privateKey.slice(2), 'hex'),
         compressed: true,
       });
 
