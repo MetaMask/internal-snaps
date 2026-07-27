@@ -632,7 +632,9 @@ describe('KeyringHandler', () => {
           compressed: boolean;
         }) => string;
       }>('wif');
-      jest.requireMock<{ encode: jest.Mock }>('wif').encode.mockImplementation(realEncode);
+      jest
+        .requireMock<{ encode: jest.Mock }>('wif')
+        .encode.mockImplementation(realEncode);
 
       // Known 32-byte secp256k1 private key (from Bitcoin wiki WIF test vector)
       const privateKeyHex =
