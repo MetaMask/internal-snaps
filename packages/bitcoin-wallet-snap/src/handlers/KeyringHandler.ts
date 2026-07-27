@@ -3,6 +3,7 @@ import { Amount } from '@metamask/bitcoindevkit';
 import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
+  BtcAccountType,
 } from '@metamask/keyring-api';
 import type {
   Balance,
@@ -240,6 +241,13 @@ export class KeyringHandler implements KeyringSnapRpc {
     }
 
     const account = await this.#accountsUseCases.get(accountId);
+
+    const accountType = account.addressType ?? 'p2wpkh';
+    if (accountType !== 'p2wpkh') {
+      throw new SnapError(
+        `Only native segwit (${BtcAccountType.P2wpkh}) accounts are supported for private key export`,
+      );
+    }
 
     let privateKey;
 
