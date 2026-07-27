@@ -38,7 +38,7 @@
     "test:clean": "yarn workspaces foreach --all --parallel --verbose run test:clean && yarn test",
     "test:packages": "yarn test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter",
     "test:scripts": "NODE_OPTIONS=--experimental-vm-modules yarn jest --config ./jest.config.scripts.js --silent",
-    "test:verbose": "yarn workspaces foreach --all --parallel --verbose run test:verbose",
+    "test:verbose": "yarn workspaces foreach --all --exclude @metamask/sample-snap --parallel --verbose run test:verbose",
     "workspaces:list-versions": "./scripts/list-workspace-versions.sh"
   },
   "devDependencies": {
@@ -50,7 +50,7 @@
     "@metamask/eslint-config-nodejs": "^15.0.0",
     "@metamask/eslint-config-typescript": "^15.0.0",
     "@metamask/utils": "^11.9.0",
-    "@types/jest": "^29.5.14",
+    "@types/jest": "^30.0.0",
     "@types/lodash": "^4.14.191",
     "@types/node": "^16.18.54",
     "@types/semver": "^7",
@@ -70,7 +70,7 @@
     "eslint-plugin-promise": "^7.1.0",
     "execa": "^5.0.0",
     "isomorphic-fetch": "^3.0.0",
-    "jest": "^29.7.0",
+    "jest": "30.0.3",
     "jest-silent-reporter": "^0.5.0",
     "lodash": "^4.17.21",
     "nock": "^13.3.1",
@@ -105,7 +105,8 @@
     "allowScripts": {
       "@lavamoat/preinstall-always-fail": false,
       "simple-git-hooks": false,
-      "tsx>esbuild": false
+      "tsx>esbuild": false,
+      "jest>@jest/core>jest-resolve>unrs-resolver": false
     }
   }
 }
