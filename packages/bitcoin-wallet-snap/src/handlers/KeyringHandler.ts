@@ -3,7 +3,6 @@ import { Amount } from '@metamask/bitcoindevkit';
 import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
-  BtcAccountType,
 } from '@metamask/keyring-api';
 import type {
   Balance,
