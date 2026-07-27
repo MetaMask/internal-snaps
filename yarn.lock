@@ -1723,7 +1723,7 @@ __metadata:
     "@metamask/bitcoindevkit": "npm:^0.1.13"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^23.7.0"
-    "@metamask/keyring-snap-sdk": "npm:^9.2.0"
+    "@metamask/keyring-snap-sdk": "npm:^9.2.1"
     "@metamask/slip44": "npm:^4.2.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
@@ -2027,7 +2027,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/keyring-snap-sdk@npm:^9.2.0":
+"@metamask/keyring-snap-sdk@npm:^9.2.1":
   version: 9.2.1
   resolution: "@metamask/keyring-snap-sdk@npm:9.2.1"
   dependencies:
