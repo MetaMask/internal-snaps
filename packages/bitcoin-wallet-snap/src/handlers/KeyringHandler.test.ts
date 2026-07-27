@@ -613,6 +613,50 @@ describe('KeyringHandler', () => {
       expect(error.message).not.toContain('SENSITIVE');
       expect(error.message).toContain('exporting account');
     });
+
+    it('throws when account type is not p2wpkh', async () => {
+      mockAccounts.get.mockResolvedValue(
+        mock<BitcoinAccount>({ ...mockAccount, addressType: 'p2pkh' }),
+      );
+
+      await expect(handler.exportAccount(accountId)).rejects.toThrow(
+        'Only p2wpkh accounts are supported for private key export',
+      );
+    });
+
+    it('produces a valid WIF-encoded private key using the real encoder', async () => {
+      const { encode: realEncode } = jest.requireActual<{
+        encode: (wif: {
+          version: number;
+          privateKey: Uint8Array;
+          compressed: boolean;
+        }) => string;
+      }>('wif');
+      jest.requireMock<{ encode: jest.Mock }>('wif').encode.mockImplementation(realEncode);
+
+      // Known 32-byte secp256k1 private key (from Bitcoin wiki WIF test vector)
+      const privateKeyHex =
+        '0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d';
+      mockSnapClient.getPrivateEntropy.mockResolvedValue({
+        privateKey: `0x${privateKeyHex}`,
+      } as never);
+
+      const expectedWif = realEncode({
+        version: 0x80, // mainnet — matches mockAccount.network === 'bitcoin'
+        privateKey: Buffer.from(privateKeyHex, 'hex'),
+        compressed: true,
+      });
+
+      const result = await handler.exportAccount(accountId);
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'base58',
+        privateKey: expectedWif,
+      });
+      // Mainnet compressed WIF always starts with 'K' or 'L'
+      expect(result.privateKey).toMatch(/^[KL]/u);
+    });
   });
 
   describe('getAccountBalances', () => {

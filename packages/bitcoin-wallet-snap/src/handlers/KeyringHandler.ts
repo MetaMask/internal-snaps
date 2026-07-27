@@ -245,11 +245,9 @@ export class KeyringHandler implements KeyringSnapRpc {
     const addressType = account.addressType ?? this.#defaultAddressType;
     if (addressType !== this.#defaultAddressType) {
       throw new SnapError(
-        `Only native segwit (${BtcAccountType.P2wpkh}) accounts are supported for private key export`,
+        `Only ${this.#defaultAddressType} accounts are supported for private key export`,
       );
     }
-
-    let privateKey;
 
     try {
       const entropy = await this.#snapClient.getPrivateEntropy(
@@ -260,10 +258,10 @@ export class KeyringHandler implements KeyringSnapRpc {
       if (!entropy.privateKey) {
         throw new Error('Failed to get private entropy');
       }
-      privateKey = entropy.privateKey;
+      const { privateKey } = entropy;
       // Private key is returned in "0x..." format; transform to WIF (Base58Check).
       const wifPrivateKey = encode({
-        version: account.network === 'bitcoin' ? 128 : 239, // 128 mainnet, 239 testnets
+        version: account.network === 'bitcoin' ? 0x80 : 0xef, // 0x80 mainnet, 0xef testnets
         // eslint-disable-next-line no-restricted-globals
         privateKey: Buffer.from(privateKey.slice(2), 'hex'),
         compressed: true,
