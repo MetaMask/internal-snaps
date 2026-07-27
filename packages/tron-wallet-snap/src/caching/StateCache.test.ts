@@ -1,7 +1,7 @@
 /* eslint-disable jest/prefer-strict-equal */
-/* eslint-disable @typescript-eslint/naming-convention */
-import { StateCache } from './StateCache';
+
 import { InMemoryState } from '../services/state/InMemoryState';
+import { StateCache } from './StateCache';
 
 describe('StateCache', () => {
   describe('constructor', () => {

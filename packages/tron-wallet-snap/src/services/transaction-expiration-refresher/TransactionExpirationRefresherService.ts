@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import type { TronWeb, Types } from 'tronweb';
 import type { Block } from 'tronweb/lib/esm/types/APIResponse';
 
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+import type { Network } from '../../constants';
 import type {
   HasFreshExpirationMetadataParams,
   HasFreshExpirationMetadataResult,
@@ -10,8 +11,6 @@ import type {
   TransactionRawDataWithExpirationMetadata,
   TransactionWithMetadata,
 } from './types';
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import type { Network } from '../../constants';
 
 /**
  * TRON block time is 3 seconds, so refresh if expiration is within the

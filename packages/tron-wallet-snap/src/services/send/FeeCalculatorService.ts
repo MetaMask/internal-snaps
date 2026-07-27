@@ -3,8 +3,6 @@ import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
-import { FeeUnavailableError } from './errors';
-import type { ComputeFeeResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type {
@@ -12,7 +10,7 @@ import type {
   ContractInfo,
 } from '../../clients/tron-http/types';
 import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
-import { type TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
 import {
   ACCOUNT_ACTIVATION_FEE_TRX,
@@ -26,6 +24,8 @@ import {
 } from '../../constants';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
+import { FeeUnavailableError } from './errors';
+import type { ComputeFeeResult } from './types';
 
 /**
  * Bandwidth calculation constants.

@@ -15,26 +15,6 @@ import {
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types } from 'tronweb';
 
-import { ClientRequestMethod, SendErrorCodes } from './types';
-import {
-  ClaimTrxStakingRewardsRequestStruct,
-  ClaimUnstakedTrxRequestStruct,
-  ComputeFeeRequestStruct,
-  ComputeFeeResponseStruct,
-  ComputeStakeFeeRequestStruct,
-  OnAddressInputRequestStruct,
-  OnAmountInputRequestStruct,
-  OnConfirmSendRequestStruct,
-  OnConfirmStakeRequestStruct,
-  OnConfirmUnstakeRequestStruct,
-  OnStakeAmountInputRequestStruct,
-  OnUnstakeAmountInputRequestStruct,
-  parseProofOfOwnershipMessage,
-  parseRewardsMessage,
-  SignAndSendTransactionRequestStruct,
-  SignProofOfOwnershipRequestStruct,
-  SignRewardsMessageRequestStruct,
-} from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
@@ -67,6 +47,26 @@ import {
   assertTransactionStructure,
 } from '../../validation/transaction';
 import { BackgroundEventMethod } from '../cronjob';
+import { ClientRequestMethod, SendErrorCodes } from './types';
+import {
+  ClaimTrxStakingRewardsRequestStruct,
+  ClaimUnstakedTrxRequestStruct,
+  ComputeFeeRequestStruct,
+  ComputeFeeResponseStruct,
+  ComputeStakeFeeRequestStruct,
+  OnAddressInputRequestStruct,
+  OnAmountInputRequestStruct,
+  OnConfirmSendRequestStruct,
+  OnConfirmStakeRequestStruct,
+  OnConfirmUnstakeRequestStruct,
+  OnStakeAmountInputRequestStruct,
+  OnUnstakeAmountInputRequestStruct,
+  parseProofOfOwnershipMessage,
+  parseRewardsMessage,
+  SignAndSendTransactionRequestStruct,
+  SignProofOfOwnershipRequestStruct,
+  SignRewardsMessageRequestStruct,
+} from './validation';
 
 type TransactionRawData = Types.Transaction['raw_data'] & {
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -265,9 +265,9 @@ export class ClientRequestHandler {
        */
       visible: false,
       txID,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       raw_data: rawData,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       raw_data_hex: rawDataHex,
     };
 
@@ -436,7 +436,6 @@ export class ClientRequestHandler {
        * sent.
        */
       const totalTrxToSpend =
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
         assetId === nativeTokenId ? valueBN.plus(trxFee) : trxFee;
 
       if (totalTrxToSpend.isGreaterThan(nativeTokenBalance)) {
@@ -664,9 +663,9 @@ export class ClientRequestHandler {
     const transaction = {
       visible: false,
       txID,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       raw_data: rawData,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       raw_data_hex: rawDataHex,
     };
 
@@ -1198,7 +1197,6 @@ export class ClientRequestHandler {
     rawData.fee_limit = feeLimit;
     // Re-serialize rawData to get the updated rawDataHex
     const transactionPb = tronWeb.utils.transaction.txJsonToPb({
-      // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data: rawData,
     });
     return tronWeb.utils.transaction.txPbToRawDataHex(transactionPb);

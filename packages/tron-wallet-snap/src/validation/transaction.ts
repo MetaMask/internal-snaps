@@ -22,7 +22,7 @@ export const TransactionRawDataStruct = define<Types.Transaction['raw_data']>(
   (value) => {
     const rawData = value as Types.Transaction['raw_data'];
 
-    if (!rawData?.contract || rawData.contract.length !== 1) {
+    if (rawData?.contract?.length !== 1) {
       return 'must contain exactly one contract';
     }
 

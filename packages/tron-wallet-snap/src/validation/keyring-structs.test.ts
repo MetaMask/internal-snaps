@@ -2,12 +2,12 @@ import { assert, StructError } from '@metamask/superstruct';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import { Network } from '../constants';
+import { TronMultichainMethod } from '../handlers/keyring-types';
 import {
   SignMessageRequestStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
 } from './structs';
-import { TronMultichainMethod } from '../handlers/keyring-types';
 
 // Helper function to convert string to base64
 const toBase64 = (str: string): string => bytesToBase64(stringToBytes(str));

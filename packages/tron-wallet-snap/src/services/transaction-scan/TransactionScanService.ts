@@ -1,14 +1,6 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { BigNumber } from 'bignumber.js';
 import type { Types } from 'tronweb';
 
-import type {
-  TransactionScanAssetChange,
-  TransactionScanError,
-  TransactionScanResult,
-  TransactionScanValidation,
-} from './types';
-import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type {
   AssetChange,
@@ -20,6 +12,13 @@ import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
 import { isTransactionWellFormed } from '../../validation/transaction';
+import type {
+  TransactionScanAssetChange,
+  TransactionScanError,
+  TransactionScanResult,
+  TransactionScanValidation,
+} from './types';
+import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
 
 const METAMASK_ORIGIN = 'metamask';
 const METAMASK_ORIGIN_URL = 'https://metamask.io';

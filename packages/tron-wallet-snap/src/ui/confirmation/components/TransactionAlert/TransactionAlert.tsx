@@ -6,17 +6,18 @@ import {
   Link,
   Skeleton,
   Text as SnapText,
-  type BannerProps,
 } from '@metamask/snaps-sdk/jsx';
+import type { BannerProps } from '@metamask/snaps-sdk/jsx';
 
-import { getErrorMessage } from './getErrorMessage';
 import type {
   TransactionScanError,
   TransactionScanValidation,
 } from '../../../../services/transaction-scan/types';
-import { FetchStatus, type Preferences } from '../../../../types/snap';
+import { FetchStatus } from '../../../../types/snap';
+import type { Preferences } from '../../../../types/snap';
 import { i18n } from '../../../../utils/i18n';
 import { isFetchStatusLoadingOrFetching } from '../../../../utils/isFetchStatusLoadingOrFetching';
+import { getErrorMessage } from './getErrorMessage';
 
 export type TransactionAlertProps = {
   preferences: Preferences;

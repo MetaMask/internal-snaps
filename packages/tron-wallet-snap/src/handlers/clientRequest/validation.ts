@@ -18,7 +18,6 @@ import {
   JsonRpcVersionStruct,
 } from '@metamask/utils';
 
-import { ClientRequestMethod, SendErrorCodes } from './types';
 import { NativeCaipAssetTypeStruct } from '../../services/assets/types';
 import {
   Base64Struct,
@@ -27,6 +26,7 @@ import {
   TronAddressStruct,
   UuidStruct,
 } from '../../validation/structs';
+import { ClientRequestMethod, SendErrorCodes } from './types';
 
 /**
  * signAndSendTransaction request/response validation.

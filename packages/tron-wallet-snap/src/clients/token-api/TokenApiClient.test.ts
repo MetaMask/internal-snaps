@@ -1,8 +1,8 @@
-import { TokenApiClient } from './TokenApiClient';
 import { KnownCaip19Id, Network, Networks } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
 import { mockLogger } from '../../utils/mockLogger';
+import { TokenApiClient } from './TokenApiClient';
 
 const MOCK_METADATA_RESPONSE = [
   {

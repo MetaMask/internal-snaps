@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Types } from 'tronweb';
 
-import { extractScanParametersFromTransactionData } from './utils';
 import type {
   TransferAssetContractParameter,
   TransferContractParameter,
 } from '../trongrid/types';
+import { extractScanParametersFromTransactionData } from './utils';
 
 describe('SecurityAlertsApiClient utils', () => {
   describe('extractScanParametersFromTransactionData', () => {

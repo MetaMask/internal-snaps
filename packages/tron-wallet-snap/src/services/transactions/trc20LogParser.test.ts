@@ -1,14 +1,14 @@
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 
+import { Network } from '../../constants';
+import type { TokenCaipAssetType } from '../assets/types';
 import {
   buildContractTransactionInfos,
   getReconstructedTransferAssetTypes,
   parseTransferLogs,
   TRC20_TRANSFER_EVENT_SIGNATURE,
-  type ParsedTransferLog,
 } from './trc20LogParser';
-import { Network } from '../../constants';
-import type { TokenCaipAssetType } from '../assets/types';
+import type { ParsedTransferLog } from './trc20LogParser';
 
 type EventLog = { address: string; topics: string[]; data: string };
 
@@ -236,16 +236,15 @@ describe('buildContractTransactionInfos', () => {
 
     expect(result).toStrictEqual([
       {
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         transaction_id: TX_ID,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         token_info: {
           symbol: 'USDT',
           address: USDT_CONTRACT_BASE58,
           decimals: 6,
           name: 'Tether USD',
         },
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         block_timestamp: BLOCK_TIMESTAMP,
         from: SENDER_BASE58,
         to: RECIPIENT_BASE58,

@@ -21,21 +21,20 @@ import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
 
-import type { AccountsRepository } from './AccountsRepository';
-import type { CreateAccountOptions } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
-import {
-  asStrictKeyringAccount,
-  type TronKeyringAccount,
-} from '../../entities/keyring-account';
+import { asStrictKeyringAccount } from '../../entities/keyring-account';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
-import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import type { ILogger } from '../../utils/logger';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { TransactionsService } from '../transactions/TransactionsService';
+import type { AccountsRepository } from './AccountsRepository';
+import type { CreateAccountOptions } from './types';
 
 /**
  * Elliptic curve for TRON (same as Ethereum)

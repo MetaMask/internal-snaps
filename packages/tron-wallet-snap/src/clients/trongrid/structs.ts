@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -125,7 +124,6 @@ export const ContractInfoStruct = type({
 });
 
 export const InternalTransactionCallValueStruct = type({
-  // eslint-disable-next-line id-length
   _: optional(number()),
   callValue: optional(min(number(), 0)),
   tokenId: optional(string()),

@@ -10,7 +10,8 @@ import {
   TronMultichainErrors,
   TronMultichainMethod,
 } from '../../handlers/keyring-types';
-import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import type { ILogger } from '../../utils/logger';
 import {
   ResolveAccountAddressRequestStruct,
   ResolveAccountAddressResponseStruct,
@@ -230,9 +231,9 @@ export class WalletService {
       const transaction = {
         visible: false,
         txID,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         raw_data: rawData,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         raw_data_hex: rawDataHex,
       };
 

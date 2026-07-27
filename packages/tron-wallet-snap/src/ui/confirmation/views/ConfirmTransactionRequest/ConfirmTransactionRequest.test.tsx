@@ -1,11 +1,10 @@
+import { Network } from '../../../../constants';
+import { SimulationStatus } from '../../../../services/transaction-scan/types';
+import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
+import { FetchStatus } from '../../../../types/snap';
+import type { Preferences } from '../../../../types/snap';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from './types';
-import { Network } from '../../../../constants';
-import {
-  SimulationStatus,
-  type TransactionScanResult,
-} from '../../../../services/transaction-scan/types';
-import { FetchStatus, type Preferences } from '../../../../types/snap';
 
 // Mock i18n
 jest.mock('../../../../utils/i18n', () => ({

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { add0x } from '@metamask/utils';
 import { TronWeb, Types } from 'tronweb';
 

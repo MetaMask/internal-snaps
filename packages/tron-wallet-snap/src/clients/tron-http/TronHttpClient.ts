@@ -1,5 +1,9 @@
 import { assert } from '@metamask/superstruct';
 
+import type { Network } from '../../constants';
+import type { ConfigProvider } from '../../services/config';
+import { buildUrl } from '../../utils/buildUrl';
+import { hexToString } from '../../utils/hex';
 import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
@@ -21,10 +25,6 @@ import type {
   TriggerConstantContractRequest,
   TriggerConstantContractResponse,
 } from './types';
-import type { Network } from '../../constants';
-import type { ConfigProvider } from '../../services/config';
-import { buildUrl } from '../../utils/buildUrl';
-import { hexToString } from '../../utils/hex';
 
 /**
  * Client for Tron JSON-RPC HTTP endpoints (not the REST API)

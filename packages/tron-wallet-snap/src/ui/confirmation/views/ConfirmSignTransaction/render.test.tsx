@@ -1,7 +1,6 @@
 import type { FeeType, KeyringRequest } from '@metamask/keyring-api';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
-import { render } from './render';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { SnapExecutionContext } from '../../../../context';
@@ -19,11 +18,13 @@ import type {
   TransactionScanService,
 } from '../../../../services/transaction-scan';
 import { SimulationStatus } from '../../../../services/transaction-scan';
-import { FetchStatus, type Preferences } from '../../../../types/snap';
+import { FetchStatus } from '../../../../types/snap';
+import type { Preferences } from '../../../../types/snap';
+import { render } from './render';
 
 // Mock the context module
 jest.mock('../../../../context', () => ({
-  __esModule: true, // eslint-disable-line @typescript-eslint/naming-convention
+  __esModule: true,
   default: {
     snapClient: null,
     transactionScanService: null,
@@ -269,11 +270,10 @@ describe('ConfirmSignTransaction render', () => {
               type: 'TriggerSmartContract',
               parameter: {
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
+
                   to_address: '4132F9C0C487F21716B7A8F12906B752889902655',
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
+
                   call_value: 100000,
                 },
               },
@@ -734,11 +734,10 @@ describe('ConfirmSignTransaction render', () => {
             type: 'TriggerSmartContract',
             parameter: {
               value: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+
                 contract_address: '4132F9C0C487F21716B7A8F12906B752889902655',
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+
                 call_value: 100000,
               },
             },

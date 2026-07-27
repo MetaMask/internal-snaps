@@ -4,10 +4,10 @@
   "proposedName": "Tron",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/snap-tron-wallet.git"
+    "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "SoFlTE0hiN9rFDWlAiCCSyn1iSBvJwvlfi1vK/qrufo=",
+    "shasum": "JWrxUhJRaL9TG4mjDWY9ekDzcmH+JfiEXdeybddxAko=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -50,6 +50,6 @@
       "scopes": ["tron:728126428"]
     }
   },
-  "platformVersion": "10.3.0",
+  "platformVersion": "11.1.1",
   "manifestVersion": "0.1"
 }

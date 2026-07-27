@@ -5,6 +5,15 @@ import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
+import type { ICache } from '../../caching/ICache';
+import { useCache } from '../../caching/useCache';
+import { SPECIAL_ASSETS } from '../../constants';
+import type { ConfigProvider } from '../../services/config';
+import { buildUrl } from '../../utils/buildUrl';
+import type { ILogger } from '../../utils/logger';
+import logger from '../../utils/logger';
+import type { Serializable } from '../../utils/serialization/types';
+import { UrlStruct } from '../../validation/structs';
 import type {
   FiatExchangeRatesResponse,
   GetHistoricalPricesParams,
@@ -19,15 +28,6 @@ import {
   SpotPricesStruct,
   VsCurrencyParamStruct,
 } from './types';
-import type { ICache } from '../../caching/ICache';
-import { useCache } from '../../caching/useCache';
-import { SPECIAL_ASSETS } from '../../constants';
-import type { ConfigProvider } from '../../services/config';
-import { buildUrl } from '../../utils/buildUrl';
-import type { ILogger } from '../../utils/logger';
-import logger from '../../utils/logger';
-import type { Serializable } from '../../utils/serialization/types';
-import { UrlStruct } from '../../validation/structs';
 
 export class PriceApiClient {
   readonly #fetch: typeof globalThis.fetch;

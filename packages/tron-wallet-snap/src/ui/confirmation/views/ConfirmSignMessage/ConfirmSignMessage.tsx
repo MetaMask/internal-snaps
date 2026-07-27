@@ -13,12 +13,13 @@ import {
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 
-import { ConfirmSignMessageFormNames } from './events';
-import { Networks, type Network } from '../../../../constants';
+import { Networks } from '../../../../constants';
+import type { Network } from '../../../../constants';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import type { Locale } from '../../../../utils/i18n';
 import { i18n } from '../../../../utils/i18n';
+import { ConfirmSignMessageFormNames } from './events';
 
 export type ConfirmSignMessageProps = {
   message: string;

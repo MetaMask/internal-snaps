@@ -49,7 +49,7 @@ jest.mock('../../ui/confirmation/utils/getIconUrlForKnownAsset', () => ({
   getIconUrlForKnownAsset: jest.fn(() => 'mock-icon-url'),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { ConfirmationHandler } = require('./ConfirmationHandler');
 
 const mockGetIconUrlForKnownAsset = jest.mocked(getIconUrlForKnownAsset);
@@ -126,7 +126,7 @@ async function withConfirmationHandler<ReturnValue>(
     transactionBuilder: {
       withdrawExpireUnfreeze: jest
         .fn()
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         .mockResolvedValue({ raw_data: {} }),
     },
     utils: {
@@ -285,7 +285,7 @@ describe('ConfirmationHandler', () => {
 
           expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
             scope: Network.Mainnet,
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             transaction: { raw_data: {} },
             availableEnergy: ZERO,
             availableBandwidth: ZERO,
@@ -329,7 +329,7 @@ describe('ConfirmationHandler', () => {
 
           expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
             scope: Network.Mainnet,
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             transaction: { raw_data: {} },
             availableEnergy: new BigNumber('3000'),
             availableBandwidth: new BigNumber('5000'),
@@ -403,9 +403,9 @@ describe('ConfirmationHandler', () => {
 
     const mockTransactionRawData = {
       contract: [{ parameter: { value: {} }, type: 'TransferContract' }],
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       ref_block_bytes: 'abcd',
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       ref_block_hash: '12345678',
       expiration: 1700000000000,
       timestamp: 1699999000000,
@@ -533,9 +533,9 @@ describe('ConfirmationHandler', () => {
 
     const rawData = {
       contract: [{ parameter: { value: {} }, type: 'TransferContract' }],
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       ref_block_bytes: 'abcd',
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       ref_block_hash: '12345678',
       expiration: 1_700_000_000_000,
       timestamp: 1_699_999_000_000,

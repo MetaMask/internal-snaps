@@ -1,8 +1,5 @@
-import {
-  BIP44Node,
-  type JsonBIP44Node,
-  type UnhardenedBIP32Node,
-} from '@metamask/key-tree';
+import { BIP44Node } from '@metamask/key-tree';
+import type { JsonBIP44Node, UnhardenedBIP32Node } from '@metamask/key-tree';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';

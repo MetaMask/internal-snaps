@@ -14,8 +14,6 @@ import {
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 
-import { ConfirmSignAndSendTransactionFormNames } from './events';
-import { type ConfirmTransactionRequestContext } from './types';
 import { Networks } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
@@ -25,6 +23,8 @@ import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
 import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
+import { ConfirmSignAndSendTransactionFormNames } from './events';
+import type { ConfirmTransactionRequestContext } from './types';
 
 export const ConfirmTransactionRequest = ({
   context: {

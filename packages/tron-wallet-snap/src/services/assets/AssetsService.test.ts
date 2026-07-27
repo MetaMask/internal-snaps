@@ -2,19 +2,19 @@ import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 
-import type { AssetsRepository } from './AssetsRepository';
-import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources, TronHttpClient } from '../../clients/tron-http';
 import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
-import { type TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { mockLogger } from '../../utils/mockLogger';
+import type { AssetsRepository } from './AssetsRepository';
+import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
 /**
  * Subset of State methods.
@@ -46,10 +46,9 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),
 }));
 
-// eslint-disable-next-line no-restricted-globals
 (global as any).snap = {};
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
 
 const mockAccount: KeyringAccount = {
@@ -96,7 +95,7 @@ const createSpotPrices = (
  * @param overrides - Partial TronAccount with required address.
  * @returns A complete TronAccount.
  */
-/* eslint-disable @typescript-eslint/naming-convention */
+
 const createMockTronAccount = (
   overrides: Partial<TronAccount> & { address: string },
 ): TronAccount => ({
@@ -119,7 +118,6 @@ const createMockTronAccount = (
   net_window_optimized: false,
   ...overrides,
 });
-/* eslint-enable @typescript-eslint/naming-convention */
 
 // Convenience alias used by bandwidth/energy tests
 const minimalTronAccount = createMockTronAccount({
@@ -335,7 +333,6 @@ describe('AssetsService', () => {
             const expectedTrc20AssetType = `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
             const trc20Asset = assets.find(
               (asset: AssetEntity) =>
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
                 asset.assetType === expectedTrc20AssetType,
             );
             expect(trc20Asset).toBeDefined();
@@ -490,14 +487,12 @@ describe('AssetsService', () => {
 
             const usdtAssetType = `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
             const usdtAsset = assets.find(
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
               (asset: AssetEntity) => asset.assetType === usdtAssetType,
             );
             expect(usdtAsset).toBeDefined();
 
             const spamAssetType = `${String(Network.Mainnet)}/trc20:TSpamToken123456789`;
             const spamAsset = assets.find(
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
               (asset: AssetEntity) => asset.assetType === spamAssetType,
             );
             expect(spamAsset).toBeUndefined();
@@ -556,7 +551,6 @@ describe('AssetsService', () => {
             expect(trxAsset?.rawAmount).toBe('0');
 
             const trc20Asset = assets.find(
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
               (asset: AssetEntity) => asset.assetType === trc20AssetId,
             );
             expect(trc20Asset).toBeDefined();
@@ -827,7 +821,6 @@ describe('AssetsService', () => {
       });
     });
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     describe('TRX ready for withdrawal', () => {
       it('returns zero balance when account has no unfrozenV2 data', async () => {
         await withAssetsService(
@@ -1001,9 +994,7 @@ describe('AssetsService', () => {
         );
       });
     });
-    /* eslint-enable @typescript-eslint/naming-convention */
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     describe('TRX in lock period', () => {
       it('returns zero balance when account has no unfrozenV2 data', async () => {
         await withAssetsService(
@@ -1216,7 +1207,6 @@ describe('AssetsService', () => {
         );
       });
     });
-    /* eslint-enable @typescript-eslint/naming-convention */
 
     describe('energy', () => {
       it('returns 0 when account has no resources', async () => {

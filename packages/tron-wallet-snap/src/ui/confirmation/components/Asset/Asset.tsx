@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import type { CaipAssetType, ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Box,

@@ -3,14 +3,13 @@
 import { assert } from '@metamask/superstruct';
 import { Types } from 'tronweb';
 
-import {
-  SecurityAlertResponseStruct,
-  type SecurityAlertSimulationValidationResponse,
-} from './structs';
-import { extractScanParametersFromTransactionData } from './utils';
 import type { ConfigProvider } from '../../services/config';
-import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import type { ILogger } from '../../utils/logger';
 import { isTransactionWellFormed } from '../../validation/transaction';
+import { SecurityAlertResponseStruct } from './structs';
+import type { SecurityAlertSimulationValidationResponse } from './structs';
+import { extractScanParametersFromTransactionData } from './utils';
 
 /**
  * Client for interacting with the Security Alerts API for security scanning.

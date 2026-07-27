@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Json } from '@metamask/snaps-sdk';
 import { BigNumber } from 'bignumber.js';
 import { cloneDeepWith } from 'lodash';

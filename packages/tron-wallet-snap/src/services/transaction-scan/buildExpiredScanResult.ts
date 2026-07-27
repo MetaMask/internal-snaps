@@ -1,5 +1,6 @@
 import { TRANSACTION_TAPOS_EXPIRED } from './isTransactionDeadlinePassedError';
-import { SimulationStatus, type TransactionScanResult } from './types';
+import { SimulationStatus } from './types';
+import type { TransactionScanResult } from './types';
 
 /**
  * A scan result that surfaces a locally-detected transaction expiry (Tron TAPOS

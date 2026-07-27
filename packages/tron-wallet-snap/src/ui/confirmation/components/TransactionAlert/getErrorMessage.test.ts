@@ -1,7 +1,7 @@
-import { getErrorMessage } from './getErrorMessage';
 import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import type { TransactionScanError } from '../../../../services/transaction-scan/types';
 import type { Preferences } from '../../../../types/snap';
+import { getErrorMessage } from './getErrorMessage';
 
 describe('getErrorMessage', () => {
   const mockPreferences: Preferences = {

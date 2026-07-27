@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Infer } from '@metamask/superstruct';
 import {
   array,

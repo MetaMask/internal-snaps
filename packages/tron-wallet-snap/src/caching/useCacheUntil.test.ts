@@ -1,10 +1,7 @@
-import type { ICache } from './ICache';
-import {
-  useCacheUntil,
-  type CacheUntilOptions,
-  type ResultWithExpiry,
-} from './useCacheUntil';
 import type { Serializable } from '../utils/serialization/types';
+import type { ICache } from './ICache';
+import { useCacheUntil } from './useCacheUntil';
+import type { CacheUntilOptions, ResultWithExpiry } from './useCacheUntil';
 
 describe('useCacheUntil', () => {
   // Spy to check if the original function was executed or not

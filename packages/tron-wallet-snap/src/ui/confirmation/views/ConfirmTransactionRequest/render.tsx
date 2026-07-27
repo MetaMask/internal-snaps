@@ -1,11 +1,6 @@
 import type { DialogResult, Json } from '@metamask/snaps-sdk';
 import type { Types } from 'tronweb';
 
-import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
-import {
-  CONFIRM_TRANSACTION_INTERFACE_NAME,
-  type ConfirmTransactionRequestContext,
-} from './types';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
@@ -20,6 +15,9 @@ import type {
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
+import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
+import { CONFIRM_TRANSACTION_INTERFACE_NAME } from './types';
+import type { ConfirmTransactionRequestContext } from './types';
 
 export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   scope: Network.Mainnet,

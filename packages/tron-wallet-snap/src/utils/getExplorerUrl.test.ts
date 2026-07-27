@@ -4,11 +4,10 @@ import { getExplorerUrl } from './getExplorerUrl';
 describe('getExplorerUrl', () => {
   // Set up environment variables for testing
   beforeAll(() => {
-    // eslint-disable-next-line no-restricted-globals
     process.env.EXPLORER_MAINNET_BASE_URL = 'https://tronscan.org';
-    // eslint-disable-next-line no-restricted-globals
+
     process.env.EXPLORER_NILE_BASE_URL = 'https://nile.tronscan.org';
-    // eslint-disable-next-line no-restricted-globals
+
     process.env.EXPLORER_SHASTA_BASE_URL = 'https://shasta.tronscan.org';
   });
 

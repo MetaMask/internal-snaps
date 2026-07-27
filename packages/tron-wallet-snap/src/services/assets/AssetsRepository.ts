@@ -24,7 +24,7 @@ export class AssetsRepository {
     assetType: string,
   ): Promise<AssetEntity | null> {
     const assets = await this.getByAccountId(keyringAccountId);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+
     return assets.find((asset) => asset.assetType === assetType) ?? null;
   }
 
@@ -45,7 +45,6 @@ export class AssetsRepository {
     // We iterate through the assetTypes to preserve the order
     for (const assetType of assetTypes) {
       const asset = assets.find(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
         (currAsset) => currAsset.assetType === assetType,
       );
       result.push(asset ?? null);

@@ -11,9 +11,6 @@ import type {
   FreezeBalanceV2Contract,
 } from 'tronweb/lib/esm/types';
 
-import { ClientRequestHandler } from './clientRequest';
-import { ClientRequestMethod, SendErrorCodes } from './types';
-import type { OnAmountInputRequestStruct } from './validation';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
@@ -42,6 +39,9 @@ import type { TransactionsService } from '../../services/transactions/Transactio
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod } from '../cronjob';
+import { ClientRequestHandler } from './clientRequest';
+import { ClientRequestMethod, SendErrorCodes } from './types';
+import type { OnAmountInputRequestStruct } from './validation';
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -285,9 +285,8 @@ describe('ClientRequestHandler', () => {
       hashSegment?: string;
     }) => ({
       blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       block_header: {
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         raw_data: {
           number,
           timestamp,
@@ -412,7 +411,6 @@ describe('ClientRequestHandler', () => {
               type: 'TriggerSmartContract',
               parameter: {
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: TronWeb.address.toHex(
                     'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
                   ),
@@ -427,9 +425,9 @@ describe('ClientRequestHandler', () => {
 
         const signedTransaction = {
           txID: 'test-tx-id',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: mockRawData,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'test-hex',
           signature: ['test-signature'],
         };
@@ -451,9 +449,7 @@ describe('ClientRequestHandler', () => {
         expect(mockRawData).toHaveProperty('fee_limit', FEE_LIMIT);
         expect(mockTronWeb.utils.transaction.txJsonToPb).toHaveBeenCalledWith(
           expect.objectContaining({
-            // eslint-disable-next-line @typescript-eslint/naming-convention
             raw_data: expect.objectContaining({
-              // eslint-disable-next-line @typescript-eslint/naming-convention
               fee_limit: FEE_LIMIT,
             }),
           }),
@@ -514,7 +510,6 @@ describe('ClientRequestHandler', () => {
               type: 'TriggerSmartContract',
               parameter: {
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: TronWeb.address.toHex(
                     'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
                   ),
@@ -522,9 +517,9 @@ describe('ClientRequestHandler', () => {
               },
             },
           ],
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           ref_block_bytes: '0000',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           ref_block_hash: '0000000000000000',
           expiration: currentTimestamp - 1,
           timestamp: currentTimestamp - 60_000,
@@ -617,7 +612,6 @@ describe('ClientRequestHandler', () => {
               type: 'TriggerSmartContract',
               parameter: {
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: TronWeb.address.toHex(
                     'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
                   ),
@@ -632,9 +626,9 @@ describe('ClientRequestHandler', () => {
         const freshTransaction = {
           visible: false,
           txID: 'fresh-tx-id',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: mockRawData,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'fresh-raw-data-hex',
         };
         mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
@@ -658,7 +652,7 @@ describe('ClientRequestHandler', () => {
             scope,
             transaction: expect.objectContaining({
               txID: expect.any(String),
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               raw_data: mockRawData,
             }),
           }),
@@ -702,12 +696,10 @@ describe('ClientRequestHandler', () => {
             {
               type: 'TriggerSmartContract',
               parameter: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
+
                   contract_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
                   data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
                 },
@@ -719,17 +711,16 @@ describe('ClientRequestHandler', () => {
         // Mock transaction signing
         const signedTransaction = {
           txID: 'test-tx-id',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: {
             contract: [
               {
                 type: 'TriggerSmartContract',
                 parameter: {
                   value: {
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     owner_address:
                       '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
+
                     contract_address:
                       '419946f55aa08cfe8363959ce9930ebd567e2c14f',
                     data: 'a9059cbb',
@@ -738,7 +729,7 @@ describe('ClientRequestHandler', () => {
               },
             ],
           },
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'test-hex',
           signature: ['test-signature'],
         };
@@ -799,9 +790,9 @@ describe('ClientRequestHandler', () => {
           scope,
           transaction: expect.objectContaining({
             txID: expect.any(String),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             raw_data: expect.any(Object),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             raw_data_hex: expect.any(String),
             visible: false,
           }),
@@ -845,12 +836,10 @@ describe('ClientRequestHandler', () => {
             {
               type: 'TransferContract',
               parameter: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 type_url: 'type.googleapis.com/protocol.TransferContract',
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
+
                   to_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
                   amount: 1000000,
                 },
@@ -861,17 +850,16 @@ describe('ClientRequestHandler', () => {
 
         const signedTransaction = {
           txID: 'test-tx-id-2',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: {
             contract: [
               {
                 type: 'TransferContract',
                 parameter: {
                   value: {
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     owner_address:
                       '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
+
                     to_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
                     amount: 1000000,
                   },
@@ -879,7 +867,7 @@ describe('ClientRequestHandler', () => {
               },
             ],
           },
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'test-hex-2',
           signature: ['test-signature-2'],
         };
@@ -914,9 +902,9 @@ describe('ClientRequestHandler', () => {
           scope,
           transaction: expect.objectContaining({
             txID: expect.any(String),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             raw_data: expect.any(Object),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             raw_data_hex: expect.any(String),
           }),
           availableEnergy: BigNumber('0'),
@@ -958,12 +946,10 @@ describe('ClientRequestHandler', () => {
             {
               type: 'TriggerSmartContract',
               parameter: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
                 value: {
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
                   owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-                  // eslint-disable-next-line @typescript-eslint/naming-convention
+
                   contract_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
                 },
               },
@@ -972,9 +958,9 @@ describe('ClientRequestHandler', () => {
         });
         mockTronWeb.trx.sign.mockResolvedValue({
           txID: 'test-tx-id-3',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: {},
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'test-hex-3',
           signature: [],
         });
@@ -1106,7 +1092,6 @@ describe('ClientRequestHandler', () => {
      * @returns The base64 encoded string.
      */
     const utf8ToBase64 = (utf8: string): string => {
-      // eslint-disable-next-line no-restricted-globals
       return Buffer.from(utf8, 'utf8').toString('base64');
     };
 
@@ -1600,7 +1585,6 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           type: 'TriggerSmartContract',
           parameter: {
             value: {
-              // eslint-disable-next-line @typescript-eslint/naming-convention
               owner_address: WRONG_OWNER_ADDRESS_HEX,
             },
           },
@@ -1650,7 +1634,6 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           type: 'TriggerSmartContract',
           parameter: {
             value: {
-              // eslint-disable-next-line @typescript-eslint/naming-convention
               owner_address: CORRECT_OWNER_ADDRESS_HEX,
             },
           },
@@ -1718,32 +1701,30 @@ describe('ClientRequestHandler - onAmountInput', () => {
   const createMockTransferTransaction = (): Transaction<TransferContract> => ({
     visible: false,
     txID: 'mock-tx-id',
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+
     raw_data: {
       contract: [
         {
           type: 'TransferContract' as Transaction<TransferContract>['raw_data']['contract'][number]['type'],
           parameter: {
-            // eslint-disable-next-line @typescript-eslint/naming-convention
             type_url: 'type.googleapis.com/protocol.TransferContract',
             value: {
-              // eslint-disable-next-line @typescript-eslint/naming-convention
               owner_address: `41${'a'.repeat(40)}`,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               to_address: `41${'b'.repeat(40)}`,
               amount: 1000000,
             },
           },
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       ref_block_bytes: '0000',
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       ref_block_hash: '0'.repeat(16),
       expiration: Date.now() + 60000,
       timestamp: Date.now(),
     },
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+
     raw_data_hex: 'mock-hex',
   });
 
@@ -2097,11 +2078,11 @@ describe('ClientRequestHandler - computeStakeFee', () => {
 
         const builtTransaction = {
           txID: 'stake-tx-id',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: {
             contract: [],
           },
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'stake-hex',
         } as unknown as Transaction<FreezeBalanceV2Contract>;
 
@@ -2400,9 +2381,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
 
         const mockTransaction = {
           txID: 'test-tx-id',
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data: {},
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           raw_data_hex: 'test-hex',
         } as unknown as Transaction<TriggerSmartContract>;
         mockSendService.buildTransaction.mockResolvedValue(mockTransaction);

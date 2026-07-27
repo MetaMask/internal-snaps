@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Network } from '../../constants';
 import {
   TransactionExpirationRefresherService,

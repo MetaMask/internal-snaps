@@ -1,19 +1,19 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
-import {
-  getJsonError,
-  type DialogResult,
-  type EntropySource,
-  type GetClientStatusResult,
-  type Json,
-  type ResolveInterfaceResult,
-  type UpdateInterfaceResult,
+import { getJsonError } from '@metamask/snaps-sdk';
+import type {
+  DialogResult,
+  EntropySource,
+  GetClientStatusResult,
+  Json,
+  ResolveInterfaceResult,
+  UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
 
 import { SecurityEventType, TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
-import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import type { ILogger } from '../../utils/logger';
 import { sanitizeSensitiveError } from '../../utils/sensitiveErrors';
 
 /**

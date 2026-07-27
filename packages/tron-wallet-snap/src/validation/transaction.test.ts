@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { is } from '@metamask/superstruct';
 import { Types } from 'tronweb';

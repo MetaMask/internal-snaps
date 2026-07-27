@@ -1,6 +1,5 @@
 import { Types } from 'tronweb';
 
-import { render } from './render';
 import {
   buildTransactionRawData,
   extractScanParametersFromTransactionData,
@@ -14,15 +13,15 @@ import type {
   UnencryptedStateValue,
 } from '../../../../services/state/State';
 import type { TransactionScanService } from '../../../../services/transaction-scan/TransactionScanService';
-import {
-  SimulationStatus,
-  type TransactionScanResult,
-} from '../../../../services/transaction-scan/types';
-import { FetchStatus, type Preferences } from '../../../../types/snap';
+import { SimulationStatus } from '../../../../services/transaction-scan/types';
+import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
+import { FetchStatus } from '../../../../types/snap';
+import type { Preferences } from '../../../../types/snap';
+import { render } from './render';
 
 // Mock the context module
 jest.mock('../../../../context', () => ({
-  __esModule: true, // eslint-disable-line @typescript-eslint/naming-convention
+  __esModule: true,
   default: {
     transactionScanService: null,
   },
