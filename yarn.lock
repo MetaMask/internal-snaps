@@ -2602,6 +2602,7 @@ __metadata:
     jest-transform-stub: "npm:2.0.0"
     oxfmt: "npm:^0.45.0"
     tronweb: "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch"
+    typescript: "npm:~5.8.3"
   languageName: unknown
   linkType: soft
 

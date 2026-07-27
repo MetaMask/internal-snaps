@@ -4,7 +4,6 @@ import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
 import type { Transaction, TransferContract } from 'tronweb/lib/esm/types';
 
-import { SendService } from './SendService';
 import {
   FEE_LIMIT,
   Network,
@@ -16,6 +15,7 @@ import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+import { SendService } from './SendService';
 
 describe('SendService', () => {
   type MockTransferContract =

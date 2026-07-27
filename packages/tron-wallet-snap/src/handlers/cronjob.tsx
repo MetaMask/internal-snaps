@@ -17,15 +17,11 @@ import { EXPIRED_TRANSACTION_SCAN } from '../services/transaction-scan/buildExpi
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
 import { FetchStatus } from '../types/snap';
 import { ConfirmSignTransaction } from '../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
-import {
-  CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME,
-  type ConfirmSignTransactionContext,
-} from '../ui/confirmation/views/ConfirmSignTransaction/types';
+import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../ui/confirmation/views/ConfirmSignTransaction/types';
+import type { ConfirmSignTransactionContext } from '../ui/confirmation/views/ConfirmSignTransaction/types';
 import { ConfirmTransactionRequest } from '../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
-import {
-  CONFIRM_TRANSACTION_INTERFACE_NAME,
-  type ConfirmTransactionRequestContext,
-} from '../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
+import type { ConfirmTransactionRequestContext } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ILogger } from '../utils/logger';
 import { createPrefixedLogger } from '../utils/logger';
 

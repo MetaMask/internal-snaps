@@ -9,8 +9,6 @@ import type {
   TriggerSmartContract,
 } from 'tronweb/lib/esm/types';
 
-import type { FeeCalculatorService } from './FeeCalculatorService';
-import type { SendValidationResult } from './types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
@@ -19,11 +17,14 @@ import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
-import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import type { ILogger } from '../../utils/logger';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+import type { FeeCalculatorService } from './FeeCalculatorService';
+import type { SendValidationResult } from './types';
 
 export class SendService {
   readonly #accountsService: AccountsService;

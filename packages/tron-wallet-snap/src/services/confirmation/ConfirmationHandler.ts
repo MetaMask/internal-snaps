@@ -5,7 +5,8 @@ import type { Types } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { type Network, Networks, ZERO } from '../../constants';
+import { Networks, ZERO } from '../../constants';
+import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TronMultichainMethod } from '../../handlers/keyring-types';
@@ -15,19 +16,15 @@ import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlF
 import { render as renderConfirmSignMessage } from '../../ui/confirmation/views/ConfirmSignMessage/render';
 import { ConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
 import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
-import {
-  CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME,
-  type ConfirmSignTransactionContext,
-} from '../../ui/confirmation/views/ConfirmSignTransaction/types';
+import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
+import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { formatOrigin } from '../../utils/formatOrigin';
 import type { ILogger } from '../../utils/logger';
 import logger, { createPrefixedLogger } from '../../utils/logger';
-import {
-  SignTransactionRequestStruct,
-  type TronWalletKeyringRequest,
-} from '../../validation/structs';
+import { SignTransactionRequestStruct } from '../../validation/structs';
+import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';

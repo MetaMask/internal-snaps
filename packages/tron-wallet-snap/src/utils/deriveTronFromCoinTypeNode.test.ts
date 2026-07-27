@@ -3,8 +3,8 @@ import {
   BIP44Node,
   BIP44PurposeNodeToken,
   mnemonicPhraseToBytes,
-  type JsonBIP44Node,
 } from '@metamask/key-tree';
+import type { JsonBIP44Node } from '@metamask/key-tree';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
@@ -63,7 +63,7 @@ describe('createTronBip44AddressDeriver', () => {
       const fullNode = await coinTypeNode.deriveBIP44AddressKey({
         account: 0,
         change: 0,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
+
         address_index: addressIndex,
       });
 

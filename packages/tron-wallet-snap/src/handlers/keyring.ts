@@ -2,17 +2,19 @@
 import {
   KeyringEvent,
   ListAccountAssetsResponseStruct,
-  type Balance,
-  type CreateAccountOptions as KeyringBatchCreateAccountOptions,
-  type DiscoveredAccount,
-  type EntropySourceId,
-  type Keyring,
-  type KeyringAccount,
-  type KeyringRequest,
-  type KeyringResponse,
-  type Pagination,
-  type ResolvedAccountAddress,
-  type Transaction,
+} from '@metamask/keyring-api';
+import type {
+  Balance,
+  CreateAccountOptions as KeyringBatchCreateAccountOptions,
+  DiscoveredAccount,
+  EntropySourceId,
+  Keyring,
+  KeyringAccount,
+  KeyringRequest,
+  KeyringResponse,
+  Pagination,
+  ResolvedAccountAddress,
+  Transaction,
 } from '@metamask/keyring-api';
 import {
   emitSnapKeyringEvent,
@@ -33,13 +35,10 @@ import type {
 import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
-import { ESSENTIAL_ASSETS, type Network } from '../constants';
-import { BackgroundEventMethod } from './cronjob';
-import { TronMultichainMethod } from './keyring-types';
-import {
-  asStrictKeyringAccount,
-  type TronKeyringAccount,
-} from '../entities/keyring-account';
+import { ESSENTIAL_ASSETS } from '../constants';
+import type { Network } from '../constants';
+import { asStrictKeyringAccount } from '../entities/keyring-account';
+import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
@@ -47,7 +46,8 @@ import type { ConfirmationHandler } from '../services/confirmation/ConfirmationH
 import type { TransactionsService } from '../services/transactions/TransactionsService';
 import type { WalletService } from '../services/wallet/WalletService';
 import { sanitizeSensitiveError } from '../utils/errors';
-import { createPrefixedLogger, type ILogger } from '../utils/logger';
+import { createPrefixedLogger } from '../utils/logger';
+import type { ILogger } from '../utils/logger';
 import {
   CreateAccountOptionsStruct,
   DeleteAccountStruct,
@@ -59,14 +59,16 @@ import {
   ListAccountTransactionsStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
-  type TronWalletKeyringRequest,
   UuidStruct,
 } from '../validation/structs';
+import type { TronWalletKeyringRequest } from '../validation/structs';
 import {
   validateOrigin,
   validateRequest,
   validateResponse,
 } from '../validation/validators';
+import { BackgroundEventMethod } from './cronjob';
+import { TronMultichainMethod } from './keyring-types';
 
 export class KeyringHandler implements Keyring {
   readonly #logger: ILogger;

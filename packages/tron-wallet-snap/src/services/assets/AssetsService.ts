@@ -1,8 +1,8 @@
-import {
-  KeyringEvent,
-  type AccountAssetListUpdatedEvent,
-  type AccountBalancesUpdatedEvent,
-  type KeyringAccount,
+import { KeyringEvent } from '@metamask/keyring-api';
+import type {
+  AccountAssetListUpdatedEvent,
+  AccountBalancesUpdatedEvent,
+  KeyringAccount,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type {
@@ -18,17 +18,6 @@ import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import { pick } from 'lodash';
 
-import type { AssetsRepository } from './AssetsRepository';
-import type {
-  InLockPeriodCaipAssetType,
-  NativeCaipAssetType,
-  NftCaipAssetType,
-  ReadyForWithdrawalCaipAssetType,
-  ResourceCaipAssetType,
-  StakedCaipAssetType,
-  StakingRewardsCaipAssetType,
-  TokenCaipAssetType,
-} from './types';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type {
   FiatTicker,
@@ -68,8 +57,20 @@ import {
 import { configProvider } from '../../context';
 import type { AssetEntity } from '../../entities/assets';
 import { toUiAmount } from '../../utils/conversion';
-import { createPrefixedLogger, type ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
+import type { ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
+import type { AssetsRepository } from './AssetsRepository';
+import type {
+  InLockPeriodCaipAssetType,
+  NativeCaipAssetType,
+  NftCaipAssetType,
+  ReadyForWithdrawalCaipAssetType,
+  ResourceCaipAssetType,
+  StakedCaipAssetType,
+  StakingRewardsCaipAssetType,
+  TokenCaipAssetType,
+} from './types';
 
 /**
  * Normalized account data structure that provides a consistent shape for both

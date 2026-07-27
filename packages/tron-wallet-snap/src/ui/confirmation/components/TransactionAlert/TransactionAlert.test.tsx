@@ -1,10 +1,11 @@
-import { TransactionAlert } from './TransactionAlert';
-import type { TransactionAlertProps } from './TransactionAlert';
 import type {
   TransactionScanError,
   TransactionScanValidation,
 } from '../../../../services/transaction-scan/types';
-import { FetchStatus, type Preferences } from '../../../../types/snap';
+import { FetchStatus } from '../../../../types/snap';
+import type { Preferences } from '../../../../types/snap';
+import { TransactionAlert } from './TransactionAlert';
+import type { TransactionAlertProps } from './TransactionAlert';
 
 // Mock the getErrorMessage function
 jest.mock('./getErrorMessage', () => ({

@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 
-import { FeeUnavailableError } from './errors';
-import { FeeCalculatorService } from './FeeCalculatorService';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TriggerConstantContractResponse } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -18,6 +15,8 @@ import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from '../transactions/mocks/trongrid/account-transactions/native-transfer.json';
 import trc10TransferMock from '../transactions/mocks/trongrid/account-transactions/trc10-transfer.json';
 import trc20TransferMock from '../transactions/mocks/trongrid/account-transactions/trc20-transfer.json';
+import { FeeUnavailableError } from './errors';
+import { FeeCalculatorService } from './FeeCalculatorService';
 
 // Helper to get transaction examples in the expected format
 const getTransactionExample = (type: 'native' | 'trc10' | 'trc20'): any => {

@@ -1,7 +1,7 @@
-import {
-  AccountCreationType,
-  type CreateAccountOptions as KeyringBatchCreateAccountOptions,
-  type KeyringRequest,
+import { AccountCreationType } from '@metamask/keyring-api';
+import type {
+  CreateAccountOptions as KeyringBatchCreateAccountOptions,
+  KeyringRequest,
 } from '@metamask/keyring-api';
 import {
   InvalidParamsError,
@@ -11,8 +11,6 @@ import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { Network } from '../constants';
-import { KeyringHandler } from './keyring';
-import { TronMultichainMethod } from './keyring-types';
 import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { AssetsService } from '../services/assets/AssetsService';
@@ -20,6 +18,8 @@ import type { ConfirmationHandler } from '../services/confirmation/ConfirmationH
 import type { TransactionsService } from '../services/transactions/TransactionsService';
 import type { WalletService } from '../services/wallet/WalletService';
 import { mockLogger } from '../utils/mockLogger';
+import { KeyringHandler } from './keyring';
+import { TronMultichainMethod } from './keyring-types';
 
 /**
  * Helper function to convert string to base64.

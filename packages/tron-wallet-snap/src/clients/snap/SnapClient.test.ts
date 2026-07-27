@@ -1,5 +1,5 @@
-import { SnapClient } from './SnapClient';
 import type { ILogger } from '../../utils/logger';
+import { SnapClient } from './SnapClient';
 
 // Mock the global snap object
 const mockSnapRequest = jest.fn();

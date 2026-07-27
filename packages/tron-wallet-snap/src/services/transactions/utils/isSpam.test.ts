@@ -5,10 +5,10 @@ import {
   TrxAccountType,
 } from '@metamask/keyring-api';
 
-import { isSpam } from './isSpam';
 import type { SpotPrices } from '../../../clients/price-api/types';
 import { Network, Networks } from '../../../constants';
 import type { TronKeyringAccount } from '../../../entities/keyring-account';
+import { isSpam } from './isSpam';
 
 describe('isSpam', () => {
   const account: TronKeyringAccount = {

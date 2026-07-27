@@ -5,9 +5,6 @@ import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Transaction } from 'tronweb/lib/esm/types';
 
-import { ConfirmSignTransaction } from './ConfirmSignTransaction';
-import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
-import type { ConfirmSignTransactionContext } from './types';
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
@@ -21,6 +18,9 @@ import logger from '../../../../utils/logger';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
 import { getTransactionTrxValue } from '../../../../validation/transaction';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
+import { ConfirmSignTransaction } from './ConfirmSignTransaction';
+import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
+import type { ConfirmSignTransactionContext } from './types';
 
 export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   scope: Network.Mainnet,
@@ -124,9 +124,9 @@ export async function render(
     const transactionObj: Transaction = {
       visible: true,
       txID,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       raw_data: rawData,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       raw_data_hex: transaction.rawDataHex,
     };
 

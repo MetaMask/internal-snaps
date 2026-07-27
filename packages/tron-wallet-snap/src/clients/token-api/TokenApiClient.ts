@@ -1,8 +1,8 @@
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
-import { array, assert, type Infer } from '@metamask/superstruct';
+import { array, assert } from '@metamask/superstruct';
+import type { Infer } from '@metamask/superstruct';
 import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 
-import { TokenMetadataResponseStruct } from './structs';
 import { Network, SPECIAL_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
@@ -11,6 +11,7 @@ import { buildUrl } from '../../utils/buildUrl';
 import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
 import { UrlStruct } from '../../validation/structs';
+import { TokenMetadataResponseStruct } from './structs';
 
 const DEFAULT_DECIMALS = 9;
 

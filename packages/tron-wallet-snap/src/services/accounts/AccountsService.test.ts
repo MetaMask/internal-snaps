@@ -19,8 +19,6 @@ import {
   getSelectedAccounts,
 } from '@metamask/keyring-snap-sdk';
 
-import type { AccountsRepository } from './AccountsRepository';
-import { AccountsService } from './AccountsService';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
@@ -31,6 +29,8 @@ import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
+import type { AccountsRepository } from './AccountsRepository';
+import { AccountsService } from './AccountsService';
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),

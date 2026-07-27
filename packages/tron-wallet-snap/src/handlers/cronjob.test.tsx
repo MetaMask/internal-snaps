@@ -1,4 +1,3 @@
-import { BackgroundEventMethod, CronHandler } from './cronjob';
 import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../clients/snap/SnapClient';
 import type { TronHttpClient } from '../clients/tron-http/TronHttpClient';
@@ -13,17 +12,14 @@ import type { State, UnencryptedStateValue } from '../services/state/State';
 import { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { JsonTransactionRawData } from '../services/transaction-expiration-refresher/types';
 import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
-import {
-  SimulationStatus,
-  type TransactionScanResult,
-} from '../services/transaction-scan/types';
+import { SimulationStatus } from '../services/transaction-scan/types';
+import type { TransactionScanResult } from '../services/transaction-scan/types';
 import { FetchStatus } from '../types/snap';
-import {
-  CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME,
-  type ConfirmSignTransactionContext,
-} from '../ui/confirmation/views/ConfirmSignTransaction/types';
+import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../ui/confirmation/views/ConfirmSignTransaction/types';
+import type { ConfirmSignTransactionContext } from '../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmTransactionRequestContext } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ILogger } from '../utils/logger';
+import { BackgroundEventMethod, CronHandler } from './cronjob';
 
 /**
  * Subset of SnapClient methods exercised by `refreshConfirmationSend`.
@@ -83,9 +79,8 @@ const createBlock = ({
   hashSegment?: string;
 }) => ({
   blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
-  // eslint-disable-next-line @typescript-eslint/naming-convention
+
   block_header: {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     raw_data: {
       number,
       timestamp,
@@ -173,17 +168,17 @@ function buildMockInterfaceContext(
         {
           type: 'TransferContract',
           parameter: {
-            type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+            type_url: 'type.googleapis.com/protocol.TransferContract',
             value: {
-              owner_address: '41a2155e688b2baebdfdacd073ba79f5b22946aacf', // eslint-disable-line @typescript-eslint/naming-convention
-              to_address: '4132f9c0c487f21716b7a8f12906b752889902655', // eslint-disable-line @typescript-eslint/naming-convention
+              owner_address: '41a2155e688b2baebdfdacd073ba79f5b22946aacf',
+              to_address: '4132f9c0c487f21716b7a8f12906b752889902655',
               amount: 1000000,
             },
           },
         },
       ],
-      ref_block_bytes: '', // eslint-disable-line @typescript-eslint/naming-convention
-      ref_block_hash: '', // eslint-disable-line @typescript-eslint/naming-convention
+      ref_block_bytes: '',
+      ref_block_hash: '',
       expiration: 0,
       timestamp: 0,
     } as any,
@@ -350,17 +345,17 @@ function buildMockTronWebFactory({
               {
                 type: 'TransferContract',
                 parameter: {
-                  type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+                  type_url: 'type.googleapis.com/protocol.TransferContract',
                   value: {
-                    owner_address: '41a2155e688b2baebdfdacd073ba79f5b22946aacf', // eslint-disable-line @typescript-eslint/naming-convention
-                    to_address: '4132f9c0c487f21716b7a8f12906b752889902655', // eslint-disable-line @typescript-eslint/naming-convention
+                    owner_address: '41a2155e688b2baebdfdacd073ba79f5b22946aacf',
+                    to_address: '4132f9c0c487f21716b7a8f12906b752889902655',
                     amount: 1000000,
                   },
                 },
               },
             ],
-            ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
-            ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+            ref_block_bytes: '0001',
+            ref_block_hash: 'outdatedhash',
             expiration: currentBlock.block_header.raw_data.timestamp - 1,
             timestamp: currentBlock.block_header.raw_data.timestamp - 60_000,
           }),
@@ -577,8 +572,8 @@ describe('CronHandler', () => {
           expect(scannedRawData).not.toBe(interfaceContext.transactionRawData);
           expect(scannedRawData).toStrictEqual(
             expect.objectContaining({
-              ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
-              ref_block_hash: '0011223344556677', // eslint-disable-line @typescript-eslint/naming-convention
+              ref_block_bytes: getRefBlockBytes(200_000),
+              ref_block_hash: '0011223344556677',
               expiration: blockTimestamp + 60_000,
               timestamp: blockTimestamp,
             }),
@@ -734,8 +729,8 @@ describe('CronHandler', () => {
           // so its stale TAPOS/expiration values are preserved as-is.
           expect(scannedRawData).toStrictEqual(
             expect.objectContaining({
-              ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
-              ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+              ref_block_bytes: '0001',
+              ref_block_hash: 'outdatedhash',
               expiration: blockTimestamp - 1,
               timestamp: blockTimestamp - 60_000,
             }),

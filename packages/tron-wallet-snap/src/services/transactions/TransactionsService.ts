@@ -3,9 +3,6 @@ import { KeyringEvent, TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { groupBy } from 'lodash';
 
-import { TransactionMapper } from './TransactionsMapper';
-import type { TransactionsRepository } from './TransactionsRepository';
-import { isSpam } from './utils/isSpam';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -21,6 +18,9 @@ import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
 import { createPrefixedLogger } from '../../utils/logger';
+import { TransactionMapper } from './TransactionsMapper';
+import type { TransactionsRepository } from './TransactionsRepository';
+import { isSpam } from './utils/isSpam';
 
 export class TransactionsService {
   readonly #logger: ILogger;
@@ -102,7 +102,7 @@ export class TransactionsService {
             // Merge internal_transactions from fullTxInfo into the existing tx
             return {
               ...tx,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               internal_transactions: fullTxInfo.internal_transactions ?? [],
             };
           }
@@ -421,7 +421,9 @@ export class TransactionsService {
   ): Promise<SpotPrices | undefined> {
     const tokenAssetTypes = new Set<string>();
     for (const tx of transactions) {
-      if (tx.type !== TransactionType.Receive) continue;
+      if (tx.type !== TransactionType.Receive) {
+        continue;
+      }
       for (const movement of tx.to) {
         if (
           movement.address === account.address &&

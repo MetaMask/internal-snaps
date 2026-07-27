@@ -1,12 +1,13 @@
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import { Box, Text as SnapText } from '@metamask/snaps-sdk/jsx';
 
-import { Asset } from './Asset/Asset';
 import type { SpotPrices } from '../../../clients/price-api/types';
 import type { ComputeFeeResult } from '../../../services/send/types';
-import { FetchStatus, type Preferences } from '../../../types/snap';
+import { FetchStatus } from '../../../types/snap';
+import type { Preferences } from '../../../types/snap';
 import { i18n } from '../../../utils/i18n';
 import { isFetchStatusLoadingOrFetching } from '../../../utils/isFetchStatusLoadingOrFetching';
+import { Asset } from './Asset/Asset';
 
 type FeesProps = {
   fees: ComputeFeeResult;
@@ -32,8 +33,12 @@ export const Fees = ({
     const isTrxA = feeA.asset.unit === 'TRX';
     const isTrxB = feeB.asset.unit === 'TRX';
 
-    if (isTrxA && !isTrxB) return -1;
-    if (!isTrxA && isTrxB) return 1;
+    if (isTrxA && !isTrxB) {
+      return -1;
+    }
+    if (!isTrxA && isTrxB) {
+      return 1;
+    }
     return 0;
   });
 

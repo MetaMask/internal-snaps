@@ -1,7 +1,8 @@
-import { CaipAssetTypeStruct, type TrxScope } from '@metamask/keyring-api';
+import { CaipAssetTypeStruct } from '@metamask/keyring-api';
+import type { TrxScope } from '@metamask/keyring-api';
 import { pattern } from '@metamask/superstruct';
 
-import { type Network } from '../../constants';
+import type { Network } from '../../constants';
 
 export type NativeCaipAssetType = `${Network}/slip44:195`;
 export type StakedCaipAssetType =

@@ -2,7 +2,6 @@ import { SnapError } from '@metamask/snaps-sdk';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
 
-import { WalletService } from './WalletService';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
@@ -12,6 +11,7 @@ import {
 } from '../../handlers/keyring-types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import { WalletService } from './WalletService';
 
 const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
 
@@ -35,9 +35,8 @@ function createBlock({
 }) {
   return {
     blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+
     block_header: {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
       raw_data: {
         number,
         timestamp,
@@ -119,19 +118,18 @@ describe('WalletService', () => {
               {
                 type: 'TransferContract',
                 parameter: {
-                  type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+                  type_url: 'type.googleapis.com/protocol.TransferContract',
                   value: {
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     owner_address: TronWeb.address.toHex(TEST_ADDRESS),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
+
                     to_address: '41123456',
                     amount: 1000000,
                   },
                 },
               },
             ],
-            ref_block_bytes: getRefBlockBytes(200_000), // eslint-disable-line @typescript-eslint/naming-convention
-            ref_block_hash: '1122334455667788', // eslint-disable-line @typescript-eslint/naming-convention
+            ref_block_bytes: getRefBlockBytes(200_000),
+            ref_block_hash: '1122334455667788',
             expiration: MOCK_BLOCK_TIMESTAMP + 45_000,
             timestamp: MOCK_BLOCK_TIMESTAMP,
           }),
@@ -359,17 +357,17 @@ describe('WalletService', () => {
           {
             type: 'TransferContract',
             parameter: {
-              type_url: 'type.googleapis.com/protocol.TransferContract', // eslint-disable-line @typescript-eslint/naming-convention
+              type_url: 'type.googleapis.com/protocol.TransferContract',
               value: {
-                owner_address: TronWeb.address.toHex(TEST_ADDRESS), // eslint-disable-line @typescript-eslint/naming-convention
-                to_address: '41123456', // eslint-disable-line @typescript-eslint/naming-convention
+                owner_address: TronWeb.address.toHex(TEST_ADDRESS),
+                to_address: '41123456',
                 amount: 1000000,
               },
             },
           },
         ],
-        ref_block_bytes: '0001', // eslint-disable-line @typescript-eslint/naming-convention
-        ref_block_hash: 'outdatedhash', // eslint-disable-line @typescript-eslint/naming-convention
+        ref_block_bytes: '0001',
+        ref_block_hash: 'outdatedhash',
         // A stale expiration must NOT be refreshed: the dApp broadcasts using
         // its original TxID, so the snap signs exactly what it received.
         expiration: MOCK_BLOCK_TIMESTAMP - 1,
@@ -485,9 +483,8 @@ describe('WalletService', () => {
             type: 'TransferContract',
             parameter: {
               value: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 owner_address: ALT_OWNER_HEX,
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+
                 to_address: '41123456',
                 amount: 1000000,
               },

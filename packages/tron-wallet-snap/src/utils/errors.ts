@@ -1,8 +1,8 @@
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 
+import { SnapClient } from '../clients/snap/SnapClient';
 import logger from './logger';
 import { isSnapRpcError } from './sensitiveErrors';
-import { SnapClient } from '../clients/snap/SnapClient';
 
 const snapClient = new SnapClient({ logger });
 

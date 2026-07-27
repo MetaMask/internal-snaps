@@ -1,12 +1,12 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { bytesToBase64, stringToBytes } from '@metamask/utils';
 
-import { render } from './render';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TronMultichainMethod } from '../../../../handlers/keyring-types';
 import type { Preferences } from '../../../../types/snap';
+import { render } from './render';
 
 /**
  * Helper function to convert string to base64.

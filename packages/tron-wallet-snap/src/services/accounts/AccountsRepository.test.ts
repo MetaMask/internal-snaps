@@ -1,9 +1,9 @@
 import { TrxAccountType, TrxScope } from '@metamask/keyring-api';
 
-import { AccountsRepository } from './AccountsRepository';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { InMemoryState } from '../state/InMemoryState';
 import type { UnencryptedStateValue } from '../state/State';
+import { AccountsRepository } from './AccountsRepository';
 
 /**
  * Creates an empty in-memory state for repository tests.

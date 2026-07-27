@@ -1,9 +1,9 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 
-import { TransactionsRepository } from './TransactionsRepository';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { State, UnencryptedStateValue } from '../state/State';
+import { TransactionsRepository } from './TransactionsRepository';
 
 describe('TransactionsRepository', () => {
   let transactionsRepository: TransactionsRepository;

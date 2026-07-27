@@ -1,16 +1,17 @@
-import { ConfirmSignTransaction } from './ConfirmSignTransaction';
-import { ConfirmSignTransactionFormNames } from './events';
-import type { ConfirmSignTransactionContext } from './types';
 import { Network } from '../../../../constants';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TronMultichainMethod } from '../../../../handlers/keyring-types';
 import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
-import {
-  SimulationStatus,
-  type TransactionScanError,
-  type TransactionScanResult,
+import { SimulationStatus } from '../../../../services/transaction-scan/types';
+import type {
+  TransactionScanError,
+  TransactionScanResult,
 } from '../../../../services/transaction-scan/types';
-import { FetchStatus, type Preferences } from '../../../../types/snap';
+import { FetchStatus } from '../../../../types/snap';
+import type { Preferences } from '../../../../types/snap';
+import { ConfirmSignTransaction } from './ConfirmSignTransaction';
+import { ConfirmSignTransactionFormNames } from './events';
+import type { ConfirmSignTransactionContext } from './types';
 
 /**
  * Recursively searches a rendered JSX tree for an element with a given name.

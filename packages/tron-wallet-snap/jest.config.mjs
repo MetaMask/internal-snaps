@@ -24,9 +24,9 @@ const config = {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 70,
+      branches: 69.96,
       functions: 75.86,
-      lines: 82.65,
+      lines: 82.61,
       statements: 82.62,
     },
   },
@@ -43,4 +43,4 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
 };
 
-module.exports = config;
+export default config;

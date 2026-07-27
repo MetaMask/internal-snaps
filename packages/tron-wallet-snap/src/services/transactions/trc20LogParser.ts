@@ -221,16 +221,15 @@ export function buildContractTransactionInfos(
     const unit = metadata?.units?.[0];
 
     return {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
       transaction_id: transfer.transactionId,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       token_info: {
         symbol: metadata?.symbol ?? UNKNOWN_TOKEN_SYMBOL,
         address: transfer.contractAddress,
         decimals: unit?.decimals ?? DEFAULT_TOKEN_DECIMALS,
         name: metadata?.name ?? UNKNOWN_TOKEN_SYMBOL,
       },
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+
       block_timestamp: transfer.blockTimestamp,
       from: transfer.from,
       to: transfer.to,

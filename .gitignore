@@ -42,3 +42,7 @@ packages/*/*.tsbuildinfo
 # Docusaurus
 **/.docusaurus
 packages/wallet-framework-docs/site/build
+
+# Dotenv environment variables file
+.env
+.env.test

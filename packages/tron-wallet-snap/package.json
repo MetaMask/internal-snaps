@@ -2,22 +2,30 @@
   "name": "@metamask/tron-wallet-snap",
   "version": "1.33.1",
   "description": "A Tron wallet Snap",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/MetaMask/internal-snaps.git"
-  },
+  "keywords": [
+    "Ethereum",
+    "MetaMask"
+  ],
   "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/tron-wallet-snap#readme",
   "bugs": {
     "url": "https://github.com/MetaMask/internal-snaps/issues"
   },
   "license": "MIT",
-  "main": "./dist/bundle.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
   "files": [
     "dist/",
     "images/",
     "snap.manifest.json",
     "locales/"
   ],
+  "main": "./dist/bundle.js",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
@@ -35,7 +43,6 @@
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
-    "test:integration": "./integration-test/run-integration.sh",
     "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
@@ -58,16 +65,9 @@
     "jest-it-up": "^2.0.2",
     "jest-transform-stub": "2.0.0",
     "oxfmt": "^0.45.0",
-    "tronweb": "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch"
+    "tronweb": "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch",
+    "typescript": "~5.8.3"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
-  "keywords": [
-    "Ethereum",
-    "MetaMask"
-  ],
   "engines": {
     "node": ">=20"
   }

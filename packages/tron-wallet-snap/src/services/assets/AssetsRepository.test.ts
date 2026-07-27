@@ -1,5 +1,3 @@
-import { AssetsRepository } from './AssetsRepository';
-import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 import { KnownCaip19Id, Network } from '../../constants';
 import type {
   AssetEntity,
@@ -8,6 +6,8 @@ import type {
 } from '../../entities/assets';
 import type { IStateManager } from '../state/IStateManager';
 import type { UnencryptedStateValue } from '../state/State';
+import { AssetsRepository } from './AssetsRepository';
+import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
 describe('AssetsRepository', () => {
   const createNativeAsset = ({

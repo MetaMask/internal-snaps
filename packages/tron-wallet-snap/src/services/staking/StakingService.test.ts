@@ -1,6 +1,5 @@
 import { BigNumber } from 'bignumber.js';
 
-import { StakingService } from './StakingService';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
@@ -13,6 +12,7 @@ import { BackgroundEventMethod } from '../../handlers/cronjob';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import { StakingService } from './StakingService';
 
 describe('StakingService', () => {
   let stakingService: StakingService;
@@ -36,12 +36,12 @@ describe('StakingService', () => {
   const mockKeypair = {
     privateKeyHex:
       '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    // eslint-disable-next-line no-restricted-globals
+
     privateKeyBytes: Buffer.from(
       '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
       'hex',
     ),
-    // eslint-disable-next-line no-restricted-globals
+
     publicKeyBytes: Buffer.from(
       'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
       'hex',
@@ -51,16 +51,15 @@ describe('StakingService', () => {
 
   const mockTransaction = {
     txID: 'mock-transaction-id',
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+
     raw_data: {
       contract: [
         {
           type: 'FreezeBalanceV2Contract',
           parameter: {
             value: {
-              // eslint-disable-next-line @typescript-eslint/naming-convention
               owner_address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               frozen_balance: 1000000,
               resource: 'BANDWIDTH',
             },

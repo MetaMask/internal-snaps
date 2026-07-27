@@ -1,6 +1,6 @@
-import type { ICache } from './ICache';
 import logger from '../utils/logger';
 import type { Serializable } from '../utils/serialization/types';
+import type { ICache } from './ICache';
 
 /**
  * Result type for functions that provide their own expiry time.

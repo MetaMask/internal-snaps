@@ -2,9 +2,6 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 
-import { TransactionMapper } from './TransactionsMapper';
-import type { TransactionsRepository } from './TransactionsRepository';
-import { TransactionsService } from './TransactionsService';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -20,6 +17,9 @@ import nativeTransferMock from './mocks/trongrid/account-transactions/native-tra
 import trc10TransferMock from './mocks/trongrid/account-transactions/trc10-transfer.json';
 import trc20TransferMock from './mocks/trongrid/account-transactions/trc20-transfer.json';
 import contractInfoMock from './mocks/trongrid/account-trc20-transactions/contract-info.json';
+import { TransactionMapper } from './TransactionsMapper';
+import type { TransactionsRepository } from './TransactionsRepository';
+import { TransactionsService } from './TransactionsService';
 
 // Import simplified mock data (each file now contains only one transaction)
 

@@ -1,5 +1,3 @@
-import { TrongridApiClient } from './TrongridApiClient';
-import type { Trc20Balance, TransactionInfo } from './types';
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { Network } from '../../constants';
@@ -9,6 +7,8 @@ import nativeTransferMock from '../../services/transactions/mocks/trongrid/accou
 import { mockLogger } from '../../utils/mockLogger';
 import type { Serializable } from '../../utils/serialization/types';
 import { TronHttpClient } from '../tron-http/TronHttpClient';
+import { TrongridApiClient } from './TrongridApiClient';
+import type { Trc20Balance, TransactionInfo } from './types';
 
 type WithTrongridApiClientCallback<ReturnValue> = (payload: {
   client: TrongridApiClient;
@@ -66,7 +66,6 @@ async function withTrongridApiClient<ReturnValue>(
     cache,
   });
 
-  // eslint-disable-next-line no-restricted-globals
   const originalFetch = global.fetch;
   try {
     return await testFunction({
@@ -76,7 +75,6 @@ async function withTrongridApiClient<ReturnValue>(
       cache,
     });
   } finally {
-    // eslint-disable-next-line no-restricted-globals
     global.fetch = originalFetch;
   }
 }
@@ -94,14 +92,13 @@ describe('TrongridApiClient', () => {
           { TGPuQ7g7H8GsUEXhwvvJop4zCncurEh2ht: '88123456' },
         ];
 
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: mockTrc20Balances,
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 4 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -114,7 +111,7 @@ describe('TrongridApiClient', () => {
         );
 
         expect(normalizeBalances(result)).toStrictEqual(mockTrc20Balances);
-        // eslint-disable-next-line no-restricted-globals
+
         expect(global.fetch).toHaveBeenCalledWith(
           `https://api.trongrid.io/v1/accounts/${mockAddress}/trc20/balance`,
           expect.objectContaining({
@@ -128,14 +125,13 @@ describe('TrongridApiClient', () => {
 
     it('returns empty array when no TRC20 tokens are found', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: [],
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 0 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -153,13 +149,12 @@ describe('TrongridApiClient', () => {
 
     it('returns empty array when data is undefined', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 0 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -199,7 +194,6 @@ describe('TrongridApiClient', () => {
 
     it('throws error when HTTP request fails', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response('', { status: 500 }),
@@ -213,14 +207,13 @@ describe('TrongridApiClient', () => {
 
     it('throws error when API returns success: false', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: [],
               success: false,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 0 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -239,14 +232,13 @@ describe('TrongridApiClient', () => {
           { TTestToken123: '1000000' },
         ];
 
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: mockTrc20Balances,
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 1 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -259,7 +251,7 @@ describe('TrongridApiClient', () => {
         );
 
         expect(normalizeBalances(result)).toStrictEqual(mockTrc20Balances);
-        // eslint-disable-next-line no-restricted-globals
+
         expect(global.fetch).toHaveBeenCalledWith(
           expect.stringContaining('nile.trongrid.io'),
           expect.any(Object),
@@ -274,14 +266,13 @@ describe('TrongridApiClient', () => {
           { TokenAddress2: '200' },
         ];
 
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: validBalances,
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 2 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -307,14 +298,13 @@ describe('TrongridApiClient', () => {
 
     it('fetches transactions without a limit query parameter by default', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: [mockTx],
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 1 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -327,7 +317,7 @@ describe('TrongridApiClient', () => {
         );
 
         expect(result).toHaveLength(1);
-        // eslint-disable-next-line no-restricted-globals
+
         expect(global.fetch).toHaveBeenCalledWith(
           `https://api.trongrid.io/v1/accounts/${mockAddress}/transactions`,
           expect.any(Object),
@@ -337,14 +327,13 @@ describe('TrongridApiClient', () => {
 
     it('appends limit to the query string when options.limit is set', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: [mockTx],
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 1 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -355,7 +344,6 @@ describe('TrongridApiClient', () => {
           limit: 1,
         });
 
-        // eslint-disable-next-line no-restricted-globals
         expect(global.fetch).toHaveBeenCalledWith(
           `https://api.trongrid.io/v1/accounts/${mockAddress}/transactions?limit=1`,
           expect.any(Object),
@@ -369,7 +357,7 @@ describe('TrongridApiClient', () => {
         // where a legacy internal_transactions entry omitted data.call_value.
         const transactionWithSparseInternalTransaction = {
           ...mockTx,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
+
           internal_transactions: [
             {
               data: {
@@ -379,14 +367,13 @@ describe('TrongridApiClient', () => {
           ],
         };
 
-        // eslint-disable-next-line no-restricted-globals
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: [transactionWithSparseInternalTransaction],
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 1 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -406,14 +393,14 @@ describe('TrongridApiClient', () => {
       await withTrongridApiClient(async ({ client }) => {
         // Example seen live on tx c4e8c4a45830e882e92062ede0ecd09702c51e4732385b9cf33590d470b08357,
         // where Trongrid omitted raw_data.timestamp entirely.
-        // eslint-disable-next-line no-restricted-globals
+
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
               data: [nativeTransferWithoutTimestampMock],
               success: true,
-              // eslint-disable-next-line @typescript-eslint/naming-convention
+
               meta: { at: 1770121997373, page_size: 1 },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -544,7 +531,7 @@ describe('TrongridApiClient', () => {
       await withTrongridApiClient(async ({ client }) => {
         // getChainParameters issues two fetches: chain parameters first, then
         // next-maintenance-time (the cache TTL).
-        // eslint-disable-next-line no-restricted-globals
+
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(JSON.stringify({ chainParameter: chainParameters }), {
@@ -552,7 +539,7 @@ describe('TrongridApiClient', () => {
             headers: { 'Content-Type': 'application/json' },
           }),
         );
-        // eslint-disable-next-line no-restricted-globals
+
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
