@@ -1,7 +1,7 @@
 {
   "name": "@metamask/tron-wallet-snap",
   "version": "1.33.1",
-  "description": "A Tron wallet Snap.",
+  "description": "A Tron wallet Snap",
   "repository": {
     "type": "git",
     "url": "https://github.com/MetaMask/internal-snaps.git"
@@ -34,22 +34,25 @@
     "publish:preview": "yarn npm publish --tag preview",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
-    "test": "jest && yarn jest-it-up",
-    "test:integration": "./integration-test/run-integration.sh"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
+    "test:integration": "./integration-test/run-integration.sh",
+    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
+    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "devDependencies": {
-    "@metamask/auto-changelog": "^3.4.4",
+    "@metamask/auto-changelog": "^6.1.1",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^23.2.0",
     "@metamask/keyring-snap-sdk": "^8.0.0",
     "@metamask/snaps-cli": "^8.3.0",
     "@metamask/snaps-jest": "^10.2.0",
-    "@metamask/snaps-sdk": "^10.3.0",
+    "@metamask/snaps-sdk": "11.1.1",
     "@metamask/superstruct": "^3.2.1",
     "async-mutex": "^0.5.0",
     "bignumber.js": "^9.3.1",
-    "concurrently": "^9.2.0",
-    "dotenv": "^17.0.0",
+    "concurrently": "^10.0.3",
+    "dotenv": "^17.2.1",
     "ethers": "^6.15.0",
     "jest": "30.0.3",
     "jest-it-up": "^2.0.2",
@@ -60,5 +63,12 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "Ethereum",
+    "MetaMask"
+  ],
+  "engines": {
+    "node": ">=20"
   }
 }
