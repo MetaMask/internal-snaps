@@ -596,7 +596,7 @@ describe('KeyringHandler', () => {
       } as never);
 
       await expect(handler.exportAccount(accountId)).rejects.toThrow(
-        'Failed to get private entropy',
+        'Error exporting account',
       );
     });
 
