@@ -1,32 +1,31 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   KeyringEvent,
   ListAccountAssetsResponseStruct,
+  type Balance,
+  type CreateAccountOptions as KeyringBatchCreateAccountOptions,
+  type DiscoveredAccount,
+  type EntropySourceId,
+  type KeyringAccount,
+  type KeyringRequest,
+  type KeyringResponse,
+  type Pagination,
+  type ResolvedAccountAddress,
+  type Transaction,
 } from '@metamask/keyring-api';
 import type {
-  Balance,
-  CreateAccountOptions as KeyringBatchCreateAccountOptions,
-  DiscoveredAccount,
-  EntropySourceId,
-  Keyring,
-  KeyringAccount,
-  KeyringRequest,
-  KeyringResponse,
-  Pagination,
-  ResolvedAccountAddress,
-  Transaction,
-} from '@metamask/keyring-api';
-import {
-  emitSnapKeyringEvent,
-  handleKeyringRequest,
-} from '@metamask/keyring-snap-sdk';
+  ExportAccountOptions,
+  ExportedAccount,
+  KeyringSnapRpc,
+} from '@metamask/keyring-api/v2';
+import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import {
   InvalidParamsError,
   SnapError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { array, assert } from '@metamask/superstruct';
+import { array, assert, sensitive } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
@@ -35,10 +34,13 @@ import type {
 import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
-import { ESSENTIAL_ASSETS } from '../constants';
-import type { Network } from '../constants';
-import { asStrictKeyringAccount } from '../entities/keyring-account';
-import type { TronKeyringAccount } from '../entities/keyring-account';
+import { ESSENTIAL_ASSETS, type Network } from '../constants';
+import { BackgroundEventMethod } from './cronjob';
+import { TronMultichainMethod } from './keyring-types';
+import {
+  asStrictKeyringAccount,
+  type TronKeyringAccount,
+} from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
 import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
@@ -46,31 +48,30 @@ import type { ConfirmationHandler } from '../services/confirmation/ConfirmationH
 import type { TransactionsService } from '../services/transactions/TransactionsService';
 import type { WalletService } from '../services/wallet/WalletService';
 import { sanitizeSensitiveError } from '../utils/errors';
-import { createPrefixedLogger } from '../utils/logger';
-import type { ILogger } from '../utils/logger';
+import { createPrefixedLogger, type ILogger } from '../utils/logger';
 import {
   CreateAccountOptionsStruct,
   DeleteAccountStruct,
   DiscoverAccountsStruct,
+  ExportAccountRequestStruct,
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
   GetAccountStruct,
   ListAccountAssetsStruct,
   ListAccountTransactionsStruct,
+  PrivateKeyHexStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
+  type TronWalletKeyringRequest,
   UuidStruct,
 } from '../validation/structs';
-import type { TronWalletKeyringRequest } from '../validation/structs';
 import {
   validateOrigin,
   validateRequest,
   validateResponse,
 } from '../validation/validators';
-import { BackgroundEventMethod } from './cronjob';
-import { TronMultichainMethod } from './keyring-types';
 
-export class KeyringHandler implements Keyring {
+export class KeyringHandler implements KeyringSnapRpc {
   readonly #logger: ILogger;
 
   readonly #snapClient: SnapClient;
@@ -128,8 +129,15 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  async listAccounts(): Promise<KeyringAccount[]> {
-    return (await this.#listAccounts()).map(asStrictKeyringAccount);
+  async getAccounts(): Promise<KeyringAccount[]> {
+    try {
+      return (await this.#listAccounts()).map(asStrictKeyringAccount);
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error listing accounts');
+      throw new SnapError(error);
+    }
   }
 
   async #getAccount(
@@ -148,12 +156,19 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  async getAccount(accountId: string): Promise<KeyringAccount | undefined> {
-    validateRequest({ accountId }, GetAccountStruct);
+  async getAccount(accountId: string): Promise<KeyringAccount> {
+    try {
+      validateRequest({ accountId }, GetAccountStruct);
 
-    const account = await this.#getAccount(accountId);
+      const account = await this.#getAccountOrThrow(accountId);
 
-    return account ? asStrictKeyringAccount(account) : undefined;
+      return asStrictKeyringAccount(account);
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      this.#logger.error({ error }, 'Error getting account');
+      throw new SnapError(error);
+    }
   }
 
   async #getAccountOrThrow(accountId: string): Promise<TronKeyringAccount> {
@@ -192,7 +207,7 @@ export class KeyringHandler implements Keyring {
     }
   }
 
-  async listAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
+  async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
     try {
       validateRequest({ accountId }, ListAccountAssetsStruct);
 
@@ -231,7 +246,7 @@ export class KeyringHandler implements Keyring {
    * @param pagination.next - The next signature to fetch from.
    * @returns The transactions for the given account.
    */
-  async listAccountTransactions(
+  async getAccountTransactions(
     accountId: string,
     pagination: Pagination,
   ): Promise<{
@@ -406,12 +421,40 @@ export class KeyringHandler implements Keyring {
     return caip10Address;
   }
 
-  async filterAccountChains(id: string, chains: string[]): Promise<string[]> {
-    throw new Error('Method not implemented.');
-  }
+  async exportAccount(
+    accountId: string,
+    options?: ExportAccountOptions,
+  ): Promise<ExportedAccount> {
+    validateRequest({ accountId, options }, ExportAccountRequestStruct);
 
-  async updateAccount(account: KeyringAccount): Promise<void> {
-    throw new Error('Method not implemented.');
+    const account = await this.#getAccountOrThrow(accountId);
+
+    const encoding = options?.encoding ?? 'hexadecimal';
+    if (encoding !== 'hexadecimal') {
+      throw new Error('Only hexadecimal private key export is supported');
+    }
+
+    try {
+      const { privateKeyHex } = await this.#accountsService.deriveTronKeypair({
+        entropySource: account.entropySource,
+        derivationPath: account.derivationPath,
+      });
+
+      // SECURITY: Wrap the struct with sensitive() so that any assertion
+      // failure redacts the actual value from the error message and
+      // StructError.value, preventing the private key from leaking into logs.
+      assert(privateKeyHex, sensitive(PrivateKeyHexStruct));
+
+      return {
+        type: 'private-key',
+        encoding,
+        privateKey: privateKeyHex,
+      };
+    } catch {
+      const errorMsg = 'Error exporting account';
+      this.#logger.error(errorMsg);
+      throw new SnapError(errorMsg);
+    }
   }
 
   async deleteAccount(accountId: string): Promise<void> {
