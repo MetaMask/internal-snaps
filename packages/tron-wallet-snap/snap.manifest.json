@@ -23,7 +23,22 @@
   },
   "initialPermissions": {
     "endowment:keyring": {
-      "allowedOrigins": ["https://portfolio.metamask.io"]
+      "allowedOrigins": ["https://portfolio.metamask.io"],
+      "capabilities": {
+        "scopes": ["tron:728126428"],
+        "privateKey": {
+          "exportFormats": [
+            {
+              "encoding": "hexadecimal"
+            }
+          ]
+        },
+        "bip44": {
+          "deriveIndex": true,
+          "deriveIndexRange": true,
+          "discover": true
+        }
+      }
     },
     "snap_getBip32Entropy": [
       {
