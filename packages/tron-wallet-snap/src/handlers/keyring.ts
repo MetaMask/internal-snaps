@@ -35,8 +35,6 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS, type Network } from '../constants';
-import { BackgroundEventMethod } from './cronjob';
-import { TronMultichainMethod } from './keyring-types';
 import {
   asStrictKeyringAccount,
   type TronKeyringAccount,
@@ -70,6 +68,8 @@ import {
   validateRequest,
   validateResponse,
 } from '../validation/validators';
+import { BackgroundEventMethod } from './cronjob';
+import { TronMultichainMethod } from './keyring-types';
 
 export class KeyringHandler implements KeyringSnapRpc {
   readonly #logger: ILogger;
