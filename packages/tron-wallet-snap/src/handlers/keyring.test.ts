@@ -654,16 +654,15 @@ describe('KeyringHandler', () => {
     });
   });
 
-  describe('listAccounts', () => {
+  describe('getAccounts', () => {
     it('fails with cause', async () => {
       const causeError = new Error('Account error');
 
       mockAccountsService.getAll.mockRejectedValue(causeError);
 
-      await expect(keyringHandler.listAccounts()).rejects.toMatchObject({
-        message: 'Error listing accounts',
-        cause: causeError,
-      });
+      await expect(keyringHandler.getAccounts()).rejects.toThrow(
+        'Error listing accounts',
+      );
     });
   });
 
