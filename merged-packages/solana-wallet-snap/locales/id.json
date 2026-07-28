@@ -1,0 +1,269 @@
+{
+  "locale": "id",
+  "messages": {
+    "send.title": {
+      "message": "Kirim"
+    },
+    "send.balance": {
+      "message": "Saldo"
+    },
+    "send.maxButton": {
+      "message": "Maks"
+    },
+    "send.cancelButton": {
+      "message": "Batal"
+    },
+    "send.continueButton": {
+      "message": "Lanjutkan"
+    },
+    "send.fromField": {
+      "message": "Dari"
+    },
+    "send.toField": {
+      "message": "Ke"
+    },
+    "send.amountField": {
+      "message": "Jumlah"
+    },
+    "send.assetField": {
+      "message": "Token"
+    },
+    "send.toPlaceholder": {
+      "message": "Masukkan alamat publik"
+    },
+    "send.fromRequiredError": {
+      "message": "Akun diperlukan"
+    },
+    "send.amountRequiredError": {
+      "message": "Jumlah diperlukan"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Jumlah harus lebih besar dari {minimumValue}"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Saldo SOL tidak cukup untuk menutupi biaya transaksi"
+    },
+    "send.toRequiredError": {
+      "message": "Alamat kirim diperlukan"
+    },
+    "send.toInvalidError": {
+      "message": "Alamat Solana tidak valid"
+    },
+    "send.insufficientBalance": {
+      "message": "Saldo tidak cukup"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Terjadi kesalahan sehingga kami tidak dapat memeriksa peringatan keamanan."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Lanjutkan hanya jika Anda memercayai setiap alamat yang terlibat."
+    },
+    "send.simulationTitleError": {
+      "message": "Simulasi transaksi gagal"
+    },
+    "send.simulationMessageError": {
+      "message": "Transaksi ini dikembalikan selama simulasi."
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Harga token dalam {currency} tidak tersedia untuk saat ini. Anda masih dapat mengirim token."
+    },
+    "send.confirmation.title": {
+      "message": "Tinjau"
+    },
+    "send.confirmation.from": {
+      "message": "Dari"
+    },
+    "send.confirmation.recipient": {
+      "message": "Penerima"
+    },
+    "send.confirmation.network": {
+      "message": "Jaringan"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Kecepatan transaksi"
+    },
+    "send.confirmation.fee": {
+      "message": "Biaya jaringan"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Kirim"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Batal"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Lihat transaksi"
+    },
+    "send.send-pending.title": {
+      "message": "Mengirim..."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Transaksi Anda telah dikirimkan."
+    },
+    "send.transaction-success.title": {
+      "message": "Terkirim"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} berhasil dikirim"
+    },
+    "send.transaction-failure.title": {
+      "message": "Transaksi gagal"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Tidak dapat mengirim {amount} {tokenSymbol}"
+    },
+    "confirmation.account": {
+      "message": "Akun"
+    },
+    "confirmation.network": {
+      "message": "Jaringan"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Estimasi perubahan"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Anda mengirim"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Anda menerima"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Tidak tersedia"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Tidak ada perubahan"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Estimasi perubahan merupakan hal yang mungkin terjadi jika Anda melakukan transaksi ini. Ini hanyalah prediksi, bukan jaminan."
+    },
+    "confirmation.advanced.show": {
+      "message": "Tampilkan lanjutan"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Sembunyikan lanjutan"
+    },
+    "confirmation.cancelButton": {
+      "message": "Batal"
+    },
+    "confirmation.confirmButton": {
+      "message": "Konfirmasikan"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Permintaan transaksi"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.sendAndConfirmTransaction.title": {
+      "message": "Sending and confirming transaction"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Tidak dikenal"
+    },
+    "confirmation.advanced.programId": {
+      "message": "ID Program"
+    },
+    "confirmation.advanced.data": {
+      "message": "Data"
+    },
+    "confirmation.fee": {
+      "message": "Biaya jaringan"
+    },
+    "confirmation.feeError": {
+      "message": "Tidak dapat memperkirakan biaya"
+    },
+    "confirmation.origin": {
+      "message": "Permintaan dari"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Transaksi ini dikembalikan selama simulasi."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Alasan: {reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Ini adalah permintaan tipuan"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Jika Anda menyetujui permintaan ini, pihak ketiga yang terdeteksi melakukan penipuan akan mengambil semua aset Anda."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Pelajari selengkapnya"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Saran keamanan dari"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Tanda tangani pesan"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Pesan"
+    },
+    "confirmation.signIn.title": {
+      "message": "Permintaan masuk"
+    },
+    "confirmation.signIn.description": {
+      "message": "Sebuah situs ingin Anda masuk untuk membuktikan bahwa Anda merupakan pemilik akun ini."
+    },
+    "confirmation.signIn.domain": {
+      "message": "Domain"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Domain tak dikenal"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Masuk dengan"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Situs ini meminta Anda masuk menggunakan akun yang salah."
+    },
+    "confirmation.signIn.message": {
+      "message": "Pesan"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Laporan"
+    },
+    "confirmation.signIn.version": {
+      "message": "Versi"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID Chain"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "Nonce"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Diterbitkan pada"
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Waktu kedaluwarsa"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Tidak sebelum"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "ID Permintaan"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Sumber daya"
+    },
+    "confirmation.signIn.badDomain": {
+      "message": "This site is asking you to sign in using the wrong domain."
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Akun dengan alamat yang sama sudah ada."
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Akun tidak memiliki cukup SOL untuk melakukan operasi."
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Transaksi dibatalkan karena toleransi selip telah terlampaui."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    }
+  }
+}
