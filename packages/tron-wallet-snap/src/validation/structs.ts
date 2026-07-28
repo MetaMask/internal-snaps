@@ -4,6 +4,7 @@ import {
   SolMethod,
   TrxAccountType,
 } from '@metamask/keyring-api';
+import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   array,
@@ -196,6 +197,11 @@ export const ListAccountTransactionsStruct = object({
   }),
 });
 
+export const ExportAccountRequestStruct = object({
+  accountId: UuidStruct,
+  options: optional(ExportAccountOptionsStruct),
+});
+
 export const NetworkStruct = enums(Object.values(Network));
 
 /**
@@ -314,6 +320,23 @@ export const GetFeeForTransactionParamsStruct = object({
 export const GetFeeForTransactionResponseStruct = object({
   value: nullable(PositiveNumberStringStruct),
 });
+
+/**
+ * Validates a Tron private key: exactly 64 lowercase hexadecimal characters
+ * (32 bytes without the 0x prefix).
+ */
+export const PrivateKeyHexStruct: Struct<string, null> = define(
+  'PrivateKeyHex',
+  (value) => {
+    if (typeof value !== 'string') {
+      return `Expected a string, but received: ${typeof value}`;
+    }
+    if (!/^[0-9a-f]{64}$/u.test(value)) {
+      return 'Expected a 64-character lowercase hexadecimal private key';
+    }
+    return true;
+  },
+);
 
 /**
  * Validates if a string is Base58 encoded.
