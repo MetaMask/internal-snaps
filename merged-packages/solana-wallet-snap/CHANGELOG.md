@@ -1,0 +1,1234 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Changed
+
+- **BREAKING:** Reconcile snap package with monorepo template ([#628](https://github.com/MetaMask/snap-solana-wallet/pull/628))
+  - Require Node.js `>=20`
+
+## [3.0.0]
+
+### Added
+
+- Implement keyring type and methods to V2 ([#606](https://github.com/MetaMask/snap-solana-wallet/pull/606))
+  - Implements `getAccounts` and `exportAccount`.
+  - Defines loosened keyring type that omits irrelevant properties from the keyring V2 type.
+
+### Changed
+
+- Bump `@metamask/keyring-api` to `^23.5.0` and `@metamask/keyring-snap-sdk` to `^9.2.0` ([#606](https://github.com/MetaMask/snap-solana-wallet/pull/606))
+
+### Removed
+
+- **BREAKING:** Remove v1-only keyring methods now that the Snap speaks the keyring V2 protocol ([#606](https://github.com/MetaMask/snap-solana-wallet/pull/606))
+  - Removes `createAccount` (superseded by `createAccounts`), `listAccounts` (superseded by `getAccounts`), `updateAccount`, and `filterAccountChains`.
+  - Stops emitting the `AccountCreated` and `AccountDeleted` keyring events; account lifecycle is now driven by the V2 client via `createAccounts`/`deleteAccount` return values.
+
+## [2.10.0]
+
+### Changed
+
+- Track suppressed errors ([#624](https://github.com/MetaMask/snap-solana-wallet/pull/624))
+
+## [2.9.1]
+
+### Fixed
+
+- Return the `signProofOfOwnership` signature as 0x-prefixed hex instead of base58 ([#617](https://github.com/MetaMask/snap-solana-wallet/pull/617))
+
+## [2.9.0]
+
+### Added
+
+- Add `signProofOfOwnership` client request method ([#611](https://github.com/MetaMask/snap-solana-wallet/pull/611))
+  - This method silently signs `metamask:proof-of-ownership:<nonce>:<address>` messages with the account's ed25519 key
+
+### Changed
+
+- Validate that account IDs passed to `keyring_setSelectedAccounts` belong to the snap, rejecting unknown IDs with `InvalidParamsError` ([#604](https://github.com/MetaMask/snap-solana-wallet/pull/604))
+- **BREAKING:** `getAccount` now throws on an invalid id instead of returning `undefined` ([#606](https://github.com/MetaMask/snap-solana-wallet/pull/606))
+- Wrap all public keyring method errors in a single `SnapError` ([#606](https://github.com/MetaMask/snap-solana-wallet/pull/606))
+
+## [2.8.0]
+
+### Added
+
+- Add support for `keyring_createAccounts` method to enable batch account creation ([#599](https://github.com/MetaMask/snap-solana-wallet/pull/599))
+
+## [2.7.4]
+
+### Changed
+
+- Replace card amount approval method to be indexable by our provider Baanx ([#593](https://github.com/MetaMask/snap-solana-wallet/pull/593))
+- Implement card amount approval method expiration validation ([#594](https://github.com/MetaMask/snap-solana-wallet/pull/594))
+
+### Fixed
+
+- Solana transaction confirmation screen issues ([#595](https://github.com/MetaMask/snap-solana-wallet/pull/595))
+  - Display recipient address on confirmation screen
+  - Hide "Request from MetaMask" for user-initiated transactions
+  - Fix "You receive" flash during loading
+- Emit missing "Transaction Submitted" event at broadcast time ([#598](https://github.com/MetaMask/snap-solana-wallet/pull/598))
+
+## [2.7.3]
+
+### Changed
+
+- Increase compute unit limit for transactions that handle approval of card amounts ([#587](https://github.com/MetaMask/snap-solana-wallet/pull/587))
+- Remove convertion layer for images displayed in Snaps UI ([#577](https://github.com/MetaMask/snap-solana-wallet/pull/577))
+
+### Fixed
+
+- Make sure an interface exists when accessing its context ([#586](https://github.com/MetaMask/snap-solana-wallet/pull/586))
+
+## [2.7.2]
+
+### Changed
+
+- Add `getOrCreateAssociatedTokenAccount` instruction before `approve` when handling approval of card amounts ([#584](https://github.com/MetaMask/snap-solana-wallet/pull/584))
+
+## [2.7.1]
+
+### Changed
+
+- Ensure snap state consistency if account creation fails on the client's side ([#557](https://github.com/MetaMask/snap-solana-wallet/pull/557))
+
+## [2.7.0]
+
+### Changed
+
+- Use `Approve` chain instructions instead of `ApproveChecked` on the `approveCardAmount` client request hook ([#580](https://github.com/MetaMask/snap-solana-wallet/pull/580))
+
+## [2.6.2]
+
+### Fixed
+
+- Card methods improvements ([#578](https://github.com/MetaMask/snap-solana-wallet/pull/578))
+- Fully deprecate `@solana/web3.js` on the project ([#575](https://github.com/MetaMask/snap-solana-wallet/pull/575))
+
+## [2.6.1]
+
+### Fixed
+
+- Fix token 2022 send ([#573](https://github.com/MetaMask/snap-solana-wallet/pull/573))
+- Unblock `onProtocolRequest` ([#572](https://github.com/MetaMask/snap-solana-wallet/pull/572))
+- Clear stored interface ID after the interface is closed ([#571](https://github.com/MetaMask/snap-solana-wallet/pull/571))
+
+## [2.6.0]
+
+### Added
+
+- Card spending methods ([#569](https://github.com/MetaMask/snap-solana-wallet/pull/569))
+
+## [2.5.1]
+
+### Fixed
+
+- Prevent big images from exceeding snap context size ([#567](https://github.com/MetaMask/snap-solana-wallet/pull/567))
+
+## [2.5.0]
+
+### Changed
+
+- Ensure only safe concurrent state operations ([#564](https://github.com/MetaMask/snap-solana-wallet/pull/564))
+
+## [2.4.8]
+
+### Fixed
+
+- Use mutex for state blob modifications ([#562](https://github.com/MetaMask/snap-solana-wallet/pull/562))
+- Use `snap_getClientStatus` for `clientVersion` ([#560](https://github.com/MetaMask/snap-solana-wallet/pull/560))
+- Publish icon to NPM ([#561](https://github.com/MetaMask/snap-solana-wallet/pull/561))
+
+## [2.4.7]
+
+### Fixed
+
+- Fix `getAccount` and `listAccounts` ([#558](https://github.com/MetaMask/snap-solana-wallet/pull/558))
+
+## [2.4.6]
+
+### Changed
+
+- Adapted the payload of request `signRewardsMessage` for improved performance ([#554](https://github.com/MetaMask/snap-solana-wallet/pull/554))
+
+## [2.4.5]
+
+### Fixed
+
+- Improved speed when lookin up the state for accounts by id ([#550](https://github.com/MetaMask/snap-solana-wallet/pull/550))
+- Fixed a serialization issue causing the snap to try rendering bigints ([#551](https://github.com/MetaMask/snap-solana-wallet/pull/551))
+
+## [2.4.4]
+
+### Fixed
+
+- Properly build the default icon url ([#548](https://github.com/MetaMask/snap-solana-wallet/pull/548))
+- Fix the send flow to support token account recipients ([#547](https://github.com/MetaMask/snap-solana-wallet/pull/547))
+
+## [2.4.3]
+
+### Changed
+
+- Optimize account subscriptions to only monitor selected accounts ([#543](https://github.com/MetaMask/snap-solana-wallet/pull/543))
+- Skip full account sync after account creation for improved performance ([#543](https://github.com/MetaMask/snap-solana-wallet/pull/543))
+- Add caching for PriceAPI exchange rate requests ([#545](https://github.com/MetaMask/snap-solana-wallet/pull/545))
+- Implement on-demand SNS domain resolution in confirmation screens ([#544](https://github.com/MetaMask/snap-solana-wallet/pull/544))
+
+## [2.4.2]
+
+### Changed
+
+- Enable `devnet` only for flask ([#541](https://github.com/MetaMask/snap-solana-wallet/pull/541))
+
+## [2.4.1]
+
+### Fixed
+
+- Removed the 1 minute validation on rewards message timestamp ([#539](https://github.com/MetaMask/snap-solana-wallet/pull/539))
+
+## [2.4.0]
+
+### Changed
+
+- Enable Devnet support across our environments ([#526](https://github.com/MetaMask/snap-solana-wallet/pull/526))
+
+## [2.3.11]
+
+### Changed
+
+- Offline fee calculation with support to secp256k1 and secp256r1 signatures ([#527](https://github.com/MetaMask/snap-solana-wallet/pull/527))
+
+### Fixed
+
+- Added support for signing transactions where the fee payer differs from the user's account ([#535](https://github.com/MetaMask/snap-solana-wallet/pull/535))
+
+## [2.3.10]
+
+### Added
+
+- Mechanism to time out websocket subscriptions ([#525](https://github.com/MetaMask/snap-solana-wallet/pull/525))
+
+### Changed
+
+- Offloaded the assets and transactions sync from account creation ([#528](https://github.com/MetaMask/snap-solana-wallet/pull/528))
+
+### Fixed
+
+- Enforce proper assets state sync between snap and client ([#529](https://github.com/MetaMask/snap-solana-wallet/pull/529))
+
+## [2.3.9]
+
+### Added
+
+- Add new client-only entrypoint `signRewardsMessage` ([#522](https://github.com/MetaMask/snap-solana-wallet/pull/522))
+- Track Sentry events for unclean WebSocket connection closures ([#523](https://github.com/MetaMask/snap-solana-wallet/pull/523))
+
+### Fixed
+
+- Fix validation for .sol domain name resolution ([#521](https://github.com/MetaMask/snap-solana-wallet/pull/521))
+
+## [2.3.8]
+
+### Fixed
+
+- Notify client when native SOL balance reaches zero ([#519](https://github.com/MetaMask/snap-solana-wallet/pull/519))
+
+## [2.3.7]
+
+### Added
+
+- Support tokens with multiplier ([#509](https://github.com/MetaMask/snap-solana-wallet/pull/509))
+
+### Fixed
+
+- Hide spam transactions from activity list ([#515](https://github.com/MetaMask/snap-solana-wallet/pull/515))
+- Default to symbol `UNKNOWN` in activity for tokens with no metadata ([#517](https://github.com/MetaMask/snap-solana-wallet/pull/517))
+
+## [2.3.6]
+
+### Changed
+
+- Remove unnecessary analytics property ([#513](https://github.com/MetaMask/snap-solana-wallet/pull/513))
+
+## [2.3.5]
+
+### Added
+
+- Instrument create account ([#510](https://github.com/MetaMask/snap-solana-wallet/pull/510))
+
+### Changed
+
+- Update analytics properties ([#511](https://github.com/MetaMask/snap-solana-wallet/pull/511))
+
+## [2.3.4]
+
+### Fixed
+
+- Fix the send transaction object passed to blockaid scan API ([#507](https://github.com/MetaMask/snap-solana-wallet/pull/507))
+
+## [2.3.3]
+
+### Changed
+
+- Close WebSockets onInactive after a grace period ([#505](https://github.com/MetaMask/snap-solana-wallet/pull/505))
+- Use safer `TransferChecked` instruction instead `Transfer` to send SPL tokens ([#503](https://github.com/MetaMask/snap-solana-wallet/pull/503))
+
+### Fixed
+
+- Fix the parsing of self transfers ([#504](https://github.com/MetaMask/snap-solana-wallet/pull/504))
+
+## [2.3.2]
+
+### Fixed
+
+- When the client starts/updates, only open WebScoket connections if the client is active ([#500](https://github.com/MetaMask/snap-solana-wallet/pull/500))
+
+## [2.3.1]
+
+### Fixed
+
+- Close all WebSocket connections when the client becomes inactive ([#498](https://github.com/MetaMask/snap-solana-wallet/pull/498))
+
+## [2.3.0]
+
+### Added
+
+- Added new swap/bridge `onClientRequest` methods ([#496](https://github.com/MetaMask/snap-solana-wallet/pull/496))
+
+### Changed
+
+- Refactor `onConfirmSend` to `confirmSend` ([#496](https://github.com/MetaMask/snap-solana-wallet/pull/496))
+
+## [2.2.0]
+
+### Added
+
+- Unified send flow methods (`onConfirmSend`, `onAddressInput`, `onAmountInput`) ([#494](https://github.com/MetaMask/snap-solana-wallet/pull/494))
+
+## [2.1.4]
+
+### Changed
+
+- Enhance performance by triggering UI refresh jobs only when the UI is open ([#490](https://github.com/MetaMask/snap-solana-wallet/pull/490))
+
+### Fixed
+
+- Increase the compute unit limit used for sending SPL tokens ([#492](https://github.com/MetaMask/snap-solana-wallet/pull/492))
+- Ensure WebSocket connections are open whenever the client becomes active ([#489](https://github.com/MetaMask/snap-solana-wallet/pull/489))
+
+## [2.1.3]
+
+### Fixed
+
+- Fixed changelog syntax ([#487](https://github.com/MetaMask/snap-solana-wallet/pull/487))
+
+## [2.1.2]
+
+### Changed
+
+- Add logging ([#484](https://github.com/MetaMask/snap-solana-wallet/pull/484))
+
+### Fixed
+
+- Fixed changelog syntax ([#483](https://github.com/MetaMask/snap-solana-wallet/pull/483))
+
+## [2.1.1]
+
+### Changed
+
+- Assets are now fetched and saved immediately when creating an account since they're needed by the client right away ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Transaction fetching has been moved to a background event since transactions aren't immediately needed by the client ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Added a 20-transaction limit to background transaction fetching to improve performance ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+
+### Fixed
+
+- Fix native asset extraction in `onAssetsLookup` ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Remove token assets with zero balance from `Keyring.listAccountAssets` and `Keyring.getAccountBalances` responses while preserving zero-balance native assets ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+- Ensure we always return at least the native asset with zero balance ([#481](https://github.com/MetaMask/snap-solana-wallet/pull/481))
+
+## [2.1.0]
+
+### Changed
+
+- Asset storage refactor and performance improvements ([#479](https://github.com/MetaMask/snap-solana-wallet/pull/479))
+
+### Fixed
+
+- Automatically remove assets from the list when their balance reaches zero ([#479](https://github.com/MetaMask/snap-solana-wallet/pull/479))
+
+### Security
+
+- Excessive data access and prolonged sensitive information exposure ([#478](https://github.com/MetaMask/snap-solana-wallet/pull/478))
+- Add sanitization and prevents control character injection ([#472](https://github.com/MetaMask/snap-solana-wallet/pull/472))
+
+## [2.0.0]
+
+### Added
+
+- Track inactive wss messages + removing account HTTP sync cronjobs ([#476](https://github.com/MetaMask/snap-solana-wallet/pull/476))
+- Update balances & transactions when new token is received ([#469](https://github.com/MetaMask/snap-solana-wallet/pull/469))
+- Overwrite `skipPreflight` if comes from request ([#463](https://github.com/MetaMask/snap-solana-wallet/pull/463))
+- Show SNS domains on UI ([#462](https://github.com/MetaMask/snap-solana-wallet/pull/462))
+- Detect WSS receive transactions ([#461](https://github.com/MetaMask/snap-solana-wallet/pull/461))
+- Adding `AccountSelector` component to send ([#445](https://github.com/MetaMask/snap-solana-wallet/pull/445))
+- WSS unsubscribe from deleted account ([#458](https://github.com/MetaMask/snap-solana-wallet/pull/458))
+- Migrate accounts sync from HTTP polling to Websockets ([#453](https://github.com/MetaMask/snap-solana-wallet/pull/453))
+- Support NFT assets ([#422](https://github.com/MetaMask/snap-solana-wallet/pull/422))
+
+### Changed
+
+- Rework Sync accounts ([#475](https://github.com/MetaMask/snap-solana-wallet/pull/475))
+- Replace `console` with `logger` ([#464](https://github.com/MetaMask/snap-solana-wallet/pull/464))
+- Move WSS monitoring logic out of `AssetsService` ([#460](https://github.com/MetaMask/snap-solana-wallet/pull/460))
+- Adds `errorTrackingTransport` ([#456](https://github.com/MetaMask/snap-solana-wallet/pull/456))
+- Populate asset units after mapping ([#459](https://github.com/MetaMask/snap-solana-wallet/pull/459))
+- Temporarily disable NFT assets fetching ([#457](https://github.com/MetaMask/snap-solana-wallet/pull/457))
+
+### Fixed
+
+- Adds check and throws error for `buildUrl` ([#471](https://github.com/MetaMask/snap-solana-wallet/pull/471))
+- Validate address for Signin ([#468](https://github.com/MetaMask/snap-solana-wallet/pull/468))
+- WSS disconnection handling ([#467](https://github.com/MetaMask/snap-solana-wallet/pull/467))
+- `buildUrl` function with potential vulnerability ([#466](https://github.com/MetaMask/snap-solana-wallet/pull/466))
+- Validate origin in method `onProtocolRequest` ([#465](https://github.com/MetaMask/snap-solana-wallet/pull/465))
+
+## [1.36.0]
+
+### Changed
+
+- The flow signAndSendTransaction now relies on WebSockets to receive confirmation updates, instead of HTTP polling ([#450](https://github.com/MetaMask/snap-solana-wallet/pull/450))
+- The flow signTransaction now relies on WebSockets to receive confirmation updates, instead of HTTP polling ([#452](https://github.com/MetaMask/snap-solana-wallet/pull/452))
+- Simplify some logic in the transaction mapping function ([#451](https://github.com/MetaMask/snap-solana-wallet/pull/451))
+
+## [1.35.2]
+
+### Fixed
+
+- Return correct structure on the `onAssetsMarketData` handler ([#448](https://github.com/MetaMask/snap-solana-wallet/pull/448))
+
+## [1.35.1]
+
+### Added
+
+- Implement Solana Name Service support ([#441](https://github.com/MetaMask/snap-solana-wallet/pull/441))
+- Track Blockaid metrics ([#439](https://github.com/MetaMask/snap-solana-wallet/pull/439))
+
+### Fixed
+
+- Correctly export handler `onAssetsMarketData` ([#446](https://github.com/MetaMask/snap-solana-wallet/pull/446))
+
+## [1.35.0]
+
+### Added
+
+- `onAssetsMarketData` handler ([#426](https://github.com/MetaMask/snap-solana-wallet/pull/426))
+- Websockets setup ([#431](https://github.com/MetaMask/snap-solana-wallet/pull/431))
+
+### Changed
+
+- Move adapters to services and rename them ([#438](https://github.com/MetaMask/snap-solana-wallet/pull/438))
+
+## [1.34.0]
+
+### Changed
+
+- Switch to duration cronjobs ([#435](https://github.com/MetaMask/snap-solana-wallet/pull/435))
+
+### Fixed
+
+- Validate same origin domain for `signIn` ([#434](https://github.com/MetaMask/snap-solana-wallet/pull/434))
+
+## [1.33.4]
+
+### Fixed
+
+- Handle errors on the edge ([#430](https://github.com/MetaMask/snap-solana-wallet/pull/430))
+
+## [1.33.3]
+
+### Changed
+
+- Use `InMemoryCache` in `PriceApiService` ([#427](https://github.com/MetaMask/snap-solana-wallet/pull/427))
+
+## [1.33.2]
+
+### Added
+
+- Adds `snap_trackEvent` and `origin` param ([#418](https://github.com/MetaMask/snap-solana-wallet/pull/418))
+
+### Fixed
+
+- Confirmation title aligned with method request ([#423](https://github.com/MetaMask/snap-solana-wallet/pull/423))
+
+## [1.33.1]
+
+### Fixed
+
+- Max button not working when balace is lower than rent + fee ([#419](https://github.com/MetaMask/snap-solana-wallet/pull/419))
+- Transaction scan when api fails ([#419](https://github.com/MetaMask/snap-solana-wallet/pull/419))
+
+## [1.33.0]
+
+### Added
+
+- `onClientRequest` implementation ([#405](https://github.com/MetaMask/snap-solana-wallet/pull/405))
+- Instructions improvements in confirmation screen ([#416](https://github.com/MetaMask/snap-solana-wallet/pull/416))
+- Cover `onAccountsRefresh` with unit tests ([#415](https://github.com/MetaMask/snap-solana-wallet/pull/415))
+
+### Changed
+
+- Move `polyfills` to `infrastructure` directory ([#414](https://github.com/MetaMask/snap-solana-wallet/pull/414))
+- Move Solana Keyring account to `domain` layer ([#412](https://github.com/MetaMask/snap-solana-wallet/pull/412))
+
+## [1.32.0]
+
+### Added
+
+- Pass origin param to Blockaid ([#395](https://github.com/MetaMask/snap-solana-wallet/pull/395))
+- Display origin param in confirmation screens ([#408](https://github.com/MetaMask/snap-solana-wallet/pull/408))
+- Add Swaps failling test case where we end up with only positive balance changes ([#398](https://github.com/MetaMask/snap-solana-wallet/pull/398))
+
+### Fixed
+
+- Spam filter was not triggered on failed transactions ([#399](https://github.com/MetaMask/snap-solana-wallet/pull/399))
+- Add space to "Advanced details" button ([#407](https://github.com/MetaMask/snap-solana-wallet/pull/407))
+- Replace viewbox on question mark image ([#404](https://github.com/MetaMask/snap-solana-wallet/pull/404))
+- Fix `onProtocolRequest` validation ([#403](https://github.com/MetaMask/snap-solana-wallet/pull/403))
+
+## [1.31.2]
+
+### Changed
+
+- Transaction scan messages ([#401](https://github.com/MetaMask/snap-solana-wallet/pull/401))
+- Disable continue button on scan error ([#400](https://github.com/MetaMask/snap-solana-wallet/pull/400))
+- Resize unkown svg image ([#397](https://github.com/MetaMask/snap-solana-wallet/pull/397))
+- Improve scan messages ([#367](https://github.com/MetaMask/snap-solana-wallet/pull/367))
+
+## [1.31.1]
+
+### Fixed
+
+- Remove lifecycle update ([#393](https://github.com/MetaMask/snap-solana-wallet/pull/393))
+- Match storage limit with expected page size for transactions coming from the snap ([#392](https://github.com/MetaMask/snap-solana-wallet/pull/392))
+
+## [1.31.0]
+
+### Added
+
+- Enable `getMinimumBalanceForRentExemption` ([#360](https://github.com/MetaMask/snap-solana-wallet/pull/360))
+- New translations ([#348](https://github.com/MetaMask/snap-solana-wallet/pull/348))
+
+### Changed
+
+- Restore max button in send flow ([#384](https://github.com/MetaMask/snap-solana-wallet/pull/384))
+- Remove additional get context on refresh send ([#385](https://github.com/MetaMask/snap-solana-wallet/pull/385))
+- Clean up `AssetService` ([#380](https://github.com/MetaMask/snap-solana-wallet/pull/380))
+
+### Fixed
+
+- Decrease non-active cronjob time to 30min ([#390](https://github.com/MetaMask/snap-solana-wallet/pull/390))
+- Prevent inactive client from executing cronjobs ([#388](https://github.com/MetaMask/snap-solana-wallet/pull/388))
+- Prevent empty accounts from refreshing ([#387](https://github.com/MetaMask/snap-solana-wallet/pull/387))
+- Fix number formatting when locale is composed ([#382](https://github.com/MetaMask/snap-solana-wallet/pull/382))
+- Changing asset in the Send flow disabled Continue button ([#374](https://github.com/MetaMask/snap-solana-wallet/pull/374))
+
+## [1.30.4]
+
+### Fixed
+
+- Spread cronjob load time randomly per user ([#379](https://github.com/MetaMask/snap-solana-wallet/pull/379))
+
+## [1.30.3]
+
+### Fixed
+
+- Rollback send state ([#375](https://github.com/MetaMask/snap-solana-wallet/pull/375))
+
+## [1.30.2]
+
+### Fixed
+
+- Hotfix: get balances ([#372](https://github.com/MetaMask/snap-solana-wallet/pull/372))
+- Add spam failed transaction case to the mapping tests ([#371](https://github.com/MetaMask/snap-solana-wallet/pull/371))
+
+## [1.30.1]
+
+### Fixed
+
+- Rollback `fungible` check ([#369](https://github.com/MetaMask/snap-solana-wallet/pull/369))
+
+## [1.30.0]
+
+### Changed
+
+- Replace `refreshAssets` and `refreshTransactions` with `refreshAccounts` ([#365](https://github.com/MetaMask/snap-solana-wallet/pull/365))
+- Optimize get account balances ([#364](https://github.com/MetaMask/snap-solana-wallet/pull/364))
+
+### Fixed
+
+- Set correct fungible flag using quick check ([#363](https://github.com/MetaMask/snap-solana-wallet/pull/363))
+
+## [1.29.0]
+
+### Changed
+
+- `snap_manageState` to `snap_setState` ([#359](https://github.com/MetaMask/snap-solana-wallet/pull/359))
+
+### Fixed
+
+- Transaction confirmation loading button while fetching icon ([#361](https://github.com/MetaMask/snap-solana-wallet/pull/361))
+
+## [1.28.3]
+
+### Fixed
+
+- More transaction mapping inaccuracies ([#349](https://github.com/MetaMask/snap-solana-wallet/pull/349))
+- Temporarily hide "max"' button in send form ([#356](https://github.com/MetaMask/snap-solana-wallet/pull/356))
+
+## [1.28.2]
+
+### Fixed
+
+- Block to address until data is ready on send ([#354](https://github.com/MetaMask/snap-solana-wallet/pull/354))
+
+## [1.28.1]
+
+### Changed
+
+- Simplify mapping fee ([#347](https://github.com/MetaMask/snap-solana-wallet/pull/347))
+
+### Fixed
+
+- Send form address input not triggering amount pickup ([#352](https://github.com/MetaMask/snap-solana-wallet/pull/352))
+- Fully respect `activeNetworks` set in the ConfigProvider ([#351](https://github.com/MetaMask/snap-solana-wallet/pull/351))
+- `createAccount` idempotency ([#350](https://github.com/MetaMask/snap-solana-wallet/pull/350))
+
+## [1.28.0]
+
+### Added
+
+- New translations ([#344](https://github.com/MetaMask/snap-solana-wallet/pull/344))
+
+### Fixed
+
+- Disabled Devnet ([#343](https://github.com/MetaMask/snap-solana-wallet/pull/343))
+- Transaction mapping ([#343](https://github.com/MetaMask/snap-solana-wallet/pull/343))
+
+## [1.27.0]
+
+### Fixed
+
+- Decrease cache time to a minute ([#341](https://github.com/MetaMask/snap-solana-wallet/pull/341))
+
+## [1.26.1]
+
+### Fixed
+
+- Transaction after interaction ([#339](https://github.com/MetaMask/snap-solana-wallet/pull/339))
+- Make `marketCap` optional ([#338](https://github.com/MetaMask/snap-solana-wallet/pull/338))
+
+## [1.26.0]
+
+### Added
+
+- Integrate `AssetSelector` in Send ([#336](https://github.com/MetaMask/snap-solana-wallet/pull/336))
+
+### Fixed
+
+- Provide skeleton width ([#335](https://github.com/MetaMask/snap-solana-wallet/pull/335))
+- Add "all" time range to historical prices ([#333](https://github.com/MetaMask/snap-solana-wallet/pull/333))
+
+## [1.25.1]
+
+### Fixed
+
+- Bring back clear button to `ToAddress` ([#331](https://github.com/MetaMask/snap-solana-wallet/pull/331))
+
+## [1.25.0]
+
+### Added
+
+- Add transactions scanning after signing a transaction in case it gets broadcast by dApps ([#324](https://github.com/MetaMask/snap-solana-wallet/pull/324))
+- Hide spam transactions with status `failed` ([#322](https://github.com/MetaMask/snap-solana-wallet/pull/322))
+
+### Changed
+
+- Improved typing performance ([#321](https://github.com/MetaMask/snap-solana-wallet/pull/321))
+- Move accounts to non-encrypted state ([#326](https://github.com/MetaMask/snap-solana-wallet/pull/326))
+- Simplify SPL Tokens send instructions ([#323](https://github.com/MetaMask/snap-solana-wallet/pull/323))
+
+### Fixed
+
+- Filter out assets received by other addresses when a transaction is a Receive ([#325](https://github.com/MetaMask/snap-solana-wallet/pull/325))
+
+## [1.24.0]
+
+### Added
+
+- Automatically hide spam tokens from the transaction history ([#317](https://github.com/MetaMask/snap-solana-wallet/pull/317))
+
+### Changed
+
+- Add transport without `x-bigtable` ([#318](https://github.com/MetaMask/snap-solana-wallet/pull/318))
+
+### Fixed
+
+- Pass request options in solana wallet methods ([#315](https://github.com/MetaMask/snap-solana-wallet/pull/315))
+
+## [1.23.0]
+
+### Added
+
+- Account creation with configurable derivation path ([#311](https://github.com/MetaMask/snap-solana-wallet/pull/311))
+
+### Fixed
+
+- Throw appropriate error when user rejects a request ([#312](https://github.com/MetaMask/snap-solana-wallet/pull/312))
+- Error message not formatted properly when cancelling a transaction from a dApp ([#309](https://github.com/MetaMask/snap-solana-wallet/pull/309))
+
+## [1.22.0]
+
+### Added
+
+- Account creation is now idempotent ([#306](https://github.com/MetaMask/snap-solana-wallet/pull/306))
+
+### Fixed
+
+- Use the proper entropy when signing transactions ([#305](https://github.com/MetaMask/snap-solana-wallet/pull/305))
+- Properly export the handler `onAssetHistoricalPrice` ([#305](https://github.com/MetaMask/snap-solana-wallet/pull/305))
+
+## [1.21.0]
+
+### Added
+
+- Support sending Token2022 SPL tokens ([#285](https://github.com/MetaMask/snap-solana-wallet/pull/285))
+- Support `onAssetHistoricalPrice` to return price chart ([#300](https://github.com/MetaMask/snap-solana-wallet/pull/300))
+
+### Changed
+
+- Make `entropySource` optional when creating a Solana account ([#299](https://github.com/MetaMask/snap-solana-wallet/pull/299))
+
+### Fixed
+
+- Simplify caching ([#302](https://github.com/MetaMask/snap-solana-wallet/pull/302))
+- Validate that SOL balance is > 0 to cover transaction fees before simulation ([#303](https://github.com/MetaMask/snap-solana-wallet/pull/303))
+
+## [1.20.0]
+
+### Added
+
+- `onAssetsConversion` now suports market data ([#291](https://github.com/MetaMask/snap-solana-wallet/pull/291))
+- Add header for RPC latency ([#295](https://github.com/MetaMask/snap-solana-wallet/pull/295))
+
+### Fixed
+
+- Support estimating compute units limit for tailing transactions ([#297](https://github.com/MetaMask/snap-solana-wallet/pull/297))
+
+## [1.19.0]
+
+### Added
+
+- Automatically add priority fee and compute budget instructions ([#290](https://github.com/MetaMask/snap-solana-wallet/pull/290), [#288](https://github.com/MetaMask/snap-solana-wallet/pull/288))
+- Map `TransferChecked` ([#280](https://github.com/MetaMask/snap-solana-wallet/pull/280))
+- Include market data when fetching spot prices ([#272](https://github.com/MetaMask/snap-solana-wallet/pull/272))
+
+### Changed
+
+- Bump keyring api + map unknown tx type ([#292](https://github.com/MetaMask/snap-solana-wallet/pull/292))
+- Alternative background in SendForm ([#289](https://github.com/MetaMask/snap-solana-wallet/pull/289))
+- Transaction `skipPreflight` ([#287](https://github.com/MetaMask/snap-solana-wallet/pull/287))
+
+### Fixed
+
+- Error message for account creation ([#286](https://github.com/MetaMask/snap-solana-wallet/pull/286))
+
+## [1.18.1]
+
+### Changed
+
+- Make state support non-json-serializable data ([#283](https://github.com/MetaMask/snap-solana-wallet/pull/283))
+
+### Removed
+
+- Remove the unnecessary `PositiveNumberStruct` ([#278](https://github.com/MetaMask/snap-solana-wallet/pull/278))
+
+### Fixed
+
+- `getLowestUnusedIndex` should consider SRPs in the check ([#282](https://github.com/MetaMask/snap-solana-wallet/pull/282))
+- Prevent rounding errors during validation of amount ([#281](https://github.com/MetaMask/snap-solana-wallet/pull/281))
+
+## [1.18.0]
+
+### Added
+
+- Keyring `discoverAccounts` ([#274](https://github.com/MetaMask/snap-solana-wallet/pull/274))
+- Support for `Token2022` program assets ([#275](https://github.com/MetaMask/snap-solana-wallet/pull/275))
+
+### Fixed
+
+- Partially sign transaction ([#276](https://github.com/MetaMask/snap-solana-wallet/pull/276))
+
+## [1.17.0]
+
+### Added
+
+- Add `getLatestBlockhash` protocol request ([#271](https://github.com/MetaMask/snap-solana-wallet/pull/271))
+- Add optional `assetId` to send flow ([#270](https://github.com/MetaMask/snap-solana-wallet/pull/270))
+
+## [1.16.1]
+
+### Fixed
+
+- `signIn` message formatting ([#268](https://github.com/MetaMask/snap-solana-wallet/pull/268))
+
+## [1.16.0]
+
+### Added
+
+- Forward `MetaMaskOptions` in `keyring_createAccount` method ([#266](https://github.com/MetaMask/snap-solana-wallet/pull/266))
+
+## [1.15.1]
+
+### Changed
+
+- Move to solscan ([#264](https://github.com/MetaMask/snap-solana-wallet/pull/264))
+
+## [1.15.0]
+
+### Added
+
+- Use new snap MetaMask preferences ([#258](https://github.com/MetaMask/snap-solana-wallet/pull/258))
+
+### Changed
+
+- Move state to unencrypted ([#261](https://github.com/MetaMask/snap-solana-wallet/pull/261))
+- Upgrade `@solana/web3.js` to `@solana/kit` ([#259](https://github.com/MetaMask/snap-solana-wallet/pull/259))
+
+### Fixed
+
+- Transaction decoding for `Message` and `Transaction` ([#262](https://github.com/MetaMask/snap-solana-wallet/pull/262))
+
+## [1.14.0]
+
+### Added
+
+- New transaltions ([#257](https://github.com/MetaMask/snap-solana-wallet/pull/257))
+- Warn on bad account in confirm `signIn` ([#256](https://github.com/MetaMask/snap-solana-wallet/pull/256))
+- Confirmation UI for `signTransaction` ([#251](https://github.com/MetaMask/snap-solana-wallet/pull/251))
+- Confirmation UI for `signIn` and `signMessage` ([#247](https://github.com/MetaMask/snap-solana-wallet/pull/247))
+
+### Fixed
+
+- Correct expected parameter shape for `resolveAccountAddress` ([#254](https://github.com/MetaMask/snap-solana-wallet/pull/254))
+- Assets wipe up by the cronjob ([#253](https://github.com/MetaMask/snap-solana-wallet/pull/253))
+- Fee estimation in confirm tx request ([#252](https://github.com/MetaMask/snap-solana-wallet/pull/252))
+- Mapping differences between Send, Receive and Swap transactions ([#250](https://github.com/MetaMask/snap-solana-wallet/pull/250))
+
+## [1.13.0]
+
+### Added
+
+- New translations ([#244](https://github.com/MetaMask/snap-solana-wallet/pull/244))
+- Substract rent from max amount + improve validation on amount f… ([#243](https://github.com/MetaMask/snap-solana-wallet/pull/243))
+
+### Fixed
+
+- Show amount for self and failed transactions ([#240](https://github.com/MetaMask/snap-solana-wallet/pull/240))
+- Transaction updates not showing asset units ([#245](https://github.com/MetaMask/snap-solana-wallet/pull/245))
+
+## [1.12.0]
+
+### Added
+
+- `Sign{Message/Transaction/In}` backend ([#241](https://github.com/MetaMask/snap-solana-wallet/pull/241))
+- Analytics service ([#236](https://github.com/MetaMask/snap-solana-wallet/pull/236))
+
+### Fixed
+
+- Add validation to `getGenesisHash` request ([#239](https://github.com/MetaMask/snap-solana-wallet/pull/239))
+
+## [1.11.0]
+
+### Added
+
+- New translations ([#234](https://github.com/MetaMask/snap-solana-wallet/pull/234))
+
+### Fixed
+
+- Reduce send delay ([#233](https://github.com/MetaMask/snap-solana-wallet/pull/233))
+- Put instructions back on confirmation ([#230](https://github.com/MetaMask/snap-solana-wallet/pull/230))
+
+## [1.10.1]
+
+### Added
+
+- Support for failed transactions ([#224](https://github.com/MetaMask/snap-solana-wallet/pull/224))
+
+### Removed
+
+- Lifecycle hooks permissions ([#226](https://github.com/MetaMask/snap-solana-wallet/pull/226))
+
+## [1.10.0]
+
+### Added
+
+- Update balances post transaction ([#208](https://github.com/MetaMask/snap-solana-wallet/pull/208))
+
+### Fixed
+
+- Account keeps incrementing after rejecting add account ([#222](https://github.com/MetaMask/snap-solana-wallet/pull/222))
+- Loss of precision on transfer amounts ([#219](https://github.com/MetaMask/snap-solana-wallet/pull/219))
+- Solve race condition when simulating transaction in send form ([#221](https://github.com/MetaMask/snap-solana-wallet/pull/221))
+
+## [1.9.0]
+
+### Added
+
+- New translations languages ([#126](https://github.com/MetaMask/snap-solana-wallet/pull/126))
+- Support for `swap` transactions ([#214](https://github.com/MetaMask/snap-solana-wallet/pull/214))
+- Support explicit `accountNameSuggestion` on `createAccount` ([#207](https://github.com/MetaMask/snap-solana-wallet/pull/207))
+- Use `minimumBalanceForRentExemption` to send SOL ([#215](https://github.com/MetaMask/snap-solana-wallet/pull/215))
+
+### Fixed
+
+- Allowing accounts to request `submitRequest` methods ([#218](https://github.com/MetaMask/snap-solana-wallet/pull/218))
+
+## [1.8.0]
+
+### Added
+
+- Pulg send flow to `signAndSendTransaction` ([#212](https://github.com/MetaMask/snap-solana-wallet/pull/212))
+- Add confirmation before submit request ([#209](https://github.com/MetaMask/snap-solana-wallet/pull/209))
+- Add estimated changes to confirmation ([#210](https://github.com/MetaMask/snap-solana-wallet/pull/210))
+
+### Fixed
+
+- Fiat fee in send confirmation ([#211](https://github.com/MetaMask/snap-solana-wallet/pull/211))
+- Multiple send bug fixes ([#200](https://github.com/MetaMask/snap-solana-wallet/pull/200))
+
+## [1.7.0]
+
+### Added
+
+- Enable SIP-26 `onProtocolRequest` ([#205](https://github.com/MetaMask/snap-solana-wallet/pull/205))
+- Mock `wallet-standard` methods ([#204](https://github.com/MetaMask/snap-solana-wallet/pull/204))
+- Emit keyring event after sending a transaction ([#203](https://github.com/MetaMask/snap-solana-wallet/pull/203))
+- Implement `getFeeForTransaction` RPC request ([#201](https://github.com/MetaMask/snap-solana-wallet/pull/201))
+- Added `sendAndConfirmTransaction` confirmation ([#183](https://github.com/MetaMask/snap-solana-wallet/pull/183))
+
+### Changed
+
+- Update devnet url ([#202](https://github.com/MetaMask/snap-solana-wallet/pull/202))
+- Improve unit tests for execution ([#199](https://github.com/MetaMask/snap-solana-wallet/pull/199))
+
+## [1.6.0]
+
+### Added
+
+- Support conversions for all supported assets ([#181](https://github.com/MetaMask/snap-solana-wallet/pull/181))
+
+### Fixed
+
+- Remove assets data for deleted accounts ([#196](https://github.com/MetaMask/snap-solana-wallet/pull/196))
+- Concurrent state updates ([#195](https://github.com/MetaMask/snap-solana-wallet/pull/195))
+- Speed up Solana key derivation ([#191](https://github.com/MetaMask/snap-solana-wallet/pull/191))
+- Update returned account ([#193](https://github.com/MetaMask/snap-solana-wallet/pull/193))
+
+## [1.5.0]
+
+### Added
+
+- Script to dynamically change the manifest file ([#177](https://github.com/MetaMask/snap-solana-wallet/pull/177))
+
+### Changed
+
+- Audit: Use encrypted state to store user information ([#178](https://github.com/MetaMask/snap-solana-wallet/pull/178))
+- Derive Account private keys on demand ([#187](https://github.com/MetaMask/snap-solana-wallet/pull/187))
+
+#### Removed
+
+- `onUpdate` and `onInstall` handlers ([#186](https://github.com/MetaMask/snap-solana-wallet/pull/186))
+
+### Fixed
+
+- Audit: Pin dependency versions ([#189](https://github.com/MetaMask/snap-solana-wallet/pull/189)) and ([#185](https://github.com/MetaMask/snap-solana-wallet/pull/185))
+- Audit: Potential url injections in api calls ([#182](https://github.com/MetaMask/snap-solana-wallet/pull/182))
+- Audit: Unnecessary `tsx` extension on the snap's entry point file ([#180](https://github.com/MetaMask/snap-solana-wallet/pull/180))
+- Audit: LAX or missing runtime input validation ([#179](https://github.com/MetaMask/snap-solana-wallet/pull/179))
+- Bump `keyring-snap-sdk` version to enable the dispatcher ([#188](https://github.com/MetaMask/snap-solana-wallet/pull/188))
+
+## [1.4.0]
+
+### Added
+
+- Implement `resolveAccountAddress` ([#175](https://github.com/MetaMask/snap-solana-wallet/pull/175))
+- Implement push based transactions list ([#157](https://github.com/MetaMask/snap-solana-wallet/pull/157))
+- Parity with compiled transactions ([#169](https://github.com/MetaMask/snap-solana-wallet/pull/169))
+
+### Changed
+
+- Update on snap permissions ([#172](https://github.com/MetaMask/snap-solana-wallet/pull/172))
+- Improve env ([#171](https://github.com/MetaMask/snap-solana-wallet/pull/171))
+- Transaction simulation to input change ([#168](https://github.com/MetaMask/snap-solana-wallet/pull/168))
+
+### Fixed
+
+- Transactions data flow problems ([#174](https://github.com/MetaMask/snap-solana-wallet/pull/174))
+- Latency on send flow updates ([#173](https://github.com/MetaMask/snap-solana-wallet/pull/173))
+- Conversions currency to lowercase ([#167](https://github.com/MetaMask/snap-solana-wallet/pull/167))
+- Disable buttons until prices and balances are available ([#166](https://github.com/MetaMask/snap-solana-wallet/pull/166))
+
+## [1.3.0]
+
+### Added
+
+- Integrate platform apis ([#162](https://github.com/MetaMask/snap-solana-wallet/pull/162))
+- Hide network fee price when no prices ([#164](https://github.com/MetaMask/snap-solana-wallet/pull/164))
+- Can send tokens even when price fetch fails ([#161](https://github.com/MetaMask/snap-solana-wallet/pull/161))
+- SIP-29 handlers ([#159](https://github.com/MetaMask/snap-solana-wallet/pull/159))
+- onInstall handler ([#145](https://github.com/MetaMask/snap-solana-wallet/pull/145))
+- Update assets events ([#158](https://github.com/MetaMask/snap-solana-wallet/pull/158))
+- Switch order of fields on send ([#154](https://github.com/MetaMask/snap-solana-wallet/pull/154))
+- Sip29 in rpc ([#153](https://github.com/MetaMask/snap-solana-wallet/pull/153))
+
+### Fixed
+
+- Clicking on max when balance is zero ([#155](https://github.com/MetaMask/snap-solana-wallet/pull/155))
+- Transactions list request had improper validation ([#156](https://github.com/MetaMask/snap-solana-wallet/pull/156))
+
+## [1.2.0]
+
+### Added
+
+- Format tokens to the decimal ([#150](https://github.com/MetaMask/snap-solana-wallet/pull/150))
+- Add coverage for the transactions cronjob ([#149](https://github.com/MetaMask/snap-solana-wallet/pull/149))
+- Add tests for the transactions history feature ([#143](https://github.com/MetaMask/snap-solana-wallet/pull/143))
+- Send SPL tokens on send flow ([#144](https://github.com/MetaMask/snap-solana-wallet/pull/144))
+- Adds onUpdate hook ([#131](https://github.com/MetaMask/snap-solana-wallet/pull/131))
+- Snap send SPL tokens transaction ([#130](https://github.com/MetaMask/snap-solana-wallet/pull/130))
+- Add SPL token transaction parsing ([#124](https://github.com/MetaMask/snap-solana-wallet/pull/124))
+
+### Fixed
+
+- Validating all keyring I/O ([#151](https://github.com/MetaMask/snap-solana-wallet/pull/151))
+- Can progress on send when amount is empty ([#148](https://github.com/MetaMask/snap-solana-wallet/pull/148))
+- Chunk token metadata requests ([#147](https://github.com/MetaMask/snap-solana-wallet/pull/147))
+- Allow token metadata service to fetch from tokens from different networks at the same time ([#146](https://github.com/MetaMask/snap-solana-wallet/pull/146))
+- Expose buildTransactionMessage + base64 encoder / decoder ([#142](https://github.com/MetaMask/snap-solana-wallet/pull/142))
+
+## [1.1.0]
+
+### Added
+
+- Add `scopes` field to `KeyringAccount` ([#134](https://github.com/MetaMask/snap-solana-wallet/pull/134))
+- Add support for spanish translations ([#127](https://github.com/MetaMask/snap-solana-wallet/pull/127))
+- New Crowdin translations by Github Action ([#121](https://github.com/MetaMask/snap-solana-wallet/pull/121))
+- List account assets ([#125](https://github.com/MetaMask/snap-solana-wallet/pull/125))
+- Get transaction fee ([#123](https://github.com/MetaMask/snap-solana-wallet/pull/123))
+
+### Changed
+
+- Check client status for running cronjobs ([#128](https://github.com/MetaMask/snap-solana-wallet/pull/128))
+
+## [1.0.4]
+
+### Added
+
+- feat: add `keyring_listAccountTransactions` support to the snap ([#101](https://github.com/MetaMask/snap-solana-wallet/pull/101))
+- New Crowdin translations by Github Action ([#96](https://github.com/MetaMask/snap-solana-wallet/pull/96))
+- feat: localised currency ([#118](https://github.com/MetaMask/snap-solana-wallet/pull/118))
+- feat: add retry logic globally to all RPC calls ([#113](https://github.com/MetaMask/snap-solana-wallet/pull/113))
+- feat: failover rpc ([#115](https://github.com/MetaMask/snap-solana-wallet/pull/115))
+- feat: snap show loader for pending txs ([#117](https://github.com/MetaMask/snap-solana-wallet/pull/117))
+
+### Changed
+
+- fix: remove all logging from prod ([#120](https://github.com/MetaMask/snap-solana-wallet/pull/120))
+- fix: remove logging ([#119](https://github.com/MetaMask/snap-solana-wallet/pull/119))
+- fix: balance validation not triggering + send tests ([#116](https://github.com/MetaMask/snap-solana-wallet/pull/116))
+- fix: to address links to from in explorer ([#114](https://github.com/MetaMask/snap-solana-wallet/pull/114))
+- fix: scope passed to send form ([#112](https://github.com/MetaMask/snap-solana-wallet/pull/112))
+- fix: make building the send context robust to errors ([#111](https://github.com/MetaMask/snap-solana-wallet/pull/111))
+
+## [1.0.3]
+
+### Added
+
+- feat: add a component that wraps the send flow ([#106](https://github.com/MetaMask/snap-solana-wallet/pull/106))
+- feat: snap get live token rates ([#102](https://github.com/MetaMask/snap-solana-wallet/pull/102))
+- feat: localize ui ([#99](https://github.com/MetaMask/snap-solana-wallet/pull/99))
+- feat: Adds the Tx result view after confirming it ([#92](https://github.com/MetaMask/snap-solana-wallet/pull/92))
+
+### Changed
+
+- fix: the tx confirmation result view now uses price from the tx time ([#107](https://github.com/MetaMask/snap-solana-wallet/pull/107))
+- fix: compile error ([#104](https://github.com/MetaMask/snap-solana-wallet/pull/104))
+- fix: show address name in confirmation ([#105](https://github.com/MetaMask/snap-solana-wallet/pull/105))
+- fix: confirmation result ([#103](https://github.com/MetaMask/snap-solana-wallet/pull/103))
+- chore: clean up dependencies object ([#98](https://github.com/MetaMask/snap-solana-wallet/pull/98))
+- chore: updates translations ([#100](https://github.com/MetaMask/snap-solana-wallet/pull/100))
+
+## [1.0.2]
+
+### Added
+
+- feat: connect 'Initiate Transfer' and 'Confirmation' dialogs together ([#84](https://github.com/MetaMask/snap-solana-wallet/pull/84))
+- feat: setup translations ([#86](https://github.com/MetaMask/snap-solana-wallet/pull/86))
+
+## [1.0.1]
+
+### Added
+
+- docs: document the .env ([#87](https://github.com/MetaMask/snap-solana-wallet/pull/87))
+- [SOL-58] snap mock rpc calls for unit tests ([#85](https://github.com/MetaMask/snap-solana-wallet/pull/85))
+- feat: amount input ([#78](https://github.com/MetaMask/snap-solana-wallet/pull/78))
+- feat: implement TransactionConfirmation dialog ([#80](https://github.com/MetaMask/snap-solana-wallet/pull/80))
+- [SOL-43] adds the To input field ([#76](https://github.com/MetaMask/snap-solana-wallet/pull/76))
+- [SOL-45] feat: implement Solana transactions ([#70](https://github.com/MetaMask/snap-solana-wallet/pull/70))
+- feat: account selector ([#73](https://github.com/MetaMask/snap-solana-wallet/pull/73))
+- feat: handle send action ([#72](https://github.com/MetaMask/snap-solana-wallet/pull/72))
+
+### Fixed
+
+- fix: sonar on main ([#82](https://github.com/MetaMask/snap-solana-wallet/pull/82))
+- fix: add tests for all utils that didn't have them ([#83](https://github.com/MetaMask/snap-solana-wallet/pull/83))
+- fix: cors erros using Grove for mainnet rpc provider ([#77](https://github.com/MetaMask/snap-solana-wallet/pull/77))
+- fix: support get account balances on different chains ([#71](https://github.com/MetaMask/snap-solana-wallet/pull/71))
+
+## [1.0.0]
+
+### Added
+
+- Get account balances ([#67](https://github.com/MetaMask/snap-solana-wallet/pull/67))
+- Delete account keyring method ([#64](https://github.com/MetaMask/snap-solana-wallet/pull/64))
+- Create + List Solana accounts ([#54](https://github.com/MetaMask/snap-solana-wallet/pull/54))
+
+### Changed
+
+- Create and remove index mismatch ([#66](https://github.com/MetaMask/snap-solana-wallet/pull/66))
+- Adds the keyring-api package with solana support ([#63](https://github.com/MetaMask/snap-solana-wallet/pull/63))
+
+## [0.1.1]
+
+### Added
+
+- Keyring and rpc listeners
+- CI configs
+- Build config
+- Sonarcloud to github workflow ([#25](https://github.com/MetaMask/snap-solana-wallet/pull/25))
+- Snap setup
+
+[Unreleased]: https://github.com/MetaMask/snap-solana-wallet/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.10.0...v3.0.0
+[2.10.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.9.1...v2.10.0
+[2.9.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.9.0...v2.9.1
+[2.9.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.8.0...v2.9.0
+[2.8.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.7.4...v2.8.0
+[2.7.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.7.3...v2.7.4
+[2.7.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.7.2...v2.7.3
+[2.7.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.7.1...v2.7.2
+[2.7.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.7.0...v2.7.1
+[2.7.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.6.2...v2.7.0
+[2.6.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.6.1...v2.6.2
+[2.6.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.6.0...v2.6.1
+[2.6.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.5.1...v2.6.0
+[2.5.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.5.0...v2.5.1
+[2.5.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.8...v2.5.0
+[2.4.8]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.7...v2.4.8
+[2.4.7]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.6...v2.4.7
+[2.4.6]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.5...v2.4.6
+[2.4.5]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.4...v2.4.5
+[2.4.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.3...v2.4.4
+[2.4.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.2...v2.4.3
+[2.4.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.1...v2.4.2
+[2.4.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.4.0...v2.4.1
+[2.4.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.11...v2.4.0
+[2.3.11]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.10...v2.3.11
+[2.3.10]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.9...v2.3.10
+[2.3.9]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.8...v2.3.9
+[2.3.8]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.7...v2.3.8
+[2.3.7]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.6...v2.3.7
+[2.3.6]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.5...v2.3.6
+[2.3.5]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.4...v2.3.5
+[2.3.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.3...v2.3.4
+[2.3.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.2...v2.3.3
+[2.3.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.1...v2.3.2
+[2.3.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.3.0...v2.3.1
+[2.3.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.2.0...v2.3.0
+[2.2.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.4...v2.2.0
+[2.1.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.3...v2.1.4
+[2.1.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.2...v2.1.3
+[2.1.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.1...v2.1.2
+[2.1.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.1.0...v2.1.1
+[2.1.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v2.0.0...v2.1.0
+[2.0.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.36.0...v2.0.0
+[1.36.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.2...v1.36.0
+[1.35.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.1...v1.35.2
+[1.35.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.35.0...v1.35.1
+[1.35.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.34.0...v1.35.0
+[1.34.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.4...v1.34.0
+[1.33.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.3...v1.33.4
+[1.33.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.2...v1.33.3
+[1.33.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.1...v1.33.2
+[1.33.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.33.0...v1.33.1
+[1.33.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.32.0...v1.33.0
+[1.32.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.31.2...v1.32.0
+[1.31.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.31.1...v1.31.2
+[1.31.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.31.0...v1.31.1
+[1.31.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.30.4...v1.31.0
+[1.30.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.30.3...v1.30.4
+[1.30.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.30.2...v1.30.3
+[1.30.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.30.1...v1.30.2
+[1.30.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.30.0...v1.30.1
+[1.30.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.29.0...v1.30.0
+[1.29.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.28.3...v1.29.0
+[1.28.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.28.2...v1.28.3
+[1.28.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.28.1...v1.28.2
+[1.28.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.28.0...v1.28.1
+[1.28.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.27.0...v1.28.0
+[1.27.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.26.1...v1.27.0
+[1.26.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.26.0...v1.26.1
+[1.26.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.25.1...v1.26.0
+[1.25.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.25.0...v1.25.1
+[1.25.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.24.0...v1.25.0
+[1.24.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.23.0...v1.24.0
+[1.23.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.22.0...v1.23.0
+[1.22.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.21.0...v1.22.0
+[1.21.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.20.0...v1.21.0
+[1.20.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.19.0...v1.20.0
+[1.19.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.18.1...v1.19.0
+[1.18.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.18.0...v1.18.1
+[1.18.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.17.0...v1.18.0
+[1.17.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.16.1...v1.17.0
+[1.16.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.16.0...v1.16.1
+[1.16.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.15.1...v1.16.0
+[1.15.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.15.0...v1.15.1
+[1.15.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.14.0...v1.15.0
+[1.14.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.13.0...v1.14.0
+[1.13.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.12.0...v1.13.0
+[1.12.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.11.0...v1.12.0
+[1.11.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.10.1...v1.11.0
+[1.10.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.10.0...v1.10.1
+[1.10.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.0.4...v1.1.0
+[1.0.4]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/MetaMask/snap-solana-wallet/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/MetaMask/snap-solana-wallet/compare/v0.1.1...v1.0.0
+[0.1.1]: https://github.com/MetaMask/snap-solana-wallet/releases/tag/v0.1.1
