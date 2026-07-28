@@ -199,7 +199,7 @@ jobs:
         node-version: [20.x, 22.x]
         package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
     env:
-      ENVIRONMENT: test
+      ENVIRONMENT: production
       RPC_URL_LIST_MAINNET: ${{ secrets.RPC_URL_LIST_MAINNET }}
       RPC_URL_LIST_NILE_TESTNET: ${{ secrets.RPC_URL_LIST_NILE_TESTNET }}
       RPC_URL_LIST_SHASTA_TESTNET: ${{ secrets.RPC_URL_LIST_SHASTA_TESTNET }}
