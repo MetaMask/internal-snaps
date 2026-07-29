@@ -1,0 +1,269 @@
+{
+  "locale": "en",
+  "messages": {
+    "send.title": {
+      "message": "发送"
+    },
+    "send.balance": {
+      "message": "余额"
+    },
+    "send.maxButton": {
+      "message": "最大值"
+    },
+    "send.cancelButton": {
+      "message": "取消"
+    },
+    "send.continueButton": {
+      "message": "继续"
+    },
+    "send.fromField": {
+      "message": "从"
+    },
+    "send.toField": {
+      "message": "至"
+    },
+    "send.amountField": {
+      "message": "金额"
+    },
+    "send.assetField": {
+      "message": "代币"
+    },
+    "send.toPlaceholder": {
+      "message": "输入公共地址"
+    },
+    "send.fromRequiredError": {
+      "message": "账户为必填项"
+    },
+    "send.amountRequiredError": {
+      "message": "金额为必填项"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "金额必须大于 {minimumValue}"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "SOL 余额不足，无法支付交易费"
+    },
+    "send.toRequiredError": {
+      "message": "接收者地址为必填项"
+    },
+    "send.toInvalidError": {
+      "message": "Solana 地址无效"
+    },
+    "send.insufficientBalance": {
+      "message": "余额不足"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "由于错误，我们无法检查安全警报。"
+    },
+    "send.simulationMessageAPIError": {
+      "message": "请仅在信任所有相关地址的前提下继续操作。"
+    },
+    "send.simulationTitleError": {
+      "message": "交易模拟失败"
+    },
+    "send.simulationMessageError": {
+      "message": "此交易在模拟期间被撤销。"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "目前无法获取以 {currency} 计价的代币价格。您仍然可以发送代币。"
+    },
+    "send.confirmation.title": {
+      "message": "查看"
+    },
+    "send.confirmation.from": {
+      "message": "从"
+    },
+    "send.confirmation.recipient": {
+      "message": "接收者"
+    },
+    "send.confirmation.network": {
+      "message": "网络"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "交易速度"
+    },
+    "send.confirmation.fee": {
+      "message": "网络费"
+    },
+    "send.confirmation.sendButton": {
+      "message": "发送"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "取消"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "查看交易"
+    },
+    "send.send-pending.title": {
+      "message": "正在发送......"
+    },
+    "send.send-pending.subtitle": {
+      "message": "您的交易已提交。"
+    },
+    "send.transaction-success.title": {
+      "message": "已发送"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} 已成功发送"
+    },
+    "send.transaction-failure.title": {
+      "message": "交易失败"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "无法发送 {amount} {tokenSymbol}"
+    },
+    "confirmation.account": {
+      "message": "账户"
+    },
+    "confirmation.network": {
+      "message": "网络"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "预计变化"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "您发送"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "您收到"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "不可用"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "无变化"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "预期变化是指您完成该交易可能发生的变化。这只是预测，而不是保证。"
+    },
+    "confirmation.advanced.show": {
+      "message": "显示高级选项"
+    },
+    "confirmation.advanced.hide": {
+      "message": "隐藏高级选项"
+    },
+    "confirmation.cancelButton": {
+      "message": "取消"
+    },
+    "confirmation.confirmButton": {
+      "message": "确认"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "交易请求"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.sendAndConfirmTransaction.title": {
+      "message": "Sending and confirming transaction"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "未知"
+    },
+    "confirmation.advanced.programId": {
+      "message": "程序 ID"
+    },
+    "confirmation.advanced.data": {
+      "message": "数据"
+    },
+    "confirmation.fee": {
+      "message": "网络费"
+    },
+    "confirmation.feeError": {
+      "message": "无法估算费用"
+    },
+    "confirmation.origin": {
+      "message": "请求来自"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "此交易在模拟期间被撤销。"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "原因：{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "此请求属欺骗性质"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "如果您批准此请求，因欺诈而恶名昭彰的第三方会拿走您的所有资产。"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "了解详情"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "安全建议提供商："
+    },
+    "confirmation.signMessage.title": {
+      "message": "签署消息"
+    },
+    "confirmation.signMessage.message": {
+      "message": "消息"
+    },
+    "confirmation.signIn.title": {
+      "message": "登录请求"
+    },
+    "confirmation.signIn.description": {
+      "message": "网站要求您登录以验证账户所有权。"
+    },
+    "confirmation.signIn.domain": {
+      "message": "Domain"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "未知域名"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "使用以下方式登录"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "此网站要求您使用错误的账户登录。"
+    },
+    "confirmation.signIn.message": {
+      "message": "消息"
+    },
+    "confirmation.signIn.statement": {
+      "message": "声明"
+    },
+    "confirmation.signIn.version": {
+      "message": "版本"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "链 ID"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "唯一交易标识号"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "签发时间："
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "有效期"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "不早于"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "请求 ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "资源"
+    },
+    "confirmation.signIn.badDomain": {
+      "message": "This site is asking you to sign in using the wrong domain."
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "已存在使用相同地址的账户."
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "账户 SOL 余额不足，无法执行该操作."
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "该交易因超出滑点容差上限而撤销。"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    }
+  }
+}
