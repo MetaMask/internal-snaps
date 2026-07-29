@@ -132,5 +132,385 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 5
     }
+  },
+  "packages/tron-wallet-snap/scripts/build-preinstalled-snap.js": {
+    "n/no-sync": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/scripts/populate-en-locale.js": {
+    "n/no-sync": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/scripts/update-manifest-local.js": {
+    "n/no-process-env": {
+      "count": 1
+    },
+    "n/no-sync": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/snap.config.ts": {
+    "import-x/no-nodejs-modules": {
+      "count": 1
+    },
+    "no-restricted-globals": {
+      "count": 20
+    }
+  },
+  "packages/tron-wallet-snap/src/caching/InMemoryCache.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/caching/StateCache.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/caching/useCache.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 4
+    }
+  },
+  "packages/tron-wallet-snap/src/caching/useCacheUntil.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/price-api/PriceApiClient.test.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    },
+    "n/no-extraneous-import": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/price-api/PriceApiClient.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/price-api/structs.test.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    },
+    "n/no-extraneous-import": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/price-api/types.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/security-alerts-api/utils.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/snap/SnapClient.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/token-api/TokenApiClient.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/trongrid/TrongridApiClient.test.ts": {
+    "require-atomic-updates": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/clients/trongrid/errors.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 3
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 42
+    }
+  },
+  "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/handlers/clientRequest/validation.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/handlers/cronjob.test.tsx": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "packages/tron-wallet-snap/src/handlers/keyring.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    },
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/handlers/keyring.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/accounts/AccountsRepository.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/accounts/AccountsService.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/accounts/AccountsService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/assets/AssetsRepository.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/services/assets/AssetsRepository.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 3
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/assets/AssetsService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/services/config/ConfigProvider.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/send/SendService.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 3
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 15
+    }
+  },
+  "packages/tron-wallet-snap/src/services/send/SendService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/send/TransactionExpirationRefresherService.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 5
+    }
+  },
+  "packages/tron-wallet-snap/src/services/staking/StakingService.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "packages/tron-wallet-snap/src/services/staking/StakingService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/state/InMemoryState.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/state/State.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/state/State.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/transaction-expiration-refresher/TransactionExpirationRefresherService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/transaction-scan/TransactionScanService.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "packages/tron-wallet-snap/src/services/transactions/TransactionsRepository.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/transactions/TransactionsService.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/transactions/TransactionsService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/wallet/WalletService.test.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    },
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/wallet/WalletService.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/components/TransactionAlert/TransactionAlert.test.tsx": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/utils/getIconUrlForKnownAsset.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignMessage/render.test.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction.test.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.test.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 14
+    },
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.tsx": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest.test.tsx": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/render.test.tsx": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/utils/deriveTronFromCoinTypeNode.test.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/utils/deriveTronFromCoinTypeNode.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/utils/getExplorerUrl.test.ts": {
+    "n/no-process-env": {
+      "count": 3
+    }
+  },
+  "packages/tron-wallet-snap/src/utils/serialization/serialize.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/validation/keyring-structs.test.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/validation/transaction.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/validation/transaction.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
   }
 }
