@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.33.2]
+
 ### Uncategorized
 
 - chore: tron integration into packages ([#53](https://github.com/MetaMask/internal-snaps/pull/53))
@@ -15,4 +17,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This package was migrated from [snap-tron-wallet](https://github.com/MetaMask/snap-tron-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-tron-wallet/blob/main/packages/snap/CHANGELOG.md).
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@1.33.2...HEAD
+[1.33.2]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/tron-wallet-snap@1.33.2
