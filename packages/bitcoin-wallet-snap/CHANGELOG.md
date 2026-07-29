@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: tron integration into packages ([#53](https://github.com/MetaMask/internal-snaps/pull/53))
+- chore: update torn/bitcoin/sample package, update tron package versions and meta, jest ([#52](https://github.com/MetaMask/internal-snaps/pull/52))
+- chore: update readme files ([#47](https://github.com/MetaMask/internal-snaps/pull/47))
+
 ## [1.15.2]
 
 ### Fixed
