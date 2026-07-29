@@ -1,0 +1,269 @@
+{
+  "locale": "en",
+  "messages": {
+    "send.title": {
+      "message": "भेजें"
+    },
+    "send.balance": {
+      "message": "बैलेंस"
+    },
+    "send.maxButton": {
+      "message": "मैक्स"
+    },
+    "send.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "send.continueButton": {
+      "message": "जारी रखें"
+    },
+    "send.fromField": {
+      "message": "द्वारा भेजा गया"
+    },
+    "send.toField": {
+      "message": "को भेजा गया"
+    },
+    "send.amountField": {
+      "message": "रकम"
+    },
+    "send.assetField": {
+      "message": "टोकन"
+    },
+    "send.toPlaceholder": {
+      "message": "पब्लिक एड्रेस डालें"
+    },
+    "send.fromRequiredError": {
+      "message": "अकाउंट होना ज़रूरी है"
+    },
+    "send.amountRequiredError": {
+      "message": "अमाउंट होना ज़रूरी है"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "राशि {minimumValue} से ज़्यादा होनी चाहिए"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "ट्रांसेक्शन शुल्क को कवर करने के लिए अपर्याप्त SOL बैलेंस"
+    },
+    "send.toRequiredError": {
+      "message": "जिसको भेजा जा रहा है उसका एड्रेस होना चाहिए"
+    },
+    "send.toInvalidError": {
+      "message": "सोलाना का अमान्य पता"
+    },
+    "send.insufficientBalance": {
+      "message": "कम बैलेंस"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "किसी गड़बड़ी (एरर) के कारण, हम सुरक्षा एलर्ट की जांच नहीं कर सके।"
+    },
+    "send.simulationMessageAPIError": {
+      "message": "केवल तभी आगे बढ़ें जब आपको शामिल प्रत्येक एड्रेस पर भरोसा हो।"
+    },
+    "send.simulationTitleError": {
+      "message": "ट्रांसेक्शन सिमुलेशन विफल रहा"
+    },
+    "send.simulationMessageError": {
+      "message": "सिमुलेशन के दौरान ये ट्रांसेक्शन वापस कर दिया गया।"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "{currency} में टोकनों के लिए कीमत फिलहाल उपलब्ध नहीं हैं। पर आप अभी भी टोकन भेज सकते हैं।"
+    },
+    "send.confirmation.title": {
+      "message": "समीक्षा करें"
+    },
+    "send.confirmation.from": {
+      "message": "द्वारा भेजा गया"
+    },
+    "send.confirmation.recipient": {
+      "message": "द्वारा प्राप्त किया गया"
+    },
+    "send.confirmation.network": {
+      "message": "नेटवर्क"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "ट्रांसेक्शन स्पीड"
+    },
+    "send.confirmation.fee": {
+      "message": "नेटवर्क फीस"
+    },
+    "send.confirmation.sendButton": {
+      "message": "भेजें"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "ट्रांसेक्शन देखें"
+    },
+    "send.send-pending.title": {
+      "message": "भेजा जा रहा है..."
+    },
+    "send.send-pending.subtitle": {
+      "message": "आपका ट्रांसेक्शन सबमिट किया गया।"
+    },
+    "send.transaction-success.title": {
+      "message": "भेजा गया"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} सफलतापूर्वक भेजा गया"
+    },
+    "send.transaction-failure.title": {
+      "message": "ट्रांसेक्शन नहीं हो पाया"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "{amount} {tokenSymbol} भेज नहीं पा रहे हैं"
+    },
+    "confirmation.account": {
+      "message": "अकाउंट"
+    },
+    "confirmation.network": {
+      "message": "नेटवर्क"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "अनुमानित बदलाव"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "आप भेजते हैं"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "आप प्राप्त करते हैं"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "उपलब्ध नहीं है"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "कोई बदलाव नहीं"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "अगर आप यह ट्रांसेक्शन करते हैं तो अनुमानित परिवर्तन हो सकते हैं। यह सिर्फ एक प्रेडिक्शन है, कोई गारंटी नहीं।"
+    },
+    "confirmation.advanced.show": {
+      "message": "एडवांस्ड दिखाएं"
+    },
+    "confirmation.advanced.hide": {
+      "message": "एडवांस्ड को छुपाएं"
+    },
+    "confirmation.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "confirmation.confirmButton": {
+      "message": "कन्फर्म करें"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "ट्रांसेक्शन रिक्वेस्ट"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.sendAndConfirmTransaction.title": {
+      "message": "Sending and confirming transaction"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "अज्ञात"
+    },
+    "confirmation.advanced.programId": {
+      "message": "प्रोग्राम आईडी"
+    },
+    "confirmation.advanced.data": {
+      "message": "डेटा"
+    },
+    "confirmation.fee": {
+      "message": "नेटवर्क फीस"
+    },
+    "confirmation.feeError": {
+      "message": "फीस का अनुमान लगाने में अक्षम"
+    },
+    "confirmation.origin": {
+      "message": "इनसे मिला अनुरोध"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "सिमुलेशन के दौरान ये ट्रांसेक्शन वापस कर दिया गया।"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "वजह: {reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "इस रिक्वेस्ट को धोखेबाज़ी के उद्देश्य से भेजा गया है"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "यदि आप इस रिक्वेस्ट को एप्रूव करते हैं, तो स्कैम के लिए मशहूर कोई थर्ड पार्टी आपके सारे एसेट चुरा लेगी।"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "ज़्यादा जानें"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "की ओर से सुरक्षा सलाह"
+    },
+    "confirmation.signMessage.title": {
+      "message": "साइन मैसेज"
+    },
+    "confirmation.signMessage.message": {
+      "message": "मैसेज"
+    },
+    "confirmation.signIn.title": {
+      "message": "साइन-इन का अनुरोध"
+    },
+    "confirmation.signIn.description": {
+      "message": "एक साइट चाहती है कि आप यह साबित करने के लिए साइन इन करें कि यह अकाउंट आपका है।"
+    },
+    "confirmation.signIn.domain": {
+      "message": "Domain"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "अज्ञात डोमेन"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "के साथ साइन इन किया जा रहा है"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "यह साइट आपसे गलत अकाउंट का उपयोग करके साइन इन करने के लिए कह रही है।"
+    },
+    "confirmation.signIn.message": {
+      "message": "मैसेज"
+    },
+    "confirmation.signIn.statement": {
+      "message": "कथन"
+    },
+    "confirmation.signIn.version": {
+      "message": "वर्शन"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "चेन ID"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "Nonce"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "में जारी किया गया"
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "एक्सपायर होने का समय"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "पहले नहीं"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "रिक्वेस्ट ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "संसाधन"
+    },
+    "confirmation.signIn.badDomain": {
+      "message": "This site is asking you to sign in using the wrong domain."
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "An account with the same address already exists."
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Account does not have enough SOL to perform the operation."
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "ट्रांसेक्शन को वापस कर दिया गया क्योंकि स्लिपेज (slippage) टॉलरेंस की सीमा पार हो गई थी।"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    }
+  }
+}
