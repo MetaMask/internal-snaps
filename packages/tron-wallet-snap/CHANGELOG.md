@@ -16,5 +16,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` [#43](https://github.com/MetaMask/internal-snaps/pull/43)
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` [#43](https://github.com/MetaMask/internal-snaps/pull/43)
 
-
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
