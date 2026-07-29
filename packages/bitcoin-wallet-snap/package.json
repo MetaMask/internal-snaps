@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
-    "@metamask/auto-changelog": "^6.1.0",
+    "@metamask/auto-changelog": "^6.1.1",
     "@metamask/bitcoindevkit": "^0.1.13",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^23.7.0",

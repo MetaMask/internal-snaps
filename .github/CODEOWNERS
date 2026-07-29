@@ -7,3 +7,4 @@
 * @MetaMask/core-platform @MetaMask/networks
 
 packages/bitcoin-wallet-snap @MetaMask/networks
+packages/tron-wallet-snap @MetaMask/networks

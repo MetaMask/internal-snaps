@@ -1,0 +1,269 @@
+{
+  "locale": "in",
+  "messages": {
+    "send.title": {
+      "message": "Enviar"
+    },
+    "send.balance": {
+      "message": "Saldo"
+    },
+    "send.maxButton": {
+      "message": "Máx."
+    },
+    "send.cancelButton": {
+      "message": "Cancelar"
+    },
+    "send.continueButton": {
+      "message": "Continuar"
+    },
+    "send.fromField": {
+      "message": "De"
+    },
+    "send.toField": {
+      "message": "Para"
+    },
+    "send.amountField": {
+      "message": "Valor"
+    },
+    "send.assetField": {
+      "message": "Token"
+    },
+    "send.toPlaceholder": {
+      "message": "Digite o endereço público"
+    },
+    "send.fromRequiredError": {
+      "message": "Conta obrigatória"
+    },
+    "send.amountRequiredError": {
+      "message": "O valor é obrigatório"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "O valor deve ser maior que {minimumValue}"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Saldo em SOL insuficiente para cobrir a taxa de transação"
+    },
+    "send.toRequiredError": {
+      "message": "O endereço é obrigatório"
+    },
+    "send.toInvalidError": {
+      "message": "Endereço Solana inválido"
+    },
+    "send.insufficientBalance": {
+      "message": "Saldo insuficiente"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Devido a um erro, não foi possível verificar os alertas de segurança."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Continue somente se você confia em todos os endereços envolvidos."
+    },
+    "send.simulationTitleError": {
+      "message": "Simulação da transação falhou"
+    },
+    "send.simulationMessageError": {
+      "message": "Esta transação foi revertida durante a simulação."
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Preços de tokens em {currency} não estão disponíveis atualmente. Você ainda pode enviar tokens."
+    },
+    "send.confirmation.title": {
+      "message": "Revisar"
+    },
+    "send.confirmation.from": {
+      "message": "De"
+    },
+    "send.confirmation.recipient": {
+      "message": "Beneficiário"
+    },
+    "send.confirmation.network": {
+      "message": "Rede"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Velocidade da transação"
+    },
+    "send.confirmation.fee": {
+      "message": "Taxa de rede"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Enviar"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Cancelar"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Ver transação"
+    },
+    "send.send-pending.title": {
+      "message": "Enviando..."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Sua transação foi enviada."
+    },
+    "send.transaction-success.title": {
+      "message": "Enviada"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} foi enviado com sucesso"
+    },
+    "send.transaction-failure.title": {
+      "message": "Transação falhou"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Não foi possível enviar {amount} {tokenSymbol}"
+    },
+    "confirmation.account": {
+      "message": "Conta"
+    },
+    "confirmation.network": {
+      "message": "Rede"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Alterações estimadas"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Você envia"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Você recebe"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Não disponível"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Nenhuma alteração"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Alterações estimadas são o que pode acontecer se você prosseguir com essa transação. Isso é apenas uma previsão, não uma garantia."
+    },
+    "confirmation.advanced.show": {
+      "message": "Mostrar antecipado"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Ocultar antecipado"
+    },
+    "confirmation.cancelButton": {
+      "message": "Cancelar"
+    },
+    "confirmation.confirmButton": {
+      "message": "Confirmar"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Solicitação de transação"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.sendAndConfirmTransaction.title": {
+      "message": "Sending and confirming transaction"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Desconhecida"
+    },
+    "confirmation.advanced.programId": {
+      "message": "ID do programa"
+    },
+    "confirmation.advanced.data": {
+      "message": "Dados"
+    },
+    "confirmation.fee": {
+      "message": "Taxa de rede"
+    },
+    "confirmation.feeError": {
+      "message": "Não foi possível estimar a taxa"
+    },
+    "confirmation.origin": {
+      "message": "Solicitação de"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Esta transação foi revertida durante a simulação."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Motivo: {reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Essa solicitação é enganosa"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Se você aprovar essa solicitação, algum terceiro conhecido por aplicar golpes tomará todos os seus ativos."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Saiba mais"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Conselhos de segurança de"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Assinar mensagem"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mensagem"
+    },
+    "confirmation.signIn.title": {
+      "message": "Solicitação de login"
+    },
+    "confirmation.signIn.description": {
+      "message": "Um site deseja que você faça login para comprovar que você é o titular desta conta."
+    },
+    "confirmation.signIn.domain": {
+      "message": "Domain"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Domínio desconhecido"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Fazendo login com"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Este site está solicitando que você faça login usando a conta incorreta."
+    },
+    "confirmation.signIn.message": {
+      "message": "Mensagem"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Declaração"
+    },
+    "confirmation.signIn.version": {
+      "message": "Versão"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID da cadeia"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "Nonce"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Emitida às"
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Prazo de validade"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Não antes de"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "ID da solicitação"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Recursos"
+    },
+    "confirmation.signIn.badDomain": {
+      "message": "This site is asking you to sign in using the wrong domain."
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Já existe uma conta com o mesmo endereço."
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "A conta não possui SOL suficiente para realizar a operação."
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "A transação foi revertida porque a tolerância de slippage foi excedida."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    }
+  }
+}
