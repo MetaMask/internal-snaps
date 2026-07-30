@@ -1,10 +1,10 @@
 {
   "name": "@metamask/solana-wallet-snap",
   "version": "4.0.0",
-  "description": "A Solana wallet Snap.",
+  "description": "A Solana wallet Snap",
   "keywords": [
-    "MetaMask",
-    "Solana"
+    "Ethereum",
+    "MetaMask"
   ],
   "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/solana-wallet-snap#readme",
   "bugs": {
@@ -41,12 +41,14 @@
     "locale:build:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-locale.js\"",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn locale:build:watch\"",
-    "test": "jest --passWithNoTests --runInBand",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
     "test:core": "jest src/core --passWithNoTests",
     "test:core:watch": "yarn test:core --watch",
     "test:features": "jest src/features --passWithNoTests --runInBand",
     "test:features:watch": "yarn test:features --watch",
-    "test:watch": "yarn test --watch"
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
+    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose"
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
