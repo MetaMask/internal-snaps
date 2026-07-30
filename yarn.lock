@@ -1776,12 +1776,12 @@ __metadata:
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/bitcoindevkit": "npm:^0.1.13"
     "@metamask/key-tree": "npm:^10.1.1"
-    "@metamask/keyring-api": "npm:^23.5.0"
-    "@metamask/keyring-snap-sdk": "npm:^9.2.0"
+    "@metamask/keyring-api": "npm:^23.7.0"
+    "@metamask/keyring-snap-sdk": "npm:^9.2.1"
     "@metamask/slip44": "npm:^4.2.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
-    "@metamask/snaps-sdk": "npm:11.1.1"
+    "@metamask/snaps-sdk": "npm:11.2.0"
     "@metamask/utils": "npm:^11.9.0"
     bip322-js: "npm:^3.0.0"
     concurrently: "npm:^10.0.3"
@@ -2068,7 +2068,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/keyring-api@npm:^23.5.0, @metamask/keyring-api@npm:^23.7.0":
+"@metamask/keyring-api@npm:^23.7.0":
   version: 23.7.0
   resolution: "@metamask/keyring-api@npm:23.7.0"
   dependencies:
@@ -2080,7 +2080,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/keyring-snap-sdk@npm:^9.2.0, @metamask/keyring-snap-sdk@npm:^9.2.1":
+"@metamask/keyring-snap-sdk@npm:^9.2.1":
   version: 9.2.1
   resolution: "@metamask/keyring-snap-sdk@npm:9.2.1"
   dependencies:
@@ -2247,7 +2247,7 @@ __metadata:
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
-    "@metamask/snaps-sdk": "npm:11.1.1"
+    "@metamask/snaps-sdk": "npm:11.2.0"
     "@types/react": "npm:18.2.4"
     "@types/react-dom": "npm:18.2.4"
     eslint: "npm:^9.39.1"
