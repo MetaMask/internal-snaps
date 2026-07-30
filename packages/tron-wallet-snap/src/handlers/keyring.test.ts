@@ -7,6 +7,7 @@ import {
   InvalidParamsError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
+
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { Network } from '../constants';
 import type { TronKeyringAccount } from '../entities/keyring-account';
