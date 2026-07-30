@@ -7,7 +7,6 @@ import type {
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
   DiscoveredAccount,
   EntropySourceId,
-  Keyring,
   KeyringAccount,
   KeyringRequest,
   KeyringResponse,
