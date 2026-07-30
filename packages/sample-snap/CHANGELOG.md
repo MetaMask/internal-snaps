@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: update license files ([#75](https://github.com/MetaMask/internal-snaps/pull/75))
+- feat(bitcoin-snap): update to keyring v2 ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
+
 ### Added
 
 - Add package to `internal-snaps` monorepo ([#8](https://github.com/MetaMask/internal-snaps/pull/8))
