@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import { getBip32Entropy } from './getBip32Entropy';
 
 describe('getBip32Entropy', () => {
