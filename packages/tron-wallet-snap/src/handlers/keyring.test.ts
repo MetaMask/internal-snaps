@@ -513,114 +513,6 @@ describe('KeyringHandler', () => {
     });
   });
 
-  describe('discoverAccounts', () => {
-    const mockDerivedAccount: TronKeyringAccount = {
-      id: '123e4567-e89b-42d3-a456-426614174001',
-      address: 'TDerivedAddress12345678901234567',
-      options: {},
-      methods: [
-        TronMultichainMethod.SignMessage,
-        TronMultichainMethod.SignTransaction,
-      ],
-      type: 'tron:eoa',
-      scopes: [Network.Mainnet, Network.Shasta],
-      entropySource: 'test-entropy-source' as any,
-      derivationPath: "m/44'/195'/0'/0/0",
-      index: 0,
-    };
-
-    beforeEach(() => {
-      jest
-        .spyOn(mockAccountsService, 'deriveAccount')
-        .mockImplementation()
-        .mockResolvedValue(mockDerivedAccount);
-      jest
-        .spyOn(mockTransactionsService, 'checkAddressActivity')
-        .mockImplementation();
-    });
-
-    it('returns empty array if there is no activity on any of the scopes', async () => {
-      mockTransactionsService.checkAddressActivity
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(false);
-
-      const result = await keyringHandler.discoverAccounts?.(
-        [Network.Mainnet, Network.Shasta],
-        'test-entropy-source',
-        0,
-      );
-
-      expect(result).toStrictEqual([]);
-      expect(mockAccountsService.deriveAccount).toHaveBeenCalledWith({
-        entropySource: 'test-entropy-source',
-        index: 0,
-      });
-    });
-
-    it('returns discovered accounts when there is activity on any scope', async () => {
-      mockTransactionsService.checkAddressActivity
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(true);
-
-      const result = await keyringHandler.discoverAccounts?.(
-        [Network.Mainnet, Network.Shasta],
-        'test-entropy-source',
-        3,
-      );
-
-      expect(result).toStrictEqual([
-        {
-          type: 'bip44',
-          scopes: [Network.Mainnet, Network.Shasta],
-          derivationPath: mockDerivedAccount.derivationPath,
-        },
-      ]);
-    });
-
-    it('throws error if there is an error fetching transactions', async () => {
-      mockTransactionsService.checkAddressActivity.mockRejectedValue(
-        new Error('Network error'),
-      );
-
-      await expect(
-        keyringHandler.discoverAccounts?.([Network.Mainnet], 'test', 0),
-      ).rejects.toThrow('Network error');
-    });
-
-    it('throws error if no scopes are provided', async () => {
-      await expect(
-        keyringHandler.discoverAccounts?.([], 'test', 0),
-      ).rejects.toThrow('Expected a nonempty array but received an empty one');
-      expect(
-        mockTransactionsService.checkAddressActivity,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('throws error if scope is not a valid Tron network', async () => {
-      await expect(
-        keyringHandler.discoverAccounts?.(
-          ['invalid:network' as Network],
-          'test',
-          0,
-        ),
-      ).rejects.toThrow(/Expected one of/u);
-      expect(
-        mockTransactionsService.checkAddressActivity,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('throws error if groupIndex is negative', async () => {
-      await expect(
-        keyringHandler.discoverAccounts?.([Network.Mainnet], 'test', -1),
-      ).rejects.toThrow(
-        'Expected a number greater than or equal to 0 but received `-1`',
-      );
-      expect(
-        mockTransactionsService.checkAddressActivity,
-      ).not.toHaveBeenCalled();
-    });
-  });
-
   describe('setSelectedAccounts', () => {
     const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174999';
 
@@ -666,19 +558,6 @@ describe('KeyringHandler', () => {
     });
   });
 
-  describe('createAccount', () => {
-    it('fails with cause', async () => {
-      const causeError = new Error('Account error');
-
-      mockAccountsService.create.mockRejectedValue(causeError);
-
-      await expect(keyringHandler.createAccount()).rejects.toMatchObject({
-        message: `Error creating account: ${causeError.message}`,
-        cause: causeError,
-      });
-    });
-  });
-
   describe('createAccounts', () => {
     it('delegates to accountsService.createAccounts and returns the result', async () => {
       const createdAccounts = [
@@ -719,6 +598,46 @@ describe('KeyringHandler', () => {
       ).rejects.toThrow(
         'Key derivation failed. Please check your connection and try again.',
       );
+    });
+
+    it('delegates bip44:discover to accountsService.createAccounts and returns the account', async () => {
+      const createdAccounts = [
+        {
+          id: mockAccount.id,
+          address: mockAccount.address,
+          type: mockAccount.type,
+          options: mockAccount.options,
+          methods: mockAccount.methods,
+          scopes: mockAccount.scopes,
+        },
+      ];
+      const options: KeyringBatchCreateAccountOptions = {
+        type: AccountCreationType.Bip44Discover,
+        entropySource: 'entropy-source-1',
+        groupIndex: 0,
+      };
+
+      mockAccountsService.createAccounts.mockResolvedValue(createdAccounts);
+
+      const result = await keyringHandler.createAccounts(options);
+
+      expect(mockAccountsService.createAccounts).toHaveBeenCalledWith(options);
+      expect(result).toStrictEqual(createdAccounts);
+    });
+
+    it('delegates bip44:discover to accountsService.createAccounts and returns empty array when no activity', async () => {
+      const options: KeyringBatchCreateAccountOptions = {
+        type: AccountCreationType.Bip44Discover,
+        entropySource: 'entropy-source-1',
+        groupIndex: 5,
+      };
+
+      mockAccountsService.createAccounts.mockResolvedValue([]);
+
+      const result = await keyringHandler.createAccounts(options);
+
+      expect(mockAccountsService.createAccounts).toHaveBeenCalledWith(options);
+      expect(result).toStrictEqual([]);
     });
   });
 });

@@ -126,7 +126,10 @@ type WithAccountsServiceCallback = (payload: {
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
   >;
   mockTransactionsService: jest.Mocked<
-    Pick<TransactionsService, 'fetchNewTransactionsForAccount' | 'saveMany'>
+    Pick<
+      TransactionsService,
+      'fetchNewTransactionsForAccount' | 'saveMany' | 'checkAddressActivity'
+    >
   >;
 }) => void | Promise<void>;
 
@@ -272,10 +275,14 @@ async function withAccountsService(
   };
 
   const mockTransactionsService: jest.Mocked<
-    Pick<TransactionsService, 'fetchNewTransactionsForAccount' | 'saveMany'>
+    Pick<
+      TransactionsService,
+      'fetchNewTransactionsForAccount' | 'saveMany' | 'checkAddressActivity'
+    >
   > = {
     fetchNewTransactionsForAccount: jest.fn().mockResolvedValue([]),
     saveMany: jest.fn().mockResolvedValue(undefined),
+    checkAddressActivity: jest.fn().mockResolvedValue(false),
   };
 
   const accountsService = new AccountsService({
@@ -570,6 +577,67 @@ describe('AccountsService', () => {
           ).not.toHaveBeenCalled();
           expect(mockSnapClient.getBip32Entropy).not.toHaveBeenCalled();
         },
+      );
+    });
+
+    it('returns empty array for bip44:discover when no on-chain activity', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockAccountsRepository,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity.mockResolvedValue(false);
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            entropySource: 'test-entropy',
+            groupIndex: 0,
+          });
+
+          expect(result).toStrictEqual([]);
+          expect(
+            mockTransactionsService.checkAddressActivity,
+          ).toHaveBeenCalled();
+          expect(
+            mockAccountsRepository.mergeKeyringAccounts,
+          ).not.toHaveBeenCalled();
+        },
+        coinJson,
+      );
+    });
+
+    it('creates and returns an account for bip44:discover when on-chain activity is found', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockAccountsRepository,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(true);
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            entropySource: 'test-entropy',
+            groupIndex: 2,
+          });
+
+          expect(result).toHaveLength(1);
+          expect(result[0]?.options).toMatchObject({
+            exportable: true,
+            entropy: expect.objectContaining({ groupIndex: 2 }),
+          });
+          expect(
+            mockAccountsRepository.mergeKeyringAccounts,
+          ).toHaveBeenCalledTimes(1);
+        },
+        coinJson,
       );
     });
   });

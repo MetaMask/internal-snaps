@@ -5,8 +5,6 @@ import {
 import type {
   Balance,
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
-  DiscoveredAccount,
-  EntropySourceId,
   KeyringAccount,
   KeyringRequest,
   KeyringResponse,
@@ -41,7 +39,6 @@ import type { Network } from '../constants';
 import { asStrictKeyringAccount } from '../entities/keyring-account';
 import type { TronKeyringAccount } from '../entities/keyring-account';
 import type { AccountsService } from '../services/accounts/AccountsService';
-import type { CreateAccountOptions } from '../services/accounts/types';
 import type { AssetsService } from '../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../services/confirmation/ConfirmationHandler';
 import type { TransactionsService } from '../services/transactions/TransactionsService';
@@ -50,9 +47,7 @@ import { sanitizeSensitiveError } from '../utils/errors';
 import { createPrefixedLogger } from '../utils/logger';
 import type { ILogger } from '../utils/logger';
 import {
-  CreateAccountOptionsStruct,
   DeleteAccountStruct,
-  DiscoverAccountsStruct,
   ExportAccountRequestStruct,
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
@@ -183,21 +178,6 @@ export class KeyringHandler implements KeyringSnapRpc {
     return account;
   }
 
-  async createAccount(options?: CreateAccountOptions): Promise<KeyringAccount> {
-    validateRequest(options, CreateAccountOptionsStruct);
-
-    try {
-      return await this.#accountsService.create(options);
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      this.#logger.error({ error }, 'Error creating account');
-      throw new Error(`Error creating account: ${error.message}`, {
-        cause: error,
-      });
-    }
-  }
-
   async createAccounts(
     options: KeyringBatchCreateAccountOptions,
   ): Promise<KeyringAccount[]> {
@@ -296,56 +276,6 @@ export class KeyringHandler implements KeyringSnapRpc {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.#logger.error({ error }, 'Error listing account transactions');
-      throw error;
-    }
-  }
-
-  async discoverAccounts?(
-    scopes: CaipChainId[],
-    entropySource: EntropySourceId,
-    groupIndex: number,
-  ): Promise<DiscoveredAccount[]> {
-    try {
-      validateRequest(
-        { scopes, entropySource, groupIndex },
-        DiscoverAccountsStruct,
-      );
-
-      const derivedAccount = await this.#accountsService.deriveAccount({
-        entropySource,
-        index: groupIndex,
-      });
-
-      const activityChecksPromises = [];
-
-      for (const scope of scopes) {
-        activityChecksPromises.push(
-          this.#transactionsService.checkAddressActivity(
-            scope as Network,
-            derivedAccount.address,
-          ),
-        );
-      }
-
-      const activityOnScopes = await Promise.all(activityChecksPromises);
-
-      const hasActivity = activityOnScopes.some((active) => active);
-
-      if (!hasActivity) {
-        return [];
-      }
-
-      return [
-        {
-          type: 'bip44',
-          scopes,
-          derivationPath: derivedAccount.derivationPath,
-        },
-      ];
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      this.#logger.error({ error }, 'Error discovering accounts');
       throw error;
     }
   }

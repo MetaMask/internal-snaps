@@ -12,10 +12,7 @@ import {
   enums,
   integer,
   literal,
-  min,
-  nonempty,
   nullable,
-  number,
   object,
   optional,
   pattern,
@@ -222,18 +219,6 @@ export const CreateAccountOptionsStruct = optional(
     ),
   }),
 );
-
-/**
- * Validates discoverAccounts parameters.
- * - scopes: Non-empty array of valid Tron network scopes (e.g., 'tron:728126428')
- * - entropySource: String for the entropy source (UUID or ULID format)
- * - groupIndex: Non-negative integer for the group index
- */
-export const DiscoverAccountsStruct = object({
-  scopes: nonempty(array(NetworkStruct)),
-  entropySource: string(),
-  groupIndex: min(number(), 0),
-});
 
 export const GetAccounBalancesResponseStruct = record(
   CaipAssetTypeStruct,
