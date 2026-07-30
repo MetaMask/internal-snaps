@@ -2372,7 +2372,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/snaps-execution-environments@npm:^11.1.1":
+"@metamask/snaps-execution-environments@npm:11.2.0":
   version: 11.2.0
   resolution: "@metamask/snaps-execution-environments@npm:11.2.0"
   dependencies:
@@ -3601,15 +3601,6 @@ __metadata:
   dependencies:
     "@types/react": "npm:*"
   checksum: 10/98ddd7d18dc511f37e6f57ab93839daeee0ad241d95e4e34802a6b0e345a16dcc829eef30a64b1c81f3c48c1336a697c86b53038ca273a20737386dcaf025f83
-  languageName: node
-  linkType: hard
-
-"@types/react@npm:*":
-  version: 19.2.16
-  resolution: "@types/react@npm:19.2.16"
-  dependencies:
-    csstype: "npm:^3.2.2"
-  checksum: 10/b88e77eec8c99757b74539d3495ecd5426e423191fe8c3cdb311f48760046598d9e7c9f876fa6232ee850202205e3165613791ff679e4007d2a92f1512e3b60a
   languageName: node
   linkType: hard
 
@@ -5834,7 +5825,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"csstype@npm:^3.0.2, csstype@npm:^3.2.2":
+"csstype@npm:^3.0.2":
   version: 3.2.3
   resolution: "csstype@npm:3.2.3"
   checksum: 10/ad41baf7e2ffac65ab544d79107bf7cd1a4bb9bab9ac3302f59ab4ba655d5e30942a8ae46e10ba160c6f4ecea464cc95b975ca2fefbdeeacd6ac63f12f99fe1f
