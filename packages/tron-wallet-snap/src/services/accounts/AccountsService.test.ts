@@ -375,16 +375,17 @@ describe('AccountsService', () => {
   describe('deriveTronKeypair', () => {
     it('throws when getBip32Entropy returns missing key material', async () => {
       await withAccountsService(async ({ accountsService, mockSnapClient }) => {
-        mockSnapClient.getBip32Entropy.mockResolvedValue(
-          { privateKey: undefined, publicKey: undefined } as unknown as JsonBIP44Node,
-        );
+        mockSnapClient.getBip32Entropy.mockResolvedValue({
+          privateKey: undefined,
+          publicKey: undefined,
+        } as unknown as JsonBIP44Node);
 
         await expect(
           accountsService.deriveTronKeypair({
             entropySource: 'test-entropy',
             derivationPath: "m/44'/195'/0'/0/0",
           }),
-        ).rejects.toThrow();
+        ).rejects.toThrow('Key derivation failed');
       });
     });
   });
@@ -941,17 +942,15 @@ describe('AccountsService', () => {
     });
 
     it('throws when no primary entropy source is available', async () => {
-      await withAccountsService(
-        async ({ accountsService, mockSnapClient }) => {
-          mockSnapClient.listEntropySources.mockResolvedValue([
-            { id: 'non-primary', primary: false },
-          ]);
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        mockSnapClient.listEntropySources.mockResolvedValue([
+          { id: 'non-primary', primary: false },
+        ]);
 
-          await expect(accountsService.create()).rejects.toThrow(
-            'No default entropy source found',
-          );
-        },
-      );
+        await expect(accountsService.create()).rejects.toThrow(
+          'No default entropy source found',
+        );
+      });
     });
   });
 

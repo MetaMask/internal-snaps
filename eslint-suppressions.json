@@ -265,14 +265,6 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/handlers/keyring.test.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 9
-    },
-    "import-x/no-extraneous-dependencies": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/handlers/keyring.ts": {
     "import-x/no-extraneous-dependencies": {
       "count": 1
