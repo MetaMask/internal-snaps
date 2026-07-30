@@ -467,9 +467,8 @@ describe('KeyringHandler', () => {
         expect(result[0]?.id).toBe('discovered-id');
       });
 
-      it('deletes the account and returns empty array when no on-chain history', async () => {
-        const inactiveAccount = buildDiscoveredAccount(false);
-        mockAccounts.discover.mockResolvedValue(inactiveAccount);
+      it('returns empty array when no on-chain history', async () => {
+        mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(false));
 
         const result = await handler.createAccounts({
           type: AccountCreationType.Bip44Discover,
@@ -478,7 +477,7 @@ describe('KeyringHandler', () => {
         });
 
         expect(mockAccounts.discover).toHaveBeenCalled();
-        expect(mockAccounts.delete).toHaveBeenCalledWith(inactiveAccount.id);
+        expect(mockAccounts.delete).not.toHaveBeenCalled();
         expect(result).toHaveLength(0);
       });
 

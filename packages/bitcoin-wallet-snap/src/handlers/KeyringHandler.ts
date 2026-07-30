@@ -133,8 +133,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       if (options.type === AccountCreationType.Bip44Discover) {
         // For each supported scope, discover at this index. Accounts with
-        // on-chain activity are kept; those without are deleted. Returning []
-        // signals end-of-discovery to the client.
+        // on-chain activity are kept; those without are discarded in-memory.
+        // Returning [] signals end-of-discovery to the client.
         const discovered: KeyringAccount[] = [];
 
         for (const scope of SUPPORTED_SCOPES) {
@@ -146,9 +146,7 @@ export class KeyringHandler implements KeyringSnapRpc {
             addressType,
           });
 
-          if (account.listTransactions().length === 0) {
-            await this.#accountsUseCases.delete(account.id);
-          } else {
+          if (account.listTransactions().length > 0) {
             discovered.push(mapToKeyringAccount(account));
           }
         }
