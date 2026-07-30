@@ -48,6 +48,12 @@
     },
     "endowment:assets": {
       "scopes": ["tron:728126428"]
+    },
+    "endowment:messenger": {
+      "actions": [
+        "AssetsController:getAsset",
+        "RemoteFeatureFlagController:getState"
+      ]
     }
   },
   "platformVersion": "11.2.0",
