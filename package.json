@@ -1,6 +1,6 @@
 {
   "name": "@metamask/internal-snaps-monorepo",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Monorepo for firt-party snaps",
   "repository": {
@@ -87,7 +87,10 @@
     "yargs": "^17.7.2"
   },
   "resolutions": {
-    "@metamask/snaps-sdk": "11.1.1",
+    "@metamask/snaps-execution-environments": "11.2.0",
+    "@metamask/snaps-sdk": "11.2.0",
+    "@types/react": "18.2.4",
+    "@types/react-dom": "18.2.4",
     "elliptic@6.5.4": "^6.5.7",
     "fast-xml-parser@^4.3.4": "^4.4.1",
     "hash-base@npm:^3.0.0": "3.1.0",

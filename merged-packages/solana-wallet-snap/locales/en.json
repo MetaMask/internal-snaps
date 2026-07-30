@@ -1,0 +1,287 @@
+{
+  "locale": "en",
+  "messages": {
+    "send.title": {
+      "message": "Send"
+    },
+    "send.balance": {
+      "message": "Balance"
+    },
+    "send.maxButton": {
+      "message": "Max"
+    },
+    "send.cancelButton": {
+      "message": "Cancel"
+    },
+    "send.continueButton": {
+      "message": "Continue"
+    },
+    "send.fromField": {
+      "message": "From"
+    },
+    "send.toField": {
+      "message": "To"
+    },
+    "send.amountField": {
+      "message": "Amount"
+    },
+    "send.assetField": {
+      "message": "Token"
+    },
+    "send.toPlaceholder": {
+      "message": "Enter public address or domain name"
+    },
+    "send.fromRequiredError": {
+      "message": "Account is required"
+    },
+    "send.amountRequiredError": {
+      "message": "Amount is required"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Amount must be greater than {minimumValue}"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Insufficient SOL balance to cover the transaction fee"
+    },
+    "send.toRequiredError": {
+      "message": "To address is required"
+    },
+    "send.toInvalidError": {
+      "message": "Invalid Solana address or domain name"
+    },
+    "send.toInvalidErrorDomain": {
+      "message": "Unable to resolve domain name"
+    },
+    "send.toDomainResolutionStatus.initial": {
+      "message": "Domain"
+    },
+    "send.toDomainResolutionStatus.fetching": {
+      "message": "Resolving domain name..."
+    },
+    "send.toDomainResolutionStatus.fetched": {
+      "message": "Domain name resolved."
+    },
+    "send.toDomainResolutionStatus.error": {
+      "message": "Unable to resolve domain name."
+    },
+    "send.insufficientBalance": {
+      "message": "Insufficient balance"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Because of an error, we couldn't check for security alerts."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Only continue if you trust every address involved."
+    },
+    "send.simulationTitleError": {
+      "message": "Transaction simulation failed"
+    },
+    "send.simulationMessageError": {
+      "message": "This transaction was reverted during simulation."
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Prices for tokens in {currency} are currently not available. You are still able to send tokens."
+    },
+    "send.confirmation.title": {
+      "message": "Review"
+    },
+    "send.confirmation.from": {
+      "message": "From"
+    },
+    "send.confirmation.recipient": {
+      "message": "Recipient"
+    },
+    "send.confirmation.network": {
+      "message": "Network"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Transaction speed"
+    },
+    "send.confirmation.fee": {
+      "message": "Network fee"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Send"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Cancel"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "View transaction"
+    },
+    "send.send-pending.title": {
+      "message": "Sending..."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Your transaction was submitted."
+    },
+    "send.transaction-success.title": {
+      "message": "Sent"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} was successfully sent"
+    },
+    "send.transaction-failure.title": {
+      "message": "Transaction failed"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Unable to send {amount} {tokenSymbol}"
+    },
+    "confirmation.account": {
+      "message": "Account"
+    },
+    "confirmation.recipient": {
+      "message": "Recipient"
+    },
+    "confirmation.network": {
+      "message": "Network"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Estimated changes"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "You send"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "You receive"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Not available"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "No changes"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+    },
+    "confirmation.advanced.show": {
+      "message": "Show advanced"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Hide advanced"
+    },
+    "confirmation.cancelButton": {
+      "message": "Cancel"
+    },
+    "confirmation.confirmButton": {
+      "message": "Confirm"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Transaction request"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.sendAndConfirmTransaction.title": {
+      "message": "Sending and confirming transaction"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Unknown"
+    },
+    "confirmation.advanced.programId": {
+      "message": "Program ID"
+    },
+    "confirmation.advanced.data": {
+      "message": "Data"
+    },
+    "confirmation.fee": {
+      "message": "Network fee"
+    },
+    "confirmation.feeError": {
+      "message": "Unable to estimate fee"
+    },
+    "confirmation.origin": {
+      "message": "Request from"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "This is the site asking for your confirmation."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "This transaction was reverted during simulation."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "This is a deceptive request"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "If you approve this request, a third party known for scams will take all your assets."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Learn more"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Security advice by"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Sign message"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Message"
+    },
+    "confirmation.signIn.title": {
+      "message": "Sign-in request"
+    },
+    "confirmation.signIn.description": {
+      "message": "A site wants you to sign in to prove you own this account."
+    },
+    "confirmation.signIn.domain": {
+      "message": "Domain"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Unknown domain"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Signing in with"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "This site is asking you to sign in using the wrong account."
+    },
+    "confirmation.signIn.message": {
+      "message": "Message"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Statement"
+    },
+    "confirmation.signIn.version": {
+      "message": "Version"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "Chain ID"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "Nonce"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Issued at"
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Expiration time"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Not before"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "Request ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Resources"
+    },
+    "confirmation.signIn.badDomain": {
+      "message": "This site is asking you to sign in using the wrong domain."
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "An account with the same address already exists."
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Account does not have enough SOL to perform the operation."
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "The transaction was reverted because the slippage tolerance was exceeded."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    }
+  }
+}

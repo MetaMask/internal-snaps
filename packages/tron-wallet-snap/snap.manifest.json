@@ -1,5 +1,5 @@
 {
-  "version": "1.33.1",
+  "version": "1.33.2",
   "description": "Manage Tron using MetaMask",
   "proposedName": "Tron",
   "repository": {
@@ -65,6 +65,6 @@
       "scopes": ["tron:728126428"]
     }
   },
-  "platformVersion": "11.1.1",
+  "platformVersion": "11.2.0",
   "manifestVersion": "0.1"
 }

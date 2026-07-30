@@ -76,6 +76,10 @@ jobs:
     name: Lint, build, and test
     needs: check-workflows
     uses: ./.github/workflows/lint-build-test.yml
+    secrets:
+      RPC_URL_LIST_MAINNET: ${{ secrets.RPC_URL_LIST_MAINNET }}
+      TRONGRID_BASE_URL_MAINNET: ${{ secrets.TRONGRID_BASE_URL_MAINNET }}
+      TRON_HTTP_BASE_URL_MAINNET: ${{ secrets.TRON_HTTP_BASE_URL_MAINNET }}
 
   check-release:
     name: Check release
@@ -125,6 +129,9 @@ jobs:
       ESPLORA_SIGNET: ${{ secrets.ESPLORA_SIGNET }}
       ESPLORA_REGTEST: ${{ secrets.ESPLORA_REGTEST }}
       PRICE_API_URL: ${{ secrets.PRICE_API_URL }}
+      RPC_URL_LIST_MAINNET: ${{ secrets.RPC_URL_LIST_MAINNET }}
+      TRONGRID_BASE_URL_MAINNET: ${{ secrets.TRONGRID_BASE_URL_MAINNET }}
+      TRON_HTTP_BASE_URL_MAINNET: ${{ secrets.TRON_HTTP_BASE_URL_MAINNET }}
 
   all-jobs-complete:
     name: All jobs complete
