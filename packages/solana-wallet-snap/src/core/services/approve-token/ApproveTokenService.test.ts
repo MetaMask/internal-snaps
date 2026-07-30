@@ -1,7 +1,6 @@
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* eslint-disable no-restricted-globals */
 import { address as asAddress } from '@solana/kit';
 
 import { Network } from '../../constants/solana';
