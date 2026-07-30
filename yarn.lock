@@ -2877,7 +2877,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/keyring-snap-sdk@npm:^9.2.0, @metamask/keyring-snap-sdk@npm:^9.2.1":
+"@metamask/keyring-snap-sdk@npm:^9.2.1":
   version: 9.2.1
   resolution: "@metamask/keyring-snap-sdk@npm:9.2.1"
   dependencies:
@@ -3334,7 +3334,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@metamask/snaps-cli@npm:^8.3.0, @metamask/snaps-cli@npm:^8.4.1":
+"@metamask/snaps-cli@npm:^8.4.1":
   version: 8.4.1
   resolution: "@metamask/snaps-cli@npm:8.4.1"
   dependencies:
@@ -3679,12 +3679,12 @@ __metadata:
     "@jest/globals": "npm:^29.5.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/key-tree": "npm:9.1.2"
-    "@metamask/keyring-api": "npm:^23.5.0"
-    "@metamask/keyring-snap-sdk": "npm:^9.2.0"
-    "@metamask/snaps-cli": "npm:^8.3.0"
+    "@metamask/keyring-api": "npm:^23.7.0"
+    "@metamask/keyring-snap-sdk": "npm:^9.2.1"
+    "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
-    "@metamask/snaps-sdk": "npm:11.1.1"
-    "@metamask/superstruct": "npm:^3.2.1"
+    "@metamask/snaps-sdk": "npm:^11.2.0"
+    "@metamask/superstruct": "npm:^3.4.1"
     "@metamask/utils": "npm:^11.9.0"
     "@noble/ed25519": "npm:2.1.0"
     "@solana-name-service/sns-sdk-kit": "npm:0.9.0-beta"
