@@ -640,4 +640,46 @@ describe('KeyringHandler', () => {
       expect(result).toStrictEqual([]);
     });
   });
+
+  describe('getAccountAssets', () => {
+    it('returns asset types for an account', async () => {
+      (mockAssetsService as any).getByKeyringAccountId = jest
+        .fn()
+        .mockResolvedValue([]);
+
+      const result = await keyringHandler.getAccountAssets(mockAccount.id);
+
+      expect(result).toStrictEqual([]);
+      expect(
+        (mockAssetsService as any).getByKeyringAccountId,
+      ).toHaveBeenCalledWith(mockAccount.id);
+    });
+
+    it('throws when the account is not found', async () => {
+      (mockAssetsService as any).getByKeyringAccountId = jest.fn();
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        keyringHandler.getAccountAssets(mockAccount.id),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('getAccountTransactions', () => {
+    it('returns paginated transactions for an account', async () => {
+      (mockTransactionsService as any).findByAccounts = jest
+        .fn()
+        .mockResolvedValue([]);
+
+      const result = await keyringHandler.getAccountTransactions(
+        mockAccount.id,
+        { limit: 10, next: null },
+      );
+
+      expect(result).toStrictEqual({ data: [], next: null });
+      expect(
+        (mockTransactionsService as any).findByAccounts,
+      ).toHaveBeenCalledWith([mockAccount]);
+    });
+  });
 });

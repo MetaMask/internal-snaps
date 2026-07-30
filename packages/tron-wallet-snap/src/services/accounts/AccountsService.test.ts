@@ -372,6 +372,23 @@ describe('AccountsService', () => {
     });
   });
 
+  describe('deriveTronKeypair', () => {
+    it('throws when getBip32Entropy returns missing key material', async () => {
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        mockSnapClient.getBip32Entropy.mockResolvedValue(
+          { privateKey: undefined, publicKey: undefined } as unknown as JsonBIP44Node,
+        );
+
+        await expect(
+          accountsService.deriveTronKeypair({
+            entropySource: 'test-entropy',
+            derivationPath: "m/44'/195'/0'/0/0",
+          }),
+        ).rejects.toThrow();
+      });
+    });
+  });
+
   describe('createAccounts', () => {
     it('persists new accounts with a single merge and one coin-type entropy call', async () => {
       const coinJson = await getTronTestCoinTypeJson();
@@ -893,6 +910,48 @@ describe('AccountsService', () => {
           }),
         );
       });
+    });
+
+    it('returns the persisted account and warns when repository create returns a conflicting account', async () => {
+      const conflictingAccount: TronKeyringAccount = {
+        id: 'pre-existing-conflict-id',
+        entropySource: 'test-entropy',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+        type: TrxAccountType.Eoa,
+        address: 'TConflict12345678901234567890',
+        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockAccountsRepository }) => {
+          mockAccountsRepository.create.mockResolvedValue(conflictingAccount);
+
+          const result = await accountsService.create({
+            entropySource: 'test-entropy',
+            index: 0,
+          });
+
+          expect(result.id).toBe('pre-existing-conflict-id');
+          expect(mockLogger.warn).toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('throws when no primary entropy source is available', async () => {
+      await withAccountsService(
+        async ({ accountsService, mockSnapClient }) => {
+          mockSnapClient.listEntropySources.mockResolvedValue([
+            { id: 'non-primary', primary: false },
+          ]);
+
+          await expect(accountsService.create()).rejects.toThrow(
+            'No default entropy source found',
+          );
+        },
+      );
     });
   });
 
