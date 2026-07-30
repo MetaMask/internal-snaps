@@ -1,3 +1,8 @@
+import type { Asset } from '@metamask/assets-controller';
+import {
+  SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
+  SnapsAssetsMigrationStage,
+} from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
@@ -10,8 +15,9 @@ import type { AccountResources, TronHttpClient } from '../../clients/tron-http';
 import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
-import { KnownCaip19Id, Network } from '../../constants';
+import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
+import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsRepository } from './AssetsRepository';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
@@ -50,6 +56,67 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
+
+const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
+
+function createMessengerCallMock(
+  getState: () => unknown,
+  getAsset: jest.Mock,
+): (method: string, ...args: unknown[]) => Promise<unknown> {
+  return async (method: string, ...args: unknown[]) => {
+    switch (method) {
+      case 'RemoteFeatureFlagController:getState':
+        return getState();
+      case 'AssetsController:getAsset':
+        return getAsset(...args);
+      default:
+        return undefined;
+    }
+  };
+}
+
+function restoreMigrationStageEnv(
+  originalEnvironment: string | undefined,
+  originalStage: string | undefined,
+): void {
+  /* eslint-disable no-restricted-globals */
+  if (originalEnvironment === undefined) {
+    delete process.env.ENVIRONMENT;
+  } else {
+    process.env.ENVIRONMENT = originalEnvironment;
+  }
+  delete process.env.TRON_ASSETS_MIGRATION_STAGE;
+  if (originalStage !== undefined) {
+    process.env.TRON_ASSETS_MIGRATION_STAGE = originalStage;
+  }
+  /* eslint-enable no-restricted-globals */
+}
+
+function buildControllerAsset(
+  assetId: string,
+  amount: string,
+  metadata: {
+    symbol: string;
+    name: string;
+    decimals: number;
+    image?: string;
+  },
+): Asset {
+  return {
+    id: assetId as Asset['id'],
+    chainId: Network.Mainnet as Asset['chainId'],
+    balance: { amount },
+    metadata: {
+      type: 'fungible',
+      symbol: metadata.symbol,
+      name: metadata.name,
+      decimals: metadata.decimals,
+      image: metadata.image,
+    },
+    price: { price: 0, lastUpdated: 0 },
+    fiatValue: 0,
+  } as Asset;
+}
 
 const mockAccount: KeyringAccount = {
   id: 'test-account-id',
@@ -187,6 +254,8 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
   >;
   mockTokenApiClient: jest.Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
   mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+  mockCoreMessenger: jest.Mocked<CoreMessengerCaller>;
+  setMigrationStage: (stage: SnapsAssetsMigrationStage) => void;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -259,6 +328,25 @@ async function withAssetsService<ReturnValue>(
     trackError: jest.fn().mockResolvedValue(undefined),
   };
 
+  let migrationStage = SnapsAssetsMigrationStage.Off;
+  const mockGetAsset = jest.fn();
+  const mockCoreMessenger: jest.Mocked<CoreMessengerCaller> = {
+    call: jest.fn().mockImplementation(
+      createMessengerCallMock(
+        () => ({
+          remoteFeatureFlags: {
+            [TRON_FLAG_KEY]: { stage: migrationStage },
+          },
+        }),
+        mockGetAsset,
+      ),
+    ),
+  };
+
+  const setMigrationStage = (stage: SnapsAssetsMigrationStage): void => {
+    migrationStage = stage;
+  };
+
   const assetsService = new AssetsService({
     logger: mockLogger,
     assetsRepository: mockAssetsRepository,
@@ -268,6 +356,7 @@ async function withAssetsService<ReturnValue>(
     priceApiClient: mockPriceApiClient,
     tokenApiClient: mockTokenApiClient,
     snapClient: mockSnapClient,
+    coreMessenger: mockCoreMessenger,
   });
 
   return await testFunction({
@@ -279,6 +368,8 @@ async function withAssetsService<ReturnValue>(
     mockPriceApiClient,
     mockTokenApiClient,
     mockSnapClient,
+    mockCoreMessenger,
+    setMigrationStage,
   });
 }
 
@@ -2828,6 +2919,301 @@ describe('AssetsService', () => {
           },
         );
       });
+    });
+  });
+
+  describe('assets migration mode', () => {
+    const accountId = mockAccount.id;
+    const fungibleAssetId = KnownCaip19Id.TrxMainnet;
+    const snapAssetId = KnownCaip19Id.EnergyMainnet;
+
+    it('fetchAssetsAndBalancesForAccount returns fungibles when mode is snap', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(SnapsAssetsMigrationStage.Off);
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            createMockTronAccount({
+              address: mockAccount.address,
+              balance: 1_000_000,
+            }),
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+
+          const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+            Network.Mainnet,
+            mockAccount,
+          );
+
+          expect(
+            assets.some((asset) => asset.assetType === fungibleAssetId),
+          ).toBe(true);
+        },
+      );
+    });
+
+    it('fetchAssetsAndBalancesForAccount returns protocol assets only when mode is controller', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            createMockTronAccount({
+              address: mockAccount.address,
+              balance: 1_000_000,
+              trc20: [{ TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '1000' }],
+            }),
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+
+          const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+            Network.Mainnet,
+            mockAccount,
+          );
+
+          expect(
+            assets.every((asset) => SNAP_OWNED_ASSETS.includes(asset.assetType)),
+          ).toBe(true);
+          expect(
+            assets.some((asset) => asset.assetType === fungibleAssetId),
+          ).toBe(false);
+        },
+      );
+    });
+
+    it('routes snap-owned reads through the repository', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockAssetsRepository,
+          mockCoreMessenger,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+          const snapAsset: AssetEntity = {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '100',
+            uiAmount: '100',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            snapAsset,
+          );
+
+          const asset = await assetsService.getAssetByAccountId(
+            accountId,
+            snapAssetId,
+          );
+
+          expect(asset).toStrictEqual(snapAsset);
+          expect(mockCoreMessenger.call).not.toHaveBeenCalledWith(
+            'AssetsController:getAsset',
+            expect.anything(),
+            expect.anything(),
+          );
+        },
+      );
+    });
+
+    it('routes fungible reads through AssetsController when mode is controller', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockCoreMessenger,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+          mockCoreMessenger.call.mockImplementation(
+            createMessengerCallMock(
+              () => ({
+                remoteFeatureFlags: {
+                  [TRON_FLAG_KEY]: {
+                    stage:
+                      SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+                  },
+                },
+              }),
+              jest.fn().mockResolvedValue(
+                buildControllerAsset(fungibleAssetId, '2000000', {
+                  symbol: 'TRX',
+                  name: 'TRON',
+                  decimals: 6,
+                }),
+              ),
+            ),
+          );
+
+          const asset = await assetsService.getAssetByAccountId(
+            accountId,
+            fungibleAssetId,
+          );
+
+          expect(asset).toMatchObject({
+            assetType: fungibleAssetId,
+            rawAmount: '2000000',
+            uiAmount: '2',
+          });
+        },
+      );
+    });
+
+    it('getByKeyringAccountId excludes fungibles when mode is controller', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockAssetsRepository,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+          mockAssetsRepository.getByAccountId.mockResolvedValue([
+            {
+              assetType: fungibleAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+            {
+              assetType: snapAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'ENERGY',
+              decimals: 0,
+              rawAmount: '100',
+              uiAmount: '100',
+              iconUrl: '',
+            },
+          ]);
+
+          const assets = await assetsService.getByKeyringAccountId(accountId);
+
+          expect(assets.some((asset) => asset.assetType === fungibleAssetId)).toBe(
+            false,
+          );
+          expect(assets.some((asset) => asset.assetType === snapAssetId)).toBe(
+            true,
+          );
+        },
+      );
+    });
+
+    it('saveMany emits only snap-owned assets when mode is controller', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockState,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+          mockState.getKey.mockResolvedValue({});
+
+          const assets: AssetEntity[] = [
+            {
+              assetType: fungibleAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+            {
+              assetType: snapAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'ENERGY',
+              decimals: 0,
+              rawAmount: '100',
+              uiAmount: '100',
+              iconUrl: '',
+            },
+          ];
+
+          await assetsService.saveMany(assets);
+
+          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect.anything(),
+            KeyringEvent.AccountAssetListUpdated,
+            {
+              assets: {
+                [accountId]: {
+                  added: [snapAssetId],
+                  removed: [],
+                },
+              },
+            },
+          );
+        },
+      );
+    });
+
+    it('ignores TRON_ASSETS_MIGRATION_STAGE in production', async () => {
+      /* eslint-disable no-restricted-globals */
+      const originalEnvironment = process.env.ENVIRONMENT;
+      const originalStage = process.env.TRON_ASSETS_MIGRATION_STAGE;
+      process.env.ENVIRONMENT = 'production';
+      process.env.TRON_ASSETS_MIGRATION_STAGE = '2';
+      /* eslint-enable no-restricted-globals */
+
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
+          mockCoreMessenger.call.mockImplementation(
+            createMessengerCallMock(() => ({ remoteFeatureFlags: {} }), jest.fn()),
+          );
+          const snapAsset: AssetEntity = {
+            assetType: fungibleAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'TRX',
+            decimals: 6,
+            rawAmount: '1000000',
+            uiAmount: '1',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            snapAsset,
+          );
+
+          const asset = await assetsService.getAssetByAccountId(
+            accountId,
+            fungibleAssetId,
+          );
+
+          expect(asset).toStrictEqual(snapAsset);
+        },
+      );
+
+      restoreMigrationStageEnv(originalEnvironment, originalStage);
     });
   });
 });

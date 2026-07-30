@@ -60,7 +60,15 @@ import { toUiAmount } from '../../utils/conversion';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
+import type { CoreMessengerCaller } from '../../types/core-messenger';
 import type { AssetsRepository } from './AssetsRepository';
+import type { AssetsMigrationMode } from './assetsMigrationMode';
+import {
+  parseStageFromEnv,
+  resolveAssetsMigrationMode,
+} from './assetsMigrationMode';
+import { mapControllerAsset } from './mapControllerAsset';
+import { isSnapOwnedAsset } from './snapOwnedAssets';
 import type {
   InLockPeriodCaipAssetType,
   NativeCaipAssetType,
@@ -113,6 +121,12 @@ export class AssetsService {
 
   readonly #snapClient: SnapClient;
 
+  readonly #coreMessenger: CoreMessengerCaller;
+
+  readonly #isDev: boolean;
+
+  readonly #envMigrationStage: ReturnType<typeof parseStageFromEnv>;
+
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -128,6 +142,7 @@ export class AssetsService {
     priceApiClient,
     tokenApiClient,
     snapClient,
+    coreMessenger,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -137,6 +152,7 @@ export class AssetsService {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
+    coreMessenger: CoreMessengerCaller;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 AssetsService]');
     this.#assetsRepository = assetsRepository;
@@ -146,6 +162,12 @@ export class AssetsService {
     this.#priceApiClient = priceApiClient;
     this.#tokenApiClient = tokenApiClient;
     this.#snapClient = snapClient;
+    this.#coreMessenger = coreMessenger;
+    // Static env access so the Snap bundler inlines values at build time.
+    this.#isDev = process.env.ENVIRONMENT !== 'production';
+    this.#envMigrationStage = parseStageFromEnv(
+      process.env.TRON_ASSETS_MIGRATION_STAGE,
+    );
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
@@ -153,6 +175,15 @@ export class AssetsService {
 
   static isFiat(caipAssetId: CaipAssetType): boolean {
     return caipAssetId.includes('swift:0/iso4217:');
+  }
+
+  async #resolveMode(chainId: string): Promise<AssetsMigrationMode> {
+    return resolveAssetsMigrationMode({
+      coreMessenger: this.#coreMessenger,
+      chainId,
+      isDev: this.#isDev,
+      envStage: this.#envMigrationStage,
+    });
   }
 
   async getAllAssetsByAccountId(accountId: string): Promise<AssetEntity[]> {
@@ -163,9 +194,10 @@ export class AssetsService {
     accountId: string,
     assetTypes: string[],
   ): Promise<(AssetEntity | null)[]> {
-    return this.#assetsRepository.getByAccountIdAndAssetTypes(
-      accountId,
-      assetTypes,
+    return Promise.all(
+      assetTypes.map(async (assetType) =>
+        this.getAssetByAccountId(accountId, assetType),
+      ),
     );
   }
 
@@ -173,6 +205,30 @@ export class AssetsService {
     accountId: string,
     assetType: string,
   ): Promise<AssetEntity | null> {
+    if (isSnapOwnedAsset(assetType)) {
+      return this.#assetsRepository.getByAccountIdAndAssetType(
+        accountId,
+        assetType,
+      );
+    }
+
+    const { chainId } = parseCaipAssetType(assetType as CaipAssetType);
+    const mode = await this.#resolveMode(chainId);
+
+    if (mode === 'controller') {
+      const result = await this.#coreMessenger.call(
+        'AssetsController:getAsset',
+        accountId,
+        assetType,
+      );
+
+      if (!result) {
+        return null;
+      }
+
+      return mapControllerAsset(accountId, assetType, result);
+    }
+
     return this.#assetsRepository.getByAccountIdAndAssetType(
       accountId,
       assetType,
@@ -208,6 +264,8 @@ export class AssetsService {
       scope,
     });
 
+    const mode = await this.#resolveMode(scope);
+
     const [
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
@@ -226,18 +284,19 @@ export class AssetsService {
       );
     }
 
-    const trc20BalancesFallback = isInactiveAccount
-      ? await this.#trongridApiClient
-          .getTrc20BalancesByAddress(scope, account.address)
-          .catch(async (error) => {
-            await this.#snapClient.trackError(error as Error);
-            this.#logger.warn(
-              'Failed to fetch TRC20 balances for inactive account',
-              { error, account, scope },
-            );
-            return [];
-          })
-      : [];
+    const trc20BalancesFallback =
+      mode === 'snap' && isInactiveAccount
+        ? await this.#trongridApiClient
+            .getTrc20BalancesByAddress(scope, account.address)
+            .catch(async (error) => {
+              await this.#snapClient.trackError(error as Error);
+              this.#logger.warn(
+                'Failed to fetch TRC20 balances for inactive account',
+                { error, account, scope },
+              );
+              return [];
+            })
+        : [];
 
     const accountData = this.#buildAccountData({
       tronAccountInfoRequest,
@@ -246,7 +305,10 @@ export class AssetsService {
       stakingRewardsRequest,
     });
 
-    const rawAssets = this.#extractAssets(account, scope, accountData);
+    const rawAssets =
+      mode === 'controller'
+        ? this.#extractSnapOwnedAssets(account, scope, accountData)
+        : this.#extractAssets(account, scope, accountData);
 
     const assetTypes = rawAssets.map((asset) => asset.assetType);
     const priceableAssetTypes = this.#getPriceableAssetTypes(rawAssets);
@@ -371,12 +433,22 @@ export class AssetsService {
   ): AssetEntity[] {
     return [
       this.#extractNativeAsset(account, scope, data.nativeBalance),
+      ...this.#extractSnapOwnedAssets(account, scope, data),
+      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
+      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
+    ];
+  }
+
+  #extractSnapOwnedAssets(
+    account: KeyringAccount,
+    scope: Network,
+    data: NormalizedAccountData,
+  ): AssetEntity[] {
+    return [
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
       this.#extractReadyForWithdrawalAsset(account, scope, data.stakedData),
       this.#extractInLockPeriodAsset(account, scope, data.stakedData),
       this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
-      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
-      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
       ...this.#extractBandwidth({
         account,
         scope,
@@ -1261,12 +1333,32 @@ export class AssetsService {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
+    const modesByNetwork = new Map<Network, AssetsMigrationMode>();
+    await Promise.all(
+      [...new Set(assets.map((asset) => asset.network))].map(
+        async (network) => {
+          modesByNetwork.set(network, await this.#resolveMode(network));
+        },
+      ),
+    );
+
+    const shouldEmitAsset = (asset: AssetEntity): boolean =>
+      (modesByNetwork.get(asset.network) ?? 'snap') === 'snap' ||
+      isSnapOwnedAsset(asset.assetType);
+
     const hasZeroAmount = (asset: AssetEntity): boolean =>
       asset.rawAmount === '0' || asset.uiAmount === '0';
 
     const savedAssets = await this.getAll();
     const isEssentialAsset = (asset: AssetEntity): boolean =>
       ESSENTIAL_ASSETS.includes(asset.assetType);
+
+    const isProtectedAsset = (asset: AssetEntity): boolean => {
+      const mode = modesByNetwork.get(asset.network) ?? 'snap';
+      return mode === 'snap'
+        ? isEssentialAsset(asset)
+        : isSnapOwnedAsset(asset.assetType);
+    };
 
     // Track only the account/network pairs refreshed in this run.
     // That prevents us from treating assets from untouched networks as disappeared.
@@ -1292,8 +1384,13 @@ export class AssetsService {
 
       if (
         !syncedNetworks?.has(savedAsset.network) ||
-        isEssentialAsset(savedAsset)
+        isProtectedAsset(savedAsset)
       ) {
+        return false;
+      }
+
+      const mode = modesByNetwork.get(savedAsset.network) ?? 'snap';
+      if (mode === 'controller' && !isSnapOwnedAsset(savedAsset.assetType)) {
         return false;
       }
 
@@ -1320,9 +1417,9 @@ export class AssetsService {
     //    snapshot entirely
     // 2. fold in the current assets to report additions and explicit zero-balance
     //    removals in the same event
-    const assetListUpdatedPayload = disappearedAssets.reduce<
-      AccountAssetListUpdatedEvent['params']['assets']
-    >(
+    const assetListUpdatedPayload = disappearedAssets
+      .filter(shouldEmitAsset)
+      .reduce<AccountAssetListUpdatedEvent['params']['assets']>(
       (acc, asset) => ({
         ...acc,
         [asset.keyringAccountId]: {
@@ -1336,7 +1433,7 @@ export class AssetsService {
       {},
     );
 
-    for (const asset of assets) {
+    for (const asset of assets.filter(shouldEmitAsset)) {
       // Merge the current snapshot into the pre-seeded payload so each account
       // ends up with one consolidated added/removed diff.
       assetListUpdatedPayload[asset.keyringAccountId] = {
@@ -1367,7 +1464,9 @@ export class AssetsService {
     // Emit synthetic zero-balance entries for disappeared assets so clients can
     // clear cached balances even when the backend omits zero-balance tokens
     // instead of returning them explicitly.
-    const removedAssetsWithZeroBalance = disappearedAssets.map((asset) => ({
+    const removedAssetsWithZeroBalance = disappearedAssets
+      .filter(shouldEmitAsset)
+      .map((asset) => ({
       ...asset,
       rawAmount: '0',
       uiAmount: '0',
@@ -1379,9 +1478,10 @@ export class AssetsService {
 
     // Broadcast the current snapshot plus synthetic zero-balance removals so the
     // client can reconcile both visible assets and cached balances in one pass.
-    const balancesUpdatedPayload = assetsToSave.reduce<
-      AccountBalancesUpdatedEvent['params']['balances']
-    >(
+    const balancesUpdatedPayload = [
+      ...assets.filter(shouldEmitAsset),
+      ...removedAssetsWithZeroBalance,
+    ].reduce<AccountBalancesUpdatedEvent['params']['balances']>(
       (acc, asset) => ({
         ...acc,
         [asset.keyringAccountId]: {
@@ -1448,6 +1548,27 @@ export class AssetsService {
     const savedAssets =
       await this.#assetsRepository.getByAccountId(keyringAccountId);
 
+    const networks = [
+      ...new Set([
+        ...savedAssets.map((asset) => asset.network),
+        ...ESSENTIAL_ASSETS.map(
+          (assetId) =>
+            parseCaipAssetType(assetId as CaipAssetType).chainId as Network,
+        ),
+      ]),
+    ] as Network[];
+    const modesByNetwork = new Map<Network, AssetsMigrationMode>();
+    await Promise.all(
+      networks.map(async (network) => {
+        modesByNetwork.set(network, await this.#resolveMode(network));
+      }),
+    );
+
+    const visibleSavedAssets = savedAssets.filter((asset) => {
+      const mode = modesByNetwork.get(asset.network) ?? 'snap';
+      return mode === 'snap' || isSnapOwnedAsset(asset.assetType);
+    });
+
     /**
      * Ensure the special assets are always present whether they have been synced or not.
      * These are assets that should be visible to the user even with zero balance.
@@ -1455,6 +1576,13 @@ export class AssetsService {
     const missingEssentialAssets: AssetEntity[] = [];
 
     for (const essentialAssetId of ESSENTIAL_ASSETS) {
+      const { chainId } = parseCaipAssetType(essentialAssetId as CaipAssetType);
+      const mode = modesByNetwork.get(chainId as Network) ?? 'snap';
+
+      if (mode === 'controller' && !isSnapOwnedAsset(essentialAssetId)) {
+        continue;
+      }
+
       const savedAsset = savedAssets.find(
         (asset) => (asset.assetType as string) === essentialAssetId,
       );
@@ -1468,7 +1596,7 @@ export class AssetsService {
       }
     }
 
-    return [...savedAssets, ...missingEssentialAssets];
+    return [...visibleSavedAssets, ...missingEssentialAssets];
   }
 
   /**

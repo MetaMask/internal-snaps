@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add feature-flagged AssetsController migration for fungible asset reads (TRX, TRC10, TRC20). Protocol assets (energy, bandwidth, staking, lock/withdrawal, rewards) remain Snap-owned. Resolution order: remote feature flags → `TRON_ASSETS_MIGRATION_STAGE` env (non-production only) → Off default.
+
 ### Changed
 
 - Bump `@metamask/keyring-api` from `^23.2.0` to `^23.7.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
