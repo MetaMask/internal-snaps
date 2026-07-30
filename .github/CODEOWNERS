@@ -9,3 +9,4 @@
 packages/bitcoin-wallet-snap @MetaMask/networks
 packages/snap-networks-utils @MetaMask/networks
 packages/tron-wallet-snap @MetaMask/networks
+packages/solana-wallet-snap @MetaMask/networks
