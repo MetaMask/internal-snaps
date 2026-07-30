@@ -4,10 +4,10 @@
   "proposedName": "Solana",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/snap-solana-wallet.git"
+    "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "IFUCW/5nFjm2PtAdzVtjtdmN9x8sVAYMvTCnp1fivHU=",
+    "shasum": "0+yHlsijL95Hsnf0EuU/6EOWbSSAYmOhOtHgDLd2yqU=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -90,6 +90,6 @@
     "snap_dialog": {},
     "snap_getPreferences": {}
   },
-  "platformVersion": "11.1.1",
+  "platformVersion": "11.2.0",
   "manifestVersion": "0.1"
 }
