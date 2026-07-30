@@ -25,7 +25,7 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { array, assert, sensitive } from '@metamask/superstruct';
+import { array, assert, is, sensitive } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
@@ -362,8 +362,10 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       // SECURITY: Wrap the struct with sensitive() so that any assertion
       // failure redacts the actual value from the error message and
-      // StructError.value, preventing the private key from leaking into logs.
-      assert(privateKeyHex, sensitive(PrivateKeyHexStruct));
+      // StructError.value, preventing the private key from leaking into logs.A
+      if (!is(privateKeyHex, sensitive(PrivateKeyHexStruct))) {
+        throw new Error('Derived private key failed encoding validation');
+      }
 
       return {
         type: 'private-key',
