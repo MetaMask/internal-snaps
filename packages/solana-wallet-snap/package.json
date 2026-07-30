@@ -41,7 +41,7 @@
     "locale:build:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-locale.js\"",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn locale:build:watch\"",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand --reporters=jest-silent-reporter",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
     "test:core": "jest src/core --passWithNoTests",
     "test:core:watch": "yarn test:core --watch",
     "test:features": "jest src/features --passWithNoTests --runInBand",
