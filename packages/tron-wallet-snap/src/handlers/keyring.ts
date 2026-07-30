@@ -129,11 +129,9 @@ export class KeyringHandler implements KeyringSnapRpc {
   async getAccounts(): Promise<KeyringAccount[]> {
     try {
       return (await this.#listAccounts()).map(asStrictKeyringAccount);
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error listing accounts');
-      throw new SnapError(error);
+      throw new SnapError(error as Error);
     }
   }
 
@@ -145,11 +143,9 @@ export class KeyringHandler implements KeyringSnapRpc {
         (await this.#accountsService.findById(accountId)) ?? undefined;
 
       return account;
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error getting account');
-      throw new SnapError(error);
+      throw new SnapError(error as Error);
     }
   }
 
@@ -160,11 +156,9 @@ export class KeyringHandler implements KeyringSnapRpc {
       const account = await this.#getAccountOrThrow(accountId);
 
       return asStrictKeyringAccount(account);
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error getting account');
-      throw new SnapError(error);
+      throw new SnapError(error as Error);
     }
   }
 
@@ -211,9 +205,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       validateResponse(result, ListAccountAssetsResponseStruct);
       return result;
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error listing account assets');
       throw error;
     }
@@ -272,9 +264,7 @@ export class KeyringHandler implements KeyringSnapRpc {
         data: accountTransactions,
         next: nextSignature,
       };
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error listing account transactions');
       throw error;
     }
@@ -318,9 +308,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       validateResponse(result, GetAccounBalancesResponseStruct);
       return result;
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error getting account balances');
       throw error;
     }
@@ -400,9 +388,7 @@ export class KeyringHandler implements KeyringSnapRpc {
       });
 
       await this.#accountsService.delete(accountId);
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error deleting account');
       throw error;
     }

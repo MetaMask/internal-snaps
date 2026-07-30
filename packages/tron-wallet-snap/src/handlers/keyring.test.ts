@@ -7,8 +7,6 @@ import {
   InvalidParamsError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
-import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
-
 import type { SnapClient } from '../clients/snap/SnapClient';
 import { Network } from '../constants';
 import type { TronKeyringAccount } from '../entities/keyring-account';
@@ -28,7 +26,7 @@ import { TronMultichainMethod } from './keyring-types';
  * @returns Base64 encoded string.
  */
 function toBase64(str: string): string {
-  return bytesToBase64(stringToBytes(str));
+  return Buffer.from(str).toString('base64');
 }
 
 /**
@@ -38,7 +36,7 @@ function toBase64(str: string): string {
  * @returns Hex encoded string (without 0x prefix).
  */
 function toHex(str: string): string {
-  return bytesToHex(stringToBytes(str)).slice(2);
+  return Buffer.from(str).toString('hex');
 }
 
 describe('KeyringHandler', () => {
@@ -52,7 +50,7 @@ describe('KeyringHandler', () => {
     ],
     type: 'tron:eoa',
     scopes: [Network.Mainnet, Network.Shasta],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
@@ -69,7 +67,7 @@ describe('KeyringHandler', () => {
     mockSnapClient = {
       scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
       trackError: jest.fn(),
-    } as any;
+    } as unknown as jest.Mocked<SnapClient>;
     mockAccountsService = {
       findById: jest.fn().mockResolvedValue(mockAccount),
       findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
@@ -77,22 +75,22 @@ describe('KeyringHandler', () => {
       create: jest.fn(),
       createAccounts: jest.fn(),
       getAll: jest.fn().mockResolvedValue([mockAccount]),
-    } as any;
+    } as unknown as jest.Mocked<AccountsService>;
     mockAssetsService = {
       getByKeyringAccountId: jest.fn().mockResolvedValue([]),
-    } as any;
+    } as unknown as jest.Mocked<AssetsService>;
     mockTransactionsService = {
       checkAddressActivity: jest.fn(),
       findByAccounts: jest.fn().mockResolvedValue([]),
-    } as any;
+    } as unknown as jest.Mocked<TransactionsService>;
     mockWalletService = {
       handleKeyringRequest: jest
         .fn()
         .mockResolvedValue({ signature: '0xsignature123' }),
-    } as any;
+    } as unknown as jest.Mocked<WalletService>;
     mockConfirmationHandler = {
       handleKeyringRequest: jest.fn().mockResolvedValue(true),
-    } as any;
+    } as unknown as jest.Mocked<ConfirmationHandler>;
 
     keyringHandler = new KeyringHandler({
       logger: mockLogger,
@@ -341,7 +339,7 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignMessage,
             params: {},
           },
-        } as any;
+        } as unknown as KeyringRequest;
 
         await expect(
           keyringHandler.submitRequest(invalidRequest),
@@ -358,7 +356,7 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignMessage,
             // Missing params
           },
-        } as any;
+        } as unknown as KeyringRequest;
 
         await expect(keyringHandler.submitRequest(request)).rejects.toThrow(
           'satisfy a union',
