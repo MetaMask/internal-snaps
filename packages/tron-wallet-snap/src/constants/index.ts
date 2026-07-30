@@ -8,6 +8,12 @@ export const FALLBACK_GET_TRANSACTION_FEE_SUN = 1000;
 export const FALLBACK_GET_ENERGY_FEE_SUN = 100;
 export const FALLBACK_ENERGY_PRICE_SUN = 420;
 /**
+ * Default `getAccountUpgradeCost` (WitnessCreateContract burn) in SUN = 9,999 TRX.
+ *
+ * @see https://developers.tron.network/docs/super-representatives
+ */
+export const FALLBACK_ACCOUNT_UPGRADE_COST_SUN = 9_999_000_000;
+/**
  * 101 TRX
  */
 export const FEE_LIMIT = 101_000_000;

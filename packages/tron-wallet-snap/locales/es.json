@@ -64,6 +64,9 @@
     "confirmation.estimatedChanges.unsupportedContract": {
       "message": "Contrato no compatible con simulación"
     },
+    "confirmation.estimatedChanges.witnessCreate": {
+      "message": "Registra tu cuenta como candidato a Super Representante y quema permanentemente 9.999 TRX."
+    },
     "confirmation.simulationTitleAPIError": {
       "message": "Debido a un error, no pudimos verificar alertas de seguridad."
     },

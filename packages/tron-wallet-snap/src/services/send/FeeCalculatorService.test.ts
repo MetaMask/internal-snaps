@@ -2168,6 +2168,191 @@ describe('FeeCalculatorService', () => {
       });
     });
 
+    describe('WitnessCreateContract account upgrade fee scenarios', () => {
+      const createWitnessCreateTransaction = (): any => {
+        const base = getTransactionExample('native');
+        return {
+          ...base,
+          raw_data: {
+            ...base.raw_data,
+            contract: [
+              {
+                parameter: {
+                  value: {
+                    owner_address: '41a7d8a35b260395c14aa456297662092ba3b76fc0',
+                    url: '68747470733a2f2f6578616d706c652e636f6d',
+                  },
+                  type_url:
+                    'type.googleapis.com/protocol.WitnessCreateContract',
+                },
+                type: 'WitnessCreateContract',
+              },
+            ],
+          },
+        };
+      };
+
+      it('adds 9999 TRX account upgrade fee for WitnessCreateContract when chain param is present', async () => {
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              { key: 'getEnergyFee', value: 100 },
+              { key: 'getAccountUpgradeCost', value: 9_999_000_000 },
+            ]);
+
+            const transaction = createWitnessCreateTransaction();
+            const availableEnergy = ZERO;
+            const availableBandwidth = BigNumber(1000000);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
+
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '9999',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '266',
+                  fungible: true,
+                },
+              },
+            ]);
+          },
+        );
+      });
+
+      it('falls back to 9999 TRX when getAccountUpgradeCost is missing from chain parameters', async () => {
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              { key: 'getEnergyFee', value: 100 },
+            ]);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: createWitnessCreateTransaction(),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '9999',
+                fungible: true,
+              },
+            });
+          },
+        );
+      });
+
+      it('adds account upgrade fee on top of bandwidth TRX cost', async () => {
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              { key: 'getEnergyFee', value: 100 },
+              { key: 'getAccountUpgradeCost', value: 9_999_000_000 },
+            ]);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: createWitnessCreateTransaction(),
+              availableEnergy: ZERO,
+              availableBandwidth: ZERO,
+            });
+
+            // Bandwidth: 266 * 1000 SUN = 0.266 TRX + 9999 TRX upgrade = 9999.266 TRX
+            expect(result[0]).toStrictEqual({
+              type: FeeType.Base,
+              asset: {
+                unit: 'TRX',
+                type: 'tron:728126428/slip44:195',
+                amount: '9999.266',
+                fungible: true,
+              },
+            });
+          },
+        );
+      });
+
+      it('uses the on-chain getAccountUpgradeCost value when it differs from the default', async () => {
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              { key: 'getEnergyFee', value: 100 },
+              { key: 'getAccountUpgradeCost', value: 5_000_000_000 }, // 5000 TRX
+            ]);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: createWitnessCreateTransaction(),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            expect(result[0]?.asset.amount).toBe('5000');
+          },
+        );
+      });
+
+      it('does not add account upgrade fee for non-WitnessCreate contracts', async () => {
+        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+          const result = await feeCalculatorService.computeFee({
+            scope: Network.Mainnet,
+            transaction: getTransactionExample('native'),
+            availableEnergy: ZERO,
+            availableBandwidth: BigNumber(1000000),
+          });
+
+          expect(result[0]?.asset.amount).toBe('0');
+        });
+      });
+
+      it('falls back to 9999 TRX when chain parameters are unavailable', async () => {
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            trongridApiClient.getChainParameters.mockRejectedValue(
+              new Error('TronGrid unavailable'),
+            );
+            trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+              undefined,
+            );
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: createWitnessCreateTransaction(),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            // Enough bandwidth so we never need getTransactionFee; upgrade fee
+            // still discloses the default burn via fallback.
+            expect(result[0]?.asset.amount).toBe('9999');
+          },
+        );
+      });
+    });
+
     describe('Memo fee scenarios', () => {
       // Helper to add a memo (raw_data.data) to a transaction
       const addMemoToTransaction = (
