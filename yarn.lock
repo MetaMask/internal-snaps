@@ -2758,19 +2758,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/key-tree@npm:9.1.2":
-  version: 9.1.2
-  resolution: "@metamask/key-tree@npm:9.1.2"
-  dependencies:
-    "@metamask/scure-bip39": "npm:^2.1.1"
-    "@metamask/utils": "npm:^9.0.0"
-    "@noble/curves": "npm:^1.2.0"
-    "@noble/hashes": "npm:^1.3.2"
-    "@scure/base": "npm:^1.0.0"
-  checksum: 10/9b178a4156b2f36bf630564dd0530c41c6356492971d2bcc8f979c79c81144945823a5b770e4097e12b89b42133b81f00c95a7b8fe9931ea1dd928989ee3c406
-  languageName: node
-  linkType: hard
-
 "@metamask/key-tree@npm:^10.0.2, @metamask/key-tree@npm:^10.1.1":
   version: 10.1.1
   resolution: "@metamask/key-tree@npm:10.1.1"
@@ -3678,7 +3665,7 @@ __metadata:
   dependencies:
     "@jest/globals": "npm:^29.5.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
-    "@metamask/key-tree": "npm:9.1.2"
+    "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^23.7.0"
     "@metamask/keyring-snap-sdk": "npm:^9.2.1"
     "@metamask/snaps-cli": "npm:^8.4.1"
