@@ -2322,7 +2322,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/snaps-cli@npm:^8.3.0, @metamask/snaps-cli@npm:^8.4.1":
+"@metamask/snaps-cli@npm:^8.3.0":
   version: 8.4.1
   resolution: "@metamask/snaps-cli@npm:8.4.1"
   dependencies:
@@ -2609,7 +2609,7 @@ __metadata:
     "@metamask/key-tree": "npm:9.1.2"
     "@metamask/keyring-api": "npm:^23.5.0"
     "@metamask/keyring-snap-sdk": "npm:^9.2.0"
-    "@metamask/snaps-cli": "npm:^8.4.1"
+    "@metamask/snaps-cli": "npm:^8.3.0"
     "@metamask/snaps-jest": "npm:^10.2.0"
     "@metamask/snaps-sdk": "npm:11.1.1"
     "@metamask/superstruct": "npm:^3.2.1"
