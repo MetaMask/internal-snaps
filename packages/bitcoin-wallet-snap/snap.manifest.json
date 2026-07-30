@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "hqW3Vzx9j/RwIxE8Jru0RBzz4sR0D9CicTmWWOwKB1Y=",
+    "shasum": "o8/OvZvhYYpLZ1tndeGYlWOlUKCqO1V+T6e6bL8YAg8=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -31,7 +31,25 @@
   },
   "initialPermissions": {
     "endowment:webassembly": {},
-    "endowment:keyring": {},
+    "endowment:keyring": {
+      "allowedOrigins": [],
+      "capabilities": {
+        "scopes": ["bip122:000000000019d6689c085ae165831e93"],
+        "privateKey": {
+          "exportFormats": [
+            {
+              "encoding": "base58"
+            }
+          ]
+        },
+        "bip44": {
+          "deriveIndex": true,
+          "deriveIndexRange": true,
+          "derivePath": true,
+          "discover": true
+        }
+      }
+    },
     "snap_getBip32Entropy": [
       {
         "path": ["m", "44'", "0'"],

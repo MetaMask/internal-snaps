@@ -1776,12 +1776,13 @@ __metadata:
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/bitcoindevkit": "npm:^0.1.13"
     "@metamask/key-tree": "npm:^10.1.1"
-    "@metamask/keyring-api": "npm:^23.2.0"
-    "@metamask/keyring-snap-sdk": "npm:^8.0.0"
+    "@metamask/keyring-api": "npm:^23.7.0"
+    "@metamask/keyring-snap-sdk": "npm:^9.2.1"
     "@metamask/slip44": "npm:^4.2.0"
-    "@metamask/snaps-cli": "npm:^8.3.0"
+    "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
-    "@metamask/snaps-sdk": "npm:11.1.1"
+    "@metamask/snaps-sdk": "npm:^11.2.0"
+    "@metamask/superstruct": "npm:^3.4.1"
     "@metamask/utils": "npm:^11.9.0"
     bip322-js: "npm:^3.0.0"
     concurrently: "npm:^10.0.3"
@@ -2068,7 +2069,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/keyring-api@npm:^23.2.0":
+"@metamask/keyring-api@npm:^23.7.0":
   version: 23.7.0
   resolution: "@metamask/keyring-api@npm:23.7.0"
   dependencies:
@@ -2080,31 +2081,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/keyring-snap-sdk@npm:^8.0.0":
-  version: 8.0.0
-  resolution: "@metamask/keyring-snap-sdk@npm:8.0.0"
+"@metamask/keyring-snap-sdk@npm:^9.2.1":
+  version: 9.2.1
+  resolution: "@metamask/keyring-snap-sdk@npm:9.2.1"
   dependencies:
-    "@metamask/keyring-utils": "npm:^3.2.0"
+    "@metamask/keyring-utils": "npm:^4.0.0"
     "@metamask/snaps-sdk": "npm:^11.0.0"
-    "@metamask/superstruct": "npm:^3.1.0"
-    "@metamask/utils": "npm:^11.1.0"
+    "@metamask/superstruct": "npm:^3.4.1"
+    "@metamask/utils": "npm:^11.11.0"
     webextension-polyfill: "npm:^0.12.0"
   peerDependencies:
-    "@metamask/keyring-api": ^22.0.0
+    "@metamask/keyring-api": ^23.0.0
     "@metamask/providers": ^19.0.0
-  checksum: 10/271b4f84d214813c0312ffbbe3fb6201b66172210da4d06a155c3ddb359403ed1fa4c7afa424cd34fa9db04e3c876f30f69afb676bb7a905d392552d871ebd57
-  languageName: node
-  linkType: hard
-
-"@metamask/keyring-utils@npm:^3.2.0":
-  version: 3.3.1
-  resolution: "@metamask/keyring-utils@npm:3.3.1"
-  dependencies:
-    "@ethereumjs/tx": "npm:^5.4.0"
-    "@metamask/superstruct": "npm:^3.1.0"
-    "@metamask/utils": "npm:^11.11.0"
-    bitcoin-address-validation: "npm:^2.2.3"
-  checksum: 10/d0917b2f634d9eb2f563827739fca00c1675ee90674ec49b2b68afcb604aee843d6c5be5d79e9780fa22d29f71fc876f40b2d3d0ed4cab7f5948937ddd276691
+  checksum: 10/90b01fca9cc1d055b3830e8a7d2503b40421c9ddc4e20b0db25fade73c430ac56bb482f340cd82a08a5013d76e0b8d8265c953b71f5e29be2c5e538d5cedd9e4
   languageName: node
   linkType: hard
 
@@ -2257,9 +2246,9 @@ __metadata:
   dependencies:
     "@jest/globals": "npm:^29.5.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
-    "@metamask/snaps-cli": "npm:^8.3.0"
+    "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
-    "@metamask/snaps-sdk": "npm:11.1.1"
+    "@metamask/snaps-sdk": "npm:^11.2.0"
     "@types/react": "npm:18.2.4"
     "@types/react-dom": "npm:18.2.4"
     eslint: "npm:^9.39.1"
@@ -2286,7 +2275,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/snaps-cli@npm:^8.3.0":
+"@metamask/snaps-cli@npm:^8.4.1":
   version: 8.4.1
   resolution: "@metamask/snaps-cli@npm:8.4.1"
   dependencies:
@@ -2587,12 +2576,12 @@ __metadata:
   dependencies:
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/key-tree": "npm:^10.1.1"
-    "@metamask/keyring-api": "npm:^23.2.0"
-    "@metamask/keyring-snap-sdk": "npm:^8.0.0"
-    "@metamask/snaps-cli": "npm:^8.3.0"
+    "@metamask/keyring-api": "npm:^23.7.0"
+    "@metamask/keyring-snap-sdk": "npm:^9.2.1"
+    "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
-    "@metamask/snaps-sdk": "npm:11.1.1"
-    "@metamask/superstruct": "npm:^3.2.1"
+    "@metamask/snaps-sdk": "npm:^11.2.0"
+    "@metamask/superstruct": "npm:^3.4.1"
     async-mutex: "npm:^0.5.0"
     bignumber.js: "npm:^9.3.1"
     concurrently: "npm:^10.0.3"
@@ -2607,7 +2596,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@metamask/utils@npm:^11.0.1, @metamask/utils@npm:^11.1.0, @metamask/utils@npm:^11.10.0, @metamask/utils@npm:^11.11.0, @metamask/utils@npm:^11.4.0, @metamask/utils@npm:^11.4.2, @metamask/utils@npm:^11.8.1, @metamask/utils@npm:^11.9.0":
+"@metamask/utils@npm:^11.0.1, @metamask/utils@npm:^11.10.0, @metamask/utils@npm:^11.11.0, @metamask/utils@npm:^11.4.0, @metamask/utils@npm:^11.4.2, @metamask/utils@npm:^11.8.1, @metamask/utils@npm:^11.9.0":
   version: 11.11.0
   resolution: "@metamask/utils@npm:11.11.0"
   dependencies:
