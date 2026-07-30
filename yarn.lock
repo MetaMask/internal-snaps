@@ -1998,7 +1998,7 @@ __metadata:
     "@metamask/eslint-config-typescript": "npm:^15.0.0"
     "@metamask/utils": "npm:^11.9.0"
     "@types/jest": "npm:^30.0.0"
-    "@types/lodash": "npm:^4.14.191"
+    "@types/lodash": "npm:^4.17.15"
     "@types/node": "npm:^16.18.54"
     "@types/semver": "npm:^7"
     "@typescript-eslint/eslint-plugin": "npm:^8.48.0"
@@ -4797,7 +4797,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lodash@npm:^4.14.191, @types/lodash@npm:^4.17.15, @types/lodash@npm:^4.17.20":
+"@types/lodash@npm:^4.17.15, @types/lodash@npm:^4.17.20":
   version: 4.17.24
   resolution: "@types/lodash@npm:4.17.24"
   checksum: 10/0f2082565f60f9787eefc046edc38458054512be5a8b3584ef0bad5fd9e85d0ab55ec5a1fbfae1ed6ba015cf1f9e837d5fb4da1f99fc60b8f74b2a46146fb00f
