@@ -1,3 +1,5 @@
+import { getMessenger } from '@metamask/snaps-sdk';
+
 import { InMemoryCache } from './caching/InMemoryCache';
 import { StateCache } from './caching/StateCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
@@ -29,6 +31,7 @@ import { TransactionScanService } from './services/transaction-scan/TransactionS
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
 import { TransactionsService } from './services/transactions/TransactionsService';
 import { WalletService } from './services/wallet/WalletService';
+import type { CoreMessenger } from './types/core-messenger';
 import logger, { noOpLogger } from './utils/logger';
 
 /**
@@ -82,6 +85,8 @@ const priceApiClient = new PriceApiClient(configProvider, priceCache);
 // Token API client
 const tokenApiClient = new TokenApiClient(configProvider);
 
+const coreMessenger = getMessenger<CoreMessenger>();
+
 // Security Alerts API client
 const securityAlertsApiClient = new SecurityAlertsApiClient(
   configProvider,
@@ -98,6 +103,7 @@ const assetsService = new AssetsService({
   priceApiClient,
   tokenApiClient,
   snapClient,
+  coreMessenger,
 });
 
 const transactionsService = new TransactionsService({
