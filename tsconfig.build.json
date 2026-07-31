@@ -6,7 +6,11 @@
    * extended here because the `tsconfig.build.json` file referenced for each package already
    * (indirectly) extends it.
    */
-  "references": [],
+  "references": [
+    {
+      "path": "./packages/snap-networks-utils/tsconfig.build.json"
+    }
+  ],
   "files": [],
   "include": []
 }
