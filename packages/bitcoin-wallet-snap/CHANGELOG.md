@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: update license files ([#75](https://github.com/MetaMask/internal-snaps/pull/75))
+- chore: tron integration into packages ([#53](https://github.com/MetaMask/internal-snaps/pull/53))
+- chore: update torn/bitcoin/sample package, update tron package versions and meta, jest ([#52](https://github.com/MetaMask/internal-snaps/pull/52))
+- chore: update readme files ([#47](https://github.com/MetaMask/internal-snaps/pull/47))
+
 ### Added
 
 - Add support for keyring API v2, including `bip44:derive-path`, `bip44:derive-index`, `bip44:derive-index-range`, and `bip44:discover` account creation types ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
