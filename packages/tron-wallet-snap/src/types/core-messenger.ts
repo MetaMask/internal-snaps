@@ -1,10 +1,15 @@
-import type { AssetsControllerGetAssetAction } from '@metamask/assets-controller';
+import type {
+  AssetsControllerGetAssetAction,
+  AssetsControllerGetAssetsAction,
+} from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
 import type { AsyncMessenger } from '@metamask/snaps-sdk';
 
-export type { AssetsControllerGetAssetAction };
+export type { AssetsControllerGetAssetAction, AssetsControllerGetAssetsAction };
 
-export type CoreMessengerActions = AssetsControllerGetAssetAction;
+export type CoreMessengerActions =
+  | AssetsControllerGetAssetAction
+  | AssetsControllerGetAssetsAction;
 
 /**
  * Typed messenger for Core controller actions available to this Snap via
