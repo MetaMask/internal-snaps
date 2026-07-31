@@ -18,7 +18,7 @@ yarn workspace @metamask/tron-wallet-snap add @metamask/snap-networks-utils@work
 
 ## Usage
 
-Import the example logger from the package root or the dedicated subpath:
+### Logger
 
 ```typescript
 import { logger, createPrefixedLogger } from '@metamask/snap-networks-utils';
@@ -26,6 +26,35 @@ import { logger, createPrefixedLogger } from '@metamask/snap-networks-utils';
 
 const snapLogger = createPrefixedLogger(logger, '[tron-wallet-snap]');
 snapLogger.info('account synced');
+```
+
+### Core AssetsController reads
+
+Wire the Snap messenger endowment, then pass it to `AssetsProvider`:
+
+```typescript
+import type { Messenger } from '@metamask/messenger';
+import { getMessenger } from '@metamask/snaps-sdk';
+import type {
+  AssetsControllerGetAccountAssetByIDAction,
+  AssetsControllerGetAccountAssetsByIDsAction,
+  AssetsControllerGetAccountAssetsByScopeAction,
+} from '@metamask/assets-controller';
+import { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { AccountId, Caip19AssetId } from '@metamask/assets-controller';
+
+type CoreMessengerActions =
+  | AssetsControllerGetAccountAssetByIDAction
+  | AssetsControllerGetAccountAssetsByIDsAction
+  | AssetsControllerGetAccountAssetsByScopeAction;
+
+const messenger = getMessenger<Messenger<string, CoreMessengerActions>>();
+const assetsProvider = new AssetsProvider({ messenger });
+
+const asset = await assetsProvider.getAccountAssetByID(
+  accountId as AccountId,
+  assetId as Caip19AssetId,
+);
 ```
 
 ## Contributing

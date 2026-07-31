@@ -60,6 +60,12 @@
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
+  "dependencies": {
+    "@metamask/assets-controller": "^13.0.0",
+    "@metamask/messenger": "^2.0.0",
+    "@metamask/snaps-sdk": "^11.2.0",
+    "@metamask/utils": "^11.9.0"
+  },
   "devDependencies": {
     "@metamask/auto-changelog": "^6.1.1",
     "@ts-bridge/cli": "^0.6.4",
