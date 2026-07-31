@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `AssetsService.getAccountAssetsByScope` for instant controller-backed fungible asset reads by network.
 - Route fungible asset reads (TRX, TRC10, TRC20) through `AssetsController:getAsset`. Protocol assets (energy, bandwidth, staking, lock/withdrawal, rewards) remain Snap-owned.
 
 ### Changed

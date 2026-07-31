@@ -244,6 +244,32 @@ export class AssetsService {
   }
 
   /**
+   * Returns all controller-backed assets for an account on the given network.
+   *
+   * @param scope - CAIP-2 chain ID to filter controller results.
+   * @param accountId - Keyring account ID.
+   * @returns Mapped fungible assets present in AssetsController state.
+   */
+  async getAccountAssetsByScope(
+    scope: Network,
+    accountId: string,
+  ): Promise<AssetEntity[]> {
+    const controllerAssets = await this.#coreMessenger.call(
+      'AssetsController:getAssets',
+      [{ id: accountId }] as unknown as InternalAccount[],
+      { chainIds: [scope] },
+    );
+
+    const accountAssets =
+      (controllerAssets as Record<string, Record<string, Asset>>)[accountId] ??
+      {};
+
+    return Object.entries(accountAssets).map(([assetId, asset]) =>
+      mapControllerAsset(accountId, assetId, asset),
+    );
+  }
+
+  /**
    * Fetches snap-owned assets and balances for an account.
    *
    * Data Sources:
