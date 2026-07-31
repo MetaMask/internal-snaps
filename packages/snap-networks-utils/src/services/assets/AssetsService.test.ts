@@ -28,40 +28,46 @@ const mappedAsset = {
   iconUrl: 'https://example.com/trx.png',
 };
 
-type WithAssetsServiceCallback<ReturnValue> = (params: {
-  service: AssetsService;
-  call: jest.MockedFunction<CoreMessengerCaller['call']>;
+type WithAssetsServiceCallback<ReturnValue> = (payload: {
+  assetsService: AssetsService;
+  mockCoreMessenger: jest.Mocked<Pick<CoreMessengerCaller, 'call'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
- * Wraps AssetsService tests with a fresh instance and a messenger `call` mock.
+ * Wraps tests for AssetsService by creating a fresh service with a mock Core
+ * messenger. The callback receives the service and mock for test configuration.
  *
- * @param call - Mocked Core messenger `call` implementation.
- * @param testFunction - Test body receiving the service and mock.
+ * @param testFunction - The test body receiving the service and mocks.
  * @returns The return value of the callback.
  */
 async function withAssetsService<ReturnValue>(
-  call: jest.MockedFunction<CoreMessengerCaller['call']>,
   testFunction: WithAssetsServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const service = new AssetsService({
-    coreMessenger: { call },
+  const mockCoreMessenger: jest.Mocked<Pick<CoreMessengerCaller, 'call'>> = {
+    call: jest.fn(),
+  };
+
+  const assetsService = new AssetsService({
+    coreMessenger: mockCoreMessenger,
   });
 
-  return await testFunction({ service, call });
+  return await testFunction({
+    assetsService,
+    mockCoreMessenger,
+  });
 }
 
 describe('AssetsService', () => {
   describe('getAccountAssetByID', () => {
     it('returns a mapped asset when the controller has it', async () => {
-      const call = jest.fn().mockResolvedValue(controllerAsset);
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue(controllerAsset);
 
-      await withAssetsService(call, async ({ service }) => {
         expect(
-          await service.getAccountAssetByID(ACCOUNT_ID, ASSET_ID),
+          await assetsService.getAccountAssetByID(ACCOUNT_ID, ASSET_ID),
         ).toStrictEqual(mappedAsset);
 
-        expect(call).toHaveBeenCalledWith(
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
           'AssetsController:getAsset',
           ACCOUNT_ID,
           ASSET_ID,
@@ -70,11 +76,11 @@ describe('AssetsService', () => {
     });
 
     it('returns null when the controller has no asset', async () => {
-      const call = jest.fn().mockResolvedValue(undefined);
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue(undefined);
 
-      await withAssetsService(call, async ({ service }) => {
         expect(
-          await service.getAccountAssetByID(ACCOUNT_ID, ASSET_ID),
+          await assetsService.getAccountAssetByID(ACCOUNT_ID, ASSET_ID),
         ).toBeNull();
       });
     });
@@ -82,27 +88,26 @@ describe('AssetsService', () => {
 
   describe('getAccountAssetsByIDs', () => {
     it('returns an empty map for an empty request', async () => {
-      const call = jest.fn();
-
-      await withAssetsService(call, async ({ service }) => {
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         expect(
-          await service.getAccountAssetsByIDs(ACCOUNT_ID, []),
+          await assetsService.getAccountAssetsByIDs(ACCOUNT_ID, []),
         ).toStrictEqual({});
-        expect(call).not.toHaveBeenCalled();
+        expect(mockCoreMessenger.call).not.toHaveBeenCalled();
       });
     });
 
     it('returns a map keyed by asset ID with nulls for missing assets', async () => {
       const missingId = 'tron:728126428/trc20:missing';
-      const call = jest.fn().mockResolvedValue({
-        [ACCOUNT_ID]: {
-          [ASSET_ID]: controllerAsset,
-        },
-      });
 
-      await withAssetsService(call, async ({ service }) => {
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue({
+          [ACCOUNT_ID]: {
+            [ASSET_ID]: controllerAsset,
+          },
+        });
+
         expect(
-          await service.getAccountAssetsByIDs(ACCOUNT_ID, [
+          await assetsService.getAccountAssetsByIDs(ACCOUNT_ID, [
             missingId,
             ASSET_ID,
           ]),
@@ -111,7 +116,7 @@ describe('AssetsService', () => {
           [ASSET_ID]: mappedAsset,
         });
 
-        expect(call).toHaveBeenCalledWith(
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
           'AssetsController:getAssets',
           [{ id: ACCOUNT_ID }],
           { chainIds: [CHAIN_ID] },
@@ -120,11 +125,11 @@ describe('AssetsService', () => {
     });
 
     it('treats a missing account entry as an empty asset map', async () => {
-      const call = jest.fn().mockResolvedValue({});
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue({});
 
-      await withAssetsService(call, async ({ service }) => {
         expect(
-          await service.getAccountAssetsByIDs(ACCOUNT_ID, [ASSET_ID]),
+          await assetsService.getAccountAssetsByIDs(ACCOUNT_ID, [ASSET_ID]),
         ).toStrictEqual({
           [ASSET_ID]: null,
         });
@@ -132,31 +137,29 @@ describe('AssetsService', () => {
     });
 
     it('rejects an empty account ID before calling the controller', async () => {
-      const call = jest.fn();
-
-      await withAssetsService(call, async ({ service }) => {
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         await expect(
-          service.getAccountAssetsByIDs('', [ASSET_ID]),
+          assetsService.getAccountAssetsByIDs('', [ASSET_ID]),
         ).rejects.toThrow('Account ID must be a non-empty string');
-        expect(call).not.toHaveBeenCalled();
+        expect(mockCoreMessenger.call).not.toHaveBeenCalled();
       });
     });
   });
 
   describe('getAccountAssets', () => {
     it('returns all mapped controller assets for an account', async () => {
-      const call = jest.fn().mockResolvedValue({
-        [ACCOUNT_ID]: {
-          [ASSET_ID]: controllerAsset,
-        },
-      });
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue({
+          [ACCOUNT_ID]: {
+            [ASSET_ID]: controllerAsset,
+          },
+        });
 
-      await withAssetsService(call, async ({ service }) => {
-        expect(await service.getAccountAssets(ACCOUNT_ID)).toStrictEqual([
+        expect(await assetsService.getAccountAssets(ACCOUNT_ID)).toStrictEqual([
           mappedAsset,
         ]);
 
-        expect(call).toHaveBeenCalledWith(
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
           'AssetsController:getAssets',
           [{ id: ACCOUNT_ID }],
           undefined,
@@ -165,14 +168,14 @@ describe('AssetsService', () => {
     });
 
     it('forwards scope chain IDs to the controller', async () => {
-      const call = jest.fn().mockResolvedValue({ [ACCOUNT_ID]: {} });
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue({ [ACCOUNT_ID]: {} });
 
-      await withAssetsService(call, async ({ service }) => {
         expect(
-          await service.getAccountAssets(ACCOUNT_ID, [CHAIN_ID]),
+          await assetsService.getAccountAssets(ACCOUNT_ID, [CHAIN_ID]),
         ).toStrictEqual([]);
 
-        expect(call).toHaveBeenCalledWith(
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
           'AssetsController:getAssets',
           [{ id: ACCOUNT_ID }],
           { chainIds: [CHAIN_ID] },
@@ -181,14 +184,14 @@ describe('AssetsService', () => {
     });
 
     it('accepts a single scope chain ID', async () => {
-      const call = jest.fn().mockResolvedValue({ [ACCOUNT_ID]: {} });
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue({ [ACCOUNT_ID]: {} });
 
-      await withAssetsService(call, async ({ service }) => {
         expect(
-          await service.getAccountAssets(ACCOUNT_ID, CHAIN_ID),
+          await assetsService.getAccountAssets(ACCOUNT_ID, CHAIN_ID),
         ).toStrictEqual([]);
 
-        expect(call).toHaveBeenCalledWith(
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
           'AssetsController:getAssets',
           [{ id: ACCOUNT_ID }],
           { chainIds: [CHAIN_ID] },
@@ -197,10 +200,12 @@ describe('AssetsService', () => {
     });
 
     it('returns an empty list when the account is missing from the response', async () => {
-      const call = jest.fn().mockResolvedValue({});
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockResolvedValue({});
 
-      await withAssetsService(call, async ({ service }) => {
-        expect(await service.getAccountAssets(ACCOUNT_ID)).toStrictEqual([]);
+        expect(await assetsService.getAccountAssets(ACCOUNT_ID)).toStrictEqual(
+          [],
+        );
       });
     });
   });
