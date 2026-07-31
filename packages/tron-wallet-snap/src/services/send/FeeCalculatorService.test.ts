@@ -1,6 +1,8 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 
+import type { Transaction } from 'tronweb/lib/esm/types';
+
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TriggerConstantContractResponse } from '../../clients/tron-http';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -19,7 +21,9 @@ import { FeeUnavailableError } from './errors';
 import { FeeCalculatorService } from './FeeCalculatorService';
 
 // Helper to get transaction examples in the expected format
-const getTransactionExample = (type: 'native' | 'trc10' | 'trc20'): any => {
+const getTransactionExample = (
+  type: 'native' | 'trc10' | 'trc20',
+): Transaction => {
   let mockData;
   switch (type) {
     case 'native':
@@ -42,11 +46,11 @@ const getTransactionExample = (type: 'native' | 'trc10' | 'trc20'): any => {
     txID: mockData.txID,
     raw_data_hex: mockData.raw_data_hex,
     raw_data: mockData.raw_data,
-  };
+  } as Transaction;
 };
 
 // Helper to create a large transaction by modifying the TRC20 example
-const createLargeTransaction = (): any => {
+const createLargeTransaction = (): Transaction => {
   const baseTransaction = getTransactionExample('trc20');
   // Modify the data field to be much larger to simulate bandwidth issues
   const largeData = 'b'.repeat(2000);
@@ -238,7 +242,9 @@ describe('FeeCalculatorService', () => {
 
     describe('System contract scenarios (no energy needed)', () => {
       // Helper to create a mock transaction with a specific contract type
-      const createSystemContractTransaction = (contractType: string): any => {
+      const createSystemContractTransaction = (
+        contractType: string,
+      ): Transaction => {
         const baseTransaction = getTransactionExample('native');
         return {
           ...baseTransaction,
@@ -2169,7 +2175,7 @@ describe('FeeCalculatorService', () => {
     });
 
     describe('WitnessCreateContract account upgrade fee scenarios', () => {
-      const createWitnessCreateTransaction = (): any => {
+      const createWitnessCreateTransaction = (): Transaction => {
         const base = getTransactionExample('native');
         return {
           ...base,
@@ -2356,9 +2362,9 @@ describe('FeeCalculatorService', () => {
     describe('Memo fee scenarios', () => {
       // Helper to add a memo (raw_data.data) to a transaction
       const addMemoToTransaction = (
-        transaction: any,
+        transaction: Transaction,
         memoHex: string,
-      ): any => ({
+      ): Transaction => ({
         ...transaction,
         raw_data: {
           ...transaction.raw_data,
