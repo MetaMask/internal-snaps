@@ -1,26 +1,23 @@
-import type {
-  AssetsControllerGetAccountAssetByIDAction,
-  AssetsControllerGetAccountAssetsByIDsAction,
-  AssetsControllerGetAccountAssetsByScopeAction,
-} from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
-import type { AsyncMessenger } from '@metamask/snaps-sdk';
 
-export type {
-  AssetsControllerGetAccountAssetByIDAction,
-  AssetsControllerGetAccountAssetsByIDsAction,
-  AssetsControllerGetAccountAssetsByScopeAction,
-};
+import type { AssetsServiceAllowedActions } from '../services/assets/messenger';
+import type { MessengerCaller } from './messenger-caller';
+
+export type { AssetsServiceAllowedActions };
 
 /**
  * Namespace for the root Snap Core messenger endowment.
  */
 export const CORE_MESSENGER_NAMESPACE = 'SnapCore' as const;
 
-export type CoreMessengerActions =
-  | AssetsControllerGetAccountAssetByIDAction
-  | AssetsControllerGetAccountAssetsByIDsAction
-  | AssetsControllerGetAccountAssetsByScopeAction;
+/**
+ * Actions available on the Snap Core messenger endowment.
+ *
+ * Aggregates allowed actions from shared services. Today this is only
+ * {@link AssetsServiceAllowedActions}; more service action unions can be
+ * added here as additional services are introduced.
+ */
+export type CoreMessengerActions = AssetsServiceAllowedActions;
 
 /**
  * Typed messenger for Core controller actions available to a Snap via
@@ -32,6 +29,9 @@ export type CoreMessenger = Messenger<
 >;
 
 /**
- * Narrow dependency for services that only need to invoke Core actions.
+ * Caller for the Snap Core messenger endowment.
+ *
+ * Equivalent to {@link AssetsServiceMessengerCaller} while assets lookups are
+ * the only delegated actions.
  */
-export type CoreMessengerCaller = Pick<AsyncMessenger<CoreMessenger>, 'call'>;
+export type CoreMessengerCaller = MessengerCaller<CoreMessengerActions>;

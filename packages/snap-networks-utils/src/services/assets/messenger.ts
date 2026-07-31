@@ -4,7 +4,14 @@ import type {
   AssetsControllerGetAccountAssetsByScopeAction,
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
-import type { AsyncMessenger } from '@metamask/snaps-sdk';
+
+import type { MessengerCaller } from '../../types/messenger-caller';
+
+export type {
+  AssetsControllerGetAccountAssetByIDAction,
+  AssetsControllerGetAccountAssetsByIDsAction,
+  AssetsControllerGetAccountAssetsByScopeAction,
+};
 
 /**
  * Namespace for the {@link AssetsService} messenger.
@@ -14,7 +21,7 @@ export const ASSETS_SERVICE_NAME = 'AssetsService' as const;
 /**
  * Actions from other messengers that {@link AssetsService} calls.
  */
-type AssetsServiceAllowedActions =
+export type AssetsServiceAllowedActions =
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
   | AssetsControllerGetAccountAssetsByScopeAction;
@@ -28,9 +35,10 @@ export type AssetsServiceMessenger = Messenger<
 >;
 
 /**
- * Narrow dependency for {@link AssetsService} messenger calls.
+ * Caller type for {@link AssetsService}.
+ *
+ * Matches {@link CoreMessengerCaller} while `CoreMessenger` only delegates
+ * assets-controller actions.
  */
-export type AssetsServiceMessengerCaller = Pick<
-  AsyncMessenger<AssetsServiceMessenger>,
-  'call'
->;
+export type AssetsServiceMessengerCaller =
+  MessengerCaller<AssetsServiceAllowedActions>;

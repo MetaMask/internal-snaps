@@ -16,5 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bump `@metamask/assets-controller` to `^13.0.0` ([core#9740](https://github.com/MetaMask/core/pull/9740)) and call the renamed lookup actions (`getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`) ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Add `AssetsServiceMessenger` types and tighten `AssetsService` signatures to use `Caip19AssetId` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
+- Consolidate duplicated messenger action types so `CoreMessengerCaller` and `AssetsServiceMessengerCaller` share a single `AssetsServiceAllowedActions` definition ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
