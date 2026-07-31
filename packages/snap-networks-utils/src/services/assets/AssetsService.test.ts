@@ -4,8 +4,7 @@ import type { CaipChainId } from '@metamask/utils';
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { AssetsService } from './AssetsService';
 
-const ACCOUNT_ID =
-  '550e8400-e29b-41d4-a716-446655440000' as AccountId;
+const ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000' as AccountId;
 const ASSET_ID = 'tron:728126428/slip44:195';
 const CHAIN_ID = 'tron:728126428' as CaipChainId;
 
