@@ -7,4 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add package scaffold with an example `logger` module for shared network-snap utilities
+
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
