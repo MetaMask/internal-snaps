@@ -8,26 +8,8 @@ import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
 import type { CoreMessengerCaller } from '../../types/core-messenger';
-import type { AssetEntity, AssetScope } from './types';
+import type { AssetEntity } from './types';
 import { mapControllerAsset } from './utils/mapControllerAsset';
-
-/**
- * Normalizes a single scope or list of scopes to a chain-ID array.
- *
- * @param scope - Optional CAIP-2 chain filter.
- * @returns Chain IDs, or `undefined` when no filter is provided.
- */
-function toChainIds(scope?: AssetScope): CaipChainId[] | undefined {
-  if (scope === undefined) {
-    return undefined;
-  }
-
-  if (typeof scope === 'string') {
-    return [scope];
-  }
-
-  return [...scope];
-}
 
 /**
  * Thin service that reads account assets from Core AssetsController via a
@@ -82,6 +64,9 @@ export class AssetsService {
       return {};
     }
 
+    /**
+     * Get the unique chain IDs from the asset IDs.
+     */
     const chainIds = [
       ...new Set(
         assetIds.map(
@@ -116,19 +101,18 @@ export class AssetsService {
   /**
    * Returns all controller-backed assets for an account.
    *
+   * @param scope - CAIP-2 chain ID to filter controller results.
    * @param accountId - Keyring account ID.
-   * @param scope - Optional CAIP-2 chain ID(s) to filter controller results.
    * @returns Mapped assets present in controller state.
    */
-  async getAccountAssets(
+  async getAccountAssetsByScope(
+    scope: CaipChainId,
     accountId: AccountId,
-    scope?: AssetScope,
   ): Promise<AssetEntity[]> {
-    const chainIds = toChainIds(scope);
     const controllerAssets = await this.#coreMessenger.call(
       'AssetsController:getAssets',
       [{ id: accountId } as InternalAccount],
-      chainIds ? { chainIds } : undefined,
+      { chainIds: [scope] },
     );
 
     const accountAssets =
