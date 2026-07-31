@@ -1,4 +1,8 @@
-import type { AccountId, Asset, Caip19AssetId } from '@metamask/assets-controller';
+import type {
+  AccountId,
+  Asset,
+  Caip19AssetId,
+} from '@metamask/assets-controller';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
