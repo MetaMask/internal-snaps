@@ -6,12 +6,6 @@ import type {
 import type { Messenger } from '@metamask/messenger';
 import { AsyncMessenger } from '@metamask/snaps-sdk';
 
-export type {
-  AssetsControllerGetAccountAssetByIDAction,
-  AssetsControllerGetAccountAssetsByIDsAction,
-  AssetsControllerGetAccountAssetsByScopeAction,
-};
-
 /**
  * Namespace for the {@link AssetsService} messenger.
  */
