@@ -114,7 +114,7 @@ export class AssetsService {
     return this.#snapAdapter.getByKeyringAccountId(accountId);
   }
 
-    async getMultipleTokenConversions(
+  async getMultipleTokenConversions(
     conversions: { from: CaipAssetType; to: CaipAssetType }[],
   ): Promise<
     Record<CaipAssetType, Record<CaipAssetType, AssetConversion | null>>
