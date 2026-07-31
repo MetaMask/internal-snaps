@@ -47,7 +47,7 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
 async function withAssetsService<ReturnValue>(
   testFunction: WithAssetsServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockMessenger: jest.Mocked<Pick<AssetsServiceMessenger, 'call'>> = {
+  const mockMessenger: jest.Mocked<AssetsServiceMessenger> = {
     call: jest.fn(),
   };
 
