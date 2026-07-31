@@ -142,7 +142,7 @@ type WithSnapContextCallback<ReturnValue> = (payload: {
     isTransactionExpired: jest.Mock;
   };
   mockState: { setKey: jest.Mock };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAssetsByAccountId'>>;
+  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
   mockFeeCalculatorService: jest.Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   >;
@@ -162,9 +162,9 @@ async function withSnapContext<ReturnValue>(
   testFunction: WithSnapContextCallback<ReturnValue>,
 ): Promise<ReturnValue> {
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAssetsByAccountId'>
+    Pick<AssetsService, 'getAccountAssetsByIDs'>
   > = {
-    getAssetsByAccountId: jest.fn().mockResolvedValue(mockAssets),
+    getAccountAssetsByIDs: jest.fn().mockResolvedValue(mockAssets),
   };
 
   const mockFeeCalculatorService: jest.Mocked<
@@ -706,7 +706,7 @@ describe('ConfirmSignTransaction render', () => {
 
   it('sets isInsufficientBalance when the TRX balance cannot cover the transaction and fee', async () => {
     await withSnapContext(async ({ mockSnapClient, mockAssetsService }) => {
-      mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+      mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
         { rawAmount: '50000', uiAmount: '0.05' } as AssetEntity, // TRX
         ...mockAssets.slice(1),
       ]);

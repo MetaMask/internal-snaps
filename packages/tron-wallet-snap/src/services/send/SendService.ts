@@ -112,7 +112,7 @@ export class SendService {
      * Get the user's current balances for the asset being sent and TRX (for fees).
      */
     const [assetBalance, nativeTokenAsset, bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAssetsByAccountId(fromAccountId, [
+      await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
         asset.assetType,
         nativeTokenId,
         Networks[scope].bandwidth.id,

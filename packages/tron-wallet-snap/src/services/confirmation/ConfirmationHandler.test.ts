@@ -106,7 +106,7 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
       };
     };
   };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAssetsByAccountId'>>;
+  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
   mockFeeCalculatorService: jest.Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   >;
@@ -142,9 +142,9 @@ async function withConfirmationHandler<ReturnValue>(
     };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAssetsByAccountId'>
+    Pick<AssetsService, 'getAccountAssetsByIDs'>
   > = {
-    getAssetsByAccountId: jest.fn().mockResolvedValue([null, null]),
+    getAccountAssetsByIDs: jest.fn().mockResolvedValue([null, null]),
   };
 
   const mockFeeCalculatorService: jest.Mocked<
@@ -260,7 +260,7 @@ describe('ConfirmationHandler', () => {
           scope: Network.Mainnet,
         });
 
-        expect(mockAssetsService.getAssetsByAccountId).toHaveBeenCalledWith(
+        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
           TEST_ACCOUNT_ID,
           [
             Networks[Network.Mainnet].bandwidth.id,
@@ -273,7 +273,7 @@ describe('ConfirmationHandler', () => {
     it('uses ZERO when bandwidth and energy assets are null', async () => {
       await withConfirmationHandler(
         async ({ handler, mockAssetsService, mockFeeCalculatorService }) => {
-          mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
             null,
             null,
           ]);
@@ -317,7 +317,7 @@ describe('ConfirmationHandler', () => {
             uiAmount: '3000',
             iconUrl: '',
           };
-          mockAssetsService.getAssetsByAccountId.mockResolvedValue([
+          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
             bandwidthAsset,
             energyAsset,
           ]);
