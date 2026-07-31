@@ -2869,41 +2869,34 @@ describe('AssetsService', () => {
           expect(AssetsService.hasChanged(asset, [])).toBe(true);
           expect(AssetsService.hasChanged(asset, [asset])).toBe(false);
 
-          await expect(
-            assetsService.getAccountAssets(mockAccount.id),
-          ).resolves.toEqual([asset]);
-          await expect(
-            assetsService.getAccountAssetsByIDs(mockAccount.id, [
+          expect(await assetsService.getAccountAssets(mockAccount.id)).toStrictEqual(
+            [asset],
+          );
+          expect(
+            await assetsService.getAccountAssetsByIDs(mockAccount.id, [
               KnownCaip19Id.TrxMainnet,
             ]),
-          ).resolves.toEqual([asset]);
-          await expect(
-            assetsService.getAccountAssetByID(
+          ).toStrictEqual([asset]);
+          expect(
+            await assetsService.getAccountAssetByID(
               mockAccount.id,
               KnownCaip19Id.TrxMainnet,
             ),
-          ).resolves.toEqual(asset);
-          await expect(
-            assetsService.getByKeyringAccountId(mockAccount.id),
-          ).resolves.toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                assetType: KnownCaip19Id.TrxMainnet,
-              }),
-            ]),
-          );
-          await expect(
-            assetsService.getMultipleTokensMarketData([
-              {
-                asset: KnownCaip19Id.TrxMainnet,
-                unit: 'swift:0/iso4217:usd',
-              },
-            ]),
-          ).resolves.toEqual(
-            expect.objectContaining({
-              [KnownCaip19Id.TrxMainnet]: expect.any(Object),
-            }),
-          );
+          ).toStrictEqual(asset);
+          const byKeyringAccountId =
+            await assetsService.getByKeyringAccountId(mockAccount.id);
+          expect(
+            byKeyringAccountId.some(
+              (savedAsset) => savedAsset.assetType === KnownCaip19Id.TrxMainnet,
+            ),
+          ).toBe(true);
+          const marketData = await assetsService.getMultipleTokensMarketData([
+            {
+              asset: KnownCaip19Id.TrxMainnet,
+              unit: 'swift:0/iso4217:usd',
+            },
+          ]);
+          expect(marketData[KnownCaip19Id.TrxMainnet]).toBeDefined();
           expect(assetsService.cacheTtlsMilliseconds.historicalPrices).toBe(
             3600000,
           );
