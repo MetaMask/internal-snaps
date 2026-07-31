@@ -369,13 +369,16 @@ export class ClientRequestHandler {
       const { chainId } = parseCaipAssetType(assetId);
       const scope = chainId as Network;
 
-      const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
-        await this.#assetsService.getAssetsByAccountId(accountId, [
-          assetId,
-          Networks[scope].nativeToken.id,
-          Networks[scope].bandwidth.id,
-          Networks[scope].energy.id,
-        ]);
+      const assets = await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        assetId,
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+      const asset = assets[assetId];
+      const nativeTokenAsset = assets[Networks[scope].nativeToken.id];
+      const bandwidthAsset = assets[Networks[scope].bandwidth.id];
+      const energyAsset = assets[Networks[scope].energy.id];
 
       const valueBN = new BigNumber(value);
       const assetToSendBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
@@ -483,7 +486,7 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const asset = await this.#assetsService.getAccountAssetByID(
       fromAccountId,
       assetId,
     );
@@ -523,11 +526,11 @@ export class ClientRequestHandler {
       };
     }
 
-    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
+    const [bandwidthAndEnergyAssets, transaction] = await Promise.all([
       /**
        * Get available Energy and Bandwidth from account assets.
        */
-      this.#assetsService.getAssetsByAccountId(fromAccountId, [
+      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]),
@@ -544,6 +547,10 @@ export class ClientRequestHandler {
         feeLimit: FEE_LIMIT,
       }),
     ]);
+
+    const bandwidthAsset =
+      bandwidthAndEnergyAssets[Networks[scope].bandwidth.id];
+    const energyAsset = bandwidthAndEnergyAssets[Networks[scope].energy.id];
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -672,11 +679,14 @@ export class ClientRequestHandler {
     /**
      * Get available Energy and Bandwidth from account assets.
      */
-    const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAssetsByAccountId(accountId, [
+    const bandwidthAndEnergyAssets =
+      await this.#assetsService.getAccountAssetsByIDs(accountId, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
+    const bandwidthAsset =
+      bandwidthAndEnergyAssets[Networks[scope].bandwidth.id];
+    const energyAsset = bandwidthAndEnergyAssets[Networks[scope].energy.id];
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -728,7 +738,7 @@ export class ClientRequestHandler {
 
     const scope = Network.Mainnet;
 
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const asset = await this.#assetsService.getAccountAssetByID(
       fromAccountId,
       Networks[scope].nativeToken.id,
     );
@@ -758,11 +768,14 @@ export class ClientRequestHandler {
     /**
      * Get available Energy and Bandwidth from account assets.
      */
-    const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAssetsByAccountId(fromAccountId, [
+    const bandwidthAndEnergyAssets =
+      await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
+    const bandwidthAsset =
+      bandwidthAndEnergyAssets[Networks[scope].bandwidth.id];
+    const energyAsset = bandwidthAndEnergyAssets[Networks[scope].energy.id];
 
     const availableEnergy = energyAsset
       ? BigNumber(energyAsset.rawAmount)
@@ -804,7 +817,7 @@ export class ClientRequestHandler {
     const { accountId, assetId, value } = request.params;
 
     await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const asset = await this.#assetsService.getAccountAssetByID(
       accountId,
       assetId,
     );
@@ -851,7 +864,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const asset = await this.#assetsService.getAccountAssetByID(
       fromAccountId,
       assetId,
     );
@@ -913,7 +926,7 @@ export class ClientRequestHandler {
     const stakedAssetId = `${assetId}-staked-for-${purpose.toLowerCase()}`;
 
     await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const asset = await this.#assetsService.getAccountAssetByID(
       accountId,
       stakedAssetId,
     );
@@ -967,7 +980,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const asset = await this.#assetsService.getAssetByAccountId(
+    const asset = await this.#assetsService.getAccountAssetByID(
       accountId,
       stakedAssetId,
     );

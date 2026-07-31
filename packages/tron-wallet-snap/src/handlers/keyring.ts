@@ -196,12 +196,20 @@ export class KeyringHandler implements Keyring {
     try {
       validateRequest({ accountId }, ListAccountAssetsStruct);
 
-      await this.#getAccountOrThrow(accountId);
+      const account = await this.#getAccountOrThrow(accountId);
 
       this.#logger.info('Listing account assets', { accountId });
 
-      const assetEntities =
-        await this.#assetsService.getByKeyringAccountId(accountId);
+      const assetEntities = (
+        await Promise.all(
+          account.scopes.map((scope) =>
+            this.#assetsService.getAccountAssetsByScope(
+              scope as Network,
+              accountId,
+            ),
+          ),
+        )
+      ).flat();
       const result = assetEntities
         .filter(
           (asset) =>
@@ -342,10 +350,18 @@ export class KeyringHandler implements Keyring {
 
       this.#logger.info('Getting account balances', { accountId, assets });
 
-      await this.#getAccountOrThrow(accountId);
+      const account = await this.#getAccountOrThrow(accountId);
 
-      const assetsList =
-        await this.#assetsService.getByKeyringAccountId(accountId);
+      const assetsList = (
+        await Promise.all(
+          account.scopes.map((scope) =>
+            this.#assetsService.getAccountAssetsByScope(
+              scope as Network,
+              accountId,
+            ),
+          ),
+        )
+      ).flat();
 
       const assetsToUse = assetsList
         .filter((asset) => assets.includes(asset.assetType))

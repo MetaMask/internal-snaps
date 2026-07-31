@@ -35,7 +35,6 @@ const config: SnapConfig = {
     TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET ?? '',
     TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE ?? '',
     TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA ?? '',
-    TRON_ASSETS_MIGRATION_STAGE: process.env.TRON_ASSETS_MIGRATION_STAGE ?? '',
   },
   polyfills: true,
 };

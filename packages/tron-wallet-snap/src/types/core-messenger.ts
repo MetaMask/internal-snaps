@@ -1,12 +1,19 @@
-import type { AssetsControllerGetAssetAction } from '@metamask/assets-controller';
+import type {
+  AssetsControllerGetAssetAction,
+  AssetsControllerGetAssetsAction,
+} from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
 import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
 import type { AsyncMessenger } from '@metamask/snaps-sdk';
 
-export type { AssetsControllerGetAssetAction };
+export type {
+  AssetsControllerGetAssetAction,
+  AssetsControllerGetAssetsAction,
+};
 
 export type CoreMessengerActions =
   | AssetsControllerGetAssetAction
+  | AssetsControllerGetAssetsAction
   | RemoteFeatureFlagControllerGetStateAction;
 
 /**

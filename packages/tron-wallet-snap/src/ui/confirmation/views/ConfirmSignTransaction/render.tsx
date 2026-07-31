@@ -93,7 +93,7 @@ export async function render(
   // Parallelize: Get preferences + Fetch account assets
   const [preferences, accountAssets] = await Promise.all([
     snapClient.getPreferences().catch(() => DEFAULT_CONTEXT.preferences),
-    assetsService.getAssetsByAccountId(account.id, [
+    assetsService.getAccountAssetsByIDs(account.id, [
       Networks[scope as Network].nativeToken.id,
       Networks[scope as Network].bandwidth.id,
       Networks[scope as Network].energy.id,
@@ -107,7 +107,10 @@ export async function render(
 
   // Calculate fees
   try {
-    const [nativeTokenAsset, bandwidthAsset, energyAsset] = accountAssets;
+    const nativeTokenAsset =
+      accountAssets[Networks[scope as Network].nativeToken.id];
+    const bandwidthAsset = accountAssets[Networks[scope as Network].bandwidth.id];
+    const energyAsset = accountAssets[Networks[scope as Network].energy.id];
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)

@@ -234,11 +234,14 @@ export class ConfirmationHandler {
       account.address,
     );
 
-    const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAssetsByAccountId(account.id, [
+    const bandwidthAndEnergyAssets =
+      await this.#assetsService.getAccountAssetsByIDs(account.id, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
+    const bandwidthAsset =
+      bandwidthAndEnergyAssets[Networks[scope].bandwidth.id];
+    const energyAsset = bandwidthAndEnergyAssets[Networks[scope].energy.id];
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
