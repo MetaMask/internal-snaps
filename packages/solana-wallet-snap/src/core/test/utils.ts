@@ -1,1 +1,1 @@
-export const TEST_ORIGIN = 'http://localhost:3000';
+export const TEST_ORIGIN = 'metamask';
