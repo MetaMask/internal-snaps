@@ -2830,4 +2830,85 @@ describe('AssetsService', () => {
       });
     });
   });
+
+  describe('facade delegation', () => {
+    it('delegates repository reads and market helpers to SnapAssetsAdapter', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, mockPriceApiClient }) => {
+          const asset: AssetEntity = {
+            assetType: KnownCaip19Id.TrxMainnet,
+            keyringAccountId: mockAccount.id,
+            network: Network.Mainnet,
+            symbol: 'TRX',
+            decimals: 6,
+            rawAmount: '1',
+            uiAmount: '1',
+          };
+
+          mockAssetsRepository.getByAccountId.mockResolvedValue([asset]);
+          mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
+            asset,
+          ]);
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            asset,
+          );
+          mockPriceApiClient.getFiatExchangeRates.mockResolvedValue({
+            usd: { value: 1 },
+          });
+          mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
+            createSpotPrices({
+              [KnownCaip19Id.TrxMainnet]: {
+                id: KnownCaip19Id.TrxMainnet,
+                price: 1,
+              },
+            }),
+          );
+
+          expect(AssetsService.isFiat('eip155:1/erc20:0x0')).toBe(false);
+          expect(AssetsService.isFiat('swift:0/iso4217:usd')).toBe(true);
+          expect(AssetsService.hasChanged(asset, [])).toBe(true);
+          expect(AssetsService.hasChanged(asset, [asset])).toBe(false);
+
+          await expect(
+            assetsService.getAccountAssets(mockAccount.id),
+          ).resolves.toEqual([asset]);
+          await expect(
+            assetsService.getAccountAssetsByIDs(mockAccount.id, [
+              KnownCaip19Id.TrxMainnet,
+            ]),
+          ).resolves.toEqual([asset]);
+          await expect(
+            assetsService.getAccountAssetByID(
+              mockAccount.id,
+              KnownCaip19Id.TrxMainnet,
+            ),
+          ).resolves.toEqual(asset);
+          await expect(
+            assetsService.getByKeyringAccountId(mockAccount.id),
+          ).resolves.toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                assetType: KnownCaip19Id.TrxMainnet,
+              }),
+            ]),
+          );
+          await expect(
+            assetsService.getMultipleTokensMarketData([
+              {
+                asset: KnownCaip19Id.TrxMainnet,
+                unit: 'swift:0/iso4217:usd',
+              },
+            ]),
+          ).resolves.toEqual(
+            expect.objectContaining({
+              [KnownCaip19Id.TrxMainnet]: expect.any(Object),
+            }),
+          );
+          expect(assetsService.cacheTtlsMilliseconds.historicalPrices).toBe(
+            3600000,
+          );
+        },
+      );
+    });
+  });
 });

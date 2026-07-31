@@ -1478,7 +1478,7 @@ export class SnapAssetsAdapter {
    * @returns The fiat ticker.
    */
   #extractFiatTicker(caipAssetType: CaipAssetType): FiatTicker {
-    if (!AssetsService.isFiat(caipAssetType)) {
+    if (!SnapAssetsAdapter.isFiat(caipAssetType)) {
       throw new Error('Passed caipAssetType is not a fiat asset');
     }
 
@@ -1500,7 +1500,7 @@ export class SnapAssetsAdapter {
     cryptoPrices: Record<CaipAssetType, SpotPrice | null>;
   }> {
     const cryptoAssets = allAssets.filter(
-      (asset) => !AssetsService.isFiat(asset),
+      (asset) => !SnapAssetsAdapter.isFiat(asset),
     );
 
     const [fiatExchangeRates, cryptoPrices] = await Promise.all([
@@ -1574,7 +1574,7 @@ export class SnapAssetsAdapter {
       let fromUsdRate: BigNumber;
       let toUsdRate: BigNumber;
 
-      if (AssetsService.isFiat(from)) {
+      if (SnapAssetsAdapter.isFiat(from)) {
         /**
          * Beware:
          * We need to invert the fiat exchange rate because exchange rate != spot price
@@ -1592,7 +1592,7 @@ export class SnapAssetsAdapter {
         fromUsdRate = new BigNumber(cryptoPrices[from]?.price ?? 0);
       }
 
-      if (AssetsService.isFiat(to)) {
+      if (SnapAssetsAdapter.isFiat(to)) {
         /**
          * Beware:
          * We need to invert the fiat exchange rate because exchange rate != spot price
@@ -1733,7 +1733,7 @@ export class SnapAssetsAdapter {
 
       let unitUsdRate: BigNumber;
 
-      if (AssetsService.isFiat(unit)) {
+      if (SnapAssetsAdapter.isFiat(unit)) {
         /**
          * Beware:
          * We need to invert the fiat exchange rate because exchange rate != spot price
