@@ -1,3 +1,5 @@
+import type { CaipChainId } from '@metamask/utils';
+
 /**
  * Generic Snap asset shape produced from Core AssetsController reads.
  */
@@ -16,3 +18,9 @@ export type AssetEntity = {
   uiAmount: string;
   iconUrl: string;
 };
+
+/**
+ * CAIP-2 chain ID filter for AssetsController reads.
+ * Matches the Accounts-domain `scope` naming used across snaps.
+ */
+export type AssetScope = CaipChainId | readonly CaipChainId[];

@@ -2,7 +2,7 @@ import type { Asset } from '@metamask/assets-controller';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
-import { toUiAmount } from '../utils/toUiAmount';
+import { toUiAmount } from '../../utils/toUiAmount';
 import type { AssetEntity } from './types';
 
 /**
