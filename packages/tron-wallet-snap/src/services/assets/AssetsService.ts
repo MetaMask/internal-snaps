@@ -1,3 +1,5 @@
+import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
+import type { InternalAccount } from '@metamask/keyring-internal-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import type {
   AccountAssetListUpdatedEvent,
@@ -177,10 +179,59 @@ export class AssetsService {
     accountId: string,
     assetTypes: string[],
   ): Promise<(AssetEntity | null)[]> {
-    return Promise.all(
-      assetTypes.map(async (assetType) =>
-        this.getAssetByAccountId(accountId, assetType),
-      ),
+    const snapOwnedTypes = assetTypes.filter(isSnapOwnedAsset);
+    const controllerTypes = assetTypes.filter((type) => !isSnapOwnedAsset(type));
+
+    const snapOwnedByType = new Map<string, AssetEntity | null>();
+    if (snapOwnedTypes.length > 0) {
+      const snapOwnedResults =
+        await this.#assetsRepository.getByAccountIdAndAssetTypes(
+          accountId,
+          snapOwnedTypes,
+        );
+      snapOwnedTypes.forEach((assetType, index) => {
+        snapOwnedByType.set(assetType, snapOwnedResults[index] ?? null);
+      });
+    }
+
+    const controllerByType = new Map<string, AssetEntity | null>();
+    if (controllerTypes.length > 0) {
+      const chainIds = [
+        ...new Set(
+          controllerTypes.map(
+            (assetType) =>
+              parseCaipAssetType(assetType as CaipAssetType).chainId,
+          ),
+        ),
+      ];
+
+      const controllerAssets = await this.#coreMessenger.call(
+        'AssetsController:getAssets',
+        [{ id: accountId }] as unknown as InternalAccount[],
+        { chainIds },
+      );
+
+      const accountAssets =
+        (controllerAssets as Record<string, Record<string, Asset>>)[
+          accountId
+        ] ?? {};
+
+      for (const assetType of controllerTypes) {
+        const controllerAsset = accountAssets[assetType];
+        controllerByType.set(
+          assetType,
+          controllerAsset
+            ? mapControllerAsset(accountId, assetType, controllerAsset)
+            : null,
+        );
+      }
+    }
+
+    return assetTypes.map(
+      (assetType) =>
+        snapOwnedByType.get(assetType) ??
+        controllerByType.get(assetType) ??
+        null,
     );
   }
 
@@ -195,27 +246,17 @@ export class AssetsService {
       );
     }
 
-    const { chainId } = parseCaipAssetType(assetType as CaipAssetType);
-    const mode = await this.#resolveMode(chainId);
+    const result = await this.#coreMessenger.call(
+      'AssetsController:getAsset',
+      accountId,
+      assetType as Caip19AssetId,
+    );
 
-    if (mode === 'controller') {
-      const result = await this.#coreMessenger.call(
-        'AssetsController:getAsset',
-        accountId,
-        assetType,
-      );
-
-      if (!result) {
-        return null;
-      }
-
-      return mapControllerAsset(accountId, assetType, result);
+    if (!result) {
+      return null;
     }
 
-    return this.#assetsRepository.getByAccountIdAndAssetType(
-      accountId,
-      assetType,
-    );
+    return mapControllerAsset(accountId, assetType, result);
   }
 
   /**

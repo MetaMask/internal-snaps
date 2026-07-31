@@ -55,11 +55,14 @@ const { AssetsService } = require('./AssetsService');
 
 function createMessengerCallMock(
   getAsset: jest.Mock,
+  getAssets: jest.Mock = jest.fn().mockResolvedValue({}),
 ): (method: string, ...args: unknown[]) => Promise<unknown> {
   return async (method: string, ...args: unknown[]) => {
     switch (method) {
       case 'AssetsController:getAsset':
         return getAsset(...args);
+      case 'AssetsController:getAssets':
+        return getAssets(...args);
       default:
         return undefined;
     }
@@ -2646,7 +2649,7 @@ describe('AssetsService', () => {
     });
   });
 
-  describe('assets migration mode', () => {
+  describe('controller asset reads', () => {
     const accountId = mockAccount.id;
     const fungibleAssetId = KnownCaip19Id.TrxMainnet;
     const snapAssetId = KnownCaip19Id.EnergyMainnet;
@@ -2745,6 +2748,52 @@ describe('AssetsService', () => {
             rawAmount: '2000000',
             uiAmount: '2',
           });
+        },
+      );
+    });
+
+    it('getAssetsByAccountId uses a single AssetsController:getAssets call for fungibles', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockCoreMessenger }) => {
+          const trx = KnownCaip19Id.TrxMainnet;
+          const usdt = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+
+          mockCoreMessenger.call.mockImplementation(
+            async (method: string, ...args: unknown[]) => {
+              if (method === 'AssetsController:getAssets') {
+                const accountIdArg = (args[0] as [{ id: string }])[0].id;
+                return {
+                  [accountIdArg]: {
+                    [trx]: buildControllerAsset(trx, '1000000', {
+                      symbol: 'TRX',
+                      name: 'TRON',
+                      decimals: 6,
+                    }),
+                    [usdt]: buildControllerAsset(usdt, '500000', {
+                      symbol: 'USDT',
+                      name: 'Tether',
+                      decimals: 6,
+                    }),
+                  },
+                };
+              }
+              return undefined;
+            },
+          );
+
+          const results = await assetsService.getAssetsByAccountId(accountId, [
+            trx,
+            usdt,
+          ]);
+
+          expect(mockCoreMessenger.call).toHaveBeenCalledTimes(1);
+          expect(mockCoreMessenger.call).toHaveBeenCalledWith(
+            'AssetsController:getAssets',
+            [{ id: accountId }],
+            { chainIds: [Network.Mainnet] },
+          );
+          expect(results[0]?.rawAmount).toBe('1000000');
+          expect(results[1]?.rawAmount).toBe('500000');
         },
       );
     });
