@@ -4,7 +4,7 @@ import type { SnapClient } from '../clients/snap/SnapClient';
 import type { TronWebFactory } from '../clients/tronweb/TronWebFactory';
 import type { Network } from '../constants';
 import type { TronKeyringAccount } from '../entities/keyring-account';
-import { BackgroundEventMethod } from '../handlers/cronjob';
+import { BackgroundEventMethod } from '../handlers/cronjob/cronjob';
 import type { AccountsService } from '../services/accounts/AccountsService';
 
 /**

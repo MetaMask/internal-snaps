@@ -6,7 +6,7 @@ import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
-import { BackgroundEventMethod } from '../../../../handlers/cronjob';
+import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type { ComputeFeeResult } from '../../../../services/send/types';
 import type {
   State,

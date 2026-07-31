@@ -9,7 +9,7 @@ import type { TronKeyringAccount } from '../../entities/keyring-account';
 import {
   TronMultichainErrors,
   TronMultichainMethod,
-} from '../../handlers/keyring-types';
+} from '../../handlers/keyring/keyring-types';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
 import {

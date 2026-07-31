@@ -2719,7 +2719,7 @@ describe('AssetsService', () => {
             snapAsset,
           );
 
-          const asset = await assetsService.getAssetByAccountId(
+          const asset = await assetsService.getAccountAssetByID(
             accountId,
             snapAssetId,
           );
@@ -2748,7 +2748,7 @@ describe('AssetsService', () => {
           ),
         );
 
-        const asset = await assetsService.getAssetByAccountId(
+        const asset = await assetsService.getAccountAssetByID(
           accountId,
           fungibleAssetId,
         );
@@ -2761,7 +2761,7 @@ describe('AssetsService', () => {
       });
     });
 
-    it('getAssetsByAccountId uses a single AssetsController:getAssets call for fungibles', async () => {
+    it('getAccountAssetsByIDs uses a single AssetsController:getAssets call for fungibles', async () => {
       await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         const trx = KnownCaip19Id.TrxMainnet;
         const usdt = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
@@ -2789,7 +2789,7 @@ describe('AssetsService', () => {
           },
         );
 
-        const results = await assetsService.getAssetsByAccountId(accountId, [
+        const results = await assetsService.getAccountAssetsByIDs(accountId, [
           trx,
           usdt,
         ]);
@@ -2805,7 +2805,7 @@ describe('AssetsService', () => {
       });
     });
 
-    it('getAssetsByAccountId batches snap-owned reads without calling AssetsController', async () => {
+    it('getAccountAssetsByIDs batches snap-owned reads without calling AssetsController', async () => {
       await withAssetsService(
         async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
           const snapAsset: AssetEntity = {
@@ -2822,7 +2822,7 @@ describe('AssetsService', () => {
             snapAsset,
           ]);
 
-          const results = await assetsService.getAssetsByAccountId(accountId, [
+          const results = await assetsService.getAccountAssetsByIDs(accountId, [
             snapAssetId,
           ]);
 
@@ -2832,7 +2832,7 @@ describe('AssetsService', () => {
       );
     });
 
-    it('getAssetsByAccountId merges snap-owned and fungible reads in request order', async () => {
+    it('getAccountAssetsByIDs merges snap-owned and fungible reads in request order', async () => {
       await withAssetsService(
         async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
           const snapAsset: AssetEntity = {
@@ -2871,7 +2871,7 @@ describe('AssetsService', () => {
             },
           );
 
-          const results = await assetsService.getAssetsByAccountId(accountId, [
+          const results = await assetsService.getAccountAssetsByIDs(accountId, [
             fungibleAssetId,
             snapAssetId,
           ]);
