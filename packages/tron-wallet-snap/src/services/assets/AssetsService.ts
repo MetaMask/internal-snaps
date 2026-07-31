@@ -1,10 +1,10 @@
+import type { KeyringAccount } from '@metamask/keyring-api';
 import type {
   AssetConversion,
   AssetMetadata,
   FungibleAssetMarketData,
   HistoricalPriceIntervals,
 } from '@metamask/snaps-sdk';
-import type { KeyringAccount } from '@metamask/keyring-api';
 import type { CaipAssetType } from '@metamask/utils';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -16,8 +16,8 @@ import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
-import type { AssetsRepository } from './AssetsRepository';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
+import type { AssetsRepository } from './AssetsRepository';
 
 /**
  * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
@@ -108,9 +108,7 @@ export class AssetsService {
     return this.#snapAdapter.getAll();
   }
 
-  async getByKeyringAccountId(
-    accountId: string,
-  ): Promise<AssetEntity[]> {
+  async getByKeyringAccountId(accountId: string): Promise<AssetEntity[]> {
     return this.#snapAdapter.getByKeyringAccountId(accountId);
   }
 
