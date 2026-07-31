@@ -72,8 +72,6 @@ import type {
   TokenCaipAssetType,
 } from './types';
 
-type AssetsMigrationMode = 'snap' | 'controller';
-
 /**
  * Slim account data shape for snap-owned asset extraction.
  * Provides a consistent shape for both active and inactive accounts.
@@ -153,10 +151,6 @@ export class AssetsService {
 
   static isFiat(caipAssetId: CaipAssetType): boolean {
     return caipAssetId.includes('swift:0/iso4217:');
-  }
-
-  async #resolveMode(_chainId: string): Promise<AssetsMigrationMode> {
-    return 'controller';
   }
 
   async getAllAssetsByAccountId(accountId: string): Promise<AssetEntity[]> {
@@ -1086,17 +1080,7 @@ export class AssetsService {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
-    const modesByNetwork = new Map<Network, AssetsMigrationMode>();
-    await Promise.all(
-      [...new Set(assets.map((asset) => asset.network))].map(
-        async (network) => {
-          modesByNetwork.set(network, await this.#resolveMode(network));
-        },
-      ),
-    );
-
     const shouldEmitAsset = (asset: AssetEntity): boolean =>
-      (modesByNetwork.get(asset.network) ?? 'snap') === 'snap' ||
       isSnapOwnedAsset(asset.assetType);
 
     const hasZeroAmount = (asset: AssetEntity): boolean =>
@@ -1106,12 +1090,8 @@ export class AssetsService {
     const isEssentialAsset = (asset: AssetEntity): boolean =>
       ESSENTIAL_ASSETS.includes(asset.assetType);
 
-    const isProtectedAsset = (asset: AssetEntity): boolean => {
-      const mode = modesByNetwork.get(asset.network) ?? 'snap';
-      return mode === 'snap'
-        ? isEssentialAsset(asset)
-        : isSnapOwnedAsset(asset.assetType);
-    };
+    const isProtectedAsset = (asset: AssetEntity): boolean =>
+      isSnapOwnedAsset(asset.assetType);
 
     // Track only the account/network pairs refreshed in this run.
     // That prevents us from treating assets from untouched networks as disappeared.
@@ -1142,8 +1122,7 @@ export class AssetsService {
         return false;
       }
 
-      const mode = modesByNetwork.get(savedAsset.network) ?? 'snap';
-      if (mode === 'controller' && !isSnapOwnedAsset(savedAsset.assetType)) {
+      if (!isSnapOwnedAsset(savedAsset.assetType)) {
         return false;
       }
 
@@ -1301,26 +1280,9 @@ export class AssetsService {
     const savedAssets =
       await this.#assetsRepository.getByAccountId(keyringAccountId);
 
-    const networks = [
-      ...new Set([
-        ...savedAssets.map((asset) => asset.network),
-        ...ESSENTIAL_ASSETS.map(
-          (assetId) =>
-            parseCaipAssetType(assetId as CaipAssetType).chainId as Network,
-        ),
-      ]),
-    ] as Network[];
-    const modesByNetwork = new Map<Network, AssetsMigrationMode>();
-    await Promise.all(
-      networks.map(async (network) => {
-        modesByNetwork.set(network, await this.#resolveMode(network));
-      }),
+    const visibleSavedAssets = savedAssets.filter((asset) =>
+      isSnapOwnedAsset(asset.assetType),
     );
-
-    const visibleSavedAssets = savedAssets.filter((asset) => {
-      const mode = modesByNetwork.get(asset.network) ?? 'snap';
-      return mode === 'snap' || isSnapOwnedAsset(asset.assetType);
-    });
 
     /**
      * Ensure the special assets are always present whether they have been synced or not.
@@ -1329,10 +1291,7 @@ export class AssetsService {
     const missingEssentialAssets: AssetEntity[] = [];
 
     for (const essentialAssetId of ESSENTIAL_ASSETS) {
-      const { chainId } = parseCaipAssetType(essentialAssetId as CaipAssetType);
-      const mode = modesByNetwork.get(chainId as Network) ?? 'snap';
-
-      if (mode === 'controller' && !isSnapOwnedAsset(essentialAssetId)) {
+      if (!isSnapOwnedAsset(essentialAssetId)) {
         continue;
       }
 
