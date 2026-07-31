@@ -4,13 +4,12 @@ import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { AccountResources, TronHttpClient } from '../../clients/tron-http';
 import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
+import type { TronAccount } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { CoreMessengerCaller } from '../../types/core-messenger';
@@ -115,22 +114,6 @@ const emptyAccountResources: AccountResources = {
   TotalEnergyLimit: 0,
   TotalEnergyWeight: 0,
 };
-
-/**
- * Creates properly typed SpotPrices for tests.
- *
- * @param entries - Map of asset ID to price info.
- * @returns SpotPrices object.
- */
-const createSpotPrices = (
-  entries: Record<string, { id: string; price: number }>,
-): SpotPrices =>
-  Object.fromEntries(
-    Object.entries(entries).map(([key, value]) => [
-      key,
-      { id: value.id, price: value.price },
-    ]),
-  );
 
 /**
  * Creates a properly typed TronAccount for tests.
@@ -360,7 +343,9 @@ describe('AssetsService', () => {
               mockTrongridApiClient.getTrc20BalancesByAddress,
             ).not.toHaveBeenCalled();
             expect(
-              assets.every((asset) => SNAP_OWNED_ASSETS.includes(asset.assetType)),
+              assets.every((asset) =>
+                SNAP_OWNED_ASSETS.includes(asset.assetType),
+              ),
             ).toBe(true);
             expect(
               assets.some(
@@ -429,7 +414,9 @@ describe('AssetsService', () => {
 
             expect(assets.length).toBeGreaterThan(0);
             expect(
-              assets.every((asset) => SNAP_OWNED_ASSETS.includes(asset.assetType)),
+              assets.every((asset) =>
+                SNAP_OWNED_ASSETS.includes(asset.assetType),
+              ),
             ).toBe(true);
           },
         );
@@ -463,7 +450,9 @@ describe('AssetsService', () => {
               mockTrongridApiClient.getTrc20BalancesByAddress,
             ).not.toHaveBeenCalled();
             expect(
-              assets.every((asset) => SNAP_OWNED_ASSETS.includes(asset.assetType)),
+              assets.every((asset) =>
+                SNAP_OWNED_ASSETS.includes(asset.assetType),
+              ),
             ).toBe(true);
 
             const bandwidthAsset = assets.find(
@@ -1420,7 +1409,7 @@ describe('AssetsService', () => {
         const assets: AssetEntity[] = [
           {
             assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+            keyringAccountId: mockAccount.id,
             network: Network.Mainnet,
             symbol: 'TRX',
             decimals: 6,
@@ -1481,7 +1470,9 @@ describe('AssetsService', () => {
               iconUrl: '',
             },
           ];
-          const finalSavedAssets: AssetEntity[] = [savedAssets[0] as AssetEntity];
+          const finalSavedAssets: AssetEntity[] = [
+            savedAssets[0] as AssetEntity,
+          ];
 
           const updatedAssets: AssetEntity[] = [savedAssets[0] as AssetEntity];
 
@@ -1684,7 +1675,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1707,7 +1698,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1760,7 +1751,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1783,7 +1774,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1838,7 +1829,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1861,7 +1852,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1907,7 +1898,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -1950,7 +1941,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2024,7 +2015,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2047,7 +2038,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2102,7 +2093,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2125,7 +2116,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2193,7 +2184,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2216,7 +2207,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2286,7 +2277,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2309,7 +2300,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2353,7 +2344,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2376,7 +2367,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2429,7 +2420,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2452,7 +2443,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2505,7 +2496,7 @@ describe('AssetsService', () => {
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2538,7 +2529,7 @@ describe('AssetsService', () => {
             const updatedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
+                keyringAccountId: mockAccount.id,
                 network: Network.Mainnet,
                 symbol: 'TRX',
                 decimals: 6,
@@ -2646,7 +2637,9 @@ describe('AssetsService', () => {
           );
 
           expect(
-            assets.every((asset) => SNAP_OWNED_ASSETS.includes(asset.assetType)),
+            assets.every((asset) =>
+              SNAP_OWNED_ASSETS.includes(asset.assetType),
+            ),
           ).toBe(true);
           expect(
             assets.some((asset) => asset.assetType === fungibleAssetId),
@@ -2657,11 +2650,7 @@ describe('AssetsService', () => {
 
     it('routes snap-owned reads through the repository', async () => {
       await withAssetsService(
-        async ({
-          assetsService,
-          mockAssetsRepository,
-          mockCoreMessenger,
-        }) => {
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
           const snapAsset: AssetEntity = {
             assetType: snapAssetId,
             keyringAccountId: accountId,
@@ -2692,78 +2681,74 @@ describe('AssetsService', () => {
     });
 
     it('routes fungible reads through AssetsController', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockCoreMessenger }) => {
-          mockCoreMessenger.call.mockImplementation(
-            createMessengerCallMock(
-              jest.fn().mockResolvedValue(
-                buildControllerAsset(fungibleAssetId, '2000000', {
-                  symbol: 'TRX',
-                  name: 'TRON',
-                  decimals: 6,
-                }),
-              ),
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockImplementation(
+          createMessengerCallMock(
+            jest.fn().mockResolvedValue(
+              buildControllerAsset(fungibleAssetId, '2000000', {
+                symbol: 'TRX',
+                name: 'TRON',
+                decimals: 6,
+              }),
             ),
-          );
+          ),
+        );
 
-          const asset = await assetsService.getAssetByAccountId(
-            accountId,
-            fungibleAssetId,
-          );
+        const asset = await assetsService.getAssetByAccountId(
+          accountId,
+          fungibleAssetId,
+        );
 
-          expect(asset).toMatchObject({
-            assetType: fungibleAssetId,
-            rawAmount: '2000000',
-            uiAmount: '2',
-          });
-        },
-      );
+        expect(asset).toMatchObject({
+          assetType: fungibleAssetId,
+          rawAmount: '2000000',
+          uiAmount: '2',
+        });
+      });
     });
 
     it('getAssetsByAccountId uses a single AssetsController:getAssets call for fungibles', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockCoreMessenger }) => {
-          const trx = KnownCaip19Id.TrxMainnet;
-          const usdt = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        const trx = KnownCaip19Id.TrxMainnet;
+        const usdt = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
 
-          mockCoreMessenger.call.mockImplementation(
-            async (method: string, ...args: unknown[]) => {
-              if (method === 'AssetsController:getAssets') {
-                const accountIdArg = (args[0] as [{ id: string }])[0].id;
-                return {
-                  [accountIdArg]: {
-                    [trx]: buildControllerAsset(trx, '1000000', {
-                      symbol: 'TRX',
-                      name: 'TRON',
-                      decimals: 6,
-                    }),
-                    [usdt]: buildControllerAsset(usdt, '500000', {
-                      symbol: 'USDT',
-                      name: 'Tether',
-                      decimals: 6,
-                    }),
-                  },
-                };
-              }
-              return undefined;
-            },
-          );
+        mockCoreMessenger.call.mockImplementation(
+          async (method: string, ...args: unknown[]) => {
+            if (method === 'AssetsController:getAssets') {
+              const accountIdArg = (args[0] as [{ id: string }])[0].id;
+              return {
+                [accountIdArg]: {
+                  [trx]: buildControllerAsset(trx, '1000000', {
+                    symbol: 'TRX',
+                    name: 'TRON',
+                    decimals: 6,
+                  }),
+                  [usdt]: buildControllerAsset(usdt, '500000', {
+                    symbol: 'USDT',
+                    name: 'Tether',
+                    decimals: 6,
+                  }),
+                },
+              };
+            }
+            return undefined;
+          },
+        );
 
-          const results = await assetsService.getAssetsByAccountId(accountId, [
-            trx,
-            usdt,
-          ]);
+        const results = await assetsService.getAssetsByAccountId(accountId, [
+          trx,
+          usdt,
+        ]);
 
-          expect(mockCoreMessenger.call).toHaveBeenCalledTimes(1);
-          expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-            'AssetsController:getAssets',
-            [{ id: accountId }],
-            { chainIds: [Network.Mainnet] },
-          );
-          expect(results[0]?.rawAmount).toBe('1000000');
-          expect(results[1]?.rawAmount).toBe('500000');
-        },
-      );
+        expect(mockCoreMessenger.call).toHaveBeenCalledTimes(1);
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
+          'AssetsController:getAssets',
+          [{ id: accountId }],
+          { chainIds: [Network.Mainnet] },
+        );
+        expect(results[0]?.rawAmount).toBe('1000000');
+        expect(results[1]?.rawAmount).toBe('500000');
+      });
     });
 
     it('getByKeyringAccountId excludes fungibles', async () => {
@@ -2794,9 +2779,9 @@ describe('AssetsService', () => {
 
           const assets = await assetsService.getByKeyringAccountId(accountId);
 
-          expect(assets.some((asset) => asset.assetType === fungibleAssetId)).toBe(
-            false,
-          );
+          expect(
+            assets.some((asset) => asset.assetType === fungibleAssetId),
+          ).toBe(false);
           expect(assets.some((asset) => asset.assetType === snapAssetId)).toBe(
             true,
           );
@@ -2805,49 +2790,47 @@ describe('AssetsService', () => {
     });
 
     it('saveMany emits only snap-owned assets', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockState }) => {
-          mockState.getKey.mockResolvedValue({});
+      await withAssetsService(async ({ assetsService, mockState }) => {
+        mockState.getKey.mockResolvedValue({});
 
-          const assets: AssetEntity[] = [
-            {
-              assetType: fungibleAssetId,
-              keyringAccountId: accountId,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: snapAssetId,
-              keyringAccountId: accountId,
-              network: Network.Mainnet,
-              symbol: 'ENERGY',
-              decimals: 0,
-              rawAmount: '100',
-              uiAmount: '100',
-              iconUrl: '',
-            },
-          ];
+        const assets: AssetEntity[] = [
+          {
+            assetType: fungibleAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'TRX',
+            decimals: 6,
+            rawAmount: '1000000',
+            uiAmount: '1',
+            iconUrl: '',
+          },
+          {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '100',
+            uiAmount: '100',
+            iconUrl: '',
+          },
+        ];
 
-          await assetsService.saveMany(assets);
+        await assetsService.saveMany(assets);
 
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [accountId]: {
-                  added: [snapAssetId],
-                  removed: [],
-                },
+        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect.anything(),
+          KeyringEvent.AccountAssetListUpdated,
+          {
+            assets: {
+              [accountId]: {
+                added: [snapAssetId],
+                removed: [],
               },
             },
-          );
-        },
-      );
+          },
+        );
+      });
     });
   });
 });

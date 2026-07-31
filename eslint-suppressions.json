@@ -316,6 +316,16 @@
       "count": 2
     }
   },
+  "packages/tron-wallet-snap/src/services/assets/mapControllerAsset.test.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
+  "packages/tron-wallet-snap/src/services/assets/mapControllerAsset.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
+    }
+  },
   "packages/tron-wallet-snap/src/services/config/ConfigProvider.ts": {
     "import-x/no-extraneous-dependencies": {
       "count": 1

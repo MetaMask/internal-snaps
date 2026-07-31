@@ -3,9 +3,6 @@ import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
 import { KnownCaip19Id, Network, TokenMetadata } from '../../constants';
-import type { AssetEntity } from '../../entities/assets';
-import { toUiAmount } from '../../utils/conversion';
-
 import { mapControllerAsset } from './mapControllerAsset';
 
 describe('mapControllerAsset', () => {
@@ -51,9 +48,7 @@ describe('mapControllerAsset', () => {
       fiatValue: 0,
     } as unknown as Asset;
 
-    expect(
-      mapControllerAsset(accountId, knownAssetId, asset),
-    ).toStrictEqual({
+    expect(mapControllerAsset(accountId, knownAssetId, asset)).toStrictEqual({
       assetType: knownAssetId,
       keyringAccountId: accountId,
       network: Network.Mainnet,
