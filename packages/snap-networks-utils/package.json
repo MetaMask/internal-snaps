@@ -34,12 +34,12 @@
     },
     "./assets": {
       "import": {
-        "types": "./dist/assets/index.d.mts",
-        "default": "./dist/assets/index.mjs"
+        "types": "./dist/services/assets/index.d.mts",
+        "default": "./dist/services/assets/index.mjs"
       },
       "require": {
-        "types": "./dist/assets/index.d.cts",
-        "default": "./dist/assets/index.cjs"
+        "types": "./dist/services/assets/index.d.cts",
+        "default": "./dist/services/assets/index.cjs"
       }
     },
     "./logger": {

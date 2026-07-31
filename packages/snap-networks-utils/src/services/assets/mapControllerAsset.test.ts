@@ -3,7 +3,7 @@ import type { Asset } from '@metamask/assets-controller';
 import { mapControllerAsset } from './mapControllerAsset';
 
 describe('mapControllerAsset', () => {
-  const accountId = 'account-id';
+  const accountId = '550e8400-e29b-41d4-a716-446655440000';
   const assetId = 'tron:728126428/trc20:unknown';
 
   it('maps controller metadata when present', () => {
