@@ -2,7 +2,7 @@ import { assert, StructError } from '@metamask/superstruct';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import { Network } from '../constants';
-import { TronMultichainMethod } from '../handlers/keyring-types';
+import { TronMultichainMethod } from '../handlers/keyring/keyring-types';
 import {
   SignMessageRequestStruct,
   SignTransactionRequestStruct,

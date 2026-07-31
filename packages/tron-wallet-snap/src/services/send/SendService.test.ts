@@ -12,7 +12,7 @@ import {
 } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
-import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { SendService } from './SendService';

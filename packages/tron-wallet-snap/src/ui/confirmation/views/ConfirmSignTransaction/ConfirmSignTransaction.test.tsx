@@ -1,6 +1,6 @@
 import { Network } from '../../../../constants';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
-import { TronMultichainMethod } from '../../../../handlers/keyring-types';
+import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type {

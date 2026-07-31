@@ -1,24 +1,24 @@
-import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
-import type { SnapClient } from '../clients/snap/SnapClient';
-import type { TronHttpClient } from '../clients/tron-http/TronHttpClient';
-import type { TronWebFactory } from '../clients/tronweb/TronWebFactory';
+import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   Network,
   TRACK_TX_INTERVAL,
   TRACK_TX_MAX_ATTEMPTS,
-} from '../constants';
-import type { AccountsService } from '../services/accounts/AccountsService';
-import type { State, UnencryptedStateValue } from '../services/state/State';
-import { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
-import type { JsonTransactionRawData } from '../services/transaction-expiration-refresher/types';
-import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
-import { SimulationStatus } from '../services/transaction-scan/types';
-import type { TransactionScanResult } from '../services/transaction-scan/types';
-import { FetchStatus } from '../types/snap';
-import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../ui/confirmation/views/ConfirmSignTransaction/types';
-import type { ConfirmSignTransactionContext } from '../ui/confirmation/views/ConfirmSignTransaction/types';
-import type { ConfirmTransactionRequestContext } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
-import type { ILogger } from '../utils/logger';
+} from '../../constants';
+import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { State, UnencryptedStateValue } from '../../services/state/State';
+import { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
+import type { JsonTransactionRawData } from '../../services/transaction-expiration-refresher/types';
+import type { TransactionScanService } from '../../services/transaction-scan/TransactionScanService';
+import { SimulationStatus } from '../../services/transaction-scan/types';
+import type { TransactionScanResult } from '../../services/transaction-scan/types';
+import { FetchStatus } from '../../types/snap';
+import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
+import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
+import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import type { ILogger } from '../../utils/logger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
 
 /**

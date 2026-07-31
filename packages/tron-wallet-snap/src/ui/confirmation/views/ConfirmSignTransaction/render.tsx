@@ -8,7 +8,7 @@ import type { Transaction } from 'tronweb/lib/esm/types';
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
-import { BackgroundEventMethod } from '../../../../handlers/cronjob';
+import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../../services/transaction-scan/buildExpiredScanResult';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';

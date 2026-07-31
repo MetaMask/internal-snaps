@@ -6,7 +6,7 @@ import { Network } from '../../../../constants';
 import type { SnapExecutionContext } from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
-import { TronMultichainMethod } from '../../../../handlers/keyring-types';
+import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import type { AssetsService } from '../../../../services/assets/AssetsService';
 import type { FeeCalculatorService } from '../../../../services/send/FeeCalculatorService';
 import type {

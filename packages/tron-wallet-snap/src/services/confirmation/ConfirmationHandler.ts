@@ -9,7 +9,7 @@ import { Networks, ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { TronMultichainMethod } from '../../handlers/keyring-types';
+import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { TRX_IMAGE_SVG } from '../../static/tron-logo';
 import { FetchStatus } from '../../types/snap';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
