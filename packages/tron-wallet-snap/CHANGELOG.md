@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add feature-flagged AssetsController migration for fungible asset reads (TRX, TRC10, TRC20). Protocol assets (energy, bandwidth, staking, lock/withdrawal, rewards) remain Snap-owned. Resolution order: remote feature flags → `TRON_ASSETS_MIGRATION_STAGE` env (non-production only) → Off default.
+
 ## [2.0.0]
 
 ### Changed

@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "0TZh63x04Gncx8UgHBoWnQ4RmX6kmTL6RmJTyqgJ7G8=",
+    "shasum": "AKoQWoE0egZjeSKDZ5PHQcfN4sXinCBhhYmgTo/xfOA=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -48,6 +48,13 @@
     },
     "endowment:assets": {
       "scopes": ["tron:728126428"]
+    },
+    "endowment:messenger": {
+      "actions": [
+        "AssetsController:getAsset",
+        "AssetsController:getAssets",
+        "RemoteFeatureFlagController:getState"
+      ]
     }
   },
   "platformVersion": "11.2.0",

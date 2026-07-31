@@ -60,7 +60,10 @@ import { toUiAmount } from '../../../utils/conversion';
 import { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
 import type { State, UnencryptedStateValue } from '../../state/State';
+import { SnapsAssetsMigrationStage } from '@metamask/assets-controller';
+
 import type { AssetsRepository } from '../AssetsRepository';
+import { isSnapOwnedAsset } from '../snapOwnedAssets';
 import type {
   InLockPeriodCaipAssetType,
   NativeCaipAssetType,
@@ -113,6 +116,10 @@ export class SnapAssetsAdapter {
 
   readonly #snapClient: SnapClient;
 
+  readonly #resolveMigrationStage: (
+    chainId: string,
+  ) => Promise<SnapsAssetsMigrationStage>;
+
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -128,6 +135,7 @@ export class SnapAssetsAdapter {
     priceApiClient,
     tokenApiClient,
     snapClient,
+    resolveMigrationStage,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -137,6 +145,9 @@ export class SnapAssetsAdapter {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
+    resolveMigrationStage: (
+      chainId: string,
+    ) => Promise<SnapsAssetsMigrationStage>;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 SnapAssetsAdapter]');
     this.#assetsRepository = assetsRepository;
@@ -146,6 +157,7 @@ export class SnapAssetsAdapter {
     this.#priceApiClient = priceApiClient;
     this.#tokenApiClient = tokenApiClient;
     this.#snapClient = snapClient;
+    this.#resolveMigrationStage = resolveMigrationStage;
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
@@ -155,27 +167,28 @@ export class SnapAssetsAdapter {
     return caipAssetId.includes('swift:0/iso4217:');
   }
 
-  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    return this.#assetsRepository.getByAccountId(accountId);
-  }
-
-  async getAccountAssetsByIDs(
-    accountId: string,
-    assetTypes: string[],
-  ): Promise<(AssetEntity | null)[]> {
-    return this.#assetsRepository.getByAccountIdAndAssetTypes(
-      accountId,
-      assetTypes,
-    );
+  async #resolveStage(chainId: string): Promise<SnapsAssetsMigrationStage> {
+    return this.#resolveMigrationStage(chainId);
   }
 
   async getAccountAssetByID(
     accountId: string,
-    assetType: string,
+    assetId: string,
   ): Promise<AssetEntity | null> {
-    return this.#assetsRepository.getByAccountIdAndAssetType(
+    return this.#assetsRepository.getByAccountIdAndAssetType(accountId, assetId);
+  }
+
+  async getAccountAssetsByIDs(
+    accountId: string,
+    assetIds: string[],
+  ): Promise<Record<string, AssetEntity | null>> {
+    const assets = await this.#assetsRepository.getByAccountIdAndAssetTypes(
       accountId,
-      assetType,
+      assetIds,
+    );
+
+    return Object.fromEntries(
+      assetIds.map((assetId, index) => [assetId, assets[index] ?? null]),
     );
   }
 
@@ -208,6 +221,8 @@ export class SnapAssetsAdapter {
       scope,
     });
 
+    const stage = await this.#resolveStage(scope);
+
     const [
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
@@ -226,18 +241,19 @@ export class SnapAssetsAdapter {
       );
     }
 
-    const trc20BalancesFallback = isInactiveAccount
-      ? await this.#trongridApiClient
-          .getTrc20BalancesByAddress(scope, account.address)
-          .catch(async (error) => {
-            await this.#snapClient.trackError(error as Error);
-            this.#logger.warn(
-              'Failed to fetch TRC20 balances for inactive account',
-              { error, account, scope },
-            );
-            return [];
-          })
-      : [];
+    const trc20BalancesFallback =
+      stage === SnapsAssetsMigrationStage.Off && isInactiveAccount
+        ? await this.#trongridApiClient
+            .getTrc20BalancesByAddress(scope, account.address)
+            .catch(async (error) => {
+              await this.#snapClient.trackError(error as Error);
+              this.#logger.warn(
+                'Failed to fetch TRC20 balances for inactive account',
+                { error, account, scope },
+              );
+              return [];
+            })
+        : [];
 
     const accountData = this.#buildAccountData({
       tronAccountInfoRequest,
@@ -246,7 +262,10 @@ export class SnapAssetsAdapter {
       stakingRewardsRequest,
     });
 
-    const rawAssets = this.#extractAssets(account, scope, accountData);
+    const rawAssets =
+      stage !== SnapsAssetsMigrationStage.Off
+        ? this.#extractSnapOwnedAssets(account, scope, accountData)
+        : this.#extractAssets(account, scope, accountData);
 
     const assetTypes = rawAssets.map((asset) => asset.assetType);
     const priceableAssetTypes = this.#getPriceableAssetTypes(rawAssets);
@@ -371,12 +390,22 @@ export class SnapAssetsAdapter {
   ): AssetEntity[] {
     return [
       this.#extractNativeAsset(account, scope, data.nativeBalance),
+      ...this.#extractSnapOwnedAssets(account, scope, data),
+      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
+      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
+    ];
+  }
+
+  #extractSnapOwnedAssets(
+    account: KeyringAccount,
+    scope: Network,
+    data: NormalizedAccountData,
+  ): AssetEntity[] {
+    return [
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
       this.#extractReadyForWithdrawalAsset(account, scope, data.stakedData),
       this.#extractInLockPeriodAsset(account, scope, data.stakedData),
       this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
-      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
-      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
       ...this.#extractBandwidth({
         account,
         scope,
@@ -1261,12 +1290,33 @@ export class SnapAssetsAdapter {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
+    const stagesByNetwork = new Map<Network, SnapsAssetsMigrationStage>();
+    await Promise.all(
+      [...new Set(assets.map((asset) => asset.network))].map(
+        async (network) => {
+          stagesByNetwork.set(network, await this.#resolveStage(network));
+        },
+      ),
+    );
+
+    const shouldEmitAsset = (asset: AssetEntity): boolean =>
+      (stagesByNetwork.get(asset.network) ?? SnapsAssetsMigrationStage.Off) ===
+        SnapsAssetsMigrationStage.Off || isSnapOwnedAsset(asset.assetType);
+
     const hasZeroAmount = (asset: AssetEntity): boolean =>
       asset.rawAmount === '0' || asset.uiAmount === '0';
 
     const savedAssets = await this.getAll();
     const isEssentialAsset = (asset: AssetEntity): boolean =>
       ESSENTIAL_ASSETS.includes(asset.assetType);
+
+    const isProtectedAsset = (asset: AssetEntity): boolean => {
+      const stage =
+        stagesByNetwork.get(asset.network) ?? SnapsAssetsMigrationStage.Off;
+      return stage === SnapsAssetsMigrationStage.Off
+        ? isEssentialAsset(asset)
+        : isSnapOwnedAsset(asset.assetType);
+    };
 
     // Track only the account/network pairs refreshed in this run.
     // That prevents us from treating assets from untouched networks as disappeared.
@@ -1292,7 +1342,16 @@ export class SnapAssetsAdapter {
 
       if (
         !syncedNetworks?.has(savedAsset.network) ||
-        isEssentialAsset(savedAsset)
+        isProtectedAsset(savedAsset)
+      ) {
+        return false;
+      }
+
+      const stage =
+        stagesByNetwork.get(savedAsset.network) ?? SnapsAssetsMigrationStage.Off;
+      if (
+        stage !== SnapsAssetsMigrationStage.Off &&
+        !isSnapOwnedAsset(savedAsset.assetType)
       ) {
         return false;
       }
@@ -1320,9 +1379,9 @@ export class SnapAssetsAdapter {
     //    snapshot entirely
     // 2. fold in the current assets to report additions and explicit zero-balance
     //    removals in the same event
-    const assetListUpdatedPayload = disappearedAssets.reduce<
-      AccountAssetListUpdatedEvent['params']['assets']
-    >(
+    const assetListUpdatedPayload = disappearedAssets
+      .filter(shouldEmitAsset)
+      .reduce<AccountAssetListUpdatedEvent['params']['assets']>(
       (acc, asset) => ({
         ...acc,
         [asset.keyringAccountId]: {
@@ -1336,7 +1395,7 @@ export class SnapAssetsAdapter {
       {},
     );
 
-    for (const asset of assets) {
+    for (const asset of assets.filter(shouldEmitAsset)) {
       // Merge the current snapshot into the pre-seeded payload so each account
       // ends up with one consolidated added/removed diff.
       assetListUpdatedPayload[asset.keyringAccountId] = {
@@ -1367,7 +1426,9 @@ export class SnapAssetsAdapter {
     // Emit synthetic zero-balance entries for disappeared assets so clients can
     // clear cached balances even when the backend omits zero-balance tokens
     // instead of returning them explicitly.
-    const removedAssetsWithZeroBalance = disappearedAssets.map((asset) => ({
+    const removedAssetsWithZeroBalance = disappearedAssets
+      .filter(shouldEmitAsset)
+      .map((asset) => ({
       ...asset,
       rawAmount: '0',
       uiAmount: '0',
@@ -1379,9 +1440,10 @@ export class SnapAssetsAdapter {
 
     // Broadcast the current snapshot plus synthetic zero-balance removals so the
     // client can reconcile both visible assets and cached balances in one pass.
-    const balancesUpdatedPayload = assetsToSave.reduce<
-      AccountBalancesUpdatedEvent['params']['balances']
-    >(
+    const balancesUpdatedPayload = [
+      ...assets.filter(shouldEmitAsset),
+      ...removedAssetsWithZeroBalance,
+    ].reduce<AccountBalancesUpdatedEvent['params']['balances']>(
       (acc, asset) => ({
         ...acc,
         [asset.keyringAccountId]: {
@@ -1442,19 +1504,26 @@ export class SnapAssetsAdapter {
     } as AssetEntity;
   }
 
-  async getByKeyringAccountId(
+  async getAccountAssetsByScope(
+    scope: Network,
     keyringAccountId: string,
   ): Promise<AssetEntity[]> {
     const savedAssets =
       await this.#assetsRepository.getByAccountId(keyringAccountId);
 
-    /**
-     * Ensure the special assets are always present whether they have been synced or not.
-     * These are assets that should be visible to the user even with zero balance.
-     */
+    const visibleSavedAssets = savedAssets.filter(
+      (asset) => asset.network === scope,
+    );
+
     const missingEssentialAssets: AssetEntity[] = [];
 
     for (const essentialAssetId of ESSENTIAL_ASSETS) {
+      const { chainId } = parseCaipAssetType(essentialAssetId as CaipAssetType);
+
+      if ((chainId as Network) !== scope) {
+        continue;
+      }
+
       const savedAsset = savedAssets.find(
         (asset) => (asset.assetType as string) === essentialAssetId,
       );
@@ -1468,7 +1537,7 @@ export class SnapAssetsAdapter {
       }
     }
 
-    return [...savedAssets, ...missingEssentialAssets];
+    return [...visibleSavedAssets, ...missingEssentialAssets];
   }
 
   /**
@@ -1478,7 +1547,7 @@ export class SnapAssetsAdapter {
    * @returns The fiat ticker.
    */
   #extractFiatTicker(caipAssetType: CaipAssetType): FiatTicker {
-    if (!AssetsService.isFiat(caipAssetType)) {
+    if (!SnapAssetsAdapter.isFiat(caipAssetType)) {
       throw new Error('Passed caipAssetType is not a fiat asset');
     }
 
@@ -1500,7 +1569,7 @@ export class SnapAssetsAdapter {
     cryptoPrices: Record<CaipAssetType, SpotPrice | null>;
   }> {
     const cryptoAssets = allAssets.filter(
-      (asset) => !AssetsService.isFiat(asset),
+      (asset) => !SnapAssetsAdapter.isFiat(asset),
     );
 
     const [fiatExchangeRates, cryptoPrices] = await Promise.all([
@@ -1574,7 +1643,7 @@ export class SnapAssetsAdapter {
       let fromUsdRate: BigNumber;
       let toUsdRate: BigNumber;
 
-      if (AssetsService.isFiat(from)) {
+      if (SnapAssetsAdapter.isFiat(from)) {
         /**
          * Beware:
          * We need to invert the fiat exchange rate because exchange rate != spot price
@@ -1592,7 +1661,7 @@ export class SnapAssetsAdapter {
         fromUsdRate = new BigNumber(cryptoPrices[from]?.price ?? 0);
       }
 
-      if (AssetsService.isFiat(to)) {
+      if (SnapAssetsAdapter.isFiat(to)) {
         /**
          * Beware:
          * We need to invert the fiat exchange rate because exchange rate != spot price
@@ -1733,7 +1802,7 @@ export class SnapAssetsAdapter {
 
       let unitUsdRate: BigNumber;
 
-      if (AssetsService.isFiat(unit)) {
+      if (SnapAssetsAdapter.isFiat(unit)) {
         /**
          * Beware:
          * We need to invert the fiat exchange rate because exchange rate != spot price

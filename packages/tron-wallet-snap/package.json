@@ -48,10 +48,13 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "devDependencies": {
+    "@metamask/assets-controller": "11.2.0",
     "@metamask/auto-changelog": "^6.1.1",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^23.7.0",
     "@metamask/keyring-snap-sdk": "^9.2.1",
+    "@metamask/messenger": "^2.0.0",
+    "@metamask/remote-feature-flag-controller": "4.2.2",
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.0",
     "@metamask/snaps-sdk": "^11.2.0",
