@@ -1,13 +1,13 @@
-import {
-  KnownCaip19Id,
-  SNAP_OWNED_ASSETS,
-} from '../../constants';
+import { KnownCaip19Id, SNAP_OWNED_ASSETS } from '../../constants';
 import { isSnapOwnedAsset } from './snapOwnedAssets';
 
 describe('isSnapOwnedAsset', () => {
-  it.each(SNAP_OWNED_ASSETS)('returns true for snap-owned asset %s', (assetId) => {
-    expect(isSnapOwnedAsset(assetId)).toBe(true);
-  });
+  it.each(SNAP_OWNED_ASSETS)(
+    'returns true for snap-owned asset %s',
+    (assetId) => {
+      expect(isSnapOwnedAsset(assetId)).toBe(true);
+    },
+  );
 
   it('returns false for native TRX', () => {
     expect(isSnapOwnedAsset(KnownCaip19Id.TrxMainnet)).toBe(false);
@@ -26,7 +26,9 @@ describe('isSnapOwnedAsset', () => {
 
   it('returns false for TRC10 tokens', () => {
     expect(
-      isSnapOwnedAsset(`${KnownCaip19Id.TrxMainnet.split('/')[0]}/trc10:1002000`),
+      isSnapOwnedAsset(
+        `${KnownCaip19Id.TrxMainnet.split('/')[0]}/trc10:1002000`,
+      ),
     ).toBe(false);
   });
 });

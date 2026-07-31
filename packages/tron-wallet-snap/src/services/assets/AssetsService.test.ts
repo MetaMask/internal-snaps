@@ -2608,6 +2608,50 @@ describe('AssetsService', () => {
     });
   });
 
+  describe('getAssetsMetadata', () => {
+    it('resolves metadata for native, protocol, and token asset types', async () => {
+      await withAssetsService(async ({ assetsService, mockTokenApiClient }) => {
+        const trc20 =
+          `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as TokenCaipAssetType;
+        const trc10 = `${Network.Mainnet}/trc10:1002000` as TokenCaipAssetType;
+
+        mockTokenApiClient.getTokensMetadata.mockResolvedValue({
+          [trc20]: {
+            fungible: { symbol: 'USDT', name: 'Tether', decimals: 6 },
+          },
+          [trc10]: {
+            fungible: { symbol: 'T', name: 'Token', decimals: 0 },
+          },
+        });
+
+        const assetTypes = [
+          KnownCaip19Id.TrxMainnet,
+          KnownCaip19Id.TrxStakedForBandwidthMainnet,
+          KnownCaip19Id.TrxStakedForEnergyMainnet,
+          KnownCaip19Id.TrxReadyForWithdrawalMainnet,
+          KnownCaip19Id.TrxInLockPeriodMainnet,
+          KnownCaip19Id.TrxStakingRewardsMainnet,
+          KnownCaip19Id.EnergyMainnet,
+          KnownCaip19Id.MaximumEnergyMainnet,
+          KnownCaip19Id.BandwidthMainnet,
+          KnownCaip19Id.MaximumBandwidthMainnet,
+          trc10,
+          trc20,
+        ];
+
+        const metadata = await assetsService.getAssetsMetadata(assetTypes);
+
+        expect(metadata[KnownCaip19Id.TrxMainnet]?.symbol).toBe('TRX');
+        expect(metadata[KnownCaip19Id.EnergyMainnet]?.symbol).toBe('ENERGY');
+        expect(metadata[trc20]?.fungible?.symbol).toBe('USDT');
+        expect(mockTokenApiClient.getTokensMetadata).toHaveBeenCalledWith([
+          trc10,
+          trc20,
+        ]);
+      });
+    });
+  });
+
   describe('controller asset reads', () => {
     const accountId = mockAccount.id;
     const fungibleAssetId = KnownCaip19Id.TrxMainnet;
@@ -2749,6 +2793,84 @@ describe('AssetsService', () => {
         expect(results[0]?.rawAmount).toBe('1000000');
         expect(results[1]?.rawAmount).toBe('500000');
       });
+    });
+
+    it('getAssetsByAccountId batches snap-owned reads without calling AssetsController', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
+          const snapAsset: AssetEntity = {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '100',
+            uiAmount: '100',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
+            snapAsset,
+          ]);
+
+          const results = await assetsService.getAssetsByAccountId(accountId, [
+            snapAssetId,
+          ]);
+
+          expect(results[0]).toStrictEqual(snapAsset);
+          expect(mockCoreMessenger.call).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('getAssetsByAccountId merges snap-owned and fungible reads in request order', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
+          const snapAsset: AssetEntity = {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '250',
+            uiAmount: '250',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
+            snapAsset,
+          ]);
+
+          mockCoreMessenger.call.mockImplementation(
+            async (method: string, ...args: unknown[]) => {
+              if (method === 'AssetsController:getAssets') {
+                const accountIdArg = (args[0] as [{ id: string }])[0].id;
+                return {
+                  [accountIdArg]: {
+                    [fungibleAssetId]: buildControllerAsset(
+                      fungibleAssetId,
+                      '3000000',
+                      {
+                        symbol: 'TRX',
+                        name: 'TRON',
+                        decimals: 6,
+                      },
+                    ),
+                  },
+                };
+              }
+              return undefined;
+            },
+          );
+
+          const results = await assetsService.getAssetsByAccountId(accountId, [
+            fungibleAssetId,
+            snapAssetId,
+          ]);
+
+          expect(results[0]?.rawAmount).toBe('3000000');
+          expect(results[1]).toStrictEqual(snapAsset);
+          expect(mockCoreMessenger.call).toHaveBeenCalledTimes(1);
+        },
+      );
     });
 
     it('getByKeyringAccountId excludes fungibles', async () => {

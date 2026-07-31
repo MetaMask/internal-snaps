@@ -1,11 +1,11 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
-import type { InternalAccount } from '@metamask/keyring-internal-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import type {
   AccountAssetListUpdatedEvent,
   AccountBalancesUpdatedEvent,
   KeyringAccount,
 } from '@metamask/keyring-api';
+import type { InternalAccount } from '@metamask/keyring-internal-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type {
   AssetConversion,
@@ -53,11 +53,11 @@ import {
 } from '../../constants';
 import { configProvider } from '../../context';
 import type { AssetEntity } from '../../entities/assets';
+import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { toUiAmount } from '../../utils/conversion';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
-import type { CoreMessengerCaller } from '../../types/core-messenger';
 import type { AssetsRepository } from './AssetsRepository';
 import { mapControllerAsset } from './mapControllerAsset';
 import { isSnapOwnedAsset } from './snapOwnedAssets';
@@ -162,7 +162,9 @@ export class AssetsService {
     assetTypes: string[],
   ): Promise<(AssetEntity | null)[]> {
     const snapOwnedTypes = assetTypes.filter(isSnapOwnedAsset);
-    const controllerTypes = assetTypes.filter((type) => !isSnapOwnedAsset(type));
+    const controllerTypes = assetTypes.filter(
+      (type) => !isSnapOwnedAsset(type),
+    );
 
     const snapOwnedByType = new Map<string, AssetEntity | null>();
     if (snapOwnedTypes.length > 0) {
@@ -1152,18 +1154,18 @@ export class AssetsService {
     const assetListUpdatedPayload = disappearedAssets
       .filter(shouldEmitAsset)
       .reduce<AccountAssetListUpdatedEvent['params']['assets']>(
-      (acc, asset) => ({
-        ...acc,
-        [asset.keyringAccountId]: {
-          added: [...(acc[asset.keyringAccountId]?.added ?? [])],
-          removed: [
-            ...(acc[asset.keyringAccountId]?.removed ?? []),
-            asset.assetType,
-          ],
-        },
-      }),
-      {},
-    );
+        (acc, asset) => ({
+          ...acc,
+          [asset.keyringAccountId]: {
+            added: [...(acc[asset.keyringAccountId]?.added ?? [])],
+            removed: [
+              ...(acc[asset.keyringAccountId]?.removed ?? []),
+              asset.assetType,
+            ],
+          },
+        }),
+        {},
+      );
 
     for (const asset of assets.filter(shouldEmitAsset)) {
       // Merge the current snapshot into the pre-seeded payload so each account
@@ -1199,10 +1201,10 @@ export class AssetsService {
     const removedAssetsWithZeroBalance = disappearedAssets
       .filter(shouldEmitAsset)
       .map((asset) => ({
-      ...asset,
-      rawAmount: '0',
-      uiAmount: '0',
-    }));
+        ...asset,
+        rawAmount: '0',
+        uiAmount: '0',
+      }));
 
     const assetsToSave = [...assets, ...removedAssetsWithZeroBalance];
     // Save assets using repository
