@@ -1,5 +1,4 @@
-import type { AccountId, Asset } from '@metamask/assets-controller';
-import type { CaipAssetType } from '@metamask/utils';
+import type { AccountId, Asset, Caip19AssetId } from '@metamask/assets-controller';
 import { parseCaipAssetType } from '@metamask/utils';
 
 import { toUiAmount } from '../../../utils/toUiAmount';
@@ -15,10 +14,10 @@ import type { AssetEntity } from '../types';
  */
 export function mapControllerAsset(
   accountId: AccountId,
-  assetId: string,
+  assetId: Caip19AssetId,
   asset: Asset,
 ): AssetEntity {
-  const { chainId } = parseCaipAssetType(assetId as CaipAssetType);
+  const { chainId } = parseCaipAssetType(assetId);
   const { symbol, decimals, image } = asset.metadata;
   const iconUrl = image ?? '';
   const { amount } = asset.balance;

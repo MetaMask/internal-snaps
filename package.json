@@ -87,6 +87,9 @@
     "yargs": "^17.7.2"
   },
   "resolutions": {
+    "@metamask/assets-controller": "file:./.vendor/metamask-assets-controller-13.0.0.tgz",
+    "@metamask/config-registry-controller": "file:./.vendor/metamask-config-registry-controller-2.0.0.tgz",
+    "@metamask/network-enablement-controller": "file:./.vendor/metamask-network-enablement-controller-6.0.2.tgz",
     "@metamask/snaps-execution-environments": "11.2.0",
     "@metamask/snaps-sdk": "11.2.0",
     "@types/react": "18.2.4",

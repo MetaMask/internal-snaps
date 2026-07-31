@@ -33,7 +33,7 @@ snapLogger.info('account synced');
 ```typescript
 import { AssetsService } from '@metamask/snap-networks-utils';
 
-const assetsService = new AssetsService({ coreMessenger });
+const assetsService = new AssetsService({ messenger });
 const asset = await assetsService.getAccountAssetByID(accountId, assetId);
 ```
 

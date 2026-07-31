@@ -1,10 +1,10 @@
-import type { AccountId, Asset } from '@metamask/assets-controller';
+import type { AccountId, Asset, Caip19AssetId } from '@metamask/assets-controller';
 
 import { mapControllerAsset } from './mapControllerAsset';
 
 describe('mapControllerAsset', () => {
   const accountId = '550e8400-e29b-41d4-a716-446655440000' as AccountId;
-  const assetId = 'tron:728126428/trc20:unknown';
+  const assetId = 'tron:728126428/trc20:unknown' as Caip19AssetId;
 
   it('maps controller metadata when present', () => {
     const asset = {
