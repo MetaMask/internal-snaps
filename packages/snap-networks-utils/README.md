@@ -18,7 +18,7 @@ yarn workspace @metamask/tron-wallet-snap add @metamask/snap-networks-utils@work
 
 ## Usage
 
-Import the example logger from the package root or the dedicated subpath:
+### Logger
 
 ```typescript
 import { logger, createPrefixedLogger } from '@metamask/snap-networks-utils';
@@ -26,6 +26,15 @@ import { logger, createPrefixedLogger } from '@metamask/snap-networks-utils';
 
 const snapLogger = createPrefixedLogger(logger, '[tron-wallet-snap]');
 snapLogger.info('account synced');
+```
+
+### AssetsController reads
+
+```typescript
+import { AssetsService } from '@metamask/snap-networks-utils/assets';
+
+const assetsService = new AssetsService({ coreMessenger });
+const asset = await assetsService.getAccountAssetByID(accountId, assetId);
 ```
 
 ## Contributing
