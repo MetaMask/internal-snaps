@@ -7,7 +7,7 @@ import {
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { AssetEntity } from '../../../../entities/assets';
-import { BackgroundEventMethod } from '../../../../handlers/cronjob';
+import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type {
   State,
   UnencryptedStateValue,

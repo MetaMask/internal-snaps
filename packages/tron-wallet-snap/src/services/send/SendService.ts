@@ -15,7 +15,7 @@ import type { Network } from '../../constants';
 import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
-import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
