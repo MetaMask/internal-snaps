@@ -1,3 +1,4 @@
+import type { AccountId } from '@metamask/assets-controller';
 import type { CaipChainId } from '@metamask/utils';
 
 /**
@@ -7,7 +8,7 @@ export type AssetEntity = {
   /** CAIP-19 asset ID. */
   assetType: string;
   /** Keyring account ID (`InternalAccount.id`). */
-  keyringAccountId: string;
+  keyringAccountId: AccountId;
   /** CAIP-2 chain ID. */
   network: string;
   symbol: string;
