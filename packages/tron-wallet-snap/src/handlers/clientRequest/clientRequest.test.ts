@@ -38,7 +38,7 @@ import type { TransactionRawData } from '../../services/transaction-expiration-r
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
-import { BackgroundEventMethod } from '../cronjob';
+import { BackgroundEventMethod } from '../cronjob/cronjob';
 import { ClientRequestHandler } from './clientRequest';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import type { OnAmountInputRequestStruct } from './validation';

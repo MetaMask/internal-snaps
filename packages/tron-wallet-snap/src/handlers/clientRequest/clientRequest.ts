@@ -46,7 +46,7 @@ import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
 } from '../../validation/transaction';
-import { BackgroundEventMethod } from '../cronjob';
+import { BackgroundEventMethod } from '../cronjob/cronjob';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
   ClaimTrxStakingRewardsRequestStruct,
