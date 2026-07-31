@@ -2869,9 +2869,9 @@ describe('AssetsService', () => {
           expect(AssetsService.hasChanged(asset, [])).toBe(true);
           expect(AssetsService.hasChanged(asset, [asset])).toBe(false);
 
-          expect(await assetsService.getAccountAssets(mockAccount.id)).toStrictEqual(
-            [asset],
-          );
+          expect(
+            await assetsService.getAccountAssets(mockAccount.id),
+          ).toStrictEqual([asset]);
           expect(
             await assetsService.getAccountAssetsByIDs(mockAccount.id, [
               KnownCaip19Id.TrxMainnet,
@@ -2883,8 +2883,9 @@ describe('AssetsService', () => {
               KnownCaip19Id.TrxMainnet,
             ),
           ).toStrictEqual(asset);
-          const byKeyringAccountId =
-            await assetsService.getByKeyringAccountId(mockAccount.id);
+          const byKeyringAccountId = await assetsService.getByKeyringAccountId(
+            mockAccount.id,
+          );
           expect(
             byKeyringAccountId.some(
               (savedAsset) => savedAsset.assetType === KnownCaip19Id.TrxMainnet,
