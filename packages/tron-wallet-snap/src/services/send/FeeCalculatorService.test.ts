@@ -1,6 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-
 import type { Transaction } from 'tronweb/lib/esm/types';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
