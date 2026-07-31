@@ -1,0 +1,18 @@
+/**
+ * Generic Snap asset shape produced from Core AssetsController reads.
+ */
+export type AssetEntity = {
+  /** CAIP-19 asset ID. */
+  assetType: string;
+  /** Keyring account ID (`InternalAccount.id`). */
+  keyringAccountId: string;
+  /** CAIP-2 chain ID. */
+  network: string;
+  symbol: string;
+  decimals: number;
+  /** Balance in smallest units (no decimals applied). */
+  rawAmount: string;
+  /** Human-readable balance with decimals applied. */
+  uiAmount: string;
+  iconUrl: string;
+};

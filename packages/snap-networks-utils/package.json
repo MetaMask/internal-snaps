@@ -32,6 +32,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./assets": {
+      "import": {
+        "types": "./dist/assets/index.d.mts",
+        "default": "./dist/assets/index.mjs"
+      },
+      "require": {
+        "types": "./dist/assets/index.d.cts",
+        "default": "./dist/assets/index.cjs"
+      }
+    },
     "./logger": {
       "import": {
         "types": "./dist/logger.d.mts",
@@ -74,5 +84,12 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@metamask/assets-controller": "11.2.0",
+    "@metamask/keyring-internal-api": "^11.0.1",
+    "@metamask/messenger": "^2.0.0",
+    "@metamask/snaps-sdk": "^11.2.0",
+    "@metamask/utils": "^11.9.0"
   }
 }
