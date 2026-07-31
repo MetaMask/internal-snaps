@@ -19,7 +19,6 @@ const dappPermissions = isDev
       KeyringSnapRpcMethod.SubmitRequest,
       KeyringSnapRpcMethod.GetAccountTransactions,
       KeyringSnapRpcMethod.GetAccountAssets,
-      KeyringSnapRpcMethod.SetSelectedAccounts,
       // Keyring v1 methods kept for backwards compatibility — callers using
       // old method names are still accepted by the permission layer.
       KeyringRpcMethod.ListAccounts,
