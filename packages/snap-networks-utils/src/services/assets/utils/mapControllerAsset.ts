@@ -19,9 +19,8 @@ export function mapControllerAsset(
   asset: Asset,
 ): AssetEntity {
   const { chainId } = parseCaipAssetType(assetId as CaipAssetType);
-  const decimals = asset.metadata.decimals;
-  const symbol = asset.metadata.symbol;
-  const iconUrl = asset.metadata.image ?? '';
+  const { symbol, decimals, image } = asset.metadata;
+  const iconUrl = image ?? '';
   const { amount } = asset.balance;
 
   return {

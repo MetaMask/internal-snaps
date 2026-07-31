@@ -28,17 +28,20 @@ describe('mapControllerAsset', () => {
     });
   });
 
-  it('uses empty defaults when metadata fields are missing', () => {
+  it('uses empty iconUrl when metadata has no image', () => {
     const asset = {
       balance: { amount: '42' },
-      metadata: {},
+      metadata: {
+        symbol: 'TKN',
+        decimals: 0,
+      },
     } as unknown as Asset;
 
     expect(mapControllerAsset(accountId, assetId, asset)).toStrictEqual({
       assetType: assetId,
       keyringAccountId: accountId,
       network: 'tron:728126428',
-      symbol: '',
+      symbol: 'TKN',
       decimals: 0,
       rawAmount: '42',
       uiAmount: '42',
