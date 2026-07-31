@@ -1206,7 +1206,10 @@ export class AssetsService {
         uiAmount: '0',
       }));
 
-    const assetsToSave = [...assets, ...removedAssetsWithZeroBalance];
+    const assetsToSave = [
+      ...assets.filter(shouldEmitAsset),
+      ...removedAssetsWithZeroBalance,
+    ];
     // Save assets using repository
     await this.#assetsRepository.saveMany(assetsToSave);
 

@@ -52,6 +52,10 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
 
+function snapOwnedAssetsOnly(assets: AssetEntity[]): AssetEntity[] {
+  return assets.filter((asset) => SNAP_OWNED_ASSETS.includes(asset.assetType));
+}
+
 function createMessengerCallMock(
   getAsset: jest.Mock,
   getAssets: jest.Mock = jest.fn().mockResolvedValue({}),
@@ -1383,7 +1387,9 @@ describe('AssetsService', () => {
 
           await assetsService.saveMany(assets);
 
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
+            snapOwnedAssetsOnly(assets),
+          );
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
@@ -1482,9 +1488,7 @@ describe('AssetsService', () => {
 
           await assetsService.saveMany(updatedAssets);
 
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-            finalSavedAssets,
-          );
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith([]);
           expect(emitSnapKeyringEvent).not.toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
@@ -1539,7 +1543,9 @@ describe('AssetsService', () => {
 
           await assetsService.saveMany(assets);
 
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
+            snapOwnedAssetsOnly(assets),
+          );
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
@@ -1599,7 +1605,9 @@ describe('AssetsService', () => {
 
           await assetsService.saveMany(assets);
 
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
+            snapOwnedAssetsOnly(assets),
+          );
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
@@ -1649,7 +1657,9 @@ describe('AssetsService', () => {
 
           await assetsService.saveMany(assets);
 
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
+            snapOwnedAssetsOnly(assets),
+          );
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
@@ -1725,7 +1735,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -1801,7 +1811,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -1879,7 +1889,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).not.toHaveBeenCalledWith(
               expect.anything(),
@@ -1988,7 +1998,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2065,7 +2075,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2143,7 +2153,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2234,7 +2244,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2327,7 +2337,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).not.toHaveBeenCalledWith(
               expect.anything(),
@@ -2394,7 +2404,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2470,7 +2480,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2566,7 +2576,7 @@ describe('AssetsService', () => {
             await assetsService.saveMany(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+              snapOwnedAssetsOnly(updatedAssets),
             );
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
@@ -2912,47 +2922,52 @@ describe('AssetsService', () => {
     });
 
     it('saveMany emits only snap-owned assets', async () => {
-      await withAssetsService(async ({ assetsService, mockState }) => {
-        mockState.getKey.mockResolvedValue({});
+      await withAssetsService(
+        async ({ assetsService, mockState, mockAssetsRepository }) => {
+          mockState.getKey.mockResolvedValue({});
 
-        const assets: AssetEntity[] = [
-          {
-            assetType: fungibleAssetId,
-            keyringAccountId: accountId,
-            network: Network.Mainnet,
-            symbol: 'TRX',
-            decimals: 6,
-            rawAmount: '1000000',
-            uiAmount: '1',
-            iconUrl: '',
-          },
-          {
-            assetType: snapAssetId,
-            keyringAccountId: accountId,
-            network: Network.Mainnet,
-            symbol: 'ENERGY',
-            decimals: 0,
-            rawAmount: '100',
-            uiAmount: '100',
-            iconUrl: '',
-          },
-        ];
+          const assets: AssetEntity[] = [
+            {
+              assetType: fungibleAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+            {
+              assetType: snapAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'ENERGY',
+              decimals: 0,
+              rawAmount: '100',
+              uiAmount: '100',
+              iconUrl: '',
+            },
+          ];
 
-        await assetsService.saveMany(assets);
+          await assetsService.saveMany(assets);
 
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountAssetListUpdated,
-          {
-            assets: {
-              [accountId]: {
-                added: [snapAssetId],
-                removed: [],
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith([
+            assets[1],
+          ]);
+          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect.anything(),
+            KeyringEvent.AccountAssetListUpdated,
+            {
+              assets: {
+                [accountId]: {
+                  added: [snapAssetId],
+                  removed: [],
+                },
               },
             },
-          },
-        );
-      });
+          );
+        },
+      );
     });
   });
 });
