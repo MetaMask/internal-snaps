@@ -62,11 +62,6 @@ import type { ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import type { AssetsRepository } from './AssetsRepository';
-import type { AssetsMigrationMode } from './assetsMigrationMode';
-import {
-  parseStageFromEnv,
-  resolveAssetsMigrationMode,
-} from './assetsMigrationMode';
 import { mapControllerAsset } from './mapControllerAsset';
 import { isSnapOwnedAsset } from './snapOwnedAssets';
 import type {
@@ -79,6 +74,8 @@ import type {
   StakingRewardsCaipAssetType,
   TokenCaipAssetType,
 } from './types';
+
+type AssetsMigrationMode = 'snap' | 'controller';
 
 /**
  * Normalized account data structure that provides a consistent shape for both
@@ -123,10 +120,6 @@ export class AssetsService {
 
   readonly #coreMessenger: CoreMessengerCaller;
 
-  readonly #isDev: boolean;
-
-  readonly #envMigrationStage: ReturnType<typeof parseStageFromEnv>;
-
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -163,11 +156,6 @@ export class AssetsService {
     this.#tokenApiClient = tokenApiClient;
     this.#snapClient = snapClient;
     this.#coreMessenger = coreMessenger;
-    // Static env access so the Snap bundler inlines values at build time.
-    this.#isDev = process.env.ENVIRONMENT !== 'production';
-    this.#envMigrationStage = parseStageFromEnv(
-      process.env.TRON_ASSETS_MIGRATION_STAGE,
-    );
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
@@ -177,13 +165,8 @@ export class AssetsService {
     return caipAssetId.includes('swift:0/iso4217:');
   }
 
-  async #resolveMode(chainId: string): Promise<AssetsMigrationMode> {
-    return resolveAssetsMigrationMode({
-      coreMessenger: this.#coreMessenger,
-      chainId,
-      isDev: this.#isDev,
-      envStage: this.#envMigrationStage,
-    });
+  async #resolveMode(_chainId: string): Promise<AssetsMigrationMode> {
+    return 'controller';
   }
 
   async getAllAssetsByAccountId(accountId: string): Promise<AssetEntity[]> {
