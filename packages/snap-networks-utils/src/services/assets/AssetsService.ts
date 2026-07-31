@@ -1,13 +1,13 @@
 import type {
   AccountId,
-  Asset,
+  AssetsControllerGetAccountAssetByIDAction,
+  AssetsControllerGetAccountAssetsByIDsAction,
+  AssetsControllerGetAccountAssetsByScopeAction,
   Caip19AssetId,
 } from '@metamask/assets-controller';
 import type { CaipChainId } from '@metamask/utils';
 
-import type { AssetsServiceMessengerCaller } from './messenger';
-import type { AssetEntity } from './types';
-import { mapControllerAsset } from './utils/mapControllerAsset';
+import { AssetsServiceMessenger } from './messenger';
 
 /**
  * Thin service that reads account assets from Core AssetsController via a
@@ -16,9 +16,9 @@ import { mapControllerAsset } from './utils/mapControllerAsset';
  * Does not handle snap-owned / protocol-specific assets.
  */
 export class AssetsService {
-  readonly #messenger: AssetsServiceMessengerCaller;
+  readonly #messenger: AssetsServiceMessenger;
 
-  constructor({ messenger }: { messenger: AssetsServiceMessengerCaller }) {
+  constructor({ messenger }: { messenger: AssetsServiceMessenger }) {
     this.#messenger = messenger;
   }
 
@@ -32,18 +32,12 @@ export class AssetsService {
   async getAccountAssetByID(
     accountId: AccountId,
     assetId: Caip19AssetId,
-  ): Promise<AssetEntity | null> {
-    const result = await this.#messenger.call(
+  ): Promise<ReturnType<AssetsControllerGetAccountAssetByIDAction['handler']>> {
+    return this.#messenger.call(
       'AssetsController:getAccountAssetByID',
       accountId,
       assetId,
     );
-
-    if (!result) {
-      return null;
-    }
-
-    return mapControllerAsset(accountId, assetId, result);
   }
 
   /**
@@ -57,28 +51,18 @@ export class AssetsService {
   async getAccountAssetsByIDs(
     accountId: AccountId,
     assetIds: Caip19AssetId[],
-  ): Promise<Record<Caip19AssetId, AssetEntity | null>> {
+  ): Promise<
+    ReturnType<AssetsControllerGetAccountAssetsByIDsAction['handler']>
+  > {
     if (assetIds.length === 0) {
       return {};
     }
 
-    const controllerAssets = await this.#messenger.call(
+    return this.#messenger.call(
       'AssetsController:getAccountAssetsByIDs',
       accountId,
       assetIds,
     );
-
-    return Object.fromEntries(
-      assetIds.map((assetId) => {
-        const controllerAsset = controllerAssets[assetId];
-        return [
-          assetId,
-          controllerAsset
-            ? mapControllerAsset(accountId, assetId, controllerAsset)
-            : null,
-        ];
-      }),
-    ) as Record<Caip19AssetId, AssetEntity | null>;
   }
 
   /**
@@ -91,15 +75,13 @@ export class AssetsService {
   async getAccountAssetsByScope(
     scope: CaipChainId,
     accountId: AccountId,
-  ): Promise<AssetEntity[]> {
-    const controllerAssets = await this.#messenger.call(
+  ): Promise<
+    ReturnType<AssetsControllerGetAccountAssetsByScopeAction['handler']>
+  > {
+    return this.#messenger.call(
       'AssetsController:getAccountAssetsByScope',
       accountId,
       scope,
-    );
-
-    return (Object.entries(controllerAssets) as [Caip19AssetId, Asset][]).map(
-      ([assetId, asset]) => mapControllerAsset(accountId, assetId, asset),
     );
   }
 }
