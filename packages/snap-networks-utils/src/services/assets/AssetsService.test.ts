@@ -137,7 +137,7 @@ describe('AssetsService', () => {
     });
   });
 
-  describe('getAccountAssets', () => {
+  describe('getAccountAssetsByScope', () => {
     it('returns all mapped controller assets for an account', async () => {
       await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         mockCoreMessenger.call.mockResolvedValue({
@@ -146,41 +146,9 @@ describe('AssetsService', () => {
           },
         });
 
-        expect(await assetsService.getAccountAssets(ACCOUNT_ID)).toStrictEqual([
-          mappedAsset,
-        ]);
-
-        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-          'AssetsController:getAssets',
-          [{ id: ACCOUNT_ID }],
-          undefined,
-        );
-      });
-    });
-
-    it('forwards scope chain IDs to the controller', async () => {
-      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
-        mockCoreMessenger.call.mockResolvedValue({ [ACCOUNT_ID]: {} });
-
         expect(
-          await assetsService.getAccountAssets(ACCOUNT_ID, [CHAIN_ID]),
-        ).toStrictEqual([]);
-
-        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-          'AssetsController:getAssets',
-          [{ id: ACCOUNT_ID }],
-          { chainIds: [CHAIN_ID] },
-        );
-      });
-    });
-
-    it('accepts a single scope chain ID', async () => {
-      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
-        mockCoreMessenger.call.mockResolvedValue({ [ACCOUNT_ID]: {} });
-
-        expect(
-          await assetsService.getAccountAssets(ACCOUNT_ID, CHAIN_ID),
-        ).toStrictEqual([]);
+          await assetsService.getAccountAssetsByScope(CHAIN_ID, ACCOUNT_ID),
+        ).toStrictEqual([mappedAsset]);
 
         expect(mockCoreMessenger.call).toHaveBeenCalledWith(
           'AssetsController:getAssets',
@@ -194,9 +162,9 @@ describe('AssetsService', () => {
       await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         mockCoreMessenger.call.mockResolvedValue({});
 
-        expect(await assetsService.getAccountAssets(ACCOUNT_ID)).toStrictEqual(
-          [],
-        );
+        expect(
+          await assetsService.getAccountAssetsByScope(CHAIN_ID, ACCOUNT_ID),
+        ).toStrictEqual([]);
       });
     });
   });
