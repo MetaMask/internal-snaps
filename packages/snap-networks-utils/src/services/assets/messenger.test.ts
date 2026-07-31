@@ -1,7 +1,9 @@
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { CORE_MESSENGER_NAMESPACE } from '../../types/core-messenger';
-import type { AssetsServiceAllowedActions } from './messenger';
-import type { AssetsServiceMessengerCaller } from './messenger';
+import type {
+  AssetsServiceAllowedActions,
+  AssetsServiceMessenger,
+} from './messenger';
 import { ASSETS_SERVICE_NAME } from './messenger';
 
 describe('messenger types', () => {
@@ -23,7 +25,7 @@ describe('messenger types', () => {
   it('keeps core and assets service callers compatible', () => {
     const assertCompatible = (
       caller: CoreMessengerCaller,
-    ): AssetsServiceMessengerCaller => caller;
+    ): AssetsServiceMessenger => caller;
 
     expect(assertCompatible).toBeDefined();
   });

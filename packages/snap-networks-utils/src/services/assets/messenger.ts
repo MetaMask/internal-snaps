@@ -4,14 +4,7 @@ import type {
   AssetsControllerGetAccountAssetsByScopeAction,
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
-
-import type { MessengerCaller } from '../../types/messenger-caller';
-
-export type {
-  AssetsControllerGetAccountAssetByIDAction,
-  AssetsControllerGetAccountAssetsByIDsAction,
-  AssetsControllerGetAccountAssetsByScopeAction,
-};
+import { AsyncMessenger } from '@metamask/snaps-sdk';
 
 /**
  * Namespace for the {@link AssetsService} messenger.
@@ -29,16 +22,6 @@ export type AssetsServiceAllowedActions =
 /**
  * Messenger restricted to actions consumed by {@link AssetsService}.
  */
-export type AssetsServiceMessenger = Messenger<
-  typeof ASSETS_SERVICE_NAME,
-  AssetsServiceAllowedActions
+export type AssetsServiceMessenger = AsyncMessenger<
+  Messenger<typeof ASSETS_SERVICE_NAME, AssetsServiceAllowedActions>
 >;
-
-/**
- * Caller type for {@link AssetsService}.
- *
- * Matches {@link CoreMessengerCaller} while `CoreMessenger` only delegates
- * assets-controller actions.
- */
-export type AssetsServiceMessengerCaller =
-  MessengerCaller<AssetsServiceAllowedActions>;
