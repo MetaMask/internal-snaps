@@ -7,7 +7,11 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "references": [],
+  "references": [
+    {
+      "path": "./packages/snap-networks-utils"
+    }
+  ],
   "files": [],
   "include": ["./docs", "./tests", "./scripts"]
 }
