@@ -21,11 +21,7 @@ import { BigNumber } from 'bignumber.js';
 import { pick } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import type {
-  FiatTicker,
-  SpotPrice,
-  SpotPrices,
-} from '../../clients/price-api/types';
+import type { FiatTicker, SpotPrice } from '../../clients/price-api/types';
 import {
   GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
   VsCurrencyParamStruct,
@@ -37,7 +33,6 @@ import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type {
   RawTronUnfrozenV2,
-  Trc20Balance,
   TronAccount,
 } from '../../clients/trongrid/types';
 import type { KnownCaip19Id, Network } from '../../constants';
@@ -80,17 +75,10 @@ import type {
 type AssetsMigrationMode = 'snap' | 'controller';
 
 /**
- * Normalized account data structure that provides a consistent shape for both
- * active and inactive accounts. This allows extraction functions to work
- * without needing to know the account's activation state.
+ * Slim account data shape for snap-owned asset extraction.
+ * Provides a consistent shape for both active and inactive accounts.
  */
-type NormalizedAccountData = {
-  /** Native TRX balance in sun (0 for inactive accounts). */
-  nativeBalance: number;
-  /** TRC10 token balances as `{ key: tokenId, value: balance }[]` (empty for inactive accounts). */
-  trc10Balances: TronAccount['assetV2'];
-  /** TRC20 token balances from either account info or fallback endpoint. */
-  trc20Balances: Trc20Balance[];
+type SnapOwnedAccountData = {
   /** Staking data including frozen balances and delegated resources. */
   stakedData: {
     frozenV2: TronAccount['frozenV2'];
@@ -260,35 +248,25 @@ export class AssetsService {
   }
 
   /**
-   * Fetches all assets and balances for an account.
+   * Fetches snap-owned assets and balances for an account.
    *
    * Data Sources:
-   * - `getAccountInfoByAddress`: TRX balance, TRC10 tokens, TRC20 tokens (active accounts only)
+   * - `getAccountInfoByAddress`: Staking data (active accounts only)
    * - `getAccountResources`: Energy and Bandwidth (returns {} for inactive accounts)
-   * - `getTrc20BalancesByAddress`: TRC20 balances fallback (works for inactive accounts)
-   *
-   * Logic Flow:
-   * 1. Fetch account info, resources, and TRC20 fallback (for inactive accounts)
-   * 2. Normalize data into consistent shape via `#buildAccountData`
-   * 3. Extract all assets via `#extractAssets`
-   * 4. Fetch metadata and prices in parallel
-   * 5. Enrich assets with metadata via `#enrichAssetsWithMetadata`
-   * 6. Filter spam tokens via `#filterTokensWithoutPriceData`
+   * - `getReward`: Unclaimed staking rewards
    *
    * @param scope - The network to query.
    * @param account - The keyring account.
-   * @returns Promise<AssetEntity[]> - Array of assets with balances.
+   * @returns Promise<AssetEntity[]> - Array of snap-owned assets with balances.
    */
   async fetchAssetsAndBalancesForAccount(
     scope: Network,
     account: KeyringAccount,
   ): Promise<AssetEntity[]> {
-    this.#logger.info('Fetching assets and balances by account', {
+    this.#logger.info('Fetching snap-owned assets and balances by account', {
       account,
       scope,
     });
-
-    const mode = await this.#resolveMode(scope);
 
     const [
       tronAccountInfoRequest,
@@ -300,107 +278,40 @@ export class AssetsService {
       this.#tronHttpClient.getReward(scope, account.address),
     ]);
 
-    const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
-    if (isInactiveAccount) {
+    if (tronAccountInfoRequest.status === 'rejected') {
       this.#logger.info(
         'Account info request failed, treating as inactive account',
         { account, scope },
       );
     }
 
-    const trc20BalancesFallback =
-      mode === 'snap' && isInactiveAccount
-        ? await this.#trongridApiClient
-            .getTrc20BalancesByAddress(scope, account.address)
-            .catch(async (error) => {
-              await this.#snapClient.trackError(error as Error);
-              this.#logger.warn(
-                'Failed to fetch TRC20 balances for inactive account',
-                { error, account, scope },
-              );
-              return [];
-            })
-        : [];
-
-    const accountData = this.#buildAccountData({
+    const accountData = this.#buildSnapOwnedAccountData({
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
-      trc20BalancesFallback,
       stakingRewardsRequest,
     });
 
-    const rawAssets =
-      mode === 'controller'
-        ? this.#extractSnapOwnedAssets(account, scope, accountData)
-        : this.#extractAssets(account, scope, accountData);
-
-    const assetTypes = rawAssets.map((asset) => asset.assetType);
-    const priceableAssetTypes = this.#getPriceableAssetTypes(rawAssets);
-
-    const [assetsMetadata, spotPrices] = await Promise.all([
-      this.getAssetsMetadata(assetTypes),
-      this.#priceApiClient
-        .getMultipleSpotPrices(priceableAssetTypes, 'usd')
-        .catch(async (error) => {
-          await this.#snapClient.trackError(error as Error);
-          return {};
-        }),
-    ]);
-
-    const enrichedAssets = this.#enrichAssetsWithMetadata(
-      rawAssets,
-      assetsMetadata,
-    );
-    return this.#filterTokensWithoutPriceData(enrichedAssets, spotPrices);
+    return this.#extractSnapOwnedAssets(account, scope, accountData);
   }
 
   /**
-   * Filters out spam tokens (those without price data).
-   * Essential assets are always kept. Tokens need price data to be included.
-   *
-   * @param assets - The assets to filter.
-   * @param spotPrices - Pre-fetched USD prices for assets.
-   * @returns The filtered assets.
-   */
-  #filterTokensWithoutPriceData(
-    assets: AssetEntity[],
-    spotPrices: SpotPrices | Record<string, never>,
-  ): AssetEntity[] {
-    const filtered = assets.filter((asset) => {
-      // Essential assets (TRX, staked, energy, bandwidth) are always kept
-      if (ESSENTIAL_ASSETS.includes(asset.assetType)) {
-        return true;
-      }
-      // Tokens: keep only if they have price data
-      const spotPrice = (spotPrices as SpotPrices)[asset.assetType];
-      return typeof spotPrice?.price === 'number';
-    });
-
-    return filtered;
-  }
-
-  /**
-   * Normalizes raw API responses into a consistent shape for both active and inactive accounts.
-   * This allows extraction functions to work without needing to know the account's activation state.
+   * Normalizes raw API responses into a slim shape for snap-owned asset extraction.
    *
    * @param params - The raw API responses to normalize.
    * @param params.tronAccountInfoRequest - The settled promise result from getAccountInfoByAddress.
    * @param params.tronAccountResourcesRequest - The settled promise result from getAccountResources.
-   * @param params.trc20BalancesFallback - TRC20 balances from fallback endpoint (empty for active accounts).
    * @param params.stakingRewardsRequest - The settled promise result from getReward.
-   * @returns NormalizedAccountData - Consistent data shape for extraction.
+   * @returns SnapOwnedAccountData - Consistent data shape for snap-owned extraction.
    */
-  #buildAccountData({
+  #buildSnapOwnedAccountData({
     tronAccountInfoRequest,
     tronAccountResourcesRequest,
-    trc20BalancesFallback,
     stakingRewardsRequest,
   }: {
     tronAccountInfoRequest: PromiseSettledResult<TronAccount>;
     tronAccountResourcesRequest: PromiseSettledResult<AccountResources>;
-    trc20BalancesFallback: Trc20Balance[];
     stakingRewardsRequest: PromiseSettledResult<number>;
-  }): NormalizedAccountData {
+  }): SnapOwnedAccountData {
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     const resources =
       tronAccountResourcesRequest.status === 'fulfilled'
@@ -413,9 +324,6 @@ export class AssetsService {
 
     if (isInactiveAccount) {
       return {
-        nativeBalance: 0,
-        trc10Balances: [],
-        trc20Balances: trc20BalancesFallback,
         stakedData: {
           frozenV2: [],
           unfrozenV2: [],
@@ -428,9 +336,6 @@ export class AssetsService {
 
     const tronAccountInfo = tronAccountInfoRequest.value;
     return {
-      nativeBalance: tronAccountInfo.balance ?? 0,
-      trc10Balances: tronAccountInfo.assetV2 ?? [],
-      trc20Balances: tronAccountInfo.trc20 ?? [],
       stakedData: {
         frozenV2: tronAccountInfo.frozenV2 ?? [],
         unfrozenV2: tronAccountInfo.unfrozenV2 ?? [],
@@ -441,32 +346,10 @@ export class AssetsService {
     };
   }
 
-  /**
-   * Extracts all assets from normalized account data.
-   * Coordinates calls to individual extraction functions.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param data - Normalized account data.
-   * @returns AssetEntity[] - Array of all extracted assets.
-   */
-  #extractAssets(
-    account: KeyringAccount,
-    scope: Network,
-    data: NormalizedAccountData,
-  ): AssetEntity[] {
-    return [
-      this.#extractNativeAsset(account, scope, data.nativeBalance),
-      ...this.#extractSnapOwnedAssets(account, scope, data),
-      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
-      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
-    ];
-  }
-
   #extractSnapOwnedAssets(
     account: KeyringAccount,
     scope: Network,
-    data: NormalizedAccountData,
+    data: SnapOwnedAccountData,
   ): AssetEntity[] {
     return [
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
@@ -487,100 +370,6 @@ export class AssetsService {
   }
 
   /**
-   * Returns the asset types that can be priced (native, TRC10, TRC20).
-   * Staked, energy, and bandwidth assets have non-compliant CAIP IDs that would fail the Price API.
-   *
-   * @param assets - Array of assets to filter.
-   * @returns CaipAssetType[] - Array of priceable asset types.
-   */
-  #getPriceableAssetTypes(assets: AssetEntity[]): CaipAssetType[] {
-    return assets
-      .filter(
-        (asset) =>
-          asset.assetType.includes('/slip44:') ||
-          asset.assetType.includes('/trc10:') ||
-          asset.assetType.includes('/trc20:'),
-      )
-      .map((asset) => asset.assetType);
-  }
-
-  /**
-   * Enriches assets with metadata (symbol, decimals, iconUrl) and calculates uiAmount.
-   *
-   * @param assets - Raw assets to enrich.
-   * @param assetsMetadata - Metadata lookup by asset type.
-   * @returns AssetEntity[] - Enriched assets.
-   */
-  #enrichAssetsWithMetadata(
-    assets: AssetEntity[],
-    assetsMetadata: Record<CaipAssetType, AssetMetadata | null>,
-  ): AssetEntity[] {
-    return assets.map((asset) => {
-      const metadata = assetsMetadata[
-        asset.assetType
-      ] as FungibleAssetMetadata | null;
-
-      const {
-        symbol: initialSymbol,
-        decimals: initialDecimals = 0,
-        iconUrl: initialIconUrl,
-      } = asset;
-      let symbol = initialSymbol;
-      let decimals = initialDecimals;
-      let iconUrl = initialIconUrl;
-
-      if (metadata?.fungible) {
-        const unit = metadata.units?.[0];
-        if (unit) {
-          symbol = unit.symbol ?? metadata.symbol ?? symbol;
-          decimals = unit.decimals ?? decimals;
-        } else {
-          symbol = metadata?.symbol ?? symbol;
-        }
-        iconUrl = metadata.iconUrl ?? iconUrl;
-      }
-
-      const uiAmount = toUiAmount(asset.rawAmount, decimals).toString();
-
-      return {
-        ...asset,
-        symbol,
-        decimals,
-        uiAmount,
-        iconUrl,
-      };
-    });
-  }
-
-  /**
-   * Extracts the native TRX asset from the balance.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param balance - The native balance in sun.
-   * @returns AssetEntity - The native TRX asset.
-   */
-  #extractNativeAsset(
-    account: KeyringAccount,
-    scope: Network,
-    balance: number,
-  ): AssetEntity {
-    return {
-      assetType: Networks[scope].nativeToken.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].nativeToken.symbol,
-      decimals: Networks[scope].nativeToken.decimals,
-      rawAmount: balance.toString(),
-      uiAmount: toUiAmount(
-        balance,
-        Networks[scope].nativeToken.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].nativeToken.iconUrl,
-    };
-  }
-
-  /**
    * Extracts staked TRX assets (for bandwidth and energy).
    *
    * @param account - The keyring account.
@@ -591,7 +380,7 @@ export class AssetsService {
   #extractStakedNativeAssets(
     account: KeyringAccount,
     scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
+    stakedData: SnapOwnedAccountData['stakedData'],
   ): AssetEntity[] {
     const assets: AssetEntity[] = [];
 
@@ -659,7 +448,7 @@ export class AssetsService {
   #extractReadyForWithdrawalAsset(
     account: KeyringAccount,
     scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
+    stakedData: SnapOwnedAccountData['stakedData'],
   ): AssetEntity {
     const currentTimestamp = Date.now();
     let readyForWithdrawalAmount = 0;
@@ -729,7 +518,7 @@ export class AssetsService {
   #extractInLockPeriodAsset(
     account: KeyringAccount,
     scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
+    stakedData: SnapOwnedAccountData['stakedData'],
   ): AssetEntity {
     const currentTimestamp = Date.now();
     let inLockPeriodAmount = 0;
@@ -857,66 +646,6 @@ export class AssetsService {
         iconUrl: Networks[scope].maximumEnergy.iconUrl,
       },
     ];
-  }
-
-  /**
-   * Extracts TRC10 assets from the balances array.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc10Balances - TRC10 token balances as `{ key: tokenId, value: balance }[]`.
-   * @returns AssetEntity[] - Array of TRC10 asset entities.
-   */
-  #extractTrc10Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc10Balances: TronAccount['assetV2'],
-  ): AssetEntity[] {
-    return (
-      trc10Balances?.flatMap((tokenObject) => {
-        // assetV2 has structure: { "key": "token_id", "value": "balance" }
-        return {
-          assetType: `${scope}/trc10:${tokenObject.key}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: tokenObject.value?.toString() ?? '0',
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      }) ?? []
-    );
-  }
-
-  /**
-   * Extracts TRC20 assets from a balances array.
-   * Works with both active accounts (tronAccountInfo.trc20) and inactive accounts (getTrc20BalancesByAddress).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc20Balances - Array of `Record<contractAddress, balance>` objects (e.g., `[{ "TContractAddr": "1000" }]`).
-   * @returns AssetEntity[] - Array of TRC20 asset entities.
-   */
-  #extractTrc20Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc20Balances: Trc20Balance[],
-  ): AssetEntity[] {
-    return trc20Balances.flatMap((tokenObject) => {
-      return Object.entries(tokenObject).map(([address, balance]) => {
-        return {
-          assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: balance,
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      });
-    });
   }
 
   async getAssetsMetadata(

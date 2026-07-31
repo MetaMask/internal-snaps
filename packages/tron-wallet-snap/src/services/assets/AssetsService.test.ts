@@ -514,38 +514,6 @@ describe('AssetsService', () => {
           },
         );
       });
-
-      it('tracks spot price errors', async () => {
-        await withAssetsService(
-          async ({
-            assetsService,
-            mockSnapClient,
-            mockTrongridApiClient,
-            mockTronHttpClient,
-            mockPriceApiClient,
-          }) => {
-            const error = new Error('Spot price endpoint unavailable');
-
-            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
-              createMockTronAccount({
-                address: mockAccount.address,
-                balance: 1000000,
-              }),
-            );
-            mockTronHttpClient.getAccountResources.mockResolvedValue(
-              emptyAccountResources,
-            );
-            mockPriceApiClient.getMultipleSpotPrices.mockRejectedValue(error);
-
-            await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
-            );
-
-            expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
-          },
-        );
-      });
     });
 
     describe('bandwidth', () => {
