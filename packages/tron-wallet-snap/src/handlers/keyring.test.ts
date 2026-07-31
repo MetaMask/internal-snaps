@@ -3,6 +3,7 @@ import type {
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
   KeyringRequest,
 } from '@metamask/keyring-api';
+import type { ExportAccountOptions } from '@metamask/keyring-api/v2';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
@@ -76,6 +77,12 @@ describe('KeyringHandler', () => {
       create: jest.fn(),
       createAccounts: jest.fn(),
       getAll: jest.fn().mockResolvedValue([mockAccount]),
+      deriveTronKeypair: jest.fn().mockResolvedValue({
+        privateKeyHex: 'a'.repeat(64),
+        privateKeyBytes: new Uint8Array(32),
+        publicKeyBytes: new Uint8Array(33),
+        address: mockAccount.address,
+      }),
     } as unknown as jest.Mocked<AccountsService>;
     mockAssetsService = {
       getByKeyringAccountId: jest.fn().mockResolvedValue([]),
@@ -673,6 +680,84 @@ describe('KeyringHandler', () => {
       expect(mockTransactionsService.findByAccounts).toHaveBeenCalledWith([
         mockAccount,
       ]);
+    });
+  });
+
+  describe('exportAccount', () => {
+    const validPrivateKeyHex = 'a'.repeat(64);
+
+    it('returns the private key with default hexadecimal encoding', async () => {
+      const result = await keyringHandler.exportAccount(mockAccount.id);
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'hexadecimal',
+        privateKey: validPrivateKeyHex,
+      });
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: mockAccount.entropySource,
+        derivationPath: mockAccount.derivationPath,
+      });
+    });
+
+    it('returns the private key with explicit hexadecimal encoding', async () => {
+      const options: ExportAccountOptions = {
+        type: 'private-key',
+        encoding: 'hexadecimal',
+      };
+
+      const result = await keyringHandler.exportAccount(
+        mockAccount.id,
+        options,
+      );
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'hexadecimal',
+        privateKey: validPrivateKeyHex,
+      });
+    });
+
+    it('throws when the account is not found', async () => {
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id),
+      ).rejects.toThrow('not found');
+    });
+
+    it('throws when a non-hexadecimal encoding is requested', async () => {
+      const options = {
+        type: 'private-key',
+        encoding: 'base58',
+      } as unknown as ExportAccountOptions;
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id, options),
+      ).rejects.toThrow('Only hexadecimal private key export is supported');
+    });
+
+    it('throws SnapError when key derivation fails', async () => {
+      mockAccountsService.deriveTronKeypair.mockRejectedValue(
+        new Error('derivation failed'),
+      );
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id),
+      ).rejects.toThrow('Error exporting account');
+    });
+
+    it('throws SnapError when the derived private key fails hex validation', async () => {
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        privateKeyHex: 'not-valid-hex',
+        privateKeyBytes: new Uint8Array(32),
+        publicKeyBytes: new Uint8Array(33),
+        address: mockAccount.address,
+      });
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id),
+      ).rejects.toThrow('Error exporting account');
     });
   });
 });
