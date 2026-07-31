@@ -93,7 +93,7 @@ export async function render(
   // Parallelize: Get preferences + Fetch account assets
   const [preferences, accountAssets] = await Promise.all([
     snapClient.getPreferences().catch(() => DEFAULT_CONTEXT.preferences),
-    assetsService.getAssetsByAccountId(account.id, [
+    assetsService.getAccountAssetsByIDs(account.id, [
       Networks[scope as Network].nativeToken.id,
       Networks[scope as Network].bandwidth.id,
       Networks[scope as Network].energy.id,

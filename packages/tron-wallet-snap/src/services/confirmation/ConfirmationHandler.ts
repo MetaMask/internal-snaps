@@ -235,7 +235,7 @@ export class ConfirmationHandler {
     );
 
     const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAssetsByAccountId(account.id, [
+      await this.#assetsService.getAccountAssetsByIDs(account.id, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
