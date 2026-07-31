@@ -1,4 +1,8 @@
-import type { AccountId, Asset, Caip19AssetId } from '@metamask/assets-controller';
+import type {
+  AccountId,
+  Asset,
+  Caip19AssetId,
+} from '@metamask/assets-controller';
 import { parseCaipAssetType } from '@metamask/utils';
 
 import { toUiAmount } from '../../../utils/toUiAmount';

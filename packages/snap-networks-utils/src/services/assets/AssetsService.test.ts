@@ -5,8 +5,8 @@ import type {
 } from '@metamask/assets-controller';
 import type { CaipChainId } from '@metamask/utils';
 
-import type { AssetsServiceMessengerCaller } from './messenger';
 import { AssetsService } from './AssetsService';
+import type { AssetsServiceMessengerCaller } from './messenger';
 
 const ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000' as AccountId;
 const ASSET_ID = 'tron:728126428/slip44:195' as Caip19AssetId;

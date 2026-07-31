@@ -1,8 +1,6 @@
+import type { CoreMessengerActions } from '../../types/core-messenger';
+import { CORE_MESSENGER_NAMESPACE } from '../../types/core-messenger';
 import { ASSETS_SERVICE_NAME } from './messenger';
-import {
-  CORE_MESSENGER_NAMESPACE,
-  type CoreMessengerActions,
-} from '../../types/core-messenger';
 
 describe('messenger types', () => {
   it('exports service and core messenger namespaces', () => {

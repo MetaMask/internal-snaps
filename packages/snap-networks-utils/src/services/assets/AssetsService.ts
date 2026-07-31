@@ -98,10 +98,8 @@ export class AssetsService {
       scope,
     );
 
-    return (
-      Object.entries(controllerAssets) as [Caip19AssetId, Asset][]
-    ).map(([assetId, asset]) =>
-      mapControllerAsset(accountId, assetId, asset),
+    return (Object.entries(controllerAssets) as [Caip19AssetId, Asset][]).map(
+      ([assetId, asset]) => mapControllerAsset(accountId, assetId, asset),
     );
   }
 }
