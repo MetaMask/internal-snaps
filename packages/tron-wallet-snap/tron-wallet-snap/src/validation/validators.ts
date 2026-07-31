@@ -1,0 +1,61 @@
+/* eslint-disable @typescript-eslint/only-throw-error */
+import { InvalidParamsError, UnauthorizedError } from '@metamask/snaps-sdk';
+import type { Infer, Struct } from '@metamask/superstruct';
+import { assert } from '@metamask/superstruct';
+
+import { originPermissions } from '../permissions';
+
+export const validateOrigin = (origin: string, method: string): void => {
+  if (!origin) {
+    throw new UnauthorizedError('Origin not found');
+  }
+  if (!originPermissions.get(origin)?.has(method)) {
+    throw new UnauthorizedError('Permission denied');
+  }
+};
+
+/**
+ * Validates that the request parameters conform to the expected structure defined by the provided struct.
+ *
+ * @template Params - The expected structure of the request parameters.
+ * @param requestParams - The request parameters to validate.
+ * @param struct - The expected structure of the request parameters.
+ * @throws {typeof InvalidParamsError} If the request parameters do not conform to the expected structure.
+ */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function validateRequest<Params, TStruct extends Struct<any>>(
+  requestParams: Params,
+  struct: TStruct,
+): asserts requestParams is Infer<TStruct> {
+  try {
+    assert(requestParams, struct);
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (validationError: any) {
+    throw new InvalidParamsError(validationError.message);
+  }
+}
+
+/**
+ * Validates that the response conforms to the expected structure defined by the provided struct.
+ *
+ * @template Params - The expected structure of the response.
+ * @param response - The response to validate.
+ * @param struct - The expected structure of the response.
+ * @throws Error if the response does not conform to the expected structure.
+ */
+// TODO: Replace `any` with type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function validateResponse<Params, TStruct extends Struct<any>>(
+  response: Params,
+  struct: TStruct,
+): asserts response is Infer<TStruct> {
+  try {
+    assert(response, struct);
+  } catch (error) {
+    throw new Error(`Invalid Response: ${(error as Error).message}`, {
+      cause: error,
+    });
+  }
+}

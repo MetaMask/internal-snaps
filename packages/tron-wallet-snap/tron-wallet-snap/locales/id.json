@@ -1,0 +1,107 @@
+{
+  "locale": "id",
+  "messages": {
+    "confirmation.transaction.title": {
+      "message": "Permintaan transaksi"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Estimasi perubahan"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Estimasi perubahan merupakan hal yang mungkin terjadi jika Anda melakukan transaksi ini. Ini hanyalah prediksi, bukan jaminan."
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Anda mengirim"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Bandwidth yang digunakan"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Anda menerima"
+    },
+    "confirmation.origin": {
+      "message": "Permintaan dari"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Ini adalah situs yang meminta konfirmasi Anda."
+    },
+    "confirmation.from": {
+      "message": "Dari"
+    },
+    "confirmation.to": {
+      "message": "Ke"
+    },
+    "confirmation.network": {
+      "message": "Jaringan"
+    },
+    "confirmation.transactionFee": {
+      "message": "Biaya jaringan"
+    },
+    "confirmation.confirmButton": {
+      "message": "Konfirmasikan"
+    },
+    "confirmation.cancelButton": {
+      "message": "Batal"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Tanda tangani pesan"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Pesan"
+    },
+    "confirmation.account": {
+      "message": "Akun"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Tanda tangani transaksi"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Estimasi perubahan tidak tersedia"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Tidak ada estimasi perubahan"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Karena kesalahan, kami tidak dapat memeriksa peringatan keamanan."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Hanya lanjutkan jika Anda mempercayai setiap alamat yang terlibat."
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Transaksi ini dikembalikan selama simulasi."
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "{reason}"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Ini adalah permintaan yang menipu"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Jika Anda menyetujui permintaan ini, pihak ketiga yang dikenal melakukan penipuan akan mengambil semua aset Anda."
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Pelajari lebih lanjut"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Saran keamanan oleh"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "Terjadi kesalahan yang tidak diketahui"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Saldo tidak mencukupi"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transaksi tidak valid"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Dana tidak mencukupi"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Alamat tidak valid"
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Metode tidak didukung"
+    }
+  }
+}
