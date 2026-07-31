@@ -10,6 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add package scaffold with an example `logger` module for shared network-snap utilities ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
-- Add shared `AssetsService` for Core AssetsController reads, plus `mapControllerAsset` and `toUiAmount` helpers ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
+- Add shared `AssetsService` for Core AssetsController reads, plus `mapControllerAsset` and `toUiAmount` helpers
 
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
