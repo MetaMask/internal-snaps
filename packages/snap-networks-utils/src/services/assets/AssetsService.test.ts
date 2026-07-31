@@ -1,10 +1,11 @@
-import type { Asset } from '@metamask/assets-controller';
+import type { AccountId, Asset } from '@metamask/assets-controller';
 import type { CaipChainId } from '@metamask/utils';
 
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { AssetsService } from './AssetsService';
 
-const ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
+const ACCOUNT_ID =
+  '550e8400-e29b-41d4-a716-446655440000' as AccountId;
 const ASSET_ID = 'tron:728126428/slip44:195';
 const CHAIN_ID = 'tron:728126428' as CaipChainId;
 
@@ -133,15 +134,6 @@ describe('AssetsService', () => {
         ).toStrictEqual({
           [ASSET_ID]: null,
         });
-      });
-    });
-
-    it('rejects an empty account ID before calling the controller', async () => {
-      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
-        await expect(
-          assetsService.getAccountAssetsByIDs('', [ASSET_ID]),
-        ).rejects.toThrow('Account ID must be a non-empty string');
-        expect(mockCoreMessenger.call).not.toHaveBeenCalled();
       });
     });
   });

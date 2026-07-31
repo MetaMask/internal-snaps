@@ -1,7 +1,8 @@
 export type { Logger } from './logger';
 export { createPrefixedLogger, logger, noOpLogger } from './logger';
-export { AssetsService, mapControllerAsset } from './services/assets';
-export type { AssetEntity, AssetScope } from './services/assets';
+export { AssetsService } from './services/assets/AssetsService';
+export type { AssetEntity, AssetScope } from './services/assets/types';
+export { mapControllerAsset } from './services/assets/utils/mapControllerAsset';
 export type {
   AssetsControllerGetAssetAction,
   AssetsControllerGetAssetsAction,

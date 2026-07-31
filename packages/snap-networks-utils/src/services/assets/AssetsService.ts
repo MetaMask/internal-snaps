@@ -1,28 +1,11 @@
-import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
+import type { AccountId, Asset, Caip19AssetId } from '@metamask/assets-controller';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
-import { assert, parseCaipAssetType } from '@metamask/utils';
+import { parseCaipAssetType } from '@metamask/utils';
 
 import type { CoreMessengerCaller } from '../../types/core-messenger';
-import { mapControllerAsset } from './mapControllerAsset';
 import type { AssetEntity, AssetScope } from './types';
-
-/**
- * Builds the account reference AssetsController expects for ID-keyed lookups.
- *
- * The controller indexes primarily by `account.id` for these read paths; the
- * remaining {@link InternalAccount} fields are supplied by Core when it has
- * them. We assert a non-empty ID, then narrow to {@link InternalAccount}.
- *
- * @param accountId - Keyring account ID.
- * @returns Account reference for AssetsController calls.
- */
-function toInternalAccountRef(accountId: string): InternalAccount {
-  assert(accountId.length > 0, 'Account ID must be a non-empty string');
-
-  // AssetsController:getAssets indexes by account.id for these read paths.
-  return { id: accountId } as InternalAccount;
-}
+import { mapControllerAsset } from './utils/mapControllerAsset';
 
 /**
  * Normalizes a single scope or list of scopes to a chain-ID array.
@@ -63,7 +46,7 @@ export class AssetsService {
    * @returns Mapped asset, or `null`.
    */
   async getAccountAssetByID(
-    accountId: string,
+    accountId: AccountId,
     assetId: string,
   ): Promise<AssetEntity | null> {
     const result = await this.#coreMessenger.call(
@@ -88,7 +71,7 @@ export class AssetsService {
    * @returns Map of asset ID → mapped asset (or `null` when missing).
    */
   async getAccountAssetsByIDs(
-    accountId: string,
+    accountId: AccountId,
     assetIds: string[],
   ): Promise<Record<string, AssetEntity | null>> {
     if (assetIds.length === 0) {
@@ -105,7 +88,7 @@ export class AssetsService {
 
     const controllerAssets = await this.#coreMessenger.call(
       'AssetsController:getAssets',
-      [toInternalAccountRef(accountId)],
+      [{ id: accountId } as InternalAccount],
       { chainIds },
     );
 
@@ -134,13 +117,13 @@ export class AssetsService {
    * @returns Mapped assets present in controller state.
    */
   async getAccountAssets(
-    accountId: string,
+    accountId: AccountId,
     scope?: AssetScope,
   ): Promise<AssetEntity[]> {
     const chainIds = toChainIds(scope);
     const controllerAssets = await this.#coreMessenger.call(
       'AssetsController:getAssets',
-      [toInternalAccountRef(accountId)],
+      [{ id: accountId } as InternalAccount],
       chainIds ? { chainIds } : undefined,
     );
 

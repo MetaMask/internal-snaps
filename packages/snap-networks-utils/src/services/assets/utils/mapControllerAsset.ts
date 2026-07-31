@@ -1,9 +1,9 @@
-import type { Asset } from '@metamask/assets-controller';
+import type { AccountId, Asset } from '@metamask/assets-controller';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
-import { toUiAmount } from '../../utils/toUiAmount';
-import type { AssetEntity } from './types';
+import { toUiAmount } from '../../../utils/toUiAmount';
+import type { AssetEntity } from '../types';
 
 /**
  * Maps an AssetsController asset to the shared {@link AssetEntity} shape.
@@ -14,7 +14,7 @@ import type { AssetEntity } from './types';
  * @returns Mapped asset entity.
  */
 export function mapControllerAsset(
-  accountId: string,
+  accountId: AccountId,
   assetId: string,
   asset: Asset,
 ): AssetEntity {
