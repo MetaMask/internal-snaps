@@ -31,7 +31,7 @@ snapLogger.info('account synced');
 ### AssetsController reads
 
 ```typescript
-import { AssetsService } from '@metamask/snap-networks-utils/assets';
+import { AssetsService } from '@metamask/snap-networks-utils';
 
 const assetsService = new AssetsService({ coreMessenger });
 const asset = await assetsService.getAccountAssetByID(accountId, assetId);
