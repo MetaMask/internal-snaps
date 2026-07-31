@@ -2572,7 +2572,11 @@ describe('FeeCalculatorService', () => {
     describe('Graceful failure when TronGrid is unavailable', () => {
       // Native transfer with insufficient bandwidth so a TRX fee is owed and
       // the chain-params conversion path is exercised.
-      const buildNativeTxWithBandwidthOverage = () => ({
+      const buildNativeTxWithBandwidthOverage = (): {
+        transaction: Transaction;
+        availableEnergy: BigNumber;
+        availableBandwidth: BigNumber;
+      } => ({
         transaction: getTransactionExample('native'),
         availableEnergy: ZERO,
         availableBandwidth: BigNumber(100), // < 266 bytes needed
