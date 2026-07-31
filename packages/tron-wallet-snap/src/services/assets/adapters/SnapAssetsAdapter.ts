@@ -23,11 +23,11 @@ import type {
   FiatTicker,
   SpotPrice,
   SpotPrices,
-} from '../../clients/price-api/types';
+} from '../../../clients/price-api/types';
 import {
   GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
   VsCurrencyParamStruct,
-} from '../../clients/price-api/types';
+} from '../../../clients/price-api/types';
 import type { SnapClient } from '../../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../../clients/tron-http';
@@ -37,7 +37,7 @@ import type {
   RawTronUnfrozenV2,
   Trc20Balance,
   TronAccount,
-} from '../../clients/trongrid/types';
+} from '../../../clients/trongrid/types';
 import type { KnownCaip19Id, Network } from '../../../constants';
 import {
   BANDWIDTH_METADATA,
@@ -53,7 +53,7 @@ import {
   TRX_STAKED_FOR_BANDWIDTH_METADATA,
   TRX_STAKED_FOR_ENERGY_METADATA,
   TRX_STAKING_REWARDS_METADATA,
-} from '../../constants';
+} from '../../../constants';
 import { configProvider } from '../../../context';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
@@ -70,7 +70,7 @@ import type {
   StakedCaipAssetType,
   StakingRewardsCaipAssetType,
   TokenCaipAssetType,
-} from './types';
+} from '../types';
 
 /**
  * Normalized account data structure that provides a consistent shape for both
