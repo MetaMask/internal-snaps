@@ -8,7 +8,7 @@ import {
   Network,
 } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { BackgroundEventMethod } from '../../handlers/cronjob';
+import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';

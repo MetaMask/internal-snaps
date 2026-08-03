@@ -9,9 +9,9 @@ import type {
   OnAssetsMarketDataResponse,
 } from '@metamask/snaps-sdk';
 
-import type { AssetsService } from '../services/assets/AssetsService';
-import type { ILogger } from '../utils/logger';
-import { createPrefixedLogger } from '../utils/logger';
+import type { AssetsService } from '../../services/assets/AssetsService';
+import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
 
 export class AssetsHandler {
   readonly #logger: ILogger;

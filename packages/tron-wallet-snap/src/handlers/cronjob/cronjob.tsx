@@ -1,29 +1,29 @@
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
-import type { PriceApiClient } from '../clients/price-api/PriceApiClient';
-import type { SnapClient } from '../clients/snap/SnapClient';
-import type { TronHttpClient } from '../clients/tron-http/TronHttpClient';
-import type { Network } from '../constants';
-import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../constants';
-import type { TronKeyringAccount } from '../entities/keyring-account';
-import type { AccountsService } from '../services/accounts/AccountsService';
-import type { State, UnencryptedStateValue } from '../services/state/State';
-import type { TransactionExpirationRefresherService } from '../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
+import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
+import type { Network } from '../../constants';
+import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
+import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { State, UnencryptedStateValue } from '../../services/state/State';
+import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type {
   JsonTransactionRawData,
   TransactionRawData,
-} from '../services/transaction-expiration-refresher/types';
-import { EXPIRED_TRANSACTION_SCAN } from '../services/transaction-scan/buildExpiredScanResult';
-import type { TransactionScanService } from '../services/transaction-scan/TransactionScanService';
-import { FetchStatus } from '../types/snap';
-import { ConfirmSignTransaction } from '../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
-import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../ui/confirmation/views/ConfirmSignTransaction/types';
-import type { ConfirmSignTransactionContext } from '../ui/confirmation/views/ConfirmSignTransaction/types';
-import { ConfirmTransactionRequest } from '../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
-import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
-import type { ConfirmTransactionRequestContext } from '../ui/confirmation/views/ConfirmTransactionRequest/types';
-import type { ILogger } from '../utils/logger';
-import { createPrefixedLogger } from '../utils/logger';
+} from '../../services/transaction-expiration-refresher/types';
+import { EXPIRED_TRANSACTION_SCAN } from '../../services/transaction-scan/buildExpiredScanResult';
+import type { TransactionScanService } from '../../services/transaction-scan/TransactionScanService';
+import { FetchStatus } from '../../types/snap';
+import { ConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
+import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
+import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
+import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
+import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import type { ILogger } from '../../utils/logger';
+import { createPrefixedLogger } from '../../utils/logger';
 
 export enum CronjobMethod {
   ContinuouslySynchronizeSelectedAccounts = 'onSynchronizeSelectedAccountsCronjob',

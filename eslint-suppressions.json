@@ -257,7 +257,7 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/handlers/cronjob.test.tsx": {
+  "packages/tron-wallet-snap/src/handlers/cronjob/cronjob.test.tsx": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
     },
@@ -265,7 +265,7 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/handlers/keyring.test.ts": {
+  "packages/tron-wallet-snap/src/handlers/keyring/keyring.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 10
     },
@@ -273,7 +273,7 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/handlers/keyring.ts": {
+  "packages/tron-wallet-snap/src/handlers/keyring/keyring.ts": {
     "import-x/no-extraneous-dependencies": {
       "count": 1
     }
