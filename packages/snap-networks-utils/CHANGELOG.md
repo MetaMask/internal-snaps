@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
-- Add package scaffold with an example `logger` module for shared network-snap utilities ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
+- Initial package release ([#82](https://github.com/MetaMask/internal-snaps/pull/82), [#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
