@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `AssetsService` now owns asset-handler logic (metadata, conversions, market data, historical prices) and syncs only snap-owned assets via `syncSnapOwnedAssets`, replacing the previous `fetchAssetsAndBalancesForAccount` + `saveMany` flow.
+
 ## [2.0.0]
 
 ### Changed

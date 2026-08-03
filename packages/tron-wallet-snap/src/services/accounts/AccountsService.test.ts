@@ -21,7 +21,6 @@ import {
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
-import type { NativeAsset } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
 import { mockLogger } from '../../utils/mockLogger';
@@ -120,7 +119,7 @@ type WithAccountsServiceCallback = (payload: {
   mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>>;
   mockLogger: ILogger;
   mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
+    Pick<AssetsService, 'syncSnapOwnedAssets'>
   >;
   mockSnapClient: jest.Mocked<
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
@@ -265,10 +264,9 @@ async function withAccountsService(
   };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
+    Pick<AssetsService, 'syncSnapOwnedAssets'>
   > = {
-    fetchAssetsAndBalancesForAccount: jest.fn().mockResolvedValue([]),
-    saveMany: jest.fn().mockResolvedValue(undefined),
+    syncSnapOwnedAssets: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockTransactionsService: jest.Mocked<
@@ -1068,7 +1066,7 @@ describe('AccountsService', () => {
   });
 
   describe('synchronizeAssets', () => {
-    it('calls fetch for each account and scope, then saveMany', async () => {
+    it('calls syncSnapOwnedAssets with accounts and active networks', async () => {
       const account: TronKeyringAccount = {
         id: 'sync-asset-id',
         address: 'TSyncAsset12345678901234567',
@@ -1080,18 +1078,6 @@ describe('AccountsService', () => {
         derivationPath: "m/44'/195'/0'/0/0",
         index: 0,
       };
-      const mockAssets: NativeAsset[] = [
-        {
-          assetType: `${Network.Mainnet}/slip44:195`,
-          keyringAccountId: 'sync-asset-id',
-          network: Network.Mainnet,
-          symbol: 'TRX',
-          decimals: 6,
-          rawAmount: '1000000',
-          uiAmount: '1',
-          iconUrl: '',
-        },
-      ];
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
@@ -1099,23 +1085,15 @@ describe('AccountsService', () => {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet, Network.Shasta],
           });
-          mockAssetsService.fetchAssetsAndBalancesForAccount.mockResolvedValue(
-            mockAssets,
-          );
 
           await accountsService.synchronizeAssets([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledTimes(2);
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Mainnet, account);
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Shasta, account);
-          expect(mockAssetsService.saveMany).toHaveBeenCalledWith(
-            expect.arrayContaining(mockAssets),
+          expect(mockAssetsService.syncSnapOwnedAssets).toHaveBeenCalledTimes(
+            1,
+          );
+          expect(mockAssetsService.syncSnapOwnedAssets).toHaveBeenCalledWith(
+            [account],
+            [Network.Mainnet, Network.Shasta],
           );
         },
       );
@@ -1140,10 +1118,10 @@ describe('AccountsService', () => {
 
           await accountsService.synchronizeAssets([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).not.toHaveBeenCalled();
-          expect(mockAssetsService.saveMany).toHaveBeenCalledWith([]);
+          expect(mockAssetsService.syncSnapOwnedAssets).toHaveBeenCalledWith(
+            [account],
+            [],
+          );
         },
       );
     });
@@ -1232,9 +1210,10 @@ describe('AccountsService', () => {
 
           await accountsService.synchronize([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Mainnet, account);
+          expect(mockAssetsService.syncSnapOwnedAssets).toHaveBeenCalledWith(
+            [account],
+            [Network.Mainnet],
+          );
           expect(
             mockTransactionsService.fetchNewTransactionsForAccount,
           ).toHaveBeenCalledWith(Network.Mainnet, account);
