@@ -4,9 +4,9 @@ import type { CaipChainId } from '@metamask/utils';
 import type { AssetsProviderMessenger } from './AssetsProvider';
 import { AssetsProvider } from './AssetsProvider';
 
-const ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000' as AccountId;
-const ASSET_ID = 'tron:728126428/slip44:195' as Caip19AssetId;
-const CHAIN_ID = 'tron:728126428' as CaipChainId;
+const ACCOUNT_ID: AccountId = '550e8400-e29b-41d4-a716-446655440000';
+const ASSET_ID: Caip19AssetId = 'tron:728126428/slip44:195';
+const CHAIN_ID: CaipChainId = 'tron:728126428';
 
 type WithAssetsProviderCallback<ReturnValue> = (payload: {
   assetsProvider: AssetsProvider;

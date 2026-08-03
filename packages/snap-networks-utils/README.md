@@ -51,10 +51,10 @@ type CoreMessengerActions =
 const messenger = getMessenger<Messenger<string, CoreMessengerActions>>();
 const assetsProvider = new AssetsProvider({ messenger });
 
-const asset = await assetsProvider.getAccountAssetByID(
-  accountId as AccountId,
-  assetId as Caip19AssetId,
-);
+const accountId: AccountId = '550e8400-e29b-41d4-a716-446655440000';
+const assetId: Caip19AssetId = 'tron:728126428/slip44:195';
+
+const asset = await assetsProvider.getAccountAssetByID(accountId, assetId);
 ```
 
 ## Contributing
