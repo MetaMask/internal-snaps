@@ -135,8 +135,8 @@ export class AssetsService {
         this.#snapAdapter.fetchSnapOwnedAssetsForAccount(scope, account),
       ),
     );
-    const assets = responses.flatMap((r) =>
-      r.status === 'fulfilled' ? r.value : [],
+    const assets = responses.flatMap((response) =>
+      response.status === 'fulfilled' ? response.value : [],
     );
     await this.#snapAdapter.saveMany(assets);
   }
@@ -543,6 +543,7 @@ export class AssetsService {
   ): Promise<Record<TokenCaipAssetType, FungibleAssetMetadata | null>> {
     return this.#tokenApiClient.getTokensMetadata(assetTypes);
   }
+
   #extractFiatTicker(caipAssetType: CaipAssetType): FiatTicker {
     if (!AssetsService.isFiat(caipAssetType)) {
       throw new Error('Passed caipAssetType is not a fiat asset');

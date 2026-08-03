@@ -161,7 +161,10 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
     >
   >;
   mockTrongridApiClient: jest.Mocked<
-    Pick<TrongridApiClient, 'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'>
+    Pick<
+      TrongridApiClient,
+      'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
+    >
   >;
   mockTronHttpClient: jest.Mocked<
     Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
@@ -205,7 +208,10 @@ async function withAssetsService<ReturnValue>(
   };
 
   const mockTrongridApiClient: jest.Mocked<
-    Pick<TrongridApiClient, 'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'>
+    Pick<
+      TrongridApiClient,
+      'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
+    >
   > = {
     getAccountInfoByAddress: jest.fn(),
     getTrc20BalancesByAddress: jest.fn(),
@@ -1381,7 +1387,8 @@ describe('AssetsService', () => {
             expect(
               savedAssets.some(
                 (asset) =>
-                  asset.assetType === KnownCaip19Id.TrxStakedForBandwidthMainnet,
+                  asset.assetType ===
+                  KnownCaip19Id.TrxStakedForBandwidthMainnet,
               ),
             ).toBe(true);
             expect(
@@ -1417,7 +1424,8 @@ describe('AssetsService', () => {
             expect(
               savedAssets.some(
                 (asset) =>
-                  asset.assetType === KnownCaip19Id.TrxReadyForWithdrawalMainnet,
+                  asset.assetType ===
+                  KnownCaip19Id.TrxReadyForWithdrawalMainnet,
               ),
             ).toBe(true);
           },
@@ -1502,7 +1510,10 @@ describe('AssetsService', () => {
               minimalTronAccount,
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue(
-              getMockAccountResources({ EnergyLimit: 100000, EnergyUsed: 65000 }),
+              getMockAccountResources({
+                EnergyLimit: 100000,
+                EnergyUsed: 65000,
+              }),
             );
 
             await assetsService.syncSnapOwnedAssets(

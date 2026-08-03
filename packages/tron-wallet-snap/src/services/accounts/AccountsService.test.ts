@@ -118,9 +118,7 @@ type WithAccountsServiceCallback = (payload: {
   >;
   mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>>;
   mockLogger: ILogger;
-  mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'syncSnapOwnedAssets'>
-  >;
+  mockAssetsService: jest.Mocked<Pick<AssetsService, 'syncSnapOwnedAssets'>>;
   mockSnapClient: jest.Mocked<
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
   >;

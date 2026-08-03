@@ -311,9 +311,14 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/assets/adapters/SnapAssetsAdapter.ts": {
+  "packages/tron-wallet-snap/src/services/assets/AssetsService.ts": {
     "import-x/no-extraneous-dependencies": {
       "count": 2
+    }
+  },
+  "packages/tron-wallet-snap/src/services/assets/adapters/SnapAssetsAdapter.ts": {
+    "import-x/no-extraneous-dependencies": {
+      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/services/config/ConfigProvider.ts": {
