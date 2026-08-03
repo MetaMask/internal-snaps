@@ -4,6 +4,7 @@ import {
   SolMethod,
   TrxAccountType,
 } from '@metamask/keyring-api';
+import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   array,
@@ -11,10 +12,7 @@ import {
   enums,
   integer,
   literal,
-  min,
-  nonempty,
   nullable,
-  number,
   object,
   optional,
   pattern,
@@ -196,6 +194,11 @@ export const ListAccountTransactionsStruct = object({
   }),
 });
 
+export const ExportAccountRequestStruct = object({
+  accountId: UuidStruct,
+  options: optional(ExportAccountOptionsStruct),
+});
+
 export const NetworkStruct = enums(Object.values(Network));
 
 /**
@@ -216,18 +219,6 @@ export const CreateAccountOptionsStruct = optional(
     ),
   }),
 );
-
-/**
- * Validates discoverAccounts parameters.
- * - scopes: Non-empty array of valid Tron network scopes (e.g., 'tron:728126428')
- * - entropySource: String for the entropy source (UUID or ULID format)
- * - groupIndex: Non-negative integer for the group index
- */
-export const DiscoverAccountsStruct = object({
-  scopes: nonempty(array(NetworkStruct)),
-  entropySource: string(),
-  groupIndex: min(number(), 0),
-});
 
 export const GetAccounBalancesResponseStruct = record(
   CaipAssetTypeStruct,
@@ -314,6 +305,23 @@ export const GetFeeForTransactionParamsStruct = object({
 export const GetFeeForTransactionResponseStruct = object({
   value: nullable(PositiveNumberStringStruct),
 });
+
+/**
+ * Validates a Tron private key: exactly 64 lowercase hexadecimal characters
+ * (32 bytes without the 0x prefix).
+ */
+export const PrivateKeyHexStruct: Struct<string, null> = define(
+  'PrivateKeyHex',
+  (value) => {
+    if (typeof value !== 'string') {
+      return `Expected a string, but received: ${typeof value}`;
+    }
+    if (!/^[0-9a-f]{64}$/u.test(value)) {
+      return 'Expected a 64-character lowercase hexadecimal private key';
+    }
+    return true;
+  },
+);
 
 /**
  * Validates if a string is Base58 encoded.

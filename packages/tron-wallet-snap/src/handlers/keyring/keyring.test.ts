@@ -3,11 +3,11 @@ import type {
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
   KeyringRequest,
 } from '@metamask/keyring-api';
+import type { ExportAccountOptions } from '@metamask/keyring-api/v2';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
-import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
@@ -28,7 +28,7 @@ import { TronMultichainMethod } from './keyring-types';
  * @returns Base64 encoded string.
  */
 function toBase64(str: string): string {
-  return bytesToBase64(stringToBytes(str));
+  return Buffer.from(str).toString('base64');
 }
 
 /**
@@ -38,7 +38,7 @@ function toBase64(str: string): string {
  * @returns Hex encoded string (without 0x prefix).
  */
 function toHex(str: string): string {
-  return bytesToHex(stringToBytes(str)).slice(2);
+  return Buffer.from(str).toString('hex');
 }
 
 describe('KeyringHandler', () => {
@@ -52,7 +52,7 @@ describe('KeyringHandler', () => {
     ],
     type: 'tron:eoa',
     scopes: [Network.Mainnet, Network.Shasta],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
@@ -69,7 +69,7 @@ describe('KeyringHandler', () => {
     mockSnapClient = {
       scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
       trackError: jest.fn(),
-    } as any;
+    } as unknown as jest.Mocked<SnapClient>;
     mockAccountsService = {
       findById: jest.fn().mockResolvedValue(mockAccount),
       findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
@@ -77,19 +77,28 @@ describe('KeyringHandler', () => {
       create: jest.fn(),
       createAccounts: jest.fn(),
       getAll: jest.fn().mockResolvedValue([mockAccount]),
-    } as any;
-    mockAssetsService = {} as any;
+      deriveTronKeypair: jest.fn().mockResolvedValue({
+        privateKeyHex: 'a'.repeat(64),
+        privateKeyBytes: new Uint8Array(32),
+        publicKeyBytes: new Uint8Array(33),
+        address: mockAccount.address,
+      }),
+    } as unknown as jest.Mocked<AccountsService>;
+    mockAssetsService = {
+      getByKeyringAccountId: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<AssetsService>;
     mockTransactionsService = {
       checkAddressActivity: jest.fn(),
-    } as any;
+      findByAccounts: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<TransactionsService>;
     mockWalletService = {
       handleKeyringRequest: jest
         .fn()
         .mockResolvedValue({ signature: '0xsignature123' }),
-    } as any;
+    } as unknown as jest.Mocked<WalletService>;
     mockConfirmationHandler = {
       handleKeyringRequest: jest.fn().mockResolvedValue(true),
-    } as any;
+    } as unknown as jest.Mocked<ConfirmationHandler>;
 
     keyringHandler = new KeyringHandler({
       logger: mockLogger,
@@ -338,7 +347,7 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignMessage,
             params: {},
           },
-        } as any;
+        } as unknown as KeyringRequest;
 
         await expect(
           keyringHandler.submitRequest(invalidRequest),
@@ -355,7 +364,7 @@ describe('KeyringHandler', () => {
             method: TronMultichainMethod.SignMessage,
             // Missing params
           },
-        } as any;
+        } as unknown as KeyringRequest;
 
         await expect(keyringHandler.submitRequest(request)).rejects.toThrow(
           'satisfy a union',
@@ -513,114 +522,6 @@ describe('KeyringHandler', () => {
     });
   });
 
-  describe('discoverAccounts', () => {
-    const mockDerivedAccount: TronKeyringAccount = {
-      id: '123e4567-e89b-42d3-a456-426614174001',
-      address: 'TDerivedAddress12345678901234567',
-      options: {},
-      methods: [
-        TronMultichainMethod.SignMessage,
-        TronMultichainMethod.SignTransaction,
-      ],
-      type: 'tron:eoa',
-      scopes: [Network.Mainnet, Network.Shasta],
-      entropySource: 'test-entropy-source' as any,
-      derivationPath: "m/44'/195'/0'/0/0",
-      index: 0,
-    };
-
-    beforeEach(() => {
-      jest
-        .spyOn(mockAccountsService, 'deriveAccount')
-        .mockImplementation()
-        .mockResolvedValue(mockDerivedAccount);
-      jest
-        .spyOn(mockTransactionsService, 'checkAddressActivity')
-        .mockImplementation();
-    });
-
-    it('returns empty array if there is no activity on any of the scopes', async () => {
-      mockTransactionsService.checkAddressActivity
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(false);
-
-      const result = await keyringHandler.discoverAccounts?.(
-        [Network.Mainnet, Network.Shasta],
-        'test-entropy-source',
-        0,
-      );
-
-      expect(result).toStrictEqual([]);
-      expect(mockAccountsService.deriveAccount).toHaveBeenCalledWith({
-        entropySource: 'test-entropy-source',
-        index: 0,
-      });
-    });
-
-    it('returns discovered accounts when there is activity on any scope', async () => {
-      mockTransactionsService.checkAddressActivity
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(true);
-
-      const result = await keyringHandler.discoverAccounts?.(
-        [Network.Mainnet, Network.Shasta],
-        'test-entropy-source',
-        3,
-      );
-
-      expect(result).toStrictEqual([
-        {
-          type: 'bip44',
-          scopes: [Network.Mainnet, Network.Shasta],
-          derivationPath: mockDerivedAccount.derivationPath,
-        },
-      ]);
-    });
-
-    it('throws error if there is an error fetching transactions', async () => {
-      mockTransactionsService.checkAddressActivity.mockRejectedValue(
-        new Error('Network error'),
-      );
-
-      await expect(
-        keyringHandler.discoverAccounts?.([Network.Mainnet], 'test', 0),
-      ).rejects.toThrow('Network error');
-    });
-
-    it('throws error if no scopes are provided', async () => {
-      await expect(
-        keyringHandler.discoverAccounts?.([], 'test', 0),
-      ).rejects.toThrow('Expected a nonempty array but received an empty one');
-      expect(
-        mockTransactionsService.checkAddressActivity,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('throws error if scope is not a valid Tron network', async () => {
-      await expect(
-        keyringHandler.discoverAccounts?.(
-          ['invalid:network' as Network],
-          'test',
-          0,
-        ),
-      ).rejects.toThrow(/Expected one of/u);
-      expect(
-        mockTransactionsService.checkAddressActivity,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('throws error if groupIndex is negative', async () => {
-      await expect(
-        keyringHandler.discoverAccounts?.([Network.Mainnet], 'test', -1),
-      ).rejects.toThrow(
-        'Expected a number greater than or equal to 0 but received `-1`',
-      );
-      expect(
-        mockTransactionsService.checkAddressActivity,
-      ).not.toHaveBeenCalled();
-    });
-  });
-
   describe('setSelectedAccounts', () => {
     const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174999';
 
@@ -654,29 +555,15 @@ describe('KeyringHandler', () => {
     });
   });
 
-  describe('listAccounts', () => {
+  describe('getAccounts', () => {
     it('fails with cause', async () => {
       const causeError = new Error('Account error');
 
       mockAccountsService.getAll.mockRejectedValue(causeError);
 
-      await expect(keyringHandler.listAccounts()).rejects.toMatchObject({
-        message: 'Error listing accounts',
-        cause: causeError,
-      });
-    });
-  });
-
-  describe('createAccount', () => {
-    it('fails with cause', async () => {
-      const causeError = new Error('Account error');
-
-      mockAccountsService.create.mockRejectedValue(causeError);
-
-      await expect(keyringHandler.createAccount()).rejects.toMatchObject({
-        message: `Error creating account: ${causeError.message}`,
-        cause: causeError,
-      });
+      await expect(keyringHandler.getAccounts()).rejects.toThrow(
+        'Error listing accounts',
+      );
     });
   });
 
@@ -720,6 +607,157 @@ describe('KeyringHandler', () => {
       ).rejects.toThrow(
         'Key derivation failed. Please check your connection and try again.',
       );
+    });
+
+    it('delegates bip44:discover to accountsService.createAccounts and returns the account', async () => {
+      const createdAccounts = [
+        {
+          id: mockAccount.id,
+          address: mockAccount.address,
+          type: mockAccount.type,
+          options: mockAccount.options,
+          methods: mockAccount.methods,
+          scopes: mockAccount.scopes,
+        },
+      ];
+      const options: KeyringBatchCreateAccountOptions = {
+        type: AccountCreationType.Bip44Discover,
+        entropySource: 'entropy-source-1',
+        groupIndex: 0,
+      };
+
+      mockAccountsService.createAccounts.mockResolvedValue(createdAccounts);
+
+      const result = await keyringHandler.createAccounts(options);
+
+      expect(mockAccountsService.createAccounts).toHaveBeenCalledWith(options);
+      expect(result).toStrictEqual(createdAccounts);
+    });
+
+    it('delegates bip44:discover to accountsService.createAccounts and returns empty array when no activity', async () => {
+      const options: KeyringBatchCreateAccountOptions = {
+        type: AccountCreationType.Bip44Discover,
+        entropySource: 'entropy-source-1',
+        groupIndex: 5,
+      };
+
+      mockAccountsService.createAccounts.mockResolvedValue([]);
+
+      const result = await keyringHandler.createAccounts(options);
+
+      expect(mockAccountsService.createAccounts).toHaveBeenCalledWith(options);
+      expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe('getAccountAssets', () => {
+    it('returns asset types for an account', async () => {
+      const result = await keyringHandler.getAccountAssets(mockAccount.id);
+
+      expect(result).toStrictEqual([]);
+      expect(mockAssetsService.getByKeyringAccountId).toHaveBeenCalledWith(
+        mockAccount.id,
+      );
+    });
+
+    it('throws when the account is not found', async () => {
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        keyringHandler.getAccountAssets(mockAccount.id),
+      ).rejects.toThrow('not found');
+    });
+  });
+
+  describe('getAccountTransactions', () => {
+    it('returns paginated transactions for an account', async () => {
+      const result = await keyringHandler.getAccountTransactions(
+        mockAccount.id,
+        { limit: 10, next: null },
+      );
+
+      expect(result).toStrictEqual({ data: [], next: null });
+      expect(mockTransactionsService.findByAccounts).toHaveBeenCalledWith([
+        mockAccount,
+      ]);
+    });
+  });
+
+  describe('exportAccount', () => {
+    const validPrivateKeyHex = 'a'.repeat(64);
+
+    it('returns the private key with default hexadecimal encoding', async () => {
+      const result = await keyringHandler.exportAccount(mockAccount.id);
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'hexadecimal',
+        privateKey: validPrivateKeyHex,
+      });
+      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+        entropySource: mockAccount.entropySource,
+        derivationPath: mockAccount.derivationPath,
+      });
+    });
+
+    it('returns the private key with explicit hexadecimal encoding', async () => {
+      const options: ExportAccountOptions = {
+        type: 'private-key',
+        encoding: 'hexadecimal',
+      };
+
+      const result = await keyringHandler.exportAccount(
+        mockAccount.id,
+        options,
+      );
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'hexadecimal',
+        privateKey: validPrivateKeyHex,
+      });
+    });
+
+    it('throws when the account is not found', async () => {
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id),
+      ).rejects.toThrow('not found');
+    });
+
+    it('throws when a non-hexadecimal encoding is requested', async () => {
+      const options = {
+        type: 'private-key',
+        encoding: 'base58',
+      } as unknown as ExportAccountOptions;
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id, options),
+      ).rejects.toThrow('Only hexadecimal private key export is supported');
+    });
+
+    it('throws SnapError when key derivation fails', async () => {
+      mockAccountsService.deriveTronKeypair.mockRejectedValue(
+        new Error('derivation failed'),
+      );
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id),
+      ).rejects.toThrow('Error exporting account');
+    });
+
+    it('throws SnapError when the derived private key fails hex validation', async () => {
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        privateKeyHex: 'not-valid-hex',
+        privateKeyBytes: new Uint8Array(32),
+        publicKeyBytes: new Uint8Array(33),
+        address: mockAccount.address,
+      });
+
+      await expect(
+        keyringHandler.exportAccount(mockAccount.id),
+      ).rejects.toThrow('Error exporting account');
     });
   });
 });

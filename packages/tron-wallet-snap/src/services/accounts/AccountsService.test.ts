@@ -126,7 +126,10 @@ type WithAccountsServiceCallback = (payload: {
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
   >;
   mockTransactionsService: jest.Mocked<
-    Pick<TransactionsService, 'fetchNewTransactionsForAccount' | 'saveMany'>
+    Pick<
+      TransactionsService,
+      'fetchNewTransactionsForAccount' | 'saveMany' | 'checkAddressActivity'
+    >
   >;
 }) => void | Promise<void>;
 
@@ -272,10 +275,14 @@ async function withAccountsService(
   };
 
   const mockTransactionsService: jest.Mocked<
-    Pick<TransactionsService, 'fetchNewTransactionsForAccount' | 'saveMany'>
+    Pick<
+      TransactionsService,
+      'fetchNewTransactionsForAccount' | 'saveMany' | 'checkAddressActivity'
+    >
   > = {
     fetchNewTransactionsForAccount: jest.fn().mockResolvedValue([]),
     saveMany: jest.fn().mockResolvedValue(undefined),
+    checkAddressActivity: jest.fn().mockResolvedValue(false),
   };
 
   const accountsService = new AccountsService({
@@ -361,6 +368,24 @@ describe('AccountsService', () => {
             path: ['m', "44'", "195'", "0'", '0', '5'],
           }),
         );
+      });
+    });
+  });
+
+  describe('deriveTronKeypair', () => {
+    it('throws when getBip32Entropy returns missing key material', async () => {
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        mockSnapClient.getBip32Entropy.mockResolvedValue({
+          privateKey: undefined,
+          publicKey: undefined,
+        } as unknown as JsonBIP44Node);
+
+        await expect(
+          accountsService.deriveTronKeypair({
+            entropySource: 'test-entropy',
+            derivationPath: "m/44'/195'/0'/0/0",
+          }),
+        ).rejects.toThrow('Key derivation failed');
       });
     });
   });
@@ -570,6 +595,67 @@ describe('AccountsService', () => {
           ).not.toHaveBeenCalled();
           expect(mockSnapClient.getBip32Entropy).not.toHaveBeenCalled();
         },
+      );
+    });
+
+    it('returns empty array for bip44:discover when no on-chain activity', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockAccountsRepository,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity.mockResolvedValue(false);
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            entropySource: 'test-entropy',
+            groupIndex: 0,
+          });
+
+          expect(result).toStrictEqual([]);
+          expect(
+            mockTransactionsService.checkAddressActivity,
+          ).toHaveBeenCalled();
+          expect(
+            mockAccountsRepository.mergeKeyringAccounts,
+          ).not.toHaveBeenCalled();
+        },
+        coinJson,
+      );
+    });
+
+    it('creates and returns an account for bip44:discover when on-chain activity is found', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockAccountsRepository,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(true);
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            entropySource: 'test-entropy',
+            groupIndex: 2,
+          });
+
+          expect(result).toHaveLength(1);
+          expect(result[0]?.options).toMatchObject({
+            exportable: true,
+            entropy: expect.objectContaining({ groupIndex: 2 }),
+          });
+          expect(
+            mockAccountsRepository.mergeKeyringAccounts,
+          ).toHaveBeenCalledTimes(1);
+        },
+        coinJson,
       );
     });
   });
@@ -823,6 +909,46 @@ describe('AccountsService', () => {
           expect.objectContaining({
             metamask: { correlationId: 'corr-123' },
           }),
+        );
+      });
+    });
+
+    it('returns the persisted account and warns when repository create returns a conflicting account', async () => {
+      const conflictingAccount: TronKeyringAccount = {
+        id: 'pre-existing-conflict-id',
+        entropySource: 'test-entropy',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+        type: TrxAccountType.Eoa,
+        address: 'TConflict12345678901234567890',
+        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockAccountsRepository }) => {
+          mockAccountsRepository.create.mockResolvedValue(conflictingAccount);
+
+          const result = await accountsService.create({
+            entropySource: 'test-entropy',
+            index: 0,
+          });
+
+          expect(result.id).toBe('pre-existing-conflict-id');
+          expect(mockLogger.warn).toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('throws when no primary entropy source is available', async () => {
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        mockSnapClient.listEntropySources.mockResolvedValue([
+          { id: 'non-primary', primary: false },
+        ]);
+
+        await expect(accountsService.create()).rejects.toThrow(
+          'No default entropy source found',
         );
       });
     });

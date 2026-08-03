@@ -22,6 +22,7 @@ import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
+import { Network } from '../../constants';
 import { asStrictKeyringAccount } from '../../entities/keyring-account';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
@@ -342,15 +343,41 @@ export class AccountsService {
     assertCreateAccountOptionIsSupported(options, [
       `${AccountCreationType.Bip44DeriveIndex}`,
       `${AccountCreationType.Bip44DeriveIndexRange}`,
+      `${AccountCreationType.Bip44Discover}`,
     ]);
 
     const { entropySource } = options;
 
+    // For discovery, only proceed if the account at groupIndex has on-chain
+    // activity. No activity signals end-of-discovery; return [] to the client.
+    if (options.type === AccountCreationType.Bip44Discover) {
+      const { groupIndex } = options;
+      const derivedAccount = await this.deriveAccount({
+        entropySource,
+        index: groupIndex,
+      });
+      const activityChecks = await Promise.all(
+        Object.values(Network).map((scope) =>
+          this.#transactionsService.checkAddressActivity(
+            scope,
+            derivedAccount.address,
+          ),
+        ),
+      );
+      if (!activityChecks.some(Boolean)) {
+        return [];
+      }
+    }
+
     // Get the range of accounts to create
-    const range =
-      options.type === AccountCreationType.Bip44DeriveIndex
-        ? { from: options.groupIndex, to: options.groupIndex }
-        : options.range;
+    let range: AccountCreationRange;
+    if (options.type === AccountCreationType.Bip44DeriveIndexRange) {
+      range = options.range;
+    } else {
+      // Bip44DeriveIndex | Bip44Discover — a single group index. Ranges are
+      // inclusive, so `from` and `to` are the same.
+      range = { from: options.groupIndex, to: options.groupIndex };
+    }
     validateAccountCreationRange(range);
 
     // Get existing accounts for the same entropy source/range to avoid duplicate state writes.

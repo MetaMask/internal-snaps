@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate `KeyringHandler` to implement `KeyringSnapRpc` from `@metamask/keyring-api/v2` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Update `snap.manifest.json` to declare `derivePath` capability in the `bip44` keyring block ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Mark accounts as exportable in the keyring account mapping ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
+- Bump `@metamask/snaps-cli` from `^8.3.0` to `^8.4.1` ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+- Bump `@metamask/keyring-api` from `^23.2.0` to `^23.7.0` ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+- Bump `@metamask/keyring-snap-sdk` from `^8.0.0` to `^9.2.1` ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+- Bump `@metamask/snaps-sdk` from `11.1.1` to `11.2.0` ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
 
 ## [1.15.2]
 

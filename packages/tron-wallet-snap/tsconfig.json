@@ -11,8 +11,8 @@
     "skipLibCheck": true,
     "lib": ["ES2023", "DOM"],
     "target": "es2023",
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "types": ["jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
