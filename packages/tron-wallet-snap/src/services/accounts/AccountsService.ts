@@ -495,24 +495,7 @@ export class AccountsService {
    */
   async synchronizeAssets(accounts: TronKeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
-    const combinations = accounts.flatMap((account) =>
-      scopes.map((scope) => ({ account, scope })),
-    );
-
-    const assetResponses = await Promise.allSettled(
-      combinations.map(async ({ account, scope }) => {
-        return this.#assetsService.fetchAssetsAndBalancesForAccount(
-          scope,
-          account,
-        );
-      }),
-    );
-
-    const assets = assetResponses.flatMap((response) =>
-      response.status === 'fulfilled' ? response.value : [],
-    );
-
-    await this.#assetsService.saveMany(assets);
+    await this.#assetsService.syncSnapOwnedAssets(accounts, scopes);
   }
 
   async synchronizeTransactions(accounts: TronKeyringAccount[]): Promise<void> {

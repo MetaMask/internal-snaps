@@ -5,85 +5,29 @@ import type {
   KeyringAccount,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type {
-  AssetConversion,
-  AssetMetadata,
-  FungibleAssetMarketData,
-  FungibleAssetMetadata,
-  HistoricalPriceIntervals,
-} from '@metamask/snaps-sdk';
-import { assert } from '@metamask/superstruct';
-import type { CaipAssetType } from '@metamask/utils';
-import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
-import { BigNumber } from 'bignumber.js';
-import { pick } from 'lodash';
+import { parseCaipAssetType } from '@metamask/utils';
 
-import type { PriceApiClient } from '../../../clients/price-api/PriceApiClient';
-import type {
-  FiatTicker,
-  SpotPrice,
-  SpotPrices,
-} from '../../../clients/price-api/types';
-import {
-  GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
-  VsCurrencyParamStruct,
-} from '../../../clients/price-api/types';
-import type { SnapClient } from '../../../clients/snap/SnapClient';
-import type { TokenApiClient } from '../../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../../clients/tron-http';
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import type {
   RawTronUnfrozenV2,
-  Trc20Balance,
   TronAccount,
 } from '../../../clients/trongrid/types';
 import type { KnownCaip19Id, Network } from '../../../constants';
-import {
-  BANDWIDTH_METADATA,
-  ENERGY_METADATA,
-  ESSENTIAL_ASSETS,
-  MAX_BANDWIDTH_METADATA,
-  MAX_ENERGY_METADATA,
-  Networks,
-  TokenMetadata,
-  TRX_IN_LOCK_PERIOD_METADATA,
-  TRX_METADATA,
-  TRX_READY_FOR_WITHDRAWAL_METADATA,
-  TRX_STAKED_FOR_BANDWIDTH_METADATA,
-  TRX_STAKED_FOR_ENERGY_METADATA,
-  TRX_STAKING_REWARDS_METADATA,
-} from '../../../constants';
-import { configProvider } from '../../../context';
+import { ESSENTIAL_ASSETS, Networks, TokenMetadata } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
 import { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
-import type { State, UnencryptedStateValue } from '../../state/State';
 import type { AssetsRepository } from '../AssetsRepository';
-import type {
-  InLockPeriodCaipAssetType,
-  NativeCaipAssetType,
-  NftCaipAssetType,
-  ReadyForWithdrawalCaipAssetType,
-  ResourceCaipAssetType,
-  StakedCaipAssetType,
-  StakingRewardsCaipAssetType,
-  TokenCaipAssetType,
-} from '../types';
+import { isSnapOwnedAsset } from '../snapOwnedAssets';
 
 /**
- * Normalized account data structure that provides a consistent shape for both
- * active and inactive accounts. This allows extraction functions to work
- * without needing to know the account's activation state.
+ * Slim account data shape for snap-owned asset extraction.
+ * Provides a consistent shape for both active and inactive accounts.
  */
-type NormalizedAccountData = {
-  /** Native TRX balance in sun (0 for inactive accounts). */
-  nativeBalance: number;
-  /** TRC10 token balances as `{ key: tokenId, value: balance }[]` (empty for inactive accounts). */
-  trc10Balances: TronAccount['assetV2'];
-  /** TRC20 token balances from either account info or fallback endpoint. */
-  trc20Balances: Trc20Balance[];
+type SnapOwnedAccountData = {
   /** Staking data including frozen balances and delegated resources. */
   stakedData: {
     frozenV2: TronAccount['frozenV2'];
@@ -101,62 +45,25 @@ export class SnapAssetsAdapter {
 
   readonly #assetsRepository: AssetsRepository;
 
-  readonly #state: State<UnencryptedStateValue>;
-
   readonly #trongridApiClient: TrongridApiClient;
 
   readonly #tronHttpClient: TronHttpClient;
 
-  readonly #priceApiClient: PriceApiClient;
-
-  readonly #tokenApiClient: TokenApiClient;
-
-  readonly #snapClient: SnapClient;
-
-  readonly cacheTtlsMilliseconds: {
-    fiatExchangeRates: number;
-    spotPrices: number;
-    historicalPrices: number;
-  };
-
   constructor({
     logger,
     assetsRepository,
-    state,
     trongridApiClient,
     tronHttpClient,
-    priceApiClient,
-    tokenApiClient,
-    snapClient,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
-    state: State<UnencryptedStateValue>;
     trongridApiClient: TrongridApiClient;
     tronHttpClient: TronHttpClient;
-    priceApiClient: PriceApiClient;
-    tokenApiClient: TokenApiClient;
-    snapClient: SnapClient;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 SnapAssetsAdapter]');
     this.#assetsRepository = assetsRepository;
-    this.#state = state;
     this.#trongridApiClient = trongridApiClient;
     this.#tronHttpClient = tronHttpClient;
-    this.#priceApiClient = priceApiClient;
-    this.#tokenApiClient = tokenApiClient;
-    this.#snapClient = snapClient;
-
-    const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
-    this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
-  }
-
-  static isFiat(caipAssetId: CaipAssetType): boolean {
-    return caipAssetId.includes('swift:0/iso4217:');
-  }
-
-  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    return this.#assetsRepository.getByAccountId(accountId);
   }
 
   async getAccountAssetsByIDs(
@@ -180,30 +87,22 @@ export class SnapAssetsAdapter {
   }
 
   /**
-   * Fetches all assets and balances for an account.
+   * Fetches snap-owned assets and balances for an account.
    *
    * Data Sources:
-   * - `getAccountInfoByAddress`: TRX balance, TRC10 tokens, TRC20 tokens (active accounts only)
+   * - `getAccountInfoByAddress`: Staking data (active accounts only)
    * - `getAccountResources`: Energy and Bandwidth (returns {} for inactive accounts)
-   * - `getTrc20BalancesByAddress`: TRC20 balances fallback (works for inactive accounts)
-   *
-   * Logic Flow:
-   * 1. Fetch account info, resources, and TRC20 fallback (for inactive accounts)
-   * 2. Normalize data into consistent shape via `#buildAccountData`
-   * 3. Extract all assets via `#extractAssets`
-   * 4. Fetch metadata and prices in parallel
-   * 5. Enrich assets with metadata via `#enrichAssetsWithMetadata`
-   * 6. Filter spam tokens via `#filterTokensWithoutPriceData`
+   * - `getReward`: Unclaimed staking rewards
    *
    * @param scope - The network to query.
    * @param account - The keyring account.
-   * @returns Promise<AssetEntity[]> - Array of assets with balances.
+   * @returns Promise<AssetEntity[]> - Array of snap-owned assets with balances.
    */
-  async fetchAssetsAndBalancesForAccount(
+  async fetchSnapOwnedAssetsForAccount(
     scope: Network,
     account: KeyringAccount,
   ): Promise<AssetEntity[]> {
-    this.#logger.info('Fetching assets and balances by account', {
+    this.#logger.info('Fetching snap-owned assets and balances by account', {
       account,
       scope,
     });
@@ -218,103 +117,40 @@ export class SnapAssetsAdapter {
       this.#tronHttpClient.getReward(scope, account.address),
     ]);
 
-    const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
-    if (isInactiveAccount) {
+    if (tronAccountInfoRequest.status === 'rejected') {
       this.#logger.info(
         'Account info request failed, treating as inactive account',
         { account, scope },
       );
     }
 
-    const trc20BalancesFallback = isInactiveAccount
-      ? await this.#trongridApiClient
-          .getTrc20BalancesByAddress(scope, account.address)
-          .catch(async (error) => {
-            await this.#snapClient.trackError(error as Error);
-            this.#logger.warn(
-              'Failed to fetch TRC20 balances for inactive account',
-              { error, account, scope },
-            );
-            return [];
-          })
-      : [];
-
-    const accountData = this.#buildAccountData({
+    const accountData = this.#buildSnapOwnedAccountData({
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
-      trc20BalancesFallback,
       stakingRewardsRequest,
     });
 
-    const rawAssets = this.#extractAssets(account, scope, accountData);
-
-    const assetTypes = rawAssets.map((asset) => asset.assetType);
-    const priceableAssetTypes = this.#getPriceableAssetTypes(rawAssets);
-
-    const [assetsMetadata, spotPrices] = await Promise.all([
-      this.getAssetsMetadata(assetTypes),
-      this.#priceApiClient
-        .getMultipleSpotPrices(priceableAssetTypes, 'usd')
-        .catch(async (error) => {
-          await this.#snapClient.trackError(error as Error);
-          return {};
-        }),
-    ]);
-
-    const enrichedAssets = this.#enrichAssetsWithMetadata(
-      rawAssets,
-      assetsMetadata,
-    );
-    return this.#filterTokensWithoutPriceData(enrichedAssets, spotPrices);
+    return this.#extractSnapOwnedAssets(account, scope, accountData);
   }
 
   /**
-   * Filters out spam tokens (those without price data).
-   * Essential assets are always kept. Tokens need price data to be included.
-   *
-   * @param assets - The assets to filter.
-   * @param spotPrices - Pre-fetched USD prices for assets.
-   * @returns The filtered assets.
-   */
-  #filterTokensWithoutPriceData(
-    assets: AssetEntity[],
-    spotPrices: SpotPrices | Record<string, never>,
-  ): AssetEntity[] {
-    const filtered = assets.filter((asset) => {
-      // Essential assets (TRX, staked, energy, bandwidth) are always kept
-      if (ESSENTIAL_ASSETS.includes(asset.assetType)) {
-        return true;
-      }
-      // Tokens: keep only if they have price data
-      const spotPrice = (spotPrices as SpotPrices)[asset.assetType];
-      return typeof spotPrice?.price === 'number';
-    });
-
-    return filtered;
-  }
-
-  /**
-   * Normalizes raw API responses into a consistent shape for both active and inactive accounts.
-   * This allows extraction functions to work without needing to know the account's activation state.
+   * Normalizes raw API responses into a slim shape for snap-owned asset extraction.
    *
    * @param params - The raw API responses to normalize.
    * @param params.tronAccountInfoRequest - The settled promise result from getAccountInfoByAddress.
    * @param params.tronAccountResourcesRequest - The settled promise result from getAccountResources.
-   * @param params.trc20BalancesFallback - TRC20 balances from fallback endpoint (empty for active accounts).
    * @param params.stakingRewardsRequest - The settled promise result from getReward.
-   * @returns NormalizedAccountData - Consistent data shape for extraction.
+   * @returns SnapOwnedAccountData - Consistent data shape for snap-owned extraction.
    */
-  #buildAccountData({
+  #buildSnapOwnedAccountData({
     tronAccountInfoRequest,
     tronAccountResourcesRequest,
-    trc20BalancesFallback,
     stakingRewardsRequest,
   }: {
     tronAccountInfoRequest: PromiseSettledResult<TronAccount>;
     tronAccountResourcesRequest: PromiseSettledResult<AccountResources>;
-    trc20BalancesFallback: Trc20Balance[];
     stakingRewardsRequest: PromiseSettledResult<number>;
-  }): NormalizedAccountData {
+  }): SnapOwnedAccountData {
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     const resources =
       tronAccountResourcesRequest.status === 'fulfilled'
@@ -327,9 +163,6 @@ export class SnapAssetsAdapter {
 
     if (isInactiveAccount) {
       return {
-        nativeBalance: 0,
-        trc10Balances: [],
-        trc20Balances: trc20BalancesFallback,
         stakedData: {
           frozenV2: [],
           unfrozenV2: [],
@@ -342,9 +175,6 @@ export class SnapAssetsAdapter {
 
     const tronAccountInfo = tronAccountInfoRequest.value;
     return {
-      nativeBalance: tronAccountInfo.balance ?? 0,
-      trc10Balances: tronAccountInfo.assetV2 ?? [],
-      trc20Balances: tronAccountInfo.trc20 ?? [],
       stakedData: {
         frozenV2: tronAccountInfo.frozenV2 ?? [],
         unfrozenV2: tronAccountInfo.unfrozenV2 ?? [],
@@ -355,28 +185,16 @@ export class SnapAssetsAdapter {
     };
   }
 
-  /**
-   * Extracts all assets from normalized account data.
-   * Coordinates calls to individual extraction functions.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param data - Normalized account data.
-   * @returns AssetEntity[] - Array of all extracted assets.
-   */
-  #extractAssets(
+  #extractSnapOwnedAssets(
     account: KeyringAccount,
     scope: Network,
-    data: NormalizedAccountData,
+    data: SnapOwnedAccountData,
   ): AssetEntity[] {
     return [
-      this.#extractNativeAsset(account, scope, data.nativeBalance),
       ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
       this.#extractReadyForWithdrawalAsset(account, scope, data.stakedData),
       this.#extractInLockPeriodAsset(account, scope, data.stakedData),
       this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
-      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
-      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
       ...this.#extractBandwidth({
         account,
         scope,
@@ -391,100 +209,6 @@ export class SnapAssetsAdapter {
   }
 
   /**
-   * Returns the asset types that can be priced (native, TRC10, TRC20).
-   * Staked, energy, and bandwidth assets have non-compliant CAIP IDs that would fail the Price API.
-   *
-   * @param assets - Array of assets to filter.
-   * @returns CaipAssetType[] - Array of priceable asset types.
-   */
-  #getPriceableAssetTypes(assets: AssetEntity[]): CaipAssetType[] {
-    return assets
-      .filter(
-        (asset) =>
-          asset.assetType.includes('/slip44:') ||
-          asset.assetType.includes('/trc10:') ||
-          asset.assetType.includes('/trc20:'),
-      )
-      .map((asset) => asset.assetType);
-  }
-
-  /**
-   * Enriches assets with metadata (symbol, decimals, iconUrl) and calculates uiAmount.
-   *
-   * @param assets - Raw assets to enrich.
-   * @param assetsMetadata - Metadata lookup by asset type.
-   * @returns AssetEntity[] - Enriched assets.
-   */
-  #enrichAssetsWithMetadata(
-    assets: AssetEntity[],
-    assetsMetadata: Record<CaipAssetType, AssetMetadata | null>,
-  ): AssetEntity[] {
-    return assets.map((asset) => {
-      const metadata = assetsMetadata[
-        asset.assetType
-      ] as FungibleAssetMetadata | null;
-
-      const {
-        symbol: initialSymbol,
-        decimals: initialDecimals = 0,
-        iconUrl: initialIconUrl,
-      } = asset;
-      let symbol = initialSymbol;
-      let decimals = initialDecimals;
-      let iconUrl = initialIconUrl;
-
-      if (metadata?.fungible) {
-        const unit = metadata.units?.[0];
-        if (unit) {
-          symbol = unit.symbol ?? metadata.symbol ?? symbol;
-          decimals = unit.decimals ?? decimals;
-        } else {
-          symbol = metadata?.symbol ?? symbol;
-        }
-        iconUrl = metadata.iconUrl ?? iconUrl;
-      }
-
-      const uiAmount = toUiAmount(asset.rawAmount, decimals).toString();
-
-      return {
-        ...asset,
-        symbol,
-        decimals,
-        uiAmount,
-        iconUrl,
-      };
-    });
-  }
-
-  /**
-   * Extracts the native TRX asset from the balance.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param balance - The native balance in sun.
-   * @returns AssetEntity - The native TRX asset.
-   */
-  #extractNativeAsset(
-    account: KeyringAccount,
-    scope: Network,
-    balance: number,
-  ): AssetEntity {
-    return {
-      assetType: Networks[scope].nativeToken.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].nativeToken.symbol,
-      decimals: Networks[scope].nativeToken.decimals,
-      rawAmount: balance.toString(),
-      uiAmount: toUiAmount(
-        balance,
-        Networks[scope].nativeToken.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].nativeToken.iconUrl,
-    };
-  }
-
-  /**
    * Extracts staked TRX assets (for bandwidth and energy).
    *
    * @param account - The keyring account.
@@ -495,7 +219,7 @@ export class SnapAssetsAdapter {
   #extractStakedNativeAssets(
     account: KeyringAccount,
     scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
+    stakedData: SnapOwnedAccountData['stakedData'],
   ): AssetEntity[] {
     const assets: AssetEntity[] = [];
 
@@ -563,7 +287,7 @@ export class SnapAssetsAdapter {
   #extractReadyForWithdrawalAsset(
     account: KeyringAccount,
     scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
+    stakedData: SnapOwnedAccountData['stakedData'],
   ): AssetEntity {
     const currentTimestamp = Date.now();
     let readyForWithdrawalAmount = 0;
@@ -633,7 +357,7 @@ export class SnapAssetsAdapter {
   #extractInLockPeriodAsset(
     account: KeyringAccount,
     scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
+    stakedData: SnapOwnedAccountData['stakedData'],
   ): AssetEntity {
     const currentTimestamp = Date.now();
     let inLockPeriodAmount = 0;
@@ -764,490 +488,6 @@ export class SnapAssetsAdapter {
   }
 
   /**
-   * Extracts TRC10 assets from the balances array.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc10Balances - TRC10 token balances as `{ key: tokenId, value: balance }[]`.
-   * @returns AssetEntity[] - Array of TRC10 asset entities.
-   */
-  #extractTrc10Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc10Balances: TronAccount['assetV2'],
-  ): AssetEntity[] {
-    return (
-      trc10Balances?.flatMap((tokenObject) => {
-        // assetV2 has structure: { "key": "token_id", "value": "balance" }
-        return {
-          assetType: `${scope}/trc10:${tokenObject.key}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: tokenObject.value?.toString() ?? '0',
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      }) ?? []
-    );
-  }
-
-  /**
-   * Extracts TRC20 assets from a balances array.
-   * Works with both active accounts (tronAccountInfo.trc20) and inactive accounts (getTrc20BalancesByAddress).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc20Balances - Array of `Record<contractAddress, balance>` objects (e.g., `[{ "TContractAddr": "1000" }]`).
-   * @returns AssetEntity[] - Array of TRC20 asset entities.
-   */
-  #extractTrc20Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc20Balances: Trc20Balance[],
-  ): AssetEntity[] {
-    return trc20Balances.flatMap((tokenObject) => {
-      return Object.entries(tokenObject).map(([address, balance]) => {
-        return {
-          assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: balance,
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      });
-    });
-  }
-
-  async getAssetsMetadata(
-    assetTypes: CaipAssetType[],
-  ): Promise<Record<CaipAssetType, AssetMetadata | null>> {
-    this.#logger.info('Fetching metadata for assets', assetTypes);
-
-    const {
-      nativeAssetTypes,
-      stakedNativeAssetTypes,
-      readyForWithdrawalAssetTypes,
-      inLockPeriodAssetTypes,
-      stakingRewardsAssetTypes,
-      energyAssetTypes,
-      maximunEnergyAssetTypes,
-      bandwidthAssetTypes,
-      maximunBandwidthAssetTypes,
-      tokenTrc10AssetTypes,
-      tokenTrc20AssetTypes,
-    } = this.#splitAssetsByType(assetTypes);
-
-    const nativeTokensMetadata =
-      this.#getNativeTokensMetadata(nativeAssetTypes);
-    const stakedTokensMetadata = this.#getStakedTokensMetadata(
-      stakedNativeAssetTypes,
-    );
-    const readyForWithdrawalTokensMetadata =
-      this.#getReadyForWithdrawalTokensMetadata(readyForWithdrawalAssetTypes);
-    const inLockPeriodTokensMetadata = this.#getInLockPeriodMetadata(
-      inLockPeriodAssetTypes,
-    );
-    const stakingRewardsMetadata = this.#getStakingRewardsMetadata(
-      stakingRewardsAssetTypes,
-    );
-    const energyTokensMetadata = this.#getEnergyMetadata(energyAssetTypes);
-    const maximunEnergyTokensMetadata = this.#getMaximunEnergyMetadata(
-      maximunEnergyAssetTypes,
-    );
-    const bandwidthTokensMetadata =
-      this.#getBandwidthMetadata(bandwidthAssetTypes);
-    const maximunBandwidthTokensMetadata = this.#getMaximunBandwidthMetadata(
-      maximunBandwidthAssetTypes,
-    );
-    const tokensMetadata = await this.#getTokensMetadata([
-      ...tokenTrc10AssetTypes,
-      ...tokenTrc20AssetTypes,
-    ]);
-
-    const result = {
-      ...nativeTokensMetadata,
-      ...stakedTokensMetadata,
-      ...readyForWithdrawalTokensMetadata,
-      ...inLockPeriodTokensMetadata,
-      ...stakingRewardsMetadata,
-      ...energyTokensMetadata,
-      ...maximunEnergyTokensMetadata,
-      ...bandwidthTokensMetadata,
-      ...maximunBandwidthTokensMetadata,
-      ...tokensMetadata,
-    };
-
-    this.#logger.info('Resolved assets metadata', { assetTypes, result });
-
-    return result;
-  }
-
-  #splitAssetsByType(assetTypes: CaipAssetType[]): {
-    nativeAssetTypes: NativeCaipAssetType[];
-    stakedNativeAssetTypes: StakedCaipAssetType[];
-    readyForWithdrawalAssetTypes: ReadyForWithdrawalCaipAssetType[];
-    inLockPeriodAssetTypes: InLockPeriodCaipAssetType[];
-    stakingRewardsAssetTypes: StakingRewardsCaipAssetType[];
-    energyAssetTypes: ResourceCaipAssetType[];
-    maximunEnergyAssetTypes: ResourceCaipAssetType[];
-    bandwidthAssetTypes: ResourceCaipAssetType[];
-    maximunBandwidthAssetTypes: ResourceCaipAssetType[];
-    tokenTrc10AssetTypes: TokenCaipAssetType[];
-    tokenTrc20AssetTypes: TokenCaipAssetType[];
-    nftAssetTypes: NftCaipAssetType[];
-  } {
-    const nativeAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:195'),
-    ) as NativeCaipAssetType[];
-    const stakedNativeAssetTypes = assetTypes.filter((assetType) =>
-      assetType.includes('/slip44:195-staked-for-'),
-    ) as StakedCaipAssetType[];
-    const readyForWithdrawalAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:195-ready-for-withdrawal'),
-    ) as ReadyForWithdrawalCaipAssetType[];
-    const inLockPeriodAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:195-in-lock-period'),
-    ) as InLockPeriodCaipAssetType[];
-    const stakingRewardsAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:195-staking-rewards'),
-    ) as StakingRewardsCaipAssetType[];
-    const energyAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:energy'),
-    ) as ResourceCaipAssetType[];
-    const maximunEnergyAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:maximum-energy'),
-    ) as ResourceCaipAssetType[];
-    const bandwidthAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:bandwidth'),
-    ) as ResourceCaipAssetType[];
-    const maximunBandwidthAssetTypes = assetTypes.filter((assetType) =>
-      assetType.endsWith('/slip44:maximum-bandwidth'),
-    ) as ResourceCaipAssetType[];
-    const tokenTrc10AssetTypes = assetTypes.filter((assetType) =>
-      assetType.includes('/trc10:'),
-    ) as TokenCaipAssetType[];
-    const tokenTrc20AssetTypes = assetTypes.filter((assetType) =>
-      assetType.includes('/trc20:'),
-    ) as TokenCaipAssetType[];
-    const nftAssetTypes = assetTypes.filter((assetType) =>
-      assetType.includes('/trc721:'),
-    ) as NftCaipAssetType[];
-
-    return {
-      nativeAssetTypes,
-      stakedNativeAssetTypes,
-      readyForWithdrawalAssetTypes,
-      inLockPeriodAssetTypes,
-      stakingRewardsAssetTypes,
-      energyAssetTypes,
-      maximunEnergyAssetTypes,
-      bandwidthAssetTypes,
-      maximunBandwidthAssetTypes,
-      tokenTrc10AssetTypes,
-      tokenTrc20AssetTypes,
-      nftAssetTypes,
-    };
-  }
-
-  #getNativeTokensMetadata(
-    assetTypes: NativeCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const nativeTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      nativeTokensMetadata[assetType] = {
-        fungible: TRX_METADATA.fungible,
-        name: TRX_METADATA.name,
-        symbol: TRX_METADATA.symbol,
-        iconUrl: TRX_METADATA.iconUrl,
-        units: [
-          {
-            decimals: TRX_METADATA.decimals,
-            symbol: TRX_METADATA.symbol,
-            name: TRX_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return nativeTokensMetadata;
-  }
-
-  #getStakedTokensMetadata(
-    assetTypes: StakedCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    // Can either be Staked for Bandwidth or Staked for Energy
-    const stakedTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      const isForBandwdidth = assetType.endsWith('staked-for-bandwidth');
-
-      if (isForBandwdidth) {
-        stakedTokensMetadata[assetType] = {
-          fungible: TRX_STAKED_FOR_BANDWIDTH_METADATA.fungible,
-          name: TRX_STAKED_FOR_BANDWIDTH_METADATA.name,
-          symbol: TRX_STAKED_FOR_BANDWIDTH_METADATA.symbol,
-          iconUrl: TRX_STAKED_FOR_BANDWIDTH_METADATA.iconUrl,
-          units: [
-            {
-              decimals: TRX_STAKED_FOR_BANDWIDTH_METADATA.decimals,
-              symbol: TRX_STAKED_FOR_BANDWIDTH_METADATA.symbol,
-              name: TRX_STAKED_FOR_BANDWIDTH_METADATA.name,
-            },
-          ],
-        };
-      }
-
-      const isForEnergy = assetType.endsWith('staked-for-energy');
-
-      if (isForEnergy) {
-        stakedTokensMetadata[assetType] = {
-          fungible: TRX_STAKED_FOR_ENERGY_METADATA.fungible,
-          name: TRX_STAKED_FOR_ENERGY_METADATA.name,
-          symbol: TRX_STAKED_FOR_ENERGY_METADATA.symbol,
-          iconUrl: TRX_STAKED_FOR_ENERGY_METADATA.iconUrl,
-          units: [
-            {
-              decimals: TRX_STAKED_FOR_ENERGY_METADATA.decimals,
-              symbol: TRX_STAKED_FOR_ENERGY_METADATA.symbol,
-              name: TRX_STAKED_FOR_ENERGY_METADATA.name,
-            },
-          ],
-        };
-      }
-    }
-
-    return stakedTokensMetadata;
-  }
-
-  #getReadyForWithdrawalTokensMetadata(
-    assetTypes: ReadyForWithdrawalCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const readyForWithdrawalTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      readyForWithdrawalTokensMetadata[assetType] = {
-        fungible: TRX_READY_FOR_WITHDRAWAL_METADATA.fungible,
-        name: TRX_READY_FOR_WITHDRAWAL_METADATA.name,
-        symbol: TRX_READY_FOR_WITHDRAWAL_METADATA.symbol,
-        iconUrl: TRX_READY_FOR_WITHDRAWAL_METADATA.iconUrl,
-        units: [
-          {
-            decimals: TRX_READY_FOR_WITHDRAWAL_METADATA.decimals,
-            symbol: TRX_READY_FOR_WITHDRAWAL_METADATA.symbol,
-            name: TRX_READY_FOR_WITHDRAWAL_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return readyForWithdrawalTokensMetadata;
-  }
-
-  #getStakingRewardsMetadata(
-    assetTypes: StakingRewardsCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const stakingRewardsMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      stakingRewardsMetadata[assetType] = {
-        fungible: TRX_STAKING_REWARDS_METADATA.fungible,
-        name: TRX_STAKING_REWARDS_METADATA.name,
-        symbol: TRX_STAKING_REWARDS_METADATA.symbol,
-        iconUrl: TRX_STAKING_REWARDS_METADATA.iconUrl,
-        units: [
-          {
-            decimals: TRX_STAKING_REWARDS_METADATA.decimals,
-            symbol: TRX_STAKING_REWARDS_METADATA.symbol,
-            name: TRX_STAKING_REWARDS_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return stakingRewardsMetadata;
-  }
-
-  #getInLockPeriodMetadata(
-    assetTypes: InLockPeriodCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const inLockPeriodTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      inLockPeriodTokensMetadata[assetType] = {
-        fungible: TRX_IN_LOCK_PERIOD_METADATA.fungible,
-        name: TRX_IN_LOCK_PERIOD_METADATA.name,
-        symbol: TRX_IN_LOCK_PERIOD_METADATA.symbol,
-        iconUrl: TRX_IN_LOCK_PERIOD_METADATA.iconUrl,
-        units: [
-          {
-            decimals: TRX_IN_LOCK_PERIOD_METADATA.decimals,
-            symbol: TRX_IN_LOCK_PERIOD_METADATA.symbol,
-            name: TRX_IN_LOCK_PERIOD_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return inLockPeriodTokensMetadata;
-  }
-
-  #getBandwidthMetadata(
-    assetTypes: ResourceCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const bandwidthTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      bandwidthTokensMetadata[assetType] = {
-        fungible: BANDWIDTH_METADATA.fungible,
-        name: BANDWIDTH_METADATA.name,
-        symbol: BANDWIDTH_METADATA.symbol,
-        iconUrl: BANDWIDTH_METADATA.iconUrl,
-        units: [
-          {
-            decimals: BANDWIDTH_METADATA.decimals,
-            symbol: BANDWIDTH_METADATA.symbol,
-            name: BANDWIDTH_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return bandwidthTokensMetadata;
-  }
-
-  #getMaximunBandwidthMetadata(
-    assetTypes: ResourceCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const maximunBandwidthTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      maximunBandwidthTokensMetadata[assetType] = {
-        fungible: MAX_BANDWIDTH_METADATA.fungible,
-        name: MAX_BANDWIDTH_METADATA.name,
-        symbol: MAX_BANDWIDTH_METADATA.symbol,
-        iconUrl: MAX_BANDWIDTH_METADATA.iconUrl,
-        units: [
-          {
-            decimals: MAX_BANDWIDTH_METADATA.decimals,
-            symbol: MAX_BANDWIDTH_METADATA.symbol,
-            name: MAX_BANDWIDTH_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return maximunBandwidthTokensMetadata;
-  }
-
-  #getEnergyMetadata(
-    assetTypes: ResourceCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const energyTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      energyTokensMetadata[assetType] = {
-        fungible: ENERGY_METADATA.fungible,
-        name: ENERGY_METADATA.name,
-        symbol: ENERGY_METADATA.symbol,
-        iconUrl: ENERGY_METADATA.iconUrl,
-        units: [
-          {
-            decimals: ENERGY_METADATA.decimals,
-            symbol: ENERGY_METADATA.symbol,
-            name: ENERGY_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return energyTokensMetadata;
-  }
-
-  #getMaximunEnergyMetadata(
-    assetTypes: ResourceCaipAssetType[],
-  ): Record<CaipAssetType, FungibleAssetMetadata | null> {
-    const maximunEnergyTokensMetadata: Record<
-      CaipAssetType,
-      FungibleAssetMetadata | null
-    > = {};
-
-    for (const assetType of assetTypes) {
-      maximunEnergyTokensMetadata[assetType] = {
-        fungible: MAX_ENERGY_METADATA.fungible,
-        name: MAX_ENERGY_METADATA.name,
-        symbol: MAX_ENERGY_METADATA.symbol,
-        iconUrl: MAX_ENERGY_METADATA.iconUrl,
-        units: [
-          {
-            decimals: MAX_ENERGY_METADATA.decimals,
-            symbol: MAX_ENERGY_METADATA.symbol,
-            name: MAX_ENERGY_METADATA.name,
-          },
-        ],
-      };
-    }
-
-    return maximunEnergyTokensMetadata;
-  }
-
-  async #getTokensMetadata(
-    assetTypes: TokenCaipAssetType[],
-  ): Promise<Record<TokenCaipAssetType, FungibleAssetMetadata | null>> {
-    return this.#tokenApiClient.getTokensMetadata(assetTypes);
-  }
-
-  /**
-   * Checks if the asset has changed compared to passed assets lookup.
-   *
-   * @param asset - The asset to check.
-   * @param assetsLookup - The lookup table to check against.
-   * @returns True if the asset has changed, false otherwise.
-   */
-  static hasChanged(asset: AssetEntity, assetsLookup: AssetEntity[]): boolean {
-    const savedAsset = assetsLookup.find(
-      (item) =>
-        item.keyringAccountId === asset.keyringAccountId &&
-        item.assetType === asset.assetType,
-    );
-
-    if (!savedAsset) {
-      return true;
-    }
-
-    return savedAsset.rawAmount !== asset.rawAmount;
-  }
-
-  /**
    * Persist the latest fetched assets and emit the corresponding keyring events.
    *
    * The input is treated as the latest snapshot for the account/network pairs
@@ -1261,12 +501,13 @@ export class SnapAssetsAdapter {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
+    const shouldEmitAsset = (asset: AssetEntity): boolean =>
+      isSnapOwnedAsset(asset.assetType);
+
     const hasZeroAmount = (asset: AssetEntity): boolean =>
       asset.rawAmount === '0' || asset.uiAmount === '0';
 
-    const savedAssets = await this.getAll();
-    const isEssentialAsset = (asset: AssetEntity): boolean =>
-      ESSENTIAL_ASSETS.includes(asset.assetType);
+    const savedAssets = await this.#assetsRepository.getAll();
 
     // Track only the account/network pairs refreshed in this run.
     // That prevents us from treating assets from untouched networks as disappeared.
@@ -1283,17 +524,17 @@ export class SnapAssetsAdapter {
       assets.map((asset) => `${asset.keyringAccountId}:${asset.assetType}`),
     );
 
-    // A saved asset is considered disappeared only if its network was part of
-    // this sync, it is not essential, and it is missing from the latest
-    // snapshot for that account.
+    // A saved snap-owned asset is considered disappeared only if its network was
+    // part of this sync and it is missing from the latest snapshot for that account.
     const disappearedAssets = savedAssets.filter((savedAsset) => {
       const syncedNetworks =
         syncedNetworksByAccount[savedAsset.keyringAccountId];
 
-      if (
-        !syncedNetworks?.has(savedAsset.network) ||
-        isEssentialAsset(savedAsset)
-      ) {
+      if (!syncedNetworks?.has(savedAsset.network)) {
+        return false;
+      }
+
+      if (!isSnapOwnedAsset(savedAsset.assetType)) {
         return false;
       }
 
@@ -1302,43 +543,31 @@ export class SnapAssetsAdapter {
       );
     });
 
-    // A token should be removed from the visible asset list only when the latest
-    // snapshot says its balance is zero. Essential assets stay visible even at
-    // zero because they are part of the permanent Tron account model.
+    // Snap-owned assets stay visible even at zero because they are part of the
+    // permanent Tron account model managed by the Snap.
     const shouldBeInRemovedList = (asset: AssetEntity): boolean =>
-      hasZeroAmount(asset) && !isEssentialAsset(asset); // Never remove essential assets (including energy & bandwidth) from the account asset list
+      hasZeroAmount(asset) && !isSnapOwnedAsset(asset.assetType);
 
-    // Assets are added to the visible list when they are non-zero and either:
-    // - we are doing a full non-incremental broadcast, or
-    // - they are brand new, or
-    // - they existed before with zero balance and now became non-zero.
     const shouldBeInAddedList = (asset: AssetEntity): boolean =>
       !shouldBeInRemovedList(asset);
 
-    // Build the asset-list payload in two stages:
-    // 1. seed the removed list with assets that vanished from the latest
-    //    snapshot entirely
-    // 2. fold in the current assets to report additions and explicit zero-balance
-    //    removals in the same event
-    const assetListUpdatedPayload = disappearedAssets.reduce<
-      AccountAssetListUpdatedEvent['params']['assets']
-    >(
-      (acc, asset) => ({
-        ...acc,
-        [asset.keyringAccountId]: {
-          added: [...(acc[asset.keyringAccountId]?.added ?? [])],
-          removed: [
-            ...(acc[asset.keyringAccountId]?.removed ?? []),
-            asset.assetType,
-          ],
-        },
-      }),
-      {},
-    );
+    const assetListUpdatedPayload = disappearedAssets
+      .filter(shouldEmitAsset)
+      .reduce<AccountAssetListUpdatedEvent['params']['assets']>(
+        (acc, asset) => ({
+          ...acc,
+          [asset.keyringAccountId]: {
+            added: [...(acc[asset.keyringAccountId]?.added ?? [])],
+            removed: [
+              ...(acc[asset.keyringAccountId]?.removed ?? []),
+              asset.assetType,
+            ],
+          },
+        }),
+        {},
+      );
 
-    for (const asset of assets) {
-      // Merge the current snapshot into the pre-seeded payload so each account
-      // ends up with one consolidated added/removed diff.
+    for (const asset of assets.filter(shouldEmitAsset)) {
       assetListUpdatedPayload[asset.keyringAccountId] = {
         added: [
           ...(assetListUpdatedPayload[asset.keyringAccountId]?.added ?? []),
@@ -1351,7 +580,6 @@ export class SnapAssetsAdapter {
       };
     }
 
-    // If no assets were added or removed, don't emit the event.
     const isEmptyAccountAssetListUpdatedPayload = Object.values(
       assetListUpdatedPayload,
     )
@@ -1364,24 +592,24 @@ export class SnapAssetsAdapter {
       });
     }
 
-    // Emit synthetic zero-balance entries for disappeared assets so clients can
-    // clear cached balances even when the backend omits zero-balance tokens
-    // instead of returning them explicitly.
-    const removedAssetsWithZeroBalance = disappearedAssets.map((asset) => ({
-      ...asset,
-      rawAmount: '0',
-      uiAmount: '0',
-    }));
+    const removedAssetsWithZeroBalance = disappearedAssets
+      .filter(shouldEmitAsset)
+      .map((asset) => ({
+        ...asset,
+        rawAmount: '0',
+        uiAmount: '0',
+      }));
 
-    const assetsToSave = [...assets, ...removedAssetsWithZeroBalance];
-    // Save assets using repository
+    const assetsToSave = [
+      ...assets.filter(shouldEmitAsset),
+      ...removedAssetsWithZeroBalance,
+    ];
     await this.#assetsRepository.saveMany(assetsToSave);
 
-    // Broadcast the current snapshot plus synthetic zero-balance removals so the
-    // client can reconcile both visible assets and cached balances in one pass.
-    const balancesUpdatedPayload = assetsToSave.reduce<
-      AccountBalancesUpdatedEvent['params']['balances']
-    >(
+    const balancesUpdatedPayload = [
+      ...assets.filter(shouldEmitAsset),
+      ...removedAssetsWithZeroBalance,
+    ].reduce<AccountBalancesUpdatedEvent['params']['balances']>(
       (acc, asset) => ({
         ...acc,
         [asset.keyringAccountId]: {
@@ -1395,25 +623,15 @@ export class SnapAssetsAdapter {
       {},
     );
 
-    // Traverse the balancesUpdatedPayload object to check if we have at least 1 account that has at least 1 balance updated.
     const isSomeBalanceChanged = Object.values(balancesUpdatedPayload)
-      .map((accountAssets) => Object.keys(accountAssets).length) // To each accountAssets object, map the number of assetTypes
+      .map((accountAssets) => Object.keys(accountAssets).length)
       .some((count) => count > 0);
 
-    // Only emit the event if some balance was changed.
     if (isSomeBalanceChanged) {
       await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
         balances: balancesUpdatedPayload,
       });
     }
-  }
-
-  async getAll(): Promise<AssetEntity[]> {
-    const assetsByAccount =
-      (await this.#state.getKey<UnencryptedStateValue['assets']>('assets')) ??
-      {};
-
-    return Object.values(assetsByAccount).flat();
   }
 
   /**
@@ -1469,377 +687,5 @@ export class SnapAssetsAdapter {
     }
 
     return [...savedAssets, ...missingEssentialAssets];
-  }
-
-  /**
-   * Extracts the ISO 4217 currency code (aka fiat ticker) from a fiat CAIP-19 asset type.
-   *
-   * @param caipAssetType - The CAIP-19 asset type.
-   * @returns The fiat ticker.
-   */
-  #extractFiatTicker(caipAssetType: CaipAssetType): FiatTicker {
-    if (!SnapAssetsAdapter.isFiat(caipAssetType)) {
-      throw new Error('Passed caipAssetType is not a fiat asset');
-    }
-
-    const fiatTicker =
-      parseCaipAssetType(caipAssetType).assetReference.toLowerCase();
-
-    return fiatTicker as FiatTicker;
-  }
-
-  /**
-   * Fetches fiat exchange rates and crypto prices for the given assets.
-   * This is shared logic between getMultipleTokenConversions and getMultipleTokensMarketData.
-   *
-   * @param allAssets - Array of all CAIP asset types (both fiat and crypto).
-   * @returns Promise resolving to fiat exchange rates and crypto prices.
-   */
-  async #fetchPriceData(allAssets: CaipAssetType[]): Promise<{
-    fiatExchangeRates: Record<string, { value: number }>;
-    cryptoPrices: Record<CaipAssetType, SpotPrice | null>;
-  }> {
-    const cryptoAssets = allAssets.filter(
-      (asset) => !SnapAssetsAdapter.isFiat(asset),
-    );
-
-    const [fiatExchangeRates, cryptoPrices] = await Promise.all([
-      this.#priceApiClient.getFiatExchangeRates(),
-      this.#priceApiClient.getMultipleSpotPrices(cryptoAssets, 'usd'),
-    ]);
-
-    return { fiatExchangeRates, cryptoPrices };
-  }
-
-  /**
-   * Get the token conversions for a list of asset pairs.
-   * It caches the results for 1 hour.
-   *
-   * Beware: Inside we are using the Price API's `getFiatExchangeRates` method for fiat prices,
-   * `getMultipleSpotPrices` for crypto prices and then using USD as an intermediate currency
-   * to convert the prices to the correct currency. This is not entirely accurate but it's the
-   * best we can do with the current API.
-   *
-   * @param conversions - The asset pairs to get the conversions for.
-   * @returns The token conversions.
-   */
-  async getMultipleTokenConversions(
-    conversions: { from: CaipAssetType; to: CaipAssetType }[],
-  ): Promise<
-    Record<CaipAssetType, Record<CaipAssetType, AssetConversion | null>>
-  > {
-    if (conversions.length === 0) {
-      return {};
-    }
-
-    /**
-     * `from` and `to` can represent both fiat and crypto assets. For us to get their values
-     * the best approach is to use Price API's `getFiatExchangeRates` method for fiat prices,
-     * `getMultipleSpotPrices` for crypto prices and then using USD as an intermediate currency
-     * to convert the prices to the correct currency.
-     */
-    const allAssets = conversions.flatMap((conversion) => [
-      conversion.from,
-      conversion.to,
-    ]);
-
-    const { fiatExchangeRates, cryptoPrices } =
-      await this.#fetchPriceData(allAssets);
-
-    /**
-     * Now that we have the data, convert the `from`s to `to`s.
-     *
-     * We need to handle the following cases:
-     * 1. `from` and `to` are both fiat
-     * 2. `from` and `to` are both crypto
-     * 3. `from` is fiat and `to` is crypto
-     * 4. `from` is crypto and `to` is fiat
-     *
-     * We also need to keep in mind that although `cryptoPrices` are indexed
-     * by CAIP 19 IDs, the `fiatExchangeRates` are indexed by currency symbols.
-     * To convert fiat currency symbols to CAIP 19 IDs, we can use the
-     * `this.#fiatSymbolToCaip19Id` method.
-     */
-
-    const result: Record<
-      CaipAssetType,
-      Record<CaipAssetType, AssetConversion | null>
-    > = {};
-
-    conversions.forEach((conversion) => {
-      const { from, to } = conversion;
-
-      result[from] ??= {};
-
-      let fromUsdRate: BigNumber;
-      let toUsdRate: BigNumber;
-
-      if (SnapAssetsAdapter.isFiat(from)) {
-        /**
-         * Beware:
-         * We need to invert the fiat exchange rate because exchange rate != spot price
-         */
-        const fiatExchangeRate =
-          fiatExchangeRates[this.#extractFiatTicker(from)]?.value;
-
-        if (!fiatExchangeRate) {
-          result[from][to] = null;
-          return;
-        }
-
-        fromUsdRate = new BigNumber(1).dividedBy(fiatExchangeRate);
-      } else {
-        fromUsdRate = new BigNumber(cryptoPrices[from]?.price ?? 0);
-      }
-
-      if (SnapAssetsAdapter.isFiat(to)) {
-        /**
-         * Beware:
-         * We need to invert the fiat exchange rate because exchange rate != spot price
-         */
-        const fiatExchangeRate =
-          fiatExchangeRates[this.#extractFiatTicker(to)]?.value;
-
-        if (!fiatExchangeRate) {
-          result[from][to] = null;
-          return;
-        }
-
-        toUsdRate = new BigNumber(1).dividedBy(fiatExchangeRate);
-      } else {
-        toUsdRate = new BigNumber(cryptoPrices[to]?.price ?? 0);
-      }
-
-      if (fromUsdRate.isZero() || toUsdRate.isZero()) {
-        result[from][to] = null;
-        return;
-      }
-
-      const rate = fromUsdRate.dividedBy(toUsdRate).toString();
-
-      const now = Date.now();
-
-      result[from][to] = {
-        rate,
-        conversionTime: now,
-        expirationTime: now + this.cacheTtlsMilliseconds.historicalPrices,
-      };
-    });
-
-    return result;
-  }
-
-  /**
-   * Computes the market data object in the target currency.
-   *
-   * @param spotPrice - The spot price of the asset in source currency.
-   * @param rate - The rate to convert the market data to from source currency to target currency.
-   * @returns The market data in the target currency.
-   */
-  #computeMarketData(
-    spotPrice: SpotPrice,
-    rate: BigNumber,
-  ): FungibleAssetMarketData {
-    const marketDataInUsd = pick(spotPrice, [
-      'marketCap',
-      'totalVolume',
-      'circulatingSupply',
-      'allTimeHigh',
-      'allTimeLow',
-      'pricePercentChange1h',
-      'pricePercentChange1d',
-      'pricePercentChange7d',
-      'pricePercentChange14d',
-      'pricePercentChange30d',
-      'pricePercentChange200d',
-      'pricePercentChange1y',
-    ]);
-
-    const toCurrency = (value: number | null | undefined): string => {
-      return value === null || value === undefined
-        ? ''
-        : new BigNumber(value).dividedBy(rate).toString();
-    };
-
-    const includeIfDefined = (
-      key: string,
-      value: number | null | undefined,
-    ): Record<string, number> => {
-      return value === null || value === undefined ? {} : { [key]: value };
-    };
-
-    // Variations in percent don't need to be converted, they are independent of the currency
-    const pricePercentChange = {
-      ...includeIfDefined('PT1H', marketDataInUsd.pricePercentChange1h),
-      ...includeIfDefined('P1D', marketDataInUsd.pricePercentChange1d),
-      ...includeIfDefined('P7D', marketDataInUsd.pricePercentChange7d),
-      ...includeIfDefined('P14D', marketDataInUsd.pricePercentChange14d),
-      ...includeIfDefined('P30D', marketDataInUsd.pricePercentChange30d),
-      ...includeIfDefined('P200D', marketDataInUsd.pricePercentChange200d),
-      ...includeIfDefined('P1Y', marketDataInUsd.pricePercentChange1y),
-    };
-
-    const marketDataInToCurrency = {
-      fungible: true,
-      marketCap: toCurrency(marketDataInUsd.marketCap),
-      totalVolume: toCurrency(marketDataInUsd.totalVolume),
-      circulatingSupply: (marketDataInUsd.circulatingSupply ?? 0).toString(), // Circulating supply counts the number of tokens in circulation, so we don't convert
-      allTimeHigh: toCurrency(marketDataInUsd.allTimeHigh),
-      allTimeLow: toCurrency(marketDataInUsd.allTimeLow),
-      //   Add pricePercentChange field only if it has values
-      ...(Object.keys(pricePercentChange).length > 0
-        ? { pricePercentChange }
-        : {}),
-    } as FungibleAssetMarketData;
-
-    return marketDataInToCurrency;
-  }
-
-  async getMultipleTokensMarketData(
-    assets: {
-      asset: CaipAssetType;
-      unit: CaipAssetType;
-    }[],
-  ): Promise<
-    Record<CaipAssetType, Record<CaipAssetType, FungibleAssetMarketData>>
-  > {
-    if (assets.length === 0) {
-      return {};
-    }
-
-    /**
-     * `asset` and `unit` can represent both fiat and crypto assets. For us to get their values
-     * the best approach is to use Price API's `getFiatExchangeRates` method for fiat prices,
-     * `getMultipleSpotPrices` for crypto prices and then using USD as an intermediate currency
-     * to convert the prices to the correct currency.
-     */
-    const allAssets = assets.flatMap((asset) => [asset.asset, asset.unit]);
-
-    const { fiatExchangeRates, cryptoPrices } =
-      await this.#fetchPriceData(allAssets);
-
-    const result: Record<
-      CaipAssetType,
-      Record<CaipAssetType, FungibleAssetMarketData>
-    > = {};
-
-    assets.forEach((asset) => {
-      const { asset: assetType, unit } = asset;
-
-      // Skip if we don't have price data for the asset
-      if (!cryptoPrices[assetType]) {
-        return;
-      }
-
-      let unitUsdRate: BigNumber;
-
-      if (SnapAssetsAdapter.isFiat(unit)) {
-        /**
-         * Beware:
-         * We need to invert the fiat exchange rate because exchange rate != spot price
-         */
-        const fiatExchangeRate =
-          fiatExchangeRates[this.#extractFiatTicker(unit)]?.value;
-
-        if (!fiatExchangeRate) {
-          return;
-        }
-
-        unitUsdRate = new BigNumber(1).dividedBy(fiatExchangeRate);
-      } else {
-        unitUsdRate = new BigNumber(cryptoPrices[unit]?.price ?? 0);
-      }
-
-      if (unitUsdRate.isZero()) {
-        return;
-      }
-
-      // Initialize the nested structure for the asset if it doesn't exist
-      result[assetType] ??= {};
-
-      // Store the market data with the unit as the key
-      result[assetType][unit] = this.#computeMarketData(
-        cryptoPrices[assetType],
-        unitUsdRate,
-      );
-    });
-
-    return result;
-  }
-
-  /**
-   * Get historical prices for a token pair by calling the Price API.
-   * Similar to the Solana snap implementation.
-   *
-   * @param from - The asset to get historical prices for.
-   * @param to - The currency to convert prices to.
-   * @returns Historical price data with intervals.
-   */
-  async getHistoricalPrice(
-    from: CaipAssetType,
-    to: CaipAssetType,
-  ): Promise<{
-    intervals: HistoricalPriceIntervals;
-    updateTime: number;
-    expirationTime?: number;
-  }> {
-    assert(from, CaipAssetTypeStruct);
-    assert(to, CaipAssetTypeStruct);
-
-    const toTicker = parseCaipAssetType(to).assetReference.toLowerCase();
-    assert(toTicker, VsCurrencyParamStruct);
-
-    const timePeriodsToFetch = ['1d', '7d', '1m', '3m', '1y', '1000y'];
-
-    // For each time period, call the Price API to fetch the historical prices
-    const promises = timePeriodsToFetch.map(async (timePeriod) =>
-      this.#priceApiClient
-        .getHistoricalPrices({
-          assetType: from,
-          timePeriod,
-          vsCurrency: toTicker,
-        })
-        // Wrap the response in an object with the time period and the response for easier reducing
-        .then((response) => ({
-          timePeriod,
-          response,
-        }))
-        // Gracefully handle individual errors to avoid breaking the entire operation
-        .catch(async (error) => {
-          await this.#snapClient.trackError(error as Error);
-          this.#logger.warn(
-            `Error fetching historical prices for ${from} to ${to} with time period ${timePeriod}. Returning null object.`,
-            error,
-          );
-          return {
-            timePeriod,
-            response: GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT,
-          };
-        }),
-    );
-
-    const wrappedHistoricalPrices = await Promise.all(promises);
-
-    const intervals = wrappedHistoricalPrices.reduce<HistoricalPriceIntervals>(
-      (acc, { timePeriod, response }) => {
-        const iso8601Interval = `P${timePeriod.toUpperCase()}`;
-        acc[iso8601Interval] = response.prices.map((price) => [
-          price[0],
-          price[1].toString(),
-        ]);
-        return acc;
-      },
-      {},
-    );
-
-    const now = Date.now();
-
-    const result = {
-      intervals,
-      updateTime: now,
-      expirationTime: now + this.cacheTtlsMilliseconds.historicalPrices,
-    };
-
-    return result;
   }
 }

@@ -91,7 +91,6 @@ const securityAlertsApiClient = new SecurityAlertsApiClient(
 // Business Services - depend on Repositories, State and other Services
 const assetsService = new AssetsService({
   logger,
-  state,
   assetsRepository,
   trongridApiClient,
   tronHttpClient,
