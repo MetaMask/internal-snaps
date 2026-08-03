@@ -257,7 +257,7 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/handlers/cronjob.test.tsx": {
+  "packages/tron-wallet-snap/src/handlers/cronjob/cronjob.test.tsx": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
     },

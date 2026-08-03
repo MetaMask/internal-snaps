@@ -8,7 +8,7 @@ import type { TronKeyringAccount } from '../../entities/keyring-account';
 import {
   TronMultichainErrors,
   TronMultichainMethod,
-} from '../../handlers/keyring-types';
+} from '../../handlers/keyring/keyring-types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
 import { WalletService } from './WalletService';

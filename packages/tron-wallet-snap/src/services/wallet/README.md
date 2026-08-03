@@ -144,7 +144,7 @@ yarn test WalletService.test.ts
 
 ## Related Files
 
-- `handlers/keyring.ts` - KeyringHandler that uses this service
-- `handlers/keyring-types.ts` - Method and error type definitions
+- `handlers/keyring/keyring.ts` - KeyringHandler that uses this service
+- `handlers/keyring/keyring-types.ts` - Method and error type definitions
 - `validation/structs.ts` - Validation schemas
 - `services/confirmation/ConfirmationHandler.ts` - User confirmation handling

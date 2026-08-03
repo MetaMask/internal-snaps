@@ -26,7 +26,7 @@ import {
 import { TronWeb } from 'tronweb';
 
 import { Network } from '../constants';
-import { TronMultichainMethod } from '../handlers/keyring-types';
+import { TronMultichainMethod } from '../handlers/keyring/keyring-types';
 import {
   MaximumResourceCaipAssetTypeStruct,
   NativeCaipAssetTypeStruct,
