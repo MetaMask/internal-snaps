@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: solana wallet snap integrate packages ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
+- refactor(tron-wallet-snap): organize handlers and rename asset reader functions ([#90](https://github.com/MetaMask/internal-snaps/pull/90))
+- feat(snap-network-utils): add shared AssetsProvider (WPN-1784) ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
+
 ### Added
 
 - **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface): rename `listAccounts` → `getAccounts`, `listAccountAssets` → `getAccountAssets`, `listAccountTransactions` → `getAccountTransactions`; `getAccount` now throws instead of returning `undefined`; add `exportAccount` with hexadecimal private key export using `sensitive()` for redaction; remove v1-only methods `createAccount`, `discoverAccounts`, `filterAccountChains`, and `updateAccount`. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
