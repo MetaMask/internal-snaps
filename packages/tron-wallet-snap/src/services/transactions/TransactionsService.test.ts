@@ -13,6 +13,7 @@ import type {
 import { KnownCaip19Id, Network, Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { ILogger } from '../../utils/logger';
+import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
 import trc10TransferMock from './mocks/trongrid/account-transactions/trc10-transfer.json';
 import trc20TransferMock from './mocks/trongrid/account-transactions/trc20-transfer.json';
@@ -20,7 +21,6 @@ import contractInfoMock from './mocks/trongrid/account-trc20-transactions/contra
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
-import { mockLogger } from '../../utils/mockLogger';
 
 type WithTransactionServiceCallback<ReturnValue> = (payload: {
   transactionsService: TransactionsService;
