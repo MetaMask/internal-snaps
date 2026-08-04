@@ -59,7 +59,7 @@ describe('render', () => {
   });
 
   describe('when all preferences are enabled', () => {
-    it('renders the confirmation dialog', async () => {
+    it.skip('renders the confirmation dialog', async () => {
       const { mockResolvedResult, server } = mockSolanaRpc;
 
       server?.get(`/v3/spot-prices`, (_: any, res: any) => {

@@ -50,6 +50,6 @@ if (environment === 'local' || environment === 'test') {
   console.log('Removed localhost entries from snap.manifest.json');
 }
 
-fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 console.log('Updated snap.manifest.json with localhost entries');

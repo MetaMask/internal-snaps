@@ -29,6 +29,14 @@ on:
         required: false
       TRON_HTTP_BASE_URL_MAINNET:
         required: false
+      RPC_URL_MAINNET_LIST:
+        required: false
+      RPC_URL_DEVNET_LIST:
+        required: false
+      RPC_WEB_SOCKET_URL_MAINNET:
+        required: false
+      RPC_WEB_SOCKET_URL_DEVNET:
+        required: false
 
 permissions:
   contents: read
@@ -80,6 +88,15 @@ jobs:
           TRON_HTTP_BASE_URL_MAINNET: ${{ secrets.TRON_HTTP_BASE_URL_MAINNET }}
           TRON_HTTP_BASE_URL_NILE: ${{ vars.TRON_HTTP_BASE_URL_NILE }}
           TRON_HTTP_BASE_URL_SHASTA: ${{ vars.TRON_HTTP_BASE_URL_SHASTA }}
+          RPC_URL_MAINNET_LIST: ${{ secrets.RPC_URL_MAINNET_LIST }}
+          RPC_URL_DEVNET_LIST: ${{ secrets.RPC_URL_DEVNET_LIST }}
+          RPC_URL_TESTNET_LIST: ${{ vars.RPC_URL_TESTNET_LIST }}
+          RPC_URL_LOCALNET_LIST: ${{ vars.RPC_URL_LOCALNET_LIST }}
+          RPC_WEB_SOCKET_URL_MAINNET: ${{ secrets.RPC_WEB_SOCKET_URL_MAINNET }}
+          RPC_WEB_SOCKET_URL_DEVNET: ${{ secrets.RPC_WEB_SOCKET_URL_DEVNET }}
+          RPC_WEB_SOCKET_URL_TESTNET: ${{ vars.RPC_WEB_SOCKET_URL_TESTNET }}
+          RPC_WEB_SOCKET_URL_LOCALNET: ${{ vars.RPC_WEB_SOCKET_URL_LOCALNET }}
+          EXPLORER_BASE_URL: ${{ vars.EXPLORER_BASE_URL }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:

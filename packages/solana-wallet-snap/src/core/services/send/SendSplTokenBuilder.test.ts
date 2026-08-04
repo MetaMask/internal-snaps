@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-globals */
-
 import type { Mint } from '@solana-program/token-2022';
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { address, lamports } from '@solana/kit';
