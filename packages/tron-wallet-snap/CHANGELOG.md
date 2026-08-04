@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping.
+
 ### Added
 
 - **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface): rename `listAccounts` → `getAccounts`, `listAccountAssets` → `getAccountAssets`, `listAccountTransactions` → `getAccountTransactions`; `getAccount` now throws instead of returning `undefined`; add `exportAccount` with hexadecimal private key export using `sensitive()` for redaction; remove v1-only methods `createAccount`, `discoverAccounts`, `filterAccountChains`, and `updateAccount`. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
