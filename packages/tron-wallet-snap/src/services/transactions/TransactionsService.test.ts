@@ -1149,45 +1149,49 @@ describe('TransactionsService', () => {
 
   describe('save', () => {
     it('should save a single transaction', async () => {
-      const mockTransaction: Transaction = {
-        id: 'tx-save-test',
-        type: 'send',
-        account: mockAccount.id,
-        chain: Network.Mainnet,
-        status: 'confirmed',
-        timestamp: Math.floor(Date.now() / 1000),
-        from: [
-          {
-            address: mockAccount.address,
-            asset: {
-              type: KnownCaip19Id.TrxMainnet,
-              amount: '100',
-              unit: 'TRX',
-              fungible: true,
-            },
-          },
-        ],
-        to: [
-          {
-            address: 'other-address',
-            asset: {
-              type: KnownCaip19Id.TrxMainnet,
-              amount: '100',
-              unit: 'TRX',
-              fungible: true,
-            },
-          },
-        ],
-        events: [],
-        fees: [],
-      };
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const mockTransaction: Transaction = {
+            id: 'tx-save-test',
+            type: 'send',
+            account: mockAccount.id,
+            chain: Network.Mainnet,
+            status: 'confirmed',
+            timestamp: Math.floor(Date.now() / 1000),
+            from: [
+              {
+                address: mockAccount.address,
+                asset: {
+                  type: KnownCaip19Id.TrxMainnet,
+                  amount: '100',
+                  unit: 'TRX',
+                  fungible: true,
+                },
+              },
+            ],
+            to: [
+              {
+                address: 'other-address',
+                asset: {
+                  type: KnownCaip19Id.TrxMainnet,
+                  amount: '100',
+                  unit: 'TRX',
+                  fungible: true,
+                },
+              },
+            ],
+            events: [],
+            fees: [],
+          };
 
-      await transactionsService.save(mockTransaction);
+          await transactionsService.save(mockTransaction);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([
-        mockTransaction,
-      ]);
-      expect(true).toBe(true);
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([
+            mockTransaction,
+          ]);
+          expect(true).toBe(true);
+        },
+      );
     });
   });
 
