@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping. ([#101](https://github.com/MetaMask/internal-snaps/pull/101))
-
 ### Added
 
 - **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface): rename `listAccounts` → `getAccounts`, `listAccountAssets` → `getAccountAssets`, `listAccountTransactions` → `getAccountTransactions`; `getAccount` now throws instead of returning `undefined`; add `exportAccount` with hexadecimal private key export using `sensitive()` for redaction; remove v1-only methods `createAccount`, `discoverAccounts`, `filterAccountChains`, and `updateAccount`. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
 - Add `bip44:discover` support to `createAccounts`: checks on-chain activity across all Tron networks before persisting; returns `[]` if no activity to signal end-of-discovery to the client. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
 - Add `endowment:keyring` capabilities to manifest declaring the `tron:728126428` scope, hexadecimal private key export, and BIP-44 derivation strategies. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+
+### Fixed
+
+- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping. ([#101](https://github.com/MetaMask/internal-snaps/pull/101))
 
 ## [2.0.0]
 
