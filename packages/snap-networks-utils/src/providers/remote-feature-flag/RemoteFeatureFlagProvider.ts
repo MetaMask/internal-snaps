@@ -57,7 +57,9 @@ export class RemoteFeatureFlagProvider {
    * @param flagKeys - Feature flag keys to resolve.
    * @returns Map of flag key → value.
    */
-  async getFeatureFlags(flagKeys: string[]): Promise<Record<string, Json | undefined>> {
+  async getFeatureFlags(
+    flagKeys: string[],
+  ): Promise<Record<string, Json | undefined>> {
     const { remoteFeatureFlags } = await this.#messenger.call(
       'RemoteFeatureFlagController:getState',
     );
