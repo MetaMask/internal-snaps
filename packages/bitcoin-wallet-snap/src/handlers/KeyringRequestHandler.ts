@@ -173,7 +173,7 @@ export class KeyringRequestHandler {
     if (canBeMalleable !== undefined) {
       response.canBeMalleable = canBeMalleable;
     }
-    return response as unknown as Json;
+    return response;
   }
 
   async #fillPsbt(
@@ -186,7 +186,7 @@ export class KeyringRequestHandler {
       parsePsbt(psbtBase64),
       feeRate,
     );
-    return { psbt: psbt.toString() } as unknown as Json;
+    return { psbt: psbt.toString() };
   }
 
   async #computeFee(
@@ -199,7 +199,7 @@ export class KeyringRequestHandler {
       parsePsbt(psbtBase64),
       feeRate,
     );
-    return { fee: fee.to_sat().toString() } as unknown as Json;
+    return { fee: fee.to_sat().toString() };
   }
 
   async #broadcastPsbt(
@@ -212,7 +212,7 @@ export class KeyringRequestHandler {
       parsePsbt(psbtBase64),
       origin,
     );
-    return { txid: txid.toString(), canBeMalleable } as unknown as Json;
+    return { txid: txid.toString(), canBeMalleable };
   }
 
   async #sendTransfer(
@@ -227,7 +227,7 @@ export class KeyringRequestHandler {
       origin,
       feeRate,
     );
-    return { txid: txid.toString(), canBeMalleable } as unknown as Json;
+    return { txid: txid.toString(), canBeMalleable };
   }
 
   async #getUtxo(id: string, outpoint: string): Promise<Json> {
@@ -236,19 +236,19 @@ export class KeyringRequestHandler {
     if (!utxo) {
       throw new NotFoundError('UTXO not found', { id });
     }
-    return mapToUtxo(utxo, account.network) as unknown as Json;
+    return mapToUtxo(utxo, account.network);
   }
 
   async #listUtxos(id: string): Promise<Json> {
     const account = await this.#accountsUseCases.get(id);
     return account
       .listUnspent()
-      .map((utxo) => mapToUtxo(utxo, account.network)) as unknown as Json;
+      .map((utxo) => mapToUtxo(utxo, account.network));
   }
 
   async #publicDescriptor(id: string): Promise<Json> {
     const account = await this.#accountsUseCases.get(id);
-    return account.publicDescriptor as unknown as Json;
+    return account.publicDescriptor;
   }
 
   async #signMessage(
@@ -261,6 +261,6 @@ export class KeyringRequestHandler {
       message,
       origin,
     );
-    return { signature } as unknown as Json;
+    return { signature };
   }
 }
