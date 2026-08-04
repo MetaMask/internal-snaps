@@ -1,4 +1,3 @@
-import { TrxScope } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 
 export const ZERO = BigNumber(0);
@@ -33,9 +32,9 @@ export const TRACK_TX_INTERVAL = 'PT3S';
 export const TRACK_TX_MAX_ATTEMPTS = 5;
 
 export enum Network {
-  Mainnet = TrxScope.Mainnet,
-  Nile = TrxScope.Nile,
-  Shasta = TrxScope.Shasta,
+  Mainnet = 'tron:728126428',
+  Nile = 'tron:3448148188',
+  Shasta = 'tron:2494104990',
 }
 
 export enum KnownCaip19Id {
