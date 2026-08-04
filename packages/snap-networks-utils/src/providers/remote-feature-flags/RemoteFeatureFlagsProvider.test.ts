@@ -1,7 +1,7 @@
 import type { RemoteFeatureFlagControllerState } from '@metamask/remote-feature-flag-controller';
 
-import type { RemoteFeatureFlagProviderMessenger } from './RemoteFeatureFlagProvider';
-import { RemoteFeatureFlagProvider } from './RemoteFeatureFlagProvider';
+import type { RemoteFeatureFlagsProviderMessenger } from './RemoteFeatureFlagsProvider';
+import { RemoteFeatureFlagsProvider } from './RemoteFeatureFlagsProvider';
 
 const FLAG_KEY_A = 'flag-a';
 const FLAG_KEY_B = 'flag-b';
@@ -14,42 +14,42 @@ const DEFAULT_STATE: RemoteFeatureFlagControllerState = {
   cacheTimestamp: 0,
 };
 
-type WithRemoteFeatureFlagProviderCallback<ReturnValue> = (payload: {
-  remoteFeatureFlagProvider: RemoteFeatureFlagProvider;
-  mockMessenger: jest.Mocked<RemoteFeatureFlagProviderMessenger>;
+type WithRemoteFeatureFlagsProviderCallback<ReturnValue> = (payload: {
+  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+  mockMessenger: jest.Mocked<RemoteFeatureFlagsProviderMessenger>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
- * Wraps tests for RemoteFeatureFlagProvider by creating a fresh provider with a
+ * Wraps tests for RemoteFeatureFlagsProvider by creating a fresh provider with a
  * mock messenger. The callback receives the provider and mock for test configuration.
  *
  * @param testFunction - The test body receiving the provider and mocks.
  * @returns The return value of the callback.
  */
-async function withRemoteFeatureFlagProvider<ReturnValue>(
-  testFunction: WithRemoteFeatureFlagProviderCallback<ReturnValue>,
+async function withRemoteFeatureFlagsProvider<ReturnValue>(
+  testFunction: WithRemoteFeatureFlagsProviderCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockMessenger: jest.Mocked<RemoteFeatureFlagProviderMessenger> = {
+  const mockMessenger: jest.Mocked<RemoteFeatureFlagsProviderMessenger> = {
     call: jest.fn().mockResolvedValue(DEFAULT_STATE),
   };
 
-  const remoteFeatureFlagProvider = new RemoteFeatureFlagProvider({
+  const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
     messenger: mockMessenger,
   });
 
   return await testFunction({
-    remoteFeatureFlagProvider,
+    remoteFeatureFlagsProvider,
     mockMessenger,
   });
 }
 
-describe('RemoteFeatureFlagProvider', () => {
+describe('RemoteFeatureFlagsProvider', () => {
   describe('getFeatureFlag', () => {
-    it('calls RemoteFeatureFlagController:getState and returns the flag value', async () => {
-      await withRemoteFeatureFlagProvider(
-        async ({ remoteFeatureFlagProvider, mockMessenger }) => {
+    it('calls `RemoteFeatureFlagController:getState` and returns the flag value', async () => {
+      await withRemoteFeatureFlagsProvider(
+        async ({ remoteFeatureFlagsProvider, mockMessenger }) => {
           const value =
-            await remoteFeatureFlagProvider.getFeatureFlag(FLAG_KEY_A);
+            await remoteFeatureFlagsProvider.getFeatureFlag(FLAG_KEY_A);
 
           expect(mockMessenger.call).toHaveBeenCalledWith(
             'RemoteFeatureFlagController:getState',
@@ -61,10 +61,10 @@ describe('RemoteFeatureFlagProvider', () => {
     });
 
     it('returns undefined when the flag key is missing', async () => {
-      await withRemoteFeatureFlagProvider(
-        async ({ remoteFeatureFlagProvider }) => {
+      await withRemoteFeatureFlagsProvider(
+        async ({ remoteFeatureFlagsProvider }) => {
           const value =
-            await remoteFeatureFlagProvider.getFeatureFlag('missing-flag');
+            await remoteFeatureFlagsProvider.getFeatureFlag('missing-flag');
 
           expect(value).toBeUndefined();
         },
@@ -73,10 +73,10 @@ describe('RemoteFeatureFlagProvider', () => {
   });
 
   describe('getFeatureFlags', () => {
-    it('calls RemoteFeatureFlagController:getState once and returns a keyed map', async () => {
-      await withRemoteFeatureFlagProvider(
-        async ({ remoteFeatureFlagProvider, mockMessenger }) => {
-          const values = await remoteFeatureFlagProvider.getFeatureFlags([
+    it('calls `RemoteFeatureFlagController:getState` once and returns a keyed map', async () => {
+      await withRemoteFeatureFlagsProvider(
+        async ({ remoteFeatureFlagsProvider, mockMessenger }) => {
+          const values = await remoteFeatureFlagsProvider.getFeatureFlags([
             FLAG_KEY_A,
             FLAG_KEY_B,
             'missing-flag',
@@ -96,9 +96,9 @@ describe('RemoteFeatureFlagProvider', () => {
     });
 
     it('returns an empty map when no keys are requested', async () => {
-      await withRemoteFeatureFlagProvider(
-        async ({ remoteFeatureFlagProvider, mockMessenger }) => {
-          const values = await remoteFeatureFlagProvider.getFeatureFlags([]);
+      await withRemoteFeatureFlagsProvider(
+        async ({ remoteFeatureFlagsProvider, mockMessenger }) => {
+          const values = await remoteFeatureFlagsProvider.getFeatureFlags([]);
 
           expect(mockMessenger.call).toHaveBeenCalledWith(
             'RemoteFeatureFlagController:getState',
