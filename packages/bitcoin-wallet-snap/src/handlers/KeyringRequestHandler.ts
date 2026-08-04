@@ -11,6 +11,7 @@ import {
 } from '../entities';
 import type { AccountUseCases } from '../use-cases/AccountUseCases';
 import { mapToUtxo } from './mappings';
+import type { Utxo } from './mappings';
 import { parsePsbt } from './parsers';
 import {
   BroadcastPsbtRequest,
@@ -127,7 +128,7 @@ export class KeyringRequestHandler {
     origin: string,
     options: { fill: boolean; broadcast: boolean },
     feeRate?: number,
-  ): Promise<Json> {
+  ): Promise<SignPsbtResponse> {
     const account = await this.#accountsUseCases.get(id);
 
     const psbtBase64ToSign = options.fill
@@ -180,7 +181,7 @@ export class KeyringRequestHandler {
     id: string,
     psbtBase64: string,
     feeRate?: number,
-  ): Promise<Json> {
+  ): Promise<FillPsbtResponse> {
     const psbt = await this.#accountsUseCases.fillPsbt(
       id,
       parsePsbt(psbtBase64),
@@ -193,7 +194,7 @@ export class KeyringRequestHandler {
     id: string,
     psbtBase64: string,
     feeRate?: number,
-  ): Promise<Json> {
+  ): Promise<ComputeFeeResponse> {
     const fee = await this.#accountsUseCases.computeFee(
       id,
       parsePsbt(psbtBase64),
@@ -206,7 +207,7 @@ export class KeyringRequestHandler {
     id: string,
     psbtBase64: string,
     origin: string,
-  ): Promise<Json> {
+  ): Promise<BroadcastPsbtResponse> {
     const { txid, canBeMalleable } = await this.#accountsUseCases.broadcastPsbt(
       id,
       parsePsbt(psbtBase64),
@@ -220,7 +221,7 @@ export class KeyringRequestHandler {
     recipients: { address: string; amount: string }[],
     origin: string,
     feeRate?: number,
-  ): Promise<Json> {
+  ): Promise<BroadcastPsbtResponse> {
     const { txid, canBeMalleable } = await this.#accountsUseCases.sendTransfer(
       id,
       recipients,
@@ -230,7 +231,7 @@ export class KeyringRequestHandler {
     return { txid: txid.toString(), canBeMalleable };
   }
 
-  async #getUtxo(id: string, outpoint: string): Promise<Json> {
+  async #getUtxo(id: string, outpoint: string): Promise<Utxo> {
     const account = await this.#accountsUseCases.get(id);
     const utxo = account.getUtxo(outpoint);
     if (!utxo) {
@@ -239,14 +240,14 @@ export class KeyringRequestHandler {
     return mapToUtxo(utxo, account.network);
   }
 
-  async #listUtxos(id: string): Promise<Json> {
+  async #listUtxos(id: string): Promise<Utxo[]> {
     const account = await this.#accountsUseCases.get(id);
     return account
       .listUnspent()
       .map((utxo) => mapToUtxo(utxo, account.network));
   }
 
-  async #publicDescriptor(id: string): Promise<Json> {
+  async #publicDescriptor(id: string): Promise<string> {
     const account = await this.#accountsUseCases.get(id);
     return account.publicDescriptor;
   }
@@ -255,7 +256,7 @@ export class KeyringRequestHandler {
     id: string,
     message: string,
     origin: string,
-  ): Promise<Json> {
+  ): Promise<SignMessageResponse> {
     const signature = await this.#accountsUseCases.signMessage(
       id,
       message,
