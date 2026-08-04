@@ -738,7 +738,7 @@ describe('KeyringRequestHandler', () => {
       const result = await handler.route(mockRequest);
 
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith('account-id');
-      expect(result).toStrictEqual('publicDescriptor');
+      expect(result).toBe('publicDescriptor');
     });
   });
 
