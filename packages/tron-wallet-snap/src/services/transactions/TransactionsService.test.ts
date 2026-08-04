@@ -20,15 +20,114 @@ import contractInfoMock from './mocks/trongrid/account-trc20-transactions/contra
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
+import { mockLogger } from '../../utils/mockLogger';
 
-type WithTransactionServiceCallback = <ReturnValue>(payload: {}) =>
-  | Promise<ReturnValue>
-  | ReturnValue;
+type WithTransactionServiceCallback<ReturnValue> = (payload: {
+  transactionsService: TransactionsService;
+  mockTransactionsRepository: jest.Mocked<
+    Pick<
+      TransactionsRepository,
+      | 'getAll'
+      | 'findByAccountId'
+      | 'getTransactionIdsByAccountId'
+      | 'getConfirmedTransactionIds'
+      | 'save'
+      | 'saveMany'
+    >
+  >;
+  mockTrongridApiClient: jest.Mocked<
+    Pick<
+      TrongridApiClient,
+      | 'getAccountInfoByAddress'
+      | 'getTransactionInfoByAddress'
+      | 'getContractTransactionInfoByAddress'
+    >
+  >;
+  mockTronHttpClient: jest.Mocked<
+    Pick<TronHttpClient, 'getTRC10TokenMetadata' | 'getTransactionInfoById'>
+  >;
+  mockPriceApiClient: jest.Mocked<
+    Pick<PriceApiClient, 'getMultipleSpotPrices'>
+  >;
+  mockSnapClient: jest.Mocked<SnapClient>;
+}) => Promise<ReturnValue> | ReturnValue;
 
+/**
+ * Wraps tests by creating a fresh TransactionsService and fresh mocks.
+ *
+ * @param testFunction - The test body receiving the handler and relevant mocks.
+ * @returns The return value of the callback.
+ */
 async function withTransactionService<ReturnValue>(
   testFunction: WithTransactionServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  return await testFunction({});
+  const mockTransactionsRepository: jest.Mocked<
+    Pick<
+      TransactionsRepository,
+      | 'getAll'
+      | 'findByAccountId'
+      | 'getTransactionIdsByAccountId'
+      | 'getConfirmedTransactionIds'
+      | 'save'
+      | 'saveMany'
+    >
+  > = {
+    getAll: jest.fn(),
+    findByAccountId: jest.fn().mockResolvedValue([]),
+    getTransactionIdsByAccountId: jest.fn().mockResolvedValue(new Set()),
+    getConfirmedTransactionIds: jest.fn().mockResolvedValue(new Set()),
+    save: jest.fn(),
+    saveMany: jest.fn(),
+  };
+
+  const mockTrongridApiClient: jest.Mocked<
+    Pick<
+      TrongridApiClient,
+      | 'getAccountInfoByAddress'
+      | 'getTransactionInfoByAddress'
+      | 'getContractTransactionInfoByAddress'
+    >
+  > = {
+    getAccountInfoByAddress: jest.fn(),
+    getTransactionInfoByAddress: jest.fn(),
+    getContractTransactionInfoByAddress: jest.fn(),
+  };
+
+  const mockTronHttpClient: jest.Mocked<
+    Pick<TronHttpClient, 'getTRC10TokenMetadata' | 'getTransactionInfoById'>
+  > = {
+    getTRC10TokenMetadata: jest.fn(),
+    getTransactionInfoById: jest.fn(),
+  };
+
+  const mockPriceApiClient: jest.Mocked<
+    Pick<PriceApiClient, 'getMultipleSpotPrices'>
+  > = {
+    getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: jest.fn(),
+  };
+
+  const transactionsService: TransactionsService = new TransactionsService({
+    logger: mockLogger,
+    transactionsRepository:
+      mockTransactionsRepository as unknown as TransactionsRepository,
+    trongridApiClient: mockTrongridApiClient as unknown as TrongridApiClient,
+    tronHttpClient: mockTronHttpClient as unknown as TronHttpClient,
+    priceApiClient: mockPriceApiClient as unknown as PriceApiClient,
+    snapClient: mockSnapClient as unknown as SnapClient,
+  });
+
+  return await testFunction({
+    transactionsService,
+    mockTransactionsRepository,
+    mockTrongridApiClient,
+    mockTronHttpClient,
+    mockPriceApiClient,
+    mockSnapClient,
+  });
 }
 
 // Import simplified mock data (each file now contains only one transaction)
@@ -127,46 +226,60 @@ describe('TransactionsService', () => {
 
   describe('checkAddressActivity', () => {
     it('returns true when the address has at least one transaction', async () => {
-      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
-        nativeTransferMock,
-      ] as TransactionInfo[]);
+      await withTransactionService(
+        async ({ mockTrongridApiClient, transactionsService }) => {
+          mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+            nativeTransferMock,
+          ] as TransactionInfo[]);
 
-      const result = await transactionsService.checkAddressActivity(
-        Network.Mainnet,
-        mockAccount.address,
+          const result = await transactionsService.checkAddressActivity(
+            Network.Mainnet,
+            mockAccount.address,
+          );
+
+          expect(result).toBe(true);
+          expect(
+            mockTrongridApiClient.getTransactionInfoByAddress,
+          ).toHaveBeenCalledWith(Network.Mainnet, mockAccount.address, {
+            limit: 1,
+          });
+        },
       );
-
-      expect(result).toBe(true);
-      expect(
-        mockTrongridApiClient.getTransactionInfoByAddress,
-      ).toHaveBeenCalledWith(Network.Mainnet, mockAccount.address, {
-        limit: 1,
-      });
     });
 
     it('returns false when the address has no transactions', async () => {
-      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([]);
+      await withTransactionService(
+        async ({ mockTrongridApiClient, transactionsService }) => {
+          mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue(
+            [],
+          );
 
-      const result = await transactionsService.checkAddressActivity(
-        Network.Mainnet,
-        mockAccount.address,
+          const result = await transactionsService.checkAddressActivity(
+            Network.Mainnet,
+            mockAccount.address,
+          );
+
+          expect(result).toBe(false);
+        },
       );
-
-      expect(result).toBe(false);
     });
 
     it('propagates errors from the API client', async () => {
-      const error = new Error('API failure');
-      mockTrongridApiClient.getTransactionInfoByAddress.mockRejectedValue(
-        error,
-      );
+      await withTransactionService(
+        async ({ mockTrongridApiClient, transactionsService }) => {
+          const error = new Error('API failure');
+          mockTrongridApiClient.getTransactionInfoByAddress.mockRejectedValue(
+            error,
+          );
 
-      await expect(
-        transactionsService.checkAddressActivity(
-          Network.Mainnet,
-          mockAccount.address,
-        ),
-      ).rejects.toThrow('API failure');
+          await expect(
+            transactionsService.checkAddressActivity(
+              Network.Mainnet,
+              mockAccount.address,
+            ),
+          ).rejects.toThrow('API failure');
+        },
+      );
     });
   });
 
