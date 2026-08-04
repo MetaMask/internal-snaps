@@ -3775,7 +3775,7 @@ __metadata:
     "@metamask/snaps-jest": "npm:^10.2.0"
     "@metamask/snaps-sdk": "npm:^11.2.0"
     "@metamask/superstruct": "npm:^3.4.1"
-    "@types/lodash": "npm:^4.14.191"
+    "@types/lodash": "npm:^4.17.15"
     async-mutex: "npm:^0.5.0"
     bignumber.js: "npm:^9.3.1"
     concurrently: "npm:^10.0.3"
@@ -5982,13 +5982,6 @@ __metadata:
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
   checksum: 10/1a3c3e06236e4c4aab89499c428d585527ce50c24fe8259e8b3926d3df4cfbbbcf306cfc73ddfb66cbafc973116efd15967020b0f738f63e09e64c7d260519e7
-  languageName: node
-  linkType: hard
-
-"@types/lodash@npm:^4.14.191":
-  version: 4.17.25
-  resolution: "@types/lodash@npm:4.17.25"
-  checksum: 10/f786e05664439cc8d327fd97c62c060d81b3c4ed52127d01fbc926139e1a669c1554bf3cd0dbb43f8fcc7d9b5c6c23c543cc36de8dc815c9f289ea852b26ebd6
   languageName: node
   linkType: hard
 
