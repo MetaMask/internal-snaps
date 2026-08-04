@@ -21,6 +21,16 @@ import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
 
+type WithTransactionServiceCallback = <ReturnValue>(payload: {}) =>
+  | Promise<ReturnValue>
+  | ReturnValue;
+
+async function withTransactionService<ReturnValue>(
+  testFunction: WithTransactionServiceCallback<ReturnValue>,
+): Promise<ReturnValue> {
+  return await testFunction({});
+}
+
 // Import simplified mock data (each file now contains only one transaction)
 
 describe('TransactionsService', () => {
