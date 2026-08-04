@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "@metamask/assets-controller": "^13.0.0",
+    "@metamask/remote-feature-flag-controller": "^5.0.0",
     "@metamask/snaps-sdk": "^11.2.0",
     "@metamask/utils": "^11.9.0"
   },
