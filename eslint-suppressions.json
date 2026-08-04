@@ -1247,6 +1247,9 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 9
     },
+    "jest/no-disabled-tests": {
+      "count": 1
+    },
     "jest/no-restricted-matchers": {
       "count": 1
     },
@@ -1291,6 +1294,9 @@
     },
     "@typescript-eslint/no-explicit-any": {
       "count": 7
+    },
+    "jest/no-disabled-tests": {
+      "count": 1
     },
     "jest/no-restricted-matchers": {
       "count": 1
