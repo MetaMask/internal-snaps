@@ -1,4 +1,4 @@
-import type { KeyringRequest, KeyringResponse } from '@metamask/keyring-api';
+import type { KeyringRequest } from '@metamask/keyring-api';
 import type { Json } from '@metamask/snaps-sdk';
 import { assert } from 'superstruct';
 
@@ -11,6 +11,7 @@ import {
 } from '../entities';
 import type { AccountUseCases } from '../use-cases/AccountUseCases';
 import { mapToUtxo } from './mappings';
+import type { Utxo } from './mappings';
 import { parsePsbt } from './parsers';
 import {
   BroadcastPsbtRequest,
@@ -64,7 +65,7 @@ export class KeyringRequestHandler {
     this.#confirmationRepository = confirmationRepository;
   }
 
-  async route(request: KeyringRequest): Promise<KeyringResponse> {
+  async route(request: KeyringRequest): Promise<Json> {
     const { account, request: requestData, origin } = request;
     const { method, params } = requestData;
 
@@ -127,7 +128,7 @@ export class KeyringRequestHandler {
     origin: string,
     options: { fill: boolean; broadcast: boolean },
     feeRate?: number,
-  ): Promise<KeyringResponse> {
+  ): Promise<SignPsbtResponse> {
     const account = await this.#accountsUseCases.get(id);
 
     const psbtBase64ToSign = options.fill
@@ -173,53 +174,46 @@ export class KeyringRequestHandler {
     if (canBeMalleable !== undefined) {
       response.canBeMalleable = canBeMalleable;
     }
-    return this.#toKeyringResponse(response);
+    return response;
   }
 
   async #fillPsbt(
     id: string,
     psbtBase64: string,
     feeRate?: number,
-  ): Promise<KeyringResponse> {
+  ): Promise<FillPsbtResponse> {
     const psbt = await this.#accountsUseCases.fillPsbt(
       id,
       parsePsbt(psbtBase64),
       feeRate,
     );
-    return this.#toKeyringResponse({
-      psbt: psbt.toString(),
-    } as FillPsbtResponse);
+    return { psbt: psbt.toString() };
   }
 
   async #computeFee(
     id: string,
     psbtBase64: string,
     feeRate?: number,
-  ): Promise<KeyringResponse> {
+  ): Promise<ComputeFeeResponse> {
     const fee = await this.#accountsUseCases.computeFee(
       id,
       parsePsbt(psbtBase64),
       feeRate,
     );
-    return this.#toKeyringResponse({
-      fee: fee.to_sat().toString(),
-    } as ComputeFeeResponse);
+    return { fee: fee.to_sat().toString() };
   }
 
   async #broadcastPsbt(
     id: string,
     psbtBase64: string,
     origin: string,
-  ): Promise<KeyringResponse> {
+  ): Promise<BroadcastPsbtResponse> {
     const { txid, canBeMalleable } = await this.#accountsUseCases.broadcastPsbt(
       id,
       parsePsbt(psbtBase64),
       origin,
     );
-    return this.#toKeyringResponse({
-      txid: txid.toString(),
-      canBeMalleable,
-    } as BroadcastPsbtResponse);
+    return { txid: txid.toString(), canBeMalleable };
   }
 
   async #sendTransfer(
@@ -227,59 +221,47 @@ export class KeyringRequestHandler {
     recipients: { address: string; amount: string }[],
     origin: string,
     feeRate?: number,
-  ): Promise<KeyringResponse> {
+  ): Promise<BroadcastPsbtResponse> {
     const { txid, canBeMalleable } = await this.#accountsUseCases.sendTransfer(
       id,
       recipients,
       origin,
       feeRate,
     );
-    return this.#toKeyringResponse({
-      txid: txid.toString(),
-      canBeMalleable,
-    } as BroadcastPsbtResponse);
+    return { txid: txid.toString(), canBeMalleable };
   }
 
-  async #getUtxo(id: string, outpoint: string): Promise<KeyringResponse> {
+  async #getUtxo(id: string, outpoint: string): Promise<Utxo> {
     const account = await this.#accountsUseCases.get(id);
     const utxo = account.getUtxo(outpoint);
     if (!utxo) {
       throw new NotFoundError('UTXO not found', { id });
     }
-    return this.#toKeyringResponse(mapToUtxo(utxo, account.network));
+    return mapToUtxo(utxo, account.network);
   }
 
-  async #listUtxos(id: string): Promise<KeyringResponse> {
+  async #listUtxos(id: string): Promise<Utxo[]> {
     const account = await this.#accountsUseCases.get(id);
-    return this.#toKeyringResponse(
-      account.listUnspent().map((utxo) => mapToUtxo(utxo, account.network)),
-    );
+    return account
+      .listUnspent()
+      .map((utxo) => mapToUtxo(utxo, account.network));
   }
 
-  async #publicDescriptor(id: string): Promise<KeyringResponse> {
+  async #publicDescriptor(id: string): Promise<string> {
     const account = await this.#accountsUseCases.get(id);
-    return this.#toKeyringResponse(account.publicDescriptor);
+    return account.publicDescriptor;
   }
 
   async #signMessage(
     id: string,
     message: string,
     origin: string,
-  ): Promise<KeyringResponse> {
+  ): Promise<SignMessageResponse> {
     const signature = await this.#accountsUseCases.signMessage(
       id,
       message,
       origin,
     );
-    return this.#toKeyringResponse({
-      signature,
-    } as SignMessageResponse);
-  }
-
-  #toKeyringResponse(result: Json): KeyringResponse {
-    return {
-      pending: false,
-      result,
-    };
+    return { signature };
   }
 }
