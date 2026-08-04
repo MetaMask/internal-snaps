@@ -778,15 +778,6 @@ describe('TransactionsService', () => {
         fees: [],
       });
 
-      // beforeEach(() => {
-      //   mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
-      //     nativeTransferMock,
-      //   ] as TransactionInfo[]);
-      //   mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
-      //     [],
-      //   );
-      // });
-
       it('filters received TRC10 tokens with no price data', async () => {
         await withTransactionService(
           async ({
