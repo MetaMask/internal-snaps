@@ -11,4 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This package was migrated from [snap-solana-wallet](https://github.com/MetaMask/snap-solana-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-solana-wallet/blob/main/packages/snap/CHANGELOG.md). ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 
+### Fixed
+
+- Fixed small USDC-to-SOL swaps being incorrectly displayed as sends in Solana activity ([#108](https://github.com/MetaMask/internal-snaps/pull/108))
+
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
