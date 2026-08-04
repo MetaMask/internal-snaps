@@ -1036,104 +1036,114 @@ describe('TransactionsService', () => {
 
   describe('findByAccounts', () => {
     it('should find transactions for multiple accounts', async () => {
-      const mockTransactions1: Transaction[] = [
-        {
-          id: 'tx1',
-          type: 'send',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const mockTransactions1: Transaction[] = [
             {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx1',
+              type: 'send',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
+          ];
+
+          const mockTransactions2: Transaction[] = [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx2',
+              type: 'receive',
+              account: mockAccount2.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '50',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: mockAccount2.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '50',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          events: [],
-          fees: [],
+          ];
+
+          mockTransactionsRepository.findByAccountId
+            .mockResolvedValueOnce(mockTransactions1)
+            .mockResolvedValueOnce(mockTransactions2);
+
+          const result = await transactionsService.findByAccounts([
+            mockAccount,
+            mockAccount2,
+          ]);
+
+          expect(
+            mockTransactionsRepository.findByAccountId,
+          ).toHaveBeenCalledTimes(2);
+          expect(
+            mockTransactionsRepository.findByAccountId,
+          ).toHaveBeenCalledWith(mockAccount.id);
+          expect(
+            mockTransactionsRepository.findByAccountId,
+          ).toHaveBeenCalledWith(mockAccount2.id);
+          expect(result).toHaveLength(2);
+          expect(true).toBe(true);
         },
-      ];
-
-      const mockTransactions2: Transaction[] = [
-        {
-          id: 'tx2',
-          type: 'receive',
-          account: mockAccount2.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
-            {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '50',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          to: [
-            {
-              address: mockAccount2.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '50',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-      ];
-
-      mockTransactionsRepository.findByAccountId
-        .mockResolvedValueOnce(mockTransactions1)
-        .mockResolvedValueOnce(mockTransactions2);
-
-      const result = await transactionsService.findByAccounts([
-        mockAccount,
-        mockAccount2,
-      ]);
-
-      expect(mockTransactionsRepository.findByAccountId).toHaveBeenCalledTimes(
-        2,
       );
-      expect(mockTransactionsRepository.findByAccountId).toHaveBeenCalledWith(
-        mockAccount.id,
-      );
-      expect(mockTransactionsRepository.findByAccountId).toHaveBeenCalledWith(
-        mockAccount2.id,
-      );
-      expect(result).toHaveLength(2);
-      expect(true).toBe(true);
     });
 
     it('should handle empty accounts array', async () => {
-      const result = await transactionsService.findByAccounts([]);
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const result = await transactionsService.findByAccounts([]);
 
-      expect(result).toStrictEqual([]);
-      expect(mockTransactionsRepository.findByAccountId).not.toHaveBeenCalled();
-      expect(true).toBe(true);
+          expect(result).toStrictEqual([]);
+          expect(
+            mockTransactionsRepository.findByAccountId,
+          ).not.toHaveBeenCalled();
+          expect(true).toBe(true);
+        },
+      );
     });
   });
 
