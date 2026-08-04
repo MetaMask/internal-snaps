@@ -4,34 +4,34 @@ import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
 /**
- * Namespace for the {@link RemoteFeatureFlagProvider} messenger.
+ * Namespace for the {@link RemoteFeatureFlagsProvider} messenger.
  */
-export const REMOTE_FEATURE_FLAG_PROVIDER_NAME =
-  'RemoteFeatureFlagProvider' as const;
+export const REMOTE_FEATURE_FLAGS_PROVIDER_NAME =
+  'RemoteFeatureFlagsProvider' as const;
 
 /**
- * Actions from other messengers that {@link RemoteFeatureFlagProvider} calls.
+ * Actions from other messengers that {@link RemoteFeatureFlagsProvider} calls.
  */
-export type RemoteFeatureFlagProviderAllowedActions =
+export type RemoteFeatureFlagsProviderAllowedActions =
   RemoteFeatureFlagControllerGetStateAction;
 
 /**
- * Messenger restricted to actions consumed by {@link RemoteFeatureFlagProvider}.
+ * Messenger restricted to actions consumed by {@link RemoteFeatureFlagsProvider}.
  */
-export type RemoteFeatureFlagProviderMessenger = AsyncMessenger<
+export type RemoteFeatureFlagsProviderMessenger = AsyncMessenger<
   Messenger<
-    typeof REMOTE_FEATURE_FLAG_PROVIDER_NAME,
-    RemoteFeatureFlagProviderAllowedActions
+    typeof REMOTE_FEATURE_FLAGS_PROVIDER_NAME,
+    RemoteFeatureFlagsProviderAllowedActions
   >
 >;
 
-export class RemoteFeatureFlagProvider {
-  readonly #messenger: RemoteFeatureFlagProviderMessenger;
+export class RemoteFeatureFlagsProvider {
+  readonly #messenger: RemoteFeatureFlagsProviderMessenger;
 
   constructor({
     messenger,
   }: {
-    messenger: RemoteFeatureFlagProviderMessenger;
+    messenger: RemoteFeatureFlagsProviderMessenger;
   }) {
     this.#messenger = messenger;
   }

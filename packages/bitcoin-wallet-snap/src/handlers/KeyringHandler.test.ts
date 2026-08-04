@@ -11,7 +11,6 @@ import type {
 import { Address } from '@metamask/bitcoindevkit';
 import type {
   KeyringAccount,
-  KeyringResponse,
   Transaction as KeyringTransaction,
   KeyringRequest,
 } from '@metamask/keyring-api';
@@ -962,7 +961,7 @@ describe('KeyringHandler', () => {
   describe('submitRequest', () => {
     it('calls KeyringRequestHandler', async () => {
       const mockRequest = mock<KeyringRequest>();
-      const expectedResponse = mock<KeyringResponse>();
+      const expectedResponse = { signature: 'mockSig' };
       mockKeyringRequest.route.mockResolvedValue(expectedResponse);
 
       const result = await handler.submitRequest(mockRequest);

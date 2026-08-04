@@ -155,12 +155,9 @@ describe('KeyringRequestHandler', () => {
         3,
       );
       expect(result).toStrictEqual({
-        pending: false,
-        result: {
-          psbt: 'psbtBase64',
-          txid: 'txid',
-          canBeMalleable: false,
-        },
+        psbt: 'psbtBase64',
+        txid: 'txid',
+        canBeMalleable: false,
       });
     });
 
@@ -183,10 +180,7 @@ describe('KeyringRequestHandler', () => {
 
       const result = await handler.route(noBroadcastRequest);
 
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { psbt: 'psbtBase64', txid: null },
-      });
+      expect(result).toStrictEqual({ psbt: 'psbtBase64', txid: null });
     });
 
     it('throws AssertionError if usecase returns txid without canBeMalleable', async () => {
@@ -215,12 +209,9 @@ describe('KeyringRequestHandler', () => {
       const result = await handler.route(mockRequest);
 
       expect(result).toStrictEqual({
-        pending: false,
-        result: {
-          psbt: 'psbtBase64',
-          txid: 'txid',
-          canBeMalleable: true,
-        },
+        psbt: 'psbtBase64',
+        txid: 'txid',
+        canBeMalleable: true,
       });
     });
 
@@ -303,10 +294,7 @@ describe('KeyringRequestHandler', () => {
 
       const result = await handler.route(mockRequest);
 
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { psbt: 'psbtBase64', txid: null },
-      });
+      expect(result).toStrictEqual({ psbt: 'psbtBase64', txid: null });
     });
 
     it('does not sign if user cancels confirmation', async () => {
@@ -409,10 +397,7 @@ describe('KeyringRequestHandler', () => {
         mockPsbt,
         3,
       );
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { fee: '1000' },
-      });
+      expect(result).toStrictEqual({ fee: '1000' });
     });
 
     it('propagates errors from parsePsbt', async () => {
@@ -474,10 +459,7 @@ describe('KeyringRequestHandler', () => {
         mockPsbt,
         3,
       );
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { psbt: 'filledPsbtBase64' },
-      });
+      expect(result).toStrictEqual({ psbt: 'filledPsbtBase64' });
     });
 
     it('propagates errors from parsePsbt', async () => {
@@ -543,10 +525,7 @@ describe('KeyringRequestHandler', () => {
         mockPsbt,
         origin,
       );
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { txid: 'txid', canBeMalleable: false },
-      });
+      expect(result).toStrictEqual({ txid: 'txid', canBeMalleable: false });
     });
 
     it('passes canBeMalleable=true through for legacy P2PKH accounts', async () => {
@@ -560,10 +539,7 @@ describe('KeyringRequestHandler', () => {
 
       const result = await handler.route(mockRequest);
 
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { txid: 'txid', canBeMalleable: true },
-      });
+      expect(result).toStrictEqual({ txid: 'txid', canBeMalleable: true });
     });
 
     it('propagates errors from parsePsbt', async () => {
@@ -636,10 +612,7 @@ describe('KeyringRequestHandler', () => {
         origin,
         3,
       );
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { txid: 'txid', canBeMalleable: false },
-      });
+      expect(result).toStrictEqual({ txid: 'txid', canBeMalleable: false });
     });
 
     it('passes canBeMalleable=true through for legacy P2PKH accounts', async () => {
@@ -653,10 +626,7 @@ describe('KeyringRequestHandler', () => {
 
       const result = await handler.route(mockRequest);
 
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { txid: 'txid', canBeMalleable: true },
-      });
+      expect(result).toStrictEqual({ txid: 'txid', canBeMalleable: true });
     });
 
     it('propagates errors from sendTransfer', async () => {
@@ -704,10 +674,7 @@ describe('KeyringRequestHandler', () => {
         GetUtxoRequest,
       );
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith('account-id');
-      expect(result).toStrictEqual({
-        pending: false,
-        result: expectedUtxo,
-      });
+      expect(result).toStrictEqual(expectedUtxo);
     });
 
     it('throws NotFoundError when UTXO does not exist', async () => {
@@ -750,10 +717,7 @@ describe('KeyringRequestHandler', () => {
       const result = await handler.route(mockRequest);
 
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith('account-id');
-      expect(result).toStrictEqual({
-        pending: false,
-        result: [mockUtxo, mockUtxo],
-      });
+      expect(result).toStrictEqual([mockUtxo, mockUtxo]);
     });
   });
 
@@ -774,10 +738,7 @@ describe('KeyringRequestHandler', () => {
       const result = await handler.route(mockRequest);
 
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith('account-id');
-      expect(result).toStrictEqual({
-        pending: false,
-        result: 'publicDescriptor',
-      });
+      expect(result).toBe('publicDescriptor');
     });
   });
 
@@ -803,10 +764,7 @@ describe('KeyringRequestHandler', () => {
         'message',
         'metamask',
       );
-      expect(result).toStrictEqual({
-        pending: false,
-        result: { signature: 'signature' },
-      });
+      expect(result).toStrictEqual({ signature: 'signature' });
     });
   });
 });

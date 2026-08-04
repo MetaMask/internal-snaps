@@ -12,7 +12,6 @@ import type {
   CreateAccountOptions,
   KeyringAccount,
   KeyringRequest,
-  KeyringResponse,
   Paginated,
   Pagination,
   ResolvedAccountAddress,
@@ -24,7 +23,7 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import { SnapError } from '@metamask/snaps-sdk';
-import type { CaipChainId, JsonRpcRequest } from '@metamask/snaps-sdk';
+import type { CaipChainId, Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { sensitive } from '@metamask/superstruct';
 import { assert, is, string } from 'superstruct';
 import { encode } from 'wif';
@@ -337,7 +336,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     };
   }
 
-  async submitRequest(request: KeyringRequest): Promise<KeyringResponse> {
+  async submitRequest(request: KeyringRequest): Promise<Json> {
     return this.#keyringRequest.route(request);
   }
 
