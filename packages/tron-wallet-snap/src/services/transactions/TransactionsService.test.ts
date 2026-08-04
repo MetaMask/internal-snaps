@@ -1197,194 +1197,206 @@ describe('TransactionsService', () => {
 
   describe('saveMany', () => {
     it('should save multiple transactions and emit keyring event', async () => {
-      const mockTransactions: Transaction[] = [
-        {
-          id: 'tx-bulk-1',
-          type: 'send',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const mockTransactions: Transaction[] = [
             {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-bulk-1',
+              type: 'send',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-bulk-2',
+              type: 'receive',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '50',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '50',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          events: [],
-          fees: [],
-        },
-        {
-          id: 'tx-bulk-2',
-          type: 'receive',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
-            {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '50',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          to: [
-            {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '50',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-      ];
+          ];
 
-      await transactionsService.saveMany(mockTransactions);
+          await transactionsService.saveMany(mockTransactions);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
-        mockTransactions,
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
+            mockTransactions,
+          );
+          expect(true).toBe(true);
+        },
       );
-      expect(true).toBe(true);
     });
 
     it('should handle empty transactions array', async () => {
-      await transactionsService.saveMany([]);
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          await transactionsService.saveMany([]);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([]);
-      expect(true).toBe(true);
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([]);
+          expect(true).toBe(true);
+        },
+      );
     });
 
     it('should group transactions by account ID correctly', async () => {
-      const mockTransactions: Transaction[] = [
-        {
-          id: 'tx-account1-1',
-          type: 'send',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const mockTransactions: Transaction[] = [
             {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-account1-1',
+              type: 'send',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-account1-2',
+              type: 'receive',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '25',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '25',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          events: [],
-          fees: [],
-        },
-        {
-          id: 'tx-account1-2',
-          type: 'receive',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '25',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-account2-1',
+              type: 'send',
+              account: mockAccount2.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount2.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '75',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '75',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
-            {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '25',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-        {
-          id: 'tx-account2-1',
-          type: 'send',
-          account: mockAccount2.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
-            {
-              address: mockAccount2.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '75',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          to: [
-            {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '75',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-      ];
+          ];
 
-      await transactionsService.saveMany(mockTransactions);
+          await transactionsService.saveMany(mockTransactions);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
-        mockTransactions,
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
+            mockTransactions,
+          );
+          expect(true).toBe(true);
+        },
       );
-      expect(true).toBe(true);
     });
   });
 
