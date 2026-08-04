@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping.
+- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping. ([#101](https://github.com/MetaMask/internal-snaps/pull/101))
 
 ### Added
 
