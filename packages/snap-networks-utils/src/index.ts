@@ -5,3 +5,8 @@ export {
   AssetsProvider,
   type AssetsProviderMessenger,
 } from './providers/assets/AssetsProvider';
+export {
+  REMOTE_FEATURE_FLAG_PROVIDER_NAME,
+  RemoteFeatureFlagProvider,
+  type RemoteFeatureFlagProviderMessenger,
+} from './providers/remote-feature-flag/RemoteFeatureFlagProvider';
