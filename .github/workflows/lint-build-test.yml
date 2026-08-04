@@ -194,14 +194,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Build for tests
         run: yarn workspace ${{ matrix.package-name }} build
-        env:
-          ENVIRONMENT: ${{ matrix.package-name == '@metamask/solana-wallet-snap' && 'test' || 'production' }}
       - run: yarn workspace ${{ matrix.package-name }} run test
-        env:
-          ENVIRONMENT: ${{ matrix.package-name == '@metamask/solana-wallet-snap' && 'test' || 'production' }}
-      - name: Restore solana snap.manifest after test build
-        if: matrix.package-name == '@metamask/solana-wallet-snap'
-        run: git checkout -- packages/solana-wallet-snap/snap.manifest.json
       - name: Require clean working directory
         shell: bash
         run: |

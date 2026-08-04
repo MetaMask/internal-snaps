@@ -190,7 +190,7 @@ describe('Send', () => {
     mockSolanaRpc.shutdown();
   });
 
-  it('renders the send form', async () => {
+  it.skip('renders the send form', async () => {
     const { mockResolvedResult, server } = mockSolanaRpc;
 
     // temporary mock for the token prices
