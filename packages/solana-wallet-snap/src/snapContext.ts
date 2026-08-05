@@ -192,10 +192,11 @@ const assetsService = new AssetsService({
   logger,
   configProvider,
   snapAssetsAdapter,
+  coreMessenger,
+  accountsService,
   tokenApiClient,
   tokenPricesService,
   nftApiClient,
-  remoteFeatureFlagsProvider,
   assetsProvider,
 });
 
@@ -242,10 +243,8 @@ const signatureMonitor = new SignatureMonitor(
 const keyringAccountMonitor = new KeyringAccountMonitor(
   subscriptionService,
   accountsService,
-  assetsService,
   transactionsService,
   accountsSynchronizer,
-  tokenHelper,
   configProvider,
   logger,
 );
