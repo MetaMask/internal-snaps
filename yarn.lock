@@ -3312,7 +3312,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/snap-networks-utils@workspace:packages/snap-networks-utils":
+"@metamask/snap-networks-utils@npm:^1.0.0, @metamask/snap-networks-utils@workspace:packages/snap-networks-utils":
   version: 0.0.0-use.local
   resolution: "@metamask/snap-networks-utils@workspace:packages/snap-networks-utils"
   dependencies:
@@ -3780,10 +3780,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/tron-wallet-snap@workspace:packages/tron-wallet-snap"
   dependencies:
+    "@metamask/assets-controller": "npm:^13.0.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^23.7.0"
     "@metamask/keyring-snap-sdk": "npm:^9.2.1"
+    "@metamask/messenger": "npm:^2.0.0"
+    "@metamask/remote-feature-flag-controller": "npm:^5.0.0"
+    "@metamask/snap-networks-utils": "npm:^1.0.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
     "@metamask/snaps-sdk": "npm:^11.2.0"

@@ -1,4 +1,8 @@
 import type { KeyringAccount } from '@metamask/keyring-api';
+import {
+  AssetsProvider,
+  RemoteFeatureFlagsProvider,
+} from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   AssetMetadata,
@@ -47,6 +51,8 @@ export class AssetsService {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
+    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+    assetsProvider: AssetsProvider;
   }) {
     this.#snapAdapter = new SnapAssetsAdapter({
       logger,
