@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- chore: solana wallet snap integrate packages ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
-
 ### Added
 
 - Add package to `internal-snaps` monorepo ([#8](https://github.com/MetaMask/internal-snaps/pull/8))
