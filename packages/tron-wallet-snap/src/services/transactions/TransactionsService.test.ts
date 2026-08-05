@@ -62,6 +62,13 @@ type WithTransactionServiceCallback<ReturnValue> = (payload: {
 async function withTransactionService<ReturnValue>(
   testFunction: WithTransactionServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
+  // Mock the global snap object
+  Object.defineProperty(globalThis, 'snap', {
+    value: { request: jest.fn() },
+    writable: true,
+    configurable: true,
+  });
+
   const mockTransactionsRepository: jest.Mocked<
     Pick<
       TransactionsRepository,
@@ -135,14 +142,6 @@ async function withTransactionService<ReturnValue>(
 // Import simplified mock data (each file now contains only one transaction)
 
 describe('TransactionsService', () => {
-  let transactionsService: TransactionsService;
-  let mockLogger: jest.Mocked<ILogger>;
-  let mockTransactionsRepository: jest.Mocked<TransactionsRepository>;
-  let mockTrongridApiClient: jest.Mocked<TrongridApiClient>;
-  let mockTronHttpClient: jest.Mocked<TronHttpClient>;
-  let mockPriceApiClient: jest.Mocked<PriceApiClient>;
-  let mockSnapClient: jest.Mocked<SnapClient>;
-
   const mockAccount: TronKeyringAccount = {
     id: 'test-account-id',
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
@@ -166,65 +165,6 @@ describe('TransactionsService', () => {
     derivationPath: 'm/0/1',
     index: 1,
   };
-
-  beforeEach(() => {
-    // Mock the global snap object
-    const snap = {
-      request: jest.fn(),
-    };
-    (globalThis as any).snap = snap;
-
-    // Create mocks
-    mockLogger = {
-      log: jest.fn(),
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
-
-    // Create mock repository
-    mockTransactionsRepository = {
-      getAll: jest.fn(),
-      findByAccountId: jest.fn().mockResolvedValue([]),
-      getTransactionIdsByAccountId: jest.fn().mockResolvedValue(new Set()),
-      getConfirmedTransactionIds: jest.fn().mockResolvedValue(new Set()),
-      save: jest.fn(),
-      saveMany: jest.fn(),
-    } as unknown as jest.Mocked<TransactionsRepository>;
-
-    // Create mock API client
-    mockTrongridApiClient = {
-      getAccountInfoByAddress: jest.fn(),
-      getTransactionInfoByAddress: jest.fn(),
-      getContractTransactionInfoByAddress: jest.fn(),
-    } as unknown as jest.Mocked<TrongridApiClient>;
-
-    // Create mock TronHttpClient
-    mockTronHttpClient = {
-      getTRC10TokenMetadata: jest.fn(),
-      getTransactionInfoById: jest.fn(),
-    } as unknown as jest.Mocked<TronHttpClient>;
-
-    // Create mock PriceApiClient — default: no price data (all tokens filtered unless overridden)
-    mockPriceApiClient = {
-      getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
-    } as unknown as jest.Mocked<PriceApiClient>;
-
-    mockSnapClient = {
-      trackError: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<SnapClient>;
-
-    // Create service instance
-    transactionsService = new TransactionsService({
-      logger: mockLogger,
-      transactionsRepository: mockTransactionsRepository,
-      trongridApiClient: mockTrongridApiClient,
-      tronHttpClient: mockTronHttpClient,
-      priceApiClient: mockPriceApiClient,
-      snapClient: mockSnapClient,
-    });
-  });
 
   describe('checkAddressActivity', () => {
     it('returns true when the address has at least one transaction', async () => {
@@ -361,7 +301,7 @@ describe('TransactionsService', () => {
 
     it('should fetch and map transactions for an account using native transfers mock data', async () => {
       await withTransactionService(
-        async ({ mockTrongridApiClient, transactionsService, mockLogger }) => {
+        async ({ mockTrongridApiClient, transactionsService }) => {
           // Setup mock responses with simplified single-transaction structure
           mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
             nativeTransferMock,
@@ -626,7 +566,7 @@ describe('TransactionsService', () => {
 
     it('should handle API errors gracefully', async () => {
       await withTransactionService(
-        async ({ mockTrongridApiClient, transactionsService, mockLogger }) => {
+        async ({ mockTrongridApiClient, transactionsService }) => {
           // Setup API to throw error
           const apiError = new Error('API request failed');
           mockTrongridApiClient.getTransactionInfoByAddress.mockRejectedValue(
@@ -988,7 +928,6 @@ describe('TransactionsService', () => {
           async ({
             mockPriceApiClient,
             mockTrongridApiClient,
-            mockLogger,
             mockSnapClient,
             transactionsService,
           }) => {
@@ -1197,244 +1136,268 @@ describe('TransactionsService', () => {
 
   describe('saveMany', () => {
     it('should save multiple transactions and emit keyring event', async () => {
-      const mockTransactions: Transaction[] = [
-        {
-          id: 'tx-bulk-1',
-          type: 'send',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const mockTransactions: Transaction[] = [
             {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-bulk-1',
+              type: 'send',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-bulk-2',
+              type: 'receive',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '50',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '50',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          events: [],
-          fees: [],
-        },
-        {
-          id: 'tx-bulk-2',
-          type: 'receive',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
-            {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '50',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          to: [
-            {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '50',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-      ];
+          ];
 
-      await transactionsService.saveMany(mockTransactions);
+          await transactionsService.saveMany(mockTransactions);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
-        mockTransactions,
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
+            mockTransactions,
+          );
+          expect(true).toBe(true);
+        },
       );
-      expect(true).toBe(true);
     });
 
     it('should handle empty transactions array', async () => {
-      await transactionsService.saveMany([]);
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          await transactionsService.saveMany([]);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([]);
-      expect(true).toBe(true);
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([]);
+          expect(true).toBe(true);
+        },
+      );
     });
 
     it('should group transactions by account ID correctly', async () => {
-      const mockTransactions: Transaction[] = [
-        {
-          id: 'tx-account1-1',
-          type: 'send',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
+      await withTransactionService(
+        async ({ mockTransactionsRepository, transactionsService }) => {
+          const mockTransactions: Transaction[] = [
             {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-account1-1',
+              type: 'send',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '100',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '100',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-account1-2',
+              type: 'receive',
+              account: mockAccount.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '25',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: mockAccount.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '25',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          events: [],
-          fees: [],
-        },
-        {
-          id: 'tx-account1-2',
-          type: 'receive',
-          account: mockAccount.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
             {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '25',
-                unit: 'TRX',
-                fungible: true,
-              },
+              id: 'tx-account2-1',
+              type: 'send',
+              account: mockAccount2.id,
+              chain: Network.Mainnet,
+              status: 'confirmed',
+              timestamp: Math.floor(Date.now() / 1000),
+              from: [
+                {
+                  address: mockAccount2.address,
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '75',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'other-address',
+                  asset: {
+                    type: KnownCaip19Id.TrxMainnet,
+                    amount: '75',
+                    unit: 'TRX',
+                    fungible: true,
+                  },
+                },
+              ],
+              events: [],
+              fees: [],
             },
-          ],
-          to: [
-            {
-              address: mockAccount.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '25',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-        {
-          id: 'tx-account2-1',
-          type: 'send',
-          account: mockAccount2.id,
-          chain: Network.Mainnet,
-          status: 'confirmed',
-          timestamp: Math.floor(Date.now() / 1000),
-          from: [
-            {
-              address: mockAccount2.address,
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '75',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          to: [
-            {
-              address: 'other-address',
-              asset: {
-                type: KnownCaip19Id.TrxMainnet,
-                amount: '75',
-                unit: 'TRX',
-                fungible: true,
-              },
-            },
-          ],
-          events: [],
-          fees: [],
-        },
-      ];
+          ];
 
-      await transactionsService.saveMany(mockTransactions);
+          await transactionsService.saveMany(mockTransactions);
 
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
-        mockTransactions,
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
+            mockTransactions,
+          );
+          expect(true).toBe(true);
+        },
       );
-      expect(true).toBe(true);
     });
   });
 
   describe('Integration scenarios', () => {
     it('should handle a complete flow: fetch, process, and save transactions', async () => {
-      // Setup API responses with simplified single-transaction structure
-      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
-        nativeTransferMock,
-      ] as TransactionInfo[]);
-      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
-        contractInfoMock.data.slice(0, 1) as ContractTransactionInfo[],
+      await withTransactionService(
+        async ({
+          mockTransactionsRepository,
+          mockTrongridApiClient,
+          transactionsService,
+        }) => {
+          // Setup API responses with simplified single-transaction structure
+          mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
+            nativeTransferMock,
+          ] as TransactionInfo[]);
+          mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+            contractInfoMock.data.slice(0, 1) as ContractTransactionInfo[],
+          );
+
+          // Fetch transactions
+          const fetchedTransactions =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+          // Save the fetched transactions
+          await transactionsService.saveMany(fetchedTransactions);
+
+          expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
+            fetchedTransactions,
+          );
+          expect(true).toBe(true);
+        },
       );
-
-      // Fetch transactions
-      const fetchedTransactions =
-        await transactionsService.fetchNewTransactionsForAccount(
-          Network.Mainnet,
-          mockAccount,
-        );
-
-      // Save the fetched transactions
-      await transactionsService.saveMany(fetchedTransactions);
-
-      expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
-        fetchedTransactions,
-      );
-      expect(true).toBe(true);
     });
 
     it('should handle mixed transaction types from different mock data sources', async () => {
-      // Mix different types of transactions with simplified structure
-      const mixedRawTransactions = [
-        nativeTransferMock, // Native TRX transfer
-        trc10TransferMock, // TRC10 transfer
-        trc20TransferMock, // TRC20 transfer
-      ] as TransactionInfo[];
+      await withTransactionService(
+        async ({ mockTrongridApiClient, transactionsService }) => {
+          // Mix different types of transactions with simplified structure
+          const mixedRawTransactions = [
+            nativeTransferMock, // Native TRX transfer
+            trc10TransferMock, // TRC10 transfer
+            trc20TransferMock, // TRC20 transfer
+          ] as TransactionInfo[];
 
-      mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue(
-        mixedRawTransactions,
-      );
-      mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
-        [],
-      );
+          mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue(
+            mixedRawTransactions,
+          );
+          mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
+            [],
+          );
 
-      await transactionsService.fetchNewTransactionsForAccount(
-        Network.Mainnet,
-        mockAccount2,
-      );
+          await transactionsService.fetchNewTransactionsForAccount(
+            Network.Mainnet,
+            mockAccount2,
+          );
 
-      expect(true).toBe(true);
+          expect(true).toBe(true);
+        },
+      );
     });
   });
 });
