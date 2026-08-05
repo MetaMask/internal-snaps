@@ -301,7 +301,7 @@ describe('TransactionsService', () => {
 
     it('should fetch and map transactions for an account using native transfers mock data', async () => {
       await withTransactionService(
-        async ({ mockTrongridApiClient, transactionsService, mockLogger }) => {
+        async ({ mockTrongridApiClient, transactionsService }) => {
           // Setup mock responses with simplified single-transaction structure
           mockTrongridApiClient.getTransactionInfoByAddress.mockResolvedValue([
             nativeTransferMock,
@@ -566,7 +566,7 @@ describe('TransactionsService', () => {
 
     it('should handle API errors gracefully', async () => {
       await withTransactionService(
-        async ({ mockTrongridApiClient, transactionsService, mockLogger }) => {
+        async ({ mockTrongridApiClient, transactionsService }) => {
           // Setup API to throw error
           const apiError = new Error('API request failed');
           mockTrongridApiClient.getTransactionInfoByAddress.mockRejectedValue(
@@ -928,7 +928,6 @@ describe('TransactionsService', () => {
           async ({
             mockPriceApiClient,
             mockTrongridApiClient,
-            mockLogger,
             mockSnapClient,
             transactionsService,
           }) => {
