@@ -1,5 +1,9 @@
 /* eslint-disable jsdoc/require-returns */
 import type {
+  AssetsProvider,
+  RemoteFeatureFlagsProvider,
+} from '@metamask/snap-networks-utils';
+import type {
   FungibleAssetMarketData,
   FungibleAssetMetadata,
 } from '@metamask/snaps-sdk';
@@ -50,6 +54,13 @@ export class AssetsService {
     tokenApiClient: TokenApiClient;
     tokenPricesService: TokenPricesService;
     nftApiClient: NftApiClient;
+    /**
+     * Core plumbing for a follow-up PR that routes fungible reads via
+     * AssetsController. Required in the constructor options so DI is wired
+     * without changing callers again when routing lands.
+     */
+    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+    assetsProvider: AssetsProvider;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 AssetsService]');
     this.#configProvider = configProvider;

@@ -1,3 +1,13 @@
+import {
+  AssetsProvider,
+  RemoteFeatureFlagsProvider,
+} from '@metamask/snap-networks-utils';
+import type {
+  AssetsProviderMessenger,
+  RemoteFeatureFlagsProviderMessenger,
+} from '@metamask/snap-networks-utils';
+import { getMessenger } from '@metamask/snaps-sdk';
+
 import type { ICache } from './core/caching/ICache';
 import { InMemoryCache } from './core/caching/InMemoryCache';
 import { StateCache } from './core/caching/StateCache';
@@ -47,6 +57,7 @@ import { TransactionScanService } from './core/services/transaction-scan/Transac
 import { WalletService } from './core/services/wallet/WalletService';
 import logger, { noOpLogger } from './core/utils/logger';
 import { EventEmitter } from './infrastructure';
+import type { CoreMessenger } from './types/core-messenger';
 
 /**
  * Initializes all the services using dependency injection.
@@ -78,6 +89,12 @@ export type SnapExecutionContext = {
   accountsService: AccountsService;
   accountsSynchronizer: AccountsSynchronizer;
   tokenHelper: TokenHelper;
+  /**
+   * Core messenger plumbing (routing wired in a follow-up PR).
+   */
+  coreMessenger: CoreMessenger;
+  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+  assetsProvider: AssetsProvider;
 };
 
 const configProvider = new ConfigProvider();
@@ -160,6 +177,17 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   nftApiClient,
 });
 
+/**
+ * Core controllers plumbing
+ */
+const coreMessenger = getMessenger<CoreMessenger>();
+const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
+  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
+});
+const assetsProvider = new AssetsProvider({
+  messenger: coreMessenger as AssetsProviderMessenger,
+});
+
 const assetsService = new AssetsService({
   logger,
   configProvider,
@@ -167,6 +195,8 @@ const assetsService = new AssetsService({
   tokenApiClient,
   tokenPricesService,
   nftApiClient,
+  remoteFeatureFlagsProvider,
+  assetsProvider,
 });
 
 const transactionsRepository = new TransactionsRepository(state);
@@ -299,22 +329,28 @@ const snapContext: SnapExecutionContext = {
   accountsService,
   accountsSynchronizer,
   tokenHelper,
+  coreMessenger,
+  remoteFeatureFlagsProvider,
+  assetsProvider,
 };
 
 export {
   accountsService,
   accountsSynchronizer,
   analyticsService,
+  assetsProvider,
   assetsService,
   clientRequestHandler,
   configProvider,
   confirmationHandler,
   connection,
+  coreMessenger,
   eventEmitter,
   keyring,
   nameResolutionService,
   nftService,
   priceApiClient,
+  remoteFeatureFlagsProvider,
   sendSolBuilder,
   sendSplTokenBuilder,
   signer,
