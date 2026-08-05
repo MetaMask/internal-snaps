@@ -7,17 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0]
+
 ### Added
 
-- **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface): rename `listAccounts` → `getAccounts`, `listAccountAssets` → `getAccountAssets`, `listAccountTransactions` → `getAccountTransactions`; `getAccount` now throws instead of returning `undefined`; add `exportAccount` with hexadecimal private key export using `sensitive()` for redaction; remove v1-only methods `createAccount`, `discoverAccounts`, `filterAccountChains`, and `updateAccount`. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
-- Add `bip44:discover` support to `createAccounts`: checks on-chain activity across all Tron networks before persisting; returns `[]` if no activity to signal end-of-discovery to the client. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
-- Add `endowment:keyring` capabilities to manifest declaring the `tron:728126428` scope, hexadecimal private key export, and BIP-44 derivation strategies. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+- **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface) ([#56](https://github.com/MetaMask/internal-snaps/pull/56), [#101](https://github.com/MetaMask/internal-snaps/pull/101), [#105](https://github.com/MetaMask/internal-snaps/pull/105))
 
 ### Fixed
 
-- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping. ([#101](https://github.com/MetaMask/internal-snaps/pull/101))
-- Fix `submitRequest` returning a v1 `KeyringResponse` envelope `{ pending: false, result: ... }` instead of raw `Json`; the Keyring API v2 `SnapKeyring` calls the snap directly and expects unwrapped `Json` back. ([#105](https://github.com/MetaMask/internal-snaps/pull/105))
-- Disclose the mandatory 9,999 TRX `WitnessCreateContract` account-upgrade burn on confirmation ([#73](https://github.com/MetaMask/internal-snaps/pull/73))
+- Disclose the mandatory 9999 TRX `WitnessCreateContract` account-upgrade burn on confirmation ([#73](https://github.com/MetaMask/internal-snaps/pull/73))
 
 ## [2.0.0]
 
@@ -31,5 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@2.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.0.0...HEAD
+[3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@2.0.0...@metamask/tron-wallet-snap@3.0.0
 [2.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/tron-wallet-snap@2.0.0

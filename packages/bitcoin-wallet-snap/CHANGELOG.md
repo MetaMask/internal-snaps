@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1]
+
 ### Fixed
 
-- Fix `onKeyringRequest` responses to return `Json` directly (v2 protocol) instead of the v1 `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
+- Fix `onKeyringRequest` responses to correctly return `Json` directly (v2 protocol) instead of v1's `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
 
-## [2.0.0]
+## [2.0.0] [DEPRECATED]
 
 ### Added
 
@@ -44,7 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This package was migrated from [snap-bitcoin-wallet](https://github.com/MetaMask/snap-bitcoin-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-bitcoin-wallet/blob/main/packages/snap/CHANGELOG.md).
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@2.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@2.0.1...HEAD
+[2.0.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@2.0.0...@metamask/bitcoin-wallet-snap@2.0.1
 [2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@1.15.2...@metamask/bitcoin-wallet-snap@2.0.0
 [1.15.2]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@1.15.1...@metamask/bitcoin-wallet-snap@1.15.2
 [1.15.1]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/bitcoin-wallet-snap@1.15.1
