@@ -91,7 +91,6 @@
     "snap_getPreferences": {},
     "endowment:messenger": {
       "actions": [
-        "RemoteFeatureFlagController:getState",
         "AssetsController:getAccountAssetByID",
         "AssetsController:getAccountAssetsByIDs",
         "AssetsController:getAccountAssetsByScope"

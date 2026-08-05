@@ -1,11 +1,5 @@
-import {
-  AssetsProvider,
-  RemoteFeatureFlagsProvider,
-} from '@metamask/snap-networks-utils';
-import type {
-  AssetsProviderMessenger,
-  RemoteFeatureFlagsProviderMessenger,
-} from '@metamask/snap-networks-utils';
+import { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { AssetsProviderMessenger } from '@metamask/snap-networks-utils';
 import { getMessenger } from '@metamask/snaps-sdk';
 
 import type { ICache } from './core/caching/ICache';
@@ -90,10 +84,9 @@ export type SnapExecutionContext = {
   accountsSynchronizer: AccountsSynchronizer;
   tokenHelper: TokenHelper;
   /**
-   * Core messenger plumbing (routing wired in a follow-up PR).
+   * Core messenger plumbing for AssetsProvider reads.
    */
   coreMessenger: CoreMessenger;
-  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
   assetsProvider: AssetsProvider;
 };
 
@@ -181,9 +174,6 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
  * Core controllers plumbing
  */
 const coreMessenger = getMessenger<CoreMessenger>();
-const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
-  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
-});
 const assetsProvider = new AssetsProvider({
   messenger: coreMessenger as AssetsProviderMessenger,
 });
@@ -192,7 +182,6 @@ const assetsService = new AssetsService({
   logger,
   configProvider,
   snapAssetsAdapter,
-  coreMessenger,
   accountsService,
   tokenApiClient,
   tokenPricesService,
@@ -329,7 +318,6 @@ const snapContext: SnapExecutionContext = {
   accountsSynchronizer,
   tokenHelper,
   coreMessenger,
-  remoteFeatureFlagsProvider,
   assetsProvider,
 };
 
@@ -349,7 +337,6 @@ export {
   nameResolutionService,
   nftService,
   priceApiClient,
-  remoteFeatureFlagsProvider,
   sendSolBuilder,
   sendSplTokenBuilder,
   signer,

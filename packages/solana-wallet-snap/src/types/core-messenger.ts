@@ -4,7 +4,6 @@ import type {
   AssetsControllerGetAccountAssetsByScopeAction,
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
-import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
 import type { AsyncMessenger } from '@metamask/snaps-sdk';
 
 /**
@@ -14,7 +13,6 @@ export const SOLANA_WALLET_SNAP_MESSENGER_NAMESPACE =
   'SolanaWalletSnap' as const;
 
 export type CoreMessengerActions =
-  | RemoteFeatureFlagControllerGetStateAction
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
   | AssetsControllerGetAccountAssetsByScopeAction;
