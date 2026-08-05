@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Hardcode Solana fungible asset reads through `AssetsProvider` / `mapControllerAsset` (no migration-stage or remote feature-flag routing). Disable Snap fungible tracking in `fetch`/`save`/`saveMany` and account sync; Snap-owned NFT assets still use `SnapAssetsAdapter`.
+- Remove Snap-owned asset tracking (`AssetsRepository`, `SnapAssetsAdapter`, `assetEntities` state). `AssetsService` now reads exclusively from `AssetsProvider` / `mapControllerAsset`.
+- Hardcode Solana fungible asset reads through `AssetsProvider` / `mapControllerAsset` (no migration-stage or remote feature-flag routing).
 - Wire Core messenger plumbing (`endowment:messenger`, `AssetsProvider`) into the Solana snap.
 - Extract Snap-owned balance fetch/persist/read logic into `SnapAssetsAdapter`; `AssetsService` delegates account asset reads and saves through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssetsForAllActiveScopes`, and routing Keyring, Send, send render, and `refreshSend` through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))

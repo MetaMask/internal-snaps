@@ -17,8 +17,6 @@ import {
   AccountsService,
   AccountsSynchronizer,
   ApproveTokenService,
-  SnapAssetsAdapter,
-  AssetsRepository,
   AssetsService,
   KeyringAccountMonitor,
   MonitoredAccountsInitializer,
@@ -154,21 +152,8 @@ const tokenPricesService = new TokenPricesService({
 });
 const nameResolutionService = new NameResolutionService(connection, logger);
 
-const assetsRepository = new AssetsRepository(state);
-
 const accountsRepository = new AccountsRepository(state);
 const accountsService = new AccountsService(accountsRepository);
-
-const snapAssetsAdapter = new SnapAssetsAdapter({
-  connection,
-  logger,
-  configProvider,
-  assetsRepository,
-  accountsService,
-  tokenApiClient,
-  cache: inMemoryCache,
-  nftApiClient,
-});
 
 /**
  * Core controllers plumbing
@@ -181,7 +166,6 @@ const assetsProvider = new AssetsProvider({
 const assetsService = new AssetsService({
   logger,
   configProvider,
-  snapAssetsAdapter,
   accountsService,
   tokenApiClient,
   tokenPricesService,

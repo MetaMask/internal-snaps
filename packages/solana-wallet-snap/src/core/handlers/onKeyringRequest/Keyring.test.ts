@@ -101,13 +101,8 @@ describe('SolanaKeyring', () => {
     });
 
     mockAssetsService = {
-      fetch: jest.fn().mockResolvedValue(MOCK_ASSET_ENTITIES),
-      saveMany: jest.fn(),
       getAccountAssetsForAllActiveScopes: jest.fn(),
       getAccountAssetsByIDs: jest.fn(),
-      getNativeAssetTypes: jest
-        .fn()
-        .mockReturnValue([KnownCaip19Id.SolMainnet]),
     } as unknown as AssetsService;
 
     mockWalletService = {
@@ -349,7 +344,7 @@ describe('SolanaKeyring', () => {
       } as unknown as AssetEntity;
 
       jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
-        [KnownCaip19Id.SolMainnet]: invalidAsset,
+        [invalidAsset.assetType]: invalidAsset,
       });
 
       await expect(

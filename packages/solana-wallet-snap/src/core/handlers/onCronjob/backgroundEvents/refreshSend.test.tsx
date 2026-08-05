@@ -1,7 +1,6 @@
 import {
   accountsService,
   assetsService,
-  configProvider,
   priceApiClient,
   state,
 } from '../../../../snapContext';
@@ -43,10 +42,7 @@ jest.mock('../../../../snapContext', () => ({
     getAll: jest.fn(),
   },
   assetsService: {
-    getAccountAssetsByScope: jest.fn(),
-  },
-  configProvider: {
-    getActiveNetworks: jest.fn(),
+    getAccountAssetsForAllActiveScopes: jest.fn(),
   },
   priceApiClient: {
     getMultipleSpotPrices: jest.fn(),
@@ -65,10 +61,9 @@ const setupTest = () => {
   (accountsService.getAll as jest.Mock).mockResolvedValue([
     { id: 'account-1' },
   ]);
-  (configProvider.getActiveNetworks as jest.Mock).mockResolvedValue([
-    'solana:mainnet',
-  ]);
-  (assetsService.getAccountAssetsByScope as jest.Mock).mockResolvedValue([
+  (
+    assetsService.getAccountAssetsForAllActiveScopes as jest.Mock
+  ).mockResolvedValue([
     {
       assetType: KnownCaip19Id.SolMainnet,
     },
