@@ -1,3 +1,13 @@
+import {
+  AssetsProvider,
+  RemoteFeatureFlagsProvider,
+} from '@metamask/snap-networks-utils';
+import type {
+  AssetsProviderMessenger,
+  RemoteFeatureFlagsProviderMessenger,
+} from '@metamask/snap-networks-utils';
+import { getMessenger } from '@metamask/snaps-sdk';
+
 import { InMemoryCache } from './caching/InMemoryCache';
 import { StateCache } from './caching/StateCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
@@ -29,6 +39,7 @@ import { TransactionScanService } from './services/transaction-scan/TransactionS
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
 import { TransactionsService } from './services/transactions/TransactionsService';
 import { WalletService } from './services/wallet/WalletService';
+import type { CoreMessenger } from './types/core-messenger';
 import logger, { noOpLogger } from './utils/logger';
 
 /**
@@ -82,13 +93,24 @@ const priceApiClient = new PriceApiClient(configProvider, priceCache);
 // Token API client
 const tokenApiClient = new TokenApiClient(configProvider);
 
+/**
+ * Core controllers plumbing
+ */
+const coreMessenger = getMessenger<CoreMessenger>();
+const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
+  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
+});
+const assetsProvider = new AssetsProvider({
+  messenger: coreMessenger as AssetsProviderMessenger,
+});
+
 // Security Alerts API client
 const securityAlertsApiClient = new SecurityAlertsApiClient(
   configProvider,
   logger,
 );
 
-// Business Services - depend on Repositories, State and other Services
+// Business Services
 const assetsService = new AssetsService({
   logger,
   state,
@@ -98,6 +120,8 @@ const assetsService = new AssetsService({
   priceApiClient,
   tokenApiClient,
   snapClient,
+  remoteFeatureFlagsProvider,
+  assetsProvider,
 });
 
 const transactionsService = new TransactionsService({
@@ -236,6 +260,12 @@ export type SnapExecutionContext = {
   transactionScanService: TransactionScanService;
   transactionExpirationRefresherService: TransactionExpirationRefresherService;
   /**
+   * Core messenger plumbing (routing wired in a follow-up PR).
+   */
+  coreMessenger: CoreMessenger;
+  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+  assetsProvider: AssetsProvider;
+  /**
    * Handlers
    */
   assetsHandler: AssetsHandler;
@@ -267,6 +297,9 @@ const snapContext: SnapExecutionContext = {
   confirmationHandler,
   transactionScanService,
   transactionExpirationRefresherService,
+  coreMessenger,
+  remoteFeatureFlagsProvider,
+  assetsProvider,
   /**
    * Handlers
    */
