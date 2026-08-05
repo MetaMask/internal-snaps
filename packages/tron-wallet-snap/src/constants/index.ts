@@ -388,7 +388,7 @@ export const Networks = {
   },
 } as const;
 
-export const SPECIAL_ASSETS: string[] = [
+export const SNAP_OWNED_ASSETS: string[] = [
   KnownCaip19Id.TrxStakedForBandwidthMainnet,
   KnownCaip19Id.TrxStakedForBandwidthNile,
   KnownCaip19Id.TrxStakedForBandwidthShasta,
@@ -418,9 +418,12 @@ export const SPECIAL_ASSETS: string[] = [
   KnownCaip19Id.MaximumEnergyShasta,
 ];
 
+/** @deprecated Use {@link SNAP_OWNED_ASSETS} instead. */
+export const SPECIAL_ASSETS = SNAP_OWNED_ASSETS;
+
 export const ESSENTIAL_ASSETS: string[] = [
   KnownCaip19Id.TrxMainnet,
   KnownCaip19Id.TrxNile,
   KnownCaip19Id.TrxShasta,
-  ...SPECIAL_ASSETS,
+  ...SNAP_OWNED_ASSETS,
 ];
