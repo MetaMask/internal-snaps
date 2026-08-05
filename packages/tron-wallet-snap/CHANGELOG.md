@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface) ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+- **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface) ([#56](https://github.com/MetaMask/internal-snaps/pull/56), [#101](https://github.com/MetaMask/internal-snaps/pull/101), [#105](https://github.com/MetaMask/internal-snaps/pull/105))
 
 ### Fixed
 

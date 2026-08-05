@@ -39,9 +39,6 @@ packages/*/*.tsbuildinfo
 # AI
 .sisyphus/
 
-# Local git worktrees
-.worktrees/
-
 # Docusaurus
 **/.docusaurus
 packages/wallet-framework-docs/site/build
