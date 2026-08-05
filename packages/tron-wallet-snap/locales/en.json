@@ -64,6 +64,9 @@
     "confirmation.estimatedChanges.unsupportedContract": {
       "message": "Unsupported contract for simulation"
     },
+    "confirmation.estimatedChanges.witnessCreate": {
+      "message": "Registers your account as a Super Representative candidate and permanently burns 9,999 TRX."
+    },
     "confirmation.simulationTitleAPIError": {
       "message": "Because of an error, we couldn't check for security alerts."
     },
