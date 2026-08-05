@@ -1120,7 +1120,6 @@ describe('TransactionsService', () => {
           expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([
             mockTransaction,
           ]);
-          expect(true).toBe(true);
         },
       );
     });
