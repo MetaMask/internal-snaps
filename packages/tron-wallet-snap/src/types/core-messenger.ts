@@ -32,3 +32,8 @@ export type CoreMessengerMessenger = Messenger<
  * `endowment:messenger` / `getMessenger`.
  */
 export type CoreMessenger = AsyncMessenger<CoreMessengerMessenger>;
+
+/**
+ * Narrow dependency for services that only need to invoke Core actions.
+ */
+export type CoreMessengerCaller = Pick<CoreMessenger, 'call'>;

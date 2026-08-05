@@ -130,7 +130,10 @@ describe('KeyringHandler', () => {
 
         const result = await keyringHandler.submitRequest(request);
 
-        expect(result).toStrictEqual({ signature: '0xsignature123' });
+        expect(result).toStrictEqual({
+          pending: false,
+          result: { signature: '0xsignature123' },
+        });
         expect(mockAccountsService.findById).toHaveBeenCalledWith(
           mockAccount.id,
         );
@@ -221,7 +224,10 @@ describe('KeyringHandler', () => {
 
         const result = await keyringHandler.submitRequest(request);
 
-        expect(result).toStrictEqual({ signature: '0xsignature123' });
+        expect(result).toStrictEqual({
+          pending: false,
+          result: { signature: '0xsignature123' },
+        });
         // The request reaching confirmation keeps the dApp's original payload.
         expect(
           mockConfirmationHandler.handleKeyringRequest,

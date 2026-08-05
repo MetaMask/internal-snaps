@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "geU/HB4DiYL7nfzl4H/b5S+2xUmrtCAoqvvoqMN2+qQ=",
+    "shasum": "m1aV5aLS2glLsXdoHzUjoFUieyH4oUKiyzocw5VdWXY=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -23,22 +23,7 @@
   },
   "initialPermissions": {
     "endowment:keyring": {
-      "allowedOrigins": ["https://portfolio.metamask.io"],
-      "capabilities": {
-        "scopes": ["tron:728126428"],
-        "privateKey": {
-          "exportFormats": [
-            {
-              "encoding": "hexadecimal"
-            }
-          ]
-        },
-        "bip44": {
-          "deriveIndex": true,
-          "deriveIndexRange": true,
-          "discover": true
-        }
-      }
+      "allowedOrigins": ["https://portfolio.metamask.io"]
     },
     "snap_getBip32Entropy": [
       {
@@ -66,10 +51,10 @@
     },
     "endowment:messenger": {
       "actions": [
-        "RemoteFeatureFlagController:getState",
         "AssetsController:getAccountAssetByID",
         "AssetsController:getAccountAssetsByIDs",
-        "AssetsController:getAccountAssetsByScope"
+        "AssetsController:getAccountAssetsByScope",
+        "RemoteFeatureFlagController:getState"
       ]
     }
   },

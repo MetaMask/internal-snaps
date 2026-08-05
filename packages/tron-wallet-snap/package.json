@@ -47,6 +47,9 @@
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
+  "dependencies": {
+    "@metamask/snap-networks-utils": "workspace:^"
+  },
   "devDependencies": {
     "@metamask/assets-controller": "^13.0.0",
     "@metamask/auto-changelog": "^6.1.1",
@@ -55,12 +58,12 @@
     "@metamask/keyring-snap-sdk": "^9.2.1",
     "@metamask/messenger": "^2.0.0",
     "@metamask/remote-feature-flag-controller": "4.2.2",
-    "@metamask/snap-networks-utils": "1.0.0",
+    "@metamask/snap-networks-utils": "workspace:^",
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.0",
     "@metamask/snaps-sdk": "^11.2.0",
     "@metamask/superstruct": "^3.4.1",
-    "@types/lodash": "^4.17.15",
+    "@types/lodash": "^4.14.191",
     "async-mutex": "^0.5.0",
     "bignumber.js": "^9.3.1",
     "concurrently": "^10.0.3",

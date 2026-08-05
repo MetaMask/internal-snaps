@@ -7,6 +7,7 @@ import type {
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
   KeyringAccount,
   KeyringRequest,
+  KeyringResponse,
   Pagination,
   ResolvedAccountAddress,
   Transaction,
@@ -395,8 +396,8 @@ export class KeyringHandler implements KeyringSnapRpc {
     }
   }
 
-  async submitRequest(request: KeyringRequest): Promise<Json> {
-    return this.#handleSubmitRequest(request);
+  async submitRequest(request: KeyringRequest): Promise<KeyringResponse> {
+    return { pending: false, result: await this.#handleSubmitRequest(request) };
   }
 
   #prepareRequestForConfirmation(

@@ -117,6 +117,8 @@ const assetsService = new AssetsService({
   priceApiClient,
   tokenApiClient,
   snapClient,
+  coreMessenger,
+  assetsProvider,
 });
 
 const transactionsService = new TransactionsService({

@@ -12,11 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** Implement Keyring API v2 (`KeyringSnapRpc` interface): rename `listAccounts` → `getAccounts`, `listAccountAssets` → `getAccountAssets`, `listAccountTransactions` → `getAccountTransactions`; `getAccount` now throws instead of returning `undefined`; add `exportAccount` with hexadecimal private key export using `sensitive()` for redaction; remove v1-only methods `createAccount`, `discoverAccounts`, `filterAccountChains`, and `updateAccount`. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
 - Add `bip44:discover` support to `createAccounts`: checks on-chain activity across all Tron networks before persisting; returns `[]` if no activity to signal end-of-discovery to the client. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
 - Add `endowment:keyring` capabilities to manifest declaring the `tron:728126428` scope, hexadecimal private key export, and BIP-44 derivation strategies. ([#56](https://github.com/MetaMask/internal-snaps/pull/56))
+- Wire Core messenger endowment and instantiate `RemoteFeatureFlagsProvider` and `AssetsProvider` from `@metamask/snap-networks-utils` v1.0.0 (plumbing only; no Core routing yet).
+- Route asset reads through the shared `AssetsProvider` from `@metamask/snap-networks-utils` using account-scoped `AssetsController:getAccountAssetByID`, `AssetsController:getAccountAssetsByIDs`, and `AssetsController:getAccountAssetsByScope` actions when the migration stage is not `Off`. Snap-owned assets remain synced by the Snap but are read through the same controller path as fungibles. Resolution order: remote feature flags → Off default.
 
-### Fixed
+### Changed
 
-- Fix `bip44:discover` always failing due to `Network` enum being compiled bidirectionally by TypeScript when initialised from another enum's members, causing `Object.values(Network)` to include human-readable names (`"Mainnet"` etc.) alongside scope IDs; replaced enum initialisers with string literals so TypeScript emits a one-way mapping. ([#101](https://github.com/MetaMask/internal-snaps/pull/101))
-- Fix `submitRequest` returning a v1 `KeyringResponse` envelope `{ pending: false, result: ... }` instead of raw `Json`; the Keyring API v2 `SnapKeyring` calls the snap directly and expects unwrapped `Json` back. ([#105](https://github.com/MetaMask/internal-snaps/pull/105))
+- Update `snap.manifest.json` bundle shasum ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 
 ## [2.0.0]
 
