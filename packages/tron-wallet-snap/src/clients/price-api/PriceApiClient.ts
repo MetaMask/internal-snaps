@@ -7,7 +7,7 @@ import { mapKeys } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
 import { useCache } from '../../caching/useCache';
-import { SPECIAL_ASSETS } from '../../constants';
+import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
 import type { ILogger } from '../../utils/logger';
@@ -257,7 +257,7 @@ export class PriceApiClient {
     assert(vsCurrency, VsCurrencyParamStruct);
 
     const filteredTokens = tokenCaip19Types.filter(
-      (tokenCaip19Type) => !SPECIAL_ASSETS.includes(tokenCaip19Type),
+      (tokenCaip19Type) => !SNAP_OWNED_ASSETS.includes(tokenCaip19Type),
     );
 
     return this.#getMultipleSpotPrices_CACHE(filteredTokens, vsCurrency);

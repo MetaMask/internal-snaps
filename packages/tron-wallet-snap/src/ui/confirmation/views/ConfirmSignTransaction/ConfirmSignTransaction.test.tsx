@@ -244,4 +244,39 @@ describe('ConfirmSignTransaction', () => {
 
     expect(texts).not.toContain(SIMULATION_ERROR_TITLE);
   });
+
+  it('shows unsupported-contract copy for skipped simulations of unknown contracts', () => {
+    const texts = renderTexts(
+      buildContext({
+        transaction: {
+          rawDataHex: '0a02beef',
+          type: 'VoteWitnessContract',
+        },
+        scan: buildScanResult({
+          simulationStatus: SimulationStatus.Skipped,
+        }),
+      }),
+    );
+
+    expect(texts).toContain('Unsupported contract for simulation');
+  });
+
+  it('discloses WitnessCreateContract operation and 9,999 TRX burn when simulation is skipped', () => {
+    const texts = renderTexts(
+      buildContext({
+        transaction: {
+          rawDataHex: '0a02beef',
+          type: 'WitnessCreateContract',
+        },
+        scan: buildScanResult({
+          simulationStatus: SimulationStatus.Skipped,
+        }),
+      }),
+    );
+
+    expect(texts).not.toContain('Unsupported contract for simulation');
+    expect(texts).toContain(
+      'Registers your account as a Super Representative candidate and permanently burns 9,999 TRX.',
+    );
+  });
 });

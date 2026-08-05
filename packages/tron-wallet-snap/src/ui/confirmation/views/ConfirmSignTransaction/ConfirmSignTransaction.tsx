@@ -62,6 +62,11 @@ export const ConfirmSignTransaction = ({
   let estimatedChangesSection: ComponentOrElement | null = null;
   if (preferences.simulateOnChainActions) {
     if (scan?.simulationStatus === SimulationStatus.Skipped) {
+      const skippedChangesMessage =
+        context.transaction.type === 'WitnessCreateContract'
+          ? translate('confirmation.estimatedChanges.witnessCreate')
+          : translate('confirmation.estimatedChanges.unsupportedContract');
+
       estimatedChangesSection = (
         <Section direction="vertical">
           <Box direction="horizontal" alignment="start">
@@ -74,9 +79,7 @@ export const ConfirmSignTransaction = ({
               <Icon name="info" />
             </Tooltip>
           </Box>
-          <SnapText color="alternative">
-            {translate('confirmation.estimatedChanges.unsupportedContract')}
-          </SnapText>
+          <SnapText color="alternative">{skippedChangesMessage}</SnapText>
         </Section>
       );
     } else {

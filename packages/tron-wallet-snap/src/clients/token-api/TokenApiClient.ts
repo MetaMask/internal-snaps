@@ -3,7 +3,7 @@ import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
 import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 
-import { Network, SPECIAL_ASSETS } from '../../constants';
+import { Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
@@ -94,7 +94,7 @@ export class TokenApiClient {
        * Exclude TRON resource tokens (energy and bandwidth), staked tokens, and tokens not from supported networks.
        */
       const supportedAssetTypes = assetTypes.filter((assetType) => {
-        if (SPECIAL_ASSETS.includes(assetType)) {
+        if (SNAP_OWNED_ASSETS.includes(assetType)) {
           return false;
         }
         const { chainId } = parseCaipAssetType(assetType);

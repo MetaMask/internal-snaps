@@ -1628,7 +1628,7 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/assets/AssetsService.ts": {
+  "packages/tron-wallet-snap/src/services/assets/adapters/SnapAssetsAdapter.ts": {
     "import-x/no-extraneous-dependencies": {
       "count": 1
     }
@@ -1636,14 +1636,6 @@
   "packages/tron-wallet-snap/src/services/config/ConfigProvider.ts": {
     "import-x/no-extraneous-dependencies": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
     }
   },
   "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.ts": {

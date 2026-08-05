@@ -8,6 +8,12 @@ export const FALLBACK_GET_TRANSACTION_FEE_SUN = 1000;
 export const FALLBACK_GET_ENERGY_FEE_SUN = 100;
 export const FALLBACK_ENERGY_PRICE_SUN = 420;
 /**
+ * Default `getAccountUpgradeCost` (WitnessCreateContract burn) in SUN = 9,999 TRX.
+ *
+ * @see https://developers.tron.network/docs/super-representatives
+ */
+export const FALLBACK_ACCOUNT_UPGRADE_COST_SUN = 9_999_000_000;
+/**
  * 101 TRX
  */
 export const FEE_LIMIT = 101_000_000;
@@ -388,7 +394,7 @@ export const Networks = {
   },
 } as const;
 
-export const SPECIAL_ASSETS: string[] = [
+export const SNAP_OWNED_ASSETS: string[] = [
   KnownCaip19Id.TrxStakedForBandwidthMainnet,
   KnownCaip19Id.TrxStakedForBandwidthNile,
   KnownCaip19Id.TrxStakedForBandwidthShasta,
@@ -418,9 +424,12 @@ export const SPECIAL_ASSETS: string[] = [
   KnownCaip19Id.MaximumEnergyShasta,
 ];
 
+/** @deprecated Use {@link SNAP_OWNED_ASSETS} instead. */
+export const SPECIAL_ASSETS = SNAP_OWNED_ASSETS;
+
 export const ESSENTIAL_ASSETS: string[] = [
   KnownCaip19Id.TrxMainnet,
   KnownCaip19Id.TrxNile,
   KnownCaip19Id.TrxShasta,
-  ...SPECIAL_ASSETS,
+  ...SNAP_OWNED_ASSETS,
 ];

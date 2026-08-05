@@ -14,6 +14,7 @@ import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient
 import type { Network } from '../../constants';
 import {
   ACCOUNT_ACTIVATION_FEE_TRX,
+  FALLBACK_ACCOUNT_UPGRADE_COST_SUN,
   FALLBACK_ENERGY_PRICE_SUN,
   FALLBACK_GET_ENERGY_FEE_SUN,
   FALLBACK_GET_TRANSACTION_FEE_SUN,
@@ -708,6 +709,64 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Calculate the irreversible account-upgrade burn for WitnessCreateContract.
+   *
+   * Registering as a Super Representative candidate burns
+   * `getAccountUpgradeCost` TRX (default 9,999). This is a protocol-level debit
+   * separate from bandwidth/energy, and must be disclosed before signing.
+   *
+   * @see https://developers.tron.network/docs/super-representatives
+   * @param options - The options object
+   * @param options.scope - The network scope to resolve chain parameters for
+   * @param options.transaction - The transaction to inspect
+   * @returns Promise<BigNumber> - The upgrade burn fee in TRX (0 if not WitnessCreate)
+   */
+  async #accountUpgradeFee({
+    scope,
+    transaction,
+  }: {
+    scope: Network;
+    transaction: Transaction;
+  }): Promise<BigNumber> {
+    const contracts = transaction.raw_data.contract;
+
+    if (!contracts || contracts.length === 0) {
+      return ZERO;
+    }
+
+    const hasWitnessCreate = contracts.some(
+      (contract) => (contract.type as string) === 'WitnessCreateContract',
+    );
+
+    if (!hasWitnessCreate) {
+      return ZERO;
+    }
+
+    let upgradeCostSun = FALLBACK_ACCOUNT_UPGRADE_COST_SUN;
+
+    try {
+      const chainParameters = await this.#getChainParameters(scope);
+      upgradeCostSun =
+        chainParameters.find((param) => param.key === 'getAccountUpgradeCost')
+          ?.value ?? FALLBACK_ACCOUNT_UPGRADE_COST_SUN;
+    } catch (error) {
+      // Still disclose the default burn when chain parameters are unavailable.
+      this.#logger.warn(
+        { error },
+        'Failed to fetch account upgrade cost, using fallback 9999 TRX',
+      );
+    }
+
+    const upgradeCostTrx = BigNumber(upgradeCostSun).div(SUN_IN_TRX);
+
+    this.#logger.log(
+      `WitnessCreateContract detected, adding ${upgradeCostTrx.toString()} TRX account upgrade fee`,
+    );
+
+    return upgradeCostTrx;
+  }
+
+  /**
    * Calculate complete fee breakdown for a TRON transaction.
    * Supports both signed and unsigned transactions.
    * Handles both free resource consumption and TRX costs for overages.
@@ -811,6 +870,18 @@ export class FeeCalculatorService {
 
     if (memoFee.isGreaterThan(0)) {
       totalTrxCost = totalTrxCost.plus(memoFee);
+    }
+
+    /**
+     * Fourth, WitnessCreateContract account-upgrade burn (default 9,999 TRX)
+     */
+    const accountUpgradeFee = await this.#accountUpgradeFee({
+      scope,
+      transaction,
+    });
+
+    if (accountUpgradeFee.isGreaterThan(0)) {
+      totalTrxCost = totalTrxCost.plus(accountUpgradeFee);
     }
 
     /**
