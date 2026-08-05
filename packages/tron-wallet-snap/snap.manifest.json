@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "cCGFsmmHvqXTN3l54lg4dLDAv3pMqnVc523G4GfZKJA=",
+    "shasum": "B9kqmuUcYgPAD3ojseIm2HymqK77Q4NEzULU876+5Wc=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -16,16 +16,22 @@
         "registry": "https://registry.npmjs.org/"
       }
     },
-    "locales": ["locales/en.json"]
+    "locales": [
+      "locales/en.json"
+    ]
   },
   "initialConnections": {
     "https://portfolio.metamask.io": {}
   },
   "initialPermissions": {
     "endowment:keyring": {
-      "allowedOrigins": ["https://portfolio.metamask.io"],
+      "allowedOrigins": [
+        "https://portfolio.metamask.io"
+      ],
       "capabilities": {
-        "scopes": ["tron:728126428"],
+        "scopes": [
+          "tron:728126428"
+        ],
         "privateKey": {
           "exportFormats": [
             {
@@ -42,7 +48,11 @@
     },
     "snap_getBip32Entropy": [
       {
-        "path": ["m", "44'", "195'"],
+        "path": [
+          "m",
+          "44'",
+          "195'"
+        ],
         "curve": "secp256k1"
       }
     ],
@@ -62,7 +72,9 @@
       ]
     },
     "endowment:assets": {
-      "scopes": ["tron:728126428"]
+      "scopes": [
+        "tron:728126428"
+      ]
     },
     "endowment:messenger": {
       "actions": [
