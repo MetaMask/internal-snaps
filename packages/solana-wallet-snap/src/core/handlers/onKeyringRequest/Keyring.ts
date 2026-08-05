@@ -413,9 +413,10 @@ export class SolanaKeyring implements KeyringSnapRpc {
     try {
       validateRequest({ accountId }, ListAccountAssetsStruct);
 
-      const account = await this.getAccountOrThrow(accountId);
+      await this.getAccountOrThrow(accountId);
 
-      const assetEntities = await this.#assetsService.findByAccount(account);
+      const assetEntities =
+        await this.#assetsService.getAccountAssetsForAllActiveScopes(accountId);
 
       const result = assetEntities
         // Remove token assets with zero balance
@@ -448,10 +449,15 @@ export class SolanaKeyring implements KeyringSnapRpc {
     try {
       validateRequest({ accountId, assets }, GetAccountBalancesStruct);
 
-      const account = await this.getAccountOrThrow(accountId);
+      await this.getAccountOrThrow(accountId);
 
-      const assetsToUse = (await this.#assetsService.findByAccount(account))
-        .filter((asset) => assets.includes(asset.assetType))
+      const assetsById = await this.#assetsService.getAccountAssetsByIDs(
+        accountId,
+        assets,
+      );
+
+      const assetsToUse = Object.values(assetsById)
+        .filter((asset): asset is NonNullable<typeof asset> => asset !== null)
         // Remove token assets with zero balance
         .filter(
           (asset) =>
