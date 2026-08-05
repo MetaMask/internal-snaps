@@ -245,10 +245,6 @@ describe('Send', () => {
           entropySource: 'alternative',
         },
       },
-      assetEntities: {
-        [MOCK_SOLANA_KEYRING_ACCOUNT_0.id]: mockAssetEntities,
-        [MOCK_SOLANA_KEYRING_ACCOUNT_1.id]: mockAssetEntities,
-      },
     };
 
     const mockPreferences: Preferences = {
@@ -487,7 +483,8 @@ describe('Send', () => {
 
 describe('Send tracking', () => {
   const setupTest = () => {
-    const originalAssetsGetAll = assetsService.getAll;
+    const originalAssetsGetAccountAssetsByScope =
+      assetsService.getAccountAssetsByScope;
     const originalAssetsGetAssetsMetadata = assetsService.getAssetsMetadata;
     const originalAccountsGetAll = accountsService.getAll;
     const originalConnectionGetRpc = connection.getRpc;
@@ -530,7 +527,7 @@ describe('Send tracking', () => {
       });
 
     jest
-      .spyOn(assetsService, 'getAll')
+      .spyOn(assetsService, 'getAccountAssetsByScope')
       .mockImplementation()
       .mockResolvedValue([
         {
@@ -578,7 +575,8 @@ describe('Send tracking', () => {
       connection,
       priceApiClient,
       cleanup: () => {
-        assetsService.getAll = originalAssetsGetAll;
+        assetsService.getAccountAssetsByScope =
+          originalAssetsGetAccountAssetsByScope;
         assetsService.getAssetsMetadata = originalAssetsGetAssetsMetadata;
         accountsService.getAll = originalAccountsGetAll;
         connection.getRpc = originalConnectionGetRpc;
