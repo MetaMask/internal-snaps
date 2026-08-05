@@ -3113,58 +3113,56 @@ describe('AssetsService', () => {
     });
 
     it('getAccountAssetsByIDs routes all asset IDs through AssetsController when mode is controller', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockCoreMessenger }) => {
-          mockCoreMessenger.call.mockImplementation(
-            createMessengerCallMock(
-              () => ({
-                remoteFeatureFlags: {
-                  [TRON_FLAG_KEY]: {
-                    stage:
-                      SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
-                  },
+      await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
+        mockCoreMessenger.call.mockImplementation(
+          createMessengerCallMock(
+            () => ({
+              remoteFeatureFlags: {
+                [TRON_FLAG_KEY]: {
+                  stage:
+                    SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
                 },
-              }),
-              jest.fn(),
-              jest.fn().mockImplementation(async () => {
-                return {
-                  [fungibleAssetId as Caip19AssetId]: buildControllerAsset(
-                    fungibleAssetId,
-                    '3000000',
-                    {
-                      symbol: 'TRX',
-                      name: 'TRON',
-                      decimals: 6,
-                    },
-                  ),
-                  [snapAssetId as Caip19AssetId]: buildControllerAsset(
-                    snapAssetId,
-                    '250',
-                    {
-                      symbol: 'ENERGY',
-                      name: 'Energy',
-                      decimals: 0,
-                    },
-                  ),
-                };
-              }),
-            ),
-          );
+              },
+            }),
+            jest.fn(),
+            jest.fn().mockImplementation(async () => {
+              return {
+                [fungibleAssetId as Caip19AssetId]: buildControllerAsset(
+                  fungibleAssetId,
+                  '3000000',
+                  {
+                    symbol: 'TRX',
+                    name: 'TRON',
+                    decimals: 6,
+                  },
+                ),
+                [snapAssetId as Caip19AssetId]: buildControllerAsset(
+                  snapAssetId,
+                  '250',
+                  {
+                    symbol: 'ENERGY',
+                    name: 'Energy',
+                    decimals: 0,
+                  },
+                ),
+              };
+            }),
+          ),
+        );
 
-          const results = await assetsService.getAccountAssetsByIDs(accountId, [
-            fungibleAssetId,
-            snapAssetId,
-          ]);
+        const results = await assetsService.getAccountAssetsByIDs(accountId, [
+          fungibleAssetId,
+          snapAssetId,
+        ]);
 
-          expect(results[0]?.rawAmount).toBe('3000000');
-          expect(results[1]?.rawAmount).toBe('250');
-          expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-            'AssetsController:getAccountAssetsByIDs',
-            accountId,
-            [fungibleAssetId, snapAssetId],
-          );
-        },
-      );
+        expect(results[0]?.rawAmount).toBe('3000000');
+        expect(results[1]?.rawAmount).toBe('250');
+        expect(mockCoreMessenger.call).toHaveBeenCalledWith(
+          'AssetsController:getAccountAssetsByIDs',
+          accountId,
+          [fungibleAssetId, snapAssetId],
+        );
+      });
     });
 
     it('getByKeyringAccountId reads from AssetsController when mode is controller', async () => {
