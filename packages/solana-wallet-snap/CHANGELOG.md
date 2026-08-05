@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Solana account creation due to incorrect `@metamask/key-tree` package version ([#118](https://github.com/MetaMask/internal-snaps/pull/118))
+- Fix account creation failures due to an incorrect `@metamask/key-tree` package version ([#118](https://github.com/MetaMask/internal-snaps/pull/118))
 
 [Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.0...HEAD
 [5.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/solana-wallet-snap@5.0.0
