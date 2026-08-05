@@ -328,8 +328,6 @@ describe('TransactionsService', () => {
             '[🧾 TransactionsService]',
             expect.stringContaining('Fetching new transactions for account'),
           );
-
-          expect(true).toBe(true);
         },
       );
     });
@@ -535,8 +533,6 @@ describe('TransactionsService', () => {
           expect(
             mockTrongridApiClient.getContractTransactionInfoByAddress,
           ).toHaveBeenCalledWith(Network.Shasta, mockAccount.address);
-
-          expect(true).toBe(true);
         },
       );
     });
@@ -559,7 +555,6 @@ describe('TransactionsService', () => {
             );
 
           expect(result).toStrictEqual([]);
-          expect(true).toBe(true);
         },
       );
     });
@@ -591,7 +586,6 @@ describe('TransactionsService', () => {
             '[🧾 TransactionsService]',
             'Failed to fetch TRC20 transactions for address TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx on network tron:728126428',
           );
-          expect(true).toBe(true);
         },
       );
     });
@@ -1066,7 +1060,6 @@ describe('TransactionsService', () => {
             mockTransactionsRepository.findByAccountId,
           ).toHaveBeenCalledWith(mockAccount2.id);
           expect(result).toHaveLength(2);
-          expect(true).toBe(true);
         },
       );
     });
@@ -1080,7 +1073,6 @@ describe('TransactionsService', () => {
           expect(
             mockTransactionsRepository.findByAccountId,
           ).not.toHaveBeenCalled();
-          expect(true).toBe(true);
         },
       );
     });
@@ -1210,7 +1202,6 @@ describe('TransactionsService', () => {
           expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
             mockTransactions,
           );
-          expect(true).toBe(true);
         },
       );
     });
@@ -1221,7 +1212,6 @@ describe('TransactionsService', () => {
           await transactionsService.saveMany([]);
 
           expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith([]);
-          expect(true).toBe(true);
         },
       );
     });
@@ -1333,7 +1323,6 @@ describe('TransactionsService', () => {
           expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
             mockTransactions,
           );
-          expect(true).toBe(true);
         },
       );
     });
@@ -1368,14 +1357,18 @@ describe('TransactionsService', () => {
           expect(mockTransactionsRepository.saveMany).toHaveBeenCalledWith(
             fetchedTransactions,
           );
-          expect(true).toBe(true);
         },
       );
     });
 
     it('should handle mixed transaction types from different mock data sources', async () => {
       await withTransactionService(
-        async ({ mockTrongridApiClient, transactionsService }) => {
+        async ({
+          mockPriceApiClient,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          transactionsService,
+        }) => {
           // Mix different types of transactions with simplified structure
           const mixedRawTransactions = [
             nativeTransferMock, // Native TRX transfer
@@ -1390,12 +1383,70 @@ describe('TransactionsService', () => {
             [],
           );
 
-          await transactionsService.fetchNewTransactionsForAccount(
-            Network.Mainnet,
-            mockAccount2,
-          );
+          const result =
+            await transactionsService.fetchNewTransactionsForAccount(
+              Network.Mainnet,
+              mockAccount2,
+            );
 
-          expect(true).toBe(true);
+          expect(
+            mockTrongridApiClient.getTransactionInfoByAddress,
+          ).toHaveBeenCalledWith(Network.Mainnet, mockAccount2.address);
+          expect(
+            mockTrongridApiClient.getContractTransactionInfoByAddress,
+          ).toHaveBeenCalledWith(Network.Mainnet, mockAccount2.address);
+          expect(mockTronHttpClient.getTRC10TokenMetadata).toHaveBeenCalledWith(
+            '1005119',
+            Network.Mainnet,
+          );
+          expect(
+            mockPriceApiClient.getMultipleSpotPrices,
+          ).not.toHaveBeenCalled();
+
+          expect(result).toStrictEqual([
+            expect.objectContaining({
+              id: nativeTransferMock.txID,
+              account: mockAccount2.id,
+              chain: Network.Mainnet,
+              status: TransactionStatus.Confirmed,
+              type: TransactionType.Unknown,
+              from: [
+                expect.objectContaining({
+                  asset: expect.objectContaining({
+                    amount: '0.01',
+                    type: KnownCaip19Id.TrxMainnet,
+                    unit: 'TRX',
+                  }),
+                }),
+              ],
+              to: [
+                expect.objectContaining({
+                  address: 'TEFik7dGm6r5Y1Af9mGwnELuJLa1jXDDUB',
+                  asset: expect.objectContaining({
+                    amount: '0.01',
+                    type: KnownCaip19Id.TrxMainnet,
+                    unit: 'TRX',
+                  }),
+                }),
+              ],
+            }),
+            expect.objectContaining({
+              id: trc10TransferMock.txID,
+              account: mockAccount2.id,
+              chain: Network.Mainnet,
+              status: TransactionStatus.Confirmed,
+              type: TransactionType.Unknown,
+              from: [
+                expect.objectContaining({
+                  asset: expect.objectContaining({
+                    amount: '88.888888',
+                    type: `${Network.Mainnet}/trc10:1005119`,
+                    unit: 'UNKNOWN',
+                  }),
+                }),
+              ],
+            }),
+          ]);
         },
       );
     });
