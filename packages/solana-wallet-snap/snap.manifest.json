@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "j3n+ylk6thi2g8W+qqmF7S56WcW2d9Kq5AhjCkqZSAk=",
+    "shasum": "8xioVFo7Tpep5rVLoWUqeg+bvogIihY9EY6YxFTelDY=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -88,7 +88,15 @@
     "snap_manageAccounts": {},
     "snap_manageState": {},
     "snap_dialog": {},
-    "snap_getPreferences": {}
+    "snap_getPreferences": {},
+    "endowment:messenger": {
+      "actions": [
+        "RemoteFeatureFlagController:getState",
+        "AssetsController:getAccountAssetByID",
+        "AssetsController:getAccountAssetsByIDs",
+        "AssetsController:getAccountAssetsByScope"
+      ]
+    }
   },
   "platformVersion": "11.2.0",
   "manifestVersion": "0.1"

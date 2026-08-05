@@ -107,6 +107,14 @@ describe('AssetsService', () => {
       tokenApiClient: mockTokenApiClient,
       tokenPricesService: mockTokenPricesService,
       nftApiClient: mockNftApiClient,
+      remoteFeatureFlagsProvider: {
+        getFeatureFlags: jest.fn(),
+      } as unknown as import('@metamask/snap-networks-utils').RemoteFeatureFlagsProvider,
+      assetsProvider: {
+        getAccountAssetByID: jest.fn(),
+        getAccountAssetsByIDs: jest.fn(),
+        getAccountAssetsByScope: jest.fn(),
+      } as unknown as import('@metamask/snap-networks-utils').AssetsProvider,
     });
   });
 
