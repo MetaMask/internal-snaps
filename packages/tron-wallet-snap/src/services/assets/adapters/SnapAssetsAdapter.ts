@@ -337,28 +337,6 @@ export class SnapAssetsAdapter {
     };
   }
 
-  /**
-   * Extracts all assets from normalized account data.
-   * Coordinates calls to individual extraction functions.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param data - Normalized account data.
-   * @returns AssetEntity[] - Array of all extracted assets.
-   */
-  #extractAssets(
-    account: KeyringAccount,
-    scope: Network,
-    data: NormalizedAccountData,
-  ): AssetEntity[] {
-    return [
-      this.#extractNativeAsset(account, scope, data.nativeBalance),
-      ...this.#extractSnapOwnedAssets(account, scope, data),
-      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
-      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
-    ];
-  }
-
   #extractSnapOwnedAssets(
     account: KeyringAccount,
     scope: Network,
@@ -446,34 +424,6 @@ export class SnapAssetsAdapter {
         iconUrl,
       };
     });
-  }
-
-  /**
-   * Extracts the native TRX asset from the balance.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param balance - The native balance in sun.
-   * @returns AssetEntity - The native TRX asset.
-   */
-  #extractNativeAsset(
-    account: KeyringAccount,
-    scope: Network,
-    balance: number,
-  ): AssetEntity {
-    return {
-      assetType: Networks[scope].nativeToken.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].nativeToken.symbol,
-      decimals: Networks[scope].nativeToken.decimals,
-      rawAmount: balance.toString(),
-      uiAmount: toUiAmount(
-        balance,
-        Networks[scope].nativeToken.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].nativeToken.iconUrl,
-    };
   }
 
   /**
@@ -753,66 +703,6 @@ export class SnapAssetsAdapter {
         iconUrl: Networks[scope].maximumEnergy.iconUrl,
       },
     ];
-  }
-
-  /**
-   * Extracts TRC10 assets from the balances array.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc10Balances - TRC10 token balances as `{ key: tokenId, value: balance }[]`.
-   * @returns AssetEntity[] - Array of TRC10 asset entities.
-   */
-  #extractTrc10Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc10Balances: TronAccount['assetV2'],
-  ): AssetEntity[] {
-    return (
-      trc10Balances?.flatMap((tokenObject) => {
-        // assetV2 has structure: { "key": "token_id", "value": "balance" }
-        return {
-          assetType: `${scope}/trc10:${tokenObject.key}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: tokenObject.value?.toString() ?? '0',
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      }) ?? []
-    );
-  }
-
-  /**
-   * Extracts TRC20 assets from a balances array.
-   * Works with both active accounts (tronAccountInfo.trc20) and inactive accounts (getTrc20BalancesByAddress).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc20Balances - Array of `Record<contractAddress, balance>` objects (e.g., `[{ "TContractAddr": "1000" }]`).
-   * @returns AssetEntity[] - Array of TRC20 asset entities.
-   */
-  #extractTrc20Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc20Balances: Trc20Balance[],
-  ): AssetEntity[] {
-    return trc20Balances.flatMap((tokenObject) => {
-      return Object.entries(tokenObject).map(([address, balance]) => {
-        return {
-          assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: balance,
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      });
-    });
   }
 
   async getAssetsMetadata(
