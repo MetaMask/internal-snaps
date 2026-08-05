@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Core messenger plumbing (`getMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`) for upcoming AssetsController migration ([#95](https://github.com/MetaMask/internal-snaps/pull/95))
 - Route fungible asset reads through Core AssetsController based on migration stage ([#127](https://github.com/MetaMask/internal-snaps/pull/127))
 
+### Removed
+
+- Assets migration feature-flag routing. Fungible reads (`getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`) now always use Core `AssetsController` via `AssetsProvider`; snap-owned protocol assets remain on the Snap adapter for sync, reads, and keyring events. Removed `RemoteFeatureFlagController:getState` messenger endowment ([#97](https://github.com/MetaMask/internal-snaps/pull/97))
+
 ## [3.0.0]
 
 ### Added

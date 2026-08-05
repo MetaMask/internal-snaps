@@ -1,4 +1,3 @@
-import { SnapsAssetsMigrationStage } from '@metamask/assets-controller';
 import { KeyringEvent } from '@metamask/keyring-api';
 import type {
   AccountAssetListUpdatedEvent,
@@ -115,10 +114,6 @@ export class SnapAssetsAdapter {
 
   readonly #snapClient: SnapClient;
 
-  readonly #resolveMigrationStage: (
-    chainId: string,
-  ) => Promise<SnapsAssetsMigrationStage>;
-
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -134,7 +129,6 @@ export class SnapAssetsAdapter {
     priceApiClient,
     tokenApiClient,
     snapClient,
-    resolveMigrationStage,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -144,9 +138,6 @@ export class SnapAssetsAdapter {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
-    resolveMigrationStage: (
-      chainId: string,
-    ) => Promise<SnapsAssetsMigrationStage>;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 SnapAssetsAdapter]');
     this.#assetsRepository = assetsRepository;
@@ -156,7 +147,6 @@ export class SnapAssetsAdapter {
     this.#priceApiClient = priceApiClient;
     this.#tokenApiClient = tokenApiClient;
     this.#snapClient = snapClient;
-    this.#resolveMigrationStage = resolveMigrationStage;
 
     const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
@@ -164,10 +154,6 @@ export class SnapAssetsAdapter {
 
   static isFiat(caipAssetId: CaipAssetType): boolean {
     return caipAssetId.includes('swift:0/iso4217:');
-  }
-
-  async #resolveStage(chainId: string): Promise<SnapsAssetsMigrationStage> {
-    return this.#resolveMigrationStage(chainId);
   }
 
   async getAccountAssetByID(
@@ -195,35 +181,29 @@ export class SnapAssetsAdapter {
   }
 
   /**
-   * Fetches all assets and balances for an account.
+   * Fetches snap-owned protocol assets and balances for an account.
+   *
+   * Fungible balances (TRX, TRC10, TRC20) are owned by Core AssetsController.
+   * This method only syncs Snap-managed protocol assets: energy, bandwidth,
+   * staking positions, lock/withdrawal, and rewards.
    *
    * Data Sources:
-   * - `getAccountInfoByAddress`: TRX balance, TRC10 tokens, TRC20 tokens (active accounts only)
+   * - `getAccountInfoByAddress`: Staking data (active accounts only)
    * - `getAccountResources`: Energy and Bandwidth (returns {} for inactive accounts)
-   * - `getTrc20BalancesByAddress`: TRC20 balances fallback (works for inactive accounts)
-   *
-   * Logic Flow:
-   * 1. Fetch account info, resources, and TRC20 fallback (for inactive accounts)
-   * 2. Normalize data into consistent shape via `#buildAccountData`
-   * 3. Extract all assets via `#extractAssets`
-   * 4. Fetch metadata and prices in parallel
-   * 5. Enrich assets with metadata via `#enrichAssetsWithMetadata`
-   * 6. Filter spam tokens via `#filterTokensWithoutPriceData`
+   * - `getReward`: Unclaimed staking rewards
    *
    * @param scope - The network to query.
    * @param account - The keyring account.
-   * @returns Promise<AssetEntity[]> - Array of assets with balances.
+   * @returns Promise<AssetEntity[]> - Array of snap-owned assets with balances.
    */
   async fetchAssetsAndBalancesForAccount(
     scope: Network,
     account: KeyringAccount,
   ): Promise<AssetEntity[]> {
-    this.#logger.info('Fetching assets and balances by account', {
+    this.#logger.info('Fetching snap-owned assets and balances by account', {
       account,
       scope,
     });
-
-    const stage = await this.#resolveStage(scope);
 
     const [
       tronAccountInfoRequest,
@@ -235,40 +215,21 @@ export class SnapAssetsAdapter {
       this.#tronHttpClient.getReward(scope, account.address),
     ]);
 
-    const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
-    if (isInactiveAccount) {
+    if (tronAccountInfoRequest.status === 'rejected') {
       this.#logger.info(
         'Account info request failed, treating as inactive account',
         { account, scope },
       );
     }
 
-    const trc20BalancesFallback =
-      stage === SnapsAssetsMigrationStage.Off && isInactiveAccount
-        ? await this.#trongridApiClient
-            .getTrc20BalancesByAddress(scope, account.address)
-            .catch(async (error) => {
-              await this.#snapClient.trackError(error as Error);
-              this.#logger.warn(
-                'Failed to fetch TRC20 balances for inactive account',
-                { error, account, scope },
-              );
-              return [];
-            })
-        : [];
-
     const accountData = this.#buildAccountData({
       tronAccountInfoRequest,
       tronAccountResourcesRequest,
-      trc20BalancesFallback,
+      trc20BalancesFallback: [],
       stakingRewardsRequest,
     });
 
-    const rawAssets =
-      stage === SnapsAssetsMigrationStage.Off
-        ? this.#extractAssets(account, scope, accountData)
-        : this.#extractSnapOwnedAssets(account, scope, accountData);
-
+    const rawAssets = this.#extractSnapOwnedAssets(account, scope, accountData);
     const assetTypes = rawAssets.map((asset) => asset.assetType);
     const priceableAssetTypes = this.#getPriceableAssetTypes(rawAssets);
 
@@ -376,28 +337,6 @@ export class SnapAssetsAdapter {
     };
   }
 
-  /**
-   * Extracts all assets from normalized account data.
-   * Coordinates calls to individual extraction functions.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param data - Normalized account data.
-   * @returns AssetEntity[] - Array of all extracted assets.
-   */
-  #extractAssets(
-    account: KeyringAccount,
-    scope: Network,
-    data: NormalizedAccountData,
-  ): AssetEntity[] {
-    return [
-      this.#extractNativeAsset(account, scope, data.nativeBalance),
-      ...this.#extractSnapOwnedAssets(account, scope, data),
-      ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
-      ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
-    ];
-  }
-
   #extractSnapOwnedAssets(
     account: KeyringAccount,
     scope: Network,
@@ -485,34 +424,6 @@ export class SnapAssetsAdapter {
         iconUrl,
       };
     });
-  }
-
-  /**
-   * Extracts the native TRX asset from the balance.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param balance - The native balance in sun.
-   * @returns AssetEntity - The native TRX asset.
-   */
-  #extractNativeAsset(
-    account: KeyringAccount,
-    scope: Network,
-    balance: number,
-  ): AssetEntity {
-    return {
-      assetType: Networks[scope].nativeToken.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].nativeToken.symbol,
-      decimals: Networks[scope].nativeToken.decimals,
-      rawAmount: balance.toString(),
-      uiAmount: toUiAmount(
-        balance,
-        Networks[scope].nativeToken.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].nativeToken.iconUrl,
-    };
   }
 
   /**
@@ -792,66 +703,6 @@ export class SnapAssetsAdapter {
         iconUrl: Networks[scope].maximumEnergy.iconUrl,
       },
     ];
-  }
-
-  /**
-   * Extracts TRC10 assets from the balances array.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc10Balances - TRC10 token balances as `{ key: tokenId, value: balance }[]`.
-   * @returns AssetEntity[] - Array of TRC10 asset entities.
-   */
-  #extractTrc10Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc10Balances: TronAccount['assetV2'],
-  ): AssetEntity[] {
-    return (
-      trc10Balances?.flatMap((tokenObject) => {
-        // assetV2 has structure: { "key": "token_id", "value": "balance" }
-        return {
-          assetType: `${scope}/trc10:${tokenObject.key}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: tokenObject.value?.toString() ?? '0',
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      }) ?? []
-    );
-  }
-
-  /**
-   * Extracts TRC20 assets from a balances array.
-   * Works with both active accounts (tronAccountInfo.trc20) and inactive accounts (getTrc20BalancesByAddress).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param trc20Balances - Array of `Record<contractAddress, balance>` objects (e.g., `[{ "TContractAddr": "1000" }]`).
-   * @returns AssetEntity[] - Array of TRC20 asset entities.
-   */
-  #extractTrc20Assets(
-    account: KeyringAccount,
-    scope: Network,
-    trc20Balances: Trc20Balance[],
-  ): AssetEntity[] {
-    return trc20Balances.flatMap((tokenObject) => {
-      return Object.entries(tokenObject).map(([address, balance]) => {
-        return {
-          assetType: `${scope}/trc20:${address}` as TokenCaipAssetType,
-          keyringAccountId: account.id,
-          network: scope,
-          symbol: '',
-          decimals: 0,
-          rawAmount: balance,
-          uiAmount: '0',
-          iconUrl: '', // Will be enriched with metadata later
-        };
-      });
-    });
   }
 
   async getAssetsMetadata(
@@ -1292,33 +1143,14 @@ export class SnapAssetsAdapter {
   async saveMany(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
-    const stagesByNetwork = new Map<Network, SnapsAssetsMigrationStage>();
-    await Promise.all(
-      [...new Set(assets.map((asset) => asset.network))].map(
-        async (network) => {
-          stagesByNetwork.set(network, await this.#resolveStage(network));
-        },
-      ),
-    );
-
+    // Core owns fungibles; only persist/emit snap-owned protocol assets.
     const shouldEmitAsset = (asset: AssetEntity): boolean =>
-      (stagesByNetwork.get(asset.network) ?? SnapsAssetsMigrationStage.Off) ===
-        SnapsAssetsMigrationStage.Off || isSnapOwnedAsset(asset.assetType);
+      isSnapOwnedAsset(asset.assetType);
 
     const hasZeroAmount = (asset: AssetEntity): boolean =>
       asset.rawAmount === '0' || asset.uiAmount === '0';
 
     const savedAssets = await this.getAll();
-    const isEssentialAsset = (asset: AssetEntity): boolean =>
-      ESSENTIAL_ASSETS.includes(asset.assetType);
-
-    const isProtectedAsset = (asset: AssetEntity): boolean => {
-      const stage =
-        stagesByNetwork.get(asset.network) ?? SnapsAssetsMigrationStage.Off;
-      return stage === SnapsAssetsMigrationStage.Off
-        ? isEssentialAsset(asset)
-        : isSnapOwnedAsset(asset.assetType);
-    };
 
     // Track only the account/network pairs refreshed in this run.
     // That prevents us from treating assets from untouched networks as disappeared.
@@ -1335,27 +1167,18 @@ export class SnapAssetsAdapter {
       assets.map((asset) => `${asset.keyringAccountId}:${asset.assetType}`),
     );
 
-    // A saved asset is considered disappeared only if its network was part of
-    // this sync, it is not essential, and it is missing from the latest
-    // snapshot for that account.
+    // A saved snap-owned asset is considered disappeared only if its network was
+    // part of this sync and it is missing from the latest snapshot. Fungibles are
+    // ignored because Core owns them.
     const disappearedAssets = savedAssets.filter((savedAsset) => {
       const syncedNetworks =
         syncedNetworksByAccount[savedAsset.keyringAccountId];
 
-      if (
-        !syncedNetworks?.has(savedAsset.network) ||
-        isProtectedAsset(savedAsset)
-      ) {
+      if (!syncedNetworks?.has(savedAsset.network)) {
         return false;
       }
 
-      const stage =
-        stagesByNetwork.get(savedAsset.network) ??
-        SnapsAssetsMigrationStage.Off;
-      if (
-        stage !== SnapsAssetsMigrationStage.Off &&
-        !isSnapOwnedAsset(savedAsset.assetType)
-      ) {
+      if (!isSnapOwnedAsset(savedAsset.assetType)) {
         return false;
       }
 
@@ -1365,10 +1188,10 @@ export class SnapAssetsAdapter {
     });
 
     // A token should be removed from the visible asset list only when the latest
-    // snapshot says its balance is zero. Essential assets stay visible even at
-    // zero because they are part of the permanent Tron account model.
+    // snapshot says its balance is zero. Snap-owned protocol assets stay visible
+    // even at zero because they are part of the permanent Tron account model.
     const shouldBeInRemovedList = (asset: AssetEntity): boolean =>
-      hasZeroAmount(asset) && !isEssentialAsset(asset); // Never remove essential assets (including energy & bandwidth) from the account asset list
+      hasZeroAmount(asset) && !isSnapOwnedAsset(asset.assetType);
 
     // Assets are added to the visible list when they are non-zero and either:
     // - we are doing a full non-incremental broadcast, or
@@ -1437,7 +1260,10 @@ export class SnapAssetsAdapter {
         uiAmount: '0',
       }));
 
-    const assetsToSave = [...assets, ...removedAssetsWithZeroBalance];
+    const assetsToSave = [
+      ...assets.filter(shouldEmitAsset),
+      ...removedAssetsWithZeroBalance,
+    ];
     // Save assets using repository
     await this.#assetsRepository.saveMany(assetsToSave);
 

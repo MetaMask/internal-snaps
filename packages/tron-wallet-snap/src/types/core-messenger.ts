@@ -4,7 +4,6 @@ import type {
   AssetsControllerGetAccountAssetsByScopeAction,
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
-import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
 import type { AsyncMessenger } from '@metamask/snaps-sdk';
 
 /**
@@ -13,7 +12,6 @@ import type { AsyncMessenger } from '@metamask/snaps-sdk';
 export const TRON_WALLET_SNAP_MESSENGER_NAMESPACE = 'TronWalletSnap' as const;
 
 export type CoreMessengerActions =
-  | RemoteFeatureFlagControllerGetStateAction
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
   | AssetsControllerGetAccountAssetsByScopeAction;
