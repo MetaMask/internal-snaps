@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.1]
+
 ### Fixed
 
 - Fixed small USDC-to-SOL swaps being incorrectly displayed as sends in Solana activity ([#108](https://github.com/MetaMask/internal-snaps/pull/108))
@@ -21,5 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix account creation failures due to an incorrect `@metamask/key-tree` package version ([#118](https://github.com/MetaMask/internal-snaps/pull/118))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.1...HEAD
+[5.0.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.0...@metamask/solana-wallet-snap@5.0.1
 [5.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/solana-wallet-snap@5.0.0
