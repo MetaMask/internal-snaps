@@ -1,5 +1,3 @@
-export type { Logger } from './logger';
-export { createPrefixedLogger, logger, noOpLogger } from './logger';
 export {
   ASSETS_PROVIDER_NAME,
   AssetsProvider,
