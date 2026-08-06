@@ -8,38 +8,35 @@ import {
   keyring,
 } from '../../../snapContext';
 import { ClientRequestMethod } from '../onClientRequest';
-import { getFeeForTransaction } from './getFeeForTransaction';
-import { RpcRequestMethod, TestDappRpcRequestMethod } from './types';
+import { TestDappRpcRequestMethod } from './types';
 
-export const handlers: Record<RpcRequestMethod, OnRpcRequestHandler> = {
-  // TODO: Deprecate this method.
-  [RpcRequestMethod.GetFeeForTransaction]: getFeeForTransaction,
+export const handlers: Record<string, OnRpcRequestHandler> = {
   // Methods specific to the test dapp
-  [TestDappRpcRequestMethod.ListWebSockets as any]: async () => {
+  [TestDappRpcRequestMethod.ListWebSockets]: async () => {
     await eventEmitter.emitSync('onListWebSockets');
     return null;
   },
-  [TestDappRpcRequestMethod.ListSubscriptions as any]: async () => {
+  [TestDappRpcRequestMethod.ListSubscriptions]: async () => {
     await eventEmitter.emitSync('onListSubscriptions');
     return null;
   },
-  [TestDappRpcRequestMethod.TestOnStart as any]: async () => {
+  [TestDappRpcRequestMethod.TestOnStart]: async () => {
     await eventEmitter.emitSync('onStart');
     return null;
   },
-  [TestDappRpcRequestMethod.TestOnInstall as any]: async () => {
+  [TestDappRpcRequestMethod.TestOnInstall]: async () => {
     await eventEmitter.emitSync('onInstall');
     return null;
   },
-  [TestDappRpcRequestMethod.TestOnUpdate as any]: async () => {
+  [TestDappRpcRequestMethod.TestOnUpdate]: async () => {
     await eventEmitter.emitSync('onUpdate');
     return null;
   },
-  [TestDappRpcRequestMethod.SynchronizeAccounts as any]: async () => {
+  [TestDappRpcRequestMethod.SynchronizeAccounts]: async () => {
     await accountsSynchronizer.synchronize();
     return null;
   },
-  [TestDappRpcRequestMethod.SetAccountSelected as any]: async ({
+  [TestDappRpcRequestMethod.SetAccountSelected]: async ({
     request,
   }: {
     request: JsonRpcRequest;
@@ -47,7 +44,7 @@ export const handlers: Record<RpcRequestMethod, OnRpcRequestHandler> = {
     await keyring.setSelectedAccounts((request as any).params.accountIds);
     return null;
   },
-  [TestDappRpcRequestMethod.ConfirmSend as any]: async ({
+  [TestDappRpcRequestMethod.ConfirmSend]: async ({
     request,
   }: {
     request: JsonRpcRequest;
@@ -55,7 +52,7 @@ export const handlers: Record<RpcRequestMethod, OnRpcRequestHandler> = {
     await clientRequestHandler.handle(request);
     return null;
   },
-  [TestDappRpcRequestMethod.SignRewardsMessage as any]: async ({
+  [TestDappRpcRequestMethod.SignRewardsMessage]: async ({
     request,
   }: {
     request: JsonRpcRequest;

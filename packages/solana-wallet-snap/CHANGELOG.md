@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **BREAKING:** Removed the legacy snap-hosted send dialog (`startSendTransactionFlow` RPC and `features/send` UI). Send is now handled exclusively through the unified send flow client methods (`confirmSend`, `onAmountInput`, `onAddressInput`).
+- **BREAKING:** Removed the deprecated `getFeeForTransaction` RPC. Use the `computeFee` client request instead.
 
 ## [5.0.1]
 

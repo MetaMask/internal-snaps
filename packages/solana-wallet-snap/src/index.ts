@@ -34,7 +34,6 @@ import { CronjobMethod } from './core/handlers/onCronjob/cronjobs/CronjobMethod'
 import { onNameLookupHandler } from './core/handlers/onNameLookup/onNameLookup';
 import { onProtocolRequest as onProtocolRequestHandler } from './core/handlers/onProtocolRequest/onProtocolRequest';
 import { handlers as onRpcRequestHandlers } from './core/handlers/onRpcRequest';
-import { RpcRequestMethod } from './core/handlers/onRpcRequest/types';
 import { withCatchAndThrowSnapError } from './core/utils/errors';
 import logger, { createPrefixedLogger } from './core/utils/logger';
 import { validateOrigin } from './core/validation/validators';
@@ -73,12 +72,12 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
 
   validateOrigin(origin, method);
 
-  const handler = onRpcRequestHandlers[method as RpcRequestMethod];
+  const handler = onRpcRequestHandlers[method];
 
   if (!handler) {
     throw new MethodNotFoundError(
-      `RpcRequest method ${method} not found. Available methods: ${Object.values(
-        RpcRequestMethod,
+      `RpcRequest method ${method} not found. Available methods: ${Object.keys(
+        onRpcRequestHandlers,
       ).toString()}`,
     ) as unknown as Error;
   }

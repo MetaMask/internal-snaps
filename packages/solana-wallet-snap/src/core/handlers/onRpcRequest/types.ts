@@ -1,7 +1,3 @@
-export enum RpcRequestMethod {
-  GetFeeForTransaction = 'getFeeForTransaction',
-}
-
 /**
  * Methods specific to the test dapp,
  * to allow specific flows for manual testing.

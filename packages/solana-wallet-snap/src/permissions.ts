@@ -2,10 +2,7 @@ import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { KeyringSnapRpcMethod } from '@metamask/keyring-api/v2';
 
 import { ClientRequestMethod } from './core/handlers/onClientRequest';
-import {
-  RpcRequestMethod,
-  TestDappRpcRequestMethod,
-} from './core/handlers/onRpcRequest/types';
+import { TestDappRpcRequestMethod } from './core/handlers/onRpcRequest/types';
 import { ConfigProvider } from './core/services/config/ConfigProvider';
 
 const prodOrigins = ['https://portfolio.metamask.io'];
@@ -34,8 +31,6 @@ const dappPermissions = isDev
       KeyringRpcMethod.DiscoverAccounts,
       KeyringRpcMethod.ListAccountTransactions,
       KeyringRpcMethod.ListAccountAssets,
-      // RPC methods
-      RpcRequestMethod.GetFeeForTransaction,
       // Methods specific to the test dapp
       TestDappRpcRequestMethod.ListWebSockets,
       TestDappRpcRequestMethod.ListSubscriptions,
@@ -69,8 +64,6 @@ const metamaskPermissions = new Set([
   KeyringRpcMethod.DiscoverAccounts,
   KeyringRpcMethod.ListAccountTransactions,
   KeyringRpcMethod.ListAccountAssets,
-  // RPC methods
-  RpcRequestMethod.GetFeeForTransaction,
   // Client methods
   ClientRequestMethod.SignAndSendTransactionWithoutConfirmation,
   ClientRequestMethod.SignProofOfOwnership,

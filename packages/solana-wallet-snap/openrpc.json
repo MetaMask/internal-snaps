@@ -151,7 +151,9 @@
               "description": "The transaction signature returned after successful execution on Solana"
             }
           },
-          "required": ["transactionId"],
+          "required": [
+            "transactionId"
+          ],
           "additionalProperties": false
         }
       },
@@ -300,7 +302,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["base"]
+                "enum": [
+                  "base"
+                ]
               },
               "asset": {
                 "type": "object",
@@ -318,10 +322,18 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["unit", "type", "amount", "fungible"]
+                "required": [
+                  "unit",
+                  "type",
+                  "amount",
+                  "fungible"
+                ]
               }
             },
-            "required": ["type", "asset"]
+            "required": [
+              "type",
+              "asset"
+            ]
           }
         }
       },
@@ -459,59 +471,6 @@
             "value": {
               "valid": true,
               "errors": []
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "getFeeForTransaction",
-      "summary": "Get the fee for a transaction",
-      "description": "Calculates and returns the fee for a given transaction in lamports. This method helps users understand the cost of their transaction before execution. **Note: This method is deprecated and will be removed in the next major version.**",
-      "paramStructure": "by-name",
-      "params": [
-        {
-          "name": "transaction",
-          "summary": "The base64-encoded transaction to calculate fees for",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "scope",
-          "summary": "The Solana network scope",
-          "required": true,
-          "schema": {
-            "$ref": "#/components/schemas/Network"
-          }
-        }
-      ],
-      "result": {
-        "name": "GetFeeForTransactionResult",
-        "summary": "The fee for the transaction in lamports",
-        "schema": {
-          "$ref": "#/components/schemas/GetFeeForTransactionResult"
-        }
-      },
-      "examples": [
-        {
-          "name": "getFeeForTransactionExample",
-          "description": "Example of getting the fee for a transaction",
-          "params": [
-            {
-              "name": "transaction",
-              "value": "gAEAAgSZsAKPnZ6vMobike0KV4I/ucjxTM1cFYhLnVhPWfjfdN2zrulHQhiUvVcoUaPML7MFkgDu9PV2PudQFNTACzusAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAHWszLmyDo8VIk2P/sVmDUn34YE2+73fS1kNLCNojDEqAwMABQIsAQAAAwAJA+gDAAAAAAAAAgIAAQwCAAAAQEIPAAAAAAAA"
-            },
-            {
-              "name": "scope",
-              "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-            }
-          ],
-          "result": {
-            "name": "getFeeForTransactionResult",
-            "value": {
-              "value": "15000"
             }
           }
         }
@@ -661,11 +620,17 @@
             },
             "signatureType": {
               "type": "string",
-              "enum": ["ed25519"],
+              "enum": [
+                "ed25519"
+              ],
               "description": "The signature algorithm used"
             }
           },
-          "required": ["signature", "signedMessage", "signatureType"],
+          "required": [
+            "signature",
+            "signedMessage",
+            "signatureType"
+          ],
           "additionalProperties": false
         }
       },
@@ -733,11 +698,17 @@
             },
             "signatureType": {
               "type": "string",
-              "enum": ["ed25519"],
+              "enum": [
+                "ed25519"
+              ],
               "description": "The signature algorithm used"
             }
           },
-          "required": ["signature", "signedMessage", "signatureType"],
+          "required": [
+            "signature",
+            "signedMessage",
+            "signatureType"
+          ],
           "additionalProperties": false
         }
       },
@@ -824,7 +795,9 @@
               "description": "The transaction signature returned after successful execution on Solana"
             }
           },
-          "required": ["signature"],
+          "required": [
+            "signature"
+          ],
           "additionalProperties": false
         }
       },
@@ -905,7 +878,9 @@
             "description": "The base58-encoded public key address of the account"
           }
         },
-        "required": ["address"],
+        "required": [
+          "address"
+        ],
         "additionalProperties": false
       },
       "Network": {
@@ -920,8 +895,16 @@
       "TransactionCommitment": {
         "type": "string",
         "description": "The commitment level for transaction confirmation",
-        "enum": ["processed", "confirmed", "finalized"],
-        "examples": ["processed", "confirmed", "finalized"]
+        "enum": [
+          "processed",
+          "confirmed",
+          "finalized"
+        ],
+        "examples": [
+          "processed",
+          "confirmed",
+          "finalized"
+        ]
       },
       "TransactionOptions": {
         "type": "object",
@@ -961,7 +944,9 @@
             "description": "The transaction signature returned after successful execution on Solana"
           }
         },
-        "required": ["signature"],
+        "required": [
+          "signature"
+        ],
         "additionalProperties": false
       },
       "ValidationResponse": {
@@ -982,12 +967,17 @@
                   "$ref": "#/components/schemas/SendErrorCode"
                 }
               },
-              "required": ["code"],
+              "required": [
+                "code"
+              ],
               "additionalProperties": false
             }
           }
         },
-        "required": ["valid", "errors"],
+        "required": [
+          "valid",
+          "errors"
+        ],
         "additionalProperties": false
       },
       "SendErrorCode": {
@@ -999,18 +989,6 @@
           "InsufficientBalanceToCoverFee",
           "InsufficientBalance"
         ]
-      },
-      "GetFeeForTransactionResult": {
-        "type": "object",
-        "description": "Result of getting transaction fee",
-        "properties": {
-          "value": {
-            "type": "string",
-            "description": "The fee amount in lamports as a string"
-          }
-        },
-        "required": ["value"],
-        "additionalProperties": false
       }
     }
   }
