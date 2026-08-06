@@ -1,6 +1,6 @@
 {
   "name": "@metamask/solana-wallet-snap",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "A Solana wallet Snap",
   "keywords": [
     "Ethereum",

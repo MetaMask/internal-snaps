@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- test: added shape of setup function and its arguments ([#110](https://github.com/MetaMask/internal-snaps/pull/110))
-
 ### Added
 
 - Add Core messenger plumbing (`getMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`) for upcoming AssetsController migration ([#95](https://github.com/MetaMask/internal-snaps/pull/95))
