@@ -18,6 +18,12 @@ import { isEd25519Algorithm } from './utils/is-ed25519-algorithm';
 export function install() {
   const { subtle } = globalThis.crypto;
 
+  const originalGenerateKey = subtle.generateKey.bind(subtle);
+  const originalExportKey = subtle.exportKey.bind(subtle);
+  const originalSign = subtle.sign.bind(subtle);
+  const originalVerify = subtle.verify.bind(subtle);
+  const originalImportKey = subtle.importKey.bind(subtle);
+
   Object.defineProperty(globalThis, 'isSecureContext', {
     value: true,
     writable: true,
@@ -32,7 +38,7 @@ export function install() {
       const algorithm = args[0];
 
       if (!isEd25519Algorithm(algorithm)) {
-        return await globalThis.crypto.subtle.generateKey(...args);
+        return await originalGenerateKey(...args);
       }
 
       return await generateKeyPolyfill(...args);
@@ -49,7 +55,7 @@ export function install() {
       const key = args[1];
 
       if (!isEd25519Algorithm(key.algorithm)) {
-        return await globalThis.crypto.subtle.exportKey(...args);
+        return await originalExportKey(...args);
       }
 
       return await exportKeyPolyfill(...args);
@@ -69,7 +75,7 @@ export function install() {
         !isEd25519Algorithm(algorithm) ||
         !isEd25519Algorithm(key.algorithm)
       ) {
-        return await globalThis.crypto.subtle.sign(...args);
+        return await originalSign(...args);
       }
 
       return await signPolyfill(...args);
@@ -89,7 +95,7 @@ export function install() {
         !isEd25519Algorithm(algorithm) ||
         !isEd25519Algorithm(key.algorithm)
       ) {
-        return await globalThis.crypto.subtle.verify(...args);
+        return await originalVerify(...args);
       }
 
       return await verifyPolyfill(...args);
@@ -106,7 +112,7 @@ export function install() {
       const algorithm = args[2];
 
       if (!isEd25519Algorithm(algorithm)) {
-        return await globalThis.crypto.subtle.importKey(...args);
+        return await originalImportKey(...args);
       }
 
       return await importKeyPolyfill(...args);
