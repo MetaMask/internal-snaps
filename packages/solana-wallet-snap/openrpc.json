@@ -151,9 +151,7 @@
               "description": "The transaction signature returned after successful execution on Solana"
             }
           },
-          "required": [
-            "transactionId"
-          ],
+          "required": ["transactionId"],
           "additionalProperties": false
         }
       },
@@ -302,9 +300,7 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "base"
-                ]
+                "enum": ["base"]
               },
               "asset": {
                 "type": "object",
@@ -322,18 +318,10 @@
                     "type": "boolean"
                   }
                 },
-                "required": [
-                  "unit",
-                  "type",
-                  "amount",
-                  "fungible"
-                ]
+                "required": ["unit", "type", "amount", "fungible"]
               }
             },
-            "required": [
-              "type",
-              "asset"
-            ]
+            "required": ["type", "asset"]
           }
         }
       },
@@ -620,17 +608,11 @@
             },
             "signatureType": {
               "type": "string",
-              "enum": [
-                "ed25519"
-              ],
+              "enum": ["ed25519"],
               "description": "The signature algorithm used"
             }
           },
-          "required": [
-            "signature",
-            "signedMessage",
-            "signatureType"
-          ],
+          "required": ["signature", "signedMessage", "signatureType"],
           "additionalProperties": false
         }
       },
@@ -698,17 +680,11 @@
             },
             "signatureType": {
               "type": "string",
-              "enum": [
-                "ed25519"
-              ],
+              "enum": ["ed25519"],
               "description": "The signature algorithm used"
             }
           },
-          "required": [
-            "signature",
-            "signedMessage",
-            "signatureType"
-          ],
+          "required": ["signature", "signedMessage", "signatureType"],
           "additionalProperties": false
         }
       },
@@ -795,9 +771,7 @@
               "description": "The transaction signature returned after successful execution on Solana"
             }
           },
-          "required": [
-            "signature"
-          ],
+          "required": ["signature"],
           "additionalProperties": false
         }
       },
@@ -878,9 +852,7 @@
             "description": "The base58-encoded public key address of the account"
           }
         },
-        "required": [
-          "address"
-        ],
+        "required": ["address"],
         "additionalProperties": false
       },
       "Network": {
@@ -895,16 +867,8 @@
       "TransactionCommitment": {
         "type": "string",
         "description": "The commitment level for transaction confirmation",
-        "enum": [
-          "processed",
-          "confirmed",
-          "finalized"
-        ],
-        "examples": [
-          "processed",
-          "confirmed",
-          "finalized"
-        ]
+        "enum": ["processed", "confirmed", "finalized"],
+        "examples": ["processed", "confirmed", "finalized"]
       },
       "TransactionOptions": {
         "type": "object",
@@ -944,9 +908,7 @@
             "description": "The transaction signature returned after successful execution on Solana"
           }
         },
-        "required": [
-          "signature"
-        ],
+        "required": ["signature"],
         "additionalProperties": false
       },
       "ValidationResponse": {
@@ -967,17 +929,12 @@
                   "$ref": "#/components/schemas/SendErrorCode"
                 }
               },
-              "required": [
-                "code"
-              ],
+              "required": ["code"],
               "additionalProperties": false
             }
           }
         },
-        "required": [
-          "valid",
-          "errors"
-        ],
+        "required": ["valid", "errors"],
         "additionalProperties": false
       },
       "SendErrorCode": {
