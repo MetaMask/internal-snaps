@@ -120,6 +120,7 @@ const assetsService = new AssetsService({
   priceApiClient,
   tokenApiClient,
   snapClient,
+  configProvider,
   remoteFeatureFlagsProvider,
   assetsProvider,
 });

@@ -19,14 +19,13 @@ import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { ILogger } from '../../utils/logger';
+import type { ConfigProvider } from '../config';
 import type { State, UnencryptedStateValue } from '../state/State';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 
 /**
- * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
- * (legacy snap-owned reads/writes). Core adapter routing can be introduced later
- * without changing callers.
+ * Assets domain facade over SnapAssetsAdapter.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
@@ -42,6 +41,7 @@ export class AssetsService {
     priceApiClient,
     tokenApiClient,
     snapClient,
+    configProvider,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -51,6 +51,7 @@ export class AssetsService {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
+    configProvider: ConfigProvider;
     remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
     assetsProvider: AssetsProvider;
   }) {
@@ -63,6 +64,7 @@ export class AssetsService {
       priceApiClient,
       tokenApiClient,
       snapClient,
+      configProvider,
     });
     this.cacheTtlsMilliseconds = this.#snapAdapter.cacheTtlsMilliseconds;
   }
@@ -114,8 +116,11 @@ export class AssetsService {
     return this.#snapAdapter.getAll();
   }
 
-  async getByKeyringAccountId(accountId: string): Promise<AssetEntity[]> {
-    return this.#snapAdapter.getByKeyringAccountId(accountId);
+  async getAccountAssetsByScope(
+    scope: Network,
+    accountId: string,
+  ): Promise<AssetEntity[]> {
+    return this.#snapAdapter.getAccountAssetsByScope(scope, accountId);
   }
 
   async getMultipleTokenConversions(

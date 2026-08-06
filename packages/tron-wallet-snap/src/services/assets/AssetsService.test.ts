@@ -13,6 +13,7 @@ import type { Trc20Balance, TronAccount } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { mockLogger } from '../../utils/mockLogger';
+import type { ConfigProvider } from '../config';
 import type { AssetsRepository } from './AssetsRepository';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
@@ -24,23 +25,6 @@ type MockState = {
   setKey: jest.Mock;
   setKeyWith: jest.Mock;
 };
-
-jest.mock('../../context', () => ({
-  configProvider: {
-    get() {
-      return {
-        priceApi: {
-          cacheTtlsMilliseconds: {
-            fiatExchangeRates: 3600000,
-            spotPrices: 3600000,
-            historicalPrices: 3600000,
-          },
-        },
-        activeNetworks: [],
-      };
-    },
-  },
-}));
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),
@@ -259,6 +243,19 @@ async function withAssetsService<ReturnValue>(
     trackError: jest.fn().mockResolvedValue(undefined),
   };
 
+  const mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>> = {
+    get: jest.fn().mockReturnValue({
+      priceApi: {
+        cacheTtlsMilliseconds: {
+          fiatExchangeRates: 3600000,
+          spotPrices: 3600000,
+          historicalPrices: 3600000,
+        },
+      },
+      activeNetworks: [],
+    }),
+  };
+
   const assetsService = new AssetsService({
     logger: mockLogger,
     assetsRepository: mockAssetsRepository,
@@ -268,6 +265,7 @@ async function withAssetsService<ReturnValue>(
     priceApiClient: mockPriceApiClient,
     tokenApiClient: mockTokenApiClient,
     snapClient: mockSnapClient,
+    configProvider: mockConfigProvider,
   });
 
   return await testFunction({
@@ -2883,11 +2881,12 @@ describe('AssetsService', () => {
               KnownCaip19Id.TrxMainnet,
             ),
           ).toStrictEqual(asset);
-          const byKeyringAccountId = await assetsService.getByKeyringAccountId(
+          const byScope = await assetsService.getAccountAssetsByScope(
+            Network.Mainnet,
             mockAccount.id,
           );
           expect(
-            byKeyringAccountId.some(
+            byScope.some(
               (savedAsset) => savedAsset.assetType === KnownCaip19Id.TrxMainnet,
             ),
           ).toBe(true);
