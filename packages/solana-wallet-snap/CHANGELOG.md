@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed small USDC-to-SOL swaps being incorrectly displayed as sends in Solana activity ([#108](https://github.com/MetaMask/internal-snaps/pull/108))
+
 ## [5.0.0]
 
 ### Changed
