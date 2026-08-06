@@ -1,5 +1,10 @@
-import type { KeyringAccount } from '@metamask/keyring-api';
 import {
+  SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
+  SnapsAssetsMigrationStage,
+  parseSnapsAssetsMigrationStage,
+} from '@metamask/assets-controller';
+import type { KeyringAccount } from '@metamask/keyring-api';
+import type {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
 } from '@metamask/snap-networks-utils';
@@ -16,19 +21,25 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { Network } from '../../constants';
+import { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { ILogger } from '../../utils/logger';
 import type { ConfigProvider } from '../config';
 import type { State, UnencryptedStateValue } from '../state/State';
+import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 
 /**
- * Assets domain facade over SnapAssetsAdapter.
+ * Assets domain facade. Reads use the Snap adapter while migration is off, and
+ * the Core adapter once migration is active.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
+
+  readonly #coreAdapter: CoreAssetsAdapter;
+
+  readonly #remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
 
   readonly cacheTtlsMilliseconds: SnapAssetsAdapter['cacheTtlsMilliseconds'];
 
@@ -42,6 +53,8 @@ export class AssetsService {
     tokenApiClient,
     snapClient,
     configProvider,
+    assetsProvider,
+    remoteFeatureFlagsProvider,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -52,9 +65,11 @@ export class AssetsService {
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
     configProvider: ConfigProvider;
-    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
     assetsProvider: AssetsProvider;
+    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
   }) {
+    this.#remoteFeatureFlagsProvider = remoteFeatureFlagsProvider;
+
     this.#snapAdapter = new SnapAssetsAdapter({
       logger,
       assetsRepository,
@@ -66,7 +81,18 @@ export class AssetsService {
       snapClient,
       configProvider,
     });
+    this.#coreAdapter = new CoreAssetsAdapter({
+      logger,
+      assetsProvider,
+    });
     this.cacheTtlsMilliseconds = this.#snapAdapter.cacheTtlsMilliseconds;
+  }
+
+  async #getAssetsMigrationStage(): Promise<SnapsAssetsMigrationStage> {
+    const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
+      SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron,
+    );
+    return parseSnapsAssetsMigrationStage(flagValue);
   }
 
   static isFiat(caipAssetId: CaipAssetType): boolean {
@@ -77,22 +103,47 @@ export class AssetsService {
     return SnapAssetsAdapter.hasChanged(asset, assetsLookup);
   }
 
-  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    return this.#snapAdapter.getAccountAssets(accountId);
+  async getAccountAssetsByScope(
+    scope: Network,
+    accountId: string,
+  ): Promise<AssetEntity[]> {
+    const migrationStage = await this.#getAssetsMigrationStage();
+
+    if (migrationStage === SnapsAssetsMigrationStage.Off) {
+      return this.#snapAdapter.getAccountAssetsByScope(scope, accountId);
+    }
+
+    return this.#coreAdapter.getAccountAssetsByScope(scope, accountId);
   }
 
   async getAccountAssetsByIDs(
     accountId: string,
-    assetTypes: string[],
+    assetIds: string[],
   ): Promise<(AssetEntity | null)[]> {
-    return this.#snapAdapter.getAccountAssetsByIDs(accountId, assetTypes);
+    if (assetIds.length === 0) {
+      return [];
+    }
+
+    const migrationStage = await this.#getAssetsMigrationStage();
+
+    if (migrationStage === SnapsAssetsMigrationStage.Off) {
+      return this.#snapAdapter.getAccountAssetsByIDs(accountId, assetIds);
+    }
+
+    return this.#coreAdapter.getAccountAssetsByIDs(accountId, assetIds);
   }
 
   async getAccountAssetByID(
     accountId: string,
-    assetType: string,
+    assetId: string,
   ): Promise<AssetEntity | null> {
-    return this.#snapAdapter.getAccountAssetByID(accountId, assetType);
+    const migrationStage = await this.#getAssetsMigrationStage();
+
+    if (migrationStage === SnapsAssetsMigrationStage.Off) {
+      return this.#snapAdapter.getAccountAssetByID(accountId, assetId);
+    }
+
+    return this.#coreAdapter.getAccountAssetByID(accountId, assetId);
   }
 
   async fetchAssetsAndBalancesForAccount(
@@ -116,11 +167,14 @@ export class AssetsService {
     return this.#snapAdapter.getAll();
   }
 
-  async getAccountAssetsByScope(
-    scope: Network,
-    accountId: string,
-  ): Promise<AssetEntity[]> {
-    return this.#snapAdapter.getAccountAssetsByScope(scope, accountId);
+  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
+    const migrationStage = await this.#getAssetsMigrationStage();
+
+    if (migrationStage === SnapsAssetsMigrationStage.Off) {
+      return this.#snapAdapter.getAccountAssets(accountId);
+    }
+
+    return this.#coreAdapter.getAccountAssets(accountId);
   }
 
   async getMultipleTokenConversions(
