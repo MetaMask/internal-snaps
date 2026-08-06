@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
@@ -185,7 +185,7 @@ runs:
 
     - name: Hide previous comments
       if: steps.is-release.outputs.IS_RELEASE == 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
       with:
@@ -215,7 +215,7 @@ runs:
 
     - name: Reply on pull request
       if: steps.check-release.outputs.has-conflicts == 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         PACKAGE_NAMES: ${{ steps.check-release.outputs.package-names }}
         PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}

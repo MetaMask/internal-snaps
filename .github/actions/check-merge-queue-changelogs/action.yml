@@ -12,13 +12,13 @@ runs:
   using: composite
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
     - name: Get pull request number
       id: pr-number
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         HEAD_REF: ${{ github.event.pull_request.head.ref || github.event.merge_group.head_ref }}
       with:
