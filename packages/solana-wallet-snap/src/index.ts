@@ -34,15 +34,12 @@ import { CronjobMethod } from './core/handlers/onCronjob/cronjobs/CronjobMethod'
 import { onNameLookupHandler } from './core/handlers/onNameLookup/onNameLookup';
 import { onProtocolRequest as onProtocolRequestHandler } from './core/handlers/onProtocolRequest/onProtocolRequest';
 import { handlers as onRpcRequestHandlers } from './core/handlers/onRpcRequest';
-import { RpcRequestMethod } from './core/handlers/onRpcRequest/types';
 import { withCatchAndThrowSnapError } from './core/utils/errors';
 import logger, { createPrefixedLogger } from './core/utils/logger';
 import { validateOrigin } from './core/validation/validators';
 import { eventHandlers as confirmSignInEvents } from './features/confirmation/views/ConfirmSignIn/events';
 import { eventHandlers as confirmSignMessageEvents } from './features/confirmation/views/ConfirmSignMessage/events';
 import { eventHandlers as confirmSignAndSendTransactionEvents } from './features/confirmation/views/ConfirmTransactionRequest/events';
-import { eventHandlers as sendFormEvents } from './features/send/views/SendForm/events';
-import { eventHandlers as transactionConfirmationEvents } from './features/send/views/TransactionConfirmation/events';
 import { installPolyfills } from './polyfills';
 import snapContext, {
   clientRequestHandler,
@@ -75,12 +72,12 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
 
   validateOrigin(origin, method);
 
-  const handler = onRpcRequestHandlers[method as RpcRequestMethod];
+  const handler = onRpcRequestHandlers[method];
 
   if (!handler) {
     throw new MethodNotFoundError(
-      `RpcRequest method ${method} not found. Available methods: ${Object.values(
-        RpcRequestMethod,
+      `RpcRequest method ${method} not found. Available methods: ${Object.keys(
+        onRpcRequestHandlers,
       ).toString()}`,
     ) as unknown as Error;
   }
@@ -150,8 +147,6 @@ export const onUserInput: OnUserInputHandler = async ({
   }
 
   const uiEventHandlers: Record<string, (...args: any) => Promise<void>> = {
-    ...sendFormEvents,
-    ...transactionConfirmationEvents,
     ...confirmSignAndSendTransactionEvents,
     ...confirmSignMessageEvents,
     ...confirmSignInEvents,

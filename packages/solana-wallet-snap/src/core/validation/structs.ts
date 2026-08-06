@@ -258,15 +258,6 @@ export const Curenc = enums([
   'sats',
 ]);
 
-export const GetFeeForTransactionParamsStruct = object({
-  transaction: string(),
-  scope: enums(Object.values(Network)),
-});
-
-export const GetFeeForTransactionResponseStruct = object({
-  value: nullable(PositiveNumberStringStruct),
-});
-
 /**
  * Validates if a string is Base58 encoded.
  * Base58 uses alphanumeric characters excluding 0, O, I, and l.

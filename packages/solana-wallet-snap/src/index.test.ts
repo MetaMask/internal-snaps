@@ -78,7 +78,8 @@ describe('onCronjob', () => {
 
   it('calls the correct handler', async () => {
     const handler = jest.fn();
-    handlers[ScheduleBackgroundEventMethod.RefreshSend] = handler;
+    handlers[ScheduleBackgroundEventMethod.RefreshConfirmationEstimation] =
+      handler;
 
     const snap = {
       request: jest.fn().mockResolvedValue({ locked: false, active: true }),
@@ -90,7 +91,7 @@ describe('onCronjob', () => {
       request: {
         id: '1',
         jsonrpc: '2.0',
-        method: ScheduleBackgroundEventMethod.RefreshSend,
+        method: ScheduleBackgroundEventMethod.RefreshConfirmationEstimation,
       },
     });
 
