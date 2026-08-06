@@ -98,7 +98,7 @@ jobs:
           RPC_WEB_SOCKET_URL_LOCALNET: ${{ vars.RPC_WEB_SOCKET_URL_LOCALNET }}
           EXPLORER_BASE_URL: ${{ vars.EXPLORER_BASE_URL }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: publish-release-artifacts-${{ github.sha }}
           include-hidden-files: true
@@ -118,7 +118,7 @@ jobs:
           is-high-risk-environment: true
           ref: ${{ github.sha }}
       - name: Restore build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: publish-release-artifacts-${{ github.sha }}
       - name: Dry run publish to NPM
@@ -142,7 +142,7 @@ jobs:
           is-high-risk-environment: true
           ref: ${{ github.sha }}
       - name: Restore build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: publish-release-artifacts-${{ github.sha }}
       - name: Publish to NPM
