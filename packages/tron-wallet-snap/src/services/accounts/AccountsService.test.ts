@@ -12,7 +12,6 @@ import {
   AccountCreationType,
   KeyringEvent,
   TrxAccountType,
-  TrxScope,
 } from '@metamask/keyring-api';
 import {
   emitSnapKeyringEvent,
@@ -30,7 +29,7 @@ import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
-import { AccountsService } from './AccountsService';
+import { AccountsService, SUPPORTED_SCOPES } from './AccountsService';
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),
@@ -333,7 +332,7 @@ describe('AccountsService', () => {
           derivationPath: "m/44'/195'/0'/0/0",
           index: 0,
           type: TrxAccountType.Eoa,
-          scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+          scopes: SUPPORTED_SCOPES,
           methods: ['signMessage', 'signTransaction'],
         });
         expect(result.id).toBeDefined();
@@ -483,7 +482,7 @@ describe('AccountsService', () => {
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TConcurrent0',
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -516,7 +515,7 @@ describe('AccountsService', () => {
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TExisting0',
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -527,7 +526,7 @@ describe('AccountsService', () => {
         index: 1,
         type: TrxAccountType.Eoa,
         address: 'TExisting1',
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -636,9 +635,7 @@ describe('AccountsService', () => {
           mockAccountsRepository,
           mockTransactionsService,
         }) => {
-          mockTransactionsService.checkAddressActivity
-            .mockResolvedValueOnce(false)
-            .mockResolvedValueOnce(true);
+          mockTransactionsService.checkAddressActivity.mockResolvedValueOnce(true);
 
           const result = await accountsService.createAccounts({
             type: AccountCreationType.Bip44Discover,
@@ -673,7 +670,7 @@ describe('AccountsService', () => {
             index: 0,
             type: TrxAccountType.Eoa,
             address: 'TTestAddress1234567890123456789',
-            scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+            scopes: SUPPORTED_SCOPES as unknown as Network[],
             options: {
               entropy: {
                 type: 'mnemonic',
@@ -716,7 +713,7 @@ describe('AccountsService', () => {
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TExistingDefault0',
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -733,7 +730,7 @@ describe('AccountsService', () => {
               index: 1,
               type: TrxAccountType.Eoa,
               address: 'TDefaultCreate1',
-              scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+              scopes: SUPPORTED_SCOPES as unknown as Network[],
               options: {
                 entropy: {
                   type: 'mnemonic',
@@ -769,7 +766,7 @@ describe('AccountsService', () => {
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TExisting123456789012345678901',
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -804,7 +801,7 @@ describe('AccountsService', () => {
             index: 0,
             type: TrxAccountType.Eoa,
             address: 'TRollback12345678901234567890',
-            scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+            scopes: SUPPORTED_SCOPES as unknown as Network[],
             options: {
               entropy: {
                 type: 'mnemonic',
@@ -849,7 +846,7 @@ describe('AccountsService', () => {
             index: 0,
             type: TrxAccountType.Eoa,
             address: 'TRollback12345678901234567890',
-            scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+            scopes: SUPPORTED_SCOPES as unknown as Network[],
             options: {
               entropy: {
                 type: 'mnemonic',
@@ -892,7 +889,7 @@ describe('AccountsService', () => {
           index: 0,
           type: TrxAccountType.Eoa,
           address: 'TMeta1234567890123456789012',
-          scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+          scopes: SUPPORTED_SCOPES as unknown as Network[],
           options: {},
           methods: ['signMessage', 'signTransaction'],
         });
@@ -921,7 +918,7 @@ describe('AccountsService', () => {
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TConflict12345678901234567890',
-        scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
