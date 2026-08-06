@@ -35,7 +35,6 @@ const dappPermissions = isDev
       KeyringRpcMethod.ListAccountTransactions,
       KeyringRpcMethod.ListAccountAssets,
       // RPC methods
-      RpcRequestMethod.StartSendTransactionFlow,
       RpcRequestMethod.GetFeeForTransaction,
       // Methods specific to the test dapp
       TestDappRpcRequestMethod.ListWebSockets,
@@ -71,7 +70,6 @@ const metamaskPermissions = new Set([
   KeyringRpcMethod.ListAccountTransactions,
   KeyringRpcMethod.ListAccountAssets,
   // RPC methods
-  RpcRequestMethod.StartSendTransactionFlow,
   RpcRequestMethod.GetFeeForTransaction,
   // Client methods
   ClientRequestMethod.SignAndSendTransactionWithoutConfirmation,
