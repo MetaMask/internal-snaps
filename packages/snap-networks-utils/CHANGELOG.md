@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING** Replace the logger utilities with a configurable `Logger` class that defaults to trace logging and supports level filtering, per-instance prefixes, and method decorators. `log` is retained as a deprecated alias for `info`.
+
 ## [1.0.0]
 
 ### Added
