@@ -98,6 +98,9 @@
   "confirmation.memo": {
     "message": "Memo"
   },
+  "confirmation.memo.none": {
+    "message": "None"
+  },
   "confirmation.asset": {
     "message": "Asset"
   },
