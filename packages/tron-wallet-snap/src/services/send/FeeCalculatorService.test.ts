@@ -1,6 +1,6 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-import { Types } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TriggerConstantContractResponse } from '../../clients/tron-http';
@@ -19,7 +19,7 @@ import trc20TransferMock from '../transactions/mocks/trongrid/account-transactio
 import { FeeUnavailableError } from './errors';
 import { FeeCalculatorService } from './FeeCalculatorService';
 
-type Transaction = Types.Transaction;
+type Transaction = TronwebTypes.Transaction;
 type TriggerConstantContractMockTransaction = Transaction & {
   ret: { ret: string }[];
 };
@@ -98,7 +98,7 @@ const createLargeTransaction = (dataLength = 2000): Transaction => {
             value: {
               ...contract?.parameter.value,
               data: largeData,
-            } as Types.TriggerSmartContract,
+            } as TronwebTypes.TriggerSmartContract,
           },
         },
       ],
@@ -275,7 +275,7 @@ describe('FeeCalculatorService', () => {
     describe('System contract scenarios (no energy needed)', () => {
       // Helper to create a mock transaction with a specific contract type
       const createSystemContractTransaction = (
-        contractType: Types.ContractType,
+        contractType: TronwebTypes.ContractType,
       ): Transaction => {
         const baseTransaction = getTransactionExample('native');
         return {
@@ -308,7 +308,7 @@ describe('FeeCalculatorService', () => {
         'WithdrawExpireUnfreezeContract',
         'AccountCreateContract',
         'AccountPermissionUpdateContract',
-      ] as Types.ContractType[])(
+      ] as TronwebTypes.ContractType[])(
         'returns zero energy for %s',
         async (contractType) => {
           await withFeeCalculatorService(async ({ feeCalculatorService }) => {
@@ -351,7 +351,7 @@ describe('FeeCalculatorService', () => {
       it('charges bandwidth in TRX when not enough bandwidth for system contract', async () => {
         await withFeeCalculatorService(async ({ feeCalculatorService }) => {
           const transaction = createSystemContractTransaction(
-            'FreezeBalanceV2Contract' as Types.ContractType,
+            'FreezeBalanceV2Contract' as TronwebTypes.ContractType,
           );
           const availableEnergy = ZERO;
           const availableBandwidth = BigNumber(100); // Less than needed (266)
@@ -2224,7 +2224,7 @@ describe('FeeCalculatorService', () => {
                   type_url:
                     'type.googleapis.com/protocol.WitnessCreateContract',
                 },
-                type: Types.ContractType.WitnessCreateContract,
+                type: TronwebTypes.ContractType.WitnessCreateContract,
               },
             ],
           },

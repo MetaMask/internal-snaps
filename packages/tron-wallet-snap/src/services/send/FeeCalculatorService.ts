@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -28,7 +28,7 @@ import { createPrefixedLogger } from '../../utils/logger';
 import { FeeUnavailableError } from './errors';
 import type { ComputeFeeResult } from './types';
 
-type Transaction = Types.Transaction;
+type Transaction = TronwebTypes.Transaction;
 
 /**
  * Bandwidth calculation constants.

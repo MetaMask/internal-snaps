@@ -3,7 +3,7 @@ import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
@@ -63,7 +63,7 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
 export async function render(
   request: KeyringRequest,
   account: TronKeyringAccount,
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
 ): Promise<DialogResult> {
   const { snapClient, transactionScanService } = snapContext;
   assert(request.request.params, SignTransactionRequestStruct);
@@ -121,7 +121,7 @@ export async function render(
       await sha256(hexToBytes(transaction.rawDataHex)),
     ).slice(2);
 
-    const transactionObj: Types.Transaction = {
+    const transactionObj: TronwebTypes.Transaction = {
       visible: true,
       txID,
 

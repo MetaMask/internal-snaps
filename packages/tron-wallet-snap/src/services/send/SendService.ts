@@ -1,6 +1,6 @@
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import type { TronWeb, Types } from 'tronweb';
+import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -219,9 +219,9 @@ export class SendService {
     amount: BigNumber;
     feeLimit?: number;
   }): Promise<
-    | Types.Transaction<Types.TransferContract>
-    | Types.Transaction<Types.TransferAssetContract>
-    | Types.Transaction<Types.TriggerSmartContract>
+    | TronwebTypes.Transaction<TronwebTypes.TransferContract>
+    | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
+    | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>
   > {
     const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
       asset.assetType,
@@ -286,7 +286,7 @@ export class SendService {
     toAddress: string;
     amount: BigNumber;
     feeLimit?: number;
-  }): Promise<Types.Transaction<Types.TransferContract>> {
+  }): Promise<TronwebTypes.Transaction<TronwebTypes.TransferContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
@@ -317,7 +317,7 @@ export class SendService {
     tokenId: string;
     decimals: number;
     feeLimit?: number;
-  }): Promise<Types.Transaction<Types.TransferAssetContract>> {
+  }): Promise<TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
@@ -350,7 +350,7 @@ export class SendService {
     amount: BigNumber;
     decimals: number;
     feeLimit?: number;
-  }): Promise<Types.Transaction<Types.TriggerSmartContract>> {
+  }): Promise<TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
@@ -383,13 +383,13 @@ export class SendService {
     scope: Network;
     fromAccountId: string;
     transaction:
-      | Types.Transaction<Types.TransferContract>
-      | Types.Transaction<Types.TransferAssetContract>
-      | Types.Transaction<Types.TriggerSmartContract>;
+      | TronwebTypes.Transaction<TronwebTypes.TransferContract>
+      | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
+      | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
     origin?: string;
     // TODO: Replace `any` with type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }): Promise<Types.BroadcastReturn<any>> {
+  }): Promise<TronwebTypes.BroadcastReturn<any>> {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     /**
@@ -457,8 +457,8 @@ export class SendService {
   #setFeeLimit(
     tronWeb: TronWeb,
     transaction:
-      | Types.Transaction<Types.TransferContract>
-      | Types.Transaction<Types.TransferAssetContract>,
+      | TronwebTypes.Transaction<TronwebTypes.TransferContract>
+      | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>,
     feeLimit: number | undefined,
   ): void {
     if (feeLimit !== undefined) {

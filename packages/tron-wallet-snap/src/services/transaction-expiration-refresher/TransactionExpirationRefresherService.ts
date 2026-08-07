@@ -1,5 +1,5 @@
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
-import type { TronWeb, Types } from 'tronweb';
+import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
@@ -11,7 +11,7 @@ import type {
   TransactionWithMetadata,
 } from './types';
 
-type Block = Types.Block;
+type Block = TronwebTypes.Block;
 
 /**
  * TRON block time is 3 seconds, so refresh if expiration is within the
@@ -75,7 +75,7 @@ export class TransactionExpirationRefresherService {
     const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
       type,
       rawDataHex,
-    ) as Types.Transaction['raw_data'];
+    ) as TronwebTypes.Transaction['raw_data'];
     const txID = bytesToHex(await sha256(hexToBytes(rawDataHex))).slice(2);
 
     return {

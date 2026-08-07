@@ -3,7 +3,7 @@ import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -1693,14 +1693,14 @@ describe('ClientRequestHandler - onAmountInput', () => {
   });
 
   const createMockTransferTransaction =
-    (): Types.Transaction<Types.TransferContract> => ({
+    (): TronwebTypes.Transaction<TronwebTypes.TransferContract> => ({
       visible: false,
       txID: 'mock-tx-id',
 
       raw_data: {
         contract: [
           {
-            type: 'TransferContract' as Types.Transaction<Types.TransferContract>['raw_data']['contract'][number]['type'],
+            type: 'TransferContract' as TronwebTypes.Transaction<TronwebTypes.TransferContract>['raw_data']['contract'][number]['type'],
             parameter: {
               type_url: 'type.googleapis.com/protocol.TransferContract',
               value: {
@@ -2079,7 +2079,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           },
 
           raw_data_hex: 'stake-hex',
-        } as unknown as Types.Transaction<Types.FreezeBalanceV2Contract>;
+        } as unknown as TronwebTypes.Transaction<TronwebTypes.FreezeBalanceV2Contract>;
 
         mockTronWeb.transactionBuilder.freezeBalanceV2.mockResolvedValue(
           builtTransaction,
@@ -2380,7 +2380,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           raw_data: {},
 
           raw_data_hex: 'test-hex',
-        } as unknown as Types.Transaction<Types.TriggerSmartContract>;
+        } as unknown as TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
         mockSendService.buildTransaction.mockResolvedValue(mockTransaction);
         const freshTransactionRawData = { expiration: 1_700_000_060_000 };
         mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
@@ -2409,7 +2409,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         mockSendService.signAndSendTransaction.mockResolvedValue({
           result: true,
           txid: 'broadcast-tx-id',
-        } as Types.BroadcastReturn<any>);
+        } as TronwebTypes.BroadcastReturn<any>);
 
         const result = await handler.handle(request);
 

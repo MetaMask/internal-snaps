@@ -1,6 +1,6 @@
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -100,7 +100,7 @@ export class StakingService {
     /**
      * Check which resource we are unstaking.
      */
-    let purpose: Types.Resource | undefined;
+    let purpose: TronwebTypes.Resource | undefined;
 
     if (
       [

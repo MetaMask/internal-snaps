@@ -13,7 +13,7 @@ import {
   sha256,
 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
-import type { TronWeb, Types } from 'tronweb';
+import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -68,7 +68,7 @@ import {
   SignRewardsMessageRequestStruct,
 } from './validation';
 
-type TransactionRawData = Types.Transaction['raw_data'] & {
+type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   fee_limit?: number;
 };
