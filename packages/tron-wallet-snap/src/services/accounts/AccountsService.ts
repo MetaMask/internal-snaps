@@ -9,7 +9,6 @@ import {
   assertCreateAccountOptionIsSupported,
   KeyringEvent,
   TrxAccountType,
-  TrxScope,
 } from '@metamask/keyring-api';
 import {
   emitSnapKeyringEvent,
@@ -21,6 +20,7 @@ import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
 
+import snapManifest from '../../../snap.manifest.json';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import { asStrictKeyringAccount } from '../../entities/keyring-account';
@@ -46,6 +46,10 @@ const CURVE = 'secp256k1' as const;
  * Maximum BIP44 account index.
  */
 const MAX_BIP44_ACCOUNT_INDEX = 0x7fffffff;
+
+export const SUPPORTED_SCOPES = snapManifest.initialPermissions[
+  'endowment:keyring'
+].capabilities.scopes as readonly Network[];
 
 /**
  * Range of inclusive account indices to create.
@@ -217,7 +221,7 @@ export class AccountsService {
       index,
       type: TrxAccountType.Eoa,
       address,
-      scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+      scopes: SUPPORTED_SCOPES as unknown as Network[],
       options: {
         entropy: {
           type: 'mnemonic',
@@ -357,7 +361,7 @@ export class AccountsService {
         index: groupIndex,
       });
       const activityChecks = await Promise.all(
-        Object.values(Network).map((scope) =>
+        SUPPORTED_SCOPES.map((scope) =>
           this.#transactionsService.checkAddressActivity(
             scope,
             derivedAccount.address,
@@ -418,7 +422,7 @@ export class AccountsService {
           index: groupIndex,
           type: TrxAccountType.Eoa,
           address,
-          scopes: [TrxScope.Mainnet, TrxScope.Nile, TrxScope.Shasta],
+          scopes: SUPPORTED_SCOPES as unknown as Network[],
           options: {
             entropy: {
               type: 'mnemonic',

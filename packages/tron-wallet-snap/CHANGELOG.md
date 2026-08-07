@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Core messenger plumbing (`getMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`) for upcoming AssetsController migration ([#95](https://github.com/MetaMask/internal-snaps/pull/95))
 
+### Fixed
+
+- Scope `bip44:discover` activity checks and account creation to the networks declared in the snap manifest, preventing unnecessary calls to testnet APIs during discovery ([#135](https://github.com/MetaMask/internal-snaps/pull/135))
+
 ## [3.0.0]
 
 ### Added
