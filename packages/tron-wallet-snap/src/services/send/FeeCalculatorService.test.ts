@@ -1,6 +1,6 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
-import type { Transaction } from 'tronweb/lib/esm/types';
+import { Types } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TriggerConstantContractResponse } from '../../clients/tron-http';
@@ -18,6 +18,29 @@ import trc10TransferMock from '../transactions/mocks/trongrid/account-transactio
 import trc20TransferMock from '../transactions/mocks/trongrid/account-transactions/trc20-transfer.json';
 import { FeeUnavailableError } from './errors';
 import { FeeCalculatorService } from './FeeCalculatorService';
+
+type Transaction = Types.Transaction;
+type TriggerConstantContractMockTransaction = Transaction & {
+  ret: { ret: string }[];
+};
+type TriggerConstantContractMockResponse =
+  | TriggerConstantContractResponse
+  | (Omit<TriggerConstantContractResponse, 'transaction'> & {
+      transaction: TriggerConstantContractMockTransaction;
+    });
+
+/**
+ * The fee fixtures cover multiple transaction contract types, whereas the
+ * constant-contract HTTP endpoint returns a smart-contract transaction. The
+ * mocked response only needs the common transaction fields consumed by the
+ * fee calculator.
+ */
+const createSuccessfulConstantContractTransaction = (
+  transaction: Transaction,
+): TriggerConstantContractMockTransaction => ({
+  ...transaction,
+  ret: [{ ret: 'SUCCESS' }],
+});
 
 // Helper to get transaction examples in the expected format
 const getTransactionExample = (
@@ -49,10 +72,16 @@ const getTransactionExample = (
 };
 
 // Helper to create a large transaction by modifying the TRC20 example
-const createLargeTransaction = (): Transaction => {
+const createLargeTransaction = (dataLength = 2000): Transaction => {
   const baseTransaction = getTransactionExample('trc20');
   // Modify the data field to be much larger to simulate bandwidth issues
-  const largeData = 'b'.repeat(2000);
+  const largeData = 'b'.repeat(dataLength);
+
+  const contract = baseTransaction.raw_data.contract[0];
+
+  if (!contract) {
+    throw new Error('Expected the TRC20 fixture to contain a contract.');
+  }
 
   return {
     ...baseTransaction,
@@ -60,13 +89,13 @@ const createLargeTransaction = (): Transaction => {
       ...baseTransaction.raw_data,
       contract: [
         {
-          ...baseTransaction.raw_data.contract[0],
+          ...contract,
           parameter: {
-            ...baseTransaction.raw_data.contract[0].parameter,
+            ...contract?.parameter,
             value: {
-              ...baseTransaction.raw_data.contract[0].parameter.value,
+              ...contract?.parameter.value,
               data: largeData,
-            },
+            } as Types.TriggerSmartContract,
           },
         },
       ],
@@ -84,11 +113,12 @@ type MockTrongridApiClient = jest.Mocked<
 >;
 
 type MockTronHttpClient = jest.Mocked<
-  Pick<
-    TronHttpClient,
-    'triggerConstantContract' | 'getContract' | 'getAccountResources'
-  >
->;
+  Pick<TronHttpClient, 'getContract' | 'getAccountResources'>
+> & {
+  triggerConstantContract: jest.Mock<
+    Promise<TriggerConstantContractMockResponse>
+  >;
+};
 
 type WithFeeCalculatorServiceCallback<ReturnValue> = (payload: {
   feeCalculatorService: FeeCalculatorService;
@@ -242,7 +272,7 @@ describe('FeeCalculatorService', () => {
     describe('System contract scenarios (no energy needed)', () => {
       // Helper to create a mock transaction with a specific contract type
       const createSystemContractTransaction = (
-        contractType: string,
+        contractType: Types.ContractType,
       ): Transaction => {
         const baseTransaction = getTransactionExample('native');
         return {
@@ -275,47 +305,50 @@ describe('FeeCalculatorService', () => {
         'WithdrawExpireUnfreezeContract',
         'AccountCreateContract',
         'AccountPermissionUpdateContract',
-      ])('returns zero energy for %s', async (contractType) => {
-        await withFeeCalculatorService(async ({ feeCalculatorService }) => {
-          const transaction = createSystemContractTransaction(contractType);
-          const availableEnergy = ZERO;
-          const availableBandwidth = BigNumber(1000000);
+      ] as Types.ContractType[])(
+        'returns zero energy for %s',
+        async (contractType) => {
+          await withFeeCalculatorService(async ({ feeCalculatorService }) => {
+            const transaction = createSystemContractTransaction(contractType);
+            const availableEnergy = ZERO;
+            const availableBandwidth = BigNumber(1000000);
 
-          const result = await feeCalculatorService.computeFee({
-            scope: Network.Mainnet,
-            transaction,
-            availableEnergy,
-            availableBandwidth,
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction,
+              availableEnergy,
+              availableBandwidth,
+            });
+
+            // System contracts should only have TRX (0) and bandwidth, no energy
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '0',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '266',
+                  fungible: true,
+                },
+              },
+            ]);
           });
-
-          // System contracts should only have TRX (0) and bandwidth, no energy
-          expect(result).toStrictEqual([
-            {
-              type: FeeType.Base,
-              asset: {
-                unit: 'TRX',
-                type: 'tron:728126428/slip44:195',
-                amount: '0',
-                fungible: true,
-              },
-            },
-            {
-              type: FeeType.Base,
-              asset: {
-                unit: 'BANDWIDTH',
-                type: 'tron:728126428/slip44:bandwidth',
-                amount: '266',
-                fungible: true,
-              },
-            },
-          ]);
-        });
-      });
+        },
+      );
 
       it('charges bandwidth in TRX when not enough bandwidth for system contract', async () => {
         await withFeeCalculatorService(async ({ feeCalculatorService }) => {
           const transaction = createSystemContractTransaction(
-            'FreezeBalanceV2Contract',
+            'FreezeBalanceV2Contract' as Types.ContractType,
           );
           const availableEnergy = ZERO;
           const availableBandwidth = BigNumber(100); // Less than needed (266)
@@ -621,7 +654,8 @@ describe('FeeCalculatorService', () => {
               energy_used: 130000,
               result: { result: true },
               constant_result: [],
-              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
+              transaction:
+                createSuccessfulConstantContractTransaction(transaction),
             });
 
             const availableEnergy = BigNumber(100000);
@@ -675,19 +709,16 @@ describe('FeeCalculatorService', () => {
       it('handles very large transactions', async () => {
         await withFeeCalculatorService(
           async ({ feeCalculatorService, tronHttpClient }) => {
-            const veryLargeTransaction = createLargeTransaction();
-            // Make it even larger for this test
-            veryLargeTransaction.raw_data.contract[0].parameter.value.data =
-              'b'.repeat(10000);
+            const veryLargeTransaction = createLargeTransaction(10000);
 
             tronHttpClient.triggerConstantContract.mockResolvedValue({
               energy_used: 130000,
               result: { result: true },
               constant_result: [],
-              transaction: {
-                ...veryLargeTransaction,
-                ret: [{ ret: 'SUCCESS' }],
-              },
+              transaction:
+                createSuccessfulConstantContractTransaction(
+                  veryLargeTransaction,
+                ),
             });
 
             const availableEnergy = BigNumber(100000);
@@ -2190,7 +2221,7 @@ describe('FeeCalculatorService', () => {
                   type_url:
                     'type.googleapis.com/protocol.WitnessCreateContract',
                 },
-                type: 'WitnessCreateContract',
+                type: Types.ContractType.WitnessCreateContract,
               },
             ],
           },

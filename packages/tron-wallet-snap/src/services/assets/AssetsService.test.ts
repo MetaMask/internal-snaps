@@ -3,6 +3,7 @@ import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
+import { MOCK_EXCHANGE_RATES } from '../../clients/price-api/mocks/exchange-rates';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
@@ -2836,6 +2837,7 @@ describe('AssetsService', () => {
       await withAssetsService(
         async ({ assetsService, mockAssetsRepository, mockPriceApiClient }) => {
           const asset: AssetEntity = {
+            iconUrl: '',
             assetType: KnownCaip19Id.TrxMainnet,
             keyringAccountId: mockAccount.id,
             network: Network.Mainnet,
@@ -2852,9 +2854,9 @@ describe('AssetsService', () => {
           mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
             asset,
           );
-          mockPriceApiClient.getFiatExchangeRates.mockResolvedValue({
-            usd: { value: 1 },
-          });
+          mockPriceApiClient.getFiatExchangeRates.mockResolvedValue(
+            MOCK_EXCHANGE_RATES,
+          );
           mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
             createSpotPrices({
               [KnownCaip19Id.TrxMainnet]: {
@@ -2888,7 +2890,8 @@ describe('AssetsService', () => {
           );
           expect(
             byKeyringAccountId.some(
-              (savedAsset) => savedAsset.assetType === KnownCaip19Id.TrxMainnet,
+              (savedAsset: AssetEntity) =>
+                savedAsset.assetType === KnownCaip19Id.TrxMainnet,
             ),
           ).toBe(true);
           const marketData = await assetsService.getMultipleTokensMarketData([
