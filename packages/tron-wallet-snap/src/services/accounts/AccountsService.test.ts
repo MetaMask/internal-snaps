@@ -635,7 +635,9 @@ describe('AccountsService', () => {
           mockAccountsRepository,
           mockTransactionsService,
         }) => {
-          mockTransactionsService.checkAddressActivity.mockResolvedValueOnce(true);
+          mockTransactionsService.checkAddressActivity.mockResolvedValueOnce(
+            true,
+          );
 
           const result = await accountsService.createAccounts({
             type: AccountCreationType.Bip44Discover,
