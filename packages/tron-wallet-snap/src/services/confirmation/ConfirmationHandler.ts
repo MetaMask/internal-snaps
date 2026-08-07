@@ -1,7 +1,7 @@
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -165,7 +165,7 @@ export class ConfirmationHandler {
     asset: AssetEntity;
     accountType: string;
     origin: string;
-    transactionRawData: Types.Transaction['raw_data'];
+    transactionRawData: TronwebTypes.Transaction['raw_data'];
   }): Promise<boolean> {
     // Track Transaction Added event
     await this.#snapClient.trackTransactionAdded({

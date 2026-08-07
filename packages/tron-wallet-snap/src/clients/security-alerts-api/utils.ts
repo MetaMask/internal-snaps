@@ -1,5 +1,5 @@
 import { add0x } from '@metamask/utils';
-import { TronWeb, Types } from 'tronweb';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SecurityScanPayload } from './types';
 
@@ -19,7 +19,7 @@ import type { SecurityScanPayload } from './types';
  * @returns The extracted scan parameters.
  */
 export function extractScanParametersFromTransactionData(
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
 ): SecurityScanPayload | null {
   const contractParam = rawData.contract[0]?.parameter.value;
 
@@ -75,15 +75,15 @@ export function buildTransactionRawData({
   to: string;
   amount: number;
   data?: string | null;
-  contractType: Types.ContractType;
-}): Types.Transaction['raw_data'] {
+  contractType: TronwebTypes.ContractType;
+}): TronwebTypes.Transaction['raw_data'] {
   const ownerAddressHex = TronWeb.address.toHex(from);
 
-  if (contractType === Types.ContractType.TriggerSmartContract) {
+  if (contractType === TronwebTypes.ContractType.TriggerSmartContract) {
     return {
       contract: [
         {
-          type: Types.ContractType.TriggerSmartContract,
+          type: TronwebTypes.ContractType.TriggerSmartContract,
           parameter: {
             value: {
               owner_address: ownerAddressHex,
@@ -105,7 +105,7 @@ export function buildTransactionRawData({
   return {
     contract: [
       {
-        type: Types.ContractType.TransferContract,
+        type: TronwebTypes.ContractType.TransferContract,
         parameter: {
           value: {
             owner_address: ownerAddressHex,

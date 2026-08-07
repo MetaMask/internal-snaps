@@ -1,4 +1,4 @@
-import { Types } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 
 import type {
   TransferAssetContractParameter,
@@ -18,10 +18,10 @@ describe('SecurityAlertsApiClient utils', () => {
           amount: 1000000,
         },
       };
-      const rawData: Types.Transaction['raw_data'] = {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
         contract: [
           {
-            type: Types.ContractType.TransferAssetContract,
+            type: TronwebTypes.ContractType.TransferAssetContract,
             parameter: contractInteraction,
           },
         ],
@@ -50,10 +50,10 @@ describe('SecurityAlertsApiClient utils', () => {
           amount: 500000,
         },
       };
-      const rawData: Types.Transaction['raw_data'] = {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
         contract: [
           {
-            type: Types.ContractType.TransferContract,
+            type: TronwebTypes.ContractType.TransferContract,
             parameter: contractInteraction,
           },
         ],
@@ -83,10 +83,10 @@ describe('SecurityAlertsApiClient utils', () => {
           data: 'abcdef',
         },
       };
-      const rawData: Types.Transaction['raw_data'] = {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
         contract: [
           {
-            type: Types.ContractType.TriggerSmartContract,
+            type: TronwebTypes.ContractType.TriggerSmartContract,
             parameter: contractInteraction,
           },
         ],
@@ -107,7 +107,7 @@ describe('SecurityAlertsApiClient utils', () => {
     });
 
     it('returns null if no contract parameter is found', () => {
-      const rawData: Types.Transaction['raw_data'] = {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
         contract: [],
         ref_block_bytes: '',
         ref_block_hash: '',

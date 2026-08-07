@@ -1,4 +1,4 @@
-import { Types } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 
 import {
   buildTransactionRawData,
@@ -119,7 +119,7 @@ const defaultTransactionRawData = buildTransactionRawData({
   from: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
   to: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
   amount: 1000000,
-  contractType: Types.ContractType.TransferContract,
+  contractType: TronwebTypes.ContractType.TransferContract,
 });
 
 const defaultIncomingContext = {
@@ -395,7 +395,7 @@ describe('ConfirmTransactionRequest render', () => {
         to: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
         amount: 0,
         data: 'a9059cbb0000000000000000000000004f32e5a36a5e1fc1c5c327a522cdfbc78e400f5500000000000000000000000000000000000000000000000000000000000f4240',
-        contractType: Types.ContractType.TriggerSmartContract,
+        contractType: TronwebTypes.ContractType.TriggerSmartContract,
       });
 
       await callRender({ transactionRawData: trc20RawData });

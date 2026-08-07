@@ -1,5 +1,5 @@
 import type { DialogResult, Json } from '@metamask/snaps-sdk';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
@@ -86,7 +86,7 @@ export async function render(
     asset: AssetEntity;
     origin: string;
     accountType: string;
-    transactionRawData: Types.Transaction['raw_data'];
+    transactionRawData: TronwebTypes.Transaction['raw_data'];
   },
 ): Promise<DialogResult> {
   const { transactionScanService } = snapContext;

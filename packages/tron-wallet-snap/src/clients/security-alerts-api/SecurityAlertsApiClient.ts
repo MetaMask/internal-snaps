@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import { assert } from '@metamask/superstruct';
-import { Types } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 
 import type { ConfigProvider } from '../../services/config';
 import { createPrefixedLogger } from '../../utils/logger';
@@ -24,10 +24,10 @@ export class SecurityAlertsApiClient {
    * Contract types for which the Security Alerts API can produce reliable
    * simulation results.
    */
-  static readonly SUPPORTED_CONTRACT_TYPES: Types.ContractType[] = [
-    Types.ContractType.TransferContract,
-    Types.ContractType.CreateSmartContract,
-    Types.ContractType.TriggerSmartContract,
+  static readonly SUPPORTED_CONTRACT_TYPES: TronwebTypes.ContractType[] = [
+    TronwebTypes.ContractType.TransferContract,
+    TronwebTypes.ContractType.CreateSmartContract,
+    TronwebTypes.ContractType.TriggerSmartContract,
   ];
 
   /**
@@ -38,7 +38,7 @@ export class SecurityAlertsApiClient {
    * @returns True if the contract type is supported for simulation.
    */
   static isContractTypeSupported(
-    rawData: Types.Transaction['raw_data'],
+    rawData: TronwebTypes.Transaction['raw_data'],
   ): boolean {
     const [contractInteraction] = rawData.contract;
     if (!contractInteraction) {
@@ -84,7 +84,7 @@ export class SecurityAlertsApiClient {
     options = ['simulation', 'validation'],
   }: {
     accountAddress: string;
-    transactionRawData: Types.Transaction['raw_data'];
+    transactionRawData: TronwebTypes.Transaction['raw_data'];
     origin: string;
     options?: string[];
   }): Promise<SecurityAlertSimulationValidationResponse> {

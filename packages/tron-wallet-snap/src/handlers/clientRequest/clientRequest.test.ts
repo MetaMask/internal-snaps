@@ -3,13 +3,7 @@ import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
-import type {
-  BroadcastReturn,
-  Transaction,
-  TransferContract,
-  TriggerSmartContract,
-  FreezeBalanceV2Contract,
-} from 'tronweb/lib/esm/types';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -1698,35 +1692,36 @@ describe('ClientRequestHandler - onAmountInput', () => {
         : Networks[scope].energy.iconUrl,
   });
 
-  const createMockTransferTransaction = (): Transaction<TransferContract> => ({
-    visible: false,
-    txID: 'mock-tx-id',
+  const createMockTransferTransaction =
+    (): TronwebTypes.Transaction<TronwebTypes.TransferContract> => ({
+      visible: false,
+      txID: 'mock-tx-id',
 
-    raw_data: {
-      contract: [
-        {
-          type: 'TransferContract' as Transaction<TransferContract>['raw_data']['contract'][number]['type'],
-          parameter: {
-            type_url: 'type.googleapis.com/protocol.TransferContract',
-            value: {
-              owner_address: `41${'a'.repeat(40)}`,
+      raw_data: {
+        contract: [
+          {
+            type: 'TransferContract' as TronwebTypes.Transaction<TronwebTypes.TransferContract>['raw_data']['contract'][number]['type'],
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
+              value: {
+                owner_address: `41${'a'.repeat(40)}`,
 
-              to_address: `41${'b'.repeat(40)}`,
-              amount: 1000000,
+                to_address: `41${'b'.repeat(40)}`,
+                amount: 1000000,
+              },
             },
           },
-        },
-      ],
+        ],
 
-      ref_block_bytes: '0000',
+        ref_block_bytes: '0000',
 
-      ref_block_hash: '0'.repeat(16),
-      expiration: Date.now() + 60000,
-      timestamp: Date.now(),
-    },
+        ref_block_hash: '0'.repeat(16),
+        expiration: Date.now() + 60000,
+        timestamp: Date.now(),
+      },
 
-    raw_data_hex: 'mock-hex',
-  });
+      raw_data_hex: 'mock-hex',
+    });
 
   it('returns valid and skips fee validation when toAddress is missing', async () => {
     await withClientRequestHandler(
@@ -2084,7 +2079,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           },
 
           raw_data_hex: 'stake-hex',
-        } as unknown as Transaction<FreezeBalanceV2Contract>;
+        } as unknown as TronwebTypes.Transaction<TronwebTypes.FreezeBalanceV2Contract>;
 
         mockTronWeb.transactionBuilder.freezeBalanceV2.mockResolvedValue(
           builtTransaction,
@@ -2385,7 +2380,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           raw_data: {},
 
           raw_data_hex: 'test-hex',
-        } as unknown as Transaction<TriggerSmartContract>;
+        } as unknown as TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
         mockSendService.buildTransaction.mockResolvedValue(mockTransaction);
         const freshTransactionRawData = { expiration: 1_700_000_060_000 };
         mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
@@ -2414,7 +2409,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         mockSendService.signAndSendTransaction.mockResolvedValue({
           result: true,
           txid: 'broadcast-tx-id',
-        } as BroadcastReturn<any>);
+        } as TronwebTypes.BroadcastReturn<any>);
 
         const result = await handler.handle(request);
 

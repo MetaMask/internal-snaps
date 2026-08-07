@@ -1,5 +1,5 @@
 import { BigNumber } from 'bignumber.js';
-import type { Types } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type {
@@ -61,7 +61,7 @@ export class TransactionScanService {
     account,
   }: {
     accountAddress: string;
-    transactionRawData: Types.Transaction['raw_data'];
+    transactionRawData: TronwebTypes.Transaction['raw_data'];
     origin: string;
     scope: Network;
     options?: string[] | undefined;

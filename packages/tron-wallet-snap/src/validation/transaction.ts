@@ -1,7 +1,7 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { assert, define, is } from '@metamask/superstruct';
 import type { BigNumber } from 'bignumber.js';
-import { TronWeb, Types } from 'tronweb';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import { ZERO } from '../constants';
 import { sunToTrx } from '../utils/conversion';
@@ -17,23 +17,22 @@ import { sunToTrx } from '../utils/conversion';
  *
  * @see https://developers.tron.network/docs/tron-protocol-transaction
  */
-export const TransactionRawDataStruct = define<Types.Transaction['raw_data']>(
-  'TransactionRawData',
-  (value) => {
-    const rawData = value as Types.Transaction['raw_data'];
+export const TransactionRawDataStruct = define<
+  TronwebTypes.Transaction['raw_data']
+>('TransactionRawData', (value) => {
+  const rawData = value as TronwebTypes.Transaction['raw_data'];
 
-    if (rawData?.contract?.length !== 1) {
-      return 'must contain exactly one contract';
-    }
+  if (rawData?.contract?.length !== 1) {
+    return 'must contain exactly one contract';
+  }
 
-    const [contractInteraction] = rawData.contract;
-    if (!contractInteraction?.parameter?.value) {
-      return 'contract must have a non-empty parameter value';
-    }
+  const [contractInteraction] = rawData.contract;
+  if (!contractInteraction?.parameter?.value) {
+    return 'contract must have a non-empty parameter value';
+  }
 
-    return true;
-  },
-);
+  return true;
+});
 
 /**
  * Checks whether the transaction structure is well-formed.
@@ -42,7 +41,7 @@ export const TransactionRawDataStruct = define<Types.Transaction['raw_data']>(
  * @returns True if the transaction has a valid single-contract structure.
  */
 export function isTransactionWellFormed(
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
 ): boolean {
   return is(rawData, TransactionRawDataStruct);
 }
@@ -57,7 +56,7 @@ export function isTransactionWellFormed(
  * @throws {InvalidParamsError} If the transaction is malformed.
  */
 export function assertTransactionStructure(
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
 ): void {
   try {
     assert(rawData, TransactionRawDataStruct);
@@ -80,7 +79,7 @@ export function assertTransactionStructure(
  * @returns The transferred TRX amount.
  */
 export function getTransactionTrxValue(
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
 ): BigNumber {
   const contract = rawData.contract[0];
   const value = contract?.parameter?.value;
@@ -89,11 +88,11 @@ export function getTransactionTrxValue(
     return ZERO;
   }
 
-  if (contract.type === Types.ContractType.TransferContract) {
+  if (contract.type === TronwebTypes.ContractType.TransferContract) {
     return sunToTrx('amount' in value ? (value.amount ?? 0) : 0);
   }
 
-  if (contract.type === Types.ContractType.TriggerSmartContract) {
+  if (contract.type === TronwebTypes.ContractType.TriggerSmartContract) {
     return sunToTrx('call_value' in value ? (value.call_value ?? 0) : 0);
   }
 
@@ -107,7 +106,7 @@ export function getTransactionTrxValue(
  * @returns The owner address in base58 format, or null if not found / invalid.
  */
 export function extractTransactionOwnerAddress(
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
 ): string | null {
   const contract = rawData.contract[0];
   const ownerAddressHex = contract?.parameter?.value?.owner_address;
@@ -130,7 +129,7 @@ export function extractTransactionOwnerAddress(
  * @param signerAddress - The address derived from the private key used to sign.
  */
 export function assertTransactionSignerConsistency(
-  rawData: Types.Transaction['raw_data'],
+  rawData: TronwebTypes.Transaction['raw_data'],
   signerAddress: string,
 ): void {
   const transactionOwnerAddress = extractTransactionOwnerAddress(rawData);

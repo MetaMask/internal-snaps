@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.packages.json",
   "compilerOptions": {
     "baseUrl": "./",
+    "lib": ["ES2021", "DOM"],
     "resolveJsonModule": true /*  lets us import JSON modules from within TypeScript modules. */,
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",

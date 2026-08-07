@@ -1,6 +1,6 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { is } from '@metamask/superstruct';
-import { Types } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 
 import {
   assertTransactionStructure,
@@ -15,12 +15,12 @@ import {
  * @returns A mock raw data object.
  */
 function buildRawData(
-  overrides: Partial<Types.Transaction['raw_data']> = {},
-): Types.Transaction['raw_data'] {
+  overrides: Partial<TronwebTypes.Transaction['raw_data']> = {},
+): TronwebTypes.Transaction['raw_data'] {
   return {
     contract: [
       {
-        type: Types.ContractType.TransferContract,
+        type: TronwebTypes.ContractType.TransferContract,
         parameter: {
           type_url: 'type.googleapis.com/protocol.TransferContract',
           value: {
@@ -97,7 +97,7 @@ describe('getTransactionTrxValue', () => {
   it('returns the call value of a smart contract transaction', () => {
     const rawData = buildRawData();
     rawData.contract[0] = {
-      type: Types.ContractType.TriggerSmartContract,
+      type: TronwebTypes.ContractType.TriggerSmartContract,
       parameter: {
         type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
         value: {
@@ -115,7 +115,7 @@ describe('getTransactionTrxValue', () => {
   it('does not treat token amounts as TRX', () => {
     const rawData = buildRawData();
     rawData.contract[0] = {
-      type: Types.ContractType.TransferAssetContract,
+      type: TronwebTypes.ContractType.TransferAssetContract,
       parameter: {
         type_url: 'type.googleapis.com/protocol.TransferAssetContract',
         value: {
