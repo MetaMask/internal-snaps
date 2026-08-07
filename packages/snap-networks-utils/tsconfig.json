@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.packages.json",
   "compilerOptions": {
     "baseUrl": "./",
+    "skipLibCheck": true,
     "types": ["jest"]
   },
   "references": [],

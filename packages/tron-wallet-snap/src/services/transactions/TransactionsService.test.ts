@@ -50,7 +50,7 @@ type WithTransactionServiceCallback<ReturnValue> = (payload: {
   mockPriceApiClient: jest.Mocked<
     Pick<PriceApiClient, 'getMultipleSpotPrices'>
   >;
-  mockSnapClient: jest.Mocked<SnapClient>;
+  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**

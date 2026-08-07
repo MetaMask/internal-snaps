@@ -1,4 +1,4 @@
-import { Types } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
@@ -22,10 +22,10 @@ describe('TransactionScanService', () => {
   });
 
   const createWellFormedTransactionRawData =
-    (): Types.Transaction['raw_data'] => ({
+    (): TronwebTypes.Transaction['raw_data'] => ({
       contract: [
         {
-          type: Types.ContractType.TransferContract,
+          type: TronwebTypes.ContractType.TransferContract,
           parameter: {
             type_url: 'type.googleapis.com/protocol.TransferContract',
             value: {

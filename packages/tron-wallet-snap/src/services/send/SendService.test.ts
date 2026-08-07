@@ -2,7 +2,7 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
-import type { Transaction, TransferContract } from 'tronweb/lib/esm/types';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import {
   FEE_LIMIT,
@@ -17,12 +17,13 @@ import { mockLogger } from '../../utils/mockLogger';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { SendService } from './SendService';
 
-describe('SendService', () => {
-  type MockTransferContract =
-    Transaction<TransferContract>['raw_data']['contract'][number];
+type Transaction = TronwebTypes.Transaction<TronwebTypes.TransferContract>;
 
-  type MockTransferTransaction = Transaction<TransferContract> & {
-    raw_data: Omit<Transaction<TransferContract>['raw_data'], 'contract'> & {
+describe('SendService', () => {
+  type MockTransferContract = Transaction['raw_data']['contract'][number];
+
+  type MockTransferTransaction = Transaction & {
+    raw_data: Omit<Transaction['raw_data'], 'contract'> & {
       contract: [MockTransferContract];
     };
   };

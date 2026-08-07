@@ -3,7 +3,7 @@ import {
   BIP44PurposeNodeToken,
   mnemonicPhraseToBytes,
 } from '@metamask/key-tree';
-import type { JsonBIP44Node } from '@metamask/key-tree';
+import type { JsonBIP44Node, JsonSLIP10Node } from '@metamask/key-tree';
 import type {
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
   Transaction,
@@ -377,7 +377,7 @@ describe('AccountsService', () => {
         mockSnapClient.getBip32Entropy.mockResolvedValue({
           privateKey: undefined,
           publicKey: undefined,
-        } as unknown as JsonBIP44Node);
+        } as unknown as JsonSLIP10Node);
 
         await expect(
           accountsService.deriveTronKeypair({
@@ -943,7 +943,12 @@ describe('AccountsService', () => {
     it('throws when no primary entropy source is available', async () => {
       await withAccountsService(async ({ accountsService, mockSnapClient }) => {
         mockSnapClient.listEntropySources.mockResolvedValue([
-          { id: 'non-primary', primary: false },
+          {
+            id: 'non-primary',
+            primary: false,
+            type: 'mnemonic',
+            name: 'Non-Primary',
+          },
         ]);
 
         await expect(accountsService.create()).rejects.toThrow(

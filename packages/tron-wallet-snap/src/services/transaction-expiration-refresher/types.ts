@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { Json } from '@metamask/snaps-sdk';
-import type { Types } from 'tronweb';
-import type { Block } from 'tronweb/lib/esm/types/APIResponse';
+import type { Types as TronwebTypes } from 'tronweb';
 
-export type TransactionRawData = Types.Transaction['raw_data'];
+export type TransactionRawData = TronwebTypes.Transaction['raw_data'];
 
 export type JsonTransactionRawData = TransactionRawData & {
   [prop: string]: Json;
@@ -24,7 +23,7 @@ export type TransactionWithMetadata<
 };
 
 export type HasFreshExpirationMetadataParams = {
-  currentBlock: Block;
+  currentBlock: TronwebTypes.Block;
   now: number;
   rawData: TransactionRawData;
 };
