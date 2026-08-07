@@ -2,10 +2,6 @@ import {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
 } from '@metamask/snap-networks-utils';
-import type {
-  AssetsProviderMessenger,
-  RemoteFeatureFlagsProviderMessenger,
-} from '@metamask/snap-networks-utils';
 import { getMessenger } from '@metamask/snaps-sdk';
 
 import { InMemoryCache } from './caching/InMemoryCache';
@@ -39,7 +35,10 @@ import { TransactionScanService } from './services/transaction-scan/TransactionS
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
 import { TransactionsService } from './services/transactions/TransactionsService';
 import { WalletService } from './services/wallet/WalletService';
-import type { CoreMessenger } from './types/core-messenger';
+import type {
+  CoreMessenger,
+  CoreMessengerConstraint,
+} from './types/core-messenger';
 import logger, { noOpLogger } from './utils/logger';
 
 /**
@@ -96,12 +95,12 @@ const tokenApiClient = new TokenApiClient(configProvider);
 /**
  * Core controllers plumbing
  */
-const coreMessenger = getMessenger<CoreMessenger>();
+const coreMessenger = getMessenger<CoreMessengerConstraint>();
 const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
-  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
+  messenger: coreMessenger,
 });
 const assetsProvider = new AssetsProvider({
-  messenger: coreMessenger as AssetsProviderMessenger,
+  messenger: coreMessenger,
 });
 
 // Security Alerts API client

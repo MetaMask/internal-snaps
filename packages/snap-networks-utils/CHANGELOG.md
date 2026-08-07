@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Export namespace-agnostic `MessengerCaller` / `CanCall` types for Snap Core messenger endowments ([#138](https://github.com/MetaMask/internal-snaps/pull/138))
+
+### Changed
+
+- Type `AssetsProviderMessenger` and `RemoteFeatureFlagsProviderMessenger` as `MessengerCaller`s so a Snap Core `getMessenger` result (Snap namespace + action superset) is assignable without casts ([#138](https://github.com/MetaMask/internal-snaps/pull/138))
+
 ## [1.0.0]
 
 ### Added

@@ -5,9 +5,9 @@ import type {
   AssetsControllerGetAccountAssetsByScopeAction,
   Caip19AssetId,
 } from '@metamask/assets-controller';
-import type { Messenger } from '@metamask/messenger';
-import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { CaipChainId } from '@metamask/utils';
+
+import type { MessengerCaller } from '../../types/messenger-caller';
 
 /**
  * Namespace for the {@link AssetsProvider} messenger.
@@ -23,11 +23,14 @@ export type AssetsProviderAllowedActions =
   | AssetsControllerGetAccountAssetsByScopeAction;
 
 /**
- * Messenger restricted to actions consumed by {@link AssetsProvider}.
+ * Messenger caller for actions consumed by {@link AssetsProvider}.
+ *
+ * Namespace-agnostic so a Snap Core `getMessenger` endowment (which uses the
+ * Snap's own namespace and may expose additional actions) is assignable without
+ * casts.
  */
-export type AssetsProviderMessenger = AsyncMessenger<
-  Messenger<typeof ASSETS_PROVIDER_NAME, AssetsProviderAllowedActions>
->;
+export type AssetsProviderMessenger =
+  MessengerCaller<AssetsProviderAllowedActions>;
 
 export class AssetsProvider {
   readonly #messenger: AssetsProviderMessenger;

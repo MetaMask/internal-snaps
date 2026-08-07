@@ -5,6 +5,7 @@ import type {
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
 import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
+import type { AsyncMessenger } from '@metamask/snaps-sdk';
 
 /**
  * Namespace for this Snap's Core messenger endowment.
@@ -18,9 +19,15 @@ export type CoreMessengerActions =
   | AssetsControllerGetAccountAssetsByScopeAction;
 
 /**
- * Messenger type passed to `getMessenger` for Core controller actions.
+ * Sync messenger constraint passed to `getMessenger` for Core controller
+ * actions. Runtime value is {@link CoreMessenger}.
  */
-export type CoreMessenger = Messenger<
+export type CoreMessengerConstraint = Messenger<
   typeof TRON_WALLET_SNAP_MESSENGER_NAMESPACE,
   CoreMessengerActions
 >;
+
+/**
+ * Async messenger returned by `getMessenger` for Core controller actions.
+ */
+export type CoreMessenger = AsyncMessenger<CoreMessengerConstraint>;
