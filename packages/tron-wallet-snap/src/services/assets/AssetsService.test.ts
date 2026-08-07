@@ -25,6 +25,8 @@ import type { AssetEntity } from '../../entities/assets';
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { mockLogger } from '../../utils/mockLogger';
 import type { ConfigProvider } from '../config';
+import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
+import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
@@ -349,17 +351,25 @@ async function withAssetsService<ReturnValue>(
     }),
   };
 
-  const assetsService = new AssetsService({
+  const snapAdapter = new SnapAssetsAdapter({
     logger: mockLogger,
-    assetsRepository: mockAssetsRepository,
-    state: mockState,
-    trongridApiClient: mockTrongridApiClient,
-    tronHttpClient: mockTronHttpClient,
-    priceApiClient: mockPriceApiClient,
-    tokenApiClient: mockTokenApiClient,
-    snapClient: mockSnapClient,
-    configProvider: mockConfigProvider,
+    assetsRepository: mockAssetsRepository as never,
+    state: mockState as never,
+    trongridApiClient: mockTrongridApiClient as never,
+    tronHttpClient: mockTronHttpClient as never,
+    priceApiClient: mockPriceApiClient as never,
+    tokenApiClient: mockTokenApiClient as never,
+    snapClient: mockSnapClient as never,
+    configProvider: mockConfigProvider as never,
+  });
+  const coreAdapter = new CoreAssetsAdapter({
+    logger: mockLogger,
     assetsProvider,
+  });
+
+  const assetsService = new AssetsService({
+    snapAdapter,
+    coreAdapter,
     remoteFeatureFlagsProvider,
   });
 
