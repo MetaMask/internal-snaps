@@ -10,3 +10,4 @@ export {
   RemoteFeatureFlagsProvider,
   type RemoteFeatureFlagsProviderMessenger,
 } from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
+export type { CanCall, MessengerCaller } from './types/messenger-caller';

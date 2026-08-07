@@ -1,7 +1,7 @@
-import type { Messenger } from '@metamask/messenger';
 import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
-import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
+
+import type { MessengerCaller } from '../../types/messenger-caller';
 
 /**
  * Namespace for the {@link RemoteFeatureFlagsProvider} messenger.
@@ -16,14 +16,14 @@ export type RemoteFeatureFlagsProviderAllowedActions =
   RemoteFeatureFlagControllerGetStateAction;
 
 /**
- * Messenger restricted to actions consumed by {@link RemoteFeatureFlagsProvider}.
+ * Messenger caller for actions consumed by {@link RemoteFeatureFlagsProvider}.
+ *
+ * Namespace-agnostic so a Snap Core `getMessenger` endowment (which uses the
+ * Snap's own namespace and may expose additional actions) is assignable without
+ * casts.
  */
-export type RemoteFeatureFlagsProviderMessenger = AsyncMessenger<
-  Messenger<
-    typeof REMOTE_FEATURE_FLAGS_PROVIDER_NAME,
-    RemoteFeatureFlagsProviderAllowedActions
-  >
->;
+export type RemoteFeatureFlagsProviderMessenger =
+  MessengerCaller<RemoteFeatureFlagsProviderAllowedActions>;
 
 export class RemoteFeatureFlagsProvider {
   readonly #messenger: RemoteFeatureFlagsProviderMessenger;

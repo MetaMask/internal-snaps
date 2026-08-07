@@ -30,7 +30,10 @@ snapLogger.info('account synced');
 
 ### Core AssetsController reads
 
-Wire the Snap messenger endowment, then pass it to `AssetsProvider`:
+Wire the Snap messenger endowment, then pass it to `AssetsProvider`. Provider
+messenger types are namespace-agnostic callers, so the Snap Core messenger (which
+uses the Snap's own namespace and may expose additional actions) is assignable
+without casts:
 
 ```typescript
 import type { Messenger } from '@metamask/messenger';
@@ -48,7 +51,9 @@ type CoreMessengerActions =
   | AssetsControllerGetAccountAssetsByIDsAction
   | AssetsControllerGetAccountAssetsByScopeAction;
 
-const messenger = getMessenger<Messenger<string, CoreMessengerActions>>();
+type CoreMessengerConstraint = Messenger<'ExampleSnap', CoreMessengerActions>;
+
+const messenger = getMessenger<CoreMessengerConstraint>();
 const assetsProvider = new AssetsProvider({ messenger });
 
 const accountId: AccountId = '550e8400-e29b-41d4-a716-446655440000';
