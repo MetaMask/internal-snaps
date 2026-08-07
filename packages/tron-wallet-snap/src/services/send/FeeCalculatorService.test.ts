@@ -34,6 +34,9 @@ type TriggerConstantContractMockResponse =
  * constant-contract HTTP endpoint returns a smart-contract transaction. The
  * mocked response only needs the common transaction fields consumed by the
  * fee calculator.
+ *
+ * @param transaction - The transaction fixture to mark as successful.
+ * @returns The transaction fixture with a successful result entry.
  */
 const createSuccessfulConstantContractTransaction = (
   transaction: Transaction,

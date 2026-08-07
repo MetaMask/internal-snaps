@@ -35,6 +35,7 @@ scripts/coverage
 
 # typescript
 packages/*/*.tsbuildinfo
+*.tsbuildinfo
 
 # AI
 .sisyphus/

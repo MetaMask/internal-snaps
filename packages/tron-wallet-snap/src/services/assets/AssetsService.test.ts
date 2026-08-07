@@ -2,8 +2,8 @@ import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 
-import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import { MOCK_EXCHANGE_RATES } from '../../clients/price-api/mocks/exchange-rates';
+import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
