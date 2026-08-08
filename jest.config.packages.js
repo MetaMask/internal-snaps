@@ -78,7 +78,8 @@ module.exports = {
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   // Here we ensure that Jest resolves `@metamask/*` imports to the uncompiled source code for packages that live in this repo.
-  // NOTE: This must be synchronized with the `paths` option in `tsconfig.base.json`.
+  // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`
+  // (`@metamask/*` → `packages/*/src` from the monorepo root).
   moduleNameMapper: {
     '^@metamask/json-rpc-engine/v2$': [
       '<rootDir>/../json-rpc-engine/src/v2/index.ts',

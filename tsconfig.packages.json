@@ -5,14 +5,15 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     /**
-     * Here we ensure that TypeScript resolves `@metamask/*` imports to the
-     * uncompiled source code for packages that live in this repo.
+     * Resolve `@metamask/*` imports to uncompiled source for packages in this
+     * repo. Paths are relative to this file (the monorepo root), not to each
+     * package that extends it.
      *
      * NOTE: This must be synchronized with the `moduleNameMapper` option in
-     * `jest.config.packages.js`.
+     * `jest.config.packages.js` and `jest.config.snaps.unit.js`.
      */
     "paths": {
-      "@metamask/*": ["../*/src"]
+      "@metamask/*": ["./packages/*/src"]
     }
   }
 }
