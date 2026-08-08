@@ -1,4 +1,4 @@
-const shared = require('../../jest.config.snaps.unit.js');
+const shared = require('../../jest.config.snaps.unit.cjs');
 
 module.exports = {
   ...shared,

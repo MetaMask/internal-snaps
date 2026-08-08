@@ -1181,7 +1181,7 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmSignIn/render.test.tsx": {
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmSignIn/render.integration.test.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     },
@@ -1204,7 +1204,7 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmSignMessage/render.test.tsx": {
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmSignMessage/render.integration.test.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     },
@@ -1227,7 +1227,7 @@
       "count": 3
     }
   },
-  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/render.test.tsx": {
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/render.integration.test.tsx": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
     },
@@ -1258,9 +1258,6 @@
     },
     "@typescript-eslint/no-shadow": {
       "count": 1
-    },
-    "jest/unbound-method": {
-      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/index.ts": {

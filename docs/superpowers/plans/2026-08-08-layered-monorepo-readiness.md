@@ -23,34 +23,36 @@
 
 ## File map
 
-| File | Responsibility |
-|---|---|
-| `scripts/build-libs.mjs` | Discover non-snap workspaces and run their `build` scripts topologically |
-| `package.json` | `build:libs`, wire into `allow-scripts`, lint rebuild, optional `build:snaps` |
-| `tsconfig.packages.json` | Root-correct `@metamask/*` → `packages/*/src` paths |
-| `tsconfig.snaps.json` | Shared Snap TS compiler defaults |
-| `packages/*/tsconfig.json` (snaps) | Extend `tsconfig.snaps.json` |
-| `jest.config.packages.js` | Keep mapper in sync with TS paths; document Snap usage |
-| `jest.config.snaps.unit.js` | Shared Node-environment unit defaults for snaps |
-| `packages/*/jest.config.*` (snaps) | Unit config (node); integration stays `snaps-jest` |
-| `packages/solana-wallet-snap/**` | Move `installSnap` tests into `integration-test/` |
-| `packages/sample-snap/**` | Move `installSnap` tests into `integration-test/` or dedicated integration config |
-| `packages/*/snap.config.ts` | Safe `ENVIRONMENT` default where validated |
-| `yarn.config.cjs` | Allow Snap `test:integration` script pattern if constrained |
-| `docs/getting-started/setting-up-your-environment.md`, `AGENTS.md`, `docs/processes/testing.md`, `docs/processes/building.md` | Document layered workflow |
-| `package.json` `workspaces` / `examples/` | Fix empty `examples/*` glob |
-| `.github/workflows/lint-build-test.yml` | Only if unit vs integration split requires CI job changes |
+| File                                                                                                                          | Responsibility                                                                    |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `scripts/build-libs.mjs`                                                                                                      | Discover non-snap workspaces and run their `build` scripts topologically          |
+| `package.json`                                                                                                                | `build:libs`, wire into `allow-scripts`, lint rebuild, optional `build:snaps`     |
+| `tsconfig.packages.json`                                                                                                      | Root-correct `@metamask/*` → `packages/*/src` paths                               |
+| `tsconfig.snaps.json`                                                                                                         | Shared Snap TS compiler defaults                                                  |
+| `packages/*/tsconfig.json` (snaps)                                                                                            | Extend `tsconfig.snaps.json`                                                      |
+| `jest.config.packages.js`                                                                                                     | Keep mapper in sync with TS paths; document Snap usage                            |
+| `jest.config.snaps.unit.js`                                                                                                   | Shared Node-environment unit defaults for snaps                                   |
+| `packages/*/jest.config.*` (snaps)                                                                                            | Unit config (node); integration stays `snaps-jest`                                |
+| `packages/solana-wallet-snap/**`                                                                                              | Move `installSnap` tests into `integration-test/`                                 |
+| `packages/sample-snap/**`                                                                                                     | Move `installSnap` tests into `integration-test/` or dedicated integration config |
+| `packages/*/snap.config.ts`                                                                                                   | Safe `ENVIRONMENT` default where validated                                        |
+| `yarn.config.cjs`                                                                                                             | Allow Snap `test:integration` script pattern if constrained                       |
+| `docs/getting-started/setting-up-your-environment.md`, `AGENTS.md`, `docs/processes/testing.md`, `docs/processes/building.md` | Document layered workflow                                                         |
+| `package.json` `workspaces` / `examples/`                                                                                     | Fix empty `examples/*` glob                                                       |
+| `.github/workflows/lint-build-test.yml`                                                                                       | Only if unit vs integration split requires CI job changes                         |
 
 ---
 
 ### Task 1: Fix TypeScript workspace path mapping
 
 **Files:**
+
 - Modify: `tsconfig.packages.json`
 - Modify: `jest.config.packages.js` (comment + mapper sanity check only if needed)
 - Test: `packages/tron-wallet-snap` typecheck against `@metamask/snap-networks-utils` **without** that package’s `dist/`
 
 **Interfaces:**
+
 - Consumes: existing `@metamask/*` imports in snaps/libs
 - Produces: `compilerOptions.paths` of `@metamask/*` → `packages/*/src` resolved from repo root config
 
@@ -111,6 +113,7 @@ git commit -m "fix: resolve TypeScript workspace paths from monorepo root"
 ### Task 2: Add shared Snap TypeScript config
 
 **Files:**
+
 - Create: `tsconfig.snaps.json`
 - Modify: `packages/bitcoin-wallet-snap/tsconfig.json`
 - Modify: `packages/solana-wallet-snap/tsconfig.json`
@@ -118,6 +121,7 @@ git commit -m "fix: resolve TypeScript workspace paths from monorepo root"
 - Modify: `packages/sample-snap/tsconfig.json`
 
 **Interfaces:**
+
 - Consumes: `tsconfig.packages.json` (including fixed paths)
 - Produces: shared Snap compiler options — JSX from snaps-sdk, `moduleResolution: bundler`, `module: preserve`, `skipLibCheck`, `resolveJsonModule`, `types: ["jest"]`
 
@@ -179,11 +183,13 @@ git commit -m "chore: add shared tsconfig for snap packages"
 ### Task 3: Add `build:libs` and run it after install
 
 **Files:**
+
 - Create: `scripts/build-libs.mjs`
 - Modify: `package.json` (scripts)
 - Optional test helper: none (verify with shell)
 
 **Interfaces:**
+
 - Consumes: Yarn workspaces list; `snap.manifest.json` presence; each lib’s `scripts.build`
 - Produces:
   - `yarn build:libs` — builds every non-private workspace without `snap.manifest.json`
@@ -200,11 +206,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const list = spawnSync(
-  'yarn',
-  ['workspaces', 'list', '--json'],
-  { cwd: root, encoding: 'utf8', shell: true },
-);
+const list = spawnSync('yarn', ['workspaces', 'list', '--json'], {
+  cwd: root,
+  encoding: 'utf8',
+  shell: true,
+});
 
 if (list.status !== 0) {
   console.error(list.stderr || list.stdout);
@@ -270,6 +276,7 @@ Add/adjust:
 ```
 
 Notes:
+
 - Prefer excluding by “is snap” in a `build-snaps.mjs` mirror if `--exclude` of only today’s library is too brittle; when a second library appears, update to a snap-detecting script.
 - `setup` can remain `yarn install` because `allow-scripts` already chains `build:libs` after install via the Yarn plugin.
 
@@ -303,10 +310,12 @@ git commit -m "feat: build library packages after yarn install"
 ### Task 4: Rebuild libraries after eslint cleans dist
 
 **Files:**
+
 - Modify: `package.json` (`lint:eslint`)
 - Modify: `AGENTS.md` (Cursor Cloud caveats)
 
 **Interfaces:**
+
 - Consumes: `build:only-clean`, `build:libs`
 - Produces: `lint:eslint` ends with library `dist/` restored
 
@@ -349,6 +358,7 @@ git commit -m "fix: restore library builds after eslint dist clean"
 ### Task 5: Shared Snap unit Jest config (Node environment)
 
 **Files:**
+
 - Create: `jest.config.snaps.unit.js`
 - Modify: `packages/bitcoin-wallet-snap/jest.config.mjs`
 - Modify: `packages/tron-wallet-snap/jest.config.mjs`
@@ -357,6 +367,7 @@ git commit -m "fix: restore library builds after eslint dist clean"
 - Modify: `jest.config.packages.js` (keep mapper; ensure Snap unit configs reuse the same `@metamask/(.*)` workspace→source pattern)
 
 **Interfaces:**
+
 - Consumes: `ts-jest`, workspace source mapper pattern from `jest.config.packages.js`
 - Produces: default Snap `test` runs in `testEnvironment: 'node'` and does **not** load `@metamask/snaps-jest` preset
 
@@ -380,10 +391,7 @@ module.exports = {
   resetMocks: true,
   restoreMocks: true,
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/integration-test/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '/integration-test/'],
   moduleNameMapper: {
     '\\.svg$': 'jest-transform-stub',
     '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
@@ -447,6 +455,7 @@ git commit -m "test: run snap unit tests in node without snaps-jest"
 ### Task 6: Move `installSnap` tests to integration configs
 
 **Files:**
+
 - Create/Modify: `packages/solana-wallet-snap/jest.integration.config.js` (or `.mjs`)
 - Create: `packages/solana-wallet-snap/integration-test/` (move installSnap specs here)
 - Modify: `packages/solana-wallet-snap/package.json` (add `test:integration`)
@@ -456,6 +465,7 @@ git commit -m "test: run snap unit tests in node without snaps-jest"
 - Modify: `yarn.config.cjs` if a new required script pattern is enforced for snaps
 
 **Interfaces:**
+
 - Consumes: `@metamask/snaps-jest` `installSnap`
 - Produces:
   - `yarn workspace <snap> run test` → unit only (no bundle)
@@ -464,6 +474,7 @@ git commit -m "test: run snap unit tests in node without snaps-jest"
 - [ ] **Step 1: Inventory current `installSnap` files**
 
 Known today:
+
 - `packages/sample-snap/src/index.test.tsx`
 - `packages/solana-wallet-snap/src/index.test.ts` (partially; also has non-installSnap cases — split the file)
 - `packages/solana-wallet-snap/src/features/confirmation/views/**/render.test.tsx`
@@ -531,11 +542,13 @@ git commit -m "test: move installSnap coverage into snap integration suites"
 ### Task 7: Safe Snap build environment defaults
 
 **Files:**
+
 - Modify: `packages/solana-wallet-snap/snap.config.ts`
 - Modify: other snap configs only if they validate `ENVIRONMENT` the same way
 - Modify: `.env.example` files if present
 
 **Interfaces:**
+
 - Consumes: `process.env.ENVIRONMENT`
 - Produces: default `'local'` (or `'test'`) when unset so SES eval accepts the value
 
@@ -578,6 +591,7 @@ git commit -m "fix: default solana snap ENVIRONMENT to local for builds"
 ### Task 8: Workspace and docs hygiene
 
 **Files:**
+
 - Modify: `package.json` (`workspaces`) **or** create `examples/.gitkeep` + placeholder — prefer removing `examples/*` until an example exists
 - Modify: `docs/README.md` (remove or fix dead migration-guide link)
 - Modify: `docs/getting-started/setting-up-your-environment.md`
@@ -586,6 +600,7 @@ git commit -m "fix: default solana snap ENVIRONMENT to local for builds"
 - Modify: `AGENTS.md`
 
 **Interfaces:**
+
 - Produces: accurate contributor workflow for layered readiness
 
 - [ ] **Step 1: Fix workspaces glob**
@@ -613,6 +628,7 @@ yarn build          # when you need snap bundles / integration tests / serve
 - [ ] **Step 3: Update building + testing process docs**
 
 State clearly:
+
 - `yarn build:libs` — shared packages (`ts-bridge`)
 - `yarn build` / `yarn build:snaps` — snap bundles
 - `yarn test` — unit tests (node for snaps)
@@ -634,9 +650,11 @@ git commit -m "docs: describe layered install, typecheck, and test workflow"
 ### Task 9: CI alignment
 
 **Files:**
+
 - Modify: `.github/workflows/lint-build-test.yml` only as needed
 
 **Interfaces:**
+
 - Consumes: build artifacts upload/download
 - Produces: CI unit tests match local unit semantics; integration remains optional/separate
 
@@ -645,6 +663,7 @@ git commit -m "docs: describe layered install, typecheck, and test workflow"
 Keep current flow (build all → download dist → `yarn workspace … run test`) — this remains valid and still exercises packages after a full build.
 
 Optional improvement in this task (recommended if low-risk):
+
 - Unit job can run **without** snap artifacts once Task 5/6 landed
 - Add a separate `test-integration` job for snaps that define `test:integration`, needing build artifacts (+ secrets/services as today)
 
@@ -672,6 +691,7 @@ git commit -m "ci: align snap unit and integration test jobs"
 ### Task 10: End-to-end verification on a clean tree
 
 **Files:**
+
 - None (verification only); fix regressions found in earlier tasks
 
 - [ ] **Step 1: Clean artifacts and reinstall**
@@ -729,16 +749,16 @@ Only commit if there are real fixes; otherwise stop.
 
 ## Self-review
 
-| Spec requirement | Task |
-|---|---|
-| Post-install library builds only | Task 3 |
-| TypeScript works after install | Tasks 1–3 |
-| Unit Jest after install | Tasks 5–6 |
-| Snap integration still needs build | Task 6 |
-| Local/CI builds work | Tasks 7, 9–10 |
-| Lint does not leave libs broken | Task 4 |
-| Shared snap TS config / less drift | Task 2 |
-| Docs + workspaces hygiene | Task 8 |
-| Env default for snap builds | Task 7 |
+| Spec requirement                   | Task          |
+| ---------------------------------- | ------------- |
+| Post-install library builds only   | Task 3        |
+| TypeScript works after install     | Tasks 1–3     |
+| Unit Jest after install            | Tasks 5–6     |
+| Snap integration still needs build | Task 6        |
+| Local/CI builds work               | Tasks 7, 9–10 |
+| Lint does not leave libs broken    | Task 4        |
+| Shared snap TS config / less drift | Task 2        |
+| Docs + workspaces hygiene          | Task 8        |
+| Env default for snap builds        | Task 7        |
 
 No TBD placeholders. Script names (`build:libs`, `build:snaps`, `test:integration`, `allow-scripts`) are consistent across tasks.

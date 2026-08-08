@@ -124,6 +124,8 @@ export class ConfigProvider {
 
   #parseEnvironment() {
     const rawEnvironment = {
+      // Empty ENVIRONMENT must fall back for unit tests without CI secrets.
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ENVIRONMENT: process.env.ENVIRONMENT || 'local',
       RPC_URL_MAINNET_LIST: process.env.RPC_URL_MAINNET_LIST,
       RPC_URL_DEVNET_LIST: process.env.RPC_URL_DEVNET_LIST,

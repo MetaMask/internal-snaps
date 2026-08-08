@@ -9,6 +9,8 @@ const defaultUrl = (value: string | undefined, fallback: string): string =>
   value && value.length > 0 ? value : fallback;
 
 const environment = {
+  // Empty ENVIRONMENT must fall back; `??` would keep ''.
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   ENVIRONMENT: process.env.ENVIRONMENT || 'local',
   RPC_URL_MAINNET_LIST: defaultUrl(
     process.env.RPC_URL_MAINNET_LIST,

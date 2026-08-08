@@ -1,8 +1,8 @@
 // @ts-check
 import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
-const shared = require('../../jest.config.snaps.unit.js');
+const requireWithCreateRequire = createRequire(import.meta.url);
+const shared = requireWithCreateRequire('../../jest.config.snaps.unit.cjs');
 
 /**
  * @type {import('ts-jest').JestConfigWithTsJest}

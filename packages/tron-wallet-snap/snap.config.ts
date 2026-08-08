@@ -13,6 +13,8 @@ const config: SnapConfig = {
     port: 8080,
   },
   environment: {
+    // Empty ENVIRONMENT must fall back; `??` would keep ''.
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ENVIRONMENT: process.env.ENVIRONMENT || 'local',
     RPC_URL_LIST_MAINNET: defaultUrl(
       process.env.RPC_URL_LIST_MAINNET,

@@ -26,6 +26,8 @@ const testDefaults: Record<string, string> = {
 };
 
 for (const [key, value] of Object.entries(testDefaults)) {
+  // Empty strings from dotenv should also fall back to test defaults.
+  // eslint-disable-next-line no-restricted-globals, @typescript-eslint/prefer-nullish-coalescing
   process.env[key] ||= value;
 }
 

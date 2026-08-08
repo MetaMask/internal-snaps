@@ -26,10 +26,10 @@ Explicitly **out of scope for post-install**: Snap SES integration tests (`insta
 
 ## Package model (unchanged)
 
-| Kind | Detection | Build tool | Published shape |
-|---|---|---|---|
-| Library | no `snap.manifest.json` | `ts-bridge` | `dist/*` ESM/CJS + types |
-| Snap | has `snap.manifest.json` | `mm-snap` (+ locale / preinstalled helpers) | `dist/bundle.js` + manifest |
+| Kind    | Detection                | Build tool                                  | Published shape             |
+| ------- | ------------------------ | ------------------------------------------- | --------------------------- |
+| Library | no `snap.manifest.json`  | `ts-bridge`                                 | `dist/*` ESM/CJS + types    |
+| Snap    | has `snap.manifest.json` | `mm-snap` (+ locale / preinstalled helpers) | `dist/bundle.js` + manifest |
 
 Yarn constraints already encode this split; keep them.
 
@@ -95,11 +95,11 @@ Snap configs that validate `ENVIRONMENT` must default to a valid enum value for 
 
 ## Success criteria
 
-| Command (fresh clone, after `yarn`) | Expected |
-|---|---|
-| `yarn typecheck` | Pass |
-| `yarn workspace @metamask/snap-networks-utils run test` | Pass |
-| `yarn workspace @metamask/tron-wallet-snap run test` (unit) | Pass without snap `dist/bundle.js` |
-| `yarn build` | Pass with minimal/default env |
-| CI lint-build-test | Pass |
-| `yarn workspace … run test:integration` (where defined) | Pass only after snap build (+ env/services as today) |
+| Command (fresh clone, after `yarn`)                         | Expected                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------- |
+| `yarn typecheck`                                            | Pass                                                 |
+| `yarn workspace @metamask/snap-networks-utils run test`     | Pass                                                 |
+| `yarn workspace @metamask/tron-wallet-snap run test` (unit) | Pass without snap `dist/bundle.js`                   |
+| `yarn build`                                                | Pass with minimal/default env                        |
+| CI lint-build-test                                          | Pass                                                 |
+| `yarn workspace … run test:integration` (where defined)     | Pass only after snap build (+ env/services as today) |
