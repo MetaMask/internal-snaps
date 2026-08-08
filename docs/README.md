@@ -19,7 +19,6 @@ Hi! Welcome to the contributor documentation for the `internal-snaps` monorepo.
 - [Testing changes to packages in other projects](./processes/testing-changes-in-other-projects.md)
 - [Building packages](./processes/building.md)
 - [Adding new packages to the monorepo](./processes/adding-new-packages.md)
-- [Migrating external snaps to the monorepo](./processes/snap-migration-process-guide.md)
 
 ## Code guidelines
 
