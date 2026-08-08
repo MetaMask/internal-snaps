@@ -124,7 +124,7 @@ export class ConfigProvider {
 
   #parseEnvironment() {
     const rawEnvironment = {
-      ENVIRONMENT: process.env.ENVIRONMENT,
+      ENVIRONMENT: process.env.ENVIRONMENT || 'local',
       RPC_URL_MAINNET_LIST: process.env.RPC_URL_MAINNET_LIST,
       RPC_URL_DEVNET_LIST: process.env.RPC_URL_DEVNET_LIST,
       RPC_URL_TESTNET_LIST: process.env.RPC_URL_TESTNET_LIST,

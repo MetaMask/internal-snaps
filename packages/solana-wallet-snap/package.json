@@ -46,6 +46,7 @@
     "test:core:watch": "yarn test:core --watch",
     "test:features": "jest src/features --passWithNoTests --runInBand",
     "test:features:watch": "yarn test:features --watch",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.integration.config.js --reporters=jest-silent-reporter",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose"

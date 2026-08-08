@@ -1,6 +1,7 @@
+const shared = require('../../jest.config.snaps.unit.js');
+
 module.exports = {
-  preset: '@metamask/snaps-jest',
-  transform: {
-    '^.+\\.(t|j)sx?$': 'ts-jest',
-  },
+  ...shared,
+  // Sample snap coverage is exercised via integration tests (`installSnap`).
+  passWithNoTests: true,
 };
