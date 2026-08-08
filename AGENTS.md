@@ -225,8 +225,9 @@ This repo is a Yarn 4 monorepo of MetaMask Snaps. The two products live in `pack
 
 Standard commands are documented above (see "Running tests", "Linting and formatting", "Building packages"). Non-obvious caveats for running things here:
 
-- **Build before testing.** A Snap's Jest suite (`@metamask/snaps-jest`) expects the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first.
-- **`yarn lint` deletes `dist/`.** `lint:eslint` runs `build:only-clean` (`rimraf -g 'packages/*/dist'`) before linting. After running `yarn lint`, re-run `yarn build` before serving a snap or running snap tests.
+- **Install builds libraries.** `yarn` / `yarn allow-scripts` runs `yarn build:libs` (`ts-bridge` packages only). Snap bundles are not built on install; run `yarn build` or `yarn build:snaps` when you need `dist/bundle.js`, `installSnap` tests, or `serve`.
+- **Unit tests vs integration tests.** Snap unit Jest configs use the Node environment and do not require a Snap bundle. Tests that call `installSnap` live under `integration-test/` and need a prior snap build (`yarn build` / `yarn build:snaps`).
+- **`yarn lint` cleans then restores library `dist/`.** `lint:eslint` still deletes `packages/*/dist` before eslint, then runs `yarn build:libs`. Snap bundles still need `yarn build` / `yarn build:snaps` afterward.
 - **Running a snap:** `yarn workspace <pkg> run serve` serves the pre-built bundle at `http://localhost:8080` (`/snap.manifest.json` and `/dist/bundle.js`); `yarn workspace <pkg> run start` (`mm-snap watch`) rebuilds on change. Both snaps use port 8080, so only run one at a time.
-- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Use the `snaps-jest` test suites (they install the snap and invoke its JSON-RPC methods, e.g. sample-snap's `hello`) to exercise core functionality without a browser.
+- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Use the `snaps-jest` integration suites (they install the snap and invoke its JSON-RPC methods, e.g. sample-snap's `hello`) to exercise core functionality without a browser.
 - **`.env` is optional** for `bitcoin-wallet-snap`; `snap.config.ts` reads it via dotenv but all values have sane defaults (see `.env.example`), so the snap builds and serves without one.
