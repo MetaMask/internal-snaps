@@ -1,5 +1,5 @@
 import type { KeyringAccount } from '@metamask/keyring-api';
-import {
+import type {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
 } from '@metamask/snap-networks-utils';
@@ -16,54 +16,78 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
+import { configProvider } from '../../context';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { ILogger } from '../../utils/logger';
 import type { State, UnencryptedStateValue } from '../state/State';
+import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
+import { CoreAssetsAdapter as CoreAssetsAdapterClass } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 
+type AssetsServiceDependencies = {
+  logger: ILogger;
+  assetsRepository: AssetsRepository;
+  state: State<UnencryptedStateValue>;
+  trongridApiClient: TrongridApiClient;
+  tronHttpClient: TronHttpClient;
+  priceApiClient: PriceApiClient;
+  tokenApiClient: TokenApiClient;
+  snapClient: SnapClient;
+  remoteFeatureFlagsProvider?: RemoteFeatureFlagsProvider;
+  assetsProvider?: AssetsProvider;
+};
+
+type AssetsServiceAdapters = {
+  snapAdapter: SnapAssetsAdapter;
+  coreAdapter: CoreAssetsAdapter;
+  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+};
+
+function hasAdapterOptions(
+  options: AssetsServiceDependencies | AssetsServiceAdapters,
+): options is AssetsServiceAdapters {
+  const candidate = options as AssetsServiceAdapters;
+  return candidate.snapAdapter !== undefined && candidate.coreAdapter !== undefined;
+}
+
 /**
  * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
- * (legacy snap-owned reads/writes). Core adapter routing can be introduced later
- * without changing callers.
+ * (legacy snap-owned reads/writes). Core adapter is initialized for upcoming
+ * routing without changing callers.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
 
+  // Initialized for upcoming Core routing; not read until the migration PR lands.
+  // eslint-disable-next-line no-unused-private-class-members -- reserved adapter slot
+  readonly #coreAdapter: CoreAssetsAdapter;
+
   readonly cacheTtlsMilliseconds: SnapAssetsAdapter['cacheTtlsMilliseconds'];
 
-  constructor({
-    logger,
-    assetsRepository,
-    state,
-    trongridApiClient,
-    tronHttpClient,
-    priceApiClient,
-    tokenApiClient,
-    snapClient,
-  }: {
-    logger: ILogger;
-    assetsRepository: AssetsRepository;
-    state: State<UnencryptedStateValue>;
-    trongridApiClient: TrongridApiClient;
-    tronHttpClient: TronHttpClient;
-    priceApiClient: PriceApiClient;
-    tokenApiClient: TokenApiClient;
-    snapClient: SnapClient;
-    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
-    assetsProvider: AssetsProvider;
-  }) {
-    this.#snapAdapter = new SnapAssetsAdapter({
-      logger,
-      assetsRepository,
-      state,
-      trongridApiClient,
-      tronHttpClient,
-      priceApiClient,
-      tokenApiClient,
-      snapClient,
-    });
+  constructor(options: AssetsServiceDependencies | AssetsServiceAdapters) {
+    if (hasAdapterOptions(options)) {
+      this.#snapAdapter = options.snapAdapter;
+      this.#coreAdapter = options.coreAdapter;
+    } else {
+      this.#snapAdapter = new SnapAssetsAdapter({
+        logger: options.logger,
+        assetsRepository: options.assetsRepository,
+        state: options.state,
+        trongridApiClient: options.trongridApiClient,
+        tronHttpClient: options.tronHttpClient,
+        priceApiClient: options.priceApiClient,
+        tokenApiClient: options.tokenApiClient,
+        snapClient: options.snapClient,
+        configProvider,
+      });
+      this.#coreAdapter = new CoreAssetsAdapterClass({
+        logger: options.logger,
+        assetsProvider: options.assetsProvider as AssetsProvider,
+      });
+    }
+
     this.cacheTtlsMilliseconds = this.#snapAdapter.cacheTtlsMilliseconds;
   }
 

@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Added
+
 - Add Core messenger plumbing (`coreMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`) for upcoming AssetsController migration ([#95](https://github.com/MetaMask/internal-snaps/pull/95))
+- Add `CoreAssetsAdapter` and initialize it in `AssetsService` for upcoming AssetsController routing ([#127](https://github.com/MetaMask/internal-snaps/pull/127))
 
 ### Fixed
 

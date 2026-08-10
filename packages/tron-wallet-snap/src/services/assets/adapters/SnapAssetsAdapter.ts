@@ -54,11 +54,11 @@ import {
   TRX_STAKED_FOR_ENERGY_METADATA,
   TRX_STAKING_REWARDS_METADATA,
 } from '../../../constants';
-import { configProvider } from '../../../context';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
 import { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
+import type { ConfigProvider } from '../../config';
 import type { State, UnencryptedStateValue } from '../../state/State';
 import type { AssetsRepository } from '../AssetsRepository';
 import type {
@@ -113,6 +113,8 @@ export class SnapAssetsAdapter {
 
   readonly #snapClient: SnapClient;
 
+  readonly #configProvider: ConfigProvider;
+
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -128,6 +130,7 @@ export class SnapAssetsAdapter {
     priceApiClient,
     tokenApiClient,
     snapClient,
+    configProvider,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -137,6 +140,7 @@ export class SnapAssetsAdapter {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
+    configProvider: ConfigProvider;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 SnapAssetsAdapter]');
     this.#assetsRepository = assetsRepository;
@@ -146,17 +150,14 @@ export class SnapAssetsAdapter {
     this.#priceApiClient = priceApiClient;
     this.#tokenApiClient = tokenApiClient;
     this.#snapClient = snapClient;
+    this.#configProvider = configProvider;
 
-    const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
+    const { cacheTtlsMilliseconds } = this.#configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
   }
 
   static isFiat(caipAssetId: CaipAssetType): boolean {
     return caipAssetId.includes('swift:0/iso4217:');
-  }
-
-  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    return this.#assetsRepository.getByAccountId(accountId);
   }
 
   async getAccountAssetsByIDs(
@@ -1440,6 +1441,47 @@ export class SnapAssetsAdapter {
       rawAmount: '0',
       uiAmount: '0',
     } as AssetEntity;
+  }
+
+  async getAccountAssetsByScope(
+    scope: Network,
+    keyringAccountId: string,
+  ): Promise<AssetEntity[]> {
+    const savedAssets =
+      await this.#assetsRepository.getByAccountId(keyringAccountId);
+
+    const visibleSavedAssets = savedAssets.filter(
+      (asset) => asset.network === scope,
+    );
+
+    const missingEssentialAssets: AssetEntity[] = [];
+
+    for (const essentialAssetId of ESSENTIAL_ASSETS) {
+      const { chainId } = parseCaipAssetType(essentialAssetId as CaipAssetType);
+
+      if ((chainId as Network) !== scope) {
+        continue;
+      }
+
+      const savedAsset = savedAssets.find(
+        (asset) => (asset.assetType as string) === essentialAssetId,
+      );
+
+      if (!savedAsset) {
+        missingEssentialAssets.push(
+          this.#createZeroBalanceAsset(
+            essentialAssetId as KnownCaip19Id,
+            keyringAccountId,
+          ),
+        );
+      }
+    }
+
+    return [...visibleSavedAssets, ...missingEssentialAssets];
+  }
+
+  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
+    return this.#assetsRepository.getByAccountId(accountId);
   }
 
   async getByKeyringAccountId(
