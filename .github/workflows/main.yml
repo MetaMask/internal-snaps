@@ -84,6 +84,14 @@ jobs:
       RPC_URL_DEVNET_LIST: ${{ secrets.RPC_URL_DEVNET_LIST }}
       RPC_WEB_SOCKET_URL_MAINNET: ${{ secrets.RPC_WEB_SOCKET_URL_MAINNET }}
       RPC_WEB_SOCKET_URL_DEVNET: ${{ secrets.RPC_WEB_SOCKET_URL_DEVNET }}
+      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+      DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
+      ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
+      ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}
+      ESPLORA_TESTNET4: ${{ secrets.ESPLORA_TESTNET4 }}
+      ESPLORA_SIGNET: ${{ secrets.ESPLORA_SIGNET }}
+      ESPLORA_REGTEST: ${{ secrets.ESPLORA_REGTEST }}
+      PRICE_API_URL: ${{ secrets.PRICE_API_URL }}
 
   check-release:
     name: Check release
