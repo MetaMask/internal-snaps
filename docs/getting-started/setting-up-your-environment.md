@@ -7,7 +7,8 @@
 3. Run `yarn install` to install dependencies and run post-install hooks.
    - After install, library packages are built automatically via `yarn build:libs` (chained from `allow-scripts`).
    - Snap bundles are **not** built during install. Run `yarn build` / `yarn build:snaps` when you need `dist/bundle.js`, `serve`, or `installSnap` integration tests.
-4. Verify the tree:
+4. Copy each wallet snap's `.env.example` / `.env.sample` to `.env` and configure it before building or testing snaps.
+5. Verify the tree:
 
 ```bash
 yarn typecheck

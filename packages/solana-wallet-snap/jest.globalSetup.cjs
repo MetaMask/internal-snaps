@@ -26,12 +26,7 @@ module.exports = async function globalSetup() {
       cwd: __dirname,
       stdio: 'inherit',
       shell: true,
-      env: {
-        // eslint-disable-next-line n/no-process-env
-        ...process.env,
-        // eslint-disable-next-line n/no-process-env
-        ENVIRONMENT: process.env.ENVIRONMENT || 'local',
-      },
+      env: process.env,
     });
     child.on('error', reject);
     child.on('close', (exitCode) => {
