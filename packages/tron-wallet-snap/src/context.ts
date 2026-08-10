@@ -25,6 +25,7 @@ import { RpcHandler } from './handlers/rpc/rpc';
 import { UserInputHandler } from './handlers/user-input/userInput';
 import { AccountsRepository } from './services/accounts/AccountsRepository';
 import { AccountsService } from './services/accounts/AccountsService';
+import { SnapAssetsAdapter } from './services/assets/adapters/SnapAssetsAdapter';
 import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
@@ -113,8 +114,7 @@ const securityAlertsApiClient = new SecurityAlertsApiClient(
   logger,
 );
 
-// Business Services
-const assetsService = new AssetsService({
+const snapAssetsAdapter = new SnapAssetsAdapter({
   logger,
   state,
   assetsRepository,
@@ -123,8 +123,12 @@ const assetsService = new AssetsService({
   priceApiClient,
   tokenApiClient,
   snapClient,
-  remoteFeatureFlagsProvider,
-  assetsProvider,
+  configProvider,
+});
+
+// Business Services
+const assetsService = new AssetsService({
+  snapAdapter: snapAssetsAdapter,
 });
 
 const transactionsService = new TransactionsService({

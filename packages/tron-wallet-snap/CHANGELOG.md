@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService`
+- Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers
+
 ## [3.1.0]
 
 ### Added

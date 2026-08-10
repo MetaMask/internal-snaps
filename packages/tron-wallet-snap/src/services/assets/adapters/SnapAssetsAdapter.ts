@@ -34,7 +34,6 @@ import type { AccountResources } from '../../../clients/tron-http';
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import type {
-  RawTronUnfrozenV2,
   Trc20Balance,
   TronAccount,
 } from '../../../clients/trongrid/types';
@@ -54,11 +53,11 @@ import {
   TRX_STAKED_FOR_ENERGY_METADATA,
   TRX_STAKING_REWARDS_METADATA,
 } from '../../../constants';
-import { configProvider } from '../../../context';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
 import { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
+import type { ConfigProvider } from '../../config';
 import type { State, UnencryptedStateValue } from '../../state/State';
 import type { AssetsRepository } from '../AssetsRepository';
 import type {
@@ -68,9 +67,18 @@ import type {
   ReadyForWithdrawalCaipAssetType,
   ResourceCaipAssetType,
   StakedCaipAssetType,
+  StakedData,
   StakingRewardsCaipAssetType,
   TokenCaipAssetType,
 } from '../types';
+import { buildAccountResources } from '../utils/buildAccountResources';
+import { buildStakedData } from '../utils/buildStakedData';
+import { extractBandwidth } from '../utils/extractBandwidth';
+import { extractEnergy } from '../utils/extractEnergy';
+import { extractInLockPeriodAsset } from '../utils/extractInLockPeriodAsset';
+import { extractReadyForWithdrawalAsset } from '../utils/extractReadyForWithdrawalAsset';
+import { extractStakedNativeAssets } from '../utils/extractStakedNativeAssets';
+import { extractStakingRewardsAsset } from '../utils/extractStakingRewardsAsset';
 
 /**
  * Normalized account data structure that provides a consistent shape for both
@@ -85,11 +93,7 @@ type NormalizedAccountData = {
   /** TRC20 token balances from either account info or fallback endpoint. */
   trc20Balances: Trc20Balance[];
   /** Staking data including frozen balances and delegated resources. */
-  stakedData: {
-    frozenV2: TronAccount['frozenV2'];
-    unfrozenV2: TronAccount['unfrozenV2'];
-    accountResource: TronAccount['account_resource'] | undefined;
-  };
+  stakedData: StakedData;
   /** Account resources (energy, bandwidth). Empty object for inactive accounts. */
   resources: AccountResources | Record<string, never>;
   /** Unclaimed staking rewards in sun (0 if no rewards). */
@@ -113,6 +117,8 @@ export class SnapAssetsAdapter {
 
   readonly #snapClient: SnapClient;
 
+  readonly #configProvider: ConfigProvider;
+
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
     spotPrices: number;
@@ -128,6 +134,7 @@ export class SnapAssetsAdapter {
     priceApiClient,
     tokenApiClient,
     snapClient,
+    configProvider,
   }: {
     logger: ILogger;
     assetsRepository: AssetsRepository;
@@ -137,6 +144,7 @@ export class SnapAssetsAdapter {
     priceApiClient: PriceApiClient;
     tokenApiClient: TokenApiClient;
     snapClient: SnapClient;
+    configProvider: ConfigProvider;
   }) {
     this.#logger = createPrefixedLogger(logger, '[🪙 SnapAssetsAdapter]');
     this.#assetsRepository = assetsRepository;
@@ -146,17 +154,14 @@ export class SnapAssetsAdapter {
     this.#priceApiClient = priceApiClient;
     this.#tokenApiClient = tokenApiClient;
     this.#snapClient = snapClient;
+    this.#configProvider = configProvider;
 
-    const { cacheTtlsMilliseconds } = configProvider.get().priceApi;
+    const { cacheTtlsMilliseconds } = this.#configProvider.get().priceApi;
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
   }
 
   static isFiat(caipAssetId: CaipAssetType): boolean {
     return caipAssetId.includes('swift:0/iso4217:');
-  }
-
-  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    return this.#assetsRepository.getByAccountId(accountId);
   }
 
   async getAccountAssetsByIDs(
@@ -316,10 +321,8 @@ export class SnapAssetsAdapter {
     stakingRewardsRequest: PromiseSettledResult<number>;
   }): NormalizedAccountData {
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
-    const resources =
-      tronAccountResourcesRequest.status === 'fulfilled'
-        ? tronAccountResourcesRequest.value
-        : {};
+    const resources = buildAccountResources(tronAccountResourcesRequest);
+    const stakedData = buildStakedData(tronAccountInfoRequest);
     const stakingRewards =
       stakingRewardsRequest.status === 'fulfilled'
         ? Math.max(0, stakingRewardsRequest.value)
@@ -330,11 +333,7 @@ export class SnapAssetsAdapter {
         nativeBalance: 0,
         trc10Balances: [],
         trc20Balances: trc20BalancesFallback,
-        stakedData: {
-          frozenV2: [],
-          unfrozenV2: [],
-          accountResource: undefined,
-        },
+        stakedData,
         resources,
         stakingRewards,
       };
@@ -345,11 +344,7 @@ export class SnapAssetsAdapter {
       nativeBalance: tronAccountInfo.balance ?? 0,
       trc10Balances: tronAccountInfo.assetV2 ?? [],
       trc20Balances: tronAccountInfo.trc20 ?? [],
-      stakedData: {
-        frozenV2: tronAccountInfo.frozenV2 ?? [],
-        unfrozenV2: tronAccountInfo.unfrozenV2 ?? [],
-        accountResource: tronAccountInfo.account_resource,
-      },
+      stakedData,
       resources,
       stakingRewards,
     };
@@ -371,18 +366,18 @@ export class SnapAssetsAdapter {
   ): AssetEntity[] {
     return [
       this.#extractNativeAsset(account, scope, data.nativeBalance),
-      ...this.#extractStakedNativeAssets(account, scope, data.stakedData),
-      this.#extractReadyForWithdrawalAsset(account, scope, data.stakedData),
-      this.#extractInLockPeriodAsset(account, scope, data.stakedData),
-      this.#extractStakingRewardsAsset(account, scope, data.stakingRewards),
+      ...extractStakedNativeAssets(account, scope, data.stakedData),
+      extractReadyForWithdrawalAsset(account, scope, data.stakedData),
+      extractInLockPeriodAsset(account, scope, data.stakedData),
+      extractStakingRewardsAsset(account, scope, data.stakingRewards),
       ...this.#extractTrc10Assets(account, scope, data.trc10Balances),
       ...this.#extractTrc20Assets(account, scope, data.trc20Balances),
-      ...this.#extractBandwidth({
+      ...extractBandwidth({
         account,
         scope,
         tronAccountResources: data.resources,
       }),
-      ...this.#extractEnergy({
+      ...extractEnergy({
         account,
         scope,
         tronAccountResources: data.resources,
@@ -482,285 +477,6 @@ export class SnapAssetsAdapter {
       ).toString(),
       iconUrl: Networks[scope].nativeToken.iconUrl,
     };
-  }
-
-  /**
-   * Extracts staked TRX assets (for bandwidth and energy).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param stakedData - Staking data including frozen balances and delegated resources.
-   * @returns AssetEntity[] - Array of staked assets (always 2: bandwidth and energy, amounts may be 0).
-   */
-  #extractStakedNativeAssets(
-    account: KeyringAccount,
-    scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
-  ): AssetEntity[] {
-    const assets: AssetEntity[] = [];
-
-    let stakedBandwidthAmount = 0;
-    let stakedEnergyAmount = 0;
-
-    stakedData.frozenV2?.forEach((frozen) => {
-      const amount = frozen.amount ?? 0;
-
-      if (frozen.type === 'ENERGY') {
-        stakedEnergyAmount += amount;
-      } else if (!frozen.type) {
-        // Item without type is for bandwidth
-        stakedBandwidthAmount += amount;
-      }
-    });
-
-    const delegatedBandwidth =
-      stakedData.accountResource?.delegated_frozenV2_balance_for_bandwidth ?? 0;
-    const delegatedEnergy =
-      stakedData.accountResource?.delegated_frozenV2_balance_for_energy ?? 0;
-
-    stakedBandwidthAmount += delegatedBandwidth;
-    stakedEnergyAmount += delegatedEnergy;
-
-    assets.push({
-      assetType: Networks[scope].stakedForBandwidth.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].stakedForBandwidth.symbol,
-      decimals: Networks[scope].stakedForBandwidth.decimals,
-      rawAmount: stakedBandwidthAmount.toString(),
-      uiAmount: toUiAmount(
-        stakedBandwidthAmount,
-        Networks[scope].stakedForBandwidth.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].stakedForBandwidth.iconUrl,
-    });
-
-    assets.push({
-      assetType: Networks[scope].stakedForEnergy.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].stakedForEnergy.symbol,
-      decimals: Networks[scope].stakedForEnergy.decimals,
-      rawAmount: stakedEnergyAmount.toString(),
-      uiAmount: toUiAmount(
-        stakedEnergyAmount,
-        Networks[scope].stakedForEnergy.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].stakedForEnergy.iconUrl,
-    });
-
-    return assets;
-  }
-
-  /**
-   * Extracts TRX ready for withdrawal (unstaked TRX that has completed the withdrawal period).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param stakedData - Staking data including unfrozen balances.
-   * @returns AssetEntity - The ready-for-withdrawal asset (amount may be 0).
-   */
-  #extractReadyForWithdrawalAsset(
-    account: KeyringAccount,
-    scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
-  ): AssetEntity {
-    const currentTimestamp = Date.now();
-    let readyForWithdrawalAmount = 0;
-
-    stakedData.unfrozenV2?.forEach((unfrozen: RawTronUnfrozenV2) => {
-      const expireTime = unfrozen.unfreeze_expire_time ?? 0;
-      const amount = unfrozen.unfreeze_amount ?? 0;
-
-      if (expireTime <= currentTimestamp && amount > 0) {
-        readyForWithdrawalAmount += amount;
-      }
-    });
-
-    const { id, symbol, decimals, iconUrl } =
-      Networks[scope].readyForWithdrawal;
-
-    return {
-      assetType: id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol,
-      decimals,
-      rawAmount: readyForWithdrawalAmount.toString(),
-      uiAmount: toUiAmount(readyForWithdrawalAmount, decimals).toString(),
-      iconUrl,
-    };
-  }
-
-  /**
-   * Extracts staking rewards asset (unclaimed voting rewards).
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param stakingRewards - Unclaimed staking rewards in sun.
-   * @returns AssetEntity - The staking rewards asset.
-   */
-  #extractStakingRewardsAsset(
-    account: KeyringAccount,
-    scope: Network,
-    stakingRewards: number,
-  ): AssetEntity {
-    return {
-      assetType: Networks[scope].stakingRewards.id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol: Networks[scope].stakingRewards.symbol,
-      decimals: Networks[scope].stakingRewards.decimals,
-      rawAmount: stakingRewards.toString(),
-      uiAmount: toUiAmount(
-        stakingRewards,
-        Networks[scope].stakingRewards.decimals,
-      ).toString(),
-      iconUrl: Networks[scope].stakingRewards.iconUrl,
-    };
-  }
-
-  /**
-   * Extracts TRX that is in the lock period (unstaked but lock period not yet ended).
-   * This represents TRX that the user has initiated unstaking for but must wait
-   * the 14-day lock period before they can withdraw.
-   *
-   * @param account - The keyring account.
-   * @param scope - The network.
-   * @param stakedData - Staking data including unfrozen balances.
-   * @returns AssetEntity - The in-lock-period asset (amount may be 0).
-   */
-  #extractInLockPeriodAsset(
-    account: KeyringAccount,
-    scope: Network,
-    stakedData: NormalizedAccountData['stakedData'],
-  ): AssetEntity {
-    const currentTimestamp = Date.now();
-    let inLockPeriodAmount = 0;
-
-    stakedData.unfrozenV2?.forEach((unfrozen: RawTronUnfrozenV2) => {
-      const expireTime = unfrozen.unfreeze_expire_time ?? 0;
-      const amount = unfrozen.unfreeze_amount ?? 0;
-
-      if (expireTime > currentTimestamp && amount > 0) {
-        inLockPeriodAmount += amount;
-      }
-    });
-
-    const { id, symbol, decimals, iconUrl } = Networks[scope].inLockPeriod;
-
-    return {
-      assetType: id,
-      keyringAccountId: account.id,
-      network: scope,
-      symbol,
-      decimals,
-      rawAmount: inLockPeriodAmount.toString(),
-      uiAmount: toUiAmount(inLockPeriodAmount, decimals).toString(),
-      iconUrl,
-    };
-  }
-
-  /**
-   * Extracts current and maximum bandwidth from the account resources.
-   *
-   * @param options - Options object.
-   * @param options.account - The account to extract bandwidth for.
-   * @param options.scope - The network to extract bandwidth for.
-   * @param options.tronAccountResources - The account resources to extract bandwidth for.
-   * @returns The bandwidth assets.
-   */
-  #extractBandwidth({
-    account,
-    scope,
-    tronAccountResources,
-  }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountResources: AccountResources | Record<string, never>;
-  }): AssetEntity[] {
-    const freeBandwidth = tronAccountResources?.freeNetLimit ?? 0;
-    const stakingBandwidth = tronAccountResources?.NetLimit ?? 0;
-    const maximumBandwidth = freeBandwidth + stakingBandwidth;
-
-    const usedFreeBandwidth = tronAccountResources?.freeNetUsed ?? 0;
-    const usedStakingBandwidth = tronAccountResources?.NetUsed ?? 0;
-    const usedBandwidth = usedFreeBandwidth + usedStakingBandwidth;
-
-    const availableBandwidth = Math.max(0, maximumBandwidth - usedBandwidth);
-
-    return [
-      {
-        assetType: Networks[scope].bandwidth.id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: Networks[scope].bandwidth.symbol,
-        decimals: Networks[scope].bandwidth.decimals,
-        rawAmount: availableBandwidth.toString(),
-        uiAmount: availableBandwidth.toString(),
-        iconUrl: Networks[scope].bandwidth.iconUrl,
-      },
-      {
-        assetType: Networks[scope].maximumBandwidth.id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: Networks[scope].maximumBandwidth.symbol,
-        decimals: Networks[scope].maximumBandwidth.decimals,
-        rawAmount: maximumBandwidth.toString(),
-        uiAmount: maximumBandwidth.toString(),
-        iconUrl: Networks[scope].maximumBandwidth.iconUrl,
-      },
-    ];
-  }
-
-  /**
-   * Extracts current and maximum energy from the account resources.
-   *
-   * @param options - Options object.
-   * @param options.account - The keyring account.
-   * @param options.scope - The network.
-   * @param options.tronAccountResources - Account resources (energy, bandwidth).
-   * @returns AssetEntity[] - Array containing energy and maximum energy assets.
-   */
-  #extractEnergy({
-    account,
-    scope,
-    tronAccountResources,
-  }: {
-    account: KeyringAccount;
-    scope: Network;
-    tronAccountResources: AccountResources | Record<string, never>;
-  }): AssetEntity[] {
-    const maximumEnergy = tronAccountResources?.EnergyLimit ?? 0;
-    const usedEnergy = tronAccountResources?.EnergyUsed ?? 0;
-
-    /**
-     * We might have used more Energy than the maximum allocated
-     */
-    const availableEnergy = Math.max(0, maximumEnergy - usedEnergy);
-
-    return [
-      {
-        assetType: Networks[scope].energy.id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: Networks[scope].energy.symbol,
-        decimals: Networks[scope].energy.decimals,
-        rawAmount: availableEnergy.toString(),
-        uiAmount: availableEnergy.toString(),
-        iconUrl: Networks[scope].energy.iconUrl,
-      },
-      {
-        assetType: Networks[scope].maximumEnergy.id,
-        keyringAccountId: account.id,
-        network: scope,
-        symbol: Networks[scope].maximumEnergy.symbol,
-        decimals: Networks[scope].maximumEnergy.decimals,
-        rawAmount: maximumEnergy.toString(),
-        uiAmount: maximumEnergy.toString(),
-        iconUrl: Networks[scope].maximumEnergy.iconUrl,
-      },
-    ];
   }
 
   /**
@@ -1442,11 +1158,8 @@ export class SnapAssetsAdapter {
     } as AssetEntity;
   }
 
-  async getByKeyringAccountId(
-    keyringAccountId: string,
-  ): Promise<AssetEntity[]> {
-    const savedAssets =
-      await this.#assetsRepository.getByAccountId(keyringAccountId);
+  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
+    const savedAssets = await this.#assetsRepository.getByAccountId(accountId);
 
     /**
      * Ensure the special assets are always present whether they have been synced or not.
@@ -1462,7 +1175,7 @@ export class SnapAssetsAdapter {
       if (!savedAsset) {
         const zeroBalanceAsset = this.#createZeroBalanceAsset(
           essentialAssetId as KnownCaip19Id,
-          keyringAccountId,
+          accountId,
         );
         missingEssentialAssets.push(zeroBalanceAsset);
       }
