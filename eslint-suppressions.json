@@ -287,9 +287,6 @@
     },
     "no-restricted-syntax": {
       "count": 1
-    },
-    "no-unused-private-class-members": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onRpcRequest/index.ts": {
@@ -362,9 +359,6 @@
     },
     "@typescript-eslint/explicit-function-return-type": {
       "count": 10
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     },
     "no-unused-private-class-members": {
       "count": 2
@@ -516,11 +510,6 @@
       "count": 6
     },
     "n/no-unsupported-features/node-builtins": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/send/SendService.ts": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },
@@ -1254,9 +1243,6 @@
   },
   "packages/solana-wallet-snap/src/index.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "@typescript-eslint/no-shadow": {
       "count": 1
     },
     "jest/unbound-method": {

@@ -11,7 +11,7 @@ import type {
   FungibleAssetMarketData,
   FungibleAssetMetadata,
 } from '@metamask/snaps-sdk';
-import type { CaipAssetType } from '@metamask/utils';
+import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
@@ -46,6 +46,7 @@ import { getNetworkFromToken } from '../../utils/getNetworkFromToken';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
+import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
 import type { TokenPricesService } from '../token-prices/TokenPrices';
@@ -71,6 +72,8 @@ export class AssetsService {
 
   readonly #assetsRepository: AssetsRepository;
 
+  readonly #accountsService: AccountsService;
+
   readonly #tokenPricesService: TokenPricesService;
 
   readonly #tokenApiClient: TokenApiClient;
@@ -88,6 +91,7 @@ export class AssetsService {
     logger,
     configProvider,
     assetsRepository,
+    accountsService,
     tokenApiClient,
     tokenPricesService,
     cache,
@@ -97,6 +101,7 @@ export class AssetsService {
     logger: ILogger;
     configProvider: ConfigProvider;
     assetsRepository: AssetsRepository;
+    accountsService: AccountsService;
     tokenApiClient: TokenApiClient;
     tokenPricesService: TokenPricesService;
     cache: ICache<Serializable>;
@@ -106,6 +111,7 @@ export class AssetsService {
     this.#connection = connection;
     this.#configProvider = configProvider;
     this.#assetsRepository = assetsRepository;
+    this.#accountsService = accountsService;
     this.#tokenApiClient = tokenApiClient;
     this.#tokenPricesService = tokenPricesService;
     this.#cache = cache;
@@ -215,7 +221,7 @@ export class AssetsService {
   ): Promise<Record<CaipAssetType, AssetMetadata | null>> {
     this.#logger.log('Fetching metadata for assets', assetTypes);
 
-    const { nativeAssetTypes, tokenAssetTypes, nftAssetTypes } =
+    const { nativeAssetTypes, tokenAssetTypes } =
       this.#splitAssetsByType(assetTypes);
 
     const [
@@ -640,8 +646,93 @@ export class AssetsService {
     return this.#assetsRepository.getAll();
   }
 
+  /**
+   * Resolves account assets via {@link findByAccount}, or `[]` if the account
+   * is missing. Centralizes the account lookup shared by the read API.
+   *
+   * @param accountId - Keyring account ID.
+   */
+  async #getAccountAssetsOrEmpty(accountId: string): Promise<AssetEntity[]> {
+    const account = await this.#accountsService.findById(accountId);
+
+    if (!account) {
+      return [];
+    }
+
+    return this.findByAccount(account);
+  }
+
+  /**
+   * Returns a single account asset by CAIP-19 ID, or `null` if missing.
+   *
+   * @param accountId - Keyring account ID.
+   * @param assetId - CAIP-19 asset ID.
+   */
+  async getAccountAssetByID(
+    accountId: string,
+    assetId: CaipAssetType,
+  ): Promise<AssetEntity | null> {
+    const assets = await this.getAccountAssetsByIDs(accountId, [assetId]);
+
+    return assets[assetId] ?? null;
+  }
+
+  /**
+   * Returns account assets for the given CAIP-19 IDs, keyed by asset ID.
+   * Missing assets are `null`.
+   *
+   * @param accountId - Keyring account ID.
+   * @param assetIds - CAIP-19 asset IDs to resolve.
+   */
+  async getAccountAssetsByIDs(
+    accountId: string,
+    assetIds: CaipAssetType[],
+  ): Promise<Record<CaipAssetType, AssetEntity | null>> {
+    if (assetIds.length === 0) {
+      return {} as Record<CaipAssetType, AssetEntity | null>;
+    }
+
+    const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
+    const assetsByType = new Map<CaipAssetType, AssetEntity>(
+      accountAssets.map((asset) => [asset.assetType, asset]),
+    );
+
+    return Object.fromEntries(
+      assetIds.map((assetId) => [assetId, assetsByType.get(assetId) ?? null]),
+    ) as Record<CaipAssetType, AssetEntity | null>;
+  }
+
+  /**
+   * Returns controller-backed assets for an account on the given Solana scope.
+   *
+   * @param scope - CAIP-2 chain ID to filter results.
+   * @param accountId - Keyring account ID.
+   */
+  async getAccountAssetsByScope(
+    scope: CaipChainId,
+    accountId: string,
+  ): Promise<AssetEntity[]> {
+    const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
+
+    return accountAssets.filter((asset) => asset.assetType.startsWith(scope));
+  }
+
+  /**
+   * Returns assets for an account across all active Solana networks.
+   *
+   * @param accountId - Keyring account ID.
+   */
+  async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
+    const activeNetworks = await this.#configProvider.getActiveNetworks();
+    const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
+
+    return accountAssets.filter((asset) =>
+      activeNetworks.some((scope) => asset.assetType.startsWith(scope)),
+    );
+  }
+
   async findByAccount(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
-    const { id: keyringAccountId, address } = account;
+    const { id: keyringAccountId } = account;
 
     const savedAssets =
       await this.#assetsRepository.findByKeyringAccountId(keyringAccountId);
@@ -656,15 +747,13 @@ export class AssetsService {
       );
 
       if (!hasNativeAsset) {
-        // Create a placeholder native asset with zero balance
-        // This will be updated when assets are actually fetched
         const network = getNetworkFromToken(nativeAssetType);
 
         missingNativeAssets.push({
           assetType: nativeAssetType,
           keyringAccountId: account.id,
           network,
-          address,
+          address: account.address,
           symbol: 'SOL',
           decimals: 9,
           rawAmount: '0',

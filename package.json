@@ -39,7 +39,7 @@
     "test:packages": "yarn test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter",
     "test:scripts": "NODE_OPTIONS=--experimental-vm-modules yarn jest --config ./jest.config.scripts.js --silent",
     "test:verbose": "yarn workspaces foreach --all --exclude @metamask/sample-snap --parallel --verbose run test:verbose",
-    "typecheck": "yarn workspaces foreach --all --parallel --verbose exec tsc --noEmit",
+    "typecheck": "yarn workspace @metamask/snap-networks-utils run build && yarn workspaces foreach --all --parallel --verbose exec tsc --noEmit",
     "workspaces:list-versions": "./scripts/list-workspace-versions.sh"
   },
   "devDependencies": {
@@ -91,6 +91,7 @@
   "resolutions": {
     "@metamask/snaps-execution-environments": "11.2.0",
     "@metamask/snaps-sdk": "11.2.0",
+    "@solana/addresses": "2.1.0",
     "@solana/kit": "2.1.0",
     "@types/react": "18.2.4",
     "@types/react-dom": "18.2.4",
