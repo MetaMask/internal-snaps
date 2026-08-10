@@ -647,6 +647,22 @@ export class AssetsService {
   }
 
   /**
+   * Resolves account assets via {@link findByAccount}, or `[]` if the account
+   * is missing. Centralizes the account lookup shared by the read API.
+   *
+   * @param accountId - Keyring account ID.
+   */
+  async #getAccountAssetsOrEmpty(accountId: string): Promise<AssetEntity[]> {
+    const account = await this.#accountsService.findById(accountId);
+
+    if (!account) {
+      return [];
+    }
+
+    return this.findByAccount(account);
+  }
+
+  /**
    * Returns a single account asset by CAIP-19 ID, or `null` if missing.
    *
    * @param accountId - Keyring account ID.
@@ -656,11 +672,9 @@ export class AssetsService {
     accountId: string,
     assetId: string,
   ): Promise<AssetEntity | null> {
-    const { chainId } = parseCaipAssetType(assetId as CaipAssetType);
+    const assets = await this.getAccountAssetsByIDs(accountId, [assetId]);
 
-    const assets = await this.getAccountAssetsByScope(chainId, accountId);
-
-    return assets.find((asset) => asset.assetType === assetId) ?? null;
+    return assets[assetId] ?? null;
   }
 
   /**
@@ -678,13 +692,7 @@ export class AssetsService {
       return {};
     }
 
-    const account = await this.#accountsService.findById(accountId);
-
-    if (!account) {
-      return Object.fromEntries(assetIds.map((assetId) => [assetId, null]));
-    }
-
-    const accountAssets = await this.findByAccount(account);
+    const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
     const assetsByType = new Map<string, AssetEntity>(
       accountAssets.map((asset) => [asset.assetType, asset]),
     );
@@ -704,13 +712,7 @@ export class AssetsService {
     scope: CaipChainId,
     accountId: string,
   ): Promise<AssetEntity[]> {
-    const account = await this.#accountsService.findById(accountId);
-
-    if (!account) {
-      return [];
-    }
-
-    const accountAssets = await this.findByAccount(account);
+    const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
 
     return accountAssets.filter((asset) => asset.assetType.startsWith(scope));
   }
@@ -721,14 +723,8 @@ export class AssetsService {
    * @param accountId - Keyring account ID.
    */
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    const account = await this.#accountsService.findById(accountId);
-
-    if (!account) {
-      return [];
-    }
-
     const activeNetworks = await this.#configProvider.getActiveNetworks();
-    const accountAssets = await this.findByAccount(account);
+    const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
 
     return accountAssets.filter((asset) =>
       activeNetworks.some((scope) => asset.assetType.startsWith(scope)),

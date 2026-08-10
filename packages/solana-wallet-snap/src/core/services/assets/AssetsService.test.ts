@@ -638,6 +638,18 @@ describe('AssetsService', () => {
 
       expect(asset).toBeNull();
     });
+
+    it('returns null when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const asset = await assetsService.getAccountAssetByID(
+        'missing-account',
+        MOCK_ASSET_ENTITY_1.assetType,
+      );
+
+      expect(asset).toBeNull();
+      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+    });
   });
 
   describe('getAccountAssetsByIDs', () => {
@@ -672,6 +684,31 @@ describe('AssetsService', () => {
         [MOCK_ASSET_ENTITY_1.assetType]: null,
       });
     });
+
+    it('returns an empty record for an empty asset ID list', async () => {
+      const assets = await assetsService.getAccountAssetsByIDs(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        [],
+      );
+
+      expect(assets).toStrictEqual({});
+      expect(mockAccountsService.findById).not.toHaveBeenCalled();
+    });
+
+    it('returns null entries when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const assets = await assetsService.getAccountAssetsByIDs(
+        'missing-account',
+        [MOCK_ASSET_ENTITY_0.assetType, MOCK_ASSET_ENTITY_1.assetType],
+      );
+
+      expect(assets).toStrictEqual({
+        [MOCK_ASSET_ENTITY_0.assetType]: null,
+        [MOCK_ASSET_ENTITY_1.assetType]: null,
+      });
+      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+    });
   });
 
   describe('getAccountAssetsByScope', () => {
@@ -687,6 +724,18 @@ describe('AssetsService', () => {
 
       expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
     });
+
+    it('returns an empty array when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const assets = await assetsService.getAccountAssetsByScope(
+        Network.Mainnet,
+        'missing-account',
+      );
+
+      expect(assets).toStrictEqual([]);
+      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+    });
   });
 
   describe('getAccountAssets', () => {
@@ -700,6 +749,15 @@ describe('AssetsService', () => {
       );
 
       expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
+    });
+
+    it('returns an empty array when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const assets = await assetsService.getAccountAssets('missing-account');
+
+      expect(assets).toStrictEqual([]);
+      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
     });
   });
 });
