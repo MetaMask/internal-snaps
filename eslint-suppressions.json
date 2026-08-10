@@ -1408,9 +1408,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
-    },
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     }
