@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Route fungible asset reads through Core AssetsController when the Tron assets migration flag is active ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
 - Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
 
 ### Changed
