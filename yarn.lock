@@ -2156,6 +2156,7 @@ __metadata:
     "@metamask/keyring-api": "npm:^23.7.0"
     "@metamask/keyring-snap-sdk": "npm:^9.2.1"
     "@metamask/slip44": "npm:^4.2.0"
+    "@metamask/snap-networks-utils": "npm:^1.0.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.0"
     "@metamask/snaps-sdk": "npm:^11.2.0"
