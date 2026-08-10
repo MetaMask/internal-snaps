@@ -19,10 +19,10 @@ import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 
 /**
- * Assets domain facade. Reads use the Snap adapter while migration is off, and
- * the Core adapter once migration is active. Fetch always uses the Snap adapter.
- * When migration is active, save routes snap-owned assets through Core (emit-only,
- * no local persistence).
+ * Assets domain facade. Reads and snap-owned fetch/save use the Snap adapter
+ * while migration is off, and the Core adapter once migration is active. When
+ * migration is active, fetch returns only snap-owned assets and save publishes
+ * them via keyring events without local persistence.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
@@ -96,6 +96,10 @@ export class AssetsService {
     scope: Network,
     account: KeyringAccount,
   ): Promise<AssetEntity[]> {
+    if (await this.#shouldReturnAssetsFromCore()) {
+      return this.#coreAdapter.fetchAssetsAndBalancesForAccount(scope, account);
+    }
+
     return this.#snapAdapter.fetchAssetsAndBalancesForAccount(scope, account);
   }
 

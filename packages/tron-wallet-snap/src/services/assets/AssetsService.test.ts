@@ -3010,6 +3010,59 @@ describe('AssetsService', () => {
       );
     });
 
+    it('fetches only snap-owned assets when migration is active', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(activeMigrationStage);
+
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue({
+            address: mockAccount.address,
+            balance: 5_000_000,
+            trc20: [
+              {
+                TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '1000000',
+              },
+            ],
+            assetV2: [],
+            frozenV2: [],
+            unfrozenV2: [],
+          } as unknown as TronAccount);
+          mockTronHttpClient.getAccountResources.mockResolvedValue({
+            ...emptyAccountResources,
+            freeNetLimit: 600,
+            EnergyLimit: 1000,
+          });
+          mockTronHttpClient.getReward.mockResolvedValue(0);
+
+          const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+            Network.Mainnet,
+            mockAccount,
+          );
+
+          expect(
+            mockTrongridApiClient.getTrc20BalancesByAddress,
+          ).not.toHaveBeenCalled();
+          expect(assets.length).toBeGreaterThan(0);
+          expect(
+            assets.every((asset: AssetEntity) =>
+              SNAP_OWNED_ASSETS.includes(asset.assetType),
+            ),
+          ).toBe(true);
+          expect(
+            assets.some(
+              (asset: AssetEntity) =>
+                asset.assetType === KnownCaip19Id.TrxMainnet,
+            ),
+          ).toBe(false);
+        },
+      );
+    });
+
     it('emits only snap-owned assets and does not persist when migration is active', async () => {
       await withAssetsService(
         async ({
