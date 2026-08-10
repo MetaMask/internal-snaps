@@ -1443,43 +1443,6 @@ export class SnapAssetsAdapter {
     } as AssetEntity;
   }
 
-  async getAccountAssetsByScope(
-    scope: Network,
-    keyringAccountId: string,
-  ): Promise<AssetEntity[]> {
-    const savedAssets =
-      await this.#assetsRepository.getByAccountId(keyringAccountId);
-
-    const visibleSavedAssets = savedAssets.filter(
-      (asset) => asset.network === scope,
-    );
-
-    const missingEssentialAssets: AssetEntity[] = [];
-
-    for (const essentialAssetId of ESSENTIAL_ASSETS) {
-      const { chainId } = parseCaipAssetType(essentialAssetId as CaipAssetType);
-
-      if ((chainId as Network) !== scope) {
-        continue;
-      }
-
-      const savedAsset = savedAssets.find(
-        (asset) => (asset.assetType as string) === essentialAssetId,
-      );
-
-      if (!savedAsset) {
-        missingEssentialAssets.push(
-          this.#createZeroBalanceAsset(
-            essentialAssetId as KnownCaip19Id,
-            keyringAccountId,
-          ),
-        );
-      }
-    }
-
-    return [...visibleSavedAssets, ...missingEssentialAssets];
-  }
-
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
     return this.#assetsRepository.getByAccountId(accountId);
   }
