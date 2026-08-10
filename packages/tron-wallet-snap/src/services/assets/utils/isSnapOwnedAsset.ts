@@ -1,6 +1,7 @@
 import type { CaipAssetType } from '@metamask/utils';
 
-import { Networks, SNAP_OWNED_ASSETS, type Network } from '../../../constants';
+import { Networks, SNAP_OWNED_ASSETS } from '../../../constants';
+import type { Network } from '../../../constants';
 
 const SNAP_OWNED_ASSET_IDS = new Set<string>(SNAP_OWNED_ASSETS);
 
