@@ -71,28 +71,6 @@ describe('AssetsRepository', () => {
     });
   });
 
-  describe('findByKeyringAccountIdAndAssetType', () => {
-    it('returns the matching asset when present', async () => {
-      await repository.saveMany([MOCK_ASSET_ENTITY_0, MOCK_ASSET_ENTITY_1]);
-
-      const asset = await repository.findByKeyringAccountIdAndAssetType(
-        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
-        MOCK_ASSET_ENTITY_1.assetType,
-      );
-
-      expect(asset).toStrictEqual(MOCK_ASSET_ENTITY_1);
-    });
-
-    it('returns null when the asset is missing', async () => {
-      const asset = await repository.findByKeyringAccountIdAndAssetType(
-        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
-        MOCK_ASSET_ENTITY_1.assetType,
-      );
-
-      expect(asset).toBeNull();
-    });
-  });
-
   describe('getAll', () => {
     it('returns empty array when no assets exist', async () => {
       const assets = await repository.getAll();

@@ -656,32 +656,11 @@ export class AssetsService {
     accountId: string,
     assetId: string,
   ): Promise<AssetEntity | null> {
-    const account = await this.#accountsService.findById(accountId);
+    const { chainId } = parseCaipAssetType(assetId as CaipAssetType);
 
-    if (!account) {
-      return null;
-    }
+    const assets = await this.getAccountAssetsByScope(chainId, accountId);
 
-    const savedAsset =
-      await this.#assetsRepository.findByKeyringAccountIdAndAssetType(
-        accountId,
-        assetId,
-      );
-
-    if (savedAsset) {
-      return savedAsset;
-    }
-
-    const nativeAssetTypes = await this.getNativeAssetTypes();
-
-    if (!nativeAssetTypes.includes(assetId as NativeCaipAssetType)) {
-      return null;
-    }
-
-    return this.#createNativePlaceholder(
-      account,
-      assetId as NativeCaipAssetType,
-    );
+    return assets.find((asset) => asset.assetType === assetId) ?? null;
   }
 
   /**
@@ -705,25 +684,13 @@ export class AssetsService {
       return Object.fromEntries(assetIds.map((assetId) => [assetId, null]));
     }
 
-    const savedAssets =
-      await this.#assetsRepository.findByKeyringAccountId(accountId);
+    const accountAssets = await this.findByAccount(account);
     const assetsByType = new Map<string, AssetEntity>(
-      savedAssets.map((asset) => [asset.assetType, asset]),
+      accountAssets.map((asset) => [asset.assetType, asset]),
     );
-    const nativeAssetTypes = await this.getNativeAssetTypes();
-    const nativeAssetTypeSet = new Set(nativeAssetTypes);
 
     return Object.fromEntries(
-      assetIds.map((assetId) => [
-        assetId,
-        assetsByType.get(assetId) ??
-          (nativeAssetTypeSet.has(assetId as NativeCaipAssetType)
-            ? this.#createNativePlaceholder(
-                account,
-                assetId as NativeCaipAssetType,
-              )
-            : null),
-      ]),
+      assetIds.map((assetId) => [assetId, assetsByType.get(assetId) ?? null]),
     );
   }
 

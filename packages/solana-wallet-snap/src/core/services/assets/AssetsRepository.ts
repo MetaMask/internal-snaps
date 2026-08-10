@@ -21,15 +21,6 @@ export class AssetsRepository {
     return assets ?? [];
   }
 
-  async findByKeyringAccountIdAndAssetType(
-    keyringAccountId: string,
-    assetType: string,
-  ): Promise<AssetEntity | null> {
-    const assets = await this.findByKeyringAccountId(keyringAccountId);
-
-    return assets.find((asset) => asset.assetType === assetType) ?? null;
-  }
-
   async getAll(): Promise<AssetEntity[]> {
     const assetsByAccount =
       (await this.#state.getKey<UnencryptedStateValue['assetEntities']>(
