@@ -670,7 +670,7 @@ export class AssetsService {
    */
   async getAccountAssetByID(
     accountId: string,
-    assetId: string,
+    assetId: CaipAssetType,
   ): Promise<AssetEntity | null> {
     const assets = await this.getAccountAssetsByIDs(accountId, [assetId]);
 
@@ -686,20 +686,20 @@ export class AssetsService {
    */
   async getAccountAssetsByIDs(
     accountId: string,
-    assetIds: string[],
-  ): Promise<Record<string, AssetEntity | null>> {
+    assetIds: CaipAssetType[],
+  ): Promise<Record<CaipAssetType, AssetEntity | null>> {
     if (assetIds.length === 0) {
-      return {};
+      return {} as Record<CaipAssetType, AssetEntity | null>;
     }
 
     const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
-    const assetsByType = new Map<string, AssetEntity>(
+    const assetsByType = new Map<CaipAssetType, AssetEntity>(
       accountAssets.map((asset) => [asset.assetType, asset]),
     );
 
     return Object.fromEntries(
       assetIds.map((assetId) => [assetId, assetsByType.get(assetId) ?? null]),
-    );
+    ) as Record<CaipAssetType, AssetEntity | null>;
   }
 
   /**
