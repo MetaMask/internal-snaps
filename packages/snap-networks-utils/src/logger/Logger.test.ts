@@ -1,21 +1,29 @@
 import { Logger, LogLevel } from './Logger';
 
-const setupTest = () => {
+const loggerMethodConfigurations = [
+  { method: 'log', consoleMethod: 'info', filteredAt: LogLevel.WARN },
+  { method: 'info', consoleMethod: 'info', filteredAt: LogLevel.WARN },
+  { method: 'warn', consoleMethod: 'warn', filteredAt: LogLevel.ERROR },
+  { method: 'error', consoleMethod: 'error', filteredAt: LogLevel.SILENT },
+  { method: 'debug', consoleMethod: 'debug', filteredAt: LogLevel.INFO },
+  { method: 'trace', consoleMethod: 'trace', filteredAt: LogLevel.DEBUG },
+] as const;
+
+type MockConsole = Record<
+  (typeof loggerMethodConfigurations)[number]['consoleMethod'],
+  jest.SpyInstance
+>;
+
+type SetupTestResult = {
+  loggerMethods: typeof loggerMethodConfigurations;
+  mockConsole: MockConsole;
+};
+
+const setupTest = (): SetupTestResult => {
   jest.restoreAllMocks();
 
   return {
-    loggerMethods: [
-      { method: 'log', consoleMethod: 'info', filteredAt: LogLevel.WARN },
-      { method: 'info', consoleMethod: 'info', filteredAt: LogLevel.WARN },
-      { method: 'warn', consoleMethod: 'warn', filteredAt: LogLevel.ERROR },
-      {
-        method: 'error',
-        consoleMethod: 'error',
-        filteredAt: LogLevel.SILENT,
-      },
-      { method: 'debug', consoleMethod: 'debug', filteredAt: LogLevel.INFO },
-      { method: 'trace', consoleMethod: 'trace', filteredAt: LogLevel.DEBUG },
-    ] as const,
+    loggerMethods: loggerMethodConfigurations,
     mockConsole: {
       debug: jest.spyOn(console, 'debug').mockImplementation(),
       error: jest.spyOn(console, 'error').mockImplementation(),
@@ -30,9 +38,7 @@ describe('Logger', () => {
   it('forwards calls to the matching console method', () => {
     const { loggerMethods, mockConsole } = setupTest();
 
-    const logger = new Logger({
-      enabled: true,
-    });
+    const logger = new Logger({ level: LogLevel.TRACE });
 
     for (const { method, consoleMethod } of loggerMethods) {
       logger[method]('hello', 42);
@@ -44,9 +50,7 @@ describe('Logger', () => {
   it('prefixes messages with a derived logger', () => {
     const { mockConsole } = setupTest();
 
-    const logger = new Logger({
-      enabled: true,
-    });
+    const logger = new Logger({ level: LogLevel.TRACE });
 
     const prefixed = logger.withPrefix('[snap-networks-utils]');
 
@@ -75,9 +79,7 @@ describe('Logger', () => {
   it('combines prefixes from derived loggers', () => {
     const { mockConsole } = setupTest();
 
-    const logger = new Logger({
-      enabled: true,
-    });
+    const logger = new Logger({ level: LogLevel.TRACE });
 
     const parentLogger = logger.withPrefix('[parent]');
     const childLogger = parentLogger.withPrefix('[child]');
@@ -90,14 +92,23 @@ describe('Logger', () => {
     );
   });
 
-  it('defaults to the trace level', () => {
+  it('logs trace messages at the trace level', () => {
     const { mockConsole } = setupTest();
 
-    const logger = new Logger({ enabled: true });
+    const logger = new Logger({ level: LogLevel.TRACE });
 
     logger.trace('trace');
 
     expect(mockConsole.trace).toHaveBeenCalledWith('trace');
+  });
+
+  it('throws when given an invalid log level', () => {
+    expect(() => new Logger({ level: '' as LogLevel })).toThrow(
+      'Expected one of `"silent","error","warn","info","debug","trace"`, but received: ""',
+    );
+    expect(() => new Logger({ level: 'verbose' as LogLevel })).toThrow(
+      'Expected one of `"silent","error","warn","info","debug","trace"`, but received: "verbose"',
+    );
   });
 
   it('runs decorators through the configured output', () => {
@@ -107,7 +118,7 @@ describe('Logger', () => {
     const { mockConsole } = setupTest();
 
     const baseLogger = new Logger({
-      enabled: true,
+      level: LogLevel.TRACE,
       decorators: { error: decorator },
     });
 
@@ -122,12 +133,12 @@ describe('Logger', () => {
     expect(mockConsole.error).toHaveBeenCalledWith('[Solana]', 'decoded error');
   });
 
-  it('does not run decorators when logging is disabled', () => {
+  it('does not run decorators at the silent level', () => {
     const decorator = jest.fn();
     const { mockConsole } = setupTest();
 
     const logger = new Logger({
-      enabled: false,
+      level: LogLevel.SILENT,
       decorators: { error: decorator },
     });
 
@@ -137,11 +148,11 @@ describe('Logger', () => {
     expect(mockConsole.error).not.toHaveBeenCalled();
   });
 
-  it('does not log calls when disabled', () => {
+  it('does not log calls at the silent level', () => {
     const { loggerMethods, mockConsole } = setupTest();
 
     const logger = new Logger({
-      enabled: false,
+      level: LogLevel.SILENT,
     });
 
     for (const { method, consoleMethod } of loggerMethods) {
@@ -156,7 +167,6 @@ describe('Logger', () => {
 
     for (const { method, consoleMethod, filteredAt } of loggerMethods) {
       const logger = new Logger({
-        enabled: true,
         level: filteredAt,
       });
 

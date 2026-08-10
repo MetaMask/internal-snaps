@@ -1,3 +1,5 @@
+import { assert, enums } from '@metamask/superstruct';
+
 /**
  * The severity levels supported by {@link Logger}.
  */
@@ -12,6 +14,13 @@ export const LogLevel = {
 
 export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
 
+/**
+ * Defines the severity ordering used to filter log messages.
+ *
+ * Lower values are less verbose. Changing these numeric priorities changes
+ * which messages are emitted for each configured {@link LogLevel}, including
+ * in production.
+ */
 const logLevelPriority = {
   [LogLevel.SILENT]: 0,
   [LogLevel.ERROR]: 1,
@@ -20,6 +29,8 @@ const logLevelPriority = {
   [LogLevel.DEBUG]: 4,
   [LogLevel.TRACE]: 5,
 };
+
+const LogLevelStruct = enums(Object.values(LogLevel));
 
 export type LoggerMethod = Exclude<LogLevel, typeof LogLevel.SILENT>;
 
@@ -38,41 +49,84 @@ export type LoggerDecorators = Partial<
 
 /**
  * Configuration for a {@link Logger}.
+ *
+ * **Example: configure logging with `LOG_LEVEL`.**
+ *
+ * ```ts
+ * const logger = new Logger({
+ *   level: process.env.LOG_LEVEL
+ * });
+ * ```
  */
 export type LoggerOptions = {
-  /** Whether this logger should forward messages to the console. */
-  enabled: boolean;
-  /** The most verbose severity level that should be logged. */
-  level?: LogLevel;
-  /** An optional prefix prepended to every message. */
+  /**
+   * The most verbose severity level that should be logged. Use
+   * {@link LogLevel.SILENT} to disable logging.
+   */
+  level: LogLevel;
+  /**
+   * An optional prefix prepended to every message.
+   *
+   * Use {@link Logger.withPrefix} to add prefixes after construction.
+   */
   prefix?: string;
-  /** Optional behavior to apply to individual log methods. */
+  /**
+   * Optional behavior to apply to individual log methods.
+   *
+   * Decorators receive `next`, which preserves this logger's configured level,
+   * prefix, and console output.
+   */
   decorators?: LoggerDecorators;
 };
 
 /**
- * A console logger for network snaps.
+ * Logs network Snap messages to the console at configurable severity levels.
  *
- * Consumers are responsible for resolving environment-specific configuration
- * before creating an instance. For example, a Snap can set `enabled` to false
- * when its injected `ENVIRONMENT` value is `production`.
+ * Disable output with {@link LogLevel.SILENT}.
+ *
+ * **Example: create an enabled logger.**
+ *
+ * ```ts
+ * import { Logger } from '@metamask/snap-networks-utils/logger';
+ *
+ * const logger = new Logger({ level: LogLevel.TRACE });
+ * logger.info('Account synced');
+ * ```
+ *
+ * **Example: add a Snap or component prefix.**
+ *
+ * ```ts
+ * const rootLogger = new Logger({ level: LogLevel.TRACE });
+ * const snapLogger = rootLogger.withPrefix('[tron-wallet-snap]');
+ * const accountsLogger = snapLogger.withPrefix('[accounts]');
+ *
+ * accountsLogger.debug('Refreshing account balances');
+ * ```
+ *
+ * **Example: decorate a method with Snap-specific behavior.**
+ *
+ * ```ts
+ * const logger = new Logger({
+ *   level: LogLevel.TRACE,
+ *   decorators: {
+ *     error: (next, error) => {
+ *       const details = getSolanaErrorDetails(error);
+ *       next(details ?? error);
+ *     },
+ *   },
+ * });
+ * ```
  */
 export class Logger {
-  readonly #enabled: boolean;
-
   readonly #level: LogLevel;
 
   readonly #prefix?: string;
 
   readonly #decorators?: LoggerDecorators;
 
-  constructor({
-    enabled,
-    level = LogLevel.TRACE,
-    prefix,
-    decorators,
-  }: LoggerOptions) {
-    this.#enabled = enabled;
+  constructor({ level, prefix, decorators }: LoggerOptions) {
+    assert(level, LogLevelStruct);
+
     this.#level = level;
     this.#prefix = prefix;
     this.#decorators = decorators;
@@ -81,14 +135,15 @@ export class Logger {
   /**
    * Returns a logger with an additional prefix.
    *
-   * The returned logger has the same enabled state and log level as this one.
+   * The returned logger has the same log level and decorators as this one. Call
+   * this method as many times as needed; each derived logger appends its prefix
+   * to the existing prefix.
    *
    * @param prefix - The prefix to add to each message.
    * @returns A derived logger.
    */
   withPrefix(prefix: string): Logger {
     return new Logger({
-      enabled: this.#enabled,
       level: this.#level,
       prefix: this.#prefix ? `${this.#prefix} ${prefix}` : prefix,
       decorators: this.#decorators,
@@ -106,6 +161,7 @@ export class Logger {
   /**
    * Logs an informational message.
    *
+   * @param args - The values to write to the console.
    * @deprecated Use {@link Logger.info} instead.
    */
   log(...args: unknown[]): void {
@@ -124,10 +180,8 @@ export class Logger {
     this.#write(LogLevel.TRACE, console.trace, args);
   }
 
-  #shouldLog(level: LoggerMethod): boolean {
-    return (
-      this.#enabled && logLevelPriority[level] <= logLevelPriority[this.#level]
-    );
+  #isLevelDisabled(level: LoggerMethod): boolean {
+    return logLevelPriority[level] > logLevelPriority[this.#level];
   }
 
   #write(
@@ -135,10 +189,13 @@ export class Logger {
     writeToConsole: (...args: unknown[]) => void,
     args: unknown[],
   ): void {
-    if (!this.#shouldLog(level)) return;
+    if (this.#isLevelDisabled(level)) {
+      return;
+    }
 
     const next: LogMethod = this.#prefix
-      ? (...nextArgs) => writeToConsole(this.#prefix, ...nextArgs)
+      ? (...nextArgs: unknown[]): void =>
+          writeToConsole(this.#prefix, ...nextArgs)
       : writeToConsole;
 
     const decorator = this.#decorators?.[level];

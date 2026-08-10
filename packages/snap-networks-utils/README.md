@@ -18,10 +18,6 @@ yarn workspace @metamask/tron-wallet-snap add @metamask/snap-networks-utils@work
 
 ## Usage
 
-### Logger
-
-See the [logger README](./src/logger/README.md).
-
 ### Core AssetsController reads
 
 Wire the Snap messenger endowment, then pass it to `AssetsProvider`:
