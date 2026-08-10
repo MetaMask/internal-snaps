@@ -28,7 +28,16 @@ type MockState = {
 
 jest.mock('../../context', () => ({
   configProvider: {
-    get() {
+    get(): {
+      priceApi: {
+        cacheTtlsMilliseconds: {
+          fiatExchangeRates: number;
+          spotPrices: number;
+          historicalPrices: number;
+        };
+      };
+      activeNetworks: never[];
+    } {
       return {
         priceApi: {
           cacheTtlsMilliseconds: {
@@ -143,7 +152,9 @@ const minimalTronAccount = createMockTronAccount({
  * @param overrides - Account-specific fields to set.
  * @returns A mock AccountResources object.
  */
-function getMockAccountResources(overrides: Record<string, number> = {}) {
+function getMockAccountResources(
+  overrides: Record<string, number> = {},
+): Record<string, number> {
   return {
     freeNetLimit: 600,
     TotalNetLimit: 0,
@@ -161,7 +172,10 @@ function getMockAccountResources(overrides: Record<string, number> = {}) {
  * @param assetType - The CAIP-19 asset type to match.
  * @returns The matching asset, or undefined.
  */
-function findAsset(assets: AssetEntity[], assetType: KnownCaip19Id) {
+function findAsset(
+  assets: AssetEntity[],
+  assetType: KnownCaip19Id,
+): AssetEntity | undefined {
   return assets.find((a: AssetEntity) => a.assetType === assetType);
 }
 
