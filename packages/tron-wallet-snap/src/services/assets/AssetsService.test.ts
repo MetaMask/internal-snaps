@@ -54,6 +54,8 @@ const { configProvider } = require('../../context');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { CoreAssetsAdapter } = require('./adapters/CoreAssetsAdapter');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { SnapAssetsAdapter } = require('./adapters/SnapAssetsAdapter');
 
 const mockAccount: KeyringAccount = {
@@ -275,7 +277,17 @@ async function withAssetsService<ReturnValue>(
     snapClient: mockSnapClient,
     configProvider,
   });
-  const assetsService = new AssetsService({ snapAdapter });
+  const coreAdapter = new CoreAssetsAdapter({
+    logger: mockLogger,
+    assetsProvider: {
+      getAccountAssetByID: jest.fn().mockResolvedValue(null),
+      getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
+      getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+    },
+    trongridApiClient: mockTrongridApiClient,
+    tronHttpClient: mockTronHttpClient,
+  });
+  const assetsService = new AssetsService({ snapAdapter, coreAdapter });
 
   return await testFunction({
     assetsService,
