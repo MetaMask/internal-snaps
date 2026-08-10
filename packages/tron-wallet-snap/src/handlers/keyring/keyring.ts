@@ -191,7 +191,7 @@ export class KeyringHandler implements KeyringSnapRpc {
       this.#logger.info('Listing account assets', { accountId });
 
       const assetEntities =
-        await this.#assetsService.getByKeyringAccountId(accountId);
+        await this.#assetsService.getAccountAssets(accountId);
       const result = assetEntities
         .filter(
           (asset) =>
@@ -280,8 +280,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       await this.#getAccountOrThrow(accountId);
 
-      const assetsList =
-        await this.#assetsService.getByKeyringAccountId(accountId);
+      const assetsList = await this.#assetsService.getAccountAssets(accountId);
 
       const assetsToUse = assetsList
         .filter((asset) => assets.includes(asset.assetType))

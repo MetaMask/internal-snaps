@@ -1444,14 +1444,7 @@ export class SnapAssetsAdapter {
   }
 
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    return this.#assetsRepository.getByAccountId(accountId);
-  }
-
-  async getByKeyringAccountId(
-    keyringAccountId: string,
-  ): Promise<AssetEntity[]> {
-    const savedAssets =
-      await this.#assetsRepository.getByAccountId(keyringAccountId);
+    const savedAssets = await this.#assetsRepository.getByAccountId(accountId);
 
     /**
      * Ensure the special assets are always present whether they have been synced or not.
@@ -1467,7 +1460,7 @@ export class SnapAssetsAdapter {
       if (!savedAsset) {
         const zeroBalanceAsset = this.#createZeroBalanceAsset(
           essentialAssetId as KnownCaip19Id,
-          keyringAccountId,
+          accountId,
         );
         missingEssentialAssets.push(zeroBalanceAsset);
       }

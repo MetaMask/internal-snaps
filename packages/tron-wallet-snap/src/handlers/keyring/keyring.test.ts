@@ -85,7 +85,7 @@ describe('KeyringHandler', () => {
       }),
     } as unknown as jest.Mocked<AccountsService>;
     mockAssetsService = {
-      getByKeyringAccountId: jest.fn().mockResolvedValue([]),
+      getAccountAssets: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<AssetsService>;
     mockTransactionsService = {
       checkAddressActivity: jest.fn(),
@@ -649,7 +649,7 @@ describe('KeyringHandler', () => {
       const result = await keyringHandler.getAccountAssets(mockAccount.id);
 
       expect(result).toStrictEqual([]);
-      expect(mockAssetsService.getByKeyringAccountId).toHaveBeenCalledWith(
+      expect(mockAssetsService.getAccountAssets).toHaveBeenCalledWith(
         mockAccount.id,
       );
     });
