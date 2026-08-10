@@ -97,6 +97,13 @@ jobs:
           RPC_WEB_SOCKET_URL_TESTNET: ${{ vars.RPC_WEB_SOCKET_URL_TESTNET }}
           RPC_WEB_SOCKET_URL_LOCALNET: ${{ vars.RPC_WEB_SOCKET_URL_LOCALNET }}
           EXPLORER_BASE_URL: ${{ vars.EXPLORER_BASE_URL }}
+      - name: Require clean working directory
+        shell: bash
+        run: |
+          if ! git diff --exit-code; then
+            echo "Working tree dirty at end of job"
+            exit 1
+          fi
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
