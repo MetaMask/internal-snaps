@@ -66,17 +66,6 @@ export class AssetsService {
     return SnapAssetsAdapter.hasChanged(asset, assetsLookup);
   }
 
-  async getAccountAssetsByScope(
-    scope: Network,
-    accountId: string,
-  ): Promise<AssetEntity[]> {
-    if (await this.#shouldReturnAssetsFromCore()) {
-      return this.#coreAdapter.getAccountAssetsByScope(scope, accountId);
-    }
-
-    return this.#snapAdapter.getAccountAssetsByScope(scope, accountId);
-  }
-
   async getAccountAssetsByIDs(
     accountId: string,
     assetIds: string[],
