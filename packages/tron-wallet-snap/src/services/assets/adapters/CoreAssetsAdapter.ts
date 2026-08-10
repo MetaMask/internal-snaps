@@ -14,7 +14,6 @@ import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
-import { mapControllerAsset } from '../utils/mapControllerAsset';
 import { buildAccountResources } from '../utils/buildAccountResources';
 import { buildStakedData } from '../utils/buildStakedData';
 import { extractBandwidth } from '../utils/extractBandwidth';
@@ -24,6 +23,7 @@ import { extractReadyForWithdrawalAsset } from '../utils/extractReadyForWithdraw
 import { extractStakedNativeAssets } from '../utils/extractStakedNativeAssets';
 import { extractStakingRewardsAsset } from '../utils/extractStakingRewardsAsset';
 import { isSnapOwnedAsset } from '../utils/isSnapOwnedAsset';
+import { mapControllerAsset } from '../utils/mapControllerAsset';
 
 /**
  * Uses the AssetsController for fungible reads. Snap-owned (special) assets are
