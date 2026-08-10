@@ -3065,11 +3065,7 @@ describe('AssetsService', () => {
 
     it('emits only snap-owned assets and does not persist when migration is active', async () => {
       await withAssetsService(
-        async ({
-          assetsService,
-          mockAssetsRepository,
-          setMigrationStage,
-        }) => {
+        async ({ assetsService, mockAssetsRepository, setMigrationStage }) => {
           setMigrationStage(activeMigrationStage);
 
           const specialAsset: AssetEntity = {
