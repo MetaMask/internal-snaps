@@ -1,3 +1,5 @@
+import type { CaipAssetType } from '@metamask/utils';
+
 import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../../constants';
 import {
   getSnapOwnedAssetIdsForScope,
@@ -8,7 +10,7 @@ describe('isSnapOwnedAsset', () => {
   it.each(SNAP_OWNED_ASSETS)(
     'returns true for snap-owned asset %s',
     (assetId) => {
-      expect(isSnapOwnedAsset(assetId)).toBe(true);
+      expect(isSnapOwnedAsset(assetId as CaipAssetType)).toBe(true);
     },
   );
 
@@ -22,7 +24,7 @@ describe('isSnapOwnedAsset', () => {
     expect(isSnapOwnedAsset(KnownCaip19Id.UsdtMainnet)).toBe(false);
     expect(
       isSnapOwnedAsset(
-        `${KnownCaip19Id.TrxMainnet.split('/')[0]}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
+        `${KnownCaip19Id.TrxMainnet.split('/')[0]}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as CaipAssetType,
       ),
     ).toBe(false);
   });
@@ -30,7 +32,7 @@ describe('isSnapOwnedAsset', () => {
   it('returns false for TRC10 tokens', () => {
     expect(
       isSnapOwnedAsset(
-        `${KnownCaip19Id.TrxMainnet.split('/')[0]}/trc10:1002000`,
+        `${KnownCaip19Id.TrxMainnet.split('/')[0]}/trc10:1002000` as CaipAssetType,
       ),
     ).toBe(false);
   });

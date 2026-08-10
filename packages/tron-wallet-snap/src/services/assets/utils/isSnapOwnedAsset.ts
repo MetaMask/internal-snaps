@@ -3,7 +3,9 @@ import type { CaipAssetType } from '@metamask/utils';
 import { Networks, SNAP_OWNED_ASSETS } from '../../../constants';
 import type { Network } from '../../../constants';
 
-const SNAP_OWNED_ASSET_IDS = new Set<string>(SNAP_OWNED_ASSETS);
+const SNAP_OWNED_ASSET_IDS = new Set<CaipAssetType>(
+  SNAP_OWNED_ASSETS as CaipAssetType[],
+);
 
 /**
  * Returns the full snap-owned asset ID set for a network scope.
@@ -41,6 +43,6 @@ export function getSnapOwnedAssetIdsForScope(scope: Network): CaipAssetType[] {
  * @param assetId - CAIP-19 asset ID.
  * @returns Whether the asset is exclusively managed by the Snap.
  */
-export function isSnapOwnedAsset(assetId: string): boolean {
+export function isSnapOwnedAsset(assetId: CaipAssetType): boolean {
   return SNAP_OWNED_ASSET_IDS.has(assetId);
 }
