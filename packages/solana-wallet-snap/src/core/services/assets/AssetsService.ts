@@ -221,7 +221,7 @@ export class AssetsService {
   ): Promise<Record<CaipAssetType, AssetMetadata | null>> {
     this.#logger.log('Fetching metadata for assets', assetTypes);
 
-    const { nativeAssetTypes, tokenAssetTypes, nftAssetTypes } =
+    const { nativeAssetTypes, tokenAssetTypes } =
       this.#splitAssetsByType(assetTypes);
 
     const [
@@ -656,11 +656,32 @@ export class AssetsService {
     accountId: string,
     assetId: string,
   ): Promise<AssetEntity | null> {
-    const { chainId } = parseCaipAssetType(assetId as CaipAssetType);
+    const account = await this.#accountsService.findById(accountId);
 
-    const assets = await this.getAccountAssetsByScope(chainId, accountId);
+    if (!account) {
+      return null;
+    }
 
-    return assets.find((asset) => asset.assetType === assetId) ?? null;
+    const savedAsset =
+      await this.#assetsRepository.findByKeyringAccountIdAndAssetType(
+        accountId,
+        assetId,
+      );
+
+    if (savedAsset) {
+      return savedAsset;
+    }
+
+    const nativeAssetTypes = await this.getNativeAssetTypes();
+
+    if (!nativeAssetTypes.includes(assetId as NativeCaipAssetType)) {
+      return null;
+    }
+
+    return this.#createNativePlaceholder(
+      account,
+      assetId as NativeCaipAssetType,
+    );
   }
 
   /**
@@ -678,26 +699,31 @@ export class AssetsService {
       return {};
     }
 
-    const scopes = [
-      ...new Set(
-        assetIds.map(
-          (assetId) => parseCaipAssetType(assetId as CaipAssetType).chainId,
-        ),
-      ),
-    ];
+    const account = await this.#accountsService.findById(accountId);
 
-    const assetsByType = new Map(
-      (
-        await Promise.all(
-          scopes.map((scope) => this.getAccountAssetsByScope(scope, accountId)),
-        )
-      )
-        .flat()
-        .map((asset) => [asset.assetType, asset]),
+    if (!account) {
+      return Object.fromEntries(assetIds.map((assetId) => [assetId, null]));
+    }
+
+    const savedAssets =
+      await this.#assetsRepository.findByKeyringAccountId(accountId);
+    const assetsByType = new Map<string, AssetEntity>(
+      savedAssets.map((asset) => [asset.assetType, asset]),
     );
+    const nativeAssetTypes = await this.getNativeAssetTypes();
+    const nativeAssetTypeSet = new Set(nativeAssetTypes);
 
     return Object.fromEntries(
-      assetIds.map((assetId) => [assetId, assetsByType.get(assetId) ?? null]),
+      assetIds.map((assetId) => [
+        assetId,
+        assetsByType.get(assetId) ??
+          (nativeAssetTypeSet.has(assetId as NativeCaipAssetType)
+            ? this.#createNativePlaceholder(
+                account,
+                assetId as NativeCaipAssetType,
+              )
+            : null),
+      ]),
     );
   }
 
@@ -743,7 +769,7 @@ export class AssetsService {
   }
 
   async findByAccount(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
-    const { id: keyringAccountId, address } = account;
+    const { id: keyringAccountId } = account;
 
     const savedAssets =
       await this.#assetsRepository.findByKeyringAccountId(keyringAccountId);
@@ -758,23 +784,30 @@ export class AssetsService {
       );
 
       if (!hasNativeAsset) {
-        // Create a placeholder native asset with zero balance
-        // This will be updated when assets are actually fetched
-        const network = getNetworkFromToken(nativeAssetType);
-
-        missingNativeAssets.push({
-          assetType: nativeAssetType,
-          keyringAccountId: account.id,
-          network,
-          address,
-          symbol: 'SOL',
-          decimals: 9,
-          rawAmount: '0',
-          uiAmount: '0',
-        });
+        missingNativeAssets.push(
+          this.#createNativePlaceholder(account, nativeAssetType),
+        );
       }
     }
 
     return [...savedAssets, ...missingNativeAssets];
+  }
+
+  #createNativePlaceholder(
+    account: SolanaKeyringAccount,
+    nativeAssetType: NativeCaipAssetType,
+  ): NativeAsset {
+    const network = getNetworkFromToken(nativeAssetType);
+
+    return {
+      assetType: nativeAssetType,
+      keyringAccountId: account.id,
+      network,
+      address: account.address,
+      symbol: 'SOL',
+      decimals: 9,
+      rawAmount: '0',
+      uiAmount: '0',
+    };
   }
 }

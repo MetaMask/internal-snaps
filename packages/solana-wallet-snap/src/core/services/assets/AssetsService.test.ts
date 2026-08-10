@@ -79,6 +79,7 @@ describe('AssetsService', () => {
 
     mockAssetsRepository = {
       findByKeyringAccountId: jest.fn(),
+      findByKeyringAccountIdAndAssetType: jest.fn(),
       getAll: jest.fn(),
       saveMany: jest.fn(),
     } as unknown as AssetsRepository;
@@ -615,8 +616,8 @@ describe('AssetsService', () => {
   describe('getAccountAssetByID', () => {
     it('returns the matching asset when present', async () => {
       jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountIdAndAssetType')
+        .mockResolvedValueOnce(MOCK_ASSET_ENTITY_1);
 
       const asset = await assetsService.getAccountAssetByID(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -628,8 +629,8 @@ describe('AssetsService', () => {
 
     it('returns null when the asset is missing', async () => {
       jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce([]);
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountIdAndAssetType')
+        .mockResolvedValueOnce(null);
 
       const asset = await assetsService.getAccountAssetByID(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
