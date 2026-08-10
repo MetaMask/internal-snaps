@@ -1,4 +1,5 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import { Logger } from '@metamask/snap-networks-utils/logger';
 import type {
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
@@ -25,7 +26,6 @@ import {
   SnapClientAdapter,
   EsploraClientAdapter,
   PriceApiClientAdapter,
-  ConsoleLoggerAdapter,
   LocalTranslatorAdapter,
 } from './infra';
 import { BdkAccountRepository, JSXSendFlowRepository } from './store';
@@ -39,7 +39,10 @@ import {
 } from './use-cases';
 
 // Infra layer
-const logger = new ConsoleLoggerAdapter(Config.logLevel);
+const logger = new Logger({
+  level: Config.logLevel,
+  prefix: '[bitcoin-wallet-snap]',
+});
 const snapClient = new SnapClientAdapter(logger, Config.encrypt);
 const chainClient = new EsploraClientAdapter(Config.chain);
 const assetRatesClient = new PriceApiClientAdapter(Config.priceApi);

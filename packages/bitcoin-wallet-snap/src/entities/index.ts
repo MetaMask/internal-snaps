@@ -9,6 +9,6 @@ export * from './snap';
 export type * from './meta-protocols';
 export type * from './translator';
 export type * from './rates';
-export * from './logger';
+export type { Logger } from '@metamask/snap-networks-utils/logger';
 export * from './error';
 export * from './confirmation';
