@@ -648,7 +648,9 @@ describe('AssetsService', () => {
       );
 
       expect(asset).toBeNull();
-      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -707,7 +709,9 @@ describe('AssetsService', () => {
         [MOCK_ASSET_ENTITY_0.assetType]: null,
         [MOCK_ASSET_ENTITY_1.assetType]: null,
       });
-      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -734,7 +738,9 @@ describe('AssetsService', () => {
       );
 
       expect(assets).toStrictEqual([]);
-      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -757,7 +763,9 @@ describe('AssetsService', () => {
       const assets = await assetsService.getAccountAssets('missing-account');
 
       expect(assets).toStrictEqual([]);
-      expect(mockAssetsRepository.findByKeyringAccountId).not.toHaveBeenCalled();
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
     });
   });
 });
