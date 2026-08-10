@@ -2,7 +2,14 @@ import { CaipAssetTypeStruct } from '@metamask/keyring-api';
 import type { TrxScope } from '@metamask/keyring-api';
 import { pattern } from '@metamask/superstruct';
 
+import type { TronAccount } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
+
+export type StakedData = {
+  frozenV2: TronAccount['frozenV2'];
+  unfrozenV2?: TronAccount['unfrozenV2'];
+  accountResource: TronAccount['account_resource'] | undefined;
+};
 
 export type NativeCaipAssetType = `${Network}/slip44:195`;
 export type StakedCaipAssetType =

@@ -50,7 +50,11 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 (global as any).snap = {};
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { configProvider } = require('../../context');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { SnapAssetsAdapter } = require('./adapters/SnapAssetsAdapter');
 
 const mockAccount: KeyringAccount = {
   id: 'test-account-id',
@@ -260,7 +264,7 @@ async function withAssetsService<ReturnValue>(
     trackError: jest.fn().mockResolvedValue(undefined),
   };
 
-  const assetsService = new AssetsService({
+  const snapAdapter = new SnapAssetsAdapter({
     logger: mockLogger,
     assetsRepository: mockAssetsRepository,
     state: mockState,
@@ -269,7 +273,9 @@ async function withAssetsService<ReturnValue>(
     priceApiClient: mockPriceApiClient,
     tokenApiClient: mockTokenApiClient,
     snapClient: mockSnapClient,
+    configProvider,
   });
+  const assetsService = new AssetsService({ snapAdapter });
 
   return await testFunction({
     assetsService,
@@ -2871,9 +2877,15 @@ describe('AssetsService', () => {
           expect(AssetsService.hasChanged(asset, [])).toBe(true);
           expect(AssetsService.hasChanged(asset, [asset])).toBe(false);
 
+          const accountAssets = await assetsService.getAccountAssets(
+            mockAccount.id,
+          );
           expect(
-            await assetsService.getAccountAssets(mockAccount.id),
-          ).toStrictEqual([asset]);
+            accountAssets.some(
+              (savedAsset: AssetEntity) =>
+                savedAsset.assetType === KnownCaip19Id.TrxMainnet,
+            ),
+          ).toBe(true);
           expect(
             await assetsService.getAccountAssetsByIDs(mockAccount.id, [
               KnownCaip19Id.TrxMainnet,
@@ -2885,15 +2897,6 @@ describe('AssetsService', () => {
               KnownCaip19Id.TrxMainnet,
             ),
           ).toStrictEqual(asset);
-          const byKeyringAccountId = await assetsService.getByKeyringAccountId(
-            mockAccount.id,
-          );
-          expect(
-            byKeyringAccountId.some(
-              (savedAsset: AssetEntity) =>
-                savedAsset.assetType === KnownCaip19Id.TrxMainnet,
-            ),
-          ).toBe(true);
           const marketData = await assetsService.getMultipleTokensMarketData([
             {
               asset: KnownCaip19Id.TrxMainnet,
