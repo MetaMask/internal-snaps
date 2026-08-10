@@ -1,5 +1,4 @@
 import type { TronAccount } from '../../../clients/trongrid/types';
-
 import type { StakedData } from '../types';
 
 /**

@@ -4,7 +4,6 @@ import type { Network } from '../../../constants';
 import { Networks } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
-
 import type { StakedData } from '../types';
 
 /**

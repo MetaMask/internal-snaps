@@ -1,8 +1,4 @@
-import {
-  KnownCaip19Id,
-  Network,
-  SNAP_OWNED_ASSETS,
-} from '../../../constants';
+import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../../constants';
 import {
   getSnapOwnedAssetIdsForScope,
   isSnapOwnedAsset,
@@ -41,17 +37,16 @@ describe('isSnapOwnedAsset', () => {
 });
 
 describe('getSnapOwnedAssetIdsForScope', () => {
-  it.each([
-    Network.Mainnet,
-    Network.Nile,
-    Network.Shasta,
-  ] as const)('returns only snap-owned assets for %s', (scope) => {
-    const assetIds = getSnapOwnedAssetIdsForScope(scope);
+  it.each([Network.Mainnet, Network.Nile, Network.Shasta] as const)(
+    'returns only snap-owned assets for %s',
+    (scope) => {
+      const assetIds = getSnapOwnedAssetIdsForScope(scope);
 
-    expect(assetIds).toHaveLength(9);
-    expect(assetIds.every((assetId) => isSnapOwnedAsset(assetId))).toBe(true);
-    expect(
-      assetIds.every((assetId) => assetId.startsWith(`${scope}/`)),
-    ).toBe(true);
-  });
+      expect(assetIds).toHaveLength(9);
+      expect(assetIds.every((assetId) => isSnapOwnedAsset(assetId))).toBe(true);
+      expect(assetIds.every((assetId) => assetId.startsWith(`${scope}/`))).toBe(
+        true,
+      );
+    },
+  );
 });
