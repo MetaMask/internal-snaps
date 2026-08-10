@@ -751,30 +751,21 @@ export class AssetsService {
       );
 
       if (!hasNativeAsset) {
-        missingNativeAssets.push(
-          this.#createNativePlaceholder(account, nativeAssetType),
-        );
+        const network = getNetworkFromToken(nativeAssetType);
+
+        missingNativeAssets.push({
+          assetType: nativeAssetType,
+          keyringAccountId: account.id,
+          network,
+          address: account.address,
+          symbol: 'SOL',
+          decimals: 9,
+          rawAmount: '0',
+          uiAmount: '0',
+        });
       }
     }
 
     return [...savedAssets, ...missingNativeAssets];
-  }
-
-  #createNativePlaceholder(
-    account: SolanaKeyringAccount,
-    nativeAssetType: NativeCaipAssetType,
-  ): NativeAsset {
-    const network = getNetworkFromToken(nativeAssetType);
-
-    return {
-      assetType: nativeAssetType,
-      keyringAccountId: account.id,
-      network,
-      address: account.address,
-      symbol: 'SOL',
-      decimals: 9,
-      rawAmount: '0',
-      uiAmount: '0',
-    };
   }
 }
