@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { SolMethod } from '@metamask/keyring-api';
 
 import { Network } from '../../constants/solana';
@@ -11,9 +12,9 @@ import {
 } from '../../test/mocks/solana-keyring-accounts';
 import { getBip32EntropyMock } from '../../test/mocks/utils/getBip32Entropy';
 import logger from '../../utils/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
-import { createMockConnection } from '../mocks/mockConnection';
 import { MOCK_EXECUTION_SCENARIOS } from '../signer/mocks/scenarios';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';

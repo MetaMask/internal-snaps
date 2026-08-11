@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { SolMethod } from '@metamask/keyring-api';
 import { lamports } from '@solana/kit';
 
@@ -18,10 +19,10 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
+import { mockLogger } from '../__mocks__/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';
-import { mockLogger } from '../mocks/logger';
-import { createMockConnection } from '../mocks/mockConnection';
 import type { RecipientClassifier } from './RecipientClassifier';
 import { SendService } from './SendService';
 import type { SendSolBuilder } from './SendSolBuilder';

@@ -1,13 +1,14 @@
-import type { ILogger } from '../../utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
+
 import logger from '../../utils/logger';
 import type { SolanaConnection } from '../connection';
 
 export class NftService {
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
-  constructor(connection: SolanaConnection, _logger: ILogger = logger) {
+  constructor(connection: SolanaConnection, _logger: Logger = logger) {
     this.#connection = connection;
     this.#logger = _logger;
   }

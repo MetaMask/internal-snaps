@@ -1,8 +1,7 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { assert } from '@metamask/utils';
 
 import type { Serializable } from '../serialization/types';
-import { createPrefixedLogger } from '../utils/logger';
-import type { ILogger } from '../utils/logger';
 import type { ICache } from './ICache';
 import type { CacheEntry } from './types';
 
@@ -15,10 +14,10 @@ import type { CacheEntry } from './types';
 export class InMemoryCache implements ICache<Serializable> {
   readonly #cache: Map<string, CacheEntry> = new Map();
 
-  public readonly logger: ILogger;
+  public readonly logger: Logger;
 
-  constructor(logger: ILogger) {
-    this.logger = createPrefixedLogger(logger, '[💾 InMemoryCache]');
+  constructor(logger: Logger) {
+    this.logger = logger.withPrefix('[💾 InMemoryCache]');
   }
 
   #validateTtlOrThrow(ttlMilliseconds?: number): void {

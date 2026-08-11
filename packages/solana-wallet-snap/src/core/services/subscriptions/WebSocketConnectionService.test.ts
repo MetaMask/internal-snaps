@@ -1,11 +1,12 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { WebSocketConnection } from '../../../entities';
 import { EventEmitter } from '../../../infrastructure';
 import { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
+import { mockLogger } from '../__mocks__/logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
 import type { NetworkConfig } from '../config/ConfigProvider';
-import { mockLogger } from '../mocks/logger';
 import { InMemoryState } from '../state/InMemoryState';
 import type { IStateManager } from '../state/IStateManager';
 import { DEFAULT_UNENCRYPTED_STATE } from '../state/State';

@@ -1,9 +1,10 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
+
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
 import { trackError } from '../../utils/errors';
-import type { ILogger } from '../../utils/logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import { TransactionScanService } from './TransactionScan';
 import { ScanStatus, SecurityAlertResponse } from './types';
@@ -15,7 +16,7 @@ jest.mock('../../utils/errors', () => ({
 describe('TransactionScan', () => {
   let transactionScanService: TransactionScanService;
   let mockSecurityAlertsApiClient: SecurityAlertsApiClient;
-  let mockLogger: ILogger;
+  let mockLogger: Logger;
   let mockAnalyticsService: AnalyticsService;
 
   beforeEach(() => {
@@ -25,7 +26,8 @@ describe('TransactionScan', () => {
 
     mockLogger = {
       error: jest.fn(),
-    } as unknown as ILogger;
+      withPrefix: jest.fn().mockReturnThis(),
+    } as unknown as Logger;
 
     mockAnalyticsService = {
       trackEventSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),

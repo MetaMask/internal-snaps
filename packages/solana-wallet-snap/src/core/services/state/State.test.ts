@@ -1,9 +1,10 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 /* eslint-disable jest/prefer-strict-equal */
 
 import BigNumber from 'bignumber.js';
 
 import { EventEmitter } from '../../../infrastructure/event-emitter/EventEmitter';
-import { mockLogger } from '../mocks/logger';
+import { mockLogger } from '../__mocks__/logger';
 import { State } from './State';
 
 const snap = {

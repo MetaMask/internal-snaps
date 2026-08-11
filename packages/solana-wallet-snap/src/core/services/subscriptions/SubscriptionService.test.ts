@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { WebSocketMessage } from '@metamask/snaps-sdk';
 import { Duration } from '@metamask/utils';
 
@@ -11,7 +12,7 @@ import type {
 } from '../../../entities';
 import { EventEmitter } from '../../../infrastructure';
 import { Network } from '../../constants/solana';
-import { mockLogger } from '../mocks/logger';
+import { mockLogger } from '../__mocks__/logger';
 import type { SubscriptionRepository } from './SubscriptionRepository';
 import { SubscriptionService } from './SubscriptionService';
 import type { WebSocketConnectionService } from './WebSocketConnectionService';

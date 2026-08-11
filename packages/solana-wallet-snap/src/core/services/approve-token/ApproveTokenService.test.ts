@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -5,7 +6,6 @@ import { address as asAddress } from '@solana/kit';
 
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
-import type { ILogger } from '../../utils/logger';
 import type { TokenHelper } from '../assets/TokenHelper';
 import type { SolanaConnection } from '../connection';
 import { ApproveTokenService } from './ApproveTokenService';
@@ -26,7 +26,7 @@ describe('ApproveTokenService', () => {
   let service: ApproveTokenService;
   let mockConnection: jest.Mocked<SolanaConnection>;
   let mockTokenHelper: jest.Mocked<TokenHelper>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<Logger>;
 
   const mockMint = asAddress('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
   const mockDelegate = asAddress(
@@ -56,7 +56,8 @@ describe('ApproveTokenService', () => {
 
     mockLogger = {
       log: jest.fn(),
-    } as unknown as jest.Mocked<ILogger>;
+      withPrefix: jest.fn().mockReturnThis(),
+    } as unknown as jest.Mocked<Logger>;
 
     service = new ApproveTokenService(
       mockConnection,

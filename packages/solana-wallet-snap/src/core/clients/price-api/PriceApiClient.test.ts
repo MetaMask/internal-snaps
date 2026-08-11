@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { CaipAssetType } from '@metamask/keyring-api';
 import { cloneDeep } from 'lodash';
@@ -6,8 +7,8 @@ import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants/solana';
 import type { Serializable } from '../../serialization/types';
+import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
-import { mockLogger } from '../../services/mocks/logger';
 import { MOCK_EXCHANGE_RATES } from '../../test/mocks/price-api/exchange-rates';
 import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
 import { MOCK_SPOT_PRICES } from './mocks/spot-prices';

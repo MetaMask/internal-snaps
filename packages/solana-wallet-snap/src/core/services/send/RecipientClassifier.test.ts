@@ -1,10 +1,11 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 
 import { Network } from '../../constants/solana';
+import { mockLogger } from '../__mocks__/logger';
 import type { SolanaConnection } from '../connection';
-import { mockLogger } from '../mocks/logger';
 import { RecipientClassifier } from './RecipientClassifier';
 
 // Mock the @solana/kit functions

@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { assert } from '@metamask/utils';
 import {
   getSetComputeUnitLimitInstruction,
@@ -27,8 +28,6 @@ import type { Address } from '@solana/kit';
 
 import type { TokenHelper } from '..';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { SolanaConnection } from '../connection';
 import {
   RecipientTokenAccountMintMismatchError,
@@ -47,7 +46,7 @@ export class SendSplTokenBuilder implements ISendTransactionBuilder {
 
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   /**
    * The transaction built here consumes up to ~30,000 compute units when just transferring
@@ -62,12 +61,12 @@ export class SendSplTokenBuilder implements ISendTransactionBuilder {
     tokenHelper: TokenHelper,
     recipientClassifier: RecipientClassifier,
     connection: SolanaConnection,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#tokenHelper = tokenHelper;
     this.#recipientClassifier = recipientClassifier;
     this.#connection = connection;
-    this.#logger = createPrefixedLogger(logger, '[📩 SendSplTokenBuilder]');
+    this.#logger = logger.withPrefix('[📩 SendSplTokenBuilder]');
   }
 
   async buildTransactionMessage(

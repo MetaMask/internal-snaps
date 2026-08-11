@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import type { Infer } from '@metamask/superstruct';
 import type {
   BaseTransactionMessage,
@@ -30,8 +31,6 @@ import {
   setTransactionMessageLifetimeUsingBlockhashIfMissing,
 } from '../../sdk-extensions/transaction-messages';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 
@@ -41,13 +40,13 @@ import type { SolanaConnection } from '../connection';
 export class Signer {
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   static readonly defaultComputeUnitPriceInMicroLamportsPerComputeUnit = 10000n;
 
-  constructor(connection: SolanaConnection, logger: ILogger) {
+  constructor(connection: SolanaConnection, logger: Logger) {
     this.#connection = connection;
-    this.#logger = createPrefixedLogger(logger, '[🖋️ Signer]');
+    this.#logger = logger.withPrefix('[🖋️ Signer]');
   }
 
   /**

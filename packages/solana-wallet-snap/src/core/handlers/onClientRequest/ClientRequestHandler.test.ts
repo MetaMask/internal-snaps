@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { getBase64Codec, getUtf8Codec, pipe } from '@solana/kit';
@@ -12,7 +13,6 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
-import type { ILogger } from '../../utils/logger';
 import { ClientRequestHandler } from './ClientRequestHandler';
 import { ClientRequestMethod } from './types';
 
@@ -40,7 +40,7 @@ describe('ClientRequestHandler', () => {
   let handler: ClientRequestHandler;
   let mockAccountsService: jest.Mocked<AccountsService>;
   let mockWalletService: jest.Mocked<WalletService>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<Logger>;
   let sendService: jest.Mocked<SendService>;
   let mockApproveTokenService: jest.Mocked<ApproveTokenService>;
 
@@ -60,7 +60,8 @@ describe('ClientRequestHandler', () => {
     // Create mock logger
     mockLogger = {
       log: jest.fn(),
-    } as unknown as jest.Mocked<ILogger>;
+      withPrefix: jest.fn().mockReturnThis(),
+    } as unknown as jest.Mocked<Logger>;
 
     sendService = {
       onAmountInput: jest.fn(),

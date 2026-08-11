@@ -1,6 +1,7 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { Network } from '../../constants/solana';
+import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
-import { mockLogger } from '../../services/mocks/logger';
 import { SecurityAlertsApiClient } from './SecurityAlertsApiClient';
 
 describe('SecurityAlertsApiClient', () => {
