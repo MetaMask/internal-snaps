@@ -2,6 +2,8 @@ import base, { createConfig } from '@metamask/eslint-config';
 import jest from '@metamask/eslint-config-jest';
 import nodejs from '@metamask/eslint-config-nodejs';
 import typescript from '@metamask/eslint-config-typescript';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const NODE_LTS_VERSION = 22;
 
@@ -131,7 +133,7 @@ const config = createConfig([
     extends: [typescript],
     languageOptions: {
       parserOptions: {
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: dirname(fileURLToPath(import.meta.url)),
       },
     },
     rules: {
