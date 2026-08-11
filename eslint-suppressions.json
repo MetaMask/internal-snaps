@@ -1330,14 +1330,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/snap.config.ts": {
-    "import-x/no-nodejs-modules": {
-      "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 20
-    }
-  },
   "packages/tron-wallet-snap/src/caching/StateCache.ts": {
     "no-restricted-syntax": {
       "count": 1

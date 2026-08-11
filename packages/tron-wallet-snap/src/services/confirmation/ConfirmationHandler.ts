@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -21,8 +22,6 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { formatOrigin } from '../../utils/formatOrigin';
-import type { ILogger } from '../../utils/logger';
-import logger, { createPrefixedLogger } from '../../utils/logger';
 import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
@@ -32,7 +31,7 @@ import type { ComputeFeeResult } from '../send/types';
 import type { State, UnencryptedStateValue } from '../state/State';
 
 export class ConfirmationHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
@@ -50,14 +49,16 @@ export class ConfirmationHandler {
     tronWebFactory,
     assetsService,
     feeCalculatorService,
+    logger,
   }: {
     snapClient: SnapClient;
     state: State<UnencryptedStateValue>;
     tronWebFactory: TronWebFactory;
     assetsService: AssetsService;
     feeCalculatorService: FeeCalculatorService;
+    logger: Logger;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🔑 ConfirmationHandler]');
+    this.#logger = logger.withPrefix('[🔑 ConfirmationHandler]');
     this.#snapClient = snapClient;
     this.#state = state;
     this.#tronWebFactory = tronWebFactory;

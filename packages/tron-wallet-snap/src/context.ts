@@ -209,6 +209,7 @@ const confirmationHandler = new ConfirmationHandler({
   tronWebFactory,
   assetsService,
   feeCalculatorService,
+  logger,
 });
 
 /**
