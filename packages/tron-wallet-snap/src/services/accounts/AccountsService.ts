@@ -384,12 +384,20 @@ export class AccountsService {
     }
     validateAccountCreationRange(range);
 
-    // Get existing accounts for the same entropy source/range to avoid duplicate state writes.
-    const existingAccounts =
-      await this.#accountsRepository.findByEntropySourceAndRange(
+    const startMs = Date.now();
+
+    // The existing-accounts read and the coin-type entropy fetch are
+    // independent RPCs, so overlap them. This makes the entropy fetch
+    // speculative when every requested index already exists, but that only
+    // happens on idempotent retries.
+    const [existingAccounts, tronAddressDeriver] = await Promise.all([
+      this.#accountsRepository.findByEntropySourceAndRange(
         entropySource,
         range,
-      );
+      ),
+      this.#createTronAddressDeriver(entropySource),
+    ]);
+    const readAndEntropyMs = Date.now() - startMs;
 
     const allAccounts = new Map<number, TronKeyringAccount>();
     for (const account of existingAccounts) {
@@ -404,10 +412,11 @@ export class AccountsService {
     }
 
     const newAccounts: Record<string, TronKeyringAccount> = {};
+    let deriveMs = 0;
+    let mergeMs = 0;
 
     if (missingIndices.length > 0) {
-      const tronAddressDeriver =
-        await this.#createTronAddressDeriver(entropySource);
+      const deriveStartMs = Date.now();
 
       for (const groupIndex of missingIndices) {
         const id = globalThis.crypto.randomUUID();
@@ -439,18 +448,39 @@ export class AccountsService {
         newAccounts[id] = tronKeyringAccount;
       }
 
-      await this.#accountsRepository.mergeKeyringAccounts(newAccounts);
+      deriveMs = Date.now() - deriveStartMs;
 
-      const persistedAccounts =
-        await this.#accountsRepository.findByEntropySourceAndRange(
-          entropySource,
-          range,
-        );
+      const mergeStartMs = Date.now();
+      const { merged } =
+        await this.#accountsRepository.mergeKeyringAccounts(newAccounts);
+      mergeMs = Date.now() - mergeStartMs;
 
-      for (const account of persistedAccounts) {
-        allAccounts.set(account.index, account);
+      // Resolve the persisted account for each requested index from the merge
+      // result: for indices lost to a concurrent writer, `merged` holds the
+      // winner's account rather than the one derived above.
+      for (const account of Object.values(merged)) {
+        if (
+          account.entropySource === entropySource &&
+          account.index >= range.from &&
+          account.index <= range.to
+        ) {
+          allAccounts.set(account.index, account);
+        }
       }
     }
+
+    // Stringified so the values survive in the console after the snap's
+    // execution environment is torn down (live objects become unexpandable).
+    this.#logger.log(
+      `[createAccounts] Phase timings ${JSON.stringify({
+        range,
+        created: missingIndices.length,
+        readAndEntropyMs,
+        deriveMs,
+        mergeMs,
+        totalMs: Date.now() - startMs,
+      })}`,
+    );
 
     const result: KeyringAccount[] = [];
     for (let groupIndex = range.from; groupIndex <= range.to; groupIndex += 1) {

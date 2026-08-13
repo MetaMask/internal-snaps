@@ -213,15 +213,24 @@ async function withAccountsService(
       .mockImplementation(
         async (newAccounts: Record<string, TronKeyringAccount>) => {
           const occupied = new Set(keyringAccounts.map(getAccountIndexKey));
+          const added: Record<string, TronKeyringAccount> = {};
 
-          for (const account of Object.values(newAccounts)) {
+          for (const [id, account] of Object.entries(newAccounts)) {
             const indexKey = getAccountIndexKey(account);
 
             if (!occupied.has(indexKey)) {
               keyringAccounts.push(account);
               occupied.add(indexKey);
+              added[id] = account;
             }
           }
+
+          return {
+            merged: Object.fromEntries(
+              keyringAccounts.map((account) => [account.id, account]),
+            ),
+            added,
+          };
         },
       ),
     delete: jest.fn().mockImplementation(async (id: string) => {
@@ -419,9 +428,10 @@ describe('AccountsService', () => {
           expect(
             mockAccountsRepository.findByEntropySourceAndRange,
           ).toHaveBeenCalledWith('test-entropy', { from: 0, to: 1 });
+          // No post-merge re-read: the merge result is used instead.
           expect(
             mockAccountsRepository.findByEntropySourceAndRange,
-          ).toHaveBeenCalledTimes(2);
+          ).toHaveBeenCalledTimes(1);
           expect(mockAccountsRepository.getAll).not.toHaveBeenCalled();
 
           expect(
@@ -489,9 +499,15 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockAccountsRepository }) => {
-          mockAccountsRepository.findByEntropySourceAndRange
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([concurrentAccount]);
+          // The first read sees nothing; a concurrent writer wins the merge,
+          // so the winner only appears in the merge result.
+          mockAccountsRepository.findByEntropySourceAndRange.mockResolvedValue(
+            [],
+          );
+          mockAccountsRepository.mergeKeyringAccounts.mockResolvedValue({
+            merged: { [concurrentAccount.id]: concurrentAccount },
+            added: {},
+          });
 
           const result = await accountsService.createAccounts({
             type: AccountCreationType.Bip44DeriveIndex,
@@ -501,6 +517,9 @@ describe('AccountsService', () => {
 
           expect(result).toHaveLength(1);
           expect(result[0]?.id).toBe('concurrent-0');
+          expect(
+            mockAccountsRepository.findByEntropySourceAndRange,
+          ).toHaveBeenCalledTimes(1);
         },
         coinJson,
       );
@@ -550,10 +569,36 @@ describe('AccountsService', () => {
           expect(
             mockAccountsRepository.mergeKeyringAccounts,
           ).not.toHaveBeenCalled();
-          expect(mockSnapClient.getBip32Entropy).not.toHaveBeenCalled();
+          // The coin-type entropy fetch runs in parallel with the state read,
+          // so it happens (speculatively) even when the range already exists.
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+            entropySource: 'test-entropy',
+            path: ['m', "44'", "195'"],
+            curve: 'secp256k1',
+          });
         },
         coinJson,
       );
+    });
+
+    it('logs phase timings for a batch creation', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService }) => {
+        await accountsService.createAccounts({
+          type: AccountCreationType.Bip44DeriveIndexRange,
+          entropySource: 'test-entropy',
+          range: { from: 0, to: 1 },
+        });
+
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          '[🔑 AccountsService]',
+          expect.stringMatching(
+            /^\[createAccounts\] Phase timings \{.*"created":2.*"readAndEntropyMs":\d+.*"deriveMs":\d+.*"mergeMs":\d+.*"totalMs":\d+.*\}$/u,
+          ),
+        );
+      }, coinJson);
     });
 
     it('throws before storage or entropy access when the range is invalid', async () => {
