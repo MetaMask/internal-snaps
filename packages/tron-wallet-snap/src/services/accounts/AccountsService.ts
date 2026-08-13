@@ -354,18 +354,16 @@ export class AccountsService {
 
     // For discovery, only proceed if the account at groupIndex has on-chain
     // activity. No activity signals end-of-discovery; return [] to the client.
+    // The deriver created here doubles as the entropy fetch for the derivation
+    // below, so discovery costs a single `snap_getBip32Entropy` call.
+    let discoverDeriver: TronAddressDeriver | undefined;
     if (options.type === AccountCreationType.Bip44Discover) {
       const { groupIndex } = options;
-      const derivedAccount = await this.deriveAccount({
-        entropySource,
-        index: groupIndex,
-      });
+      discoverDeriver = await this.#createTronAddressDeriver(entropySource);
+      const { address } = await discoverDeriver(groupIndex);
       const activityChecks = await Promise.all(
         SUPPORTED_SCOPES.map((scope) =>
-          this.#transactionsService.checkAddressActivity(
-            scope,
-            derivedAccount.address,
-          ),
+          this.#transactionsService.checkAddressActivity(scope, address),
         ),
       );
       if (!activityChecks.some(Boolean)) {
@@ -395,7 +393,7 @@ export class AccountsService {
         entropySource,
         range,
       ),
-      this.#createTronAddressDeriver(entropySource),
+      discoverDeriver ?? this.#createTronAddressDeriver(entropySource),
     ]);
     const readAndEntropyMs = Date.now() - startMs;
 

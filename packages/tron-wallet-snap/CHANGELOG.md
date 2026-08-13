@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduce BIP-44 account discovery to a single entropy fetch by reusing the coin-type deriver for the on-chain activity check ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
 - Reduce extension RPC round trips in `keyring_createAccounts` from 5 to at most 4 ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
   - `mergeKeyringAccounts` now returns the merge result instead of requiring a post-merge state re-read, and the existing-accounts read runs in parallel with the BIP-32 entropy fetch.
   - `snap_getBip32Entropy` is now called even when all requested indices already exist (this path only occurs on idempotent retries); no new permissions are required.

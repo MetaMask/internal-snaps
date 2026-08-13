@@ -702,6 +702,70 @@ describe('AccountsService', () => {
         coinJson,
       );
     });
+
+    it('fetches entropy once for bip44:discover, reusing the coin-type deriver for the activity check', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockSnapClient,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity.mockResolvedValueOnce(
+            true,
+          );
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            entropySource: 'test-entropy',
+            groupIndex: 2,
+          });
+
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+            entropySource: 'test-entropy',
+            path: ['m', "44'", "195'"],
+            curve: 'secp256k1',
+          });
+
+          // The address probed for activity is the one persisted.
+          const checkedAddress =
+            mockTransactionsService.checkAddressActivity.mock.calls[0]?.[1];
+          expect(result[0]?.address).toBe(checkedAddress);
+        },
+        coinJson,
+      );
+    });
+
+    it('fetches entropy once for bip44:discover even when no activity is found', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockSnapClient,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity.mockResolvedValue(false);
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            entropySource: 'test-entropy',
+            groupIndex: 0,
+          });
+
+          expect(result).toStrictEqual([]);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+            entropySource: 'test-entropy',
+            path: ['m', "44'", "195'"],
+            curve: 'secp256k1',
+          });
+        },
+        coinJson,
+      );
+    });
   });
 
   describe('create', () => {
