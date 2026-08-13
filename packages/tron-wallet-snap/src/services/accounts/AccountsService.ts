@@ -14,6 +14,7 @@ import {
   emitSnapKeyringEvent,
   getSelectedAccounts,
 } from '@metamask/keyring-snap-sdk';
+import { InFlightCoalescer } from '@metamask/snap-networks-utils/dedupe';
 import type { Json } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
@@ -113,6 +114,8 @@ export class AccountsService {
   readonly #transactionsService: TransactionsService;
 
   readonly #snapClient: SnapClient;
+
+  readonly #syncCoalescer = new InFlightCoalescer();
 
   constructor({
     accountsRepository,
@@ -597,10 +600,21 @@ export class AccountsService {
   }
 
   async synchronize(accounts: TronKeyringAccount[]): Promise<void> {
-    await Promise.allSettled([
-      this.synchronizeAssets(accounts),
-      this.synchronizeTransactions(accounts),
-    ]);
+    // Sync triggers stack up (60s cronjob, a background event scheduled by
+    // every `setSelectedAccounts` call, post-transaction refreshes), so
+    // concurrent invocations for the same accounts share one run instead of
+    // duplicating network fetches, state writes, and keyring events.
+    const key = accounts
+      .map(({ id }) => id)
+      .sort()
+      .join(',');
+
+    await this.#syncCoalescer.run(key, async () => {
+      await Promise.allSettled([
+        this.synchronizeAssets(accounts),
+        this.synchronizeTransactions(accounts),
+      ]);
+    });
   }
 
   async #createTronAddressDeriver(

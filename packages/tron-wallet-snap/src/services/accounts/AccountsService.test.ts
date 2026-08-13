@@ -1480,5 +1480,102 @@ describe('AccountsService', () => {
         },
       );
     });
+
+    const makeSyncAccount = (
+      id: string,
+      index: number,
+    ): TronKeyringAccount => ({
+      id,
+      address: `TCoalesce${index}2345678901234567890`,
+      type: TrxAccountType.Eoa,
+      options: {},
+      methods: [],
+      scopes: [],
+      entropySource: 'e1',
+      derivationPath: `m/44'/195'/0'/0/${index}`,
+      index,
+    });
+
+    it('coalesces concurrent synchronize calls for the same accounts into one run', async () => {
+      const account = makeSyncAccount('coalesce-id', 0);
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockConfigProvider,
+          mockAssetsService,
+          mockTransactionsService,
+        }) => {
+          mockConfigProvider.get.mockReturnValue({
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          });
+
+          await Promise.all([
+            accountsService.synchronize([account]),
+            accountsService.synchronize([account]),
+            accountsService.synchronize([account]),
+          ]);
+
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledTimes(1);
+          expect(
+            mockTransactionsService.fetchNewTransactionsForAccount,
+          ).toHaveBeenCalledTimes(1);
+          expect(mockAssetsService.saveMany).toHaveBeenCalledTimes(1);
+          expect(mockTransactionsService.saveMany).toHaveBeenCalledTimes(1);
+        },
+      );
+    });
+
+    it('runs synchronize again once the previous run has finished', async () => {
+      const account = makeSyncAccount('sequential-id', 0);
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.get.mockReturnValue({
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          });
+
+          await accountsService.synchronize([account]);
+          await accountsService.synchronize([account]);
+
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledTimes(2);
+        },
+      );
+    });
+
+    it('does not coalesce concurrent synchronize calls for different accounts', async () => {
+      const accountA = makeSyncAccount('different-a', 0);
+      const accountB = makeSyncAccount('different-b', 1);
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.get.mockReturnValue({
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          });
+
+          await Promise.all([
+            accountsService.synchronize([accountA]),
+            accountsService.synchronize([accountB]),
+          ]);
+
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledTimes(2);
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledWith(Network.Mainnet, accountA);
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledWith(Network.Mainnet, accountB);
+        },
+      );
+    });
   });
 });
