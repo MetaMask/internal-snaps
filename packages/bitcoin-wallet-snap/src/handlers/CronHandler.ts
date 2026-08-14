@@ -1,4 +1,5 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import { InFlightCoalescer } from '@metamask/snap-networks-utils/dedupe';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, object, string } from 'superstruct';
 
@@ -33,6 +34,8 @@ export class CronHandler {
   readonly #snapClient: SnapClient;
 
   readonly #snap: SnapsProvider;
+
+  readonly #syncCoalescer = new InFlightCoalescer();
 
   constructor(
     accounts: AccountUseCases,
@@ -76,83 +79,101 @@ export class CronHandler {
   }
 
   async synchronizeAccounts(): Promise<void> {
-    const selectedAccounts: Set<string> = new Set(
-      await getSelectedAccounts(this.#snap),
-    );
+    // Sync triggers stack up (the 30s cronjob, `onActive`, background
+    // events), so concurrent invocations share one in-flight run instead of
+    // duplicating network fetches, state writes, and keyring events. Note
+    // that coalesced callers share the run's outcome, including a
+    // `SynchronizationError` from partial failures.
+    await this.#syncCoalescer.run('synchronizeAccounts', async () => {
+      const selectedAccounts: Set<string> = new Set(
+        await getSelectedAccounts(this.#snap),
+      );
 
-    const accounts = (await this.#accountsUseCases.list()).filter((account) => {
-      return selectedAccounts.has(account.id);
-    });
+      const accounts = (await this.#accountsUseCases.list()).filter(
+        (account) => {
+          return selectedAccounts.has(account.id);
+        },
+      );
 
-    const results = await Promise.allSettled(
-      accounts.map(async (account) =>
-        this.#accountsUseCases.synchronize(account, 'cron'),
-      ),
-    );
+      const results = await Promise.allSettled(
+        accounts.map(async (account) =>
+          this.#accountsUseCases.synchronize(account, 'cron'),
+        ),
+      );
 
-    const successfulResults: SyncResult[] = [];
+      const successfulResults: SyncResult[] = [];
 
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const errors: Record<string, any> = {};
+      // TODO: Replace `any` with type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errors: Record<string, any> = {};
 
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        successfulResults.push(result.value);
-      } else {
-        const id = accounts[index]?.id;
-        if (id) {
-          errors[id] = result.reason;
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          successfulResults.push(result.value);
+        } else {
+          const id = accounts[index]?.id;
+          if (id) {
+            errors[id] = result.reason;
+          }
         }
+      });
+
+      await this.#emitSyncEvents(successfulResults);
+
+      if (Object.keys(errors).length > 0) {
+        throw new SynchronizationError(
+          'Account synchronization failures',
+          errors,
+        );
       }
     });
-
-    await this.#emitSyncEvents(successfulResults);
-
-    if (Object.keys(errors).length > 0) {
-      throw new SynchronizationError(
-        'Account synchronization failures',
-        errors,
-      );
-    }
   }
 
   async syncSelectedAccounts(accountIds: string[]): Promise<void> {
-    const accountIdSet = new Set(accountIds);
-    const allAccounts = await this.#accountsUseCases.list();
+    // Every `setSelectedAccounts` call schedules a background event with no
+    // dedupe, so bursts of identical syncs fire together during onboarding
+    // and imports. Concurrent invocations for the same account set share one
+    // in-flight run.
+    const key = `syncSelectedAccounts:${[...accountIds].sort().join(',')}`;
 
-    const selectedAccounts = allAccounts.filter((account) =>
-      accountIdSet.has(account.id),
-    );
+    await this.#syncCoalescer.run(key, async () => {
+      const accountIdSet = new Set(accountIds);
+      const allAccounts = await this.#accountsUseCases.list();
 
-    const results = await Promise.allSettled(
-      selectedAccounts.map(async (account) =>
-        this.#accountsUseCases.synchronize(account, 'metamask'),
-      ),
-    );
+      const selectedAccounts = allAccounts.filter((account) =>
+        accountIdSet.has(account.id),
+      );
 
-    const successfulResults = results
-      .filter(
-        (result): result is PromiseFulfilledResult<SyncResult> =>
-          result.status === 'fulfilled',
-      )
-      .map((result) => result.value);
-
-    const rejectedResults = results.filter(
-      (result): result is PromiseRejectedResult => result.status === 'rejected',
-    );
-
-    if (rejectedResults.length > 0) {
-      await this.#snapClient.emitTrackingError(
-        new SynchronizationError(
-          `Failed to synchronize ${rejectedResults.length} selected accounts`,
-          undefined,
-          rejectedResults[0]?.reason,
+      const results = await Promise.allSettled(
+        selectedAccounts.map(async (account) =>
+          this.#accountsUseCases.synchronize(account, 'metamask'),
         ),
       );
-    }
 
-    await this.#emitSyncEvents(successfulResults);
+      const successfulResults = results
+        .filter(
+          (result): result is PromiseFulfilledResult<SyncResult> =>
+            result.status === 'fulfilled',
+        )
+        .map((result) => result.value);
+
+      const rejectedResults = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
+      );
+
+      if (rejectedResults.length > 0) {
+        await this.#snapClient.emitTrackingError(
+          new SynchronizationError(
+            `Failed to synchronize ${rejectedResults.length} selected accounts`,
+            undefined,
+            rejectedResults[0]?.reason,
+          ),
+        );
+      }
+
+      await this.#emitSyncEvents(successfulResults);
+    });
   }
 
   /**
