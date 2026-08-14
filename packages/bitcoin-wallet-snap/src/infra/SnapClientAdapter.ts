@@ -26,7 +26,7 @@ import {
   networkToCaip19,
   networkToScope,
 } from '../handlers';
-import { mapToKeyringAccount, mapToTransaction } from '../handlers/mappings';
+import { mapToTransaction } from '../handlers/mappings';
 
 export class SnapClientAdapter implements SnapClient {
   readonly #encrypt: boolean;
@@ -84,26 +84,6 @@ export class SnapClientAdapter implements SnapClient {
   async getPublicEntropy(derivationPath: string[]): Promise<SLIP10Node> {
     const slip10 = await this.getPrivateEntropy(derivationPath);
     return (await SLIP10Node.fromJSON(slip10)).neuter();
-  }
-
-  async emitAccountCreatedEvent(
-    account: BitcoinAccount,
-    correlationId?: string,
-    accountName?: string,
-  ): Promise<void> {
-    return emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
-      account: mapToKeyringAccount(account),
-      accountNameSuggestion: accountName,
-      displayConfirmation: false,
-      displayAccountNameSuggestion: false,
-      ...(correlationId ? { metamask: { correlationId } } : {}),
-    });
-  }
-
-  async emitAccountDeletedEvent(id: string): Promise<void> {
-    return emitSnapKeyringEvent(snap, KeyringEvent.AccountDeleted, {
-      id,
-    });
   }
 
   async emitAccountBalancesUpdatedEvent(

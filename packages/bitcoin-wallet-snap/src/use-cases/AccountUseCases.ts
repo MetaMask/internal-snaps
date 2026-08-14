@@ -239,62 +239,6 @@ export class AccountUseCases {
     return newAccount;
   }
 
-  async create(req: CreateAccountParams): Promise<BitcoinAccount> {
-    this.#logger.debug('Creating new Bitcoin account. Request: %o', req);
-
-    return this.#runAccountMutation(async () => {
-      const { addressType, network, correlationId, accountName, synchronize } =
-        req;
-      const derivationPath = getAccountDerivationPath(req);
-
-      // Idempotent account creation + ensures only one account per derivation path
-      const account =
-        await this.#repository.getByDerivationPath(derivationPath);
-      if (account?.network === network) {
-        this.#logger.debug('Account already exists: %s,', account.id);
-        await this.#snapClient.emitAccountCreatedEvent(
-          account,
-          correlationId,
-          accountName,
-        );
-        return account;
-      }
-
-      const newAccount = await this.#repository.create(
-        derivationPath,
-        network,
-        addressType,
-      );
-
-      newAccount.revealNextAddress();
-
-      await this.#repository.insert(newAccount);
-
-      // First notify the event has been created, then schedule full scan.
-      await this.#snapClient.emitAccountCreatedEvent(
-        newAccount,
-        correlationId,
-        accountName,
-      );
-
-      if (synchronize) {
-        await this.#snapClient.scheduleBackgroundEvent({
-          duration: 'PT1S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: newAccount.id },
-        });
-      }
-
-      this.#logger.info(
-        'Bitcoin account created successfully: %s. Public address: %s, Request: %o',
-        newAccount.id,
-        newAccount.publicAddress,
-        req,
-      );
-      return newAccount;
-    });
-  }
-
   async createMany(reqs: CreateAccountParams[]): Promise<BitcoinAccount[]> {
     if (reqs.length === 0) {
       return [];

@@ -90,25 +90,6 @@ export type SnapClient = {
   getPublicEntropy(derivationPath: string[]): Promise<SLIP10Node>;
 
   /**
-   * Emit an event notifying the extension of a newly created Bitcoin account
-   *
-   * @param account - The Bitcoin account.
-   * @param correlationId - The correlation ID to be used for the event.
-   */
-  emitAccountCreatedEvent(
-    account: BitcoinAccount,
-    correlationId?: string,
-    accountName?: string,
-  ): Promise<void>;
-
-  /**
-   * Emit an event notifying the extension of a deleted Bitcoin account
-   *
-   * @param id - The Bitcoin account id.
-   */
-  emitAccountDeletedEvent(id: string): Promise<void>;
-
-  /**
    * Emit an event notifying the extension of updated balances
    *
    * @param accounts - The Bitcoin accounts to emit balances for.
