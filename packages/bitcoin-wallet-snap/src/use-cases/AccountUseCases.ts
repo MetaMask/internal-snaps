@@ -48,9 +48,6 @@ export type CreateAccountParams = DiscoverAccountParams & {
   accountName?: string;
 };
 
-// Snap entropy derivation can become very spiky under wider parallelism.
-const CREATE_ACCOUNTS_CONCURRENCY = 2;
-
 /**
  * @param req - Account creation or discovery request.
  * @returns The BIP-44 account derivation path.
@@ -70,59 +67,6 @@ function getAccountDerivationPath(req: DiscoverAccountParams): string[] {
  */
 function getDerivationPathKey(derivationPath: string[]): string {
   return derivationPath.join('/');
-}
-
-/**
- * Map items to results with at most `concurrency` in-flight async operations.
- * Output order matches `items` order.
- *
- * @param items - Values to map in pool order.
- * @param concurrency - Maximum number of concurrent mapper executions.
- * @param mapper - Async function applied to each item.
- * @returns Results in the same order as `items`.
- */
-async function runWithConcurrencyLimit<Item, Result>(
-  items: readonly Item[],
-  concurrency: number,
-  mapper: (item: Item, index: number) => Promise<Result>,
-): Promise<Result[]> {
-  if (items.length === 0) {
-    return [];
-  }
-
-  const results: Result[] = new Array(items.length);
-  let next = 0;
-  let firstError: unknown;
-  let hasError = false;
-
-  const worker = async (): Promise<void> => {
-    while (!hasError) {
-      const idx = next;
-      next += 1;
-      if (idx >= items.length) {
-        return;
-      }
-
-      try {
-        results[idx] = await mapper(items[idx] as Item, idx);
-      } catch (error) {
-        if (!hasError) {
-          firstError = error;
-          hasError = true;
-        }
-        return;
-      }
-    }
-  };
-
-  const poolSize = Math.min(Math.max(1, concurrency), items.length);
-  await Promise.all(Array.from({ length: poolSize }, async () => worker()));
-
-  if (hasError) {
-    throw firstError;
-  }
-
-  return results;
 }
 
 /**
@@ -279,19 +223,24 @@ export class AccountUseCases {
         const entriesToCreate = uniqueEntries.filter(
           ({ pathKey }) => !existingAccountsByPath.has(pathKey),
         );
-        const newAccounts = await runWithConcurrencyLimit(
-          entriesToCreate,
-          CREATE_ACCOUNTS_CONCURRENCY,
-          async ({ derivationPath, req }) => {
-            const newAccount = await this.#repository.create(
-              derivationPath,
-              req.network,
-              req.addressType,
-            );
-            newAccount.revealNextAddress();
-            return newAccount;
-          },
-        );
+
+        // Batch-create so entropy is fetched once per parent path instead of
+        // once per account; remaining per-account work is local derivation
+        // plus synchronous WASM wallet construction, so no throttling needed.
+        const newAccounts =
+          entriesToCreate.length > 0
+            ? await this.#repository.createMany(
+                entriesToCreate.map(({ derivationPath, req }) => ({
+                  derivationPath,
+                  network: req.network,
+                  addressType: req.addressType,
+                })),
+              )
+            : [];
+
+        for (const newAccount of newAccounts) {
+          newAccount.revealNextAddress();
+        }
 
         if (newAccounts.length > 0) {
           await this.#repository.insertMany(newAccounts);

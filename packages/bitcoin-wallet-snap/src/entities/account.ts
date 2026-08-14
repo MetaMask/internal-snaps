@@ -294,6 +294,21 @@ export type BitcoinAccountRepository = {
   ): Promise<BitcoinAccount>;
 
   /**
+   * Create multiple accounts, without persisting them. Fetches entropy once
+   * per distinct parent path and derives hardened account children locally.
+   *
+   * @param requests - Account creation requests.
+   * @returns the new accounts, in input order
+   */
+  createMany(
+    requests: {
+      derivationPath: string[];
+      network: Network;
+      addressType: AddressType;
+    }[],
+  ): Promise<BitcoinAccount[]>;
+
+  /**
    * Insert an account.
    *
    * @param account - Bitcoin account.

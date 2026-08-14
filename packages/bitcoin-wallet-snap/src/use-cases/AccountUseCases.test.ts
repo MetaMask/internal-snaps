@@ -142,7 +142,7 @@ describe('AccountUseCases', () => {
         existingAccount,
         null,
       ]);
-      mockRepository.create.mockResolvedValue(newAccount);
+      mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([
         createParams,
@@ -153,11 +153,13 @@ describe('AccountUseCases', () => {
         firstDerivationPath,
         secondDerivationPath,
       ]);
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        secondDerivationPath,
-        createParams.network,
-        createParams.addressType,
-      );
+      expect(mockRepository.createMany).toHaveBeenCalledWith([
+        {
+          derivationPath: secondDerivationPath,
+          network: createParams.network,
+          addressType: createParams.addressType,
+        },
+      ]);
       expect(newAccount.revealNextAddress).toHaveBeenCalled();
       expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
@@ -170,14 +172,21 @@ describe('AccountUseCases', () => {
 
     it('creates only one account for duplicate derivation paths in the same batch', async () => {
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
-      mockRepository.create.mockResolvedValue(newAccount);
+      mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([createParams, createParams]);
 
       expect(mockRepository.getByDerivationPaths).toHaveBeenCalledWith([
         firstDerivationPath,
       ]);
-      expect(mockRepository.create).toHaveBeenCalledTimes(1);
+      expect(mockRepository.createMany).toHaveBeenCalledTimes(1);
+      expect(mockRepository.createMany).toHaveBeenCalledWith([
+        {
+          derivationPath: firstDerivationPath,
+          network: createParams.network,
+          addressType: createParams.addressType,
+        },
+      ]);
       expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
       expect(result).toStrictEqual([newAccount, newAccount]);
     });
@@ -187,7 +196,7 @@ describe('AccountUseCases', () => {
 
       const result = await useCases.createMany([createParams]);
 
-      expect(mockRepository.create).not.toHaveBeenCalled();
+      expect(mockRepository.createMany).not.toHaveBeenCalled();
       expect(mockRepository.insertMany).not.toHaveBeenCalled();
       expect(result).toStrictEqual([existingAccount]);
     });
@@ -195,7 +204,7 @@ describe('AccountUseCases', () => {
     it('propagates insertMany errors without emitting account-created events', async () => {
       const error = new Error('insertMany failed');
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
-      mockRepository.create.mockResolvedValue(newAccount);
+      mockRepository.createMany.mockResolvedValue([newAccount]);
       mockRepository.insertMany.mockRejectedValue(error);
 
       await expect(useCases.createMany([createParams])).rejects.toBe(error);
@@ -203,50 +212,13 @@ describe('AccountUseCases', () => {
       expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
     });
 
-    it('waits for in-flight creates before rejecting when one create fails', async () => {
-      const error = new Error('create failed');
-      const slowAccount = mock<BitcoinAccount>({
-        id: 'slow-id',
-        network: createParams.network,
-      });
-      let resolveSlowCreate: (account: BitcoinAccount) => void = () =>
-        undefined;
-      const slowCreate = new Promise<BitcoinAccount>((resolve) => {
-        resolveSlowCreate = resolve;
-      });
-      const callOrder: string[] = [];
+    it('propagates createMany errors without inserting accounts', async () => {
+      const error = new Error('createMany failed');
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
+      mockRepository.createMany.mockRejectedValue(error);
 
-      mockRepository.getByDerivationPaths.mockResolvedValue([null, null]);
-      mockRepository.create
-        .mockImplementationOnce(async () => {
-          callOrder.push('create-1');
-          throw error;
-        })
-        .mockImplementationOnce(async () => {
-          callOrder.push('create-2');
-          const account = await slowCreate;
-          callOrder.push('resolve-2');
-          return account;
-        });
+      await expect(useCases.createMany([createParams])).rejects.toBe(error);
 
-      const createManyPromise = useCases.createMany([
-        createParams,
-        { ...createParams, index: 2 },
-      ]);
-      const onSettled = jest.fn();
-      const settlementObserver = createManyPromise.then(onSettled, onSettled);
-
-      await new Promise((resolve) => {
-        setTimeout(resolve, 0);
-      });
-
-      expect(onSettled).not.toHaveBeenCalled();
-
-      resolveSlowCreate(slowAccount);
-
-      await expect(createManyPromise).rejects.toBe(error);
-      await settlementObserver;
-      expect(callOrder).toStrictEqual(['create-1', 'create-2', 'resolve-2']);
       expect(mockRepository.insertMany).not.toHaveBeenCalled();
     });
   });

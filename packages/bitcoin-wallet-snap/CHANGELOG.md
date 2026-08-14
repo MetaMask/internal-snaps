@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Reduce `keyring_createAccounts` entropy RPCs from one per account to one per distinct parent path by fetching the account-level parent node once and deriving hardened children locally ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
+  - The private parent node is held transiently in memory during the batch — the same trust boundary as the previous per-account implementation — and children are neutered before descriptor construction.
+  - The creation concurrency throttle is removed: with derivation local, the remaining per-account work is synchronous WASM wallet construction.
+
 ### Fixed
 
 - Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#150](https://github.com/MetaMask/internal-snaps/pull/150))

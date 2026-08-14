@@ -5,10 +5,15 @@ import type { DescriptorPair } from '@metamask/bitcoindevkit';
 import {
   Address,
   ChangeSet,
+  slip10_to_extended,
   xpriv_to_descriptor,
   xpub_to_descriptor,
 } from '@metamask/bitcoindevkit';
 import type { SLIP10Node } from '@metamask/key-tree';
+import {
+  mnemonicPhraseToBytes,
+  SLIP10Node as RealSlip10Node,
+} from '@metamask/key-tree';
 import { mock } from 'jest-mock-extended';
 
 import type {
@@ -357,6 +362,81 @@ describe('BdkAccountRepository', () => {
         'bitcoin',
       );
       expect(result).toBe(mockAccount);
+    });
+  });
+
+  describe('createMany', () => {
+    const mnemonic =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const parentPath = ['entropy-1', "84'", "0'"];
+    const requests = [
+      {
+        derivationPath: ['entropy-1', "84'", "0'", "0'"],
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      },
+      {
+        derivationPath: ['entropy-1', "84'", "0'", "1'"],
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      },
+    ] as Parameters<BdkAccountRepository['createMany']>[0];
+
+    /**
+     * Derives the real SLIP-10 node for a path from the fixture mnemonic.
+     *
+     * @param segments - Hardened path segments below the master node.
+     * @returns The derived node.
+     */
+    async function deriveFixtureNode(
+      segments: string[],
+    ): Promise<RealSlip10Node> {
+      return RealSlip10Node.fromDerivationPath({
+        derivationPath: [
+          mnemonicPhraseToBytes(mnemonic),
+          ...segments.map((segment) => `bip32:${segment}` as const),
+        ],
+        curve: 'secp256k1',
+      });
+    }
+
+    beforeEach(async () => {
+      const parentNode = await deriveFixtureNode(["84'", "0'"]);
+      mockSnapClient.getPrivateEntropy.mockResolvedValue(parentNode.toJSON());
+    });
+
+    it('fetches entropy once per distinct parent path', async () => {
+      const result = await repo.createMany(requests);
+
+      expect(mockSnapClient.getPrivateEntropy).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.getPrivateEntropy).toHaveBeenCalledWith(parentPath);
+      expect(mockSnapClient.getPublicEntropy).not.toHaveBeenCalled();
+      expect(BdkAccountAdapter.create).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(2);
+    });
+
+    it('derives neutered children byte-identical to full-path derivation', async () => {
+      await repo.createMany([requests[1]] as typeof requests);
+
+      // Independent route: full-path derivation from the same mnemonic, the
+      // way `snap_getBip32Entropy` would resolve it.
+      const expected = (
+        await deriveFixtureNode(["84'", "0'", "1'"])
+      ).neuter();
+
+      const passedNode = (slip10_to_extended as jest.Mock).mock
+        .calls[0]?.[0] as RealSlip10Node;
+      expect(passedNode.privateKey).toBeUndefined();
+      expect(passedNode.publicKey).toStrictEqual(expected.publicKey);
+      expect(passedNode.chainCode).toStrictEqual(expected.chainCode);
+      expect(passedNode.masterFingerprint).toBe(expected.masterFingerprint);
+    });
+
+    it('returns an empty array without entropy fetches for empty input', async () => {
+      const result = await repo.createMany([]);
+
+      expect(result).toStrictEqual([]);
+      expect(mockSnapClient.getPrivateEntropy).not.toHaveBeenCalled();
     });
   });
 
