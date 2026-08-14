@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from `keyring_deleteAccount` ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
+  - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
 - Coalesce concurrent account synchronization runs for the same accounts so stacked triggers (cronjob and background events) share one run instead of duplicating network fetches, state writes, and keyring events ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
 
 ## [3.1.0]
