@@ -936,7 +936,7 @@ describe('AccountUseCases', () => {
       expect(mockRepository.delete).not.toHaveBeenCalled();
     });
 
-    it('removes an account', async () => {
+    it('removes an account without emitting keyring events', async () => {
       const mockAccount = mock<BitcoinAccount>();
       mockAccount.id = 'some-id';
 
@@ -945,25 +945,8 @@ describe('AccountUseCases', () => {
       await useCases.delete(mockAccount.id);
 
       expect(mockRepository.get).toHaveBeenCalledWith(mockAccount.id);
-      expect(mockSnapClient.emitAccountDeletedEvent).toHaveBeenCalledWith(
-        mockAccount.id,
-      );
       expect(mockRepository.delete).toHaveBeenCalledWith(mockAccount.id);
-    });
-
-    it('propagates an error if the event emitting fails', async () => {
-      const mockAccount = mock<BitcoinAccount>();
-      mockAccount.id = 'some-id';
-      const error = new Error('Event emit failed');
-
-      mockRepository.get.mockResolvedValue(mockAccount);
-      mockSnapClient.emitAccountDeletedEvent.mockRejectedValue(error);
-
-      await expect(useCases.delete(mockAccount.id)).rejects.toBe(error);
-
-      expect(mockRepository.get).toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountDeletedEvent).toHaveBeenCalled();
-      expect(mockRepository.delete).not.toHaveBeenCalled();
+      expect(mockSnapClient.emitAccountDeletedEvent).not.toHaveBeenCalled();
     });
 
     it('propagates an error if the repository fails', async () => {
@@ -977,7 +960,6 @@ describe('AccountUseCases', () => {
       await expect(useCases.delete(mockAccount.id)).rejects.toBe(error);
 
       expect(mockRepository.get).toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountDeletedEvent).toHaveBeenCalled();
       expect(mockRepository.delete).toHaveBeenCalled();
     });
   });

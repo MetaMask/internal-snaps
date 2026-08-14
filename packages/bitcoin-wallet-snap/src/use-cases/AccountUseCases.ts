@@ -516,7 +516,9 @@ export class AccountUseCases {
         throw new NotFoundError('Account not found', { id });
       }
 
-      await this.#snapClient.emitAccountDeletedEvent(id);
+      // No AccountDeleted event: deletion is client-initiated in keyring v2,
+      // and v2 clients reject v1 lifecycle events (which would abort the
+      // deletion below).
       await this.#repository.delete(id);
 
       this.#logger.info('Account deleted successfully: %s', account.id);

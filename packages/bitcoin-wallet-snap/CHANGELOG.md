@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
+  - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
+
 ## [2.0.1]
 
 ### Fixed
