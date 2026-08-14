@@ -920,61 +920,33 @@ describe('AssetsService', () => {
       expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_0]);
     });
 
-    it('fetches only snap-owned assets when migration is active', async () => {
+    it('returns no assets from fetch when migration is active', async () => {
       setMigrationStage(activeMigrationStage);
-      jest.spyOn(coreAdapter, 'fetch').mockResolvedValue([]);
+      const snapFetchSpy = jest.spyOn(snapAssetsAdapter, 'fetch');
 
       const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
-      expect(coreAdapter.fetch).toHaveBeenCalledWith(
-        MOCK_SOLANA_KEYRING_ACCOUNT_0,
-      );
+      expect(snapFetchSpy).not.toHaveBeenCalled();
       expect(assets).toStrictEqual([]);
     });
 
-    it('emits only snap-owned assets and does not persist when migration is active', async () => {
+    it('does not persist or emit when saveMany is called and migration is active', async () => {
       setMigrationStage(activeMigrationStage);
 
-      const nftAsset = {
-        assetType: `${Network.Mainnet}/nft:NftMintAddress`,
-        keyringAccountId: accountId,
-        network: Network.Mainnet,
-        mint: 'NftMintAddress',
-        pubkey: 'NftTokenAccount',
-        symbol: 'NFT',
-        rawAmount: '1',
-        uiAmount: '1',
-      } as const;
-
-      await assetsService.saveMany([MOCK_ASSET_ENTITY_0, nftAsset]);
+      await assetsService.saveMany([MOCK_ASSET_ENTITY_0]);
 
       expect(mockAssetsRepository.saveMany).not.toHaveBeenCalled();
-      expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-        expect.anything(),
-        KeyringEvent.AccountAssetListUpdated,
-        {
-          assets: {
-            [accountId]: {
-              added: [nftAsset.assetType],
-              removed: [],
-            },
-          },
-        },
-      );
-      expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-        expect.anything(),
-        KeyringEvent.AccountBalancesUpdated,
-        {
-          balances: {
-            [accountId]: {
-              [nftAsset.assetType]: {
-                unit: 'NFT',
-                amount: '1',
-              },
-            },
-          },
-        },
-      );
+      expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+    });
+
+    it('reports Core assets as active when the migration flag is on', async () => {
+      setMigrationStage(activeMigrationStage);
+
+      await expect(assetsService.isUsingCoreAssets()).resolves.toBe(true);
+    });
+
+    it('reports Core assets as inactive when the migration flag is off', async () => {
+      await expect(assetsService.isUsingCoreAssets()).resolves.toBe(false);
     });
 
     it('reads the Solana migration flag key', async () => {

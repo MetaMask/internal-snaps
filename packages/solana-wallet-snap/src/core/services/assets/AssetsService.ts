@@ -14,10 +14,10 @@ import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetMetadata } from './types';
 
 /**
- * Assets domain facade. Reads, fetch, and save use the Snap adapter while
- * migration is off, and the Core adapter once migration is active. When
- * migration is active, fetch returns only snap-owned assets and save publishes
- * them via keyring events without local persistence.
+ * Assets domain facade. Reads use the Snap adapter while migration is off, and
+ * the Core adapter once migration is active. Solana has no snap-owned assets,
+ * so when migration is active fetch returns nothing and save is a no-op —
+ * Core owns fungible balances and the Snap does not persist or publish them.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
@@ -53,6 +53,16 @@ export class AssetsService {
     );
   }
 
+  /**
+   * Whether asset reads come from AssetsController. When true, the Snap must
+   * not fetch, persist, or websocket-monitor balances — Core already does.
+   *
+   * @returns Whether the Solana assets migration flag is active.
+   */
+  async isUsingCoreAssets(): Promise<boolean> {
+    return this.#shouldReturnAssetsFromCore();
+  }
+
   static hasChanged(asset: AssetEntity, assetsLookup: AssetEntity[]): boolean {
     return SnapAssetsAdapter.hasChanged(asset, assetsLookup);
   }
@@ -65,7 +75,7 @@ export class AssetsService {
 
   async fetch(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
     if (await this.#shouldReturnAssetsFromCore()) {
-      return this.#coreAdapter.fetch(account);
+      return [];
     }
 
     return this.#snapAdapter.fetch(account);
@@ -88,7 +98,7 @@ export class AssetsService {
 
   async saveMany(assets: AssetEntity[]): Promise<void> {
     if (await this.#shouldReturnAssetsFromCore()) {
-      return this.#coreAdapter.saveMany(assets);
+      return;
     }
 
     return this.#snapAdapter.saveMany(assets);
