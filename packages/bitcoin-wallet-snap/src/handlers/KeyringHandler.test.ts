@@ -298,7 +298,7 @@ describe('KeyringHandler', () => {
       expect(mockAccounts.createMany).not.toHaveBeenCalled();
     });
 
-    it('splits requests larger than 100 accounts into internal batches', async () => {
+    it('creates ranges larger than 100 accounts in a single batch', async () => {
       mockAccounts.createMany.mockImplementation(async (requests) =>
         requests.map(({ index }) => buildMockAccount(index)),
       );
@@ -309,16 +309,12 @@ describe('KeyringHandler', () => {
         entropySource,
       });
 
-      expect(mockAccounts.createMany).toHaveBeenCalledTimes(2);
-      expect(mockAccounts.createMany).toHaveBeenNthCalledWith(
-        1,
-        Array.from({ length: 100 }, (_, index) =>
+      expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
+      expect(mockAccounts.createMany).toHaveBeenCalledWith(
+        Array.from({ length: 101 }, (_, index) =>
           expect.objectContaining({ index }),
         ),
       );
-      expect(mockAccounts.createMany).toHaveBeenNthCalledWith(2, [
-        expect.objectContaining({ index: 100 }),
-      ]);
       expect(result).toHaveLength(101);
       expect(
         result.map((account) => mnemonicGroupIndex(account)),
