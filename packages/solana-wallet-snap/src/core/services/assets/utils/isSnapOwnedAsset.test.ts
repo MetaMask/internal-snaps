@@ -3,9 +3,9 @@ import { isSnapOwnedAsset } from './isSnapOwnedAsset';
 
 describe('isSnapOwnedAsset', () => {
   it('returns true for NFT asset IDs', () => {
-    expect(
-      isSnapOwnedAsset(`${Network.Mainnet}/nft:SomeNftMintAddress`),
-    ).toBe(true);
+    expect(isSnapOwnedAsset(`${Network.Mainnet}/nft:SomeNftMintAddress`)).toBe(
+      true,
+    );
   });
 
   it('returns false for native SOL', () => {

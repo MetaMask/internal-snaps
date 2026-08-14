@@ -10,6 +10,8 @@ import { mapControllerAsset } from './mapControllerAsset';
  * @param assetId - CAIP-19 asset ID.
  * @param amount - Raw balance amount.
  * @param metadata - Symbol and decimals.
+ * @param metadata.symbol - Asset symbol.
+ * @param metadata.decimals - Asset decimals.
  * @returns A controller `Asset`.
  */
 function buildControllerAsset(
@@ -84,7 +86,7 @@ describe('mapControllerAsset', () => {
   });
 
   it('uses UNKNOWN and 0 decimals when metadata is missing', async () => {
-    const assetId = `${Network.Mainnet}/token:UnknownMint`;
+    const assetId = KnownCaip19Id.UsdcMainnet;
     const asset = {
       id: assetId,
       chainId: Network.Mainnet,

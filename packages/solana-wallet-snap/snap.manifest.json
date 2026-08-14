@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "xbiQfxthMCvd75y7AYfX1H2AdaSSsZmSd/oKXvRO6Gw=",
+    "shasum": "YNtYDaS0dq5Nl7+TurSH6J82OFh1tkfizcCerNeoE18=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
