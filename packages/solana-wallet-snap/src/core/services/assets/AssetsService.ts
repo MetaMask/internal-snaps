@@ -101,7 +101,7 @@ export class AssetsService {
       return;
     }
 
-    return this.#snapAdapter.saveMany(assets);
+    await this.#snapAdapter.saveMany(assets);
   }
 
   async getAll(): Promise<AssetEntity[]> {

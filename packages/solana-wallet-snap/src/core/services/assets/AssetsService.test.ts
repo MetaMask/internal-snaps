@@ -942,11 +942,11 @@ describe('AssetsService', () => {
     it('reports Core assets as active when the migration flag is on', async () => {
       setMigrationStage(activeMigrationStage);
 
-      await expect(assetsService.isUsingCoreAssets()).resolves.toBe(true);
+      expect(await assetsService.isUsingCoreAssets()).toBe(true);
     });
 
     it('reports Core assets as inactive when the migration flag is off', async () => {
-      await expect(assetsService.isUsingCoreAssets()).resolves.toBe(false);
+      expect(await assetsService.isUsingCoreAssets()).toBe(false);
     });
 
     it('reads the Solana migration flag key', async () => {
