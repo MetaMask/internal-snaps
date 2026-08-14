@@ -9,20 +9,32 @@ import type { CaipAssetType } from '@metamask/utils';
 
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
+import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 
 /**
  * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
- * (legacy snap-owned reads/writes). Core adapter routing can be introduced later
- * without changing callers.
+ * (legacy snap-owned reads/writes). Core adapter is initialized for upcoming
+ * routing without changing callers.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
 
+  // Initialized for upcoming Core routing; not read until the migration PR lands.
+  // eslint-disable-next-line no-unused-private-class-members -- reserved adapter slot
+  readonly #coreAdapter: CoreAssetsAdapter;
+
   readonly cacheTtlsMilliseconds: SnapAssetsAdapter['cacheTtlsMilliseconds'];
 
-  constructor({ snapAdapter }: { snapAdapter: SnapAssetsAdapter }) {
+  constructor({
+    snapAdapter,
+    coreAdapter,
+  }: {
+    snapAdapter: SnapAssetsAdapter;
+    coreAdapter: CoreAssetsAdapter;
+  }) {
     this.#snapAdapter = snapAdapter;
+    this.#coreAdapter = coreAdapter;
     this.cacheTtlsMilliseconds = this.#snapAdapter.cacheTtlsMilliseconds;
   }
 
