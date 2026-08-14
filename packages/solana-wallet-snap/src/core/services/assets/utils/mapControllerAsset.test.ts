@@ -35,13 +35,13 @@ function buildControllerAsset(
 }
 
 describe('mapControllerAsset', () => {
-  it('maps native SOL assets', async () => {
+  it('maps native SOL assets', () => {
     const asset = buildControllerAsset(KnownCaip19Id.SolMainnet, '1000000000', {
       symbol: 'SOL',
       decimals: 9,
     });
 
-    const entity = await mapControllerAsset(
+    const entity = mapControllerAsset(
       MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
       asset,
@@ -59,19 +59,19 @@ describe('mapControllerAsset', () => {
     });
   });
 
-  it('maps SPL token assets with ATA pubkey', async () => {
+  it('maps SPL token assets from the mint without deriving an ATA pubkey', () => {
     const asset = buildControllerAsset(KnownCaip19Id.UsdcMainnet, '1234567', {
       symbol: 'USDC',
       decimals: 6,
     });
 
-    const entity = await mapControllerAsset(
+    const entity = mapControllerAsset(
       MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
       asset,
     );
 
-    expect(entity).toMatchObject({
+    expect(entity).toStrictEqual({
       assetType: KnownCaip19Id.UsdcMainnet,
       keyringAccountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       network: Network.Mainnet,
@@ -81,11 +81,10 @@ describe('mapControllerAsset', () => {
       rawAmount: '1234567',
       uiAmount: '1.234567',
     });
-    expect(entity).toHaveProperty('pubkey');
-    expect(typeof (entity as { pubkey?: string }).pubkey).toBe('string');
+    expect(entity).not.toHaveProperty('pubkey');
   });
 
-  it('uses UNKNOWN and 0 decimals when metadata is missing', async () => {
+  it('uses UNKNOWN and 0 decimals when metadata is missing', () => {
     const assetId = KnownCaip19Id.UsdcMainnet;
     const asset = {
       id: assetId,
@@ -96,7 +95,7 @@ describe('mapControllerAsset', () => {
       fiatValue: 0,
     } as unknown as Asset;
 
-    const entity = await mapControllerAsset(
+    const entity = mapControllerAsset(
       MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
       asset,

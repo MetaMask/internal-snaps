@@ -1,18 +1,11 @@
-import { KeyringEvent } from '@metamask/keyring-api';
-import type {
-  AccountAssetListUpdatedEvent,
-  AccountBalancesUpdatedEvent,
-} from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
-import type { AssetEntity, SolanaKeyringAccount } from '../../../../entities';
+import type { AssetEntity } from '../../../../entities';
 import logger, { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
-import { isSnapOwnedAsset } from '../utils/isSnapOwnedAsset';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
 
 export type CoreAssetsAdapterOptions = {
@@ -24,8 +17,11 @@ export type CoreAssetsAdapterOptions = {
 };
 
 /**
- * Uses the AssetsController for fungible reads. Snap-owned (NFT) assets are
- * published via keyring events without local persistence when migration is active.
+ * Reads fungible balances from AssetsController.
+ *
+ * Solana has no snap-owned assets (unlike Tron staking/energy/bandwidth), so
+ * this adapter does not fetch, persist, or publish balances, and does not
+ * monitor addresses for snap-owned changes.
  */
 export class CoreAssetsAdapter {
   readonly #logger: ILogger;
@@ -101,26 +97,15 @@ export class CoreAssetsAdapter {
 
     const assets = await this.#getAccountAssetsByIDs(accountId, assetIds);
 
-    const entries = await Promise.all(
-      assetIds.map(async (assetId) => {
+    return Object.fromEntries(
+      assetIds.map((assetId) => {
         const asset = assets[assetId];
-        if (!asset) {
-          return [assetId, null] as const;
-        }
-
-        const entity = await mapControllerAsset(
-          accountId,
-          accountAddress,
-          asset,
-        );
-        return [assetId, entity] as const;
+        return [
+          assetId,
+          asset ? mapControllerAsset(accountId, accountAddress, asset) : null,
+        ];
       }),
-    );
-
-    return Object.fromEntries(entries) as Record<
-      CaipAssetType,
-      AssetEntity | null
-    >;
+    ) as Record<CaipAssetType, AssetEntity | null>;
   }
 
   async getAccountAssetsByScope(
@@ -142,10 +127,8 @@ export class CoreAssetsAdapter {
       accountId,
     );
 
-    return Promise.all(
-      Object.values(controllerAssets).map(async (asset) =>
-        mapControllerAsset(accountId, accountAddress, asset),
-      ),
+    return Object.values(controllerAssets).map((asset) =>
+      mapControllerAsset(accountId, accountAddress, asset),
     );
   }
 
@@ -158,78 +141,5 @@ export class CoreAssetsAdapter {
     );
 
     return assetsByScope.flat();
-  }
-
-  /**
-   * Fungible balances come from AssetsController once migration is active.
-   * Snap-owned NFT fetch is not produced here (matching the Snap adapter,
-   * which currently does not return NFT balances from `fetch`).
-   *
-   * @param account - The keyring account.
-   * @returns Snap-owned assets for the account (currently none).
-   */
-  async fetch(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
-    this.#logger.info('Fetching snap-owned assets for account', { account });
-    return [];
-  }
-
-  /**
-   * Publishes snap-owned assets to the extension without persisting locally.
-   *
-   * Filters to snap-owned assets, reports each as `added`, and emits balance
-   * updates for those assets.
-   *
-   * @param assets - Assets to publish (non snap-owned entries are ignored).
-   */
-  async saveMany(assets: AssetEntity[]): Promise<void> {
-    this.#logger.info('Publishing snap-owned assets', assets);
-
-    const snapOwnedAssets = assets.filter((asset) =>
-      isSnapOwnedAsset(asset.assetType),
-    );
-
-    if (snapOwnedAssets.length === 0) {
-      return;
-    }
-
-    const assetListUpdatedPayload = snapOwnedAssets.reduce<
-      AccountAssetListUpdatedEvent['params']['assets']
-    >(
-      (acc, asset) => ({
-        ...acc,
-        [asset.keyringAccountId]: {
-          added: [
-            ...(acc[asset.keyringAccountId]?.added ?? []),
-            asset.assetType,
-          ],
-          removed: [],
-        },
-      }),
-      {},
-    );
-
-    await emitSnapKeyringEvent(snap, KeyringEvent.AccountAssetListUpdated, {
-      assets: assetListUpdatedPayload,
-    });
-
-    const balancesUpdatedPayload = snapOwnedAssets.reduce<
-      AccountBalancesUpdatedEvent['params']['balances']
-    >(
-      (acc, asset) => ({
-        ...acc,
-        [asset.keyringAccountId]: {
-          ...(acc[asset.keyringAccountId] ?? {}),
-          [asset.assetType]: {
-            unit: asset.symbol,
-            amount: asset.uiAmount,
-          },
-        },
-      }),
-      {},
-    );
-
-    await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
-      balances: balancesUpdatedPayload,
-    });
   }
 }
