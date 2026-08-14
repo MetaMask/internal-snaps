@@ -7,15 +7,10 @@ import type {
 import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
-  KeyringEvent,
   TrxAccountType,
 } from '@metamask/keyring-api';
-import {
-  emitSnapKeyringEvent,
-  getSelectedAccounts,
-} from '@metamask/keyring-snap-sdk';
+import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import { InFlightCoalescer } from '@metamask/snap-networks-utils/dedupe';
-import type { Json } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
@@ -28,7 +23,6 @@ import { asStrictKeyringAccount } from '../../entities/keyring-account';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
-import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import { createPrefixedLogger } from '../../utils/logger';
 import type { ILogger } from '../../utils/logger';
 import { DerivationPathStruct } from '../../validation/structs';
@@ -36,7 +30,6 @@ import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
-import type { CreateAccountOptions } from './types';
 
 /**
  * Elliptic curve for TRON (same as Ethereum)
@@ -201,136 +194,6 @@ export class AccountsService {
     } catch (error) {
       // Sanitize errors to prevent leaking sensitive cryptographic information
       throw sanitizeSensitiveError(error);
-    }
-  }
-
-  async deriveAccount({
-    entropySource,
-    index,
-  }: {
-    entropySource: EntropySourceId;
-    index: number;
-  }): Promise<TronKeyringAccount> {
-    const derivationPath = AccountsService.getDefaultDerivationPath(index);
-    const { address } = await this.deriveTronKeypair({
-      entropySource,
-      derivationPath,
-    });
-
-    return {
-      id: globalThis.crypto.randomUUID(),
-      entropySource,
-      derivationPath,
-      index,
-      type: TrxAccountType.Eoa,
-      address,
-      scopes: SUPPORTED_SCOPES as unknown as Network[],
-      options: {
-        entropy: {
-          type: 'mnemonic',
-          id: entropySource,
-          derivationPath,
-          groupIndex: index,
-        },
-        exportable: true,
-      },
-      methods: ['signMessage', 'signTransaction'],
-    };
-  }
-
-  async create(options?: CreateAccountOptions): Promise<KeyringAccount> {
-    const accounts = await this.#accountsRepository.getAll();
-
-    const entropySource =
-      options?.entropySource ?? (await this.#getDefaultEntropySource());
-    const index =
-      options?.index ??
-      this.#getLowestUnusedKeyringAccountIndex(accounts, entropySource);
-
-    /**
-     * Now that we have the `entropySource` and `index` ready,
-     * we need to make sure that they do not correspond to an existing account already.
-     */
-    const sameAccount = accounts.find(
-      (account) =>
-        account.index === index && account.entropySource === entropySource,
-    );
-
-    if (sameAccount) {
-      this.#logger.warn(
-        '[🔑 Keyring] An account already exists with the same derivation path and entropy source. Skipping account creation.',
-      );
-      return asStrictKeyringAccount(sameAccount);
-    }
-
-    const derivedAccount = await this.deriveAccount({
-      entropySource,
-      index,
-    });
-
-    const { metamask: metamaskOptions, ...remainingOptions } = options ?? {};
-
-    const tronKeyringAccount: TronKeyringAccount = {
-      ...derivedAccount,
-      options: {
-        ...derivedAccount.options,
-        ...(Object.fromEntries(
-          Object.entries(remainingOptions).filter(
-            ([, value]) => value !== undefined,
-          ),
-        ) as Record<string, Json>),
-        groupIndex: index,
-      },
-    };
-
-    const persistedAccount =
-      await this.#accountsRepository.create(tronKeyringAccount);
-
-    if (persistedAccount.id !== tronKeyringAccount.id) {
-      this.#logger.warn(
-        '[🔑 Keyring] An account already exists with the same derivation path and entropy source. Skipping account creation.',
-      );
-      return asStrictKeyringAccount(persistedAccount);
-    }
-
-    try {
-      const keyringAccount = asStrictKeyringAccount(tronKeyringAccount);
-
-      await emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
-        /**
-         * We can't pass the `keyringAccount` object because it contains the index
-         * and the snaps sdk does not allow extra properties.
-         */
-        account: keyringAccount,
-        /**
-         * Skip account creation confirmation dialogs to make it look like a native
-         * account creation flow.
-         */
-        displayConfirmation: false,
-        /**
-         * Internal options to MetaMask that includes a correlation ID. We need
-         * to also emit this ID to the Snap keyring.
-         */
-        ...(metamaskOptions
-          ? {
-              metamask: metamaskOptions,
-            }
-          : {}),
-      });
-
-      return keyringAccount;
-    } catch (error) {
-      // Rollback: if the event emission fails after the account was persisted,
-      // remove it from state so we don't end up with an orphaned record.
-      try {
-        await this.#accountsRepository.delete(tronKeyringAccount.id);
-      } catch (deleteError) {
-        this.#logger.error(
-          { deleteError, accountId: tronKeyringAccount.id },
-          'Failed to rollback account creation',
-        );
-      }
-      throw error;
     }
   }
 
@@ -629,31 +492,7 @@ export class AccountsService {
     return createTronBip44AddressDeriver(bip44Node);
   }
 
-  #getLowestUnusedKeyringAccountIndex(
-    accounts: TronKeyringAccount[],
-    entropySource: EntropySourceId,
-  ): number {
-    const accountsFilteredByEntropySourceId = accounts.filter(
-      (account) => account.entropySource === entropySource,
-    );
-
-    return getLowestUnusedIndex(accountsFilteredByEntropySourceId);
-  }
-
   static getDefaultDerivationPath(index: number): `m/${string}` {
     return `m/44'/195'/0'/0/${index}`;
-  }
-
-  async #getDefaultEntropySource(): Promise<EntropySourceId> {
-    const entropySources = await this.#snapClient.listEntropySources();
-    const defaultEntropySource = entropySources.find(({ primary }) => primary);
-
-    if (!defaultEntropySource) {
-      throw new Error(
-        'No default entropy source found - this can never happen',
-      );
-    }
-
-    return defaultEntropySource.id;
   }
 }

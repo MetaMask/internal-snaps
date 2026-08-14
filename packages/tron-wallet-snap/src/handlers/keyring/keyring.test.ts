@@ -73,8 +73,6 @@ describe('KeyringHandler', () => {
     mockAccountsService = {
       findById: jest.fn().mockResolvedValue(mockAccount),
       findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
-      deriveAccount: jest.fn(),
-      create: jest.fn(),
       createAccounts: jest.fn(),
       getAll: jest.fn().mockResolvedValue([mockAccount]),
       deriveTronKeypair: jest.fn().mockResolvedValue({
