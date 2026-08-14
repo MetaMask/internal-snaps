@@ -1,49 +1,77 @@
-# node
-npm-debug.log
-yarn-error.log
-node_modules
-package-lock.json
+.DS_Store
+dist/
+build/
+coverage/
+.cache/
+public/
 
-# tarball from `yarn pack`
-*.tgz
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# eslint cache
-.eslintcache
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-.DS_STORE
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# Build preview message
-preview-build-message.txt
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
 
-examples/*/coverage
-examples/*/dist
-examples/*/docs
-packages/*/coverage
-packages/*/dist
-packages/*/docs
-scripts/coverage
+# nyc test coverage
+.nyc_output
 
-# yarn v3 (w/o zero-install)
-# See: https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+# node-waf configuration
+.lock-wscript
 
-# typescript
-packages/*/*.tsbuildinfo
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+
+# TypeScript cache
 *.tsbuildinfo
 
-# AI
-.sisyphus/
+# Optional npm cache directory
+.npm
 
-# Docusaurus
-**/.docusaurus
-packages/wallet-framework-docs/site/build
+# Optional eslint cache
+.eslintcache
 
-# Dotenv environment variables file
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
 .env
 .env.test
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*

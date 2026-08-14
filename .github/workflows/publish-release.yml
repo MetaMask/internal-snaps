@@ -4,155 +4,107 @@ on:
   workflow_call:
     secrets:
       NPM_TOKEN:
-        required: false
+        required: true
       SLACK_WEBHOOK_URL:
         required: true
-      LOG_LEVEL:
-        required: false
-      DEFAULT_ADDRESS_TYPE:
-        required: false
-      ESPLORA_BITCOIN:
-        required: false
-      ESPLORA_TESTNET:
-        required: false
-      ESPLORA_TESTNET4:
-        required: false
-      ESPLORA_SIGNET:
-        required: false
-      ESPLORA_REGTEST:
-        required: false
-      PRICE_API_URL:
-        required: false
-      RPC_URL_LIST_MAINNET:
-        required: false
-      TRONGRID_BASE_URL_MAINNET:
-        required: false
-      TRON_HTTP_BASE_URL_MAINNET:
-        required: false
-      RPC_URL_MAINNET_LIST:
-        required: false
-      RPC_URL_DEVNET_LIST:
-        required: false
-      RPC_WEB_SOCKET_URL_MAINNET:
-        required: false
-      RPC_WEB_SOCKET_URL_DEVNET:
-        required: false
-
-permissions:
-  contents: read
-
-concurrency:
-  group: publish-release
-  queue: max
+      RPC_URL_MAINNET:
+        required: true
+      HORIZON_URL_MAINNET:
+        required: true
+      EXPLORER_MAINNET_BASE_URL:
+        required: true
+      RPC_URL_TESTNET:
+        required: true
+      HORIZON_URL_TESTNET:
+        required: true
+      EXPLORER_TESTNET_BASE_URL:
+        required: true
+      TOKEN_API_BASE_URL:
+        required: true
+      STATIC_API_BASE_URL:
+        required: true
+      PRICE_API_BASE_URL:
+        required: true
 
 jobs:
   publish-release:
-    environment: default-branch
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v3
+        uses: MetaMask/action-checkout-and-setup@v1
         with:
           is-high-risk-environment: true
+          ref: ${{ github.sha }}
       - uses: MetaMask/action-publish-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: yarn build
-        env:
-          LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
-          DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
-          ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
-          ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}
-          ESPLORA_TESTNET4: ${{ secrets.ESPLORA_TESTNET4 }}
-          ESPLORA_SIGNET: ${{ secrets.ESPLORA_SIGNET }}
-          ESPLORA_REGTEST: ${{ secrets.ESPLORA_REGTEST }}
-          PRICE_API_URL: ${{ secrets.PRICE_API_URL }}
-          PRICE_API_BASE_URL: ${{ vars.PRICE_API_BASE_URL }}
-          ENVIRONMENT: production
-          RPC_URL_LIST_MAINNET: ${{ secrets.RPC_URL_LIST_MAINNET }}
-          RPC_URL_LIST_NILE_TESTNET: ${{ vars.RPC_URL_LIST_NILE_TESTNET }}
-          RPC_URL_LIST_SHASTA_TESTNET: ${{ vars.RPC_URL_LIST_SHASTA_TESTNET }}
-          LOCAL_API_BASE_URL: ${{ vars.LOCAL_API_BASE_URL }}
-          TOKEN_API_BASE_URL: ${{ vars.TOKEN_API_BASE_URL }}
-          STATIC_API_BASE_URL: ${{ vars.STATIC_API_BASE_URL }}
-          SECURITY_ALERTS_API_BASE_URL: ${{ vars.SECURITY_ALERTS_API_BASE_URL }}
-          NFT_API_BASE_URL: ${{ vars.NFT_API_BASE_URL }}
-          EXPLORER_MAINNET_BASE_URL: ${{ vars.EXPLORER_MAINNET_BASE_URL }}
-          EXPLORER_NILE_BASE_URL: ${{ vars.EXPLORER_NILE_BASE_URL }}
-          EXPLORER_SHASTA_BASE_URL: ${{ vars.EXPLORER_SHASTA_BASE_URL }}
-          TRONGRID_BASE_URL_MAINNET: ${{ secrets.TRONGRID_BASE_URL_MAINNET }}
-          TRONGRID_BASE_URL_NILE: ${{ vars.TRONGRID_BASE_URL_NILE }}
-          TRONGRID_BASE_URL_SHASTA: ${{ vars.TRONGRID_BASE_URL_SHASTA }}
-          TRON_HTTP_BASE_URL_MAINNET: ${{ secrets.TRON_HTTP_BASE_URL_MAINNET }}
-          TRON_HTTP_BASE_URL_NILE: ${{ vars.TRON_HTTP_BASE_URL_NILE }}
-          TRON_HTTP_BASE_URL_SHASTA: ${{ vars.TRON_HTTP_BASE_URL_SHASTA }}
-          RPC_URL_MAINNET_LIST: ${{ secrets.RPC_URL_MAINNET_LIST }}
-          RPC_URL_DEVNET_LIST: ${{ secrets.RPC_URL_DEVNET_LIST }}
-          RPC_URL_TESTNET_LIST: ${{ vars.RPC_URL_TESTNET_LIST }}
-          RPC_URL_LOCALNET_LIST: ${{ vars.RPC_URL_LOCALNET_LIST }}
-          RPC_WEB_SOCKET_URL_MAINNET: ${{ secrets.RPC_WEB_SOCKET_URL_MAINNET }}
-          RPC_WEB_SOCKET_URL_DEVNET: ${{ secrets.RPC_WEB_SOCKET_URL_DEVNET }}
-          RPC_WEB_SOCKET_URL_TESTNET: ${{ vars.RPC_WEB_SOCKET_URL_TESTNET }}
-          RPC_WEB_SOCKET_URL_LOCALNET: ${{ vars.RPC_WEB_SOCKET_URL_LOCALNET }}
-          EXPLORER_BASE_URL: ${{ vars.EXPLORER_BASE_URL }}
-      - name: Require clean working directory
-        shell: bash
+      - name: Build
         run: |
-          if ! git diff --exit-code; then
-            echo "Working tree dirty at end of job"
-            exit 1
-          fi
+          yarn install
+          yarn workspace @metamask/stellar-wallet-snap build
+        env:
+          ENVIRONMENT: production
+          LOG_LEVEL: silent
+          RPC_URL_MAINNET: ${{ secrets.RPC_URL_MAINNET }}
+          HORIZON_URL_MAINNET: ${{ secrets.HORIZON_URL_MAINNET }}
+          EXPLORER_MAINNET_BASE_URL: ${{ secrets.EXPLORER_MAINNET_BASE_URL }}
+          RPC_URL_TESTNET: ${{ secrets.RPC_URL_TESTNET }}
+          HORIZON_URL_TESTNET: ${{ secrets.HORIZON_URL_TESTNET }}
+          EXPLORER_TESTNET_BASE_URL: ${{ secrets.EXPLORER_TESTNET_BASE_URL }}
+          TOKEN_API_BASE_URL: ${{ secrets.TOKEN_API_BASE_URL }}
+          STATIC_API_BASE_URL: ${{ secrets.STATIC_API_BASE_URL }}
+          PRICE_API_BASE_URL: ${{ secrets.PRICE_API_BASE_URL }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: publish-release-artifacts-${{ github.sha }}
           include-hidden-files: true
           retention-days: 4
           path: |
             ./packages/**/dist
+            ./packages/snap/snap.manifest.json
             ./node_modules/.yarn-state.yml
 
   publish-npm-dry-run:
-    name: Dry run publish to NPM
     runs-on: ubuntu-latest
     needs: publish-release
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v3
+        uses: MetaMask/action-checkout-and-setup@v1
         with:
           is-high-risk-environment: true
           ref: ${{ github.sha }}
       - name: Restore build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: publish-release-artifacts-${{ github.sha }}
-      - name: Dry run publish to NPM
-        uses: MetaMask/action-npm-publish@v6
+      - name: Dry Run Publish
+        uses: MetaMask/action-npm-publish@v5
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           subteam: S042S7RE4AE # @metamask-npm-publishers
+        env:
+          SKIP_PREPACK: true
 
   publish-npm:
-    name: Publish to NPM
     environment: npm-publish
     runs-on: ubuntu-latest
     needs: publish-npm-dry-run
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v3
+        uses: MetaMask/action-checkout-and-setup@v1
         with:
           is-high-risk-environment: true
           ref: ${{ github.sha }}
       - name: Restore build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: publish-release-artifacts-${{ github.sha }}
-      - name: Publish to NPM
-        uses: MetaMask/action-npm-publish@v6
+      - name: Publish
+        uses: MetaMask/action-npm-publish@v5
         with:
           npm-token: ${{ secrets.NPM_TOKEN }}
+        env:
+          SKIP_PREPACK: true
