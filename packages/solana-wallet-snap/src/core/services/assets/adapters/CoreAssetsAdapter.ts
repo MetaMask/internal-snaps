@@ -1,4 +1,3 @@
-import type { Caip19AssetId } from '@metamask/assets-controller';
 import { KeyringEvent } from '@metamask/keyring-api';
 import type {
   AccountAssetListUpdatedEvent,
@@ -74,10 +73,7 @@ export class CoreAssetsAdapter {
       return null;
     }
 
-    const asset = await this.#getAccountAssetByID(
-      accountId,
-      assetId as Caip19AssetId,
-    );
+    const asset = await this.#getAccountAssetByID(accountId, assetId);
 
     if (!asset) {
       return null;
@@ -103,14 +99,11 @@ export class CoreAssetsAdapter {
       ) as Record<CaipAssetType, AssetEntity | null>;
     }
 
-    const assets = await this.#getAccountAssetsByIDs(
-      accountId,
-      assetIds as Caip19AssetId[],
-    );
+    const assets = await this.#getAccountAssetsByIDs(accountId, assetIds);
 
     const entries = await Promise.all(
       assetIds.map(async (assetId) => {
-        const asset = assets[assetId as Caip19AssetId];
+        const asset = assets[assetId];
         if (!asset) {
           return [assetId, null] as const;
         }

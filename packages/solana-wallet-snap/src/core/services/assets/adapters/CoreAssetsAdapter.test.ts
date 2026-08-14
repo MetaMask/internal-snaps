@@ -230,9 +230,7 @@ describe('CoreAssetsAdapter', () => {
         const assets = await adapter.getAccountAssetsByIDs(ACCOUNT_ID, []);
 
         expect(assets).toStrictEqual({});
-        expect(
-          mockAssetsProvider.getAccountAssetsByIDs,
-        ).not.toHaveBeenCalled();
+        expect(mockAssetsProvider.getAccountAssetsByIDs).not.toHaveBeenCalled();
       });
     });
   });

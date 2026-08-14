@@ -107,9 +107,8 @@ describe('AssetsService', () => {
       getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
       getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
       findAccountById: mockAccountsService.findById.bind(mockAccountsService),
-      getActiveNetworks: mockConfigProvider.getActiveNetworks.bind(
-        mockConfigProvider,
-      ),
+      getActiveNetworks:
+        mockConfigProvider.getActiveNetworks.bind(mockConfigProvider),
     });
 
     assetsService = new AssetsService({
