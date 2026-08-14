@@ -1,23 +1,13 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
-import { KeyringEvent } from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 
-import type { AssetEntity, NftAsset } from '../../../../entities';
 import { KnownCaip19Id, Network } from '../../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-
-(globalThis as { snap?: unknown }).snap = {};
-
 const ACCOUNT_ID = MOCK_SOLANA_KEYRING_ACCOUNT_0.id;
 const MAINNET_ASSET_ID = KnownCaip19Id.SolMainnet as Caip19AssetId;
 const USDC_ASSET_ID = KnownCaip19Id.UsdcMainnet as Caip19AssetId;
-const NFT_ASSET_ID = `${Network.Mainnet}/nft:NftMintAddress`;
 
 /**
  * Builds a controller asset for adapter mapping tests.
@@ -63,26 +53,6 @@ function createControllerAsset(options: {
     },
     fiatValue: 0,
   } as Asset;
-}
-
-/**
- * Builds a snap-owned NFT asset entity for `saveMany` tests.
- *
- * @param overrides - Fields to override on the asset entity.
- * @returns An `NftAsset`.
- */
-function createNftAsset(overrides: Partial<NftAsset> = {}): NftAsset {
-  return {
-    assetType: NFT_ASSET_ID as NftAsset['assetType'],
-    keyringAccountId: ACCOUNT_ID,
-    network: Network.Mainnet,
-    mint: 'NftMintAddress',
-    pubkey: 'NftTokenAccount',
-    symbol: 'NFT',
-    rawAmount: '1',
-    uiAmount: '1',
-    ...overrides,
-  };
 }
 
 /**
@@ -265,6 +235,8 @@ describe('CoreAssetsAdapter', () => {
         expect(
           assets.every((asset) => asset.keyringAccountId === ACCOUNT_ID),
         ).toBe(true);
+        const usdc = assets.find((asset) => asset.assetType === USDC_ASSET_ID);
+        expect(usdc).not.toHaveProperty('pubkey');
       });
     });
 
@@ -348,81 +320,6 @@ describe('CoreAssetsAdapter', () => {
           );
         },
       );
-    });
-  });
-
-  describe('fetch', () => {
-    it('returns no assets because snap-owned NFT fetch is not produced', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
-        const assets = await adapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-
-        expect(assets).toStrictEqual([]);
-      });
-    });
-  });
-
-  describe('saveMany', () => {
-    it('does nothing when there are no snap-owned assets', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
-        await adapter.saveMany([
-          {
-            assetType: KnownCaip19Id.SolMainnet,
-            keyringAccountId: ACCOUNT_ID,
-            network: Network.Mainnet,
-            address: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
-            symbol: 'SOL',
-            decimals: 9,
-            rawAmount: '1000000000',
-            uiAmount: '1',
-          },
-        ]);
-
-        expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
-      });
-    });
-
-    it('publishes only snap-owned assets as added with balance updates', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
-        const fungibleAsset: AssetEntity = {
-          assetType: KnownCaip19Id.SolMainnet,
-          keyringAccountId: ACCOUNT_ID,
-          network: Network.Mainnet,
-          address: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
-          symbol: 'SOL',
-          decimals: 9,
-          rawAmount: '1000000000',
-          uiAmount: '1',
-        };
-
-        await adapter.saveMany([fungibleAsset, createNftAsset()]);
-
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountAssetListUpdated,
-          {
-            assets: {
-              [ACCOUNT_ID]: {
-                added: [NFT_ASSET_ID],
-                removed: [],
-              },
-            },
-          },
-        );
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountBalancesUpdated,
-          {
-            balances: {
-              [ACCOUNT_ID]: {
-                [NFT_ASSET_ID]: {
-                  unit: 'NFT',
-                  amount: '1',
-                },
-              },
-            },
-          },
-        );
-      });
     });
   });
 });
