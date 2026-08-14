@@ -188,8 +188,11 @@ export class AccountUseCases {
       return [];
     }
 
+    const startMs = Date.now();
+
     const { accounts, createdAccountKeys } = await this.#runAccountMutation(
       async () => {
+        const lookupStartMs = Date.now();
         const entries = reqs.map((req, index) => {
           const derivationPath = getAccountDerivationPath(req);
           return {
@@ -224,10 +227,12 @@ export class AccountUseCases {
         const entriesToCreate = uniqueEntries.filter(
           ({ pathKey }) => !existingAccountsByPath.has(pathKey),
         );
+        const lookupMs = Date.now() - lookupStartMs;
 
         // Batch-create so entropy is fetched once per parent path instead of
         // once per account; remaining per-account work is local derivation
         // plus synchronous WASM wallet construction, so no throttling needed.
+        const deriveStartMs = Date.now();
         const newAccounts =
           entriesToCreate.length > 0
             ? await this.#repository.createMany(
@@ -242,12 +247,28 @@ export class AccountUseCases {
         for (const newAccount of newAccounts) {
           newAccount.revealNextAddress();
         }
+        const deriveMs = Date.now() - deriveStartMs;
 
+        const persistStartMs = Date.now();
         if (newAccounts.length > 0) {
           // Reuse the lookup's state snapshot: we're inside the account
           // mutation, so it cannot have been changed by another creation.
           await this.#repository.insertMany(newAccounts, snapshot);
         }
+        const persistMs = Date.now() - persistStartMs;
+
+        // Stringified so the values survive in the console after the snap's
+        // execution environment is torn down.
+        this.#logger.info(
+          `[createMany] Phase timings ${JSON.stringify({
+            requested: reqs.length,
+            created: newAccounts.length,
+            lookupMs,
+            deriveMs,
+            persistMs,
+            totalMs: Date.now() - startMs,
+          })}`,
+        );
 
         const newAccountsByPath = new Map(
           entriesToCreate.map((entry, index) => [

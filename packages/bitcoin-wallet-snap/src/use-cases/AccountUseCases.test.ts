@@ -234,6 +234,22 @@ describe('AccountUseCases', () => {
       );
     });
 
+    it('logs phase timings for a batch creation', async () => {
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
+      });
+      mockRepository.createMany.mockResolvedValue([newAccount]);
+
+      await useCases.createMany([createParams]);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[createMany\] Phase timings \{.*"requested":1.*"created":1.*"lookupMs":\d+.*"deriveMs":\d+.*"persistMs":\d+.*"totalMs":\d+.*\}$/u,
+        ),
+      );
+    });
+
     it('propagates createMany errors without inserting accounts', async () => {
       const error = new Error('createMany failed');
       mockRepository.getByDerivationPaths.mockResolvedValue({
