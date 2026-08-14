@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands), including Core messenger plumbing (`coreMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`). ([#122](https://github.com/MetaMask/internal-snaps/pull/122))
+
 ### Changed
 
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
