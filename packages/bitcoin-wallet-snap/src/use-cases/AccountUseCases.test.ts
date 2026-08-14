@@ -136,12 +136,16 @@ describe('AccountUseCases', () => {
       id: 'new-id',
       network: createParams.network,
     });
+    const mockSnapshot = {
+      accounts: null,
+      derivationPaths: null,
+    };
 
     it('reuses existing accounts and bulk-inserts newly-created accounts', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue([
-        existingAccount,
-        null,
-      ]);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [existingAccount, null],
+        snapshot: mockSnapshot,
+      });
       mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([
@@ -161,7 +165,10 @@ describe('AccountUseCases', () => {
         },
       ]);
       expect(newAccount.revealNextAddress).toHaveBeenCalled();
-      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [newAccount],
+        mockSnapshot,
+      );
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         duration: 'PT1S',
         method: CronMethod.FullScanAccount,
@@ -171,7 +178,10 @@ describe('AccountUseCases', () => {
     });
 
     it('creates only one account for duplicate derivation paths in the same batch', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
+      });
       mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([createParams, createParams]);
@@ -187,12 +197,18 @@ describe('AccountUseCases', () => {
           addressType: createParams.addressType,
         },
       ]);
-      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [newAccount],
+        mockSnapshot,
+      );
       expect(result).toStrictEqual([newAccount, newAccount]);
     });
 
     it('does not create or insert accounts when all accounts already exist', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue([existingAccount]);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [existingAccount],
+        snapshot: mockSnapshot,
+      });
 
       const result = await useCases.createMany([createParams]);
 
@@ -203,18 +219,27 @@ describe('AccountUseCases', () => {
 
     it('propagates insertMany errors without emitting account-created events', async () => {
       const error = new Error('insertMany failed');
-      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
+      });
       mockRepository.createMany.mockResolvedValue([newAccount]);
       mockRepository.insertMany.mockRejectedValue(error);
 
       await expect(useCases.createMany([createParams])).rejects.toBe(error);
 
-      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [newAccount],
+        mockSnapshot,
+      );
     });
 
     it('propagates createMany errors without inserting accounts', async () => {
       const error = new Error('createMany failed');
-      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
+      });
       mockRepository.createMany.mockRejectedValue(error);
 
       await expect(useCases.createMany([createParams])).rejects.toBe(error);

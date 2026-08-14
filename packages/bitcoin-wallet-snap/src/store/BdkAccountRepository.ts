@@ -13,6 +13,7 @@ import { v4 } from 'uuid';
 
 import { StorageError } from '../entities';
 import type {
+  AccountStateSnapshot,
   BitcoinAccountRepository,
   BitcoinAccount,
   SnapClient,
@@ -118,11 +119,15 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     return this.get(id as string);
   }
 
-  async getByDerivationPaths(
-    derivationPaths: string[][],
-  ): Promise<(BitcoinAccount | null)[]> {
+  async getByDerivationPaths(derivationPaths: string[][]): Promise<{
+    accounts: (BitcoinAccount | null)[];
+    snapshot: AccountStateSnapshot;
+  }> {
     if (derivationPaths.length === 0) {
-      return [];
+      return {
+        accounts: [],
+        snapshot: { accounts: null, derivationPaths: null },
+      };
     }
 
     const [derivationPathIndex, accounts] = await Promise.all([
@@ -167,14 +172,20 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       return this.#loadPersistedAccount(id, account);
     });
 
-    if (Object.keys(repairs).length > 0) {
-      await this.#snapClient.setState('derivationPaths', {
-        ...existingDerivationPathIndex,
-        ...repairs,
-      });
+    const hasRepairs = Object.keys(repairs).length > 0;
+    const repairedIndex = hasRepairs
+      ? { ...existingDerivationPathIndex, ...repairs }
+      : derivationPathIndex;
+
+    if (hasRepairs) {
+      await this.#snapClient.setState('derivationPaths', repairedIndex);
     }
 
-    return results;
+    return {
+      accounts: results,
+      // Include repairs so a later merge from this snapshot preserves them.
+      snapshot: { accounts, derivationPaths: repairedIndex },
+    };
   }
 
   async getWithSigner(id: string): Promise<BitcoinAccount | null> {
@@ -330,7 +341,10 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     return account;
   }
 
-  async insertMany(accounts: BitcoinAccount[]): Promise<BitcoinAccount[]> {
+  async insertMany(
+    accounts: BitcoinAccount[],
+    snapshot?: AccountStateSnapshot,
+  ): Promise<BitcoinAccount[]> {
     if (accounts.length === 0) {
       return [];
     }
@@ -363,24 +377,37 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       derivationPathEntries.push([getDerivationPathKey(derivationPath), id]);
     }
 
-    const [existingAccounts, existingDerivationPaths] = await Promise.all([
-      this.#snapClient.getState('accounts') as Promise<
-        SnapState['accounts'] | null
-      >,
-      this.#snapClient.getState('derivationPaths') as Promise<
-        SnapState['derivationPaths'] | null
-      >,
+    // Reuse the caller's snapshot when provided (safe within the same account
+    // mutation) instead of re-reading state that was just loaded.
+    let existingAccounts: SnapState['accounts'] | null;
+    let existingDerivationPaths: SnapState['derivationPaths'] | null;
+    if (snapshot) {
+      ({
+        accounts: existingAccounts,
+        derivationPaths: existingDerivationPaths,
+      } = snapshot);
+    } else {
+      [existingAccounts, existingDerivationPaths] = await Promise.all([
+        this.#snapClient.getState('accounts') as Promise<
+          SnapState['accounts'] | null
+        >,
+        this.#snapClient.getState('derivationPaths') as Promise<
+          SnapState['derivationPaths'] | null
+        >,
+      ]);
+    }
+
+    // The two maps are independent, so write them in parallel.
+    await Promise.all([
+      this.#snapClient.setState('accounts', {
+        ...(existingAccounts ?? {}),
+        ...Object.fromEntries(accountStateEntries),
+      }),
+      this.#snapClient.setState('derivationPaths', {
+        ...(existingDerivationPaths ?? {}),
+        ...Object.fromEntries(derivationPathEntries),
+      }),
     ]);
-
-    await this.#snapClient.setState('accounts', {
-      ...(existingAccounts ?? {}),
-      ...Object.fromEntries(accountStateEntries),
-    });
-
-    await this.#snapClient.setState('derivationPaths', {
-      ...(existingDerivationPaths ?? {}),
-      ...Object.fromEntries(derivationPathEntries),
-    });
 
     return accounts;
   }

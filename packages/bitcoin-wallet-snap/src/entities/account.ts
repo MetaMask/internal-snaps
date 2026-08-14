@@ -17,6 +17,7 @@ import type {
 } from '@metamask/bitcoindevkit';
 
 import type { Inscription } from './meta-protocols';
+import type { AccountStateSnapshot } from './snap';
 import type { TransactionBuilder } from './transaction';
 
 /**
@@ -273,11 +274,14 @@ export type BitcoinAccountRepository = {
    * Get accounts by derivation path.
    *
    * @param derivationPaths - derivation paths.
-   * @returns the accounts or null if they do not exist, in input order
+   * @returns the accounts or null if they do not exist (in input order), and
+   * the state snapshot the lookup was resolved from, reusable by `insertMany`
+   * within the same account mutation
    */
-  getByDerivationPaths(
-    derivationPaths: string[][],
-  ): Promise<(BitcoinAccount | null)[]>;
+  getByDerivationPaths(derivationPaths: string[][]): Promise<{
+    accounts: (BitcoinAccount | null)[];
+    snapshot: AccountStateSnapshot;
+  }>;
 
   /**
    * Create a new account, without persisting it.
@@ -319,8 +323,14 @@ export type BitcoinAccountRepository = {
    * Insert accounts.
    *
    * @param accounts - Bitcoin accounts.
+   * @param snapshot - Optional state snapshot (from `getByDerivationPaths`)
+   * to merge into, avoiding a redundant state read. Only safe when the
+   * snapshot was taken within the same account mutation.
    */
-  insertMany(accounts: BitcoinAccount[]): Promise<BitcoinAccount[]>;
+  insertMany(
+    accounts: BitcoinAccount[],
+    snapshot?: AccountStateSnapshot,
+  ): Promise<BitcoinAccount[]>;
 
   /**
    * Update an account.

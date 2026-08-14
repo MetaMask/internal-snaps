@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduce `keyring_createAccounts` entropy RPCs from one per account to one per distinct parent path by fetching the account-level parent node once and deriving hardened children locally ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
   - The private parent node is held transiently in memory during the batch — the same trust boundary as the previous per-account implementation — and children are neutered before descriptor construction.
   - The creation concurrency throttle is removed: with derivation local, the remaining per-account work is synchronous WASM wallet construction.
+- Reduce full-state round trips during batch account creation: the insert step reuses the state snapshot loaded by the existing-accounts lookup instead of re-reading both account maps, and the two state writes now run in parallel ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
 
 ### Fixed
 

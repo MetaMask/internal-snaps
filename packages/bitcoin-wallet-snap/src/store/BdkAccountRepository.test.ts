@@ -245,7 +245,17 @@ describe('BdkAccountRepository', () => {
       expect(mockSnapClient.getState).toHaveBeenCalledWith('derivationPaths');
       expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
       expect(mockSnapClient.getState).toHaveBeenCalledTimes(2);
-      expect(result).toStrictEqual([mockAccount2, mockAccount1]);
+      expect(result.accounts).toStrictEqual([mockAccount2, mockAccount1]);
+      expect(result.snapshot).toStrictEqual({
+        accounts: {
+          'some-id-1': accountState1,
+          'some-id-2': accountState2,
+        },
+        derivationPaths: {
+          "m/84'/0'/1'": 'some-id-1',
+          "m/84'/0'/2'": 'some-id-2',
+        },
+      });
       expect(mockSnapClient.setState).not.toHaveBeenCalled();
     });
 
@@ -270,7 +280,7 @@ describe('BdkAccountRepository', () => {
       (ChangeSet.from_json as jest.Mock).mockClear();
 
       const result = await repo.getByDerivationPaths([derivationPath1]);
-      const account = result[0];
+      const account = result.accounts[0];
 
       expect(account?.id).toBe('some-id-1');
       expect(account?.publicAddress.toString()).toBe('bc1qaddress...');
@@ -301,8 +311,13 @@ describe('BdkAccountRepository', () => {
         derivationPath2,
       ]);
 
-      expect(result).toStrictEqual([mockAccount1, mockAccount2]);
+      expect(result.accounts).toStrictEqual([mockAccount1, mockAccount2]);
       expect(mockSnapClient.setState).toHaveBeenCalledWith('derivationPaths', {
+        "m/84'/0'/1'": 'some-id-1',
+        "m/84'/0'/2'": 'some-id-2',
+      });
+      // The snapshot reflects the repaired index so later merges keep it.
+      expect(result.snapshot.derivationPaths).toStrictEqual({
         "m/84'/0'/1'": 'some-id-1',
         "m/84'/0'/2'": 'some-id-2',
       });
@@ -316,7 +331,7 @@ describe('BdkAccountRepository', () => {
 
       const result = await repo.getByDerivationPaths([derivationPath1]);
 
-      expect(result).toStrictEqual([mockAccount1]);
+      expect(result.accounts).toStrictEqual([mockAccount1]);
       expect(mockSnapClient.setState).toHaveBeenCalledWith('derivationPaths', {
         "m/84'/0'/1'": 'some-id-1',
       });
@@ -609,6 +624,63 @@ describe('BdkAccountRepository', () => {
           "m/84'/0'/2'": 'some-id-2',
         },
       );
+    });
+
+    it('merges into a provided snapshot without re-reading state', async () => {
+      const existingAccountState: AccountState = {
+        wallet: mockWalletData,
+        inscriptions: [],
+        derivationPath: mockDerivationPath,
+      };
+      const makeInsertableAccount = (
+        id: string,
+        derivationPath: string[],
+      ): BitcoinAccount => {
+        const account = mock<BitcoinAccount>();
+        account.id = id;
+        account.derivationPath = derivationPath;
+        account.network = 'bitcoin';
+        account.addressType = 'p2wpkh';
+        account.publicAddress = mockAddress;
+        account.publicDescriptor = 'mock-public-descriptor';
+        (account.takeStaged as jest.Mock) = jest
+          .fn()
+          .mockReturnValue(mockChangeSet);
+        (account.hasStaged as jest.Mock) = jest.fn().mockReturnValue(true);
+        return account;
+      };
+      const account1 = makeInsertableAccount('some-id-1', [
+        'm',
+        "84'",
+        "0'",
+        "1'",
+      ]);
+      const account2 = makeInsertableAccount('some-id-2', [
+        'm',
+        "84'",
+        "0'",
+        "2'",
+      ]);
+
+      await repo.insertMany([account1, account2], {
+        accounts: { 'existing-id': existingAccountState },
+        derivationPaths: { "m/84'/0'/0'": 'existing-id' },
+      });
+
+      expect(mockSnapClient.getState).not.toHaveBeenCalled();
+      expect(mockSnapClient.setState).toHaveBeenCalledWith(
+        'accounts',
+        expect.objectContaining({
+          'existing-id': existingAccountState,
+          'some-id-1': expect.anything(),
+          'some-id-2': expect.anything(),
+        }),
+      );
+      expect(mockSnapClient.setState).toHaveBeenCalledWith('derivationPaths', {
+        "m/84'/0'/0'": 'existing-id',
+        "m/84'/0'/1'": 'some-id-1',
+        "m/84'/0'/2'": 'some-id-2',
+      });
     });
   });
 

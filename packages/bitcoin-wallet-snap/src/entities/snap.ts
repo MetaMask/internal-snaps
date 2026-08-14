@@ -17,6 +17,15 @@ export type SnapState = {
   derivationPaths: Record<string, string>;
 };
 
+/**
+ * In-memory snapshot of the account maps, as loaded from state. Lets a lookup
+ * and a subsequent insert within the same account mutation share one read.
+ */
+export type AccountStateSnapshot = {
+  accounts: SnapState['accounts'] | null;
+  derivationPaths: SnapState['derivationPaths'] | null;
+};
+
 export type AccountState = {
   // Split derivation path.
   derivationPath: string[];

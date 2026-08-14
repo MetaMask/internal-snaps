@@ -208,9 +208,10 @@ export class AccountUseCases {
         }
         const uniqueEntries = [...uniqueEntriesByPath.values()];
 
-        const existingAccounts = await this.#repository.getByDerivationPaths(
-          uniqueEntries.map(({ derivationPath }) => derivationPath),
-        );
+        const { accounts: existingAccounts, snapshot } =
+          await this.#repository.getByDerivationPaths(
+            uniqueEntries.map(({ derivationPath }) => derivationPath),
+          );
         const existingAccountsByPath = new Map<string, BitcoinAccount>();
 
         uniqueEntries.forEach((entry, index) => {
@@ -243,7 +244,9 @@ export class AccountUseCases {
         }
 
         if (newAccounts.length > 0) {
-          await this.#repository.insertMany(newAccounts);
+          // Reuse the lookup's state snapshot: we're inside the account
+          // mutation, so it cannot have been changed by another creation.
+          await this.#repository.insertMany(newAccounts, snapshot);
         }
 
         const newAccountsByPath = new Map(
