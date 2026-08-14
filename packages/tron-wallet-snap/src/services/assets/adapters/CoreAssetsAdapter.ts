@@ -12,8 +12,8 @@ import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
-import { createPrefixedLogger } from '../../../utils/logger';
 import type { ILogger } from '../../../utils/logger';
+import logger, { createPrefixedLogger } from '../../../utils/logger';
 import { buildAccountResources } from '../utils/buildAccountResources';
 import { buildStakedData } from '../utils/buildStakedData';
 import { extractBandwidth } from '../utils/extractBandwidth';
@@ -25,6 +25,15 @@ import { extractStakingRewardsAsset } from '../utils/extractStakingRewardsAsset'
 import { isSnapOwnedAsset } from '../utils/isSnapOwnedAsset';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
 
+export type CoreAssetsAdapterOptions = {
+  getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
+  getAccountAssetsByIDs: AssetsProvider['getAccountAssetsByIDs'];
+  getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
+  getAddressInfo: TrongridApiClient['getAccountInfoByAddress'];
+  getAddressResources: TronHttpClient['getAccountResources'];
+  getAddressStakingRewards: TronHttpClient['getReward'];
+};
+
 /**
  * Uses the AssetsController for fungible reads. Snap-owned (special) assets are
  * published via keyring events without local persistence when migration is active.
@@ -32,38 +41,43 @@ import { mapControllerAsset } from '../utils/mapControllerAsset';
 export class CoreAssetsAdapter {
   readonly #logger: ILogger;
 
-  readonly #assetsProvider: AssetsProvider;
+  readonly #getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
 
-  readonly #trongridApiClient: TrongridApiClient;
+  readonly #getAccountAssetsByIDs: AssetsProvider['getAccountAssetsByIDs'];
 
-  readonly #tronHttpClient: TronHttpClient;
+  readonly #getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
 
-  constructor({
-    logger,
-    assetsProvider,
-    trongridApiClient,
-    tronHttpClient,
-  }: {
-    logger: ILogger;
-    assetsProvider: AssetsProvider;
-    trongridApiClient: TrongridApiClient;
-    tronHttpClient: TronHttpClient;
-  }) {
+  readonly #getAddressInfo: TrongridApiClient['getAccountInfoByAddress'];
+
+  readonly #getAddressResources: TronHttpClient['getAccountResources'];
+
+  readonly #getAddressStakingRewards: TronHttpClient['getReward'];
+
+  constructor(options: CoreAssetsAdapterOptions) {
+    const {
+      getAccountAssetByID,
+      getAccountAssetsByIDs,
+      getAccountAssetsByScope,
+      getAddressInfo,
+      getAddressResources,
+      getAddressStakingRewards,
+    } = options;
+
     this.#logger = createPrefixedLogger(logger, '[CoreAssetsAdapter]');
-    this.#assetsProvider = assetsProvider;
-    this.#trongridApiClient = trongridApiClient;
-    this.#tronHttpClient = tronHttpClient;
+    this.#getAccountAssetByID = getAccountAssetByID;
+    this.#getAccountAssetsByIDs = getAccountAssetsByIDs;
+    this.#getAccountAssetsByScope = getAccountAssetsByScope;
+    this.#getAddressInfo = getAddressInfo;
+    this.#getAddressResources = getAddressResources;
+    this.#getAddressStakingRewards = getAddressStakingRewards;
   }
 
   async getAccountAssetByID(
     accountId: string,
-    assetId: string,
+    assetId: Caip19AssetId,
   ): Promise<AssetEntity | null> {
     this.#logger.info('Getting account asset by ID', { accountId, assetId });
-    const asset = await this.#assetsProvider.getAccountAssetByID(
-      accountId,
-      assetId as Caip19AssetId,
-    );
+    const asset = await this.#getAccountAssetByID(accountId, assetId);
 
     if (!asset) {
       return null;
@@ -74,44 +88,40 @@ export class CoreAssetsAdapter {
 
   async getAccountAssetsByIDs(
     accountId: string,
-    assetIds: string[],
+    assetIds: Caip19AssetId[],
   ): Promise<(AssetEntity | null)[]> {
     this.#logger.info('Getting account assets by IDs', { accountId, assetIds });
-    const assets = await this.#assetsProvider.getAccountAssetsByIDs(
-      accountId,
-      assetIds as Caip19AssetId[],
-    );
+    const assets = await this.#getAccountAssetsByIDs(accountId, assetIds);
 
     return assetIds.map((assetId) => {
-      const asset = assets[assetId as Caip19AssetId];
+      const asset = assets[assetId];
       return asset ? mapControllerAsset(accountId, asset) : null;
     });
   }
 
   async getAccountAssetsByScope(
     scope: Network,
-    keyringAccountId: string,
+    accountId: string,
   ): Promise<AssetEntity[]> {
     this.#logger.info('Getting account assets by scope', {
       scope,
-      keyringAccountId,
+      accountId,
     });
-    const controllerAssets = await this.#assetsProvider.getAccountAssetsByScope(
+    const controllerAssets = await this.#getAccountAssetsByScope(
       scope,
-      keyringAccountId,
+      accountId,
     );
 
     return Object.values(controllerAssets).map((asset) =>
-      mapControllerAsset(keyringAccountId, asset),
+      mapControllerAsset(accountId, asset),
     );
   }
 
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    this.#logger.info('Getting account assets', { accountId });
     const [mainnetAssets, nileAssets, shastaAssets] = await Promise.all([
-      this.#assetsProvider.getAccountAssetsByScope(Network.Mainnet, accountId),
-      this.#assetsProvider.getAccountAssetsByScope(Network.Nile, accountId),
-      this.#assetsProvider.getAccountAssetsByScope(Network.Shasta, accountId),
+      this.#getAccountAssetsByScope(Network.Mainnet, accountId),
+      this.#getAccountAssetsByScope(Network.Nile, accountId),
+      this.#getAccountAssetsByScope(Network.Shasta, accountId),
     ]);
 
     const allUnmappedAssets = [
@@ -144,28 +154,32 @@ export class CoreAssetsAdapter {
       account,
     });
 
+    /**
+     * We use `Promise.allSettled` to avoid failing the whole fetch if one of the requests fails.
+     * We expect `getAccountInfoByAddress` to fail for inactive accounts.
+     */
     const [
-      tronAccountInfoRequest,
-      tronAccountResourcesRequest,
-      stakingRewardsRequest,
+      addressInfoRequest,
+      addressResourcesRequest,
+      addressStakingRewardsRequest,
     ] = await Promise.allSettled([
-      this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
-      this.#tronHttpClient.getAccountResources(scope, account.address),
-      this.#tronHttpClient.getReward(scope, account.address),
+      this.#getAddressInfo(scope, account.address),
+      this.#getAddressResources(scope, account.address),
+      this.#getAddressStakingRewards(scope, account.address),
     ]);
 
-    if (tronAccountInfoRequest.status === 'rejected') {
+    if (addressInfoRequest.status === 'rejected') {
       this.#logger.info(
         'Account info request failed, treating as inactive account',
         { account, scope },
       );
     }
 
-    const stakedData = buildStakedData(tronAccountInfoRequest);
-    const resources = buildAccountResources(tronAccountResourcesRequest);
+    const stakedData = buildStakedData(addressInfoRequest);
+    const resources = buildAccountResources(addressResourcesRequest);
     const stakingRewards =
-      stakingRewardsRequest.status === 'fulfilled'
-        ? Math.max(0, stakingRewardsRequest.value)
+      addressStakingRewardsRequest.status === 'fulfilled'
+        ? Math.max(0, addressStakingRewardsRequest.value)
         : 0;
 
     return [

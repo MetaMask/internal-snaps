@@ -127,10 +127,15 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   configProvider,
 });
 const coreAssetsAdapter = new CoreAssetsAdapter({
-  logger,
-  assetsProvider,
-  trongridApiClient,
-  tronHttpClient,
+  getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
+  getAccountAssetsByIDs:
+    assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
+  getAccountAssetsByScope:
+    assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+  getAddressInfo:
+    trongridApiClient.getAccountInfoByAddress.bind(trongridApiClient),
+  getAddressResources: tronHttpClient.getAccountResources.bind(tronHttpClient),
+  getAddressStakingRewards: tronHttpClient.getReward.bind(tronHttpClient),
 });
 
 // Business Services

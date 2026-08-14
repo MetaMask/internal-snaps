@@ -292,14 +292,12 @@ async function withAssetsService<ReturnValue>(
     configProvider,
   });
   const coreAdapter = new CoreAssetsAdapter({
-    logger: mockLogger,
-    assetsProvider: {
-      getAccountAssetByID: jest.fn().mockResolvedValue(null),
-      getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
-      getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
-    },
-    trongridApiClient: mockTrongridApiClient,
-    tronHttpClient: mockTronHttpClient,
+    getAccountAssetByID: jest.fn().mockResolvedValue(null),
+    getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
+    getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+    getAddressInfo: mockTrongridApiClient.getAccountInfoByAddress,
+    getAddressResources: mockTronHttpClient.getAccountResources,
+    getAddressStakingRewards: mockTronHttpClient.getReward,
   });
   const assetsService = new AssetsService({ snapAdapter, coreAdapter });
 
