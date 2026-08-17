@@ -30,7 +30,7 @@ docker exec esplora bash /init-esplora.sh
 
 echo "Running integration tests..."
 set +e
-jest --config jest.integration.config.js
+jest --config jest.integration.config.mjs
 TEST_EXIT_CODE=$?
 set -e
 exit $TEST_EXIT_CODE

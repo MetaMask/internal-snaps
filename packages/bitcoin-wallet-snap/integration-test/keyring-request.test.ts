@@ -8,6 +8,11 @@ import { Caip19Asset } from '../src/handlers/caip';
 import type { FillPsbtResponse } from '../src/handlers/KeyringRequestHandler';
 import { BlockchainTestUtils } from './blockchain-utils';
 import { MNEMONIC, ORIGIN } from './constants';
+import { buildTemplatePsbt, readOutputs } from './psbt-utils';
+
+const DEPOSIT_SCRIPT =
+  '5120e44fd4d762ab7db99520bf8cc1b44658404c7626bae50b7d78041d4337bb98b8';
+const OP_RETURN_SCRIPT = '6a0568656c6c6f';
 
 const ACCOUNT_INDEX = 3;
 const submitRequestMethod = 'keyring_submitRequest';
@@ -132,24 +137,20 @@ describe('KeyringRequestHandler', () => {
         } as KeyringRequest,
       });
 
-      expect(response).toRespondWith({
-        pending: false,
-        result: [
-          {
-            address: 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
-            derivationIndex: 0,
-            outpoint: expect.any(String),
-            scriptPubkey:
-              'OP_0 OP_PUSHBYTES_20 82932f60427f769dfab2f449c91b4d9e94a8edb4',
-            scriptPubkeyHex: '001482932f60427f769dfab2f449c91b4d9e94a8edb4',
-            value: '1000000000',
-          },
-        ],
-      });
+      expect(response).toRespondWith([
+        {
+          address: 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
+          derivationIndex: 0,
+          outpoint: expect.any(String),
+          scriptPubkey:
+            'OP_0 OP_PUSHBYTES_20 82932f60427f769dfab2f449c91b4d9e94a8edb4',
+          scriptPubkeyHex: '001482932f60427f769dfab2f449c91b4d9e94a8edb4',
+          value: '1000000000',
+        },
+      ]);
 
-      const utxos = (
-        response.response as { result: { result: { outpoint: string }[] } }
-      ).result.result;
+      const utxos = (response.response as { result: { outpoint: string }[] })
+        .result;
 
       response = await snap.onKeyringRequest({
         origin: ORIGIN,
@@ -169,10 +170,7 @@ describe('KeyringRequestHandler', () => {
         } as KeyringRequest,
       });
 
-      expect(response).toRespondWith({
-        pending: false,
-        result: utxos[0],
-      });
+      expect(response).toRespondWith(utxos[0]);
     });
 
     it('publicDescriptor', async () => {
@@ -190,11 +188,9 @@ describe('KeyringRequestHandler', () => {
         } as KeyringRequest,
       });
 
-      expect(response).toRespondWith({
-        pending: false,
-        result:
-          "wpkh([27f9035f/84'/1'/0']tpubDCkv2fHDfPg5ok9EPv6CDozH72rvY2jgEPm79szMeBwCBwUf2T6n5nLrWFfhuuD48SgzrELezoiyDM9KbZaVen4wuuGwrqQANDhzB7E8yDh/0/*)#sx899xk6",
-      });
+      expect(response).toRespondWith(
+        "wpkh([27f9035f/84'/1'/0']tpubDCkv2fHDfPg5ok9EPv6CDozH72rvY2jgEPm79szMeBwCBwUf2T6n5nLrWFfhuuD48SgzrELezoiyDM9KbZaVen4wuuGwrqQANDhzB7E8yDh/0/*)#sx899xk6",
+      );
     });
   });
 
@@ -236,11 +232,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          psbt: SIGNED_PSBT,
-          txid: null,
-        },
+        psbt: SIGNED_PSBT,
+        txid: null,
       });
     });
 
@@ -275,11 +268,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          psbt: expect.any(String), // non deterministic
-          txid: null,
-        },
+        psbt: expect.any(String), // non deterministic
+        txid: null,
       });
     });
 
@@ -314,12 +304,9 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          psbt: expect.any(String), // non deterministic
-          txid: expect.any(String),
-          canBeMalleable: false,
-        },
+        psbt: expect.any(String), // non deterministic
+        txid: expect.any(String),
+        canBeMalleable: false,
       });
 
       // Regression for issue #597: after broadcasting a partial-spend tx
@@ -466,11 +453,69 @@ describe('KeyringRequestHandler', () => {
       });
 
       expect(response).toRespondWith({
-        pending: false,
-        result: {
-          psbt: expect.any(String), // non deterministic
-        },
+        psbt: expect.any(String), // the change amount is not deterministic
       });
+
+      const { psbt } = (response.response as { result: FillPsbtResponse })
+        .result;
+      const templateOutputs = readOutputs(TEMPLATE_PSBT);
+
+      // the last template output belongs to the wallet, so it becomes the drain
+      // output and takes the excess: assert the order, not its value
+      expect(
+        readOutputs(psbt)
+          .slice(0, templateOutputs.length)
+          .map((output) => output.scriptHex),
+      ).toStrictEqual(templateOutputs.map((output) => output.scriptHex));
+    });
+
+    it('keeps a wallet-owned output in its template position', async () => {
+      const utxosResponse = await snap.onKeyringRequest({
+        origin: ORIGIN,
+        method: submitRequestMethod,
+        params: {
+          id: account.id,
+          origin,
+          scope: BtcScope.Regtest,
+          account: account.id,
+          request: { method: AccountCapability.ListUtxos },
+        } as KeyringRequest,
+      });
+      const ourScriptHex = (
+        utxosResponse.response as { result: { scriptPubkeyHex: string }[] }
+      ).result[0]?.scriptPubkeyHex as string;
+
+      const templateOutputs = [
+        { scriptHex: DEPOSIT_SCRIPT, value: 20000 },
+        { scriptHex: ourScriptHex, value: 1000 },
+        { scriptHex: OP_RETURN_SCRIPT, value: 0 },
+      ];
+
+      const response = await snap.onKeyringRequest({
+        origin: ORIGIN,
+        method: submitRequestMethod,
+        params: {
+          id: account.id,
+          origin,
+          scope: BtcScope.Regtest,
+          account: account.id,
+          request: {
+            method: AccountCapability.FillPsbt,
+            params: {
+              account: { address: account.address },
+              psbt: buildTemplatePsbt(templateOutputs),
+              feeRate: 3,
+            },
+          },
+        } as KeyringRequest,
+      });
+
+      const { psbt } = (response.response as { result: FillPsbtResponse })
+        .result;
+      const builtOutputs = readOutputs(psbt);
+
+      expect(builtOutputs.slice(0, 3)).toStrictEqual(templateOutputs);
+      expect(builtOutputs.length).toBeGreaterThan(3);
     });
 
     it('fails if invalid PSBT', async () => {
@@ -526,10 +571,7 @@ describe('KeyringRequestHandler', () => {
       });
 
       expect(response).toRespondWith({
-        pending: false,
-        result: {
-          fee: '632',
-        },
+        fee: '632',
       });
     });
 
@@ -596,9 +638,7 @@ describe('KeyringRequestHandler', () => {
 
       const signResult = await signResponse;
 
-      const { result } = (
-        signResult.response as { result: { result: FillPsbtResponse } }
-      ).result;
+      const { result } = signResult.response as { result: FillPsbtResponse };
 
       const response = await snap.onKeyringRequest({
         origin: ORIGIN,
@@ -619,11 +659,8 @@ describe('KeyringRequestHandler', () => {
       });
 
       expect(response).toRespondWith({
-        pending: false,
-        result: {
-          txid: expect.any(String),
-          canBeMalleable: false,
-        },
+        txid: expect.any(String),
+        canBeMalleable: false,
       });
     });
 
@@ -687,11 +724,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          txid: expect.any(String),
-          canBeMalleable: false,
-        },
+        txid: expect.any(String),
+        canBeMalleable: false,
       });
     });
 
@@ -749,11 +783,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          signature:
-            'AkcwRAIgZxodJQ60t9Rr/hABEHZ1zPUJ4m5hdM5QLpysH8fDSzgCIENOEuZtYf9/Nn/ZW15PcImkknol403dmZrgoOQ+6K+TASECwDKypXm/ElmVTxTLJ7nao6X5mB/iGbU2Q2qtot0QRL4=',
-        },
+        signature:
+          'AkcwRAIgZxodJQ60t9Rr/hABEHZ1zPUJ4m5hdM5QLpysH8fDSzgCIENOEuZtYf9/Nn/ZW15PcImkknol403dmZrgoOQ+6K+TASECwDKypXm/ElmVTxTLJ7nao6X5mB/iGbU2Q2qtot0QRL4=',
       });
     });
   });
