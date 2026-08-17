@@ -779,6 +779,15 @@ export class AccountUseCases {
     const frozenUTXOs = await this.#repository.getFrozenUTXOs(account.id);
     const feeRateToUse = feeRate ?? (await this.getFallbackFeeRate(account));
 
+    const templateOutputs = templatePsbt.unsigned_tx.output;
+    const lastOutput = templateOutputs[templateOutputs.length - 1];
+    // the drain output is appended last, so only a trailing output of ours keeps its position. If the template has no output of ours, a change output is added automatically.
+    const drainOutput =
+      lastOutput && account.isMine(lastOutput.script_pubkey)
+        ? lastOutput
+        : undefined;
+
+    let builtPsbt: Psbt;
     try {
       let builder = account
         .buildTx()
@@ -786,9 +795,8 @@ export class AccountUseCases {
         .unspendable(frozenUTXOs)
         .untouchedOrdering(); // we need to strictly adhere to the template output order. Many protocols use the order (e.g: 1: deposit, 2: OP_RETURN, 3: change)
 
-      for (const txout of templatePsbt.unsigned_tx.output) {
-        // if the PSBT contains an output that is sending to ourselves, we change its value. If the PSBT contains no change outputs, one will automatically be added.
-        if (account.isMine(txout.script_pubkey)) {
+      for (const txout of templateOutputs) {
+        if (txout === drainOutput) {
           builder = builder.drainToByScript(txout.script_pubkey);
         } else {
           builder = builder.addRecipientByScript(
@@ -797,12 +805,9 @@ export class AccountUseCases {
           );
         }
       }
-      let builtPsbt = builder.finish();
+      builtPsbt = builder.finish();
 
-      if (
-        builtPsbt.unsigned_tx.output.length <
-        templatePsbt.unsigned_tx.output.length
-      ) {
+      if (builtPsbt.unsigned_tx.output.length < templateOutputs.length) {
         // Second attempt: use fixed recipients for all outputs
         builder = account
           .buildTx()
@@ -810,7 +815,7 @@ export class AccountUseCases {
           .unspendable(frozenUTXOs)
           .untouchedOrdering();
 
-        for (const txout of templatePsbt.unsigned_tx.output) {
+        for (const txout of templateOutputs) {
           builder = builder.addRecipientByScript(
             txout.value,
             txout.script_pubkey,
@@ -818,8 +823,6 @@ export class AccountUseCases {
         }
         builtPsbt = builder.finish();
       }
-
-      return builtPsbt;
     } catch (error) {
       const causeMessage = (error as Error)?.message ?? 'unknown cause';
       throw new ValidationError(
@@ -832,6 +835,33 @@ export class AccountUseCases {
         error,
       );
     }
+
+    const builtOutputs = builtPsbt.unsigned_tx.output;
+    // BDK may append a single change output of ours after the template outputs, and nothing else.
+    const appended = builtOutputs.slice(templateOutputs.length);
+    const preserved =
+      appended.length <= 1 &&
+      appended.every((txout) => account.isMine(txout.script_pubkey)) &&
+      templateOutputs.every(
+        (txout, index) =>
+          builtOutputs[index]?.script_pubkey.to_hex_string() ===
+            txout.script_pubkey.to_hex_string() &&
+          (txout === drainOutput ||
+            builtOutputs[index]?.value.to_sat() === txout.value.to_sat()),
+      );
+    if (!preserved) {
+      throw new ValidationError(
+        'Built PSBT does not preserve the template outputs',
+        {
+          id: account.id,
+          templatePsbt: templatePsbt.toString(),
+          builtPsbt: builtPsbt.toString(),
+          feeRate: feeRateToUse,
+        },
+      );
+    }
+
+    return builtPsbt;
   }
 
   async #broadcast(
