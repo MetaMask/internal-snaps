@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -23,8 +24,6 @@ import {
   SUN_IN_TRX,
   ZERO,
 } from '../../constants';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import { FeeUnavailableError } from './errors';
 import type { ComputeFeeResult } from './types';
 
@@ -128,7 +127,7 @@ const ZERO_ENERGY_SYSTEM_CONTRACTS = new Set([
 ]);
 
 export class FeeCalculatorService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #trongridApiClient: TrongridApiClient;
 
@@ -142,12 +141,12 @@ export class FeeCalculatorService {
     tronHttpClient,
     snapClient,
   }: {
-    logger: ILogger;
+    logger: Logger;
     trongridApiClient: TrongridApiClient;
     tronHttpClient: TronHttpClient;
     snapClient: SnapClient;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[💸 FeeCalculatorService]');
+    this.#logger = logger.withPrefix('[💸 FeeCalculatorService]');
     this.#trongridApiClient = trongridApiClient;
     this.#tronHttpClient = tronHttpClient;
     this.#snapClient = snapClient;

@@ -1,6 +1,7 @@
 import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
 import { KeyringEvent, TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { groupBy } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -16,14 +17,12 @@ import type {
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { isSpam } from './utils/isSpam';
 
 export class TransactionsService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #transactionsRepository: TransactionsRepository;
 
@@ -43,14 +42,14 @@ export class TransactionsService {
     priceApiClient,
     snapClient,
   }: {
-    logger: ILogger;
+    logger: Logger;
     transactionsRepository: TransactionsRepository;
     trongridApiClient: TrongridApiClient;
     tronHttpClient: TronHttpClient;
     priceApiClient: PriceApiClient;
     snapClient: SnapClient;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🧾 TransactionsService]');
+    this.#logger = logger.withPrefix('[🧾 TransactionsService]');
     this.#transactionsRepository = transactionsRepository;
     this.#trongridApiClient = trongridApiClient;
     this.#tronHttpClient = tronHttpClient;

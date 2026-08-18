@@ -1,7 +1,7 @@
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import { shouldTrackError, withCatchAndThrowSnapError } from './errors';
-import logger from './logger';
+import { mockLogger } from './mockLogger';
 
 jest.mock('../clients/snap/SnapClient', () => {
   const trackError = jest.fn();
@@ -14,16 +14,14 @@ jest.mock('../clients/snap/SnapClient', () => {
   };
 });
 
-// Mock the logger to avoid actual console output during tests
 jest.mock('./logger', () => ({
-  error: jest.fn(),
+  __esModule: true,
+  default: jest.requireActual('./mockLogger').mockLogger,
 }));
 
 const { trackError } = jest.requireMock('../clients/snap/SnapClient');
 
 describe('errors', () => {
-  const mockLogger = logger as jest.Mocked<typeof logger>;
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -95,7 +93,8 @@ describe('errors', () => {
 
       expect(mockLogger.error).toHaveBeenCalledTimes(1);
       const logCall = mockLogger.error.mock.calls[0];
-      const loggedError = logCall?.[0]?.error;
+      const loggedError = (logCall?.[0] as { error?: unknown } | undefined)
+        ?.error;
       expect(loggedError).toBeInstanceOf(SnapError);
     });
 
@@ -109,7 +108,8 @@ describe('errors', () => {
 
       expect(mockLogger.error).toHaveBeenCalledTimes(1);
       const logCall = mockLogger.error.mock.calls[0];
-      const loggedError = logCall?.[0]?.error;
+      const loggedError = (logCall?.[0] as { error?: unknown } | undefined)
+        ?.error;
       expect(loggedError).toBeInstanceOf(SnapError);
     });
 
@@ -180,9 +180,12 @@ describe('errors', () => {
 
       for (let i = 0; i < errorTypes.length; i++) {
         const logCall = logCalls[i];
-        const loggedError = logCall?.[0]?.error;
+        const loggedError = (logCall?.[0] as { error?: unknown } | undefined)
+          ?.error;
         expect(loggedError).toBeInstanceOf(SnapError);
-        expect(loggedError?.message).toBe(errorTypes[i]?.message);
+        expect((loggedError as Error | undefined)?.message).toBe(
+          errorTypes[i]?.message,
+        );
       }
     });
 

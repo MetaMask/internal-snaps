@@ -1,4 +1,5 @@
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
@@ -10,8 +11,6 @@ import {
   TronMultichainErrors,
   TronMultichainMethod,
 } from '../../handlers/keyring/keyring-types';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import {
   ResolveAccountAddressRequestStruct,
   ResolveAccountAddressResponseStruct,
@@ -29,7 +28,7 @@ import type { AccountsService } from '../accounts/AccountsService';
  * Service responsible for handling wallet operations like signing messages and transactions.
  */
 export class WalletService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #accountsService: AccountsService;
 
@@ -40,11 +39,11 @@ export class WalletService {
     accountsService,
     tronWebFactory,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[💼 WalletService]');
+    this.#logger = logger.withPrefix('[💼 WalletService]');
     this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
   }

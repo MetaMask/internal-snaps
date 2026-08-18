@@ -1,12 +1,13 @@
 /* eslint-disable jest/prefer-strict-equal */
 
 import { InMemoryState } from '../services/state/InMemoryState';
+import { mockLogger } from '../utils/mockLogger';
 import { StateCache } from './StateCache';
 
 describe('StateCache', () => {
   describe('constructor', () => {
     it('uses the default prefix if not specified', () => {
-      const cache = new StateCache(new InMemoryState({}));
+      const cache = new StateCache(new InMemoryState({}), mockLogger);
 
       expect(cache.prefix).toBe('__cache__default');
     });
@@ -14,7 +15,7 @@ describe('StateCache', () => {
     it('uses the specified prefix if provided', () => {
       const cache = new StateCache(
         new InMemoryState({}),
-        undefined,
+        mockLogger,
         '__cache__my-prefix',
       );
 
@@ -28,7 +29,7 @@ describe('StateCache', () => {
         name: 'John', // State has some data that is not related to the cache
         // __cache__default: {}   // State has not been initialized with cached data
       });
-      const cache = new StateCache(stateWithNoCache);
+      const cache = new StateCache(stateWithNoCache, mockLogger);
 
       const value = await cache.get('someKey');
 
@@ -44,7 +45,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const value = await cache.get('someOtherKey');
 
@@ -60,7 +61,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const value = await cache.get('someKey');
 
@@ -76,7 +77,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const value = await cache.get('someKey');
 
@@ -93,7 +94,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       expect(await cache.get('someKey')).toBeUndefined();
     });
@@ -107,7 +108,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.get('someKey');
       const stateValue = await stateWithCache.get();
@@ -121,7 +122,7 @@ describe('StateCache', () => {
   describe('set', () => {
     it('initializes the cache if it is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.set('someKey', 'someValue');
       const stateValue = await stateWithCache.get();
@@ -140,7 +141,7 @@ describe('StateCache', () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {},
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.set('someKey', 'someValue');
       const stateValue = await stateWithCache.get();
@@ -167,7 +168,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.set('someKey', 'someOtherValue');
       const stateValue = await stateWithCache.get();
@@ -186,7 +187,7 @@ describe('StateCache', () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {},
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
       jest.spyOn(Date, 'now').mockReturnValueOnce(1704067200000); // January 1, 2024
 
       await cache.set('someKey', 'someValue', 1000);
@@ -206,7 +207,7 @@ describe('StateCache', () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {},
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
       const mockDateNow = jest
         .spyOn(Date, 'now')
         .mockReturnValue(1704067200000); // January 1, 2024
@@ -236,7 +237,7 @@ describe('StateCache', () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {},
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await expect(
         cache.set('someKey', 'someValue', 'not a number' as unknown as number),
@@ -247,7 +248,7 @@ describe('StateCache', () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {},
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await expect(cache.set('someKey', 'someValue', -1)).rejects.toThrow(
         'TTL must be positive',
@@ -258,7 +259,7 @@ describe('StateCache', () => {
       const stateWithCache = new InMemoryState({
         __cache__default: {},
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await expect(
         cache.set('someKey', 'someValue', Number.MAX_SAFE_INTEGER + 1),
@@ -276,7 +277,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.delete('someKey');
       expect(result).toBe(true);
@@ -295,7 +296,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.delete('someOtherKey'); // Try to
       const someKeyValue = await cache.get('someKey');
@@ -318,7 +319,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.clear();
       const stateValue = await stateWithCache.get();
@@ -330,7 +331,7 @@ describe('StateCache', () => {
 
     it('does not throw an error if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.clear();
       const stateValue = await stateWithCache.get();
@@ -351,7 +352,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.has('someKey');
 
@@ -367,7 +368,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.has('someOtherKey');
       expect(result).toBe(false);
@@ -375,7 +376,7 @@ describe('StateCache', () => {
 
     it('does not throw an error if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.has('someKey');
       expect(result).toBe(false);
@@ -396,7 +397,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.keys();
 
@@ -405,7 +406,7 @@ describe('StateCache', () => {
 
     it('returns an empty array if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.keys();
 
@@ -427,7 +428,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.size();
 
@@ -436,7 +437,7 @@ describe('StateCache', () => {
 
     it('returns 0 if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.size();
 
@@ -454,7 +455,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.peek('someKey');
 
@@ -470,7 +471,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.peek('someKey');
 
@@ -479,7 +480,7 @@ describe('StateCache', () => {
 
     it('returns undefined if the key is not present in the cache', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.peek('someOtherKey');
 
@@ -488,7 +489,7 @@ describe('StateCache', () => {
 
     it('does not throw an error if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.peek('someKey');
       expect(result).toBeUndefined();
@@ -509,7 +510,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.mget(['someKey', 'someOtherKey']);
 
@@ -528,7 +529,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.mget(['someKey', 'someOtherKey']);
 
@@ -547,7 +548,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       // Mock Date.now to return a time after the expiration
       const mockDateNow = jest
@@ -565,7 +566,7 @@ describe('StateCache', () => {
 
     it('returns an empty object if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.mget(['someKey', 'someOtherKey']);
 
@@ -585,7 +586,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       // Mock Date.now to return a time after the expiration
       const mockDateNow = jest
@@ -611,7 +612,7 @@ describe('StateCache', () => {
   describe('mset', () => {
     it('sets the values of the keys if they are present in the cache', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.mset([
         { key: 'someKey', value: 'someValue' },
@@ -628,7 +629,7 @@ describe('StateCache', () => {
 
     it('does not store undefined values in the cache', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.mset([
         { key: 'someKey', value: 'someValue' },
@@ -656,7 +657,7 @@ describe('StateCache', () => {
 
     it('stores null values in the cache', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.mset([{ key: 'someKey', value: null }]);
 
@@ -669,7 +670,7 @@ describe('StateCache', () => {
 
     it('does not throw an error if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.mset([{ key: 'someKey', value: 'someValue' }]);
 
@@ -682,7 +683,7 @@ describe('StateCache', () => {
 
     it('throws an error if the ttl is invalid', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await expect(
         cache.mset([
@@ -708,7 +709,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.mset([
         { key: 'someKey0', value: 'someValue0Overwritten' },
@@ -726,7 +727,7 @@ describe('StateCache', () => {
 
     it('no-ops if no entries are provided', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
       const updateSpy = jest.spyOn(stateWithCache, 'update');
 
       await cache.mset([]);
@@ -736,7 +737,7 @@ describe('StateCache', () => {
 
     it('defers to set if there is only one entry', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
       const setSpy = jest.spyOn(cache, 'set');
 
       const singleEntry = {
@@ -768,7 +769,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       await cache.mdelete(['someKey', 'someOtherKey']);
 
@@ -789,7 +790,7 @@ describe('StateCache', () => {
           },
         },
       });
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.mdelete(['someKey', 'someOtherKey']);
 
@@ -801,7 +802,7 @@ describe('StateCache', () => {
 
     it('does not throw an error if the cache is not initialized', async () => {
       const stateWithCache = new InMemoryState({});
-      const cache = new StateCache(stateWithCache);
+      const cache = new StateCache(stateWithCache, mockLogger);
 
       const result = await cache.mdelete(['someKey', 'someOtherKey']);
 

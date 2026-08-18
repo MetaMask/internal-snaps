@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -22,8 +23,6 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 
 export enum CronjobMethod {
   ContinuouslySynchronizeSelectedAccounts = 'onSynchronizeSelectedAccountsCronjob',
@@ -41,7 +40,7 @@ export enum BackgroundEventMethod {
 }
 
 export class CronHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #accountsService: AccountsService;
 
@@ -67,7 +66,7 @@ export class CronHandler {
     transactionScanService,
     transactionExpirationRefresherService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountsService: AccountsService;
     snapClient: SnapClient;
     state: State<UnencryptedStateValue>;
@@ -76,7 +75,7 @@ export class CronHandler {
     transactionScanService: TransactionScanService;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[⏰ CronHandler]');
+    this.#logger = logger.withPrefix('[⏰ CronHandler]');
     this.#accountsService = accountsService;
     this.#snapClient = snapClient;
     this.#state = state;

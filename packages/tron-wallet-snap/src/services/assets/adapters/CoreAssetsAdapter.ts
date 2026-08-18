@@ -7,14 +7,14 @@ import type {
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
+import { Logger } from '@metamask/snap-networks-utils/logger';
 
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
-import type { ILogger } from '../../../utils/logger';
-import logger, { createPrefixedLogger } from '../../../utils/logger';
+import logger from '../../../utils/logger';
 import { buildStakedData } from '../utils/buildStakedData';
 import { extractBandwidth } from '../utils/extractBandwidth';
 import { extractEnergy } from '../utils/extractEnergy';
@@ -39,7 +39,7 @@ export type CoreAssetsAdapterOptions = {
  * published via keyring events without local persistence when migration is active.
  */
 export class CoreAssetsAdapter {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
 
@@ -63,7 +63,7 @@ export class CoreAssetsAdapter {
       getAddressStakingRewards,
     } = options;
 
-    this.#logger = createPrefixedLogger(logger, '[CoreAssetsAdapter]');
+    this.#logger = logger.withPrefix('[CoreAssetsAdapter]');
     this.#getAccountAssetByID = getAccountAssetByID;
     this.#getAccountAssetsByIDs = getAccountAssetsByIDs;
     this.#getAccountAssetsByScope = getAccountAssetsByScope;
