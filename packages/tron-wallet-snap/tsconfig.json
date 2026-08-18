@@ -1,19 +1,12 @@
 {
-  "extends": "../../tsconfig.packages.json",
+  "extends": "../../tsconfig.snaps.json",
   "compilerOptions": {
-    "resolveJsonModule": true /*  lets us import JSON modules from within TypeScript modules. */,
-    "jsx": "react-jsx",
-    "jsxImportSource": "@metamask/snaps-sdk",
+    "lib": ["ES2023", "DOM"],
+    "target": "es2023",
     "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
     "noErrorTruncation": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "lib": ["ES2023", "DOM"],
-    "target": "es2023",
-    "module": "preserve",
-    "moduleResolution": "bundler",
-    "types": ["jest"]
+    "noUncheckedIndexedAccess": true
   },
   "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
 }

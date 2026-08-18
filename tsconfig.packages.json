@@ -5,15 +5,20 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     /**
-     * Here we ensure that TypeScript resolves `@metamask/*` imports to the
-     * uncompiled source code for packages that live in this repo.
+     * Resolve `@metamask/*` imports to uncompiled source for packages in this
+     * repo. Paths are relative to this file (the monorepo root).
+     *
+     * A local candidate is used only when `packages/<name>/src` exists.
+     * Published `@metamask/*` dependencies fall through to `node_modules`.
+     * The second mapping covers package subpaths such as `/logger`.
      *
      * NOTE: This must be synchronized with the `moduleNameMapper` option in
-     * `jest.config.packages.js`.
+     * `jest.config.packages.js`. Consuming configs should not set `baseUrl`
+     * unless they also re-declare these paths relative to that `baseUrl`.
      */
     "paths": {
-      "@metamask/snap-networks-utils": ["../snap-networks-utils/dist"],
-      "@metamask/snap-networks-utils/*": ["../snap-networks-utils/dist/*"]
+      "@metamask/*": ["./packages/*/src"],
+      "@metamask/*/*": ["./packages/*/src/*"]
     }
   }
 }

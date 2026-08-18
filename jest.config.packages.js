@@ -77,17 +77,23 @@ module.exports = {
   // ],
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
-  // Here we ensure that Jest resolves `@metamask/*` imports to the uncompiled source code for packages that live in this repo.
-  // NOTE: This must be synchronized with the `paths` option in `tsconfig.base.json`.
+  // Resolve workspace `@metamask/*` imports to uncompiled source. Paths are
+  // relative to the monorepo root, not to the consuming package. When a local
+  // `packages/<name>/src` directory does not exist, use the installed package.
+  // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`.
   moduleNameMapper: {
     '^@metamask/json-rpc-engine/v2$': [
       '<rootDir>/../json-rpc-engine/src/v2/index.ts',
     ],
     '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
-    '^@metamask/snap-networks-utils$':
-      '<rootDir>/../snap-networks-utils/src',
-    '^@metamask/snap-networks-utils/(.+)$':
-      '<rootDir>/../snap-networks-utils/src/$1',
+    '^@metamask/([^/]+)$': [
+      '<rootDir>/../../packages/$1/src',
+      '<rootDir>/../../node_modules/@metamask/$1',
+    ],
+    '^@metamask/([^/]+)/(.+)$': [
+      '<rootDir>/../../packages/$1/src/$2',
+      '<rootDir>/../../node_modules/@metamask/$1/$2',
+    ],
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader

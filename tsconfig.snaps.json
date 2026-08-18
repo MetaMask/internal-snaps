@@ -1,0 +1,25 @@
+{
+  /**
+   * Shared TypeScript settings for Snap packages.
+   *
+   * Snaps are bundled with `mm-snap` and are not part of the root
+   * `tsc --build` graph, so `composite` is disabled here. That lets
+   * workspace `@metamask/*` path mappings resolve to sibling `src/`
+   * directories without requiring project-reference build artifacts.
+   *
+   * Do not set `baseUrl` here. Inherited path mappings are resolved
+   * against `baseUrl` when it is present, which would break the
+   * monorepo-root mappings in `tsconfig.packages.json`.
+   */
+  "extends": "./tsconfig.packages.json",
+  "compilerOptions": {
+    "composite": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@metamask/snaps-sdk",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "types": ["jest"]
+  }
+}

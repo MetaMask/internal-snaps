@@ -1,20 +1,17 @@
 {
-  "extends": "../../tsconfig.packages.json",
+  "extends": "../../tsconfig.snaps.json",
   "compilerOptions": {
     "baseUrl": "./",
-    "jsx": "react-jsx",
-    "jsxImportSource": "@metamask/snaps-sdk",
-    "resolveJsonModule": true,
+    "paths": {
+      "@metamask/*": ["../../packages/*/src"],
+      "@metamask/*/*": ["../../packages/*/src/*"]
+    },
+    "lib": ["ES2023", "DOM"],
+    "target": "es2023",
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
     "noErrorTruncation": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "lib": ["ES2023", "DOM"],
-    "target": "es2023",
-    "module": "preserve",
-    "moduleResolution": "bundler",
-    "types": ["jest"]
+    "noUncheckedIndexedAccess": true
   },
   "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
 }
