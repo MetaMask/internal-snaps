@@ -2,6 +2,14 @@
 
 MetaMask Snap that implements Stellar account management, signing, sends, trustlines, and related multichain client APIs.
 
+## Installation
+
+```bash
+npm install @metamask/stellar-wallet-snap
+# or
+yarn add @metamask/stellar-wallet-snap
+```
+
 ## Configuration
 
 Rename `.env.example` to `.env`. Runtime settings are loaded from `.env`.
@@ -67,3 +75,8 @@ provider.request({
   },
 });
 ```
+
+
+## Contributing
+
+This package is part of the Internal Snaps monorepo. See the [contribution processes](../../docs/processes/) for development, testing, building, and release instructions.
