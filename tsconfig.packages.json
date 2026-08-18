@@ -10,7 +10,8 @@
      *
      * A local candidate is used only when `packages/<name>/src` exists.
      * Published `@metamask/*` dependencies fall through to `node_modules`.
-     * The second mapping covers package subpaths such as `/logger`.
+     * TypeScript path patterns allow only one `*`, so workspace packages
+     * with extra entry points need an explicit subpath mapping.
      *
      * NOTE: This must be synchronized with the `moduleNameMapper` option in
      * `jest.config.packages.js`. Consuming configs should not set `baseUrl`
@@ -18,7 +19,9 @@
      */
     "paths": {
       "@metamask/*": ["./packages/*/src"],
-      "@metamask/*/*": ["./packages/*/src/*"]
+      "@metamask/snap-networks-utils/*": [
+        "./packages/snap-networks-utils/src/*"
+      ]
     }
   }
 }

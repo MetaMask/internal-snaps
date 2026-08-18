@@ -128,8 +128,12 @@ export class Logger {
     assert(level, LogLevelStruct);
 
     this.#level = level;
-    this.#prefix = prefix;
-    this.#decorators = decorators;
+    if (prefix !== undefined) {
+      this.#prefix = prefix;
+    }
+    if (decorators !== undefined) {
+      this.#decorators = decorators;
+    }
   }
 
   /**
@@ -146,7 +150,9 @@ export class Logger {
     return new Logger({
       level: this.#level,
       prefix: this.#prefix ? `${this.#prefix} ${prefix}` : prefix,
-      decorators: this.#decorators,
+      ...(this.#decorators === undefined
+        ? {}
+        : { decorators: this.#decorators }),
     });
   }
 

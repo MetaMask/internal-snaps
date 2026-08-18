@@ -22,6 +22,7 @@
 ### Task 1: Apply the root-relative resolution configuration
 
 **Files:**
+
 - Modify: `tsconfig.packages.json`
 - Create: `tsconfig.snaps.json`
 - Modify: `jest.config.packages.js`
@@ -29,7 +30,8 @@
 - Modify: `scripts/create-package/package-template/tsconfig.json`
 
 **Interfaces:**
-- TypeScript maps `@metamask/*` to `./packages/*/src` and `@metamask/*/*` to `./packages/*/src/*`.
+
+- TypeScript maps `@metamask/*` to `./packages/*/src` and `@metamask/snap-networks-utils/*` to that package's `src/*`.
 - Snap configs inherit `composite: false` from `tsconfig.snaps.json`.
 - Jest maps `packages/<name>/src` first and falls back to `node_modules/@metamask/<name>`.
 

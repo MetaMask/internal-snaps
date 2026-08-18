@@ -17,16 +17,20 @@ Use a monorepo-root wildcard with a published-package fallback:
 ```json
 "paths": {
   "@metamask/*": ["./packages/*/src"],
-  "@metamask/*/*": ["./packages/*/src/*"]
+  "@metamask/snap-networks-utils/*": [
+    "./packages/snap-networks-utils/src/*"
+  ]
 }
 ```
 
-The first mapping covers package-root imports such as
-`@metamask/snap-networks-utils`. The second covers subpaths such as
-`@metamask/snap-networks-utils/logger`. When no matching
-`packages/<name>/src` directory exists, TypeScript continues with normal
-package resolution from `node_modules`. Adding a new workspace package does
-not require an allowlist change.
+The wildcard covers package-root imports such as
+`@metamask/snap-networks-utils`. TypeScript path patterns allow only one
+`*`, so workspace packages with extra entry points need an explicit
+subpath mapping (`/logger`). When no matching `packages/<name>/src`
+directory exists, TypeScript continues with normal package resolution from
+`node_modules`. Adding a new workspace package is automatic for package-root
+imports; add a subpath mapping only if that package exposes extra entry
+points.
 
 Snap packages extend a shared `tsconfig.snaps.json` that disables `composite`
 so they can typecheck against sibling workspace source without TS6307. Those
