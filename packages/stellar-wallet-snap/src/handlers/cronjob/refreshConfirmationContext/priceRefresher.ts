@@ -85,7 +85,7 @@ export class ConfirmationPriceRefresher implements IConfirmationContextRefresher
       >((acc, assetId) => {
         acc[assetId] = prices[assetId]?.price.toString() ?? null;
         return acc;
-      }, {});
+      }, {} as ContextWithPrices['tokenPrices']);
 
       return {
         result: {
