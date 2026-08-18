@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This package was migrated from [snap-stellar-wallet](https://github.com/MetaMask/snap-stellar-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-stellar-wallet/blob/main/packages/snap/CHANGELOG.md)
 
-[Unreleased]: https://github.com/MetaMask/snap-stellar-wallet/
+[Unreleased]: https://github.com/MetaMask/internal-snaps/
