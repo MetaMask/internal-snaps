@@ -153,9 +153,9 @@ describe('AssetsService', () => {
       const { assetsService, snapAdapter, coreAdapter } =
         createAssetsService(true);
 
-      await expect(
-        assetsService.getAccountAssetsByIDs(mockAccount.id, []),
-      ).resolves.toStrictEqual([]);
+      expect(
+        await assetsService.getAccountAssetsByIDs(mockAccount.id, []),
+      ).toStrictEqual([]);
       expect(snapAdapter.getAccountAssetsByIDs).not.toHaveBeenCalled();
       expect(coreAdapter.getAccountAssetsByIDs).not.toHaveBeenCalled();
     });
@@ -165,11 +165,11 @@ describe('AssetsService', () => {
         createAssetsService(false);
       snapAdapter.getAccountAssetsByIDs.mockResolvedValue([mockAsset]);
 
-      await expect(
-        assetsService.getAccountAssetsByIDs(mockAccount.id, [
+      expect(
+        await assetsService.getAccountAssetsByIDs(mockAccount.id, [
           KnownCaip19Id.TrxMainnet,
         ]),
-      ).resolves.toStrictEqual([mockAsset]);
+      ).toStrictEqual([mockAsset]);
       expect(snapAdapter.getAccountAssetsByIDs).toHaveBeenCalledWith(
         mockAccount.id,
         [KnownCaip19Id.TrxMainnet],
@@ -186,11 +186,11 @@ describe('AssetsService', () => {
       } = createAssetsService(true);
       coreAdapter.getAccountAssetsByIDs.mockResolvedValue([mockAsset]);
 
-      await expect(
-        assetsService.getAccountAssetsByIDs(mockAccount.id, [
+      expect(
+        await assetsService.getAccountAssetsByIDs(mockAccount.id, [
           KnownCaip19Id.TrxMainnet,
         ]),
-      ).resolves.toStrictEqual([mockAsset]);
+      ).toStrictEqual([mockAsset]);
       expect(remoteFeatureFlagsProvider.getFeatureFlag).toHaveBeenCalledWith(
         TRON_FLAG_KEY,
       );
@@ -208,12 +208,12 @@ describe('AssetsService', () => {
         createAssetsService(false);
       snapAdapter.getAccountAssetByID.mockResolvedValue(mockAsset);
 
-      await expect(
-        assetsService.getAccountAssetByID(
+      expect(
+        await assetsService.getAccountAssetByID(
           mockAccount.id,
           KnownCaip19Id.TrxMainnet,
         ),
-      ).resolves.toBe(mockAsset);
+      ).toBe(mockAsset);
       expect(snapAdapter.getAccountAssetByID).toHaveBeenCalledWith(
         mockAccount.id,
         KnownCaip19Id.TrxMainnet,
@@ -226,12 +226,12 @@ describe('AssetsService', () => {
         createAssetsService(true);
       coreAdapter.getAccountAssetByID.mockResolvedValue(mockAsset);
 
-      await expect(
-        assetsService.getAccountAssetByID(
+      expect(
+        await assetsService.getAccountAssetByID(
           mockAccount.id,
           KnownCaip19Id.TrxMainnet,
         ),
-      ).resolves.toBe(mockAsset);
+      ).toBe(mockAsset);
       expect(coreAdapter.getAccountAssetByID).toHaveBeenCalledWith(
         mockAccount.id,
         KnownCaip19Id.TrxMainnet,
@@ -248,12 +248,12 @@ describe('AssetsService', () => {
         mockAsset,
       ]);
 
-      await expect(
-        assetsService.fetchAssetsAndBalancesForAccount(
+      expect(
+        await assetsService.fetchAssetsAndBalancesForAccount(
           Network.Mainnet,
           mockAccount,
         ),
-      ).resolves.toStrictEqual([mockAsset]);
+      ).toStrictEqual([mockAsset]);
       expect(snapAdapter.fetchAssetsAndBalancesForAccount).toHaveBeenCalledWith(
         Network.Mainnet,
         mockAccount,
@@ -270,12 +270,12 @@ describe('AssetsService', () => {
         mockAsset,
       ]);
 
-      await expect(
-        assetsService.fetchAssetsAndBalancesForAccount(
+      expect(
+        await assetsService.fetchAssetsAndBalancesForAccount(
           Network.Mainnet,
           mockAccount,
         ),
-      ).resolves.toStrictEqual([mockAsset]);
+      ).toStrictEqual([mockAsset]);
       expect(coreAdapter.fetchAssetsAndBalancesForAccount).toHaveBeenCalledWith(
         Network.Mainnet,
         mockAccount,
@@ -314,9 +314,9 @@ describe('AssetsService', () => {
         createAssetsService(false);
       snapAdapter.getAccountAssets.mockResolvedValue([mockAsset]);
 
-      await expect(
-        assetsService.getAccountAssets(mockAccount.id),
-      ).resolves.toStrictEqual([mockAsset]);
+      expect(
+        await assetsService.getAccountAssets(mockAccount.id),
+      ).toStrictEqual([mockAsset]);
       expect(snapAdapter.getAccountAssets).toHaveBeenCalledWith(mockAccount.id);
       expect(coreAdapter.getAccountAssets).not.toHaveBeenCalled();
     });
@@ -326,9 +326,9 @@ describe('AssetsService', () => {
         createAssetsService(true);
       coreAdapter.getAccountAssets.mockResolvedValue([mockAsset]);
 
-      await expect(
-        assetsService.getAccountAssets(mockAccount.id),
-      ).resolves.toStrictEqual([mockAsset]);
+      expect(
+        await assetsService.getAccountAssets(mockAccount.id),
+      ).toStrictEqual([mockAsset]);
       expect(coreAdapter.getAccountAssets).toHaveBeenCalledWith(mockAccount.id);
       expect(snapAdapter.getAccountAssets).not.toHaveBeenCalled();
     });
@@ -340,9 +340,9 @@ describe('AssetsService', () => {
       const metadata = { [KnownCaip19Id.TrxMainnet]: null };
       snapAdapter.getAssetsMetadata.mockResolvedValue(metadata);
 
-      await expect(
-        assetsService.getAssetsMetadata([KnownCaip19Id.TrxMainnet]),
-      ).resolves.toBe(metadata);
+      expect(
+        await assetsService.getAssetsMetadata([KnownCaip19Id.TrxMainnet]),
+      ).toBe(metadata);
       expect(snapAdapter.getAssetsMetadata).toHaveBeenCalledWith([
         KnownCaip19Id.TrxMainnet,
       ]);
@@ -352,7 +352,7 @@ describe('AssetsService', () => {
       const { assetsService, snapAdapter } = createAssetsService(true);
       snapAdapter.getAll.mockResolvedValue([mockAsset]);
 
-      await expect(assetsService.getAll()).resolves.toStrictEqual([mockAsset]);
+      expect(await assetsService.getAll()).toStrictEqual([mockAsset]);
       expect(snapAdapter.getAll).toHaveBeenCalledWith();
     });
 
@@ -367,9 +367,9 @@ describe('AssetsService', () => {
       const result = { [KnownCaip19Id.TrxMainnet]: {} };
       snapAdapter.getMultipleTokenConversions.mockResolvedValue(result);
 
-      await expect(
-        assetsService.getMultipleTokenConversions(conversions),
-      ).resolves.toBe(result);
+      expect(await assetsService.getMultipleTokenConversions(conversions)).toBe(
+        result,
+      );
       expect(snapAdapter.getMultipleTokenConversions).toHaveBeenCalledWith(
         conversions,
       );
@@ -386,9 +386,9 @@ describe('AssetsService', () => {
       const result = { [KnownCaip19Id.TrxMainnet]: {} };
       snapAdapter.getMultipleTokensMarketData.mockResolvedValue(result);
 
-      await expect(
-        assetsService.getMultipleTokensMarketData(assets),
-      ).resolves.toBe(result);
+      expect(await assetsService.getMultipleTokensMarketData(assets)).toBe(
+        result,
+      );
       expect(snapAdapter.getMultipleTokensMarketData).toHaveBeenCalledWith(
         assets,
       );
@@ -399,12 +399,12 @@ describe('AssetsService', () => {
       const result = { intervals: {}, updateTime: 1 };
       snapAdapter.getHistoricalPrice.mockResolvedValue(result);
 
-      await expect(
-        assetsService.getHistoricalPrice(
+      expect(
+        await assetsService.getHistoricalPrice(
           KnownCaip19Id.TrxMainnet,
           'swift:0/iso4217:usd',
         ),
-      ).resolves.toBe(result);
+      ).toBe(result);
       expect(snapAdapter.getHistoricalPrice).toHaveBeenCalledWith(
         KnownCaip19Id.TrxMainnet,
         'swift:0/iso4217:usd',
