@@ -7,6 +7,7 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import type {
   FungibleAssetMarketData,
   FungibleAssetMetadata,
@@ -43,8 +44,6 @@ import type { TokenAccountInfoWithJsonData } from '../../sdk-extensions/rpc-api'
 import type { Serializable } from '../../serialization/types';
 import { fromTokenUnits } from '../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../utils/getNetworkFromToken';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
@@ -64,7 +63,7 @@ type TokenAccountWithMetadata = {
 } & Serializable;
 
 export class AssetsService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #connection: SolanaConnection;
 
@@ -98,7 +97,7 @@ export class AssetsService {
     nftApiClient,
   }: {
     connection: SolanaConnection;
-    logger: ILogger;
+    logger: Logger;
     configProvider: ConfigProvider;
     assetsRepository: AssetsRepository;
     accountsService: AccountsService;
@@ -107,7 +106,7 @@ export class AssetsService {
     cache: ICache<Serializable>;
     nftApiClient: NftApiClient;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🪙 AssetsService]');
+    this.#logger = logger.withPrefix('[🪙 AssetsService]');
     this.#connection = connection;
     this.#configProvider = configProvider;
     this.#assetsRepository = assetsRepository;

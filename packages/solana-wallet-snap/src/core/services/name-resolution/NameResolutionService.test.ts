@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { expect } from '@jest/globals';
 import {
   resolveDomain,
@@ -6,8 +7,8 @@ import {
 import type { Address } from '@solana/kit';
 
 import { Network } from '../../constants/solana';
+import { mockLogger } from '../__mocks__/logger';
 import type { SolanaConnection } from '../connection/SolanaConnection';
-import { mockLogger } from '../mocks/logger';
 import { NameResolutionService } from './NameResolutionService';
 
 jest.mock('@solana-name-service/sns-sdk-kit');

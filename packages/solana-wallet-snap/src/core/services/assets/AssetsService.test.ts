@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { cloneDeep } from 'lodash';
@@ -17,12 +18,12 @@ import {
   SOLANA_MOCK_TOKEN_METADATA,
 } from '../../test/mocks/asset-entities';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
+import { mockLogger } from '../__mocks__/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
+import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../__mocks__/mockSolanaRpcResponses';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
-import { mockLogger } from '../mocks/logger';
-import { createMockConnection } from '../mocks/mockConnection';
-import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../mocks/mockSolanaRpcResponses';
 import type { TokenPricesService } from '../token-prices/TokenPrices';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';

@@ -1,3 +1,4 @@
+import { LogLevel } from '@metamask/snap-networks-utils/logger';
 /* eslint-disable no-restricted-globals */
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -37,6 +38,7 @@ const CommaSeparatedListOfStringsStruct = coerce(
 
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
+  LOG_LEVEL: enums(Object.values(LogLevel)),
   RPC_URL_MAINNET_LIST: CommaSeparatedListOfUrlsStruct,
   RPC_URL_DEVNET_LIST: CommaSeparatedListOfUrlsStruct,
   RPC_URL_TESTNET_LIST: CommaSeparatedListOfUrlsStruct,
@@ -63,6 +65,7 @@ export type NetworkConfig = (typeof Networks)[Network] & {
 
 export type Config = {
   environment: string;
+  logLevel: LogLevel;
   networks: NetworkConfig[];
   explorerBaseUrl: string;
   priceApi: {
@@ -125,6 +128,7 @@ export class ConfigProvider {
   #parseEnvironment() {
     const rawEnvironment = {
       ENVIRONMENT: process.env.ENVIRONMENT,
+      LOG_LEVEL: process.env.LOG_LEVEL,
       RPC_URL_MAINNET_LIST: process.env.RPC_URL_MAINNET_LIST,
       RPC_URL_DEVNET_LIST: process.env.RPC_URL_DEVNET_LIST,
       RPC_URL_TESTNET_LIST: process.env.RPC_URL_TESTNET_LIST,
@@ -150,6 +154,7 @@ export class ConfigProvider {
   #buildConfig(environment: Env): Config {
     return {
       environment: environment.ENVIRONMENT,
+      logLevel: environment.LOG_LEVEL,
       networks: [
         {
           ...Networks[Network.Mainnet],

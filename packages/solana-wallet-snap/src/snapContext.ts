@@ -172,7 +172,6 @@ const transactionsService = new TransactionsService(
   accountsService,
   assetsService,
   connection,
-  logger,
 );
 
 const accountsSynchronizer = new AccountsSynchronizer(

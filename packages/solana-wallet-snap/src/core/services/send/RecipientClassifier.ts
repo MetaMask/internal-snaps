@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
@@ -6,8 +7,6 @@ import { assertAccountExists } from '@solana/kit';
 import { get } from 'lodash';
 
 import type { Network } from '../../constants/solana';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { SolanaConnection } from '../connection';
 
 export type RecipientClassification =
@@ -37,11 +36,11 @@ export type RecipientClassification =
 export class RecipientClassifier {
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
-  constructor(connection: SolanaConnection, logger: ILogger) {
+  constructor(connection: SolanaConnection, logger: Logger) {
     this.#connection = connection;
-    this.#logger = createPrefixedLogger(logger, '[👀 RecipientClassifier]');
+    this.#logger = logger.withPrefix('[👀 RecipientClassifier]');
   }
 
   async classify(

@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { Mint } from '@solana-program/token-2022';
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { address, lamports } from '@solana/kit';
@@ -9,10 +10,10 @@ import type { RecipientClassifier } from '..';
 import { TokenHelper } from '..';
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';
+import { mockLogger } from '../__mocks__/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
+import { MOCK_MINT_ACCOUNT } from '../__mocks__/mockSolanaRpcResponses';
 import type { SolanaConnection } from '../connection/SolanaConnection';
-import { mockLogger } from '../mocks/logger';
-import { createMockConnection } from '../mocks/mockConnection';
-import { MOCK_MINT_ACCOUNT } from '../mocks/mockSolanaRpcResponses';
 import { RecipientUnsupportedError } from './errors';
 import { SendSplTokenBuilder } from './SendSplTokenBuilder';
 

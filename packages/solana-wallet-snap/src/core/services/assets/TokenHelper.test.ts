@@ -1,12 +1,13 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { Mint } from '@solana-program/token-2022';
 import type { Account, Address } from '@solana/kit';
 import { lamports } from '@solana/kit';
 import { cloneDeep } from 'lodash';
 
 import { Network } from '../../constants/solana';
+import { createMockConnection } from '../__mocks__/mockConnection';
+import { MOCK_MINT_ACCOUNT } from '../__mocks__/mockSolanaRpcResponses';
 import type { SolanaConnection } from '../connection/SolanaConnection';
-import { createMockConnection } from '../mocks/mockConnection';
-import { MOCK_MINT_ACCOUNT } from '../mocks/mockSolanaRpcResponses';
 import { TokenHelper } from './TokenHelper';
 
 describe('TokenHelper', () => {

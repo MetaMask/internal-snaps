@@ -1,11 +1,11 @@
 import type { Transaction } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import type { Json } from '@metamask/utils';
 
 import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network, TransactionMetadata } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
-import type { ILogger } from '../../utils/logger';
-import logger, { createPrefixedLogger } from '../../utils/logger';
+import logger from '../../utils/logger';
 import type {
   ScanStatus,
   SecurityAlertResponse,
@@ -15,10 +15,10 @@ import type {
  * Service for tracking events related to transactions.
  */
 export class AnalyticsService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(_logger = logger) {
-    this.#logger = createPrefixedLogger(_logger, '[📣 AnalyticsService]');
+    this.#logger = _logger.withPrefix('[📣 AnalyticsService]');
   }
 
   async #trackEvent(

@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
 
@@ -10,11 +11,11 @@ import type {
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';
 import { trackError } from '../../utils/errors';
+import { mockLogger } from '../__mocks__/logger';
 import type { AccountsService } from '../accounts';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
-import { mockLogger } from '../mocks/logger';
 import type { TransactionsService } from '../transactions';
 import { SignatureMonitor } from './SignatureMonitor';
 import type { SubscriptionService } from './SubscriptionService';

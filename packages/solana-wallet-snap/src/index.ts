@@ -35,7 +35,7 @@ import { onNameLookupHandler } from './core/handlers/onNameLookup/onNameLookup';
 import { onProtocolRequest as onProtocolRequestHandler } from './core/handlers/onProtocolRequest/onProtocolRequest';
 import { handlers as onRpcRequestHandlers } from './core/handlers/onRpcRequest';
 import { withCatchAndThrowSnapError } from './core/utils/errors';
-import logger, { createPrefixedLogger } from './core/utils/logger';
+import logger from './core/utils/logger';
 import { validateOrigin } from './core/validation/validators';
 import { eventHandlers as confirmSignInEvents } from './features/confirmation/views/ConfirmSignIn/events';
 import { eventHandlers as confirmSignMessageEvents } from './features/confirmation/views/ConfirmSignMessage/events';
@@ -173,7 +173,7 @@ export const onUserInput: OnUserInputHandler = async ({
  * @see https://docs.metamask.io/snaps/reference/entry-points/#oncronjob
  */
 export const onCronjob: OnCronjobHandler = async ({ request }) => {
-  const _logger = createPrefixedLogger(logger, '[⏱️ onCronjob]');
+  const _logger = logger.withPrefix('[⏱️ onCronjob]');
 
   _logger.log(request.method, request);
 

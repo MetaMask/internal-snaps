@@ -11,13 +11,10 @@ import {
   getInterfaceContext,
   updateInterface,
 } from '../../../utils/interface';
-import baseLogger, { createPrefixedLogger } from '../../../utils/logger';
+import baseLogger from '../../../utils/logger';
 
 export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
-  const logger = createPrefixedLogger(
-    baseLogger,
-    '[refreshConfirmationEstimation]',
-  );
+  const logger = baseLogger.withPrefix('[refreshConfirmationEstimation]');
 
   logger.info(`Background event triggered`);
 

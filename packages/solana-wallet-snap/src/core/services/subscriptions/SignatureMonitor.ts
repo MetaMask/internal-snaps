@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import { assert, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { signature as asSignature } from '@solana/kit';
@@ -12,8 +13,6 @@ import type {
 } from '../../../entities';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
@@ -35,7 +34,7 @@ export class SignatureMonitor {
 
   readonly #configProvider: ConfigProvider;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #pendingSubscriptions: Map<string, SubscriptionRequest> = new Map(); // subscriptionId -> subscriptionRequest
 
@@ -54,7 +53,7 @@ export class SignatureMonitor {
     analyticsService: AnalyticsService,
     connection: SolanaConnection,
     configProvider: ConfigProvider,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#subscriptionService = subscriptionService;
     this.#accountService = accountService;
@@ -62,7 +61,7 @@ export class SignatureMonitor {
     this.#analyticsService = analyticsService;
     this.#connection = connection;
     this.#configProvider = configProvider;
-    this.#logger = createPrefixedLogger(logger, '[✍️ SignatureMonitor]');
+    this.#logger = logger.withPrefix('[✍️ SignatureMonitor]');
 
     this.#bindHandlers();
   }
