@@ -21,7 +21,12 @@ export type TokenAsset = {
   keyringAccountId: string;
   network: Network;
   mint: string;
-  pubkey: string;
+  /**
+   * Token account address. Present for Snap-fetched balances (RPC token
+   * accounts). Omitted for Core-mapped assets — AssetsController does not
+   * store ATAs, and Solana callers that need one (Send) derive it themselves.
+   */
+  pubkey?: string;
   symbol: string;
   decimals: number;
   rawAmount: string; // Without decimals nor multiplier

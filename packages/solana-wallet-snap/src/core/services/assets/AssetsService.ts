@@ -3,20 +3,33 @@ import type { FungibleAssetMarketData } from '@metamask/snaps-sdk';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
 import type { AssetEntity, SolanaKeyringAccount } from '../../../entities';
+import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetMetadata } from './types';
 
 /**
  * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
- * (legacy snap-owned reads/writes).
+ * (legacy snap-owned reads/writes). Core adapter is initialized for upcoming
+ * routing without changing callers.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
 
+  // Initialized for upcoming Core routing; not read until the migration PR lands.
+  // eslint-disable-next-line no-unused-private-class-members -- reserved adapter slot
+  readonly #coreAdapter: CoreAssetsAdapter;
+
   readonly cacheTtlsMilliseconds: typeof SnapAssetsAdapter.cacheTtlsMilliseconds;
 
-  constructor({ snapAdapter }: { snapAdapter: SnapAssetsAdapter }) {
+  constructor({
+    snapAdapter,
+    coreAdapter,
+  }: {
+    snapAdapter: SnapAssetsAdapter;
+    coreAdapter: CoreAssetsAdapter;
+  }) {
     this.#snapAdapter = snapAdapter;
+    this.#coreAdapter = coreAdapter;
     this.cacheTtlsMilliseconds = SnapAssetsAdapter.cacheTtlsMilliseconds;
   }
 
