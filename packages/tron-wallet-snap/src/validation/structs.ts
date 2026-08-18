@@ -396,7 +396,7 @@ export const TronCaipAssetTypeStruct = union([
   NftCaipAssetTypeStruct,
   ResourceCaipAssetTypeStruct,
   MaximumResourceCaipAssetTypeStruct,
-]);
+]) as Struct<string, null>;
 
 /**
  * Multichain API - signMessage validation (params only)
