@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING** Replace the logger utilities with a configurable `Logger` class that requires a log level and supports level filtering, per-instance prefixes, and method decorators.
 
+- Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
+
 ## [1.0.0]
 
 ### Added
