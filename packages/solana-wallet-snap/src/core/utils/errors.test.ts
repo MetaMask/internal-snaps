@@ -18,7 +18,7 @@ const setupTest = () => {
     request: mockSnapRequest,
   };
 
-  return { mockSnapRequest, mockLogger: logger as jest.Mocked<typeof logger> };
+  return { mockSnapRequest, mockLogger: logger };
 };
 
 describe('errors', () => {
@@ -114,7 +114,8 @@ describe('errors', () => {
 
       expect(mockLogger.error).toHaveBeenCalledTimes(1);
       const logCall = mockLogger.error.mock.calls[0];
-      const loggedError = logCall?.[0]?.error;
+      const loggedError = (logCall?.[0] as { error?: Error } | undefined)
+        ?.error;
       expect(loggedError).toBeInstanceOf(SnapError);
     });
 
@@ -130,7 +131,8 @@ describe('errors', () => {
 
       expect(mockLogger.error).toHaveBeenCalledTimes(1);
       const logCall = mockLogger.error.mock.calls[0];
-      const loggedError = logCall?.[0]?.error;
+      const loggedError = (logCall?.[0] as { error?: Error } | undefined)
+        ?.error;
       expect(loggedError).toBeInstanceOf(SnapError);
     });
 
@@ -207,7 +209,8 @@ describe('errors', () => {
 
       for (let i = 0; i < errorTypes.length; i++) {
         const logCall = logCalls[i];
-        const loggedError = logCall?.[0]?.error;
+        const loggedError = (logCall?.[0] as { error?: Error } | undefined)
+          ?.error;
         expect(loggedError).toBeInstanceOf(SnapError);
         expect(loggedError?.message).toBe(errorTypes[i]?.message);
       }

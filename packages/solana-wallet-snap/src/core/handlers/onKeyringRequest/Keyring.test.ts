@@ -2,6 +2,7 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
+import { Logger } from '@metamask/snap-networks-utils/logger';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';
@@ -240,18 +241,17 @@ describe('SolanaKeyring', () => {
       // so a single SnapError and a SnapError-of-SnapError look identical at
       // the message level. We instead detect double-wrapping via the log
       // pattern: each wrap site logs 'Error getting account'.
-      const errorLogSpy = jest.spyOn(logger, 'error');
+      const errorLogSpy = jest.spyOn(Logger.prototype, 'error');
 
       const caught = await keyring
         .getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id)
         .catch((error: unknown) => error);
 
       expect(caught).toBeInstanceOf(SnapError);
-      // The prefixed logger calls the underlying logger as
-      // (prefix, errorContext, message), so the human-readable message
-      // sits at index 2.
+      // Spying on the shared logger's prototype captures the derived prefixed
+      // logger. The message is the second argument to `error`.
       const errorLogCalls = errorLogSpy.mock.calls.filter(
-        (call) => call[2] === 'Error getting account',
+        (call) => call[1] === 'Error getting account',
       );
       expect(errorLogCalls).toHaveLength(1);
     });

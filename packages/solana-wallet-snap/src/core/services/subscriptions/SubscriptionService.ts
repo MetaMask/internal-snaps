@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { WebSocketEvent } from '@metamask/snaps-sdk';
 import { isJsonRpcFailure } from '@metamask/utils';
@@ -17,8 +18,6 @@ import type {
 import { subscribeMethodToUnsubscribeMethod } from '../../../entities';
 import type { EventEmitter } from '../../../infrastructure';
 import type { Network } from '../../constants/solana';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { SUPPORTED_NETWORKS } from '../config/ConfigProvider';
 import { parseWebSocketMessage } from './parseWebSocketMessage';
 import type { SubscriptionRepository } from './SubscriptionRepository';
@@ -41,7 +40,7 @@ export class SubscriptionService {
 
   readonly #eventEmitter: EventEmitter;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #notificationHandlers: Map<string, Set<NotificationHandler>> =
     new Map();
@@ -50,12 +49,12 @@ export class SubscriptionService {
     connectionService: WebSocketConnectionService,
     subscriptionRepository: SubscriptionRepository,
     eventEmitter: EventEmitter,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#connectionService = connectionService;
     this.#subscriptionRepository = subscriptionRepository;
     this.#eventEmitter = eventEmitter;
-    this.#logger = createPrefixedLogger(logger, '[🔔 SubscriptionService]');
+    this.#logger = logger.withPrefix('[🔔 SubscriptionService]');
 
     this.#bindHandlers();
   }

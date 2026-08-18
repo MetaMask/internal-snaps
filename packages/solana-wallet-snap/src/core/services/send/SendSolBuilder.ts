@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
@@ -16,7 +17,6 @@ import {
 } from '@solana/kit';
 
 import { solToLamports } from '../../utils/conversion';
-import type { ILogger } from '../../utils/logger';
 import type { SolanaConnection } from '../connection';
 import type {
   BuildSendTransactionParams,
@@ -29,14 +29,14 @@ import type {
 export class SendSolBuilder implements ISendTransactionBuilder {
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   // The send SOL transaction has a predictable compute unit consumption of 450.
   readonly #computeUnitLimit = 450;
 
   readonly #computeUnitPriceMicroLamportsPerComputeUnit = 10000n;
 
-  constructor(connection: SolanaConnection, logger: ILogger) {
+  constructor(connection: SolanaConnection, logger: Logger) {
     this.#connection = connection;
     this.#logger = logger;
   }

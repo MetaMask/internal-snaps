@@ -1,5 +1,6 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
+import { mockLogger } from '../__mocks__/logger';
 import type { SolanaConnection } from '../connection';
-import { mockLogger } from '../mocks/logger';
 import { NftService } from './NftService';
 
 describe.skip('NftService', () => {

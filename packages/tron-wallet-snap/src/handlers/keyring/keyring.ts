@@ -18,6 +18,7 @@ import type {
 } from '@metamask/keyring-api/v2';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import {
   InvalidParamsError,
   SnapError,
@@ -43,8 +44,6 @@ import type { ConfirmationHandler } from '../../services/confirmation/Confirmati
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import type { WalletService } from '../../services/wallet/WalletService';
 import { sanitizeSensitiveError } from '../../utils/errors';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import {
   DeleteAccountStruct,
   ExportAccountRequestStruct,
@@ -68,7 +67,7 @@ import { BackgroundEventMethod } from '../cronjob/cronjob';
 import { TronMultichainMethod } from './keyring-types';
 
 export class KeyringHandler implements KeyringSnapRpc {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
@@ -91,7 +90,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     walletService,
     confirmationHandler,
   }: {
-    logger: ILogger;
+    logger: Logger;
     snapClient: SnapClient;
     accountsService: AccountsService;
     assetsService: AssetsService;
@@ -99,7 +98,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     walletService: WalletService;
     confirmationHandler: ConfirmationHandler;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🔑 KeyringHandler]');
+    this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
     this.#snapClient = snapClient;
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;

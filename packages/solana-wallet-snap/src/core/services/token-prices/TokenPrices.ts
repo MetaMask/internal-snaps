@@ -1,5 +1,6 @@
 import { CaipAssetTypeStruct } from '@metamask/keyring-api';
 import type { CaipAssetType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import type {
   AssetConversion,
   FungibleAssetMarketData,
@@ -19,14 +20,13 @@ import type { SpotPrice } from '../../clients/price-api/types';
 import type { FiatTicker } from '../../clients/price-api/types';
 import { trackError } from '../../utils/errors';
 import { isFiat } from '../../utils/isFiat';
-import type { ILogger } from '../../utils/logger';
 import type { ConfigProvider } from '../config';
 import type { HistoricalPrice } from './types';
 
 export class TokenPricesService {
   readonly #priceApiClient: PriceApiClient;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly cacheTtlsMilliseconds: {
     fiatExchangeRates: number;
@@ -41,7 +41,7 @@ export class TokenPricesService {
   }: {
     configProvider: ConfigProvider;
     priceApiClient: PriceApiClient;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#priceApiClient = priceApiClient;
     this.#logger = logger;

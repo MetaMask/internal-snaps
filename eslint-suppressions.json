@@ -154,17 +154,6 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/snap.config.ts": {
-    "import-x/no-nodejs-modules": {
-      "count": 1
-    },
-    "n/no-process-env": {
-      "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 17
-    }
-  },
   "packages/solana-wallet-snap/src/core/caching/useCache.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 4
@@ -181,9 +170,6 @@
   "packages/solana-wallet-snap/src/core/clients/nft-api/NftApiClient.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 5
-    },
-    "no-unused-private-class-members": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/clients/price-api/PriceApiClient.test.ts": {
@@ -237,11 +223,6 @@
   },
   "packages/solana-wallet-snap/src/core/handlers/onClientRequest/ClientRequestHandler.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onClientRequest/ClientRequestHandler.ts": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },
@@ -327,6 +308,16 @@
       "count": 1
     }
   },
+  "packages/solana-wallet-snap/src/core/services/__mocks__/mockConnection.ts": {
+    "@typescript-eslint/explicit-function-return-type": {
+      "count": 9
+    }
+  },
+  "packages/solana-wallet-snap/src/core/services/__mocks__/scanResponses.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
   "packages/solana-wallet-snap/src/core/services/analytics/AnalyticsService.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
@@ -353,12 +344,9 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/core/services/assets/AssetsService.ts": {
+  "packages/solana-wallet-snap/src/core/services/assets/adapters/SnapAssetsAdapter.ts": {
     "@typescript-eslint/await-thenable": {
       "count": 1
-    },
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 10
     },
     "no-unused-private-class-members": {
       "count": 2
@@ -445,16 +433,6 @@
       "count": 1
     },
     "@typescript-eslint/restrict-template-expressions": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/mocks/mockConnection.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 9
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/mocks/scanResponses.ts": {
-    "@typescript-eslint/no-explicit-any": {
       "count": 1
     }
   },
@@ -698,9 +676,6 @@
     },
     "no-restricted-syntax": {
       "count": 2
-    },
-    "no-unused-private-class-members": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/services/transactions/utils/isSpam.ts": {
@@ -1027,25 +1002,6 @@
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    }
-  },
-  "packages/solana-wallet-snap/src/core/utils/logMaybeSolanaError.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/utils/logger.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 3
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 10
-    },
-    "no-empty-function": {
-      "count": 5
     }
   },
   "packages/solana-wallet-snap/src/core/utils/parseOrigin.ts": {
@@ -1731,14 +1687,6 @@
     },
     "n/no-sync": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/snap.config.ts": {
-    "import-x/no-nodejs-modules": {
-      "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 20
     }
   },
   "packages/tron-wallet-snap/src/caching/StateCache.ts": {

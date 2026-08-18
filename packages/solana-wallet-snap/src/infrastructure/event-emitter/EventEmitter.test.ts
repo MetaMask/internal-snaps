@@ -1,4 +1,5 @@
-import { mockLogger } from '../../core/services/mocks/logger';
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
+import { mockLogger } from '../../core/services/__mocks__/logger';
 import { EventEmitter } from './EventEmitter';
 
 describe('EventEmitter', () => {

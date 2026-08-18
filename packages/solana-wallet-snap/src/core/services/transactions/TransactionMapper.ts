@@ -1,5 +1,6 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
 import type { CaipAssetType } from '@metamask/utils';
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { address as asAddress, lamports } from '@solana/kit';
@@ -20,7 +21,6 @@ import type { Network } from '../../constants/solana';
 import type { SolanaTransaction } from '../../types/solana';
 import { lamportsToSol } from '../../utils/conversion';
 import { trackError } from '../../utils/errors';
-import type { ILogger } from '../../utils/logger';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AssetMetadata } from '../assets/types';
 
@@ -29,12 +29,12 @@ export class TransactionMapper {
 
   readonly #assetsService: AssetsService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     tokenHelper: TokenHelper,
     assetsService: AssetsService,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#tokenHelper = tokenHelper;
     this.#assetsService = assetsService;

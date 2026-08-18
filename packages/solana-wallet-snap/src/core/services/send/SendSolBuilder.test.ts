@@ -1,10 +1,11 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { address } from '@solana/kit';
 import BigNumber from 'bignumber.js';
 
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';
 import logger from '../../utils/logger';
-import { createMockConnection } from '../mocks/mockConnection';
+import { createMockConnection } from '../__mocks__/mockConnection';
 import { SendSolBuilder } from './SendSolBuilder';
 
 describe('SendSolBuilder', () => {

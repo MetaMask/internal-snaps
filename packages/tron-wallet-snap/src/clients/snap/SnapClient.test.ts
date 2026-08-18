@@ -1,4 +1,6 @@
-import type { ILogger } from '../../utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils/logger';
+
+import { mockLogger } from '../../utils/mockLogger';
 import { SnapClient } from './SnapClient';
 
 // Mock the global snap object
@@ -18,17 +20,10 @@ async function withSnapClient(
   testFn: (setup: {
     snapClient: SnapClient;
     mockSnapRequest: jest.Mock;
-    mockLogger: jest.Mocked<ILogger>;
+    mockLogger: Logger;
   }) => void | Promise<void>,
 ) {
   mockSnapRequest.mockReset();
-  const mockLogger = {
-    log: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  } as unknown as jest.Mocked<ILogger>;
   const snapClient = new SnapClient({ logger: mockLogger });
   await testFn({ snapClient, mockSnapRequest, mockLogger });
 }
@@ -124,7 +119,11 @@ describe('SnapClient', () => {
   describe('trackError', () => {
     it('returns the Sentry event ID and forwards the serialized error', async () => {
       await withSnapClient(
-        async ({ snapClient, mockSnapRequest: mockRequest, mockLogger }) => {
+        async ({
+          snapClient,
+          mockSnapRequest: mockRequest,
+          mockLogger: logger,
+        }) => {
           mockRequest.mockResolvedValue('evt_abc123');
           const error = new Error('boom');
           error.name = 'BoomError';
@@ -143,22 +142,26 @@ describe('SnapClient', () => {
               }),
             },
           });
-          expect(mockLogger.warn).not.toHaveBeenCalled();
+          expect(logger.warn).not.toHaveBeenCalled();
         },
       );
     });
 
     it('swallows RPC failures and logs a warning', async () => {
       await withSnapClient(
-        async ({ snapClient, mockSnapRequest: mockRequest, mockLogger }) => {
+        async ({
+          snapClient,
+          mockSnapRequest: mockRequest,
+          mockLogger: logger,
+        }) => {
           const rpcError = new Error('rpc down');
           mockRequest.mockRejectedValue(rpcError);
 
           const result = await snapClient.trackError(new Error('x'));
 
           expect(result).toBeUndefined();
-          expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-          expect(mockLogger.warn).toHaveBeenCalledWith(
+          expect(logger.warn).toHaveBeenCalledTimes(1);
+          expect(logger.warn).toHaveBeenCalledWith(
             expect.any(String),
             expect.objectContaining({ rpcError }),
             expect.stringContaining('Failed to track error'),

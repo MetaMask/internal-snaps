@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { Rpc, SimulateTransactionApi } from '@solana/kit';
 import {
   address,
@@ -7,7 +8,7 @@ import {
 } from '@solana/kit';
 
 import { Network } from '../constants/solana';
-import { createMockConnection } from '../services/mocks/mockConnection';
+import { createMockConnection } from '../services/__mocks__/mockConnection';
 import {
   estimateAndOverrideComputeUnitLimit,
   isComputeUnitLimitInstruction,
