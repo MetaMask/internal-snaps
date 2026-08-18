@@ -142,6 +142,7 @@ const coreAssetsAdapter = new CoreAssetsAdapter({
 const assetsService = new AssetsService({
   snapAdapter: snapAssetsAdapter,
   coreAdapter: coreAssetsAdapter,
+  remoteFeatureFlagsProvider,
 });
 
 const transactionsService = new TransactionsService({
