@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import type { Serializable } from '../../serialization/types';

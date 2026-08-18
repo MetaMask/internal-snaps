@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
 

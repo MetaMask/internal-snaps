@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { expect } from '@jest/globals';
 import {
   resolveDomain,

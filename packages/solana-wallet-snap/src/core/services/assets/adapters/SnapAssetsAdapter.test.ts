@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { cloneDeep } from 'lodash';
 
 import type { ICache } from '../../../caching/ICache';

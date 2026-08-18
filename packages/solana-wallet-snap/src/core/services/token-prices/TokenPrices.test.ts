@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { Duration } from '@metamask/utils';
 
 import { MOCK_HISTORICAL_PRICES } from '../../clients/price-api/mocks/historical-prices';

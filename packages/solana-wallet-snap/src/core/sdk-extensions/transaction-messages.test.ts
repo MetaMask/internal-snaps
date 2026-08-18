@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { Rpc, SimulateTransactionApi } from '@solana/kit';
 import {
   address,
