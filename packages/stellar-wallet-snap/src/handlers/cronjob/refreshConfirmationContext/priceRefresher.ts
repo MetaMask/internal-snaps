@@ -82,13 +82,10 @@ export class ConfirmationPriceRefresher implements IConfirmationContextRefresher
 
       const updatedTokenPrices = uniqueAssetCaipIds.reduce<
         ContextWithPrices['tokenPrices']
-      >(
-        (acc, assetId) => {
-          acc[assetId] = prices[assetId]?.price.toString() ?? null;
-          return acc;
-        },
-        {} as ContextWithPrices['tokenPrices'],
-      );
+      >((acc, assetId) => {
+        acc[assetId] = prices[assetId]?.price.toString() ?? null;
+        return acc;
+      }, {});
 
       return {
         result: {
