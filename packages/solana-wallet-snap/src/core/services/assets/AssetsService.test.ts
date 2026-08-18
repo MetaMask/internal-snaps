@@ -25,6 +25,7 @@ import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
 import type { TokenPricesService } from '../token-prices/TokenPrices';
+import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';
 
@@ -34,6 +35,7 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 
 describe('AssetsService', () => {
   let assetsService: AssetsService;
+  let snapAssetsAdapter: SnapAssetsAdapter;
   let mockConnection: SolanaConnection;
   let mockConfigProvider: ConfigProvider;
   let mockAssetsRepository: AssetsRepository;
@@ -88,7 +90,7 @@ describe('AssetsService', () => {
       findById: jest.fn().mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0),
     } as unknown as AccountsService;
 
-    assetsService = new AssetsService({
+    snapAssetsAdapter = new SnapAssetsAdapter({
       connection: mockConnection,
       logger: mockLogger,
       configProvider: mockConfigProvider,
@@ -98,6 +100,10 @@ describe('AssetsService', () => {
       tokenPricesService: mockTokenPricesService,
       cache: mockCache,
       nftApiClient: mockNftApiClient,
+    });
+
+    assetsService = new AssetsService({
+      snapAdapter: snapAssetsAdapter,
     });
   });
 
@@ -171,6 +177,45 @@ describe('AssetsService', () => {
       const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
       expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_0]);
+    });
+  });
+
+  describe('getAssetsMetadata', () => {
+    it('fetches token metadata from the token API client', async () => {
+      const tokenAssetTypes = [
+        MOCK_ASSET_ENTITY_1.assetType,
+        MOCK_ASSET_ENTITY_2.assetType,
+      ];
+
+      const metadata = await assetsService.getAssetsMetadata(tokenAssetTypes);
+
+      expect(mockTokenApiClient.getTokensMetadata).toHaveBeenCalledWith(
+        tokenAssetTypes,
+      );
+      expect(metadata).toStrictEqual(SOLANA_MOCK_TOKEN_METADATA);
+    });
+  });
+
+  describe('fetchAssetsMarketData', () => {
+    it('delegates to the token prices service', async () => {
+      const assets = [
+        {
+          asset: MOCK_ASSET_ENTITY_0.assetType,
+          unit: MOCK_ASSET_ENTITY_0.assetType,
+        },
+      ];
+      const expected = { [MOCK_ASSET_ENTITY_0.assetType]: {} };
+
+      jest
+        .spyOn(mockTokenPricesService, 'getMultipleTokensMarketData')
+        .mockResolvedValueOnce(expected as never);
+
+      const result = await assetsService.fetchAssetsMarketData(assets);
+
+      expect(
+        mockTokenPricesService.getMultipleTokensMarketData,
+      ).toHaveBeenCalledWith(assets);
+      expect(result).toStrictEqual(expected);
     });
   });
 
