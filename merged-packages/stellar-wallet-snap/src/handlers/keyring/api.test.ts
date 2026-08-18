@@ -1,0 +1,639 @@
+import { assert, StructError } from '@metamask/superstruct';
+
+import {
+  CreateAccountOptionsStruct,
+  ResolveAccountAddressRequestStruct,
+  DiscoverAccountsStruct,
+  ListAccountTransactionsRequestStruct,
+  MultichainMethod,
+  MultichainMethodStruct,
+  SignAuthEntryRequestStruct,
+  SignAuthEntryResponseStruct,
+  SignMessageRequestStruct,
+  SignMessageResponseStruct,
+  SignTransactionRequestStruct,
+  SignTransactionResponseStruct,
+} from './api';
+import { KnownCaip2ChainId } from '../../api';
+import type { StellarKeyringAccount } from '../../services/account';
+import { generateMockStellarKeyringAccounts } from '../../services/account/__mocks__/account.fixtures';
+
+const mockAccounts = generateMockStellarKeyringAccounts(1, 'entropy-source-1');
+const account = mockAccounts[0] as StellarKeyringAccount;
+const keyringRequestId = '11111111-1111-4111-8111-111111111111';
+const xdr = `AAAAAgAAAADjngeX0YTNoQ15A0xC83aMm/sDnXrmLF+apmXvdmkUugAAAGQAC3gAAAAAQQAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOZfkjSFZ31vI/Nx28cC6iAFWLWcPIvJhM2NVoxmfgVTAAAAAAAAAAAAmJaAAAAAAAAAAAA=`;
+// Mainnet HashIdPreimage(envelopeTypeSorobanAuthorization), `transfer` invoke
+// against a deterministic 32-byte contract id, no sub-invocations. Round-trips
+// through `xdr.HashIdPreimage.fromXDR(..., 'base64')`.
+const authEntry = `AAAACXrDOZdUTjF10ma9AiQ5sizbFlCMARY/JuXLKj4QRal5AAAAAAdbzRUAD0JAAAAAAAAAAAECAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAAh0cmFuc2ZlcgAAAAAAAAAA`;
+// Same shape, but with the embedded `networkId` bound to testnet — used to
+// assert `HashIdPreimageXdrStruct` rejects preimages whose networkId does not
+// match Stellar mainnet.
+const testnetAuthEntry = `AAAACc7gMC1ZhE0yvcqRXIID3USzP7t+3BkFHqN6vt8o7NRyAAAAAAdbzRUAD0JAAAAAAAAAAAECAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAAh0cmFuc2ZlcgAAAAAAAAAA`;
+
+describe('MultichainMethodStruct', () => {
+  it.each([
+    MultichainMethod.SignMessage,
+    MultichainMethod.SignTransaction,
+    MultichainMethod.SignAuthEntry,
+  ])('accepts a supported multichain method', (method) => {
+    expect(() => assert(method, MultichainMethodStruct)).not.toThrow();
+  });
+
+  it('rejects an unsupported method string', () => {
+    expect(() => assert('eth_sendTransaction', MultichainMethodStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('CreateAccountOptionsStruct', () => {
+  it.each([
+    {},
+    undefined,
+    { index: 0 },
+    { index: 1 },
+    { entropySource: 'ulid-123', index: 0 },
+  ])('accepts valid options', (options) => {
+    expect(() => assert(options, CreateAccountOptionsStruct)).not.toThrow();
+  });
+
+  it.each([{ index: -1 }, { entropySource: 1, index: 0 }])(
+    'rejects invalid options',
+    (options) => {
+      expect(() => assert(options, CreateAccountOptionsStruct)).toThrow(
+        StructError,
+      );
+    },
+  );
+});
+
+describe('ResolveAccountAddressRequestStruct', () => {
+  it.each([
+    // Test case: SignMessage with opts.address
+    {
+      jsonrpc: '2.0',
+      id: '1',
+      method: MultichainMethod.SignMessage,
+      params: { opts: { address: account.address } },
+    },
+    // Test case: SignTransaction with opts.address
+    {
+      jsonrpc: '2.0',
+      id: '1',
+      method: MultichainMethod.SignTransaction,
+      params: { opts: { address: account.address } },
+    },
+    // Test case: SEP-43 method-specific fields pass through (loose params/opts)
+    {
+      jsonrpc: '2.0',
+      id: '1',
+      method: MultichainMethod.SignMessage,
+      params: {
+        message: 'Hello, world!',
+        opts: {
+          address: account.address,
+          networkPassphrase: 'Public Global Stellar Network ; September 2015',
+        },
+      },
+    },
+  ])(
+    'accepts a valid resolveAccountAddressJsonRpcRequest request',
+    (request) => {
+      expect(() =>
+        assert(
+          {
+            request,
+            scope: KnownCaip2ChainId.Mainnet,
+          },
+          ResolveAccountAddressRequestStruct,
+        ),
+      ).not.toThrow();
+    },
+  );
+
+  it.each([
+    {
+      // Test case: Invalid method
+      request: {
+        jsonrpc: '2.0',
+        id: '1',
+        method: 'resolveAccountAddress',
+        params: { opts: { address: account.address } },
+      },
+      scope: KnownCaip2ChainId.Mainnet,
+    },
+    // Test case: Missing JSON-RPC fields
+    {
+      request: {
+        method: MultichainMethod.SignMessage,
+        params: { opts: { address: account.address } },
+      },
+      scope: KnownCaip2ChainId.Mainnet,
+    },
+    // Test case: Invalid address inside opts
+    {
+      request: {
+        jsonrpc: '2.0',
+        id: '1',
+        method: MultichainMethod.SignMessage,
+        params: { opts: { address: 'invalid-address' } },
+      },
+      scope: KnownCaip2ChainId.Mainnet,
+    },
+    // Test case: Address at the wrong path (top-level params, not opts)
+    {
+      request: {
+        jsonrpc: '2.0',
+        id: '1',
+        method: MultichainMethod.SignMessage,
+        params: { address: account.address },
+      },
+      scope: KnownCaip2ChainId.Mainnet,
+    },
+    // Test case: Missing opts entirely
+    {
+      request: {
+        jsonrpc: '2.0',
+        id: '1',
+        method: MultichainMethod.SignMessage,
+        params: { message: 'Hello' },
+      },
+      scope: KnownCaip2ChainId.Mainnet,
+    },
+    // Test case: Invalid params
+    {
+      request: {
+        jsonrpc: '2.0',
+        id: '1',
+        method: MultichainMethod.SignMessage,
+        params: 1,
+      },
+      scope: KnownCaip2ChainId.Mainnet,
+    },
+  ])('rejects an invalid resolveAccountAddress request', (request) => {
+    expect(() => assert(request, ResolveAccountAddressRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('DiscoverAccountsStruct', () => {
+  it('accepts a valid discoverAccounts request', () => {
+    const request = {
+      scopes: [KnownCaip2ChainId.Mainnet],
+      entropySource: 'entropy-source-1',
+      groupIndex: 0,
+    };
+    expect(() => assert(request, DiscoverAccountsStruct)).not.toThrow();
+  });
+
+  it('accepts multiple scopes', () => {
+    const request = {
+      scopes: [KnownCaip2ChainId.Mainnet, KnownCaip2ChainId.Testnet],
+      entropySource: 'entropy-source-1',
+      groupIndex: 0,
+    };
+    expect(() => assert(request, DiscoverAccountsStruct)).not.toThrow();
+  });
+
+  it.each([
+    {
+      scopes: [],
+      entropySource: 'entropy-source-1',
+      groupIndex: 1,
+    },
+    {
+      scopes: [KnownCaip2ChainId.Mainnet],
+      entropySource: 'entropy-source-1',
+      groupIndex: 1.5,
+    },
+    {
+      scopes: [KnownCaip2ChainId.Mainnet],
+      entropySource: 'entropy-source-1',
+      groupIndex: -1,
+    },
+    {
+      scopes: [KnownCaip2ChainId.Mainnet],
+      entropySource: 'entropy-source-1',
+      groupIndex: '0',
+    },
+    {
+      scopes: 'invalid-chain-id' as KnownCaip2ChainId,
+      entropySource: 'entropy-source-1',
+      groupIndex: 0,
+    },
+  ])('rejects an invalid discoverAccounts request', (request) => {
+    expect(() => assert(request, DiscoverAccountsStruct)).toThrow(StructError);
+  });
+});
+
+describe('SignMessageRequestStruct', () => {
+  const validSignMessageRequest = {
+    id: keyringRequestId,
+    origin: 'https://example.com',
+    scope: KnownCaip2ChainId.Mainnet,
+    account: account.id,
+    request: {
+      method: MultichainMethod.SignMessage,
+      params: { message: 'Hello, world!' },
+    },
+  };
+
+  it('accepts a valid signMessage keyring request', () => {
+    expect(() =>
+      assert(validSignMessageRequest, SignMessageRequestStruct),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ['ASCII text', 'Sign in to dapp'],
+    ['Japanese UTF-8 text', 'こんにちは、世界！'],
+    // Base64-looking strings are still accepted as UTF-8 text (not decoded).
+    [
+      'base64-looking UTF-8 text',
+      '2zZDP1sa1BVBfLP7TeeMk3sUbaxAkUhBhDiNdrksaFo=',
+    ],
+    ['emoji (valid surrogate pair)', '😀'],
+  ])('accepts a %s message', (_label, message) => {
+    expect(() =>
+      assert(
+        {
+          ...validSignMessageRequest,
+          request: {
+            method: MultichainMethod.SignMessage,
+            params: { message },
+          },
+        },
+        SignMessageRequestStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts an SEP-43 opts bag with address and networkPassphrase', () => {
+    expect(() =>
+      assert(
+        {
+          ...validSignMessageRequest,
+          request: {
+            method: MultichainMethod.SignMessage,
+            params: {
+              message: 'Hello, world!',
+              opts: {
+                address: account.address,
+                networkPassphrase:
+                  'Public Global Stellar Network ; September 2015',
+              },
+            },
+          },
+        },
+        SignMessageRequestStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {
+      ...validSignMessageRequest,
+      request: {
+        method: MultichainMethod.SignTransaction,
+        params: { message: 'Hello' },
+      },
+    },
+    {
+      ...validSignMessageRequest,
+      request: {
+        method: MultichainMethod.SignMessage,
+        params: { message: '' },
+      },
+    },
+    {
+      ...validSignMessageRequest,
+      account: 'not-a-uuid',
+    },
+    {
+      ...validSignMessageRequest,
+      scope: 'invalid:scope' as KnownCaip2ChainId,
+    },
+    {
+      ...validSignMessageRequest,
+      id: 'not-a-uuid',
+    },
+  ])('rejects an invalid signMessage request', (request) => {
+    expect(() => assert(request, SignMessageRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('SignMessageResponseStruct', () => {
+  it('accepts a successful signMessage envelope', () => {
+    expect(() =>
+      assert(
+        {
+          signedMessage: btoa('signed'),
+          signerAddress: account.address,
+        },
+        SignMessageResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts an error envelope with empty success fields', () => {
+    expect(() =>
+      assert(
+        {
+          signedMessage: '',
+          signerAddress: '',
+          error: { message: 'rejected', code: -4 },
+        },
+        SignMessageResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    { signedMessage: 'not!!!valid-base64', signerAddress: account.address },
+    { signedMessage: btoa('signed'), signerAddress: 'invalid-address' },
+  ])('rejects an invalid signMessage response', (response) => {
+    expect(() => assert(response, SignMessageResponseStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('SignTransactionRequestStruct', () => {
+  const validSignTransactionRequest = {
+    id: keyringRequestId,
+    origin: 'https://example.com',
+    scope: KnownCaip2ChainId.Mainnet,
+    account: account.id,
+    request: {
+      method: MultichainMethod.SignTransaction,
+      params: { xdr },
+    },
+  };
+
+  it('accepts a valid signTransaction keyring request', () => {
+    expect(() =>
+      assert(validSignTransactionRequest, SignTransactionRequestStruct),
+    ).not.toThrow();
+  });
+
+  it('accepts an SEP-43 opts bag with address', () => {
+    expect(() =>
+      assert(
+        {
+          ...validSignTransactionRequest,
+          request: {
+            method: MultichainMethod.SignTransaction,
+            params: { xdr, opts: { address: account.address } },
+          },
+        },
+        SignTransactionRequestStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {
+      ...validSignTransactionRequest,
+      request: {
+        method: MultichainMethod.SignMessage,
+        params: { xdr },
+      },
+    },
+    {
+      ...validSignTransactionRequest,
+      request: {
+        method: MultichainMethod.SignTransaction,
+        params: { xdr: 'not-valid-xdr' },
+      },
+    },
+    {
+      ...validSignTransactionRequest,
+      account: 'not-a-uuid',
+    },
+  ])('rejects an invalid signTransaction request', (request) => {
+    expect(() => assert(request, SignTransactionRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('SignTransactionResponseStruct', () => {
+  it('accepts a successful signTransaction envelope', () => {
+    expect(() =>
+      assert(
+        { signedTxXdr: xdr, signerAddress: account.address },
+        SignTransactionResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts an error envelope with empty success fields', () => {
+    expect(() =>
+      assert(
+        {
+          signedTxXdr: '',
+          signerAddress: '',
+          error: { message: 'invalid', code: -3 },
+        },
+        SignTransactionResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    { signedTxXdr: 'AAA=', signerAddress: account.address },
+    { signedTxXdr: xdr, signerAddress: 'invalid-address' },
+  ])('rejects an invalid signTransaction response', (response) => {
+    expect(() => assert(response, SignTransactionResponseStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('SignAuthEntryRequestStruct', () => {
+  const validSignAuthEntryRequest = {
+    id: keyringRequestId,
+    origin: 'https://example.com',
+    scope: KnownCaip2ChainId.Mainnet,
+    account: account.id,
+    request: {
+      method: MultichainMethod.SignAuthEntry,
+      params: { authEntry },
+    },
+  };
+
+  it('accepts a valid signAuthEntry keyring request', () => {
+    expect(() =>
+      assert(validSignAuthEntryRequest, SignAuthEntryRequestStruct),
+    ).not.toThrow();
+  });
+
+  it('accepts an SEP-43 opts bag with address and networkPassphrase', () => {
+    expect(() =>
+      assert(
+        {
+          ...validSignAuthEntryRequest,
+          request: {
+            method: MultichainMethod.SignAuthEntry,
+            params: {
+              authEntry,
+              opts: {
+                address: account.address,
+                networkPassphrase:
+                  'Public Global Stellar Network ; September 2015',
+              },
+            },
+          },
+        },
+        SignAuthEntryRequestStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    // Wrong method discriminator
+    {
+      ...validSignAuthEntryRequest,
+      request: {
+        method: MultichainMethod.SignTransaction,
+        params: { authEntry },
+      },
+    },
+    // Garbage base64 -> fails XdrStruct base64 refinement
+    {
+      ...validSignAuthEntryRequest,
+      request: {
+        method: MultichainMethod.SignAuthEntry,
+        params: { authEntry: 'not-base64-xdr' },
+      },
+    },
+    // Valid base64 but not a Soroban authorization preimage
+    {
+      ...validSignAuthEntryRequest,
+      request: {
+        method: MultichainMethod.SignAuthEntry,
+        params: { authEntry: btoa('not a HashIdPreimage') },
+      },
+    },
+    // Valid Soroban authorization preimage but bound to testnet networkId —
+    // mainnet-only snap must reject so the resulting signature can't be
+    // smuggled across networks.
+    {
+      ...validSignAuthEntryRequest,
+      request: {
+        method: MultichainMethod.SignAuthEntry,
+        params: { authEntry: testnetAuthEntry },
+      },
+    },
+    // Forbidden opt: snap is sign-only, never submits
+    {
+      ...validSignAuthEntryRequest,
+      request: {
+        method: MultichainMethod.SignAuthEntry,
+        params: { authEntry, opts: { submit: true } },
+      },
+    },
+    // Wrong network passphrase (testnet)
+    {
+      ...validSignAuthEntryRequest,
+      request: {
+        method: MultichainMethod.SignAuthEntry,
+        params: {
+          authEntry,
+          opts: {
+            networkPassphrase: 'Test SDF Network ; September 2015',
+          },
+        },
+      },
+    },
+    // Non-mainnet scope
+    {
+      ...validSignAuthEntryRequest,
+      scope: 'invalid:scope' as KnownCaip2ChainId,
+    },
+    // Bad UUID
+    {
+      ...validSignAuthEntryRequest,
+      account: 'not-a-uuid',
+    },
+  ])('rejects an invalid signAuthEntry request', (request) => {
+    expect(() => assert(request, SignAuthEntryRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('SignAuthEntryResponseStruct', () => {
+  it('accepts a successful signAuthEntry envelope', () => {
+    expect(() =>
+      assert(
+        {
+          signedAuthEntry: btoa('signed'),
+          signerAddress: account.address,
+        },
+        SignAuthEntryResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts an error envelope with empty success fields', () => {
+    expect(() =>
+      assert(
+        {
+          signedAuthEntry: '',
+          signerAddress: '',
+          error: { message: 'rejected', code: -4 },
+        },
+        SignAuthEntryResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    // Garbage base64
+    { signedAuthEntry: 'not!!!valid-base64', signerAddress: account.address },
+    // Bad signer address
+    { signedAuthEntry: btoa('signed'), signerAddress: 'invalid-address' },
+    // Missing both error and success fields
+    { signedAuthEntry: '', signerAddress: '' },
+  ])('rejects an invalid signAuthEntry response', (response) => {
+    expect(() => assert(response, SignAuthEntryResponseStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('ListAccountTransactionsRequestStruct', () => {
+  it('accepts a valid listAccountTransactions request', () => {
+    const request = {
+      accountId: account.id,
+      pagination: { limit: 10, next: null },
+    };
+    expect(() =>
+      assert(request, ListAccountTransactionsRequestStruct),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {
+      accountId: 'invalid-account-id',
+      pagination: { limit: 10, next: null },
+    },
+    {
+      accountId: account.id,
+      pagination: { limit: 0, next: null },
+    },
+    {
+      accountId: account.id,
+      pagination: { limit: 10, next: 'invalid-transaction-id' },
+    },
+  ])('rejects an invalid listAccountTransactions request', (request) => {
+    expect(() => assert(request, ListAccountTransactionsRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+});

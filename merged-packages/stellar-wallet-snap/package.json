@@ -1,0 +1,72 @@
+{
+  "name": "@metamask/stellar-wallet-snap",
+  "version": "0.0.1",
+  "description": "A Stellar wallet Snap.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/snap-stellar-wallet.git"
+  },
+  "license": "(MIT-0 OR Apache-2.0)",
+  "main": "./dist/bundle.js",
+  "files": [
+    "dist/",
+    "images/",
+    "snap.manifest.json",
+    "locales/"
+  ],
+  "scripts": {
+    "allow-scripts": "yarn workspace root allow-scripts",
+    "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build:dev": "ENVIRONMENT=local node scripts/update-manifest-local.js && mm-snap build && yarn build:locale",
+    "build:prod": "ENVIRONMENT=production node scripts/update-manifest-local.js && mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build:clean": "yarn clean && yarn build:locale && yarn build",
+    "build:locale": "node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w",
+    "build:locale:watch": "npx nodemon --watch packages/snap/messages.json --exec \"node ./scripts/populate-en-locale.js && prettier 'locales/**/*.json' -w\"",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/stellar-wallet-snap",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/stellar-wallet-snap",
+    "clean": "rimraf dist",
+    "lint": "yarn lint:eslint && yarn lint:misc && yarn lint:deps && yarn lint:types",
+    "lint:deps": "depcheck && yarn dedupe --check",
+    "lint:deps:fix": "depcheck && yarn dedupe",
+    "lint:eslint": "eslint . --cache --ext js,jsx,ts,tsx",
+    "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write",
+    "lint:misc": "prettier '**/*.json' '**/*.md' --check",
+    "lint:types": "tsc --noEmit",
+    "format": "prettier '**/*.ts' '**/*.tsx' --write",
+    "prepublishOnly": "mm-snap manifest",
+    "serve": "mm-snap serve",
+    "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
+    "test": "jest --passWithNoTests --coverage=false",
+    "test:coverage": "jest --passWithNoTests --coverage=true && yarn jest-it-up",
+    "test:integration": "./integration-test/run-integration.sh"
+  },
+  "devDependencies": {
+    "@metamask/auto-changelog": "^6.1.0",
+    "@metamask/key-tree": "^10.1.1",
+    "@metamask/keyring-api": "^23.7.0",
+    "@metamask/keyring-snap-sdk": "^9.2.1",
+    "@metamask/snaps-cli": "^8.4.0",
+    "@metamask/snaps-jest": "^10.1.0",
+    "@metamask/snaps-sdk": "^11.1.0",
+    "@metamask/superstruct": "^3.2.1",
+    "@metamask/utils": "^11.11.0",
+    "@stellar/stellar-sdk": "^15.0.1",
+    "@types/jest": "^30.0.0",
+    "async-mutex": "^0.5.0",
+    "bignumber.js": "^9.3.1",
+    "concurrently": "^10.0.3",
+    "dotenv": "^17.2.1",
+    "jest": "^30.0.3",
+    "jest-it-up": "^2.0.2",
+    "jest-transform-stub": "2.0.0",
+    "lodash": "^4.18.1",
+    "prettier": "^3.5.3",
+    "qrcode-generator": "^2.0.4",
+    "ts-jest": "^29.4.11"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
