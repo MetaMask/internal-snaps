@@ -176,6 +176,7 @@ const config = createConfig([
       'jest/no-alias-methods': 'error',
       'jest/no-commented-out-tests': 'error',
       'jest/no-disabled-tests': 'error',
+      'jest/no-mocks-import': 'off',
     },
     settings: {
       node: {

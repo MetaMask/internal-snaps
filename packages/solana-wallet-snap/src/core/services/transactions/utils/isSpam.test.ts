@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { address as asAddress } from '@solana/kit';
 
 import { Network } from '../../../constants/solana';

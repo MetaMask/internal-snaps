@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 import { fetchJsonParsedAccount } from '@solana/kit';

@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 /* eslint-disable jest/prefer-strict-equal */
 
 import BigNumber from 'bignumber.js';
