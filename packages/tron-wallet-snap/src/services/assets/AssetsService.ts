@@ -1,3 +1,4 @@
+import type { Caip19AssetId } from '@metamask/assets-controller';
 import {
   SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
   SnapsAssetsMigrationStage,
@@ -75,7 +76,10 @@ export class AssetsService {
     }
 
     if (await this.#shouldReturnAssetsFromCore()) {
-      return this.#coreAdapter.getAccountAssetsByIDs(accountId, assetIds);
+      return this.#coreAdapter.getAccountAssetsByIDs(
+        accountId,
+        assetIds as Caip19AssetId[],
+      );
     }
 
     return this.#snapAdapter.getAccountAssetsByIDs(accountId, assetIds);
@@ -86,7 +90,10 @@ export class AssetsService {
     assetId: string,
   ): Promise<AssetEntity | null> {
     if (await this.#shouldReturnAssetsFromCore()) {
-      return this.#coreAdapter.getAccountAssetByID(accountId, assetId);
+      return this.#coreAdapter.getAccountAssetByID(
+        accountId,
+        assetId as Caip19AssetId,
+      );
     }
 
     return this.#snapAdapter.getAccountAssetByID(accountId, assetId);
