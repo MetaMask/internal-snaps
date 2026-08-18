@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import type { WebSocketMessage } from '@metamask/snaps-sdk';
 import { Duration } from '@metamask/utils';
 
