@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-mocks-import -- Test fixtures are imported directly. */
 import { address } from '@solana/kit';
 import BigNumber from 'bignumber.js';
 

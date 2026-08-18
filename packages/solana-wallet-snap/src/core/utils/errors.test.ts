@@ -18,7 +18,7 @@ const setupTest = () => {
     request: mockSnapRequest,
   };
 
-  return { mockSnapRequest, mockLogger: logger };
+  return { mockSnapRequest, mockLogger: jest.mocked(logger) };
 };
 
 describe('errors', () => {

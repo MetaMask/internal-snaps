@@ -76,7 +76,6 @@ provider.request({
 });
 ```
 
-
 ## Contributing
 
 This package is part of the Internal Snaps monorepo. See the [contribution processes](../../docs/processes/) for development, testing, building, and release instructions.
