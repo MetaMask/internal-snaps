@@ -5,7 +5,10 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { AssetsProvider } from '@metamask/snap-networks-utils';
 
 import type { AccountResources } from '../../../clients/tron-http';
-import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
+import {
+  TrongridAccountNotFoundError,
+  TrongridHttpError,
+} from '../../../clients/trongrid/errors';
 import { KnownCaip19Id, Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { getSnapOwnedAssetIdsForScope } from '../utils/isSnapOwnedAsset';
@@ -341,8 +344,12 @@ describe('CoreAssetsAdapter', () => {
   });
 
   describe('fetchAssetsAndBalancesForAccount', () => {
-    it('returns only snap-owned assets when account info fails', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
+    it('returns zero snap-owned assets when the account is inactive', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockGetAddressInfo }) => {
+        mockGetAddressInfo.mockRejectedValue(
+          new TrongridAccountNotFoundError(),
+        );
+
         const assets = await adapter.fetchAssetsAndBalancesForAccount(
           Network.Mainnet,
           mockAccount,
@@ -358,26 +365,49 @@ describe('CoreAssetsAdapter', () => {
       });
     });
 
-    it('does not throw when account info and rewards requests reject', async () => {
-      await withCoreAssetsAdapter(
-        async ({
-          adapter,
-          mockGetAddressInfo,
-          mockGetAddressStakingRewards,
-        }) => {
-          mockGetAddressInfo.mockRejectedValue(
-            new TrongridAccountNotFoundError(),
-          );
-          mockGetAddressStakingRewards.mockRejectedValue(
-            new Error('rewards unavailable'),
-          );
+    it('throws when account info fails with an HTTP error', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockGetAddressInfo }) => {
+        mockGetAddressInfo.mockRejectedValue(new TrongridHttpError(500));
 
-          const assets = await adapter.fetchAssetsAndBalancesForAccount(
+        await expect(
+          adapter.fetchAssetsAndBalancesForAccount(
             Network.Mainnet,
             mockAccount,
+          ),
+        ).rejects.toThrow(TrongridHttpError);
+      });
+    });
+
+    it('throws when account resources request rejects', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockGetAddressResources }) => {
+          mockGetAddressResources.mockRejectedValue(
+            new Error('HTTP error! status: 500'),
           );
 
-          expect(assets).toHaveLength(9);
+          await expect(
+            adapter.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            ),
+          ).rejects.toThrow('HTTP error! status: 500');
+        },
+      );
+    });
+
+    it('throws when staking rewards request rejects', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockGetAddressStakingRewards }) => {
+          mockGetAddressStakingRewards.mockRejectedValue(
+            new Error('HTTP error! status: 503'),
+          );
+
+          await expect(
+            adapter.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            ),
+          ).rejects.toThrow('HTTP error! status: 503');
         },
       );
     });

@@ -9,12 +9,12 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
+import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import type { ILogger } from '../../../utils/logger';
 import logger, { createPrefixedLogger } from '../../../utils/logger';
-import { buildAccountResources } from '../utils/buildAccountResources';
 import { buildStakedData } from '../utils/buildStakedData';
 import { extractBandwidth } from '../utils/extractBandwidth';
 import { extractEnergy } from '../utils/extractEnergy';
@@ -155,8 +155,10 @@ export class CoreAssetsAdapter {
     });
 
     /**
-     * We use `Promise.allSettled` to avoid failing the whole fetch if one of the requests fails.
-     * We expect `getAccountInfoByAddress` to fail for inactive accounts.
+     * `getAccountInfoByAddress` rejects with `TrongridAccountNotFoundError` for
+     * inactive accounts. We still wait for all three requests, then rethrow
+     * unexpected failures (HTTP errors, timeouts) so they are not mistaken for
+     * an inactive account.
      */
     const [
       addressInfoRequest,
@@ -168,19 +170,27 @@ export class CoreAssetsAdapter {
       this.#getAddressStakingRewards(scope, account.address),
     ]);
 
-    if (addressInfoRequest.status === 'rejected') {
-      this.#logger.info(
-        'Account info request failed, treating as inactive account',
-        { account, scope },
-      );
+    /**
+     * If any of the requests fail let's treat it as a panic except for the inactive account case.
+     */
+    if (
+      addressInfoRequest.status === 'rejected' &&
+      !(addressInfoRequest.reason instanceof TrongridAccountNotFoundError)
+    ) {
+      throw addressInfoRequest.reason;
+    }
+
+    if (addressResourcesRequest.status === 'rejected') {
+      throw addressResourcesRequest.reason;
+    }
+
+    if (addressStakingRewardsRequest.status === 'rejected') {
+      throw addressStakingRewardsRequest.reason;
     }
 
     const stakedData = buildStakedData(addressInfoRequest);
-    const resources = buildAccountResources(addressResourcesRequest);
-    const stakingRewards =
-      addressStakingRewardsRequest.status === 'fulfilled'
-        ? Math.max(0, addressStakingRewardsRequest.value)
-        : 0;
+    const resources = addressResourcesRequest.value;
+    const stakingRewards = Math.max(0, addressStakingRewardsRequest.value);
 
     return [
       ...extractStakedNativeAssets(account, scope, stakedData),
