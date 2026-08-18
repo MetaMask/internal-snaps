@@ -344,14 +344,6 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/core/services/assets/adapters/SnapAssetsAdapter.ts": {
-    "@typescript-eslint/await-thenable": {
-      "count": 1
-    },
-    "no-unused-private-class-members": {
-      "count": 2
-    }
-  },
   "packages/solana-wallet-snap/src/core/services/assets/TokenHelper.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
@@ -366,6 +358,14 @@
     },
     "import-x/no-named-as-default": {
       "count": 1
+    }
+  },
+  "packages/solana-wallet-snap/src/core/services/assets/adapters/SnapAssetsAdapter.ts": {
+    "@typescript-eslint/await-thenable": {
+      "count": 1
+    },
+    "no-unused-private-class-members": {
+      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/core/services/config/ConfigProvider.ts": {

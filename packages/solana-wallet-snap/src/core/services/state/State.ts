@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { Transaction } from '@metamask/keyring-api';
+import { safeMerge } from '@metamask/snap-networks-utils';
 import type { Address, Signature } from '@solana/kit';
 import type { MutexInterface } from 'async-mutex';
 import { Mutex } from 'async-mutex';
@@ -16,7 +17,6 @@ import type { SpotPrices } from '../../clients/price-api/types';
 import { deserialize } from '../../serialization/deserialize';
 import { serialize } from '../../serialization/serialize';
 import type { Serializable } from '../../serialization/types';
-import { safeMerge } from '../../utils/safeMerge';
 import type { IStateManager } from './IStateManager';
 
 export type AccountId = string;
