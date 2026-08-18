@@ -1,5 +1,10 @@
+import {
+  SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
+  SnapsAssetsMigrationStage,
+} from '@metamask/assets-controller';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
@@ -7,7 +12,7 @@ import { InMemoryCache } from '../../caching/InMemoryCache';
 import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from '../../clients/nft-api/mocks/mockNftsListResponseMapped';
 import type { NftApiClient } from '../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../clients/token-api-client/TokenApiClient';
-import { Network } from '../../constants/solana';
+import { KnownCaip19Id, Network } from '../../constants/solana';
 import type { Serializable } from '../../serialization/types';
 import {
   MOCK_ASSET_ENTITIES,
@@ -36,6 +41,8 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 describe('AssetsService', () => {
   let assetsService: AssetsService;
   let snapAssetsAdapter: SnapAssetsAdapter;
+  let coreAdapter: CoreAssetsAdapter;
+  let mockGetFeatureFlag: jest.Mock;
   let mockConnection: SolanaConnection;
   let mockConfigProvider: ConfigProvider;
   let mockAssetsRepository: AssetsRepository;
@@ -44,6 +51,10 @@ describe('AssetsService', () => {
   let mockTokenPricesService: TokenPricesService;
   let mockNftApiClient: NftApiClient;
   let mockCache: ICache<Serializable>;
+
+  const setMigrationStage = (stage: SnapsAssetsMigrationStage): void => {
+    mockGetFeatureFlag.mockResolvedValue({ stage });
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -102,7 +113,7 @@ describe('AssetsService', () => {
       nftApiClient: mockNftApiClient,
     });
 
-    const coreAdapter = new CoreAssetsAdapter({
+    coreAdapter = new CoreAssetsAdapter({
       getAccountAssetByID: jest.fn().mockResolvedValue(null),
       getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
       getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
@@ -111,9 +122,16 @@ describe('AssetsService', () => {
         mockConfigProvider.getActiveNetworks.bind(mockConfigProvider),
     });
 
+    mockGetFeatureFlag = jest.fn().mockResolvedValue({
+      stage: SnapsAssetsMigrationStage.Off,
+    });
+
     assetsService = new AssetsService({
       snapAdapter: snapAssetsAdapter,
       coreAdapter,
+      remoteFeatureFlagsProvider: {
+        getFeatureFlag: mockGetFeatureFlag,
+      } as unknown as RemoteFeatureFlagsProvider,
     });
   });
 
@@ -822,6 +840,124 @@ describe('AssetsService', () => {
       expect(
         mockAssetsRepository.findByKeyringAccountId,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('assets migration', () => {
+    const accountId = MOCK_SOLANA_KEYRING_ACCOUNT_0.id;
+    const activeMigrationStage =
+      SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback;
+
+    it('routes getAccountAssetByID through Core when migration is active', async () => {
+      setMigrationStage(activeMigrationStage);
+      jest
+        .spyOn(coreAdapter, 'getAccountAssetByID')
+        .mockResolvedValue(MOCK_ASSET_ENTITY_0);
+
+      const asset = await assetsService.getAccountAssetByID(
+        accountId,
+        KnownCaip19Id.SolMainnet,
+      );
+
+      expect(coreAdapter.getAccountAssetByID).toHaveBeenCalledWith(
+        accountId,
+        KnownCaip19Id.SolMainnet,
+      );
+      expect(asset).toStrictEqual(MOCK_ASSET_ENTITY_0);
+    });
+
+    it('routes getAccountAssetsByIDs through Core when migration is active', async () => {
+      setMigrationStage(activeMigrationStage);
+      jest.spyOn(coreAdapter, 'getAccountAssetsByIDs').mockResolvedValue({
+        [KnownCaip19Id.SolMainnet]: MOCK_ASSET_ENTITY_0,
+        [KnownCaip19Id.UsdcMainnet]: MOCK_ASSET_ENTITY_1,
+      });
+
+      const results = await assetsService.getAccountAssetsByIDs(accountId, [
+        KnownCaip19Id.SolMainnet,
+        KnownCaip19Id.UsdcMainnet,
+      ]);
+
+      expect(coreAdapter.getAccountAssetsByIDs).toHaveBeenCalledWith(
+        accountId,
+        [KnownCaip19Id.SolMainnet, KnownCaip19Id.UsdcMainnet],
+      );
+      expect(results[KnownCaip19Id.SolMainnet]).toStrictEqual(
+        MOCK_ASSET_ENTITY_0,
+      );
+      expect(results[KnownCaip19Id.UsdcMainnet]).toStrictEqual(
+        MOCK_ASSET_ENTITY_1,
+      );
+    });
+
+    it('routes getAccountAssetsByScope through Core when migration is active', async () => {
+      setMigrationStage(activeMigrationStage);
+      jest
+        .spyOn(coreAdapter, 'getAccountAssetsByScope')
+        .mockResolvedValue([MOCK_ASSET_ENTITY_0]);
+
+      const assets = await assetsService.getAccountAssetsByScope(
+        Network.Mainnet,
+        accountId,
+      );
+
+      expect(coreAdapter.getAccountAssetsByScope).toHaveBeenCalledWith(
+        Network.Mainnet,
+        accountId,
+      );
+      expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_0]);
+    });
+
+    it('routes getAccountAssets through Core when migration is active', async () => {
+      setMigrationStage(activeMigrationStage);
+      jest
+        .spyOn(coreAdapter, 'getAccountAssets')
+        .mockResolvedValue([MOCK_ASSET_ENTITY_0]);
+
+      const assets = await assetsService.getAccountAssets(accountId);
+
+      expect(coreAdapter.getAccountAssets).toHaveBeenCalledWith(accountId);
+      expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_0]);
+    });
+
+    it('returns no assets from fetch when migration is active', async () => {
+      setMigrationStage(activeMigrationStage);
+      const snapFetchSpy = jest.spyOn(snapAssetsAdapter, 'fetch');
+
+      const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+
+      expect(snapFetchSpy).not.toHaveBeenCalled();
+      expect(assets).toStrictEqual([]);
+    });
+
+    it('does not persist or emit when saveMany is called and migration is active', async () => {
+      setMigrationStage(activeMigrationStage);
+
+      await assetsService.saveMany([MOCK_ASSET_ENTITY_0]);
+
+      expect(mockAssetsRepository.saveMany).not.toHaveBeenCalled();
+      expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+    });
+
+    it('reports Core assets as active when the migration flag is on', async () => {
+      setMigrationStage(activeMigrationStage);
+
+      expect(await assetsService.isUsingCoreAssets()).toBe(true);
+    });
+
+    it('reports Core assets as inactive when the migration flag is off', async () => {
+      expect(await assetsService.isUsingCoreAssets()).toBe(false);
+    });
+
+    it('reads the Solana migration flag key', async () => {
+      setMigrationStage(activeMigrationStage);
+      jest.spyOn(coreAdapter, 'getAccountAssets').mockResolvedValue([]);
+
+      await assetsService.getAccountAssets(accountId);
+
+      expect(mockGetFeatureFlag).toHaveBeenCalledWith(
+        SNAPS_ASSETS_MIGRATION_FLAG_KEYS.solana,
+      );
     });
   });
 });

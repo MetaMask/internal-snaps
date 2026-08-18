@@ -127,6 +127,7 @@ describe('KeyringAccountMonitor', () => {
     mockAssetsService = {
       getTokenAccountsByOwnerMultiple: jest.fn(),
       save: jest.fn(),
+      isUsingCoreAssets: jest.fn().mockResolvedValue(false),
       getAssetsMetadata: jest.fn().mockImplementation((assetType) => ({
         [assetType]: {
           symbol: 'USDC',
@@ -384,6 +385,22 @@ describe('KeyringAccountMonitor', () => {
         );
       });
 
+      it('does not persist native balances when Core assets migration is active', async () => {
+        jest
+          .spyOn(mockAssetsService, 'isUsingCoreAssets')
+          .mockResolvedValue(true);
+
+        await keyringAccountMonitor.setMonitoredAccounts([account.id]);
+
+        const handler = accountNotificationHandlers[0]!;
+        await handler(mockNotification, mockSubscription);
+
+        expect(mockAssetsService.save).not.toHaveBeenCalled();
+        expect(mockTransactionsService.save).toHaveBeenCalledWith(
+          mockCausingTransaction,
+        );
+      });
+
       it('fetches and saves the transaction that caused the native asset balance to change', async () => {
         await keyringAccountMonitor.setMonitoredAccounts([account.id]);
 
@@ -541,6 +558,23 @@ describe('KeyringAccountMonitor', () => {
           rawAmount: '123456789',
           uiAmount: '123.456789',
         });
+        expect(mockTransactionsService.save).toHaveBeenCalledWith(
+          mockCausingTransaction,
+        );
+      });
+
+      it('does not persist token balances when Core assets migration is active', async () => {
+        jest
+          .spyOn(mockAssetsService, 'isUsingCoreAssets')
+          .mockResolvedValue(true);
+
+        await keyringAccountMonitor.setMonitoredAccounts([account.id]);
+
+        const handler = programNotificationHandlers[0]!;
+        await handler(mockNotification, mockSubscription);
+
+        expect(mockAssetsService.save).not.toHaveBeenCalled();
+        expect(mockTokenHelper.amountToUiAmountForMint).not.toHaveBeenCalled();
         expect(mockTransactionsService.save).toHaveBeenCalledWith(
           mockCausingTransaction,
         );

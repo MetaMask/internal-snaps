@@ -34,7 +34,8 @@ import { isSpam } from '../transactions/utils/isSpam';
  * - It gets updates when the balance of token assets change by subscribing to each RPC token account.
  *
  * On each update:
- * - It saves the new balance. Under the hood, AssetsService also notifies the extension.
+ * - While Snap still owns balances, it saves the new balance. Under the hood, AssetsService also notifies the extension.
+ * - Once Core assets migration is active, balance persistence is skipped (Core already tracks fungibles). Transaction discovery continues.
  * - It fetches the transaction that caused the native asset or token asset to change and saves it. Under the hood, TransactionsService also notifies the extension.
  */
 export class KeyringAccountMonitor {
@@ -328,17 +329,21 @@ export class KeyringAccountMonitor {
 
     const decimals = 9;
 
+    const persistAssets = !(await this.#assetsService.isUsingCoreAssets());
+
     await Promise.all([
-      this.#assetsService.save({
-        assetType: `${network}/${SolanaCaip19Tokens.SOL}`,
-        keyringAccountId: keyringAccount.id,
-        network,
-        address,
-        symbol: 'SOL',
-        decimals,
-        rawAmount: accountLamports.toString(),
-        uiAmount: fromTokenUnits(accountLamports, decimals),
-      }),
+      persistAssets
+        ? this.#assetsService.save({
+            assetType: `${network}/${SolanaCaip19Tokens.SOL}`,
+            keyringAccountId: keyringAccount.id,
+            network,
+            address,
+            symbol: 'SOL',
+            decimals,
+            rawAmount: accountLamports.toString(),
+            uiAmount: fromTokenUnits(accountLamports, decimals),
+          })
+        : Promise.resolve(),
       this.#saveCausingTransaction(keyringAccount, network, address),
     ]);
   }
@@ -384,6 +389,11 @@ export class KeyringAccountMonitor {
     const keyringAccount = await this.#accountService.findByAddress(owner);
     if (!keyringAccount) {
       throw new Error(`No keyring account found with address: ${owner}`);
+    }
+
+    if (await this.#assetsService.isUsingCoreAssets()) {
+      await this.#saveCausingTransaction(keyringAccount, network, pubkey);
+      return;
     }
 
     /**

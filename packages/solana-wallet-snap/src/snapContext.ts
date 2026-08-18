@@ -94,7 +94,7 @@ export type SnapExecutionContext = {
   accountsSynchronizer: AccountsSynchronizer;
   tokenHelper: TokenHelper;
   /**
-   * Core messenger plumbing (routing wired in a follow-up PR).
+   * Core messenger plumbing.
    */
   coreMessenger: CoreMessengerClient;
   remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
@@ -206,6 +206,7 @@ const coreAssetsAdapter = new CoreAssetsAdapter({
 const assetsService = new AssetsService({
   snapAdapter: snapAssetsAdapter,
   coreAdapter: coreAssetsAdapter,
+  remoteFeatureFlagsProvider,
 });
 
 const transactionsRepository = new TransactionsRepository(state);
