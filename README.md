@@ -23,7 +23,7 @@ Each snap in this repository has its own README with installation and usage inst
 - [`@metamask/bitcoin-wallet-snap`](packages/bitcoin-wallet-snap)
 - [`@metamask/snap-networks-utils`](packages/snap-networks-utils)
 - [`@metamask/solana-wallet-snap`](packages/solana-wallet-snap)
-- [`@metamask/tron-wallet-snap`](packages/tron-wallet-snap)
 - [`@metamask/stellar-wallet-snap`](packages/stellar-wallet-snap)
+- [`@metamask/tron-wallet-snap`](packages/tron-wallet-snap)
 
 <!-- end package list -->
