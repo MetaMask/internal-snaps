@@ -189,35 +189,35 @@ export const AppConfig = create(
     environment: process.env.ENVIRONMENT,
     networks: {
       [KnownCaip2ChainId.Mainnet]: {
-        rpcUrl: process.env.RPC_URL_MAINNET,
-        horizonUrl: process.env.HORIZON_URL_MAINNET,
+        rpcUrl: process.env.STELLAR_RPC_URL_MAINNET,
+        horizonUrl: process.env.STELLAR_HORIZON_URL_MAINNET,
         explorerBaseUrl:
-          process.env.EXPLORER_MAINNET_BASE_URL === ''
+          process.env.STELLAR_EXPLORER_MAINNET_BASE_URL === ''
             ? DEFAULT_EXPLORER_MAINNET_BASE_URL
-            : (process.env.EXPLORER_MAINNET_BASE_URL ??
+            : (process.env.STELLAR_EXPLORER_MAINNET_BASE_URL ??
               DEFAULT_EXPLORER_MAINNET_BASE_URL),
       },
       [KnownCaip2ChainId.Testnet]: {
-        rpcUrl: process.env.RPC_URL_TESTNET,
-        horizonUrl: process.env.HORIZON_URL_TESTNET,
+        rpcUrl: process.env.STELLAR_RPC_URL_TESTNET,
+        horizonUrl: process.env.STELLAR_HORIZON_URL_TESTNET,
         explorerBaseUrl:
-          process.env.EXPLORER_TESTNET_BASE_URL === ''
+          process.env.STELLAR_EXPLORER_TESTNET_BASE_URL === ''
             ? DEFAULT_EXPLORER_TESTNET_BASE_URL
-            : (process.env.EXPLORER_TESTNET_BASE_URL ??
+            : (process.env.STELLAR_EXPLORER_TESTNET_BASE_URL ??
               DEFAULT_EXPLORER_TESTNET_BASE_URL),
       },
     },
     selectedNetwork: KnownCaip2ChainId.Mainnet,
     logLevel: process.env.LOG_LEVEL,
     transaction: {
-      timeout: process.env.TRANSACTION_TIMEOUT,
-      pollingAttempts: process.env.TRANSACTION_POLLING_ATTEMPTS,
-      baseFeeMultiplier: process.env.BASE_FEE_MULTIPLIER,
-      maxFeeThresholdInXLM: process.env.MAX_FEE_THRESHOLD_IN_XLM,
+      timeout: process.env.STELLAR_TRANSACTION_TIMEOUT,
+      pollingAttempts: process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS,
+      baseFeeMultiplier: process.env.STELLAR_BASE_FEE_MULTIPLIER,
+      maxFeeThresholdInXLM: process.env.STELLAR_MAX_FEE_THRESHOLD_IN_XLM,
       trackTransactionMaxReschedules:
-        process.env.TRACK_TRANSACTION_MAX_RESCHEDULES,
-      maxReconcileAttempts: process.env.MAX_RECONCILE_ATTEMPTS,
-      maxPendingTransactionAge: process.env.MAX_PENDING_TRANSACTION_AGE,
+        process.env.STELLAR_TRACK_TRANSACTION_MAX_RESCHEDULES,
+      maxReconcileAttempts: process.env.STELLAR_MAX_RECONCILE_ATTEMPTS,
+      maxPendingTransactionAge: process.env.STELLAR_MAX_PENDING_TRANSACTION_AGE,
     },
     api: {
       tokenApi: {
@@ -248,13 +248,18 @@ export const AppConfig = create(
     },
     cache: {
       ttlMilliseconds: {
-        spotPrices: process.env.SPOT_PRICES_TTL_MILLISECONDS,
-        fiatExchangeRates: process.env.FIAT_EXCHANGE_RATES_TTL_MILLISECONDS,
-        historicalPrices: process.env.HISTORICAL_PRICES_TTL_MILLISECONDS,
-        baseFee: process.env.BASE_FEE_TTL_MILLISECONDS,
-        loadOnChainAccount: process.env.LOAD_ON_CHAIN_ACCOUNT_TTL_MILLISECONDS,
-        simulateTransaction: process.env.SIMULATE_TRANSACTION_TTL_MILLISECONDS,
-        sep41AssetBalance: process.env.SEP41_ASSET_BALANCE_TTL_MILLISECONDS,
+        spotPrices: process.env.STELLAR_SPOT_PRICES_TTL_MILLISECONDS,
+        fiatExchangeRates:
+          process.env.STELLAR_FIAT_EXCHANGE_RATES_TTL_MILLISECONDS,
+        historicalPrices:
+          process.env.STELLAR_HISTORICAL_PRICES_TTL_MILLISECONDS,
+        baseFee: process.env.STELLAR_BASE_FEE_TTL_MILLISECONDS,
+        loadOnChainAccount:
+          process.env.STELLAR_LOAD_ON_CHAIN_ACCOUNT_TTL_MILLISECONDS,
+        simulateTransaction:
+          process.env.STELLAR_SIMULATE_TRANSACTION_TTL_MILLISECONDS,
+        sep41AssetBalance:
+          process.env.STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS,
       },
     },
   },

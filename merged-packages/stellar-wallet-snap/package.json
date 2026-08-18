@@ -1,14 +1,19 @@
 {
   "name": "@metamask/stellar-wallet-snap",
   "version": "0.0.1",
-  "description": "A Stellar wallet Snap.",
+  "description": "A Stellar wallet Snap",
   "keywords": [
+    "Ethereum",
     "MetaMask"
   ],
-  "license": "(MIT-0 OR Apache-2.0)",
+  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/stellar-wallet-snap#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/internal-snaps/issues"
+  },
+  "license": "(MIT OR Apache-2.0)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/snap-stellar-wallet.git"
+    "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "files": [
     "dist/",
@@ -43,14 +48,14 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "devDependencies": {
-    "@metamask/auto-changelog": "^6.1.0",
+    "@metamask/auto-changelog": "^6.1.1",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^23.7.0",
     "@metamask/keyring-snap-sdk": "^9.2.1",
-    "@metamask/snaps-cli": "^8.4.0",
-    "@metamask/snaps-jest": "^10.1.0",
-    "@metamask/snaps-sdk": "^11.1.0",
-    "@metamask/superstruct": "^3.2.1",
+    "@metamask/snaps-cli": "^8.4.1",
+    "@metamask/snaps-jest": "^10.2.0",
+    "@metamask/snaps-sdk": "^11.2.0",
+    "@metamask/superstruct": "^3.4.1",
     "@metamask/utils": "^11.11.0",
     "@stellar/stellar-sdk": "^15.0.1",
     "@types/jest": "^30.0.0",
@@ -58,13 +63,13 @@
     "bignumber.js": "^9.3.1",
     "concurrently": "^10.0.3",
     "dotenv": "^17.2.1",
-    "jest": "^30.0.3",
+    "jest": "30.0.3",
     "jest-it-up": "^2.0.2",
     "jest-transform-stub": "2.0.0",
-    "lodash": "^4.18.1",
+    "lodash": "^4.17.21",
     "oxfmt": "^0.45.0",
     "qrcode-generator": "^2.0.4",
-    "ts-jest": "^29.4.11"
+    "ts-jest": "^29.4.1"
   },
   "engines": {
     "node": ">=20"

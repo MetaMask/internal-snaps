@@ -1,21 +1,19 @@
 {
+  "extends": "../../tsconfig.packages.json",
   "compilerOptions": {
-    "module": "preserve",
-    "moduleResolution": "bundler",
-    "target": "es2023",
-    "lib": ["ES2023", "DOM"],
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noErrorTruncation": true,
-    "noUncheckedIndexedAccess": true,
-    "resolveJsonModule": true,
+    "resolveJsonModule": true /*  lets us import JSON modules from within TypeScript modules. */,
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "exactOptionalPropertyTypes": false,
-    "types": ["jest"],
-    "esModuleInterop": true,
-    "noEmit": true,
-    "strict": true
+    "forceConsistentCasingInFileNames": true,
+    "noErrorTruncation": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "lib": ["ES2023", "DOM"],
+    "target": "es2023",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
 }
