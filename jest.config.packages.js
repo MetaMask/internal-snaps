@@ -84,12 +84,10 @@ module.exports = {
       '<rootDir>/../json-rpc-engine/src/v2/index.ts',
     ],
     '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
-    '^@metamask/(.+)$': [
-      '<rootDir>/../$1/src',
-      // Some @metamask/* packages we are referencing aren't in this monorepo,
-      // so in that case use their published versions
-      '<rootDir>/../../node_modules/@metamask/$1',
-    ],
+    '^@metamask/snap-networks-utils$':
+      '<rootDir>/../snap-networks-utils/src',
+    '^@metamask/snap-networks-utils/(.+)$':
+      '<rootDir>/../snap-networks-utils/src/$1',
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
