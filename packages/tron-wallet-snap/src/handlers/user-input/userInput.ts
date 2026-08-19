@@ -1,14 +1,13 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { createEventHandlers as createSignMessageEvents } from '../../ui/confirmation/views/ConfirmSignMessage/events';
 import { createEventHandlers as createSignTransactionEvents } from '../../ui/confirmation/views/ConfirmSignTransaction/events';
 import { createEventHandlers as createTransactionConfirmationEvents } from '../../ui/confirmation/views/ConfirmTransactionRequest/events';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 
 export class UserInputHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
@@ -16,10 +15,10 @@ export class UserInputHandler {
     logger,
     snapClient,
   }: {
-    logger: ILogger;
+    logger: Logger;
     snapClient: SnapClient;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[👵 LifecycleHandler]');
+    this.#logger = logger.withPrefix('[👵 LifecycleHandler]');
     this.#snapClient = snapClient;
   }
 

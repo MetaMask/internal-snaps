@@ -1,7 +1,7 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
 import type { IStateManager } from '../services/state/IStateManager';
-import type { ILogger } from '../utils/logger';
 import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import type { CacheEntry } from './types';
@@ -74,11 +74,11 @@ export class StateCache implements ICache<Serializable | undefined> {
 
   public readonly prefix: CachePrefix;
 
-  public readonly logger: ILogger;
+  public readonly logger: Logger;
 
   constructor(
     state: IStateManager<StateValue>,
-    logger: ILogger = console,
+    logger: Logger,
     prefix: CachePrefix = '__cache__default',
   ) {
     this.#state = state;

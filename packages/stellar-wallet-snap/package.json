@@ -1,0 +1,77 @@
+{
+  "name": "@metamask/stellar-wallet-snap",
+  "version": "0.0.1",
+  "description": "A Stellar wallet Snap",
+  "keywords": [
+    "Ethereum",
+    "MetaMask"
+  ],
+  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/stellar-wallet-snap#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/internal-snaps/issues"
+  },
+  "license": "(MIT OR Apache-2.0)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
+  "files": [
+    "dist/",
+    "images/",
+    "snap.manifest.json",
+    "locales/"
+  ],
+  "main": "./dist/bundle.js",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "allow-scripts": "yarn workspace root allow-scripts",
+    "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build:dev": "ENVIRONMENT=local node scripts/update-manifest-local.js && mm-snap build && yarn build:locale",
+    "build:prod": "ENVIRONMENT=production node scripts/update-manifest-local.js && mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build:locale": "node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'",
+    "build:locale:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'\"",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/stellar-wallet-snap",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/stellar-wallet-snap",
+    "since-latest-release": "../../scripts/since-latest-release.sh",
+    "clean": "rimraf dist",
+    "prepublishOnly": "mm-snap manifest",
+    "publish:preview": "yarn npm publish --tag preview",
+    "serve": "mm-snap serve",
+    "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
+    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
+    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+  },
+  "devDependencies": {
+    "@metamask/auto-changelog": "^6.1.1",
+    "@metamask/key-tree": "^10.1.1",
+    "@metamask/keyring-api": "^23.7.0",
+    "@metamask/keyring-snap-sdk": "^9.2.1",
+    "@metamask/snaps-cli": "^8.4.1",
+    "@metamask/snaps-jest": "^10.2.0",
+    "@metamask/snaps-sdk": "^11.2.0",
+    "@metamask/superstruct": "^3.4.1",
+    "@metamask/utils": "^11.11.0",
+    "@stellar/stellar-sdk": "^15.0.1",
+    "@types/jest": "^30.0.0",
+    "async-mutex": "^0.5.0",
+    "bignumber.js": "^9.3.1",
+    "concurrently": "^10.0.3",
+    "dotenv": "^17.2.1",
+    "jest": "30.0.3",
+    "jest-it-up": "^2.0.2",
+    "jest-transform-stub": "2.0.0",
+    "lodash": "^4.17.21",
+    "oxfmt": "^0.45.0",
+    "qrcode-generator": "^2.0.4",
+    "ts-jest": "^29.4.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,4 +1,4 @@
-import { mockLogger } from '../../core/services/mocks/logger';
+import { mockLogger } from '../../core/services/__mocks__/logger';
 import { EventEmitter } from './EventEmitter';
 
 describe('EventEmitter', () => {

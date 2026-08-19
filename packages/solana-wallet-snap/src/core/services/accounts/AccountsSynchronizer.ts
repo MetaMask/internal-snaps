@@ -1,6 +1,6 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import type { SolanaKeyringAccount } from '../../../entities';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionsService } from '../transactions';
 import type { AccountsService } from './AccountsService';
@@ -12,18 +12,18 @@ export class AccountsSynchronizer {
 
   readonly #transactionsService: TransactionsService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     accountsService: AccountsService,
     assetsService: AssetsService,
     transactionsService: TransactionsService,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#transactionsService = transactionsService;
-    this.#logger = createPrefixedLogger(logger, '[🔄 AccountsSynchronizer]');
+    this.#logger = logger.withPrefix('[🔄 AccountsSynchronizer]');
   }
 
   async synchronize(accounts?: SolanaKeyringAccount[]): Promise<void> {

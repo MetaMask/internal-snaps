@@ -10,6 +10,7 @@ import {
   TrxAccountType,
 } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { InFlightCoalescer } from '@metamask/snap-networks-utils/dedupe';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
@@ -23,8 +24,6 @@ import { asStrictKeyringAccount } from '../../entities/keyring-account';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
@@ -100,7 +99,7 @@ export class AccountsService {
 
   readonly #configProvider: ConfigProvider;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #assetsService: AssetsService;
 
@@ -120,12 +119,12 @@ export class AccountsService {
   }: {
     accountsRepository: AccountsRepository;
     configProvider: ConfigProvider;
-    logger: ILogger;
+    logger: Logger;
     assetsService: AssetsService;
     snapClient: SnapClient;
     transactionsService: TransactionsService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🔑 AccountsService]');
+    this.#logger = logger.withPrefix('[🔑 AccountsService]');
     this.#configProvider = configProvider;
     this.#accountsRepository = accountsRepository;
     this.#assetsService = assetsService;

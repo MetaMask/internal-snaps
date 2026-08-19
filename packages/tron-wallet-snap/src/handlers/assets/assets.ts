@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type {
   OnAssetHistoricalPriceArguments,
   OnAssetHistoricalPriceResponse,
@@ -10,11 +11,9 @@ import type {
 } from '@metamask/snaps-sdk';
 
 import type { AssetsService } from '../../services/assets/AssetsService';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 
 export class AssetsHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #assetsService: AssetsService;
 
@@ -22,10 +21,10 @@ export class AssetsHandler {
     logger,
     assetsService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     assetsService: AssetsService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🪙 AssetsHandler]');
+    this.#logger = logger.withPrefix('[🪙 AssetsHandler]');
     this.#assetsService = assetsService;
   }
 

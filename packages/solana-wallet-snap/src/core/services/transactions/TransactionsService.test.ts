@@ -11,11 +11,10 @@ import {
 import { MOCK_GET_SIGNATURES_FOR_ADDRESS } from '../../test/mocks/transactions';
 import { ADDRESS_1_TRANSACTION_1_DATA } from '../../test/mocks/transactions-data/address-1/transaction-1';
 import { trackError } from '../../utils/errors';
+import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
 import type { SolanaConnection } from '../connection/SolanaConnection';
-import { mockLogger } from '../mocks/logger';
-import { createMockConnection } from '../mocks/mockConnection';
 import type { TransactionMapper } from './TransactionMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
@@ -63,7 +62,6 @@ describe('TransactionsService', () => {
       mockAccountsService,
       mockAssetsService,
       mockConnection,
-      mockLogger,
     );
 
     const snap = {

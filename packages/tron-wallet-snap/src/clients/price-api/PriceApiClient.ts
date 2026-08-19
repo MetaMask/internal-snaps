@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { CaipAssetType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
@@ -10,7 +11,6 @@ import { useCache } from '../../caching/useCache';
 import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
-import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
 import type { Serializable } from '../../utils/serialization/types';
 import { UrlStruct } from '../../validation/structs';
@@ -32,7 +32,7 @@ import {
 export class PriceApiClient {
   readonly #fetch: typeof globalThis.fetch;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #baseUrl: string;
 
@@ -50,7 +50,7 @@ export class PriceApiClient {
     configProvider: ConfigProvider,
     _cache: ICache<Serializable>,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
-    _logger: ILogger = logger,
+    _logger: Logger = logger,
   ) {
     const { baseUrl, chunkSize, cacheTtlsMilliseconds } =
       configProvider.get().priceApi;

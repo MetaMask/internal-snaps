@@ -1,6 +1,6 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
-import type { ILogger } from '../utils/logger';
 import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import type { CacheEntry } from './types';
@@ -14,9 +14,9 @@ import type { CacheEntry } from './types';
 export class InMemoryCache implements ICache<Serializable> {
   readonly #cache: Map<string, CacheEntry> = new Map();
 
-  public readonly logger: ILogger;
+  public readonly logger: Logger;
 
-  constructor(logger: ILogger) {
+  constructor(logger: Logger) {
     this.logger = logger;
   }
 

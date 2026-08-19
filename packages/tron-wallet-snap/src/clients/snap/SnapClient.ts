@@ -1,5 +1,6 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { getJsonError } from '@metamask/snaps-sdk';
 import type {
   DialogResult,
@@ -12,8 +13,6 @@ import type {
 
 import { SecurityEventType, TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { sanitizeSensitiveError } from '../../utils/sensitiveErrors';
 
 /**
@@ -21,10 +20,10 @@ import { sanitizeSensitiveError } from '../../utils/sensitiveErrors';
  * Provides methods for managing interfaces, dialogs, preferences, and background events.
  */
 export class SnapClient {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
-  constructor({ logger }: { logger: ILogger }) {
-    this.#logger = createPrefixedLogger(logger, '[📡 SnapClient]');
+  constructor({ logger }: { logger: Logger }) {
+    this.#logger = logger.withPrefix('[📡 SnapClient]');
   }
 
   /**

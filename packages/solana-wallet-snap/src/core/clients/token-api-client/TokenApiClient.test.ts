@@ -1,7 +1,7 @@
 import type { TokenCaipAssetType } from '../../constants/solana';
 import { KnownCaip19Id, Network } from '../../constants/solana';
+import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
-import { mockLogger } from '../../services/mocks/logger';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import { TokenApiClient } from './TokenApiClient';
 

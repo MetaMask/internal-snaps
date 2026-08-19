@@ -1,0 +1,69 @@
+{
+  "version": "0.0.1",
+  "description": "Manage Stellar using MetaMask",
+  "proposedName": "Stellar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
+  "source": {
+    "shasum": "hg0T69VmDITQiiLZvHu0lCmIrQ7Cl1frkaicIBg3WMc=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/icon.svg",
+        "packageName": "@metamask/stellar-wallet-snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    },
+    "locales": ["locales/en.json"]
+  },
+  "initialConnections": {
+    "https://portfolio.metamask.io": {}
+  },
+  "initialPermissions": {
+    "endowment:keyring": {
+      "allowedOrigins": ["https://portfolio.metamask.io"],
+      "capabilities": {
+        "scopes": ["stellar:pubnet"],
+        "bip44": {
+          "deriveIndex": true,
+          "deriveIndexRange": true,
+          "discover": true
+        }
+      }
+    },
+    "snap_getBip32Entropy": [
+      {
+        "path": ["m", "44'", "148'"],
+        "curve": "ed25519"
+      }
+    ],
+    "endowment:network-access": {},
+    "snap_manageAccounts": {},
+    "snap_manageState": {},
+    "snap_dialog": {},
+    "snap_getPreferences": {},
+    "endowment:cronjob": {
+      "jobs": [
+        {
+          "duration": "PT30S",
+          "request": {
+            "method": "synchronizeAccounts"
+          }
+        },
+        {
+          "duration": "PT1H",
+          "request": {
+            "method": "synchronizeAssets"
+          }
+        }
+      ]
+    },
+    "endowment:assets": {
+      "scopes": ["stellar:pubnet"]
+    }
+  },
+  "platformVersion": "11.2.0",
+  "manifestVersion": "0.1"
+}

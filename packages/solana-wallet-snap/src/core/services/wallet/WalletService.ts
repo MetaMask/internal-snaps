@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
 import type { Commitment, SignatureBytes } from '@solana/kit';
@@ -23,8 +24,7 @@ import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import { addressToCaip10 } from '../../utils/addressToCaip10';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
-import type { ILogger } from '../../utils/logger';
-import logger, { createPrefixedLogger } from '../../utils/logger';
+import logger from '../../utils/logger';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
@@ -58,7 +58,7 @@ export class WalletService {
 
   readonly #analyticsService: AnalyticsService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     connection: SolanaConnection,
@@ -71,7 +71,7 @@ export class WalletService {
     this.#signer = signer;
     this.#signatureMonitor = signatureMonitor;
     this.#analyticsService = analyticsService;
-    this.#logger = createPrefixedLogger(_logger, '[👛 WalletService]');
+    this.#logger = _logger.withPrefix('[👛 WalletService]');
   }
 
   /**

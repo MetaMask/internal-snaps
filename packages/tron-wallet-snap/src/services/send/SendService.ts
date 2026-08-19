@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
@@ -10,8 +11,6 @@ import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
@@ -28,7 +27,7 @@ export class SendService {
 
   readonly #feeCalculatorService: FeeCalculatorService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
@@ -47,7 +46,7 @@ export class SendService {
     assetsService: AssetsService;
     tronWebFactory: TronWebFactory;
     feeCalculatorService: FeeCalculatorService;
-    logger: ILogger;
+    logger: Logger;
     snapClient: SnapClient;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
@@ -55,7 +54,7 @@ export class SendService {
     this.#assetsService = assetsService;
     this.#tronWebFactory = tronWebFactory;
     this.#feeCalculatorService = feeCalculatorService;
-    this.#logger = createPrefixedLogger(logger, '[💸 SendService]');
+    this.#logger = logger.withPrefix('[💸 SendService]');
     this.#snapClient = snapClient;
     this.#transactionExpirationRefresherService =
       transactionExpirationRefresherService;

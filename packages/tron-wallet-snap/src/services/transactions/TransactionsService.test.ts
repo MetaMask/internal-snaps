@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -12,7 +13,6 @@ import type {
 } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network, Networks } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import type { ILogger } from '../../utils/logger';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
 import trc10TransferMock from './mocks/trongrid/account-transactions/trc10-transfer.json';
@@ -24,7 +24,7 @@ import { TransactionsService } from './TransactionsService';
 
 type WithTransactionServiceCallback<ReturnValue> = (payload: {
   transactionsService: TransactionsService;
-  mockLogger: ILogger;
+  mockLogger: Logger;
   mockTransactionsRepository: jest.Mocked<
     Pick<
       TransactionsRepository,

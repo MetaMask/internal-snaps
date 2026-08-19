@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import {
   resolveDomain,
   getPrimaryDomain,
@@ -6,17 +7,16 @@ import type { Address } from '@solana/kit';
 import { address as asAddress } from '@solana/kit';
 
 import type { Network } from '../../constants/solana';
-import type { ILogger } from '../../utils/logger';
 import type { SolanaConnection } from '../connection/SolanaConnection';
 
 export class NameResolutionService {
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   tld = '.sol';
 
-  constructor(connection: SolanaConnection, logger: ILogger) {
+  constructor(connection: SolanaConnection, logger: Logger) {
     this.#connection = connection;
     this.#logger = logger;
   }

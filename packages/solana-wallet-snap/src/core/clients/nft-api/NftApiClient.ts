@@ -8,8 +8,6 @@ import type { Serializable } from '../../serialization/types';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
 import { trackError } from '../../utils/errors';
-import type { ILogger } from '../../utils/logger';
-import logger from '../../utils/logger';
 import { UrlStruct } from '../../validation/structs';
 import type {
   Balance,
@@ -21,8 +19,6 @@ import type {
 
 export class NftApiClient {
   readonly #fetch: typeof globalThis.fetch;
-
-  readonly #logger: ILogger;
 
   readonly #baseUrl: string;
 
@@ -37,14 +33,12 @@ export class NftApiClient {
     configProvider: ConfigProvider,
     _cache: ICache<Serializable>,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
-    _logger: ILogger = logger,
   ) {
     const { baseUrl, cacheTtlsMilliseconds } = configProvider.get().nftApi;
 
     assert(baseUrl, UrlStruct);
 
     this.#fetch = _fetch;
-    this.#logger = _logger;
     this.#baseUrl = baseUrl;
     this.#cacheTtlsMilliseconds = cacheTtlsMilliseconds;
 
