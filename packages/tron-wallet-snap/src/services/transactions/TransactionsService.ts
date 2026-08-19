@@ -1,7 +1,7 @@
 import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
 import { KeyringEvent, TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { groupBy } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';

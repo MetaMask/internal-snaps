@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert, number, string } from '@metamask/superstruct';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';

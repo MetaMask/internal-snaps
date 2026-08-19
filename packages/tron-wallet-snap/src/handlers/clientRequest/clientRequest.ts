@@ -1,5 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,

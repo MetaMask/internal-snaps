@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 import type { EventEmitter } from '../../../infrastructure/event-emitter';
 import type { AccountsService } from '../accounts/AccountsService';

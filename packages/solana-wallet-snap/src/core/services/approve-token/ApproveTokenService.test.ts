@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 /* eslint-disable @typescript-eslint/no-require-imports */

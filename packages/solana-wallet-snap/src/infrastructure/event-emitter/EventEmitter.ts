@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 type Listener = (data?: any) => Promise<void>;
 

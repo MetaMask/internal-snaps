@@ -18,7 +18,7 @@ import type {
 } from '@metamask/keyring-api/v2';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,

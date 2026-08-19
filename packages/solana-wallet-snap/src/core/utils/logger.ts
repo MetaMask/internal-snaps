@@ -1,4 +1,4 @@
-import { Logger, LogLevel } from '@metamask/snap-networks-utils/logger';
+import { Logger, LogLevel } from '@metamask/snap-networks-utils';
 
 import { ConfigProvider } from '../services/config';
 import { logMaybeSolanaError } from './logMaybeSolanaError';

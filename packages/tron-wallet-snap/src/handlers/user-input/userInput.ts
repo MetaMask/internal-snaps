@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';

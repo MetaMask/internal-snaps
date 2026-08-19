@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';

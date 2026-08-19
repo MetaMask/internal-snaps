@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { WebSocketEvent } from '@metamask/snaps-sdk';
 import { isJsonRpcFailure } from '@metamask/utils';

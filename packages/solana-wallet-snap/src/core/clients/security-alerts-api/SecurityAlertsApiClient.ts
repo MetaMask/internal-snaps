@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 /* eslint-disable no-restricted-globals */
 import bs58 from 'bs58';
 

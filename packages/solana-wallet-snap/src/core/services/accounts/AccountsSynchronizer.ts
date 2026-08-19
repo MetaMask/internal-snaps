@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 import type { SolanaKeyringAccount } from '../../../entities';
 import type { AssetsService } from '../assets/AssetsService';

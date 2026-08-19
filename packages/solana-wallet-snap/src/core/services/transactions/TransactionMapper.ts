@@ -1,6 +1,6 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { address as asAddress, lamports } from '@solana/kit';

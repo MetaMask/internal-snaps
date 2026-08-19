@@ -1,4 +1,4 @@
-import type { LogMethod } from '@metamask/snap-networks-utils/logger';
+import type { LogMethod } from '@metamask/snap-networks-utils';
 import { getSystemErrorMessage, isSystemError } from '@solana-program/system';
 import type { Address } from '@solana/kit';
 import { isSolanaError } from '@solana/kit';

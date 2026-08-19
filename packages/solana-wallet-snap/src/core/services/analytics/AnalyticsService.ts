@@ -1,5 +1,5 @@
 import type { Transaction } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 
 import type { SolanaKeyringAccount } from '../../../entities';

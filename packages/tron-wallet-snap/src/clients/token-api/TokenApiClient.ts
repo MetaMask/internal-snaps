@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';

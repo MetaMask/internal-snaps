@@ -1,6 +1,6 @@
 import { CaipAssetTypeStruct } from '@metamask/keyring-api';
 import type { CaipAssetType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   FungibleAssetMarketData,

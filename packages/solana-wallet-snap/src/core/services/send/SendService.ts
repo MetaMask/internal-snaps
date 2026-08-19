@@ -1,6 +1,6 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { SolMethod } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { address as asAddress, compileTransaction } from '@solana/kit';

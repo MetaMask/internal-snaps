@@ -1,6 +1,6 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { getJsonError } from '@metamask/snaps-sdk';
 import type {
   DialogResult,

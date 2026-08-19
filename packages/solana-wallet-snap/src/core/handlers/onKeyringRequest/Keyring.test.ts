@@ -2,7 +2,7 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
-import { Logger } from '@metamask/snap-networks-utils/logger';
+import { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';

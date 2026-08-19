@@ -1,5 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { assert, create } from '@metamask/superstruct';

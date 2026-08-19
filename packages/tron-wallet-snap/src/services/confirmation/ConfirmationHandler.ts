@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
