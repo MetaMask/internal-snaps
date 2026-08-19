@@ -11,7 +11,6 @@ import {
   optional,
   pattern,
   record,
-  refine,
   string,
 } from '@metamask/superstruct';
 import { address } from '@solana/kit';

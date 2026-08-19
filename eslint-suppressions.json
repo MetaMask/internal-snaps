@@ -1037,7 +1037,7 @@
   },
   "packages/solana-wallet-snap/src/core/validation/structs.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/validation/validators.ts": {

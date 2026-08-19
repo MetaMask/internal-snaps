@@ -63,6 +63,15 @@ describe('UrlStruct', () => {
     );
   });
 
+  it.each(['https://example.com/%', 'https://example.com/%ZZ'])(
+    'rejects malformed percent encoding: %s',
+    (url) => {
+      expect(() => assert(url, UrlStruct)).toThrow(
+        'Invalid URL format: URI malformed',
+      );
+    },
+  );
+
   it.each(['https://example.com\\path', 'https://user@example.com'])(
     'rejects hostname protocol-pollution input: %s',
     (url) => {
