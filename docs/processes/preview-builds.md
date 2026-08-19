@@ -12,10 +12,10 @@ Generally, when working with preview builds, you will follow this process:
 
 ## Publishing preview builds
 
-Preview builds are published by the `publish-preview` GitHub workflow, not by local Yarn commands.
+To publish preview builds:
 
 1. Create a pull request with the changes to your package(s).
-2. Post a comment on the pull request with the text `@metamaskbot publish-preview`. The workflow will generate and publish preview builds for all packages in the monorepo.
+2. Post a comment on the pull request with the text `@metamaskbot publish-preview`. The `publish-preview` GitHub action will kick off to generate and publish preview builds for all packages in the monorepo.
 3. After a few minutes, you will see a new comment that lists the newly published packages along with their versions.
 
 This workflow is available to members of the MetaMask engineering team on GitHub. Independent contributors should use [local builds](./local-builds.md) instead.
