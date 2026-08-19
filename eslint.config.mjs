@@ -73,12 +73,10 @@ const config = createConfig([
   ...base,
   {
     ignores: [
-      '**/.docusaurus',
       '**/coverage/**',
       '**/dist/**',
       '**/docs/**',
       '.yarn/**',
-      'merged-packages/**',
       'scripts/create-package/package-template/**',
     ],
   },
@@ -111,7 +109,6 @@ const config = createConfig([
     files: [
       '**/*.{js,cjs,mjs}',
       '**/*.test.{js,ts}',
-      '**/docusaurus.config.ts',
       '**/test/**/*.{js,ts}',
       '**/tests/**/*.{js,ts}',
       'scripts/*.ts',
@@ -285,71 +282,6 @@ const config = createConfig([
             'Do not export *MethodActions types from package index files. Internal messenger actions are already available via the *Actions type. Export the individual action types (along with *Actions) instead. Read the controller guidelines for more: https://github.com/MetaMask/core/blob/main/docs/code-guidelines/controller-guidelines.md#expose-controller-methods-through-messenger-in-bulk',
         },
       ],
-    },
-  },
-  {
-    files: ['packages/foundryup/**/*.{js,ts}'],
-    rules: {
-      'import-x/no-nodejs-modules': 'off',
-      'n/no-unsupported-features/node-builtins': 'off',
-      'n/no-missing-import': 'off',
-      'n/no-restricted-import': 'off',
-      'n/no-deprecated-api': 'off',
-    },
-  },
-  {
-    files: ['packages/messenger/src/generate-action-types/**/*.{js,ts}'],
-    rules: {
-      'import-x/no-nodejs-modules': 'off',
-    },
-  },
-  {
-    files: ['packages/messenger-cli/src/**/*.{js,ts}'],
-    rules: {
-      'import-x/no-nodejs-modules': 'off',
-    },
-  },
-  {
-    files: [
-      'packages/notification-services-controller/src/NotificationServicesPushController/services/push/*-web.ts',
-      'packages/notification-services-controller/src/NotificationServicesPushController/web/**/*.ts',
-    ],
-    rules: {
-      // These files use `self` because they're written for a service worker context.
-      // TODO: Move these files to the extension repository, `core` is just for platform-agnostic code.
-      'consistent-this': 'off',
-    },
-  },
-  {
-    files: [
-      'packages/assets-controllers/src/NftDetectionController.ts',
-      'packages/assets-controllers/src/TokenRatesController.ts',
-      'packages/assets-controllers/src/TokensController.ts',
-      'packages/controller-utils/src/siwe.ts',
-      'packages/ens-controller/src/EnsController.ts',
-      'packages/gas-fee-controller/src/GasFeeController.ts',
-      'packages/logging-controller/src/LoggingController.ts',
-      'packages/message-manager/src/AbstractMessageManager.ts',
-      'packages/message-manager/src/DecryptMessageManager.ts',
-      'packages/message-manager/src/EncryptionPublicKeyManager.ts',
-      'packages/permission-log-controller/src/PermissionLogController.ts',
-      'packages/phishing-controller/src/PhishingController.ts',
-      'packages/rate-limit-controller/src/RateLimitController.ts',
-      'tests/fake-provider.ts',
-      'tests/mock-network.ts',
-    ],
-    rules: {
-      // TODO: Re-enable this rule
-      // This has been temporarily disabled because the auto-fix mangles pre-existing JSDoc blocks
-      // for types that don't follow TSDoc properly.
-      // See https://github.com/gajus/eslint-plugin-jsdoc/issues/1054
-      'jsdoc/check-tag-names': 'off',
-    },
-  },
-  {
-    files: ['packages/wallet-framework-docs/site/docusaurus.config.ts'],
-    rules: {
-      'n/no-process-env': 'off',
     },
   },
 ]);
