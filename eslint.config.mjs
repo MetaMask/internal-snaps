@@ -3,7 +3,7 @@ import jest from '@metamask/eslint-config-jest';
 import nodejs from '@metamask/eslint-config-nodejs';
 import typescript from '@metamask/eslint-config-typescript';
 
-const NODE_LTS_VERSION = 22;
+const NODE_LTS_VERSION = 24;
 
 /**
  * Arguments to the `no-restricted` syntax rule that advises use of
