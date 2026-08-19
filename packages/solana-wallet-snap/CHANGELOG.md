@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Resolve workspace `@metamask/*` TypeScript types from the monorepo root instead of assuming sibling directories ([#167](https://github.com/MetaMask/internal-snaps/pull/167))
+- No changes needed here for the per-package `baseUrl` alternative: this package already set its own `baseUrl` and restated the workspace `@metamask/*` path mapping relative to it, which is the exact pattern the rest of the monorepo adopts in this PR ([#169](https://github.com/MetaMask/internal-snaps/pull/169))
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssets`, and routing Keyring and Send through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))
 
