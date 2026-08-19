@@ -129,8 +129,15 @@ export class TransactionsService {
       asset: AssetEntity,
     ): Promise<SignatureWithAsset[]> => {
       const { network } = asset;
-      const addressOrPubkey =
-        'pubkey' in asset && asset.pubkey ? asset.pubkey : asset.address;
+      let addressOrPubkey: string;
+      if ('pubkey' in asset) {
+        if (!asset.pubkey) {
+          return [];
+        }
+        addressOrPubkey = asset.pubkey;
+      } else {
+        addressOrPubkey = asset.address;
+      }
 
       const latestTransaction = await findLatestTransactionForAsset(asset);
 

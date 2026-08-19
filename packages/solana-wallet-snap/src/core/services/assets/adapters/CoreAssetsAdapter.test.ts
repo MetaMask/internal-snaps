@@ -1,5 +1,6 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { CaipChainId } from '@metamask/utils';
 
 import { KnownCaip19Id, Network } from '../../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
@@ -275,7 +276,7 @@ describe('CoreAssetsAdapter', () => {
             chainId: Network.Devnet,
           });
           mockAssetsProvider.getAccountAssetsByScope.mockImplementation(
-            async (scope) => {
+            async (scope: CaipChainId) => {
               if (scope === Network.Mainnet) {
                 return { [MAINNET_ASSET_ID]: mainnetAsset };
               }
@@ -309,7 +310,7 @@ describe('CoreAssetsAdapter', () => {
             Network.Devnet,
           ]);
           mockAssetsProvider.getAccountAssetsByScope.mockImplementation(
-            async (scope) => {
+            async (scope: CaipChainId) => {
               if (scope === Network.Devnet) {
                 throw new Error('devnet failed');
               }

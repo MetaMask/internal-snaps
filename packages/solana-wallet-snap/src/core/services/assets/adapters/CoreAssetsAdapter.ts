@@ -1,3 +1,4 @@
+import type { Asset } from '@metamask/assets-controller';
 import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
@@ -127,8 +128,10 @@ export class CoreAssetsAdapter {
       accountId,
     );
 
-    return Object.values(controllerAssets).map((asset) =>
-      mapControllerAsset(accountId, accountAddress, asset),
+    return Object.values(controllerAssets).flatMap((asset) =>
+      asset
+        ? [mapControllerAsset(accountId, accountAddress, asset as Asset)]
+        : [],
     );
   }
 
