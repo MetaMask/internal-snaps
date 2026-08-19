@@ -36,6 +36,8 @@ scripts/coverage
 # typescript
 packages/*/*.tsbuildinfo
 *.tsbuildinfo
+packages/*/.tsc-lint-cache
+.tsc-lint-cache
 
 # AI
 .sisyphus/

@@ -1,0 +1,30 @@
+{
+  /**
+   * This configuration incrementally enables repository-wide type checking.
+   */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "tsBuildInfoFile": "./.tsc-lint-cache/lint.tsbuildinfo"
+  },
+  "references": [
+    {
+      "path": "./packages/bitcoin-wallet-snap/tsconfig.lint.json"
+    },
+    {
+      "path": "./packages/sample-snap/tsconfig.lint.json"
+    },
+    {
+      "path": "./packages/snap-networks-utils/tsconfig.lint.json"
+    },
+    {
+      "path": "./packages/solana-wallet-snap/tsconfig.lint.json"
+    },
+    {
+      "path": "./packages/stellar-wallet-snap/tsconfig.lint.json"
+    },
+    {
+      "path": "./packages/tron-wallet-snap/tsconfig.lint.json"
+    }
+  ]
+}
