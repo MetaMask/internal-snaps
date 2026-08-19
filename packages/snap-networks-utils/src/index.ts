@@ -8,4 +8,4 @@ export {
   RemoteFeatureFlagsProvider,
   type RemoteFeatureFlagsProviderMessenger,
 } from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
-export { safeMerge } from './safeMerge';
+export { safeMerge } from './safeMerge/safeMerge';
