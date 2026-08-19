@@ -24,7 +24,7 @@
     "lint": "yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies && yarn readme-content:check",
     "lint:dependencies": "depcheck && yarn dedupe --check",
     "lint:dependencies:fix": "depcheck && yarn dedupe",
-    "lint:eslint": "yarn build:only-clean && NODE_OPTIONS='--max-old-space-size=6144' yarn eslint",
+    "lint:eslint": "yarn eslint",
     "lint:fix": "yarn lint:eslint --fix --prune-suppressions && echo && yarn lint:misc --write && yarn constraints --fix && yarn lint:dependencies:fix && yarn readme-content:update",
     "lint:misc": "oxfmt --ignore-path .gitignore",
     "lint:misc:check": "yarn lint:misc --check",
