@@ -1,9 +1,8 @@
-import type { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
 import type { AssetEntity } from '../../../../entities';
-import logger, { createPrefixedLogger } from '../../../utils/logger';
-import type { ILogger } from '../../../utils/logger';
+import logger from '../../../utils/logger';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
@@ -24,7 +23,7 @@ export type CoreAssetsAdapterOptions = {
  * monitor addresses for snap-owned changes.
  */
 export class CoreAssetsAdapter {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
 
@@ -45,7 +44,7 @@ export class CoreAssetsAdapter {
       getActiveNetworks,
     } = options;
 
-    this.#logger = createPrefixedLogger(logger, '[🪙 CoreAssetsAdapter]');
+    this.#logger = logger.withPrefix('[🪙 CoreAssetsAdapter]');
     this.#getAccountAssetByID = getAccountAssetByID;
     this.#getAccountAssetsByIDs = getAccountAssetsByIDs;
     this.#getAccountAssetsByScope = getAccountAssetsByScope;
