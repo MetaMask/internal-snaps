@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
 import type { Serializable } from '../utils/serialization/types';

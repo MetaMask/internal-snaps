@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { signature as asSignature } from '@solana/kit';

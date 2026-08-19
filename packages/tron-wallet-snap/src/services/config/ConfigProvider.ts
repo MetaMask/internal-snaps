@@ -1,4 +1,4 @@
-import { LogLevel } from '@metamask/snap-networks-utils/logger';
+import { LogLevel } from '@metamask/snap-networks-utils';
 /* eslint-disable no-restricted-globals */
 import type { Infer } from '@metamask/superstruct';
 import {

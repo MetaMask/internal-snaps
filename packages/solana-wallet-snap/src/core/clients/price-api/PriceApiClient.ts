@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { CaipAssetType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';

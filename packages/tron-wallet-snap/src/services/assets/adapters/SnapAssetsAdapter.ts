@@ -5,7 +5,7 @@ import type {
   KeyringAccount,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   AssetMetadata,

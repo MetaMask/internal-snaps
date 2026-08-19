@@ -14,7 +14,7 @@ import {
   emitSnapKeyringEvent,
   getSelectedAccounts,
 } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';

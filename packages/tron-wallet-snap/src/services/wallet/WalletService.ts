@@ -1,5 +1,5 @@
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';

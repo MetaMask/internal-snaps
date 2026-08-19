@@ -1,5 +1,5 @@
 import type { AddressType, Network } from '@metamask/bitcoindevkit';
-import type { LogLevel } from '@metamask/snap-networks-utils/logger';
+import type { LogLevel } from '@metamask/snap-networks-utils';
 
 export type SnapConfig = {
   logLevel: LogLevel;

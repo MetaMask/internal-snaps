@@ -1,5 +1,5 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { Logger } from '@metamask/snap-networks-utils/logger';
+import { Logger } from '@metamask/snap-networks-utils';
 import type {
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,

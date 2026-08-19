@@ -7,7 +7,7 @@ import type {
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
-import { Logger } from '@metamask/snap-networks-utils/logger';
+import { Logger } from '@metamask/snap-networks-utils';
 
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
