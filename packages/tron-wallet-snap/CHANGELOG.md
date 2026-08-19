@@ -13,9 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduce BIP-44 account discovery to a single entropy fetch by reusing the coin-type deriver for the on-chain activity check ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
+- Reduce extension RPC round trips in `keyring_createAccounts` from 5 to at most 4 ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
+  - `mergeKeyringAccounts` now returns the merge result instead of requiring a post-merge state re-read, and the existing-accounts read runs in parallel with the BIP-32 entropy fetch.
+  - `snap_getBip32Entropy` is now called even when all requested indices already exist (this path only occurs on idempotent retries); no new permissions are required.
 - Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService` ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 - Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 
+### Fixed
+
+- Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from `keyring_deleteAccount` ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
+  - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
+- Coalesce concurrent account synchronization runs for the same accounts so stacked triggers (cronjob and background events) share one run instead of duplicating network fetches, state writes, and keyring events ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ## [3.1.0]

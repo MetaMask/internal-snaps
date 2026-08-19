@@ -8,15 +8,8 @@ import type {
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
   Transaction,
 } from '@metamask/keyring-api';
-import {
-  AccountCreationType,
-  KeyringEvent,
-  TrxAccountType,
-} from '@metamask/keyring-api';
-import {
-  emitSnapKeyringEvent,
-  getSelectedAccounts,
-} from '@metamask/keyring-snap-sdk';
+import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
+import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { LogLevel } from '@metamask/snap-networks-utils';
 
@@ -33,13 +26,9 @@ import type { AccountsRepository } from './AccountsRepository';
 import { AccountsService, SUPPORTED_SCOPES } from './AccountsService';
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
   getSelectedAccounts: jest.fn().mockResolvedValue([]),
 }));
 
-const mockedEmitSnapKeyringEvent = emitSnapKeyringEvent as jest.MockedFunction<
-  typeof emitSnapKeyringEvent
->;
 const mockedGetSelectedAccounts = getSelectedAccounts as jest.MockedFunction<
   typeof getSelectedAccounts
 >;
@@ -215,15 +204,24 @@ async function withAccountsService(
       .mockImplementation(
         async (newAccounts: Record<string, TronKeyringAccount>) => {
           const occupied = new Set(keyringAccounts.map(getAccountIndexKey));
+          const added: Record<string, TronKeyringAccount> = {};
 
-          for (const account of Object.values(newAccounts)) {
+          for (const [id, account] of Object.entries(newAccounts)) {
             const indexKey = getAccountIndexKey(account);
 
             if (!occupied.has(indexKey)) {
               keyringAccounts.push(account);
               occupied.add(indexKey);
+              added[id] = account;
             }
           }
+
+          return {
+            merged: Object.fromEntries(
+              keyringAccounts.map((account) => [account.id, account]),
+            ),
+            added,
+          };
         },
       ),
     delete: jest.fn().mockImplementation(async (id: string) => {
@@ -321,58 +319,6 @@ describe('AccountsService', () => {
     });
   });
 
-  describe('deriveAccount', () => {
-    it('returns TronKeyringAccount with correct structure for index 0', async () => {
-      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
-        const result = await accountsService.deriveAccount({
-          entropySource: 'test-entropy',
-          index: 0,
-        });
-
-        expect(result).toMatchObject({
-          entropySource: 'test-entropy',
-          derivationPath: "m/44'/195'/0'/0/0",
-          index: 0,
-          type: TrxAccountType.Eoa,
-          scopes: SUPPORTED_SCOPES,
-          methods: ['signMessage', 'signTransaction'],
-        });
-        expect(result.id).toBeDefined();
-        expect(typeof result.id).toBe('string');
-        expect(result.address).toBeDefined();
-        expect(result.address.length).toBeGreaterThan(0);
-        expect(result.options.entropy).toMatchObject({
-          type: 'mnemonic',
-          id: 'test-entropy',
-          derivationPath: "m/44'/195'/0'/0/0",
-          groupIndex: 0,
-        });
-
-        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
-          entropySource: 'test-entropy',
-          path: ['m', "44'", "195'", "0'", '0', '0'],
-          curve: 'secp256k1',
-        });
-      });
-    });
-
-    it('returns correct derivation path for index 5', async () => {
-      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
-        const result = await accountsService.deriveAccount({
-          entropySource: 'test-entropy',
-          index: 5,
-        });
-
-        expect(result.derivationPath).toBe("m/44'/195'/0'/0/5");
-        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            path: ['m', "44'", "195'", "0'", '0', '5'],
-          }),
-        );
-      });
-    });
-  });
-
   describe('deriveTronKeypair', () => {
     it('throws when getBip32Entropy returns missing key material', async () => {
       await withAccountsService(async ({ accountsService, mockSnapClient }) => {
@@ -421,9 +367,10 @@ describe('AccountsService', () => {
           expect(
             mockAccountsRepository.findByEntropySourceAndRange,
           ).toHaveBeenCalledWith('test-entropy', { from: 0, to: 1 });
+          // No post-merge re-read: the merge result is used instead.
           expect(
             mockAccountsRepository.findByEntropySourceAndRange,
-          ).toHaveBeenCalledTimes(2);
+          ).toHaveBeenCalledTimes(1);
           expect(mockAccountsRepository.getAll).not.toHaveBeenCalled();
 
           expect(
@@ -491,9 +438,15 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockAccountsRepository }) => {
-          mockAccountsRepository.findByEntropySourceAndRange
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([concurrentAccount]);
+          // The first read sees nothing; a concurrent writer wins the merge,
+          // so the winner only appears in the merge result.
+          mockAccountsRepository.findByEntropySourceAndRange.mockResolvedValue(
+            [],
+          );
+          mockAccountsRepository.mergeKeyringAccounts.mockResolvedValue({
+            merged: { [concurrentAccount.id]: concurrentAccount },
+            added: {},
+          });
 
           const result = await accountsService.createAccounts({
             type: AccountCreationType.Bip44DeriveIndex,
@@ -503,6 +456,9 @@ describe('AccountsService', () => {
 
           expect(result).toHaveLength(1);
           expect(result[0]?.id).toBe('concurrent-0');
+          expect(
+            mockAccountsRepository.findByEntropySourceAndRange,
+          ).toHaveBeenCalledTimes(1);
         },
         coinJson,
       );
@@ -552,10 +508,36 @@ describe('AccountsService', () => {
           expect(
             mockAccountsRepository.mergeKeyringAccounts,
           ).not.toHaveBeenCalled();
-          expect(mockSnapClient.getBip32Entropy).not.toHaveBeenCalled();
+          // The coin-type entropy fetch runs in parallel with the state read,
+          // so it happens (speculatively) even when the range already exists.
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+            entropySource: 'test-entropy',
+            path: ['m', "44'", "195'"],
+            curve: 'secp256k1',
+          });
         },
         coinJson,
       );
+    });
+
+    it('logs phase timings for a batch creation', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService }) => {
+        await accountsService.createAccounts({
+          type: AccountCreationType.Bip44DeriveIndexRange,
+          entropySource: 'test-entropy',
+          range: { from: 0, to: 1 },
+        });
+
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          '[🔑 AccountsService]',
+          expect.stringMatching(
+            /^\[createAccounts\] Phase timings \{.*"created":2.*"readAndEntropyMs":\d+.*"deriveMs":\d+.*"mergeMs":\d+.*"totalMs":\d+.*\}$/u,
+          ),
+        );
+      }, coinJson);
     });
 
     it('throws before storage or entropy access when the range is invalid', async () => {
@@ -659,304 +641,69 @@ describe('AccountsService', () => {
         coinJson,
       );
     });
-  });
 
-  describe('create', () => {
-    it('creates and persists a new account', async () => {
-      mockedEmitSnapKeyringEvent.mockResolvedValue();
+    it('fetches entropy once for bip44:discover, reusing the coin-type deriver for the activity check', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
 
       await withAccountsService(
-        async ({ accountsService, mockAccountsRepository }) => {
-          jest.spyOn(accountsService, 'deriveAccount').mockResolvedValue({
-            id: 'test-uuid-123',
+        async ({
+          accountsService,
+          mockSnapClient,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity.mockResolvedValueOnce(
+            true,
+          );
+
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
             entropySource: 'test-entropy',
-            derivationPath: "m/44'/195'/0'/0/0",
-            index: 0,
-            type: TrxAccountType.Eoa,
-            address: 'TTestAddress1234567890123456789',
-            scopes: SUPPORTED_SCOPES as unknown as Network[],
-            options: {
-              entropy: {
-                type: 'mnemonic',
-                id: 'test-entropy',
-                derivationPath: "m/44'/195'/0'/0/0",
-                groupIndex: 0,
-              },
-              exportable: true,
-            },
-            methods: ['signMessage', 'signTransaction'],
+            groupIndex: 2,
           });
 
-          const result = await accountsService.create({
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
             entropySource: 'test-entropy',
-            index: 0,
+            path: ['m', "44'", "195'"],
+            curve: 'secp256k1',
           });
 
-          expect(result.id).toBe('test-uuid-123');
-          expect(mockAccountsRepository.create).toHaveBeenCalledWith(
-            expect.objectContaining({ id: 'test-uuid-123' }),
-          );
-          expect(mockedEmitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountCreated,
-            expect.objectContaining({
-              account: expect.objectContaining({ id: 'test-uuid-123' }),
-            }),
-          );
+          // The address probed for activity is the one persisted.
+          const checkedAddress =
+            mockTransactionsService.checkAddressActivity.mock.calls[0]?.[1];
+          expect(result[0]?.address).toBe(checkedAddress);
         },
+        coinJson,
       );
     });
 
-    it('uses default entropy source and lowest unused index when options are omitted', async () => {
-      mockedEmitSnapKeyringEvent.mockResolvedValue();
-
-      const existingAccount: TronKeyringAccount = {
-        id: 'existing-default-0',
-        entropySource: 'test-entropy',
-        derivationPath: "m/44'/195'/0'/0/0",
-        index: 0,
-        type: TrxAccountType.Eoa,
-        address: 'TExistingDefault0',
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
-        options: {},
-        methods: ['signMessage', 'signTransaction'],
-      };
+    it('fetches entropy once for bip44:discover even when no activity is found', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
 
       await withAccountsService(
-        async ({ accountsService, mockAccountsRepository, mockSnapClient }) => {
-          mockAccountsRepository.getAll.mockResolvedValue([existingAccount]);
-          const deriveAccount = jest
-            .spyOn(accountsService, 'deriveAccount')
-            .mockResolvedValue({
-              id: 'default-create-id',
-              entropySource: 'test-entropy',
-              derivationPath: "m/44'/195'/0'/0/1",
-              index: 1,
-              type: TrxAccountType.Eoa,
-              address: 'TDefaultCreate1',
-              scopes: SUPPORTED_SCOPES as unknown as Network[],
-              options: {
-                entropy: {
-                  type: 'mnemonic',
-                  id: 'test-entropy',
-                  derivationPath: "m/44'/195'/0'/0/1",
-                  groupIndex: 1,
-                },
-                exportable: true,
-              },
-              methods: ['signMessage', 'signTransaction'],
-            });
+        async ({
+          accountsService,
+          mockSnapClient,
+          mockTransactionsService,
+        }) => {
+          mockTransactionsService.checkAddressActivity.mockResolvedValue(false);
 
-          const result = await accountsService.create();
-
-          expect(result.id).toBe('default-create-id');
-          expect(mockSnapClient.listEntropySources).toHaveBeenCalledTimes(1);
-          expect(deriveAccount).toHaveBeenCalledWith({
+          const result = await accountsService.createAccounts({
+            type: AccountCreationType.Bip44Discover,
             entropySource: 'test-entropy',
-            index: 1,
-          });
-          expect(mockAccountsRepository.create).toHaveBeenCalledWith(
-            expect.objectContaining({ id: 'default-create-id', index: 1 }),
-          );
-        },
-      );
-    });
-
-    it('returns existing account when same derivation path exists', async () => {
-      const existingAccount: TronKeyringAccount = {
-        id: 'existing-id',
-        entropySource: 'test-entropy',
-        derivationPath: "m/44'/195'/0'/0/0",
-        index: 0,
-        type: TrxAccountType.Eoa,
-        address: 'TExisting123456789012345678901',
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
-        options: {},
-        methods: ['signMessage', 'signTransaction'],
-      };
-
-      await withAccountsService(
-        async ({ accountsService, mockAccountsRepository }) => {
-          mockAccountsRepository.getAll.mockResolvedValue([existingAccount]);
-
-          const result = await accountsService.create({
-            entropySource: 'test-entropy',
-            index: 0,
+            groupIndex: 0,
           });
 
-          expect(result.id).toBe('existing-id');
-          expect(mockAccountsRepository.create).not.toHaveBeenCalled();
-          expect(mockLogger.warn).toHaveBeenCalled();
-        },
-      );
-    });
-
-    it('rolls back persisted account when event emission fails', async () => {
-      mockedEmitSnapKeyringEvent.mockRejectedValue(
-        new Error('Event emission failed'),
-      );
-
-      await withAccountsService(
-        async ({ accountsService, mockAccountsRepository }) => {
-          jest.spyOn(accountsService, 'deriveAccount').mockResolvedValue({
-            id: 'rollback-test-id',
+          expect(result).toStrictEqual([]);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+          expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
             entropySource: 'test-entropy',
-            derivationPath: "m/44'/195'/0'/0/0",
-            index: 0,
-            type: TrxAccountType.Eoa,
-            address: 'TRollback12345678901234567890',
-            scopes: SUPPORTED_SCOPES as unknown as Network[],
-            options: {
-              entropy: {
-                type: 'mnemonic',
-                id: 'test-entropy',
-                derivationPath: "m/44'/195'/0'/0/0",
-                groupIndex: 0,
-              },
-              exportable: true,
-            },
-            methods: ['signMessage', 'signTransaction'],
+            path: ['m', "44'", "195'"],
+            curve: 'secp256k1',
           });
-
-          await expect(
-            accountsService.create({
-              entropySource: 'test-entropy',
-              index: 0,
-            }),
-          ).rejects.toThrow('Event emission failed');
-
-          expect(mockAccountsRepository.create).toHaveBeenCalled();
-          expect(mockAccountsRepository.delete).toHaveBeenCalledWith(
-            'rollback-test-id',
-          );
         },
+        coinJson,
       );
-    });
-
-    it('preserves the original error when rollback delete also fails', async () => {
-      mockedEmitSnapKeyringEvent.mockRejectedValue(
-        new Error('Event emission failed'),
-      );
-
-      await withAccountsService(
-        async ({ accountsService, mockAccountsRepository }) => {
-          mockAccountsRepository.delete.mockRejectedValue(
-            new Error('Delete failed'),
-          );
-          jest.spyOn(accountsService, 'deriveAccount').mockResolvedValue({
-            id: 'rollback-fail-id',
-            entropySource: 'test-entropy',
-            derivationPath: "m/44'/195'/0'/0/0",
-            index: 0,
-            type: TrxAccountType.Eoa,
-            address: 'TRollback12345678901234567890',
-            scopes: SUPPORTED_SCOPES as unknown as Network[],
-            options: {
-              entropy: {
-                type: 'mnemonic',
-                id: 'test-entropy',
-                derivationPath: "m/44'/195'/0'/0/0",
-                groupIndex: 0,
-              },
-              exportable: true,
-            },
-            methods: ['signMessage', 'signTransaction'],
-          });
-
-          await expect(
-            accountsService.create({
-              entropySource: 'test-entropy',
-              index: 0,
-            }),
-          ).rejects.toThrow('Event emission failed');
-
-          expect(mockAccountsRepository.delete).toHaveBeenCalledWith(
-            'rollback-fail-id',
-          );
-          expect(mockLogger.error).toHaveBeenCalledWith(
-            expect.any(String),
-            expect.objectContaining({ accountId: 'rollback-fail-id' }),
-            'Failed to rollback account creation',
-          );
-        },
-      );
-    });
-
-    it('passes metamask options through to emit', async () => {
-      mockedEmitSnapKeyringEvent.mockResolvedValue();
-
-      await withAccountsService(async ({ accountsService }) => {
-        jest.spyOn(accountsService, 'deriveAccount').mockResolvedValue({
-          id: 'meta-id',
-          entropySource: 'test-entropy',
-          derivationPath: "m/44'/195'/0'/0/0",
-          index: 0,
-          type: TrxAccountType.Eoa,
-          address: 'TMeta1234567890123456789012',
-          scopes: SUPPORTED_SCOPES as unknown as Network[],
-          options: {},
-          methods: ['signMessage', 'signTransaction'],
-        });
-
-        await accountsService.create({
-          entropySource: 'test-entropy',
-          index: 0,
-          metamask: { correlationId: 'corr-123' },
-        });
-
-        expect(mockedEmitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountCreated,
-          expect.objectContaining({
-            metamask: { correlationId: 'corr-123' },
-          }),
-        );
-      });
-    });
-
-    it('returns the persisted account and warns when repository create returns a conflicting account', async () => {
-      const conflictingAccount: TronKeyringAccount = {
-        id: 'pre-existing-conflict-id',
-        entropySource: 'test-entropy',
-        derivationPath: "m/44'/195'/0'/0/0",
-        index: 0,
-        type: TrxAccountType.Eoa,
-        address: 'TConflict12345678901234567890',
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
-        options: {},
-        methods: ['signMessage', 'signTransaction'],
-      };
-
-      await withAccountsService(
-        async ({ accountsService, mockAccountsRepository }) => {
-          mockAccountsRepository.create.mockResolvedValue(conflictingAccount);
-
-          const result = await accountsService.create({
-            entropySource: 'test-entropy',
-            index: 0,
-          });
-
-          expect(result.id).toBe('pre-existing-conflict-id');
-          expect(mockLogger.warn).toHaveBeenCalled();
-        },
-      );
-    });
-
-    it('throws when no primary entropy source is available', async () => {
-      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
-        mockSnapClient.listEntropySources.mockResolvedValue([
-          {
-            id: 'non-primary',
-            primary: false,
-            type: 'mnemonic',
-            name: 'Non-Primary',
-          },
-        ]);
-
-        await expect(accountsService.create()).rejects.toThrow(
-          'No default entropy source found',
-        );
-      });
     });
   });
 
@@ -1370,6 +1117,103 @@ describe('AccountsService', () => {
           expect(
             mockTransactionsService.fetchNewTransactionsForAccount,
           ).toHaveBeenCalledWith(Network.Mainnet, account);
+        },
+      );
+    });
+
+    const makeSyncAccount = (
+      id: string,
+      index: number,
+    ): TronKeyringAccount => ({
+      id,
+      address: `TCoalesce${index}2345678901234567890`,
+      type: TrxAccountType.Eoa,
+      options: {},
+      methods: [],
+      scopes: [],
+      entropySource: 'e1',
+      derivationPath: `m/44'/195'/0'/0/${index}`,
+      index,
+    });
+
+    it('coalesces concurrent synchronize calls for the same accounts into one run', async () => {
+      const account = makeSyncAccount('coalesce-id', 0);
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockConfigProvider,
+          mockAssetsService,
+          mockTransactionsService,
+        }) => {
+          mockConfigProvider.get.mockReturnValue({
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          });
+
+          await Promise.all([
+            accountsService.synchronize([account]),
+            accountsService.synchronize([account]),
+            accountsService.synchronize([account]),
+          ]);
+
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledTimes(1);
+          expect(
+            mockTransactionsService.fetchNewTransactionsForAccount,
+          ).toHaveBeenCalledTimes(1);
+          expect(mockAssetsService.saveMany).toHaveBeenCalledTimes(1);
+          expect(mockTransactionsService.saveMany).toHaveBeenCalledTimes(1);
+        },
+      );
+    });
+
+    it('runs synchronize again once the previous run has finished', async () => {
+      const account = makeSyncAccount('sequential-id', 0);
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.get.mockReturnValue({
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          });
+
+          await accountsService.synchronize([account]);
+          await accountsService.synchronize([account]);
+
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledTimes(2);
+        },
+      );
+    });
+
+    it('does not coalesce concurrent synchronize calls for different accounts', async () => {
+      const accountA = makeSyncAccount('different-a', 0);
+      const accountB = makeSyncAccount('different-b', 1);
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.get.mockReturnValue({
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          });
+
+          await Promise.all([
+            accountsService.synchronize([accountA]),
+            accountsService.synchronize([accountB]),
+          ]);
+
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledTimes(2);
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledWith(Network.Mainnet, accountA);
+          expect(
+            mockAssetsService.fetchAssetsAndBalancesForAccount,
+          ).toHaveBeenCalledWith(Network.Mainnet, accountB);
         },
       );
     });
