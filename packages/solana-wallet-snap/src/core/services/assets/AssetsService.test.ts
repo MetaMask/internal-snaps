@@ -103,6 +103,7 @@ describe('AssetsService', () => {
     });
 
     const coreAdapter = new CoreAssetsAdapter({
+      logger: mockLogger,
       getAccountAssetByID: jest.fn().mockResolvedValue(null),
       getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
       getAccountAssetsByScope: jest.fn().mockResolvedValue({}),

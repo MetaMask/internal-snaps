@@ -2,12 +2,12 @@ import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
 import type { AssetEntity } from '../../../../entities';
-import logger from '../../../utils/logger';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
 
 export type CoreAssetsAdapterOptions = {
+  logger: Logger;
   getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
   getAccountAssetsByIDs: AssetsProvider['getAccountAssetsByIDs'];
   getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
@@ -37,6 +37,7 @@ export class CoreAssetsAdapter {
 
   constructor(options: CoreAssetsAdapterOptions) {
     const {
+      logger,
       getAccountAssetByID,
       getAccountAssetsByIDs,
       getAccountAssetsByScope,

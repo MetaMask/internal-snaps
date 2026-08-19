@@ -3,6 +3,7 @@ import type { AssetsProvider } from '@metamask/snap-networks-utils';
 
 import { KnownCaip19Id, Network } from '../../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
+import { mockLogger } from '../../__mocks__/logger';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
 
 const ACCOUNT_ID = MOCK_SOLANA_KEYRING_ACCOUNT_0.id;
@@ -85,6 +86,7 @@ function createCoreAssetsAdapterContext(): {
   const mockGetActiveNetworks = jest.fn().mockResolvedValue([Network.Mainnet]);
 
   const adapter = new CoreAssetsAdapter({
+    logger: mockLogger,
     getAccountAssetByID: mockAssetsProvider.getAccountAssetByID,
     getAccountAssetsByIDs: mockAssetsProvider.getAccountAssetsByIDs,
     getAccountAssetsByScope: mockAssetsProvider.getAccountAssetsByScope,

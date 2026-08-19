@@ -194,6 +194,7 @@ const assetsProvider = new AssetsProvider({
 });
 
 const coreAssetsAdapter = new CoreAssetsAdapter({
+  logger,
   getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
   getAccountAssetsByIDs:
     assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
