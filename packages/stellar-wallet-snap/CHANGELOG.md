@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Set `baseUrl` in this package's `tsconfig.json` (matching every other package in the monorepo) and add an explicit `@metamask/snap-networks-utils/*` subpath entry to the shared `paths` mapping and expand `tsconfig.lint.json`'s `include` pattern, so the `tsc --build` lint graph resolves the workspace source and covers `snap.manifest.json`/JSON test fixtures, matching `MetaMask/core`'s setup
+- Set `baseUrl` in this package's `tsconfig.json` (matching every other package in the monorepo) and add an explicit `@metamask/snap-networks-utils/*` subpath entry to the shared `paths` mapping and expand `tsconfig.lint.json`'s `include` pattern, so the `tsc --build` lint graph resolves the workspace source and covers `snap.manifest.json`/JSON test fixtures, matching `MetaMask/core`'s setup ([#170](https://github.com/MetaMask/internal-snaps/pull/170))
 - This package was migrated from [snap-stellar-wallet](https://github.com/MetaMask/snap-stellar-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-stellar-wallet/blob/main/packages/snap/CHANGELOG.md) ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ### Fixed

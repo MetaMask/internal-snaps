@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Add a TypeScript project reference to `@metamask/snap-networks-utils` in `tsconfig.json`, mirroring the pattern used in `MetaMask/core`, for correct `tsc --build` ordering and editor go-to-source navigation
-- Add an explicit `@metamask/snap-networks-utils/*` subpath entry to the shared `paths` mapping and expand `tsconfig.lint.json`'s `include` pattern, so the `tsc --build` lint graph resolves the workspace source and covers `snap.manifest.json`/JSON test fixtures, matching `MetaMask/core`'s setup
+- Add a TypeScript project reference to `@metamask/snap-networks-utils` in `tsconfig.json`, mirroring the pattern used in `MetaMask/core`, for correct `tsc --build` ordering and editor go-to-source navigation ([#170](https://github.com/MetaMask/internal-snaps/pull/170))
+- Add an explicit `@metamask/snap-networks-utils/*` subpath entry to the shared `paths` mapping and expand `tsconfig.lint.json`'s `include` pattern, so the `tsc --build` lint graph resolves the workspace source and covers `snap.manifest.json`/JSON test fixtures, matching `MetaMask/core`'s setup ([#170](https://github.com/MetaMask/internal-snaps/pull/170))
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssets`, and routing Keyring and Send through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))
 

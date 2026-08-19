@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add a `tsconfig.lint.json` (`outDir`/`tsBuildInfoFile` → `.tsc-lint-cache`) so this package participates in the repo's `tsc --build` lint graph, mirroring `MetaMask/core`'s setup ([#170](https://github.com/MetaMask/internal-snaps/pull/170))
 - **BREAKING** Replace the logger utilities with a configurable `Logger` class that requires a log level and supports level filtering, per-instance prefixes, and method decorators.
 
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
