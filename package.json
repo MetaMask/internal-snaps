@@ -27,7 +27,6 @@
     "lint:misc": "oxfmt --ignore-path .gitignore",
     "lint:misc:check": "yarn lint:misc --check",
     "prepack": "./scripts/prepack.sh",
-    "prepare-preview-builds": "./scripts/prepare-preview-builds.sh",
     "readme-content:check": "tsx scripts/update-readme-content.ts --check",
     "readme-content:update": "tsx scripts/update-readme-content.ts",
     "test": "yarn test:scripts --silent --collectCoverage=false --reporters=jest-silent-reporter && yarn test:packages",

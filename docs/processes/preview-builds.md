@@ -12,28 +12,13 @@ Generally, when working with preview builds, you will follow this process:
 
 ## Publishing preview builds
 
-To publish preview builds:
+Preview builds are published by the `publish-preview` GitHub workflow, not by local Yarn commands.
 
 1. Create a pull request with the changes to your package(s).
-2. Post a comment on the pull request with the text `@metamaskbot publish-previews`. The `publish-preview` GitHub action will kick off to generate and publish preview builds for all packages in the monorepo.
+2. Post a comment on the pull request with the text `@metamaskbot publish-preview`. The workflow will generate and publish preview builds for all packages in the monorepo.
 3. After a few minutes, you will see a new comment that lists the newly published packages along with their versions.
 
-<details><summary><b>Publishing preview builds as an independent contributor</b></summary>
-<br/>
-Note that the steps above will only work if you are a member of the MetaMask engineering team on GitHub. If you are not, you'll need to follow some different steps:
-
-1. First, you'll need access to an NPM organization under which the preview builds will be published. If you have not already done so, you can either [create a new organization](https://www.npmjs.com/org/create) or [convert your existing username into an organization](https://www.npmjs.com/org/upgrade).
-2. Open the `package.json` for each package that you want to publish, and change the NPM scope in the package's name from `@metamask` to reflect your NPM organization.
-3. Run the following command to create and publish preview builds for all packages in the monorepo (replacing `NPM_ORG` as appropriate):
-
-   ```bash
-   yarn prepare-preview-builds "@<NPM_ORG>" "$(git rev-parse --short HEAD)"
-   yarn build
-   yarn publish-previews
-   ```
-
-   You will see a list of the newly published packages along with their versions.
-   </details>
+This workflow is available to members of the MetaMask engineering team on GitHub. Independent contributors should use [local builds](./local-builds.md) instead.
 
 ## Using preview builds
 
