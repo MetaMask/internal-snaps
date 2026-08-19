@@ -86,6 +86,12 @@ describe('State', () => {
       expect(stateValue).toStrictEqual(DEFAULT_STATE);
     });
 
+    it('preserves defaults when persisted state values are undefined', async () => {
+      snap.request.mockResolvedValue({ users: undefined });
+
+      expect(await state.get()).toStrictEqual(DEFAULT_STATE);
+    });
+
     describe('when getting serialized non-JSON values', () => {
       it('deserializes undefined values', async () => {
         const mockUnderlyingState = {
