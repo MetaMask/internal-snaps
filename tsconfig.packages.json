@@ -12,6 +12,7 @@
      * `jest.config.packages.js`.
      */
     "paths": {
+      "@metamask/snap-networks-utils/*": ["../snap-networks-utils/src/*"],
       "@metamask/*": ["../*/src"]
     }
   }

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Add a TypeScript project reference to `@metamask/snap-networks-utils` in `tsconfig.json`, mirroring the pattern used in `MetaMask/core`, for correct `tsc --build` ordering and editor go-to-source navigation
+- Set `baseUrl` in this package's `tsconfig.json` (matching every other package in the monorepo) and add an explicit `@metamask/snap-networks-utils/*` subpath entry to the shared `paths` mapping and expand `tsconfig.lint.json`'s `include` pattern, so the `tsc --build` lint graph resolves the workspace source and covers `snap.manifest.json`/JSON test fixtures, matching `MetaMask/core`'s setup
 - Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService` ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 - Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 

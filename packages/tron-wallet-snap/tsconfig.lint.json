@@ -4,5 +4,12 @@
     "outDir": "./.tsc-lint-cache",
     "tsBuildInfoFile": "./.tsc-lint-cache/tsconfig.tsbuildinfo"
   },
-  "references": [{ "path": "../snap-networks-utils/tsconfig.lint.json" }]
+  "references": [{ "path": "../snap-networks-utils/tsconfig.lint.json" }],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "locales/*.json",
+    "snap.manifest.json",
+    "src/**/*.json"
+  ]
 }
