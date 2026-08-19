@@ -53,6 +53,25 @@ describe('UrlStruct', () => {
     );
   });
 
+  it.each([
+    'https://example%2f.com',
+    'https://example.com:abc',
+    'https://example.com:342abc',
+  ])('rejects malformed URL parser input: %s', (url) => {
+    expect(() => assert(url, UrlStruct)).toThrow(
+      'Invalid URL format: Invalid URL',
+    );
+  });
+
+  it.each(['https://example.com\\path', 'https://user@example.com'])(
+    'rejects hostname protocol-pollution input: %s',
+    (url) => {
+      expect(() => assert(url, UrlStruct)).toThrow(
+        'URL contains protocol pollution attempts',
+      );
+    },
+  );
+
   it('rejects malicious URLs', () => {
     const maliciousUrls = [
       // XSS Attacks

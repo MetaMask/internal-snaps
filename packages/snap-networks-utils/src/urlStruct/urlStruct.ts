@@ -64,17 +64,6 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
       return 'URL contains protocol pollution attempts';
     }
 
-    // Additional hostname safety check for protocol pollution
-    const decodedHostname = decodeURIComponent(hostname);
-    if (
-      hostname.includes('\\') ||
-      hostname.includes('@') ||
-      decodedHostname.includes('/') ||
-      hostname.toLowerCase().includes('%2f')
-    ) {
-      return 'Invalid hostname characters detected';
-    }
-
     // Check for directory traversal
     if (
       value.includes('../') ||
@@ -110,11 +99,6 @@ export const UrlStruct = refine(string(), 'safe-url', (value) => {
       if (patt.test(decodedValue)) {
         return 'URL contains potentially malicious patterns';
       }
-    }
-
-    // Port validation (if present)
-    if (url.port && !/^\d+$/u.test(url.port)) {
-      return 'Invalid port number';
     }
 
     return true;
