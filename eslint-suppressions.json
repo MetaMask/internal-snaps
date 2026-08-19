@@ -245,9 +245,6 @@
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 6
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 6
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.ts": {
@@ -486,9 +483,6 @@
   "packages/solana-wallet-snap/src/core/services/send/SendService.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 6
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/services/send/SendSolBuilder.test.ts": {
@@ -572,9 +566,6 @@
     },
     "n/no-sync": {
       "count": 22
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 4
     }
   },
   "packages/solana-wallet-snap/src/core/services/subscriptions/SubscriptionService.ts": {
@@ -1377,32 +1368,20 @@
   "packages/stellar-wallet-snap/src/handlers/keyring/keyring.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 2
     }
   },
   "packages/stellar-wallet-snap/src/handlers/keyring/signAuthEntry.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "n/no-unsupported-features/node-builtins": {
       "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/handlers/keyring/signMessage.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/handlers/keyring/signTransaction.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "n/no-unsupported-features/node-builtins": {
       "count": 1
     }
   },
@@ -1494,9 +1473,6 @@
   "packages/stellar-wallet-snap/src/services/on-chain-account/OnChainAccountService.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 3
     }
   },
   "packages/stellar-wallet-snap/src/services/on-chain-account/OnChainAccountSynchronizeService.test.ts": {
@@ -1508,9 +1484,6 @@
     },
     "jsdoc/require-returns": {
       "count": 2
-    },
-    "n/no-unsupported-features/node-builtins": {
-      "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/services/on-chain-account/__mocks__/onChainAccount.fixtures.ts": {
@@ -1599,11 +1572,6 @@
   "packages/stellar-wallet-snap/src/services/transaction/__mocks__/transaction.fixtures.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 5
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/wallet/WalletService.test.ts": {
-    "n/no-unsupported-features/node-builtins": {
-      "count": 3
     }
   },
   "packages/stellar-wallet-snap/src/services/wallet/__mocks__/wallet.fixtures.ts": {
