@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Estimate native TRX/TRC-10 sends that activate a new account as 1 TRX plus 100 Bandwidth (or 0.1 TRX when staked Bandwidth is insufficient), instead of TransferContract byte size
+- Estimate native TRX/TRC-10 sends that activate a new account as 1 TRX plus 100 Bandwidth (or 0.1 TRX when staked Bandwidth is insufficient), instead of TransferContract byte size ([#175](https://github.com/MetaMask/internal-snaps/pull/175))
 
 ## [3.1.0]
 
