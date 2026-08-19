@@ -1,7 +1,8 @@
 /* eslint-disable jest/require-to-throw-message */
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import { assert, is } from '@metamask/superstruct';
 
-import { Base58Struct, Base64Struct, UrlStruct, UuidStruct } from './structs';
+import { Base58Struct, Base64Struct, UuidStruct } from './structs';
 
 describe('structs', () => {
   describe('Uuid', () => {

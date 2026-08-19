@@ -1,5 +1,5 @@
-import { LogLevel } from '@metamask/snap-networks-utils';
 /* eslint-disable no-restricted-globals */
+import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -14,7 +14,6 @@ import { uniq } from 'lodash';
 
 import { Network, Networks } from '../../constants/solana';
 import { getClientStatus } from '../../utils/interface';
-import { UrlStruct } from '../../validation/structs';
 
 export const SUPPORTED_NETWORKS = [Network.Mainnet, Network.Devnet];
 
@@ -56,7 +55,7 @@ const EnvStruct = object({
   LOCAL_API_BASE_URL: string(),
 });
 
-export type Env = Infer<typeof EnvStruct>;
+type Env = Infer<typeof EnvStruct>;
 
 export type NetworkConfig = (typeof Networks)[Network] & {
   rpcUrls: string[];

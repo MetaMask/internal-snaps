@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { CaipAssetType } from '@metamask/keyring-api';
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
@@ -12,7 +13,6 @@ import type { Serializable } from '../../serialization/types';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
 import logger from '../../utils/logger';
-import { UrlStruct } from '../../validation/structs';
 import type {
   ExchangeRate,
   FiatTicker,

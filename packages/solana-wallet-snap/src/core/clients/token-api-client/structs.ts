@@ -1,3 +1,4 @@
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import {
   array,
   integer,
@@ -7,7 +8,6 @@ import {
 } from '@metamask/superstruct';
 
 import { TokenCaipAssetTypeFromStringStruct } from '../../constants/solana';
-import { UrlStruct } from '../../validation/structs';
 
 export const TokenMetadataStruct = object({
   decimals: integer(),
