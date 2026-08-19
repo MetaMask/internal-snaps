@@ -1,22 +1,15 @@
 {
   /**
    * This configuration is extended by the `tsconfig.json` configuration in each package.
+   *
+   * Do not add a `paths` mapping for `@metamask/*` here. In-repo packages are
+   * resolved through Yarn workspaces and their `package.json` `exports` (dist).
+   * Mapping them to source pulls those files into each consumer project, which
+   * breaks `include` (TS6307) and applies the consumer's compiler options
+   * (for example `exactOptionalPropertyTypes`) to the shared package.
+   *
+   * Jest still remaps in-repo packages to source via `moduleNameMapper` in
+   * `jest.config.packages.js`, with a `node_modules` fallback.
    */
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    /**
-     * Map only in-repo packages to their uncompiled source.
-     * Do not use a catch-all `@metamask/*` mapping: most `@metamask/*`
-     * packages are published dependencies, and a parent-directory glob
-     * can resolve to sibling checkouts outside this repo 
-     * when a tsconfig has no `baseUrl`.
-     *
-     * NOTE: Keep this in sync with `moduleNameMapper` in
-     * `jest.config.packages.js` for packages that live in this repo.
-     */
-    "paths": {
-      "@metamask/snap-networks-utils": ["../snap-networks-utils/src"],
-      "@metamask/snap-networks-utils/*": ["../snap-networks-utils/src/*"]
-    }
-  }
+  "extends": "./tsconfig.base.json"
 }
