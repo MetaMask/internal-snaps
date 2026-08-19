@@ -1,6 +1,10 @@
 {
   "extends": "../../tsconfig.packages.json",
   "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@metamask/*": ["../../packages/*/src"]
+    },
     "skipLibCheck": true,
     "types": ["jest"]
   },

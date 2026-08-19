@@ -7,9 +7,12 @@
    * workspace `@metamask/*` path mappings resolve to sibling `src/`
    * directories without requiring project-reference build artifacts.
    *
-   * Do not set `baseUrl` here. Inherited path mappings are resolved
-   * against `baseUrl` when it is present, which would break the
-   * monorepo-root mappings in `tsconfig.packages.json`.
+   * Do not set `baseUrl` here. Each package sets its own `baseUrl` (for
+   * package-relative ergonomics, e.g. `src/...` imports) and must restate
+   * the `@metamask/*` workspace mapping from `tsconfig.packages.json`
+   * relative to that `baseUrl`, since inherited `paths` resolve against
+   * whichever `baseUrl` is present in the final merged config, not the
+   * config file where `paths` was declared.
    */
   "extends": "./tsconfig.packages.json",
   "compilerOptions": {

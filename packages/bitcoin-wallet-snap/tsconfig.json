@@ -1,6 +1,13 @@
 {
   "extends": "../../tsconfig.snaps.json",
   "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@metamask/*": ["../../packages/*/src"],
+      "@metamask/snap-networks-utils/*": [
+        "../../packages/snap-networks-utils/src/*"
+      ]
+    },
     "lib": ["ES2021", "DOM"],
     "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,

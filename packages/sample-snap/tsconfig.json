@@ -1,4 +1,10 @@
 {
   "extends": "../../tsconfig.snaps.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@metamask/*": ["../../packages/*/src"]
+    }
+  },
   "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
 }

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Resolve workspace `@metamask/*` TypeScript types from the monorepo root instead of assuming sibling directories ([#167](https://github.com/MetaMask/internal-snaps/pull/167))
+- Set `baseUrl` in this package's `tsconfig.json` and restate the workspace `@metamask/*` path mapping relative to it, so the package keeps `baseUrl`-relative import ergonomics without losing correct workspace-source resolution
 - Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService` ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 - Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 
