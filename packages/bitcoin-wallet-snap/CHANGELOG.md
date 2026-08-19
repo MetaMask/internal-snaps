@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Add a TypeScript project reference to `@metamask/snap-networks-utils` in `tsconfig.json`, mirroring the pattern used in `MetaMask/core`, for correct `tsc --build` ordering and editor go-to-source navigation
+
 ## [2.0.1]
 
 ### Fixed
