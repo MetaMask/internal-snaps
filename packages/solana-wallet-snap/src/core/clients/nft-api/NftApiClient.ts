@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import type { ICache } from '../../caching/ICache';
@@ -8,7 +9,6 @@ import type { Serializable } from '../../serialization/types';
 import type { ConfigProvider } from '../../services/config';
 import { buildUrl } from '../../utils/buildUrl';
 import { trackError } from '../../utils/errors';
-import { UrlStruct } from '../../validation/structs';
 import type {
   Balance,
   Nft,
