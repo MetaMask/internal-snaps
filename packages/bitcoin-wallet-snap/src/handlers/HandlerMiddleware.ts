@@ -139,7 +139,9 @@ export class HandlerMiddleware {
         // string, making cross-boundary errors like KeyringControllerError
         // opaque in Sentry).
         this.#logger.error(error);
-        throw new SnapError(error instanceof Error ? error : getErrorMessage(error));
+        throw new SnapError(
+          error instanceof Error ? error : getErrorMessage(error),
+        );
       }
     }
   }
