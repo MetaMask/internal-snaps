@@ -27,19 +27,13 @@ import {
   ZERO,
 } from '../../constants';
 import { FeeUnavailableError } from './errors';
-import type { ComputeFeeResult } from './types';
+import type {
+  ActivationAssessment,
+  ActivationTransfer,
+  ComputeFeeResult,
+} from './types';
 
 type Transaction = TronwebTypes.Transaction;
-
-type ActivationTransfer = {
-  toAddress: string;
-  ownerAddress: string;
-};
-
-type ActivationAssessment = {
-  unactivatedCount: number;
-  ownerAddress: string | undefined;
-};
 
 /**
  * Bandwidth calculation constants.
