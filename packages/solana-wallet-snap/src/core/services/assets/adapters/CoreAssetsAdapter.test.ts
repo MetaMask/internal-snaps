@@ -382,6 +382,27 @@ describe('CoreAssetsAdapter', () => {
         expect(mockAssetsProvider.getAccountAssetsByIDs).not.toHaveBeenCalled();
       });
     });
+
+    it('returns null entries when the account is missing', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockFindAccountById, mockAssetsProvider }) => {
+          mockFindAccountById.mockResolvedValue(null);
+
+          const assets = await adapter.getAccountAssetsByIDs(ACCOUNT_ID, [
+            MAINNET_ASSET_ID,
+            USDC_ASSET_ID,
+          ]);
+
+          expect(assets).toStrictEqual({
+            [MAINNET_ASSET_ID]: null,
+            [USDC_ASSET_ID]: null,
+          });
+          expect(
+            mockAssetsProvider.getAccountAssetsByIDs,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
   });
 
   describe('getAccountAssetsByScope', () => {
@@ -449,6 +470,23 @@ describe('CoreAssetsAdapter', () => {
           expect(assets[0]?.assetType).toBe(MAINNET_ASSET_ID);
         },
       );
+    });
+
+    it('skips null controller assets for the requested scope', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
+          [MAINNET_ASSET_ID]: createControllerAsset({ id: MAINNET_ASSET_ID }),
+          [USDC_ASSET_ID]: null,
+        } as unknown as Record<Caip19AssetId, Asset>);
+
+        const assets = await adapter.getAccountAssetsByScope(
+          Network.Mainnet,
+          ACCOUNT_ID,
+        );
+
+        expect(assets).toHaveLength(1);
+        expect(assets[0]?.assetType).toBe(MAINNET_ASSET_ID);
+      });
     });
 
     it('returns an empty list when the account is missing', async () => {
