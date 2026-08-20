@@ -211,7 +211,10 @@ describe('CoreAssetsAdapter', () => {
             USDC_ASSET_ID,
           );
 
-          expect(mockFetchMint).toHaveBeenCalledWith(USDC_MINT, Network.Mainnet);
+          expect(mockFetchMint).toHaveBeenCalledWith(
+            USDC_MINT,
+            Network.Mainnet,
+          );
           expect(asset).toStrictEqual({
             assetType: USDC_ASSET_ID,
             keyringAccountId: ACCOUNT_ID,

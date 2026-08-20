@@ -190,9 +190,7 @@ export class CoreAssetsAdapter {
         const asset = assets[assetId];
         return [
           assetId,
-          asset
-            ? await this.#mapAsset(accountId, accountAddress, asset)
-            : null,
+          asset ? await this.#mapAsset(accountId, accountAddress, asset) : null,
         ] as const;
       }),
     );
