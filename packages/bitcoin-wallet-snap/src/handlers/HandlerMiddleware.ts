@@ -8,6 +8,7 @@ import {
   UnauthorizedError,
   UserRejectedRequestError,
   SnapError,
+  getErrorMessage,
 } from '@metamask/snaps-sdk';
 import { StructError } from 'superstruct';
 
@@ -138,7 +139,9 @@ export class HandlerMiddleware {
         // string, making cross-boundary errors like KeyringControllerError
         // opaque in Sentry).
         this.#logger.error(error);
-        throw new SnapError(error instanceof Error ? error : String(error));
+        throw new SnapError(
+          error instanceof Error ? error : getErrorMessage(error),
+        );
       }
     }
   }
