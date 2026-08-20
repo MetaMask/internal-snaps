@@ -17,6 +17,7 @@ ignores:
   - 'ts-jest'
   - 'ts-node'
   - 'typedoc'
+  - 'typescript'
   # Ignore plugins for tools
   - '@typescript-eslint/*'
   - 'eslint-config-*'

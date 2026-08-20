@@ -244,11 +244,9 @@ module.exports = defineConfig({
           expectWorkspaceArrayField(workspace, 'files', 'dist/');
         }
       } else {
-        // The root package must specify an empty set of published files. (This
-        // is required in order to be able to import anything in
-        // development-only scripts, as otherwise the
-        // `node/no-unpublished-require` ESLint rule will disallow it.)
-        expectWorkspaceField(workspace, 'files', []);
+        // The root package is private and is never published, so `files` is
+        // unused. Unset it so it cannot be reintroduced.
+        workspace.unset('files');
       }
 
       // If one workspace package lists another workspace package within

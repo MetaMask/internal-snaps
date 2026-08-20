@@ -630,6 +630,9 @@ describe('TransactionService', () => {
         .spyOn(NetworkService.prototype, 'loadOnChainAccount')
         .mockResolvedValue(destOnChain);
       jest
+        .spyOn(NetworkService.prototype, 'getBaseFee')
+        .mockResolvedValue(new BigNumber('100'));
+      jest
         .spyOn(NetworkService.prototype, 'simulateTransaction')
         .mockImplementation(async (transaction) => transaction);
       jest

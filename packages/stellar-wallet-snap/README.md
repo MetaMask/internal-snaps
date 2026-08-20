@@ -53,9 +53,8 @@ High-level layout of `packages/snap` (nested implementation folders like `servic
 
 ## Use cases
 
-End-to-end flows (handler → services → UI) live under [`docs/use-cases/`](./docs/use-cases/).
-Background synchronization overview: [`docs/misc/synchronization/overview.md`](./docs/misc/synchronization/overview.md).
-Shared transaction build / validate / send: [`docs/misc/transaction/`](./docs/misc/transaction/README.md).
+End-to-end flows (handler → services → UI) live under [`docs/use-cases/`](./docs/use-cases/README.md).
+Background synchronization overview: [`docs/misc/synchronization/synchronization.md`](./docs/misc/synchronization/synchronization.md).
 
 ## API examples
 

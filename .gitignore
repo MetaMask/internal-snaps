@@ -20,7 +20,6 @@ examples/*/dist
 examples/*/docs
 packages/*/coverage
 packages/*/dist
-packages/*/docs
 scripts/coverage
 
 # yarn v3 (w/o zero-install)
