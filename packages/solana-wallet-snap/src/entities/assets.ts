@@ -21,6 +21,11 @@ export type TokenAsset = {
   keyringAccountId: string;
   network: Network;
   mint: string;
+  /**
+   * Token account address. Snap-fetched balances use the RPC token account.
+   * Core-mapped balances use the associated token account derived from the
+   * mint and owner (with the mint's token program, including Token-2022).
+   */
   pubkey: string;
   symbol: string;
   decimals: number;
