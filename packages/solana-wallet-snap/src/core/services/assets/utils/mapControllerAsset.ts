@@ -14,20 +14,22 @@ import { fromTokenUnits } from '../../../utils/fromTokenUnit';
  * Maps an AssetsController asset to the Snap's {@link AssetEntity} shape.
  *
  * Native SOL uses the account address. SPL tokens use the mint from the
- * CAIP-19 ID. Associated token account (ATA) pubkeys are not derived here:
- * Core does not store them, Send already computes ATAs with the correct token
- * program, and Solana has no snap-owned assets that would need address
- * monitoring.
+ * CAIP-19 ID and require the associated token account pubkey — Core does not
+ * store ATAs, so the Core assets adapter derives them before calling this
+ * mapper.
  *
  * @param accountId - Keyring account ID.
  * @param accountAddress - Solana account address (owner).
  * @param asset - Asset returned by AssetsController.
+ * @param tokenAccountPubkey - Associated token account address. Required for
+ * SPL tokens; ignored for native SOL.
  * @returns Mapped asset entity.
  */
 export function mapControllerAsset(
   accountId: string,
   accountAddress: string,
   asset: Asset,
+  tokenAccountPubkey?: string,
 ): AssetEntity {
   const assetId = asset.id;
   const { chainId, assetReference } = parseCaipAssetType(assetId);
@@ -50,11 +52,18 @@ export function mapControllerAsset(
     };
   }
 
+  if (!tokenAccountPubkey) {
+    throw new Error(
+      `Token account pubkey is required to map token asset ${assetId}`,
+    );
+  }
+
   return {
     assetType: assetId as TokenCaipAssetType,
     keyringAccountId: accountId,
     network,
     mint: assetReference,
+    pubkey: tokenAccountPubkey,
     symbol,
     decimals,
     rawAmount,

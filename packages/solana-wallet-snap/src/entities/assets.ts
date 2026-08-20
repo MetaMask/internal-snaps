@@ -22,11 +22,11 @@ export type TokenAsset = {
   network: Network;
   mint: string;
   /**
-   * Token account address. Present for Snap-fetched balances (RPC token
-   * accounts). Omitted for Core-mapped assets — AssetsController does not
-   * store ATAs, and Solana callers that need one (Send) derive it themselves.
+   * Token account address. Snap-fetched balances use the RPC token account.
+   * Core-mapped balances use the associated token account derived from the
+   * mint and owner (with the mint's token program, including Token-2022).
    */
-  pubkey?: string;
+  pubkey: string;
   symbol: string;
   decimals: number;
   rawAmount: string; // Without decimals nor multiplier

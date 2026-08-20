@@ -200,6 +200,7 @@ const coreAssetsAdapter = new CoreAssetsAdapter({
     assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
   getAccountAssetsByScope:
     assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+  fetchMint: connection.fetchMint.bind(connection),
   findAccountById: accountsService.findById.bind(accountsService),
   getActiveNetworks: configProvider.getActiveNetworks.bind(configProvider),
 });

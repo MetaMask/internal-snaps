@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add a read-only `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands), including Core messenger plumbing (`coreMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`). Solana has no snap-owned assets, so the adapter does not fetch, persist, or publish balances, and the mapper does not derive associated token account addresses. ([#122](https://github.com/MetaMask/internal-snaps/pull/122))
+- Add a read-only `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands), including Core messenger plumbing (`coreMessenger`, `RemoteFeatureFlagsProvider`, `AssetsProvider`). Solana has no snap-owned assets, so the adapter does not fetch, persist, or publish balances. When mapping SPL tokens, the adapter derives associated token account (ATA) pubkeys from the mint's token program (including Token-2022) so Transaction History can still call `getSignaturesForAddress`. ([#122](https://github.com/MetaMask/internal-snaps/pull/122))
 
 ### Changed
 

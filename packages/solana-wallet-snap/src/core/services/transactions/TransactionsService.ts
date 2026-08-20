@@ -131,9 +131,6 @@ export class TransactionsService {
       const { network } = asset;
       let addressOrPubkey: string;
       if ('pubkey' in asset) {
-        if (!asset.pubkey) {
-          return [];
-        }
         addressOrPubkey = asset.pubkey;
       } else {
         addressOrPubkey = asset.address;

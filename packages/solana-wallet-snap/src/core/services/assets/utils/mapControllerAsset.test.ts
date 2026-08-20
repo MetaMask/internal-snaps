@@ -59,16 +59,18 @@ describe('mapControllerAsset', () => {
     });
   });
 
-  it('maps SPL token assets from the mint without deriving an ATA pubkey', () => {
+  it('maps SPL token assets with the provided associated token account pubkey', () => {
     const asset = buildControllerAsset(KnownCaip19Id.UsdcMainnet, '1234567', {
       symbol: 'USDC',
       decimals: 6,
     });
+    const tokenAccountPubkey = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
 
     const entity = mapControllerAsset(
       MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
       asset,
+      tokenAccountPubkey,
     );
 
     expect(entity).toStrictEqual({
@@ -76,12 +78,27 @@ describe('mapControllerAsset', () => {
       keyringAccountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       network: Network.Mainnet,
       mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      pubkey: tokenAccountPubkey,
       symbol: 'USDC',
       decimals: 6,
       rawAmount: '1234567',
       uiAmount: '1.234567',
     });
-    expect(entity).not.toHaveProperty('pubkey');
+  });
+
+  it('throws when mapping an SPL token without a token account pubkey', () => {
+    const asset = buildControllerAsset(KnownCaip19Id.UsdcMainnet, '1234567', {
+      symbol: 'USDC',
+      decimals: 6,
+    });
+
+    expect(() =>
+      mapControllerAsset(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+        asset,
+      ),
+    ).toThrow('Token account pubkey is required to map token asset');
   });
 
   it('uses UNKNOWN and 0 decimals when metadata is missing', () => {
@@ -99,6 +116,7 @@ describe('mapControllerAsset', () => {
       MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
       asset,
+      '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg',
     );
 
     expect(entity).toMatchObject({
