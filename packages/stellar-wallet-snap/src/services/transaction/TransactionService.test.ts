@@ -37,7 +37,10 @@ import {
   createMockTransactionService,
   generateMockTransactions,
 } from './__mocks__/transaction.fixtures';
-import { TransactionScopeNotMatchException } from './exceptions';
+import {
+  InvalidAssetForCreateAccountException,
+  TransactionScopeNotMatchException,
+} from './exceptions';
 import { KeyringTransactionType } from './KeyringTransactionBuilder';
 import { TransactionBuilder } from './TransactionBuilder';
 
@@ -654,7 +657,7 @@ describe('TransactionService', () => {
       expect(tx.hasInvokeHostFunction).toBe(true);
     });
 
-    it('throws AccountNotActivatedException when sending a classic asset to an unfunded destination', async () => {
+    it('throws InvalidAssetForCreateAccountException when sending a classic asset to an unfunded destination', async () => {
       const { transactionService } = createMockTransactionService();
       const sourceWallet = getTestWallet();
       const unfundedDestination = getTestWallet().address;
@@ -706,16 +709,13 @@ describe('TransactionService', () => {
           (rejection: unknown) => rejection,
         );
 
-      expect(error).toBeInstanceOf(AccountNotActivatedException);
-      expect((error as AccountNotActivatedException).address).toBe(
-        unfundedDestination,
-      );
-      expect((error as AccountNotActivatedException).scope).toBe(
-        KnownCaip2ChainId.Mainnet,
+      expect(error).toBeInstanceOf(InvalidAssetForCreateAccountException);
+      expect((error as InvalidAssetForCreateAccountException).message).toContain(
+        USDC_CLASSIC,
       );
     });
 
-    it('throws AccountNotActivatedException when sending SEP-41 to an unfunded destination', async () => {
+    it('throws InvalidAssetForCreateAccountException when sending SEP-41 to an unfunded destination', async () => {
       const { transactionService } = createMockTransactionService();
       const sourceWallet = getTestWallet();
       const unfundedDestination = getTestWallet().address;
@@ -755,12 +755,9 @@ describe('TransactionService', () => {
           (rejection: unknown) => rejection,
         );
 
-      expect(error).toBeInstanceOf(AccountNotActivatedException);
-      expect((error as AccountNotActivatedException).address).toBe(
-        unfundedDestination,
-      );
-      expect((error as AccountNotActivatedException).scope).toBe(
-        KnownCaip2ChainId.Mainnet,
+      expect(error).toBeInstanceOf(InvalidAssetForCreateAccountException);
+      expect((error as InvalidAssetForCreateAccountException).message).toContain(
+        USDC_SEP41,
       );
     });
   });

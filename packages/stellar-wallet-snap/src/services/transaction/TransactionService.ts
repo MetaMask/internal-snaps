@@ -20,7 +20,10 @@ import {
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import type { ActivatedAccountPair } from '../sync/api';
 import type { Wallet } from '../wallet';
-import { InsufficientBalanceException } from './exceptions';
+import {
+  InsufficientBalanceException,
+  InvalidAssetForCreateAccountException,
+} from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
 import { Transaction } from './Transaction';
@@ -181,9 +184,9 @@ export class TransactionService {
 
     // If it is SEP-41, run SEP-41 transfer flow to build and validate the transaction
     if (isSep41) {
-      // fail early if the destination account is not activated
+      // fail early: SEP-41 cannot fund a new account
       if (destinationAccount === null) {
-        throw new AccountNotActivatedException(destination, scope);
+        throw new InvalidAssetForCreateAccountException(assetId);
       }
 
       return this.#createValidatedSep41Transfer({
@@ -311,7 +314,7 @@ export class TransactionService {
    * If the destination is not activated, a `createAccount` operation can only
    * be added for slip44/native asset transfers. For non-slip44 classic assets,
    * the destination account must already be activated or an
-   * `AccountNotActivatedException` will be thrown.
+   * `InvalidAssetForCreateAccountException` will be thrown.
    * If the destination is activated, a payment operation will be added to the
    * transaction.
    *
@@ -343,9 +346,9 @@ export class TransactionService {
 
     const isDestinationActivated = destinationAccount !== null;
 
-    // fail early if the destination account is not activated and the asset is not slip44
+    // fail early: classic issued assets cannot fund a new account
     if (!isDestinationActivated && !isSlip44Id(assetId)) {
-      throw new AccountNotActivatedException(destination, scope);
+      throw new InvalidAssetForCreateAccountException(assetId);
     }
 
     const baseFee = await this.getBaseFee(scope);
