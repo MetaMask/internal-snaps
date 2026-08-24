@@ -3,6 +3,72 @@ import type { ICache } from './ICache';
 import { useCache } from './useCache';
 import type { CacheOptions } from './useCache';
 
+type WithUseCacheCallback = (payload: {
+  cachedTestFunction: () => Promise<string>;
+  cachedTestFunctionWithArgs: (arg1: string, arg2: number) => Promise<string>;
+  cachedTestFunctionWithComplexArgs: (obj: {
+    name: string;
+    age: number;
+  }) => Promise<string>;
+}) => void | Promise<void>;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
+  // Reset mocks for each test
+  const actualExecutionSpy = jest
+    .fn<Promise<string>, Serializable[]>()
+    .mockResolvedValue('test');
+
+  // Create a mock cache
+  const cache = {
+    get: jest.fn().mockResolvedValue(undefined),
+    set: jest.fn().mockResolvedValue(undefined),
+  } as unknown as ICache<Serializable>;
+
+  // Define common cache options
+  const cacheOptions = {
+    ttlMilliseconds: 1000,
+    functionName: 'testFunction',
+  };
+
+  // Define original functions
+  const testFunction = async (): Promise<string> => actualExecutionSpy();
+  const testFunctionWithArgs = async (
+    arg1: string,
+    arg2: number,
+  ): Promise<string> => actualExecutionSpy(arg1, arg2);
+  const testFunctionWithComplexArgs = async (obj: {
+    name: string;
+    age: number;
+  }): Promise<string> => actualExecutionSpy(obj);
+
+  // Create cached versions
+  const cachedTestFunction = useCache(testFunction, cache, {
+    ...cacheOptions,
+    functionName: 'testFunction',
+  });
+
+  const cachedTestFunctionWithArgs = useCache(testFunctionWithArgs, cache, {
+    ...cacheOptions,
+    functionName: 'testFunctionWithArgs',
+  });
+
+  const cachedTestFunctionWithComplexArgs = useCache(
+    testFunctionWithComplexArgs,
+    cache,
+    {
+      ...cacheOptions,
+      functionName: 'testFunctionWithComplexArgs',
+    },
+  );
+
+  await testFn({
+    cachedTestFunction,
+    cachedTestFunctionWithArgs,
+    cachedTestFunctionWithComplexArgs,
+  });
+}
+
 describe('useCache', () => {
   // Spy to check if the original function was executed or not
   let actualExecutionSpy: jest.Mock;
