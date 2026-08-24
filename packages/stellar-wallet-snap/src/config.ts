@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+import { LogLevel } from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   create,
@@ -14,7 +15,6 @@ import {
 
 import {
   Environment,
-  LogLevelStruct,
   KnownCaip2ChainIdStruct,
   UrlStruct,
   KnownCaip2ChainId,
@@ -96,7 +96,7 @@ const networkConfigMapStruct = record(
  */
 const ConfigStruct = object({
   environment: enums(Object.values(Environment)),
-  logLevel: LogLevelStruct,
+  logLevel: enums(Object.values(LogLevel)),
   networks: networkConfigMapStruct,
   selectedNetwork: selectedNetworkStruct,
   transaction: object({

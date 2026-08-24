@@ -1,3 +1,5 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import type { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { METAMASK_ORIGIN } from '../../constants';
@@ -10,8 +12,6 @@ import type { NetworkService } from '../../services/network';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { isCompletedTransactionStatus } from '../../services/transaction/utils';
 import { trackErrorIfNeeded } from '../../utils';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import {
   Duration,
   scheduleBackgroundEvent,
@@ -57,15 +57,12 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
     synchronizeService,
     accountService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     networkService: NetworkService;
     synchronizeService: SynchronizeService;
     accountService: AccountService;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
-      '[TrackTransactionHandler]',
-    );
+    const prefixedLogger = logger.withPrefix('[TrackTransactionHandler]');
     super({
       logger: prefixedLogger,
       requestStruct: TrackTransactionJsonRpcRequestStruct,

@@ -13,6 +13,7 @@ import {
 } from '@metamask/keyring-api';
 import type { KeyringSnapRpc } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import type {
@@ -42,9 +43,7 @@ import {
   toStandardBalanceEntry,
 } from '../../services/on-chain-account';
 import type { TransactionService } from '../../services/transaction/TransactionService';
-import type { ILogger } from '../../utils';
 import {
-  createPrefixedLogger,
   Duration,
   getSlip44AssetId,
   isClassicAssetId,
@@ -69,7 +68,7 @@ import {
 import type { IKeyringRequestHandler } from './base';
 
 export class KeyringHandler implements KeyringSnapRpc {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #accountService: AccountService;
 
@@ -86,13 +85,13 @@ export class KeyringHandler implements KeyringSnapRpc {
     transactionService,
     handlers,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountService: AccountService;
     onChainAccountService: OnChainAccountService;
     transactionService: TransactionService;
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🔑 KeyringHandler]');
+    this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;

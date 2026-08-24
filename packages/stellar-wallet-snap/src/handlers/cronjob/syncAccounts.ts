@@ -1,3 +1,5 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import { AppConfig } from '../../config';
 import type {
   AccountService,
@@ -5,8 +7,6 @@ import type {
 } from '../../services/account';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { Duration, scheduleBackgroundEvent } from '../../utils';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { SyncAccountJsonRpcRequest, SyncAccountParams } from './api';
 import { BackgroundEventMethod, SyncAccountJsonRpcRequestStruct } from './api';
 import { CronjobBaseHandler } from './base';
@@ -32,14 +32,11 @@ export class SyncAccountsHandler extends CronjobBaseHandler<SyncAccountJsonRpcRe
     synchronizeService,
     accountService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     synchronizeService: SynchronizeService;
     accountService: AccountService;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
-      '[SyncAccountsHandler]',
-    );
+    const prefixedLogger = logger.withPrefix('[SyncAccountsHandler]');
     super({
       logger: prefixedLogger,
       requestStruct: SyncAccountJsonRpcRequestStruct,

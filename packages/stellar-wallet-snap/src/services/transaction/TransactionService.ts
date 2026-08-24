@@ -1,4 +1,5 @@
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 import type {
   KnownCaip19AssetIdOrSlip44Id,
@@ -8,8 +9,6 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isSep41Id, isSlip44Id, trackErrorIfNeeded } from '../../utils';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { AccountService } from '../account';
 import type { StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
@@ -39,7 +38,7 @@ import {
 } from './utils';
 
 export class TransactionService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #transactionRepository: TransactionRepository;
 
@@ -58,13 +57,13 @@ export class TransactionService {
     transactionBuilder,
     accountService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     transactionRepository: TransactionRepository;
     networkService: NetworkService;
     transactionBuilder: TransactionBuilder;
     accountService: AccountService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🧾 TransactionService]');
+    this.#logger = logger.withPrefix('[🧾 TransactionService]');
     this.#transactionRepository = transactionRepository;
     this.#networkService = networkService;
     this.#transactionBuilder = transactionBuilder;
