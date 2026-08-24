@@ -871,6 +871,53 @@ describe('FeeCalculatorService', () => {
         );
       });
 
+      it('floors the create-account Bandwidth quota when chain params are not evenly divisible', async () => {
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
+            // 100_050 / 1_000 = 100.05; java-tron floors this to 100 Bandwidth.
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              { key: 'getEnergyFee', value: 100 },
+              { key: 'getCreateAccountFee', value: 100_050 },
+              {
+                key: 'getCreateNewAccountFeeInSystemContract',
+                value: 1_000_000,
+              },
+            ]);
+            // Exactly the floored quota: covered by staked Bandwidth. Without
+            // the floor, 100 < 100.05 would wrongly fall back to the TRX burn.
+            mockStakedBandwidth(tronHttpClient, 100);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('native'),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1',
+                  fungible: true,
+                },
+              },
+              expectedMainnetActivationBandwidthFee,
+            ]);
+          },
+        );
+      });
+
       it('ignores free Bandwidth and burns 0.1 TRX when sender has no staked Bandwidth', async () => {
         await withFeeCalculatorService(
           async ({

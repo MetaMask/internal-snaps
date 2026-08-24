@@ -799,8 +799,10 @@ export class FeeCalculatorService {
 
     const bandwidthQuota =
       transactionFeeSun > 0
-        ? BigNumber(createAccountFeeSun).div(transactionFeeSun)
-        : BigNumber(createAccountFeeSun).div(FALLBACK_GET_TRANSACTION_FEE_SUN);
+        ? BigNumber(createAccountFeeSun).dividedToIntegerBy(transactionFeeSun)
+        : BigNumber(createAccountFeeSun).dividedToIntegerBy(
+            FALLBACK_GET_TRANSACTION_FEE_SUN,
+          );
 
     return {
       activationFeeTrx: BigNumber(createNewAccountFeeSun).div(SUN_IN_TRX),
