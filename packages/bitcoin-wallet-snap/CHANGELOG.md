@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: replace bitcoin logger with shared util class ([#142](https://github.com/MetaMask/internal-snaps/pull/142))
+- chore: update lint-build ci vars, add clean working dir check to release workflow ([#146](https://github.com/MetaMask/internal-snaps/pull/146))
+- chore: ts issues fixes ([#139](https://github.com/MetaMask/internal-snaps/pull/139))
+
 ### Fixed
 
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
@@ -16,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `onKeyringRequest` responses to correctly return `Json` directly (v2 protocol) instead of v1's `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
-
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ## [2.0.0] [DEPRECATED]
