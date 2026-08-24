@@ -17,12 +17,14 @@ import {
   SOLANA_MOCK_TOKEN_METADATA,
 } from '../../test/mocks/asset-entities';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
+import { mockLogger } from '../__mocks__/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
+import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../__mocks__/mockSolanaRpcResponses';
+import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
-import { mockLogger } from '../mocks/logger';
-import { createMockConnection } from '../mocks/mockConnection';
-import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../mocks/mockSolanaRpcResponses';
 import type { TokenPricesService } from '../token-prices/TokenPrices';
+import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';
 
@@ -32,9 +34,11 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 
 describe('AssetsService', () => {
   let assetsService: AssetsService;
+  let snapAssetsAdapter: SnapAssetsAdapter;
   let mockConnection: SolanaConnection;
   let mockConfigProvider: ConfigProvider;
   let mockAssetsRepository: AssetsRepository;
+  let mockAccountsService: AccountsService;
   let mockTokenApiClient: TokenApiClient;
   let mockTokenPricesService: TokenPricesService;
   let mockNftApiClient: NftApiClient;
@@ -81,15 +85,24 @@ describe('AssetsService', () => {
       saveMany: jest.fn(),
     } as unknown as AssetsRepository;
 
-    assetsService = new AssetsService({
+    mockAccountsService = {
+      findById: jest.fn().mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0),
+    } as unknown as AccountsService;
+
+    snapAssetsAdapter = new SnapAssetsAdapter({
       connection: mockConnection,
       logger: mockLogger,
       configProvider: mockConfigProvider,
       assetsRepository: mockAssetsRepository,
+      accountsService: mockAccountsService,
       tokenApiClient: mockTokenApiClient,
       tokenPricesService: mockTokenPricesService,
       cache: mockCache,
       nftApiClient: mockNftApiClient,
+    });
+
+    assetsService = new AssetsService({
+      snapAdapter: snapAssetsAdapter,
     });
   });
 
@@ -163,6 +176,45 @@ describe('AssetsService', () => {
       const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
       expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_0]);
+    });
+  });
+
+  describe('getAssetsMetadata', () => {
+    it('fetches token metadata from the token API client', async () => {
+      const tokenAssetTypes = [
+        MOCK_ASSET_ENTITY_1.assetType,
+        MOCK_ASSET_ENTITY_2.assetType,
+      ];
+
+      const metadata = await assetsService.getAssetsMetadata(tokenAssetTypes);
+
+      expect(mockTokenApiClient.getTokensMetadata).toHaveBeenCalledWith(
+        tokenAssetTypes,
+      );
+      expect(metadata).toStrictEqual(SOLANA_MOCK_TOKEN_METADATA);
+    });
+  });
+
+  describe('fetchAssetsMarketData', () => {
+    it('delegates to the token prices service', async () => {
+      const assets = [
+        {
+          asset: MOCK_ASSET_ENTITY_0.assetType,
+          unit: MOCK_ASSET_ENTITY_0.assetType,
+        },
+      ];
+      const expected = { [MOCK_ASSET_ENTITY_0.assetType]: {} };
+
+      jest
+        .spyOn(mockTokenPricesService, 'getMultipleTokensMarketData')
+        .mockResolvedValueOnce(expected as never);
+
+      const result = await assetsService.fetchAssetsMarketData(assets);
+
+      expect(
+        mockTokenPricesService.getMultipleTokensMarketData,
+      ).toHaveBeenCalledWith(assets);
+      expect(result).toStrictEqual(expected);
     });
   });
 
@@ -602,6 +654,163 @@ describe('AssetsService', () => {
       );
 
       expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
+    });
+  });
+
+  describe('getAccountAssetByID', () => {
+    it('returns the matching asset when present', async () => {
+      jest
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
+        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+
+      const asset = await assetsService.getAccountAssetByID(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        MOCK_ASSET_ENTITY_1.assetType,
+      );
+
+      expect(asset).toStrictEqual(MOCK_ASSET_ENTITY_1);
+    });
+
+    it('returns null when the asset is missing', async () => {
+      jest
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
+        .mockResolvedValueOnce([]);
+
+      const asset = await assetsService.getAccountAssetByID(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        MOCK_ASSET_ENTITY_1.assetType,
+      );
+
+      expect(asset).toBeNull();
+    });
+
+    it('returns null when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const asset = await assetsService.getAccountAssetByID(
+        'missing-account',
+        MOCK_ASSET_ENTITY_1.assetType,
+      );
+
+      expect(asset).toBeNull();
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAccountAssetsByIDs', () => {
+    it('returns a record keyed by asset ID', async () => {
+      jest
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
+        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+
+      const assets = await assetsService.getAccountAssetsByIDs(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        [MOCK_ASSET_ENTITY_0.assetType, MOCK_ASSET_ENTITY_1.assetType],
+      );
+
+      expect(assets).toStrictEqual({
+        [MOCK_ASSET_ENTITY_0.assetType]: MOCK_ASSET_ENTITY_0,
+        [MOCK_ASSET_ENTITY_1.assetType]: MOCK_ASSET_ENTITY_1,
+      });
+    });
+
+    it('returns null entries for missing assets', async () => {
+      jest
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
+        .mockResolvedValueOnce([MOCK_ASSET_ENTITY_0]);
+
+      const assets = await assetsService.getAccountAssetsByIDs(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        [MOCK_ASSET_ENTITY_0.assetType, MOCK_ASSET_ENTITY_1.assetType],
+      );
+
+      expect(assets).toStrictEqual({
+        [MOCK_ASSET_ENTITY_0.assetType]: MOCK_ASSET_ENTITY_0,
+        [MOCK_ASSET_ENTITY_1.assetType]: null,
+      });
+    });
+
+    it('returns an empty record for an empty asset ID list', async () => {
+      const assets = await assetsService.getAccountAssetsByIDs(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        [],
+      );
+
+      expect(assets).toStrictEqual({});
+      expect(mockAccountsService.findById).not.toHaveBeenCalled();
+    });
+
+    it('returns null entries when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const assets = await assetsService.getAccountAssetsByIDs(
+        'missing-account',
+        [MOCK_ASSET_ENTITY_0.assetType, MOCK_ASSET_ENTITY_1.assetType],
+      );
+
+      expect(assets).toStrictEqual({
+        [MOCK_ASSET_ENTITY_0.assetType]: null,
+        [MOCK_ASSET_ENTITY_1.assetType]: null,
+      });
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAccountAssetsByScope', () => {
+    it('filters account assets to the requested scope', async () => {
+      jest
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
+        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+
+      const assets = await assetsService.getAccountAssetsByScope(
+        Network.Mainnet,
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+      );
+
+      expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
+    });
+
+    it('returns an empty array when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const assets = await assetsService.getAccountAssetsByScope(
+        Network.Mainnet,
+        'missing-account',
+      );
+
+      expect(assets).toStrictEqual([]);
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAccountAssets', () => {
+    it('returns assets across all active networks', async () => {
+      jest
+        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
+        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+
+      const assets = await assetsService.getAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+      );
+
+      expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
+    });
+
+    it('returns an empty array when the account is missing', async () => {
+      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+
+      const assets = await assetsService.getAccountAssets('missing-account');
+
+      expect(assets).toStrictEqual([]);
+      expect(
+        mockAssetsRepository.findByKeyringAccountId,
+      ).not.toHaveBeenCalled();
     });
   });
 });

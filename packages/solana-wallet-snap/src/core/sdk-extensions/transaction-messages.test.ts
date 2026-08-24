@@ -7,7 +7,7 @@ import {
 } from '@solana/kit';
 
 import { Network } from '../constants/solana';
-import { createMockConnection } from '../services/mocks/mockConnection';
+import { createMockConnection } from '../services/__mocks__/mockConnection';
 import {
   estimateAndOverrideComputeUnitLimit,
   isComputeUnitLimitInstruction,

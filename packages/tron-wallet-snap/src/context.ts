@@ -25,6 +25,8 @@ import { RpcHandler } from './handlers/rpc/rpc';
 import { UserInputHandler } from './handlers/user-input/userInput';
 import { AccountsRepository } from './services/accounts/AccountsRepository';
 import { AccountsService } from './services/accounts/AccountsService';
+import { CoreAssetsAdapter } from './services/assets/adapters/CoreAssetsAdapter';
+import { SnapAssetsAdapter } from './services/assets/adapters/SnapAssetsAdapter';
 import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
@@ -113,8 +115,7 @@ const securityAlertsApiClient = new SecurityAlertsApiClient(
   logger,
 );
 
-// Business Services
-const assetsService = new AssetsService({
+const snapAssetsAdapter = new SnapAssetsAdapter({
   logger,
   state,
   assetsRepository,
@@ -123,8 +124,24 @@ const assetsService = new AssetsService({
   priceApiClient,
   tokenApiClient,
   snapClient,
-  remoteFeatureFlagsProvider,
-  assetsProvider,
+  configProvider,
+});
+const coreAssetsAdapter = new CoreAssetsAdapter({
+  getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
+  getAccountAssetsByIDs:
+    assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
+  getAccountAssetsByScope:
+    assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+  getAddressInfo:
+    trongridApiClient.getAccountInfoByAddress.bind(trongridApiClient),
+  getAddressResources: tronHttpClient.getAccountResources.bind(tronHttpClient),
+  getAddressStakingRewards: tronHttpClient.getReward.bind(tronHttpClient),
+});
+
+// Business Services
+const assetsService = new AssetsService({
+  snapAdapter: snapAssetsAdapter,
+  coreAdapter: coreAssetsAdapter,
 });
 
 const transactionsService = new TransactionsService({
@@ -192,6 +209,7 @@ const confirmationHandler = new ConfirmationHandler({
   tronWebFactory,
   assetsService,
   feeCalculatorService,
+  logger,
 });
 
 /**

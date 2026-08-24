@@ -18,16 +18,6 @@ yarn workspace @metamask/tron-wallet-snap add @metamask/snap-networks-utils@work
 
 ## Usage
 
-### Logger
-
-```typescript
-import { logger, createPrefixedLogger } from '@metamask/snap-networks-utils';
-// or: import { logger } from '@metamask/snap-networks-utils/logger';
-
-const snapLogger = createPrefixedLogger(logger, '[tron-wallet-snap]');
-snapLogger.info('account synced');
-```
-
 ### Core AssetsController reads
 
 Wire the Snap messenger endowment, then pass it to `AssetsProvider`:

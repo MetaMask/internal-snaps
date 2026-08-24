@@ -24,6 +24,7 @@ import type {
   ExportedAccount,
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -71,8 +72,6 @@ import {
   listEntropySources,
   startTrace,
 } from '../../utils/interface';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import {
   Base58Struct,
   DeleteAccountStruct,
@@ -105,7 +104,7 @@ type SubmitRequestResult =
 export class SolanaKeyring implements KeyringSnapRpc {
   readonly #state: IStateManager<UnencryptedStateValue>;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #transactionsService: TransactionsService;
 
@@ -116,8 +115,6 @@ export class SolanaKeyring implements KeyringSnapRpc {
   readonly #confirmationHandler: ConfirmationHandler;
 
   readonly #keyringAccountMonitor: KeyringAccountMonitor;
-
-  readonly #traceName: string = 'Create Solana Account';
 
   readonly #traceNameBatch: string = 'Create Solana Account Batch';
 
@@ -131,7 +128,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
     keyringAccountMonitor,
   }: {
     state: IStateManager<UnencryptedStateValue>;
-    logger: ILogger;
+    logger: Logger;
     transactionsService: TransactionsService;
     assetsService: AssetsService;
     walletService: WalletService;
@@ -139,7 +136,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
     keyringAccountMonitor: KeyringAccountMonitor;
   }) {
     this.#state = state;
-    this.#logger = createPrefixedLogger(logger, '[🔑 Keyring]');
+    this.#logger = logger.withPrefix('[🔑 Keyring]');
     this.#transactionsService = transactionsService;
     this.#assetsService = assetsService;
     this.#walletService = walletService;
@@ -413,9 +410,10 @@ export class SolanaKeyring implements KeyringSnapRpc {
     try {
       validateRequest({ accountId }, ListAccountAssetsStruct);
 
-      const account = await this.getAccountOrThrow(accountId);
+      await this.getAccountOrThrow(accountId);
 
-      const assetEntities = await this.#assetsService.findByAccount(account);
+      const assetEntities =
+        await this.#assetsService.getAccountAssets(accountId);
 
       const result = assetEntities
         // Remove token assets with zero balance
@@ -448,10 +446,15 @@ export class SolanaKeyring implements KeyringSnapRpc {
     try {
       validateRequest({ accountId, assets }, GetAccountBalancesStruct);
 
-      const account = await this.getAccountOrThrow(accountId);
+      await this.getAccountOrThrow(accountId);
 
-      const assetsToUse = (await this.#assetsService.findByAccount(account))
-        .filter((asset) => assets.includes(asset.assetType))
+      const assetsById = await this.#assetsService.getAccountAssetsByIDs(
+        accountId,
+        assets,
+      );
+
+      const assetsToUse = Object.values(assetsById)
+        .filter((asset): asset is NonNullable<typeof asset> => asset !== null)
         // Remove token assets with zero balance
         .filter(
           (asset) =>

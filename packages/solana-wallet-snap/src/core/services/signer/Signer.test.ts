@@ -12,8 +12,8 @@ import {
 } from '../../sdk-extensions/transaction-messages';
 import { deriveSolanaKeypairMock } from '../../test/mocks/utils/deriveSolanaKeypair';
 import logger from '../../utils/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
 import type { SolanaConnection } from '../connection';
-import { createMockConnection } from '../mocks/mockConnection';
 import { MOCK_SIGN_SCENARIO_JUPITERZ_WITH_DIFFERENT_FEE_PAYER } from './mocks/jupiterzWithDifferentFeePayer';
 import { MOCK_EXECUTION_SCENARIOS } from './mocks/scenarios';
 import { Signer } from './Signer';

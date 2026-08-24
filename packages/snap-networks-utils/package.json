@@ -34,12 +34,12 @@
     },
     "./logger": {
       "import": {
-        "types": "./dist/logger.d.mts",
-        "default": "./dist/logger.mjs"
+        "types": "./dist/logger/index.d.mts",
+        "default": "./dist/logger/index.mjs"
       },
       "require": {
-        "types": "./dist/logger.d.cts",
-        "default": "./dist/logger.cjs"
+        "types": "./dist/logger/index.d.cts",
+        "default": "./dist/logger/index.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -64,7 +64,8 @@
     "@metamask/assets-controller": "^13.0.0",
     "@metamask/remote-feature-flag-controller": "^5.0.0",
     "@metamask/snaps-sdk": "^11.2.0",
-    "@metamask/utils": "^11.9.0"
+    "@metamask/superstruct": "^3.4.1",
+    "@metamask/utils": "^11.11.0"
   },
   "devDependencies": {
     "@metamask/auto-changelog": "^6.1.1",

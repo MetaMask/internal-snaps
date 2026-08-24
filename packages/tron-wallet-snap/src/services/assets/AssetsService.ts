@@ -1,8 +1,4 @@
 import type { KeyringAccount } from '@metamask/keyring-api';
-import {
-  AssetsProvider,
-  RemoteFeatureFlagsProvider,
-} from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   AssetMetadata,
@@ -11,59 +7,34 @@ import type {
 } from '@metamask/snaps-sdk';
 import type { CaipAssetType } from '@metamask/utils';
 
-import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import type { SnapClient } from '../../clients/snap/SnapClient';
-import type { TokenApiClient } from '../../clients/token-api/TokenApiClient';
-import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
-import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
-import type { ILogger } from '../../utils/logger';
-import type { State, UnencryptedStateValue } from '../state/State';
+import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
-import type { AssetsRepository } from './AssetsRepository';
 
 /**
  * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
- * (legacy snap-owned reads/writes). Core adapter routing can be introduced later
- * without changing callers.
+ * (legacy snap-owned reads/writes). Core adapter is initialized for upcoming
+ * routing without changing callers.
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
 
+  // Initialized for upcoming Core routing; not read until the migration PR lands.
+  // eslint-disable-next-line no-unused-private-class-members -- reserved adapter slot
+  readonly #coreAdapter: CoreAssetsAdapter;
+
   readonly cacheTtlsMilliseconds: SnapAssetsAdapter['cacheTtlsMilliseconds'];
 
   constructor({
-    logger,
-    assetsRepository,
-    state,
-    trongridApiClient,
-    tronHttpClient,
-    priceApiClient,
-    tokenApiClient,
-    snapClient,
+    snapAdapter,
+    coreAdapter,
   }: {
-    logger: ILogger;
-    assetsRepository: AssetsRepository;
-    state: State<UnencryptedStateValue>;
-    trongridApiClient: TrongridApiClient;
-    tronHttpClient: TronHttpClient;
-    priceApiClient: PriceApiClient;
-    tokenApiClient: TokenApiClient;
-    snapClient: SnapClient;
-    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
-    assetsProvider: AssetsProvider;
+    snapAdapter: SnapAssetsAdapter;
+    coreAdapter: CoreAssetsAdapter;
   }) {
-    this.#snapAdapter = new SnapAssetsAdapter({
-      logger,
-      assetsRepository,
-      state,
-      trongridApiClient,
-      tronHttpClient,
-      priceApiClient,
-      tokenApiClient,
-      snapClient,
-    });
+    this.#snapAdapter = snapAdapter;
+    this.#coreAdapter = coreAdapter;
     this.cacheTtlsMilliseconds = this.#snapAdapter.cacheTtlsMilliseconds;
   }
 
@@ -112,10 +83,6 @@ export class AssetsService {
 
   async getAll(): Promise<AssetEntity[]> {
     return this.#snapAdapter.getAll();
-  }
-
-  async getByKeyringAccountId(accountId: string): Promise<AssetEntity[]> {
-    return this.#snapAdapter.getByKeyringAccountId(accountId);
   }
 
   async getMultipleTokenConversions(

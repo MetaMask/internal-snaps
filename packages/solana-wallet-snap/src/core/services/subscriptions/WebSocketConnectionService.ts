@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type {
   WebSocketCloseEvent,
   WebSocketEvent,
@@ -12,8 +13,6 @@ import type { EventEmitter } from '../../../infrastructure';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import { getClientStatus } from '../../utils/interface';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
 import type { IStateManager } from '../state/IStateManager';
@@ -43,7 +42,7 @@ export class WebSocketConnectionService {
 
   readonly #eventEmitter: EventEmitter;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #maxReconnectAttempts: number;
 
@@ -66,7 +65,7 @@ export class WebSocketConnectionService {
     configProvider: ConfigProvider,
     state: IStateManager<UnencryptedStateValue>,
     eventEmitter: EventEmitter,
-    logger: ILogger,
+    logger: Logger,
   ) {
     const {
       maxReconnectAttempts,
@@ -79,10 +78,7 @@ export class WebSocketConnectionService {
     this.#configProvider = configProvider;
     this.#state = state;
     this.#eventEmitter = eventEmitter;
-    this.#logger = createPrefixedLogger(
-      logger,
-      '[🔌 WebSocketConnectionService]',
-    );
+    this.#logger = logger.withPrefix('[🔌 WebSocketConnectionService]');
     this.#maxReconnectAttempts = maxReconnectAttempts;
     this.#reconnectDelayMilliseconds = reconnectDelayMilliseconds;
     this.#closeConnectionsGracePeriodMilliseconds =

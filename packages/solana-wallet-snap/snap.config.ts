@@ -1,4 +1,4 @@
-/* eslint-disable n/no-process-env */
+/* eslint-disable import-x/no-nodejs-modules, no-restricted-globals -- Snap configuration executes in Node.js. */
 import type { SnapConfig } from '@metamask/snaps-cli';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';
@@ -7,6 +7,7 @@ dotenv.config();
 
 const environment = {
   ENVIRONMENT: process.env.ENVIRONMENT ?? '',
+  LOG_LEVEL: process.env.LOG_LEVEL ?? '',
   RPC_URL_MAINNET_LIST: process.env.RPC_URL_MAINNET_LIST ?? '',
   RPC_URL_DEVNET_LIST: process.env.RPC_URL_DEVNET_LIST ?? '',
   RPC_URL_TESTNET_LIST: process.env.RPC_URL_TESTNET_LIST ?? '',

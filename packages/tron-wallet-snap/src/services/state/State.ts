@@ -1,4 +1,5 @@
 import type { Transaction } from '@metamask/keyring-api';
+import { safeMerge } from '@metamask/snap-networks-utils';
 import type { MutexInterface } from 'async-mutex';
 import { Mutex } from 'async-mutex';
 import { unset } from 'lodash';
@@ -6,7 +7,6 @@ import { unset } from 'lodash';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { safeMerge } from '../../utils/safeMerge';
 import { deserialize } from '../../utils/serialization/deserialize';
 import { serialize } from '../../utils/serialization/serialize';
 import type { Serializable } from '../../utils/serialization/types';

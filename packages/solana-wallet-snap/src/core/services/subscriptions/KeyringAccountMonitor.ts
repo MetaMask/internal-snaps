@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert, number, string } from '@metamask/superstruct';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
@@ -16,8 +17,6 @@ import type { Network } from '../../constants/solana';
 import { SolanaCaip19Tokens } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import { fromTokenUnits } from '../../utils/fromTokenUnit';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AccountsSynchronizer } from '../accounts';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -52,7 +51,7 @@ export class KeyringAccountMonitor {
 
   readonly #configProvider: ConfigProvider;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #tokenProgramsAddresses = [
     TOKEN_PROGRAM_ADDRESS,
@@ -67,7 +66,7 @@ export class KeyringAccountMonitor {
     accountsSynchronizer: AccountsSynchronizer,
     tokenHelper: TokenHelper,
     configProvider: ConfigProvider,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#subscriptionService = subscriptionService;
     this.#accountService = accountService;
@@ -76,7 +75,7 @@ export class KeyringAccountMonitor {
     this.#accountsSynchronizer = accountsSynchronizer;
     this.#tokenHelper = tokenHelper;
     this.#configProvider = configProvider;
-    this.#logger = createPrefixedLogger(logger, '[🗝️ KeyringAccountMonitor]');
+    this.#logger = logger.withPrefix('[🗝️ KeyringAccountMonitor]');
 
     this.#bindHandlers();
   }

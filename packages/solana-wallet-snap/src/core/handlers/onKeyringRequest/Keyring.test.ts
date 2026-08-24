@@ -2,6 +2,7 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
+import { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';
@@ -103,7 +104,8 @@ describe('SolanaKeyring', () => {
     mockAssetsService = {
       fetch: jest.fn().mockResolvedValue(MOCK_ASSET_ENTITIES),
       saveMany: jest.fn(),
-      findByAccount: jest.fn(),
+      getAccountAssets: jest.fn(),
+      getAccountAssetsByIDs: jest.fn(),
       getNativeAssetTypes: jest
         .fn()
         .mockReturnValue([KnownCaip19Id.SolMainnet]),
@@ -143,13 +145,16 @@ describe('SolanaKeyring', () => {
   describe('getAccountAssets', () => {
     it('calls the assets service', async () => {
       jest
-        .spyOn(mockAssetsService, 'findByAccount')
+        .spyOn(mockAssetsService, 'getAccountAssets')
         .mockResolvedValue(MOCK_ASSET_ENTITIES);
 
       const result = await keyring.getAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
       );
 
+      expect(mockAssetsService.getAccountAssets).toHaveBeenCalledWith(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+      );
       expect(result).toStrictEqual([
         MOCK_ASSET_ENTITY_0.assetType,
         MOCK_ASSET_ENTITY_1.assetType,
@@ -158,7 +163,7 @@ describe('SolanaKeyring', () => {
     });
 
     it('removes token assets with zero balance', async () => {
-      jest.spyOn(mockAssetsService, 'findByAccount').mockResolvedValue([
+      jest.spyOn(mockAssetsService, 'getAccountAssets').mockResolvedValue([
         MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
         { ...MOCK_ASSET_ENTITY_2, rawAmount: '0' }, // Token asset with zero balance
       ]);
@@ -171,7 +176,7 @@ describe('SolanaKeyring', () => {
     });
 
     it('keeps the native asset even if it has zero balance', async () => {
-      jest.spyOn(mockAssetsService, 'findByAccount').mockResolvedValue([
+      jest.spyOn(mockAssetsService, 'getAccountAssets').mockResolvedValue([
         { ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }, // Native asset with zero balance
         { ...MOCK_ASSET_ENTITY_1, rawAmount: '0' }, // Token asset with zero balance
       ]);
@@ -236,18 +241,17 @@ describe('SolanaKeyring', () => {
       // so a single SnapError and a SnapError-of-SnapError look identical at
       // the message level. We instead detect double-wrapping via the log
       // pattern: each wrap site logs 'Error getting account'.
-      const errorLogSpy = jest.spyOn(logger, 'error');
+      const errorLogSpy = jest.spyOn(Logger.prototype, 'error');
 
       const caught = await keyring
         .getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id)
         .catch((error: unknown) => error);
 
       expect(caught).toBeInstanceOf(SnapError);
-      // The prefixed logger calls the underlying logger as
-      // (prefix, errorContext, message), so the human-readable message
-      // sits at index 2.
+      // Spying on the shared logger's prototype captures the derived prefixed
+      // logger. The message is the second argument to `error`.
       const errorLogCalls = errorLogSpy.mock.calls.filter(
-        (call) => call[2] === 'Error getting account',
+        (call) => call[1] === 'Error getting account',
       );
       expect(errorLogCalls).toHaveLength(1);
     });
@@ -343,9 +347,9 @@ describe('SolanaKeyring', () => {
         symbol: 4,
       } as unknown as AssetEntity;
 
-      jest
-        .spyOn(mockAssetsService, 'findByAccount')
-        .mockResolvedValue([invalidAsset]);
+      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+        [KnownCaip19Id.SolMainnet]: invalidAsset,
+      });
 
       await expect(
         keyring.getAccountBalances(MOCK_SOLANA_KEYRING_ACCOUNT_1.id, [
@@ -355,10 +359,13 @@ describe('SolanaKeyring', () => {
     });
 
     it('removes token assets with zero balance', async () => {
-      jest.spyOn(mockAssetsService, 'findByAccount').mockResolvedValue([
-        MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
-        { ...MOCK_ASSET_ENTITY_2, rawAmount: '0' }, // Token asset with zero balance
-      ]);
+      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+        [MOCK_ASSET_ENTITY_1.assetType]: MOCK_ASSET_ENTITY_1,
+        [MOCK_ASSET_ENTITY_2.assetType]: {
+          ...MOCK_ASSET_ENTITY_2,
+          rawAmount: '0',
+        },
+      });
 
       const result = await keyring.getAccountBalances(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -374,10 +381,16 @@ describe('SolanaKeyring', () => {
     });
 
     it('keeps the native asset even if it has zero balance', async () => {
-      jest.spyOn(mockAssetsService, 'findByAccount').mockResolvedValue([
-        { ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }, // Native asset with zero balance
-        { ...MOCK_ASSET_ENTITY_1, rawAmount: '0' }, // Token asset with zero balance
-      ]);
+      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+        [MOCK_ASSET_ENTITY_0.assetType]: {
+          ...MOCK_ASSET_ENTITY_0,
+          rawAmount: '0',
+        },
+        [MOCK_ASSET_ENTITY_1.assetType]: {
+          ...MOCK_ASSET_ENTITY_1,
+          rawAmount: '0',
+        },
+      });
 
       const result = await keyring.getAccountBalances(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,

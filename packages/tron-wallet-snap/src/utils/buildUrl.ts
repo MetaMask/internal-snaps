@@ -1,6 +1,6 @@
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
-import { UrlStruct } from '../validation/structs';
 import { sanitizeControlCharacters, sanitizeUri } from './sanitize';
 
 export type BuildUrlParams = {

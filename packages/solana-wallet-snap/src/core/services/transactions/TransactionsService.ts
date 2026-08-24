@@ -10,8 +10,6 @@ import type { SolanaKeyringAccount } from '../../../entities/keyring-account';
 import type { Network } from '../../constants/solana';
 import type { SolanaTransaction } from '../../types/solana';
 import { trackError } from '../../utils/errors';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AccountsService } from '../accounts';
 import type { AssetsService } from '../assets/AssetsService';
@@ -31,22 +29,18 @@ export class TransactionsService {
 
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
-
   constructor(
     transactionsRepository: TransactionsRepository,
     transactionMapper: TransactionMapper,
     accountsService: AccountsService,
     assetsService: AssetsService,
     connection: SolanaConnection,
-    logger: ILogger,
   ) {
     this.#transactionsRepository = transactionsRepository;
     this.#transactionMapper = transactionMapper;
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#connection = connection;
-    this.#logger = createPrefixedLogger(logger, '[💱 TransactionsService]');
   }
 
   async fetchBySignature(

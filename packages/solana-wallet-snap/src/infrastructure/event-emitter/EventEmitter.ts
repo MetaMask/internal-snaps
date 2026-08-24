@@ -1,5 +1,4 @@
-import { createPrefixedLogger } from '../../core/utils/logger';
-import type { ILogger } from '../../core/utils/logger';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 type Listener = (data?: any) => Promise<void>;
 
@@ -17,12 +16,12 @@ type Listener = (data?: any) => Promise<void>;
  * ```
  */
 export class EventEmitter {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #listeners: Map<string, Set<Listener>> = new Map();
 
-  constructor(logger: ILogger) {
-    this.#logger = createPrefixedLogger(logger, '[⚡ EventEmitter]');
+  constructor(logger: Logger) {
+    this.#logger = logger.withPrefix('[⚡ EventEmitter]');
   }
 
   /**

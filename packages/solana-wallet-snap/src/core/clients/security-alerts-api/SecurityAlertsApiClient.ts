@@ -1,9 +1,9 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 /* eslint-disable no-restricted-globals */
 import bs58 from 'bs58';
 
 import { Network } from '../../constants/solana';
 import type { ConfigProvider } from '../../services/config';
-import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
 import type { SecurityAlertSimulationValidationResponse } from './types';
 
@@ -17,14 +17,14 @@ const SCOPE_TO_CHAIN: Record<Network, string> = {
 export class SecurityAlertsApiClient {
   readonly #fetch: typeof globalThis.fetch;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #baseUrl: string;
 
   constructor(
     configProvider: ConfigProvider,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
-    _logger: ILogger = logger,
+    _logger: Logger = logger,
   ) {
     const { baseUrl } = configProvider.get().securityAlertsApi;
 

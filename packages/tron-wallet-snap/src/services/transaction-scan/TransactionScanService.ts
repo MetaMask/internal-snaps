@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -10,7 +11,6 @@ import type {
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import type { ILogger } from '../../utils/logger';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -28,12 +28,12 @@ export class TransactionScanService {
 
   readonly #snapClient: SnapClient;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     securityAlertsApiClient: SecurityAlertsApiClient,
     snapClient: SnapClient,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#securityAlertsApiClient = securityAlertsApiClient;
     this.#snapClient = snapClient;

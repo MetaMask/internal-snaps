@@ -1,5 +1,3 @@
-export type { Logger } from './logger';
-export { createPrefixedLogger, logger, noOpLogger } from './logger';
 export {
   ASSETS_PROVIDER_NAME,
   AssetsProvider,
@@ -10,3 +8,13 @@ export {
   RemoteFeatureFlagsProvider,
   type RemoteFeatureFlagsProviderMessenger,
 } from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
+export { safeMerge } from './safeMerge/safeMerge';
+export { UrlStruct } from './urlStruct/urlStruct';
+export { Logger, LogLevel } from './logger';
+export type {
+  LoggerOptions,
+  LoggerMethod,
+  LogMethod,
+  LogMethodDecorator,
+  LoggerDecorators,
+} from './logger';

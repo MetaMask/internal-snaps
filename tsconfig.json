@@ -10,7 +10,22 @@
   },
   "references": [
     {
+      "path": "./packages/bitcoin-wallet-snap"
+    },
+    {
+      "path": "./packages/sample-snap"
+    },
+    {
       "path": "./packages/snap-networks-utils"
+    },
+    {
+      "path": "./packages/solana-wallet-snap"
+    },
+    {
+      "path": "./packages/stellar-wallet-snap"
+    },
+    {
+      "path": "./packages/tron-wallet-snap"
     }
   ],
   "files": [],

@@ -1,5 +1,6 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { SolMethod } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { address as asAddress, compileTransaction } from '@solana/kit';
@@ -13,8 +14,6 @@ import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import type { Serializable } from '../../serialization/types';
 import { solToLamports } from '../../utils/conversion';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';
 import type { RecipientClassifier } from './RecipientClassifier';
@@ -33,7 +32,7 @@ export class SendService {
 
   readonly #keyring: SolanaKeyring;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #cache: ICache<Serializable>;
 
@@ -52,7 +51,7 @@ export class SendService {
   constructor(
     connection: SolanaConnection,
     keyring: SolanaKeyring,
-    logger: ILogger,
+    logger: Logger,
     cache: ICache<Serializable>,
     recipientClassifier: RecipientClassifier,
     sendSolBuilder: SendSolBuilder,
@@ -62,7 +61,7 @@ export class SendService {
     this.#connection = connection;
     this.#keyring = keyring;
     this.#cache = cache;
-    this.#logger = createPrefixedLogger(logger, '[📬 SendService]');
+    this.#logger = logger.withPrefix('[📬 SendService]');
     this.#recipientClassifier = recipientClassifier;
     this.#sendSolBuilder = sendSolBuilder;
     this.#sendSplTokenBuilder = sendSplTokenBuilder;
@@ -189,7 +188,7 @@ export class SendService {
         valid: true,
         errors: [],
       };
-    } catch (error) {
+    } catch {
       return {
         valid: false,
         errors: [{ code: SendErrorCodes.Invalid }],
@@ -215,7 +214,7 @@ export class SendService {
       params: { value, accountId, assetId },
     } = request;
 
-    const account = await this.#keyring.getAccountOrThrow(accountId);
+    await this.#keyring.getAccountOrThrow(accountId);
 
     const { chainId } = parseCaipAssetType(assetId);
 
@@ -225,15 +224,13 @@ export class SendService {
 
     const isNativeToken = assetId === nativeAssetType;
 
-    const accountBalances = await this.#assetsService.findByAccount(account);
-
-    const assetEntry = accountBalances.find(
-      (asset) => asset.assetType === assetId,
+    const assetsById = await this.#assetsService.getAccountAssetsByIDs(
+      accountId,
+      [assetId, nativeAssetType],
     );
 
-    const nativeAsset = accountBalances.find(
-      (asset) => asset.assetType === nativeAssetType,
-    );
+    const assetEntry = assetsById[assetId];
+    const nativeAsset = assetsById[nativeAssetType];
 
     if (!assetEntry) {
       throw new Error(

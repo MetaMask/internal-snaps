@@ -37,6 +37,14 @@ on:
         required: false
       RPC_WEB_SOCKET_URL_DEVNET:
         required: false
+      STELLAR_RPC_URL_MAINNET:
+        required: false
+      STELLAR_HORIZON_URL_MAINNET:
+        required: false
+      STELLAR_RPC_URL_TESTNET:
+        required: false
+      STELLAR_HORIZON_URL_TESTNET:
+        required: false
 
 permissions:
   contents: read
@@ -97,6 +105,17 @@ jobs:
           RPC_WEB_SOCKET_URL_TESTNET: ${{ vars.RPC_WEB_SOCKET_URL_TESTNET }}
           RPC_WEB_SOCKET_URL_LOCALNET: ${{ vars.RPC_WEB_SOCKET_URL_LOCALNET }}
           EXPLORER_BASE_URL: ${{ vars.EXPLORER_BASE_URL }}
+          STELLAR_RPC_URL_MAINNET: ${{ secrets.STELLAR_RPC_URL_MAINNET }}
+          STELLAR_HORIZON_URL_MAINNET: ${{ secrets.STELLAR_HORIZON_URL_MAINNET }}
+          STELLAR_RPC_URL_TESTNET: ${{ secrets.STELLAR_RPC_URL_TESTNET }}
+          STELLAR_HORIZON_URL_TESTNET: ${{ secrets.STELLAR_HORIZON_URL_TESTNET }}
+      - name: Require clean working directory
+        shell: bash
+        run: |
+          if ! git diff --exit-code; then
+            echo "Working tree dirty at end of job"
+            exit 1
+          fi
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:

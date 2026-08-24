@@ -6,12 +6,12 @@ import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import type { Serializable } from '../../serialization/types';
-import type { ConfigProvider } from '../config';
-import { mockLogger } from '../mocks/logger';
+import { mockLogger } from '../__mocks__/logger';
 import {
   MOCK_JSON_PARSED_ACCOUNT,
   MOCK_MINT_ACCOUNT,
-} from '../mocks/mockSolanaRpcResponses';
+} from '../__mocks__/mockSolanaRpcResponses';
+import type { ConfigProvider } from '../config';
 import { SolanaConnection } from './SolanaConnection';
 
 jest.mock('@solana/kit', () => ({
