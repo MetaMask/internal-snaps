@@ -1,8 +1,8 @@
 {
   "name": "@metamask/internal-snaps-monorepo",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "private": true,
-  "description": "Monorepo for firt-party snaps",
+  "description": "Monorepo for first-party snaps",
   "repository": {
     "type": "git",
     "url": "https://github.com/MetaMask/internal-snaps.git"
@@ -10,13 +10,11 @@
   "workspaces": [
     "packages/*"
   ],
-  "files": [],
   "scripts": {
     "build": "yarn workspaces foreach --all --no-private --topological-dev --parallel --interlaced --verbose run build",
     "build:clean": "yarn build:only-clean && yarn build",
     "build:docs": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run build:docs",
     "build:only-clean": "rimraf -g 'packages/*/dist'",
-    "build:types": "tsc --build tsconfig.build.json --verbose",
     "changelog:update": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run changelog:update",
     "changelog:validate": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run changelog:validate",
     "create-release-branch": "create-release-branch --formatter oxfmt",
@@ -24,15 +22,13 @@
     "lint": "yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies && yarn readme-content:check",
     "lint:dependencies": "depcheck && yarn dedupe --check",
     "lint:dependencies:fix": "depcheck && yarn dedupe",
-    "lint:eslint": "yarn build:only-clean && NODE_OPTIONS='--max-old-space-size=6144' yarn eslint",
+    "lint:eslint": "yarn eslint",
     "lint:fix": "yarn lint:eslint --fix --prune-suppressions && echo && yarn lint:misc --write && yarn constraints --fix && yarn lint:dependencies:fix && yarn readme-content:update",
     "lint:misc": "oxfmt --ignore-path .gitignore",
     "lint:misc:check": "yarn lint:misc --check",
     "prepack": "./scripts/prepack.sh",
-    "prepare-preview-builds": "./scripts/prepare-preview-builds.sh",
     "readme-content:check": "tsx scripts/update-readme-content.ts --check",
     "readme-content:update": "tsx scripts/update-readme-content.ts",
-    "setup": "yarn install",
     "test": "yarn test:scripts --silent --collectCoverage=false --reporters=jest-silent-reporter && yarn test:packages",
     "test:clean": "yarn workspaces foreach --all --parallel --verbose run test:clean && yarn test",
     "test:packages": "yarn test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter",
@@ -51,7 +47,7 @@
     "@metamask/utils": "^11.11.0",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.15",
-    "@types/node": "^16.18.54",
+    "@types/node": "^24",
     "@types/semver": "^7",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
@@ -100,9 +96,6 @@
     "hash-base@npm:^3.0.0": "3.1.0",
     "ripemd160@npm:^2.0.1": "2.0.2",
     "ws@7.4.6": "^7.5.10"
-  },
-  "simple-git-hooks": {
-    "pre-push": "yarn lint"
   },
   "engines": {
     "node": ">=20"

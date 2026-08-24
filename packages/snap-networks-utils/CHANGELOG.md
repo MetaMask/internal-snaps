@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `InFlightCoalescer`, exported from a new `./dedupe` entry point, which coalesces concurrent async operations by key so callers share one in-flight run ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
+- Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
 
 ### Changed
 

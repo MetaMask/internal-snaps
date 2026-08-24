@@ -1,5 +1,5 @@
-import { LogLevel } from '@metamask/snap-networks-utils';
 /* eslint-disable no-restricted-globals */
+import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -12,7 +12,6 @@ import {
 import { Duration } from '@metamask/utils';
 
 import { Network, Networks } from '../../constants';
-import { UrlStruct } from '../../validation/structs';
 
 const ENVIRONMENT_TO_ACTIVE_NETWORKS = {
   production: [Network.Mainnet],
@@ -49,7 +48,7 @@ const EnvStruct = object({
   TRON_HTTP_BASE_URL_SHASTA: UrlStruct,
 });
 
-export type Env = Infer<typeof EnvStruct>;
+type Env = Infer<typeof EnvStruct>;
 
 export type NetworkConfig = (typeof Networks)[Network] & {
   rpcUrls: string[];
