@@ -2,9 +2,16 @@ import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from '../../../../features/confirmation/views/ConfirmTransactionRequest/types';
-import { state, transactionScanService } from '../../../../snapContext';
+import {
+  connection,
+  state,
+  transactionScanService,
+} from '../../../../snapContext';
+import { METAMASK_ORIGIN } from '../../../constants/solana';
 import { serialize } from '../../../serialization/serialize';
 import type { UnencryptedStateValue } from '../../../services/state/State';
+import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
+import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
@@ -12,6 +19,7 @@ import {
   updateInterface,
 } from '../../../utils/interface';
 import baseLogger from '../../../utils/logger';
+import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
 
 export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
   const logger = baseLogger.withPrefix('[refreshConfirmationEstimation]');
@@ -58,8 +66,11 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
     // Skip transaction simulation if the preference is disabled
     if (!interfaceContext.preferences?.simulateOnChainActions) {
       logger.info(`Transaction simulation is disabled in preferences`);
-      return;
     }
+
+    // MetaMask-originated transactions receive a fresh blockhash before signing.
+    const shouldSkipBlockhashCheck =
+      interfaceContext.origin === METAMASK_ORIGIN;
 
     const fetchingConfirmationContext = {
       ...interfaceContext,
@@ -74,15 +85,23 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       fetchingConfirmationContext,
     );
 
-    const [scan, updatedInterfaceContextFinal] = await Promise.all([
-      transactionScanService.scanTransaction({
-        method: interfaceContext.method,
-        accountAddress: interfaceContext.account.address,
-        transaction: interfaceContext.transaction,
-        scope: interfaceContext.scope,
-        origin: interfaceContext.origin,
-        account: interfaceContext.account,
-      }),
+    const [scan, isExpired, updatedInterfaceContextFinal] = await Promise.all([
+      interfaceContext.preferences?.simulateOnChainActions
+        ? transactionScanService.scanTransaction({
+            method: interfaceContext.method,
+            accountAddress: interfaceContext.account.address,
+            transaction: interfaceContext.transaction,
+            scope: interfaceContext.scope,
+            origin: interfaceContext.origin,
+            account: interfaceContext.account,
+          })
+        : Promise.resolve(interfaceContext.scan),
+      shouldSkipBlockhashCheck
+        ? Promise.resolve(false)
+        : isTransactionBlockhashExpired(
+            interfaceContext.transaction,
+            connection.getRpc(interfaceContext.scope),
+          ),
       getInterfaceContext<ConfirmTransactionRequestContext>(
         confirmationInterfaceId,
       ),
@@ -100,9 +119,12 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
     const updatedInterfaceContext = {
       ...updatedInterfaceContextFinal,
       scanFetchStatus: 'fetched' as const,
-      scan,
+      scan: isExpired ? EXPIRED_TRANSACTION_SCAN : scan,
     };
-    logger.info(`New scan fetched`);
+
+    if (interfaceContext.preferences?.simulateOnChainActions) {
+      logger.info(`New scan fetched`);
+    }
 
     await updateInterface(
       confirmationInterfaceId,
@@ -119,7 +141,9 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       method: 'snap_scheduleBackgroundEvent',
       params: {
         duration: 'PT20S',
-        request: { method: 'refreshConfirmationEstimation' },
+        request: {
+          method: ScheduleBackgroundEventMethod.RefreshConfirmationEstimation,
+        },
       },
     });
   } catch (error) {

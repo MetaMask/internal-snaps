@@ -1,16 +1,32 @@
 import {
+  address,
+  blockhash,
+  compileTransactionMessage,
   getBase64Encoder,
+  getCompiledTransactionMessageEncoder,
   getSignatureFromTransaction,
   isTransactionMessageWithBlockhashLifetime,
 } from '@solana/kit';
+import type {
+  Transaction,
+  TransactionMessageBytes,
+  TransactionMessageWithBlockhashLifetime,
+} from '@solana/kit';
 
 import { Network } from '../../constants/solana';
-import { fromBytesToCompilableTransactionMessage } from '../../sdk-extensions/codecs';
+import {
+  fromBytesToCompilableTransactionMessage,
+  fromTransactionToBase64String,
+} from '../../sdk-extensions/codecs';
 import {
   isTransactionMessageWithComputeUnitLimitInstruction,
   isTransactionMessageWithComputeUnitPriceInstruction,
   isTransactionMessageWithFeePayer,
 } from '../../sdk-extensions/transaction-messages';
+import {
+  MOCK_SOLANA_KEYRING_ACCOUNT_0,
+  MOCK_SOLANA_KEYRING_ACCOUNT_1,
+} from '../../test/mocks/solana-keyring-accounts';
 import { deriveSolanaKeypairMock } from '../../test/mocks/utils/deriveSolanaKeypair';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
@@ -129,7 +145,7 @@ describe('Signer', () => {
             fromAccount,
             scope,
             undefined,
-            true,
+            'dapp',
           );
 
           expect(result.messageBytes).toStrictEqual(originalMessageBytes);
@@ -138,6 +154,118 @@ describe('Signer', () => {
           ]);
         });
       });
+    });
+  });
+
+  describe('when a serialized multisig transaction has no signatures yet', () => {
+    it('preserves its message bytes while adding this wallet signature', async () => {
+      const walletAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+      const otherSigner = MOCK_SOLANA_KEYRING_ACCOUNT_1;
+      const walletAddress = address(walletAccount.address);
+      const otherSignerAddress = address(otherSigner.address);
+      const messageBytes = getCompiledTransactionMessageEncoder().encode(
+        compileTransactionMessage({
+          version: 'legacy',
+          feePayer: { address: walletAddress },
+          lifetimeConstraint: {
+            blockhash: blockhash(
+              'GmfR6QBrCj6ypdyrJFpBNUjUMZaTazXHG9bVczYAWsVS',
+            ),
+            lastValidBlockHeight: 18446744073709551615n,
+          },
+          instructions: [
+            {
+              programAddress: address(
+                'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+              ),
+              accounts: [
+                { address: walletAddress, role: 3 },
+                { address: otherSignerAddress, role: 3 },
+              ],
+              data: new Uint8Array([109, 117, 108, 116, 105, 115, 105, 103]),
+            },
+          ],
+        }),
+      ) as TransactionMessageBytes;
+      const unsignedMultisigTransaction: Transaction = {
+        messageBytes,
+        signatures: {
+          [walletAddress]: null,
+          [otherSignerAddress]: null,
+        },
+      };
+
+      const result = await signer.partiallySignBase64String(
+        fromTransactionToBase64String(unsignedMultisigTransaction),
+        walletAccount,
+        mockScope,
+        undefined,
+        'dapp',
+      );
+
+      expect(result.messageBytes).toStrictEqual(messageBytes);
+      expect(result.signatures[walletAddress]).not.toBeNull();
+      expect(result.signatures[otherSignerAddress]).toBeNull();
+    });
+  });
+
+  describe('when refreshing the blockhash before signing', () => {
+    it('replaces the blockhash of an unsigned serialized transaction', async () => {
+      const walletAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+      const walletAddress = address(walletAccount.address);
+      const originalBlockhash = blockhash(
+        'GmfR6QBrCj6ypdyrJFpBNUjUMZaTazXHG9bVczYAWsVS',
+      );
+      const refreshedBlockhash = {
+        blockhash: blockhash('8vMXV3ERvs12BY8w1nSHutzwwMptAR5UvUSq5pH2QYsK'),
+        lastValidBlockHeight: 123n,
+      };
+      jest
+        .spyOn(mockConnection, 'getLatestBlockhash')
+        .mockResolvedValue(refreshedBlockhash);
+      const messageBytes = getCompiledTransactionMessageEncoder().encode(
+        compileTransactionMessage({
+          version: 'legacy',
+          feePayer: { address: walletAddress },
+          lifetimeConstraint: {
+            blockhash: originalBlockhash,
+            lastValidBlockHeight: 18446744073709551615n,
+          },
+          instructions: [
+            {
+              programAddress: address(
+                'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+              ),
+              data: new Uint8Array([114, 101, 102, 114, 101, 115, 104]),
+            },
+          ],
+        }),
+      ) as TransactionMessageBytes;
+      const unsignedTransaction: Transaction = {
+        messageBytes,
+        signatures: { [walletAddress]: null },
+      };
+
+      const result = await signer.partiallySignBase64String(
+        fromTransactionToBase64String(unsignedTransaction),
+        walletAccount,
+        mockScope,
+        undefined,
+        'metamask',
+      );
+
+      const transactionMessage = await fromBytesToCompilableTransactionMessage(
+        result.messageBytes,
+        mockConnection.getRpc(mockScope),
+      );
+
+      const currentBlockhash = (
+        transactionMessage as TransactionMessageWithBlockhashLifetime
+      ).lifetimeConstraint.blockhash;
+
+      expect(mockConnection.getLatestBlockhash).toHaveBeenCalledWith(mockScope);
+      expect(currentBlockhash).toBe(refreshedBlockhash.blockhash);
+      expect(currentBlockhash).not.toBe(originalBlockhash);
     });
   });
 

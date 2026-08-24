@@ -181,9 +181,7 @@ export class WalletService {
           }
         : undefined;
 
-    // For transactions coming from DApps, preserve the original message bytes.
-    // Mutating them would change the signing payload and break multisig flows.
-    const shouldPreserveMessageBytes = origin !== METAMASK_ORIGIN;
+    const transactionSource = origin === METAMASK_ORIGIN ? 'metamask' : 'dapp';
 
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
@@ -191,7 +189,7 @@ export class WalletService {
         account,
         scope,
         config,
-        shouldPreserveMessageBytes,
+        transactionSource,
       );
 
     const signedTransactionBase64 = fromTransactionToBase64String(
@@ -257,9 +255,7 @@ export class WalletService {
           }
         : undefined;
 
-    // For transactions coming from DApps, preserve the original message bytes.
-    // Mutating them would change the signing payload and break multisig flows.
-    const shouldPreserveMessageBytes = origin !== METAMASK_ORIGIN;
+    const transactionSource = origin === METAMASK_ORIGIN ? 'metamask' : 'dapp';
 
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
@@ -267,7 +263,7 @@ export class WalletService {
         account,
         scope,
         signConfig,
-        shouldPreserveMessageBytes,
+        transactionSource,
       );
 
     const signature = getSignatureFromTransaction(partiallySignedTransaction);
