@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use the shared `Logger` from `@metamask/snap-networks-utils` instead of the local logger util ([#182](https://github.com/MetaMask/internal-snaps/pull/182))
+  - `LOG_LEVEL` now accepts the shared enum values (`error`, `warn`, `info`, `debug`, `trace`, `silent`); the `all` alias is removed.
+
 ## [0.1.0]
 
 ### Added
