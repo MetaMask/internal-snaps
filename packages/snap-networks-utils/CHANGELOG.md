@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
-- chore: ts issues fixes ([#139](https://github.com/MetaMask/internal-snaps/pull/139))
-
 ### Added
 
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
