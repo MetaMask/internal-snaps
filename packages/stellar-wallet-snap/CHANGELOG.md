@@ -11,11 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial package release ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
-
-### Fixed
-
-- Fixed a TypeScript error in the confirmation price refresher reducer ([#165](https://github.com/MetaMask/internal-snaps/pull/165))
+- Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
 [Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@0.1.0...HEAD
 [0.1.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/stellar-wallet-snap@0.1.0
