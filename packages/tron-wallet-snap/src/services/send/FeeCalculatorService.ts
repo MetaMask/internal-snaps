@@ -733,7 +733,7 @@ export class FeeCalculatorService {
    * @param options - Scope and transaction.
    * @param options.scope - The network scope to check.
    * @param options.transaction - The transaction that may activate recipients.
-   * @returns Unactivated recipient count and the sender address.
+   * @returns Whether an unactivated recipient exists and the sender address.
    */
   async #assessAccountActivation({
     scope,
@@ -744,7 +744,7 @@ export class FeeCalculatorService {
   }): Promise<ActivationAssessment> {
     const transfers = this.#getActivationTransfers(transaction);
     if (transfers.length === 0) {
-      return { unactivatedCount: 0, ownerAddress: undefined };
+      return { isActivatingAccount: false, ownerAddress: undefined };
     }
 
     const activationResults = await Promise.all(
@@ -767,7 +767,7 @@ export class FeeCalculatorService {
     );
 
     return {
-      unactivatedCount: unactivated.length,
+      isActivatingAccount: unactivated.length > 0,
       ownerAddress: unactivated[0]?.ownerAddress,
     };
   }
@@ -931,7 +931,7 @@ export class FeeCalculatorService {
       scope,
       transaction,
     });
-    const isActivatingAccount = activation.unactivatedCount > 0;
+    const { isActivatingAccount } = activation;
 
     let bandwidthNeeded: BigNumber;
     let bandwidthToPayInTRX = ZERO;
@@ -943,9 +943,7 @@ export class FeeCalculatorService {
       const { activationFeeTrx, createAccountFeeTrx, createAccountBandwidth } =
         this.#getActivationFeeParams(chainParameters);
 
-      accountActivationFees = activationFeeTrx.multipliedBy(
-        activation.unactivatedCount,
-      );
+      accountActivationFees = activationFeeTrx;
 
       const stakedBandwidth = await this.#getSenderStakedBandwidth(
         scope,

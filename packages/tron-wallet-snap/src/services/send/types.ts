@@ -33,7 +33,7 @@ export type ActivationTransfer = {
 };
 
 export type ActivationAssessment = {
-  unactivatedCount: number;
+  isActivatingAccount: boolean;
   ownerAddress: string | undefined;
 };
 
