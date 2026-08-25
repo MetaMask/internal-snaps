@@ -27,9 +27,9 @@ describe('createOriginPermissions', () => {
       metamaskMethods,
     });
 
-    expect(originPermissions.get('https://portfolio.metamask.io')).toStrictEqual(
-      new Set(),
-    );
+    expect(
+      originPermissions.get('https://portfolio.metamask.io'),
+    ).toStrictEqual(new Set());
     expect(originPermissions.get('metamask')).toStrictEqual(
       new Set(metamaskMethods),
     );
