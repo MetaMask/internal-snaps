@@ -7,21 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.1.1]
-
-### Added
-
-- Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
-
-### Changed
-
-- Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService` ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
-- Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
-- Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
+## [3.2.0]
 
 ## Fixed
 
-- Fix SUN → USDT swaps routed through Rango and SunSwap displaying a zero SUN amount in transaction activity ([#134](https://github.com/MetaMask/internal-snaps/pull/134))
+- Fixed handling of inactive Tron accounts when fetching assets and balances, avoiding misleading HTTP errors ([#151](https://github.com/MetaMask/internal-snaps/pull/151))
 
 ## [3.1.0]
 
