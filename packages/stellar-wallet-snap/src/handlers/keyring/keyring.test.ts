@@ -173,9 +173,9 @@ describe('KeyringHandler', () => {
         jsonrpc: '2.0',
       } as JsonRpcRequest);
 
-      expect(JSON.stringify(jest.mocked(logger.debug).mock.calls)).not.toContain(
-        privateKey,
-      );
+      expect(
+        JSON.stringify(jest.mocked(logger.debug).mock.calls),
+      ).not.toContain(privateKey);
     });
   });
 
@@ -681,8 +681,7 @@ describe('KeyringHandler', () => {
 
       const result = await keyringHandler.exportAccount(mockAccountId, {
         type: 'private-key',
-      } as { type: 'private-key'; encoding: 'base32' });
-
+      } as Parameters<KeyringHandler['exportAccount']>[1]);
       expect(result.encoding).toBe('base32');
     });
 
