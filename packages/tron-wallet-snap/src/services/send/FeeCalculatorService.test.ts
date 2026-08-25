@@ -147,6 +147,8 @@ async function withFeeCalculatorService<ReturnValue>(
     getChainParameters: jest.fn().mockResolvedValue([
       { key: 'getTransactionFee', value: 1000 },
       { key: 'getEnergyFee', value: 100 },
+      { key: 'getCreateAccountFee', value: 100_000 },
+      { key: 'getCreateNewAccountFeeInSystemContract', value: 1_000_000 },
     ]),
     getAccountInfoByAddress: jest.fn(),
     peekCachedChainParameters: jest.fn().mockResolvedValue(undefined),
@@ -189,6 +191,29 @@ describe('FeeCalculatorService', () => {
         amount: '266',
         fungible: true,
       },
+    };
+    const expectedMainnetActivationBandwidthFee = {
+      type: FeeType.Base,
+      asset: {
+        unit: 'BANDWIDTH',
+        type: 'tron:728126428/slip44:bandwidth',
+        amount: '100',
+        fungible: true,
+      },
+    };
+
+    const mockStakedBandwidth = (
+      tronHttpClient: MockTronHttpClient,
+      netLimit: number,
+      netUsed = 0,
+      freeNetLimit = 600,
+    ): void => {
+      tronHttpClient.getAccountResources.mockResolvedValue({
+        NetLimit: netLimit,
+        NetUsed: netUsed,
+        freeNetLimit,
+        freeNetUsed: 0,
+      });
     };
     const expectedMainnetContractBandwidthFee = {
       type: FeeType.Base,
@@ -805,17 +830,23 @@ describe('FeeCalculatorService', () => {
     });
 
     describe('Account activation fee scenarios', () => {
-      it('adds 1 TRX activation fee when recipient account is not activated', async () => {
+      it('adds 1 TRX activation fee and 100 Bandwidth when recipient is not activated and sender has staked Bandwidth', async () => {
         await withFeeCalculatorService(
-          async ({ feeCalculatorService, trongridApiClient }) => {
-            // Mock the account check to throw (account not found)
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
             trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
               new TrongridAccountNotFoundError(),
             );
+            mockStakedBandwidth(tronHttpClient, 1000);
 
             const transaction = getTransactionExample('native');
             const availableEnergy = ZERO;
-            const availableBandwidth = BigNumber(1000000); // More than needed
+            // Combined free+staked quota is intentionally large; activation
+            // must use staked Bandwidth (100), not tx-size (~266).
+            const availableBandwidth = BigNumber(1000000);
 
             const result = await feeCalculatorService.computeFee({
               scope: Network.Mainnet,
@@ -824,7 +855,6 @@ describe('FeeCalculatorService', () => {
               availableBandwidth,
             });
 
-            // Should have TRX first (1 TRX activation fee), then bandwidth consumption
             expect(result).toStrictEqual([
               {
                 type: FeeType.Base,
@@ -835,12 +865,85 @@ describe('FeeCalculatorService', () => {
                   fungible: true,
                 },
               },
+              expectedMainnetActivationBandwidthFee,
+            ]);
+          },
+        );
+      });
+
+      it('floors the create-account Bandwidth quota when chain params are not evenly divisible', async () => {
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
+            // 100_050 / 1_000 = 100.05; java-tron floors this to 100 Bandwidth.
+            trongridApiClient.getChainParameters.mockResolvedValue([
+              { key: 'getTransactionFee', value: 1000 },
+              { key: 'getEnergyFee', value: 100 },
+              { key: 'getCreateAccountFee', value: 100_050 },
+              {
+                key: 'getCreateNewAccountFeeInSystemContract',
+                value: 1_000_000,
+              },
+            ]);
+            // Exactly the floored quota: covered by staked Bandwidth. Without
+            // the floor, 100 < 100.05 would wrongly fall back to the TRX burn.
+            mockStakedBandwidth(tronHttpClient, 100);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('native'),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            expect(result).toStrictEqual([
               {
                 type: FeeType.Base,
                 asset: {
-                  unit: 'BANDWIDTH',
-                  type: 'tron:728126428/slip44:bandwidth',
-                  amount: '266',
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1',
+                  fungible: true,
+                },
+              },
+              expectedMainnetActivationBandwidthFee,
+            ]);
+          },
+        );
+      });
+
+      it('ignores free Bandwidth and burns 0.1 TRX when sender has no staked Bandwidth', async () => {
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
+            mockStakedBandwidth(tronHttpClient, 0, 0, 600);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('native'),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(600),
+            });
+
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1.1',
                   fungible: true,
                 },
               },
@@ -851,10 +954,16 @@ describe('FeeCalculatorService', () => {
 
       it('does not track error when recipient account is not activated', async () => {
         await withFeeCalculatorService(
-          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+            snapClient,
+          }) => {
             trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
               new TrongridAccountNotFoundError(),
             );
+            mockStakedBandwidth(tronHttpClient, 1000);
 
             await feeCalculatorService.computeFee({
               scope: Network.Mainnet,
@@ -870,10 +979,16 @@ describe('FeeCalculatorService', () => {
 
       it('tracks unexpected errors when account activation check fails', async () => {
         await withFeeCalculatorService(
-          async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+            snapClient,
+          }) => {
             const error = new Error('Account activation check failed');
 
             trongridApiClient.getAccountInfoByAddress.mockRejectedValue(error);
+            mockStakedBandwidth(tronHttpClient, 1000);
 
             await feeCalculatorService.computeFee({
               scope: Network.Mainnet,
@@ -887,17 +1002,21 @@ describe('FeeCalculatorService', () => {
         );
       });
 
-      it('adds activation fee to existing TRX cost when recipient is not activated', async () => {
+      it('adds 0.1 TRX Bandwidth shortfall instead of tx-size burn when recipient is not activated', async () => {
         await withFeeCalculatorService(
-          async ({ feeCalculatorService, trongridApiClient }) => {
-            // Mock the account check to throw (account not found)
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
             trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
               new TrongridAccountNotFoundError(),
             );
+            mockStakedBandwidth(tronHttpClient, 0);
 
             const transaction = getTransactionExample('native');
             const availableEnergy = ZERO;
-            const availableBandwidth = ZERO; // Not enough bandwidth, triggers TRX cost
+            const availableBandwidth = ZERO;
 
             const result = await feeCalculatorService.computeFee({
               scope: Network.Mainnet,
@@ -906,18 +1025,51 @@ describe('FeeCalculatorService', () => {
               availableBandwidth,
             });
 
-            // Should have TRX cost for bandwidth (0.266) + activation fee (1) = 1.266 TRX
             expect(result).toStrictEqual([
               {
                 type: FeeType.Base,
                 asset: {
                   unit: 'TRX',
                   type: 'tron:728126428/slip44:195',
-                  amount: '1.266',
+                  amount: '1.1',
                   fungible: true,
                 },
               },
-              expectedMainnetBandwidthFee,
+            ]);
+          },
+        );
+      });
+
+      it('uses create-account Bandwidth for TRC10 transfers to an unactivated recipient', async () => {
+        await withFeeCalculatorService(
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
+            trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              new TrongridAccountNotFoundError(),
+            );
+            mockStakedBandwidth(tronHttpClient, 1000);
+
+            const result = await feeCalculatorService.computeFee({
+              scope: Network.Mainnet,
+              transaction: getTransactionExample('trc10'),
+              availableEnergy: ZERO,
+              availableBandwidth: BigNumber(1000000),
+            });
+
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '1',
+                  fungible: true,
+                },
+              },
+              expectedMainnetActivationBandwidthFee,
             ]);
           },
         );
@@ -2479,11 +2631,15 @@ describe('FeeCalculatorService', () => {
 
       it('adds memo fee combined with account activation fee', async () => {
         await withFeeCalculatorService(
-          async ({ feeCalculatorService, trongridApiClient }) => {
-            // Account not activated
+          async ({
+            feeCalculatorService,
+            trongridApiClient,
+            tronHttpClient,
+          }) => {
             trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
               new TrongridAccountNotFoundError(),
             );
+            mockStakedBandwidth(tronHttpClient, 1000);
 
             const transaction = addMemoToTransaction(
               getTransactionExample('native'),
@@ -2499,7 +2655,7 @@ describe('FeeCalculatorService', () => {
               availableBandwidth,
             });
 
-            // 1 TRX activation + 1 TRX memo = 2 TRX
+            // 1 TRX activation + 1 TRX memo = 2 TRX, 100 create-account Bandwidth
             expect(result).toStrictEqual([
               {
                 type: FeeType.Base,
@@ -2510,15 +2666,7 @@ describe('FeeCalculatorService', () => {
                   fungible: true,
                 },
               },
-              {
-                type: FeeType.Base,
-                asset: {
-                  unit: 'BANDWIDTH',
-                  type: 'tron:728126428/slip44:bandwidth',
-                  amount: '266',
-                  fungible: true,
-                },
-              },
+              expectedMainnetActivationBandwidthFee,
             ]);
           },
         );
