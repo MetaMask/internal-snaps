@@ -18,6 +18,7 @@ import { sunToTrx, toUiAmount } from '../../utils/conversion';
 
 // TRC20 transaction types from TronGrid API
 const TRC20_APPROVAL_TYPE = 'Approval';
+const TRC20_TRANSFER_TYPE = 'Transfer';
 
 export class TransactionMapper {
   /**
@@ -946,10 +947,14 @@ export class TransactionMapper {
     // 2. TRX ↔ TRC20: account receives/sends TRC20 + TRX moves in opposite direction
 
     const sentTrc20Transfer = trc20Transfers.find(
-      (transfer) => transfer.from === account.address,
+      (transfer) =>
+        transfer.type === TRC20_TRANSFER_TYPE &&
+        transfer.from === account.address,
     );
     const receivedTrc20Transfer = trc20Transfers.find(
-      (transfer) => transfer.to === account.address,
+      (transfer) =>
+        transfer.type === TRC20_TRANSFER_TYPE &&
+        transfer.to === account.address,
     );
 
     // Check for TRC20 ↔ TRC20 swap (different tokens)
