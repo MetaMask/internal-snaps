@@ -11,7 +11,7 @@ Soroban contract token transfer (`SEP-41` CAIP-19 asset → `invokeHostFunction`
 
 ## Build
 
-1. Destination must already be **activated**; otherwise `AccountNotActivatedException` (no `createAccount` for SEP-41).
+1. Destination must already be **activated**; otherwise `InvalidAssetForCreateAccountException` (no `createAccount` for SEP-41).
 2. Fetch base inclusion fee.
 3. `TransactionBuilder.sep41Transfer`:
    - Parse contract id from CAIP-19 asset reference.

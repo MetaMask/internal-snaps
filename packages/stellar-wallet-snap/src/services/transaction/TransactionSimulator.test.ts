@@ -44,6 +44,7 @@ import {
   TransactionExpireException,
   TransactionScopeNotMatchException,
   TransactionValidationException,
+  TrustlineExceedLimitException,
   TrustlineNotAuthorizedException,
   TrustlineNotFoundException,
   UnsupportedOperationTypeException,
@@ -797,6 +798,57 @@ describe('TransactionSimulator', () => {
           ],
         }),
       ).toThrow(TrustlineNotAuthorizedException);
+    });
+
+    it('throws when payment would exceed destination trustline limit', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 1,
+        assets: [
+          {
+            assetType: 'credit_alphanum4',
+            assetCode: 'USDC',
+            assetIssuer: USDC_ISSUER,
+            balance: 100,
+          },
+        ],
+      });
+
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              source: wallet.address,
+              destination: destinationAddress,
+              asset: MOCK_USDC_ASSET,
+              amount: '50',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(() =>
+        simulator.simulate(tx, onChainAccount, {
+          preloadedAccounts: [
+            onChainFromMockBalances(destinationAddress, '1', {
+              nativeBalance: 50,
+              subentryCount: 1,
+              assets: [
+                {
+                  assetType: 'credit_alphanum4',
+                  assetCode: 'USDC',
+                  assetIssuer: USDC_ISSUER,
+                  balance: 99,
+                  limit: '100',
+                },
+              ],
+            }),
+          ],
+        }),
+      ).toThrow(TrustlineExceedLimitException);
     });
 
     it('succeeds for credit asset self-payment when naive balance+amount would exceed trustline limit', () => {
