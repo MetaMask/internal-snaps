@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `exportAccount` keyring method for base32 Stellar secret-seed export ([#187] https://github.com/MetaMask/internal-snaps/pull/187)
+- Add `exportAccount` keyring method for base32 Stellar secret-seed export ([#187](https://github.com/MetaMask/internal-snaps/pull/187))
 
 ## [0.1.0]
 
