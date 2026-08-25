@@ -1,32 +1,12 @@
 import {
-  sanitizeControlCharacters,
   sanitizeForSignInMessage,
   sanitizeDomain,
   sanitizeSolanaAddress,
-  sanitizeUri,
   sanitizeTimestamp,
   sanitizeResources,
 } from './sanitize';
 
 describe('sanitize', () => {
-  describe('sanitizeControlCharacters', () => {
-    it('removes control characters from strings', () => {
-      expect(sanitizeControlCharacters('hello\nworld')).toBe('helloworld');
-      expect(sanitizeControlCharacters('hello\r\nworld')).toBe('helloworld');
-      // The tab character is preserved
-      expect(sanitizeControlCharacters('hello\tworld')).toBe('hello\tworld');
-      expect(sanitizeControlCharacters('hello\x00world')).toBe('helloworld');
-      expect(sanitizeControlCharacters('hello\x1Fworld')).toBe('helloworld');
-    });
-
-    it('handles edge cases', () => {
-      expect(sanitizeControlCharacters('')).toBe('');
-      expect(sanitizeControlCharacters(null as any)).toBe('');
-      expect(sanitizeControlCharacters(undefined as any)).toBe('');
-      expect(sanitizeControlCharacters('normal text')).toBe('normal text');
-    });
-  });
-
   describe('sanitizeForSignInMessage', () => {
     it('sanitizes strings for sign-in messages', () => {
       expect(sanitizeForSignInMessage('hello\nworld')).toBe('helloworld');
@@ -103,36 +83,6 @@ describe('sanitize', () => {
     it('handles edge cases', () => {
       expect(sanitizeSolanaAddress(null as any)).toBe('');
       expect(sanitizeSolanaAddress(undefined as any)).toBe('');
-    });
-  });
-
-  describe('sanitizeUri', () => {
-    it('validates and sanitizes valid URIs', () => {
-      expect(sanitizeUri('https://example.com')).toBe('https://example.com');
-      expect(sanitizeUri('http://example.com/path')).toBe(
-        'http://example.com/path',
-      );
-      expect(sanitizeUri('wss://example.com')).toBe('wss://example.com');
-    });
-
-    it('rejects invalid URIs', () => {
-      expect(sanitizeUri('')).toBe('');
-      expect(sanitizeUri('not-a-url')).toBe('');
-      expect(sanitizeUri('ftp://example.com')).toBe('');
-      // eslint-disable-next-line no-script-url
-      expect(sanitizeUri('javascript:alert(1)')).toBe('');
-    });
-
-    it('sanitizes URIs with control characters', () => {
-      expect(sanitizeUri('https://example.com\n')).toBe('https://example.com');
-      expect(sanitizeUri('http://example.com/path\r')).toBe(
-        'http://example.com/path',
-      );
-    });
-
-    it('handles edge cases', () => {
-      expect(sanitizeUri(null as any)).toBe('');
-      expect(sanitizeUri(undefined as any)).toBe('');
     });
   });
 
