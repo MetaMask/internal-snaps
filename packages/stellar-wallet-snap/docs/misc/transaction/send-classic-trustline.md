@@ -12,7 +12,7 @@ Payment of a **classic issued asset** (CAIP-19 classic, non-native). Destination
 ## Build
 
 1. Load destination account from the network.
-2. If destination is **not** activated → `AccountNotActivatedException` (classic non-native cannot use `createAccount`).
+2. If destination is **not** activated → `InvalidAssetForCreateAccountException` (classic non-native cannot use `createAccount`).
 3. Fetch base inclusion fee.
 4. `TransactionBuilder.transfer` with `isActivated: true`:
    - Normalize amount to human-readable Stellar units (`normalizeAmount`).

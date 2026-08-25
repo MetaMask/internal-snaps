@@ -1,4 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip19Slip44IdMap } from '../../api';
@@ -11,8 +12,6 @@ import {
 import type { TransactionService } from '../../services/transaction/TransactionService';
 import { isSlip44Id } from '../../utils';
 import { toDisplayBalance } from '../../utils/currency';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -38,14 +37,11 @@ export class ComputeFeeHandler extends BaseClientRequestHandler<
     accountResolver,
     transactionService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
-      '[💰 ComputeFeeHandler]',
-    );
+    const prefixedLogger = logger.withPrefix('[💰 ComputeFeeHandler]');
     super({
       accountResolver,
       logger: prefixedLogger,

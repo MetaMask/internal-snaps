@@ -1,16 +1,15 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
 import { ensureError } from '@metamask/utils';
 
 import { withCatchAndThrowSnapError } from '../../utils';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { ClientRequestMethod } from './api';
 import { ClientRequestMethodStruct } from './api';
 import type { IClientRequestHandler } from './base';
 
 export class ClientRequestHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #handlers: Record<ClientRequestMethod, IClientRequestHandler>;
 
@@ -18,10 +17,10 @@ export class ClientRequestHandler {
     logger,
     handlers,
   }: {
-    logger: ILogger;
+    logger: Logger;
     handlers: Record<ClientRequestMethod, IClientRequestHandler>;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
+    this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#handlers = handlers;
   }
 

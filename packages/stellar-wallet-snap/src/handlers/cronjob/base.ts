@@ -1,7 +1,7 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 
-import type { ILogger } from '../../utils';
 import { BaseHandler } from '../base';
 import type { CronjobJsonRpcRequest } from './api';
 import { CronjobJsonRpcRequestStruct } from './api';
@@ -13,7 +13,7 @@ export abstract class CronjobBaseHandler<
     logger,
     requestStruct,
   }: {
-    logger: ILogger;
+    logger: Logger;
     requestStruct: Struct<RequestType>;
   }) {
     super({

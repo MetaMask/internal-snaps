@@ -20,7 +20,8 @@ import type { Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import {
   fromBytesToCompilableTransactionMessage,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransaction,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../sdk-extensions/codecs';
 import {
   estimateAndOverrideComputeUnitLimit,
@@ -60,6 +61,7 @@ export class Signer {
    * @param account - The account to sign the transaction or transaction message with.
    * @param network - The network on which the transaction is being sent.
    * @param config - The configuration for the request.
+   * @param preserveMessageBytes - Whether to preserve the original message bytes.
    * @returns The signed transaction.
    * @throws If the base64 string is not a valid transaction or transaction message.
    */
@@ -68,6 +70,7 @@ export class Signer {
     account: SolanaKeyringAccount,
     network: Network,
     config?: DecompileTransactionMessageFetchingLookupTablesConfig,
+    preserveMessageBytes = false,
   ): Promise<Transaction> {
     this.#logger.log('Partially sign base64 string', {
       base64String,
@@ -76,11 +79,18 @@ export class Signer {
       config,
     });
 
+    if (preserveMessageBytes) {
+      const transaction =
+        await fromUnknownBase64StringToTransaction(base64String);
+
+      return this.#partiallySignTransaction(transaction, account);
+    }
+
     const rpc = this.#connection.getRpc(network);
 
     // The received base64 string can either represent a transaction or a transaction message.
     const transactionMessageOrTransaction =
-      await fromUnknowBase64StringToTransactionOrTransactionMessage(
+      await fromUnknownBase64StringToTransactionOrTransactionMessage(
         base64String,
         rpc,
         config,

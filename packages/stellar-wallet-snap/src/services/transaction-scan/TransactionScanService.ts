@@ -1,10 +1,9 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
 import { xlmIcon } from '../../ui/images';
-import type { ILogger } from '../../utils';
 import {
-  createPrefixedLogger,
   toCaip19ClassicAssetId,
   toCaip19Sep41AssetId,
   trackErrorIfNeeded,
@@ -35,17 +34,17 @@ import type { SecurityAlertsApiClient } from './SecurityAlertsApiClient';
 export class TransactionScanService {
   readonly #securityAlertsApiClient: SecurityAlertsApiClient;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     securityAlertsApiClient,
     logger,
   }: {
     securityAlertsApiClient: SecurityAlertsApiClient;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#securityAlertsApiClient = securityAlertsApiClient;
-    this.#logger = createPrefixedLogger(logger, '[🛡️ TransactionScanService]');
+    this.#logger = logger.withPrefix('[🛡️ TransactionScanService]');
   }
 
   async scanTransactionSafe({

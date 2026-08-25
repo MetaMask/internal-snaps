@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
@@ -34,8 +35,6 @@ import {
   trackTransactionApproved,
   trackTransactionRejected,
 } from '../../utils';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -70,7 +69,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
   readonly #confirmationUIController: ConfirmationUXController;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     logger,
@@ -79,16 +78,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     assetMetadataService,
     confirmationUIController,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
     confirmationUIController: ConfirmationUXController;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
-      '[👍 ConfirmSendHandler]',
-    );
+    const prefixedLogger = logger.withPrefix('[👍 ConfirmSendHandler]');
     super({
       accountResolver,
       logger: prefixedLogger,

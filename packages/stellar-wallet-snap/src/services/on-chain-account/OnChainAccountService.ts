@@ -1,5 +1,6 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import type { KnownCaip2ChainId } from '../../api';
-import type { ILogger } from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type { StellarAssetMetadata } from '../asset-metadata';
 import { AccountNotActivatedException } from '../network';
@@ -27,7 +28,7 @@ export class OnChainAccountService {
   }: {
     networkService: NetworkService;
     onChainAccountRepository: OnChainAccountRepository;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#networkService = networkService;
     this.#onChainAccountSynchronizeService =

@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
 
 import { createEventHandlers as createConfirmSendTransactionEvents } from '../../ui/confirmation/views/ConfirmSendTransaction/events';
@@ -7,15 +8,14 @@ import { createEventHandlers as createSignChangeTrustOptOutEvents } from '../../
 import { createEventHandlers as createSignMessageEvents } from '../../ui/confirmation/views/ConfirmSignMessage/events';
 import { createEventHandlers as createSignTransactionEvents } from '../../ui/confirmation/views/ConfirmSignTransaction/events';
 import { createEventHandlers as createMaliciousAcknowledgementEvents } from '../../ui/confirmation/views/MaliciousAcknowledgement/events';
-import { withCatchAndThrowSnapError, createPrefixedLogger } from '../../utils';
-import type { ILogger } from '../../utils';
+import { withCatchAndThrowSnapError } from '../../utils';
 import type { UserInputUiEventHandler } from './api';
 
 export class UserInputHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
-  constructor({ logger }: { logger: ILogger }) {
-    this.#logger = createPrefixedLogger(logger, '[👵 LifecycleHandler]');
+  constructor({ logger }: { logger: Logger }) {
+    this.#logger = logger.withPrefix('[👵 UserInputHandler]');
   }
 
   /**
@@ -37,7 +37,7 @@ export class UserInputHandler {
     event: UserInputEvent;
     context: InterfaceContext | null;
   }): Promise<void> {
-    this.#logger.log('[👇 onUserInput]', id, event);
+    this.#logger.debug('[👇 onUserInput]', id, event);
 
     if (!event.name) {
       return;
