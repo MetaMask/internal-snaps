@@ -710,9 +710,9 @@ describe('TransactionService', () => {
         );
 
       expect(error).toBeInstanceOf(InvalidAssetForCreateAccountException);
-      expect((error as InvalidAssetForCreateAccountException).message).toContain(
-        USDC_CLASSIC,
-      );
+      expect(
+        (error as InvalidAssetForCreateAccountException).message,
+      ).toContain(USDC_CLASSIC);
     });
 
     it('throws InvalidAssetForCreateAccountException when sending SEP-41 to an unfunded destination', async () => {
@@ -756,9 +756,9 @@ describe('TransactionService', () => {
         );
 
       expect(error).toBeInstanceOf(InvalidAssetForCreateAccountException);
-      expect((error as InvalidAssetForCreateAccountException).message).toContain(
-        USDC_SEP41,
-      );
+      expect(
+        (error as InvalidAssetForCreateAccountException).message,
+      ).toContain(USDC_SEP41);
     });
   });
 });
