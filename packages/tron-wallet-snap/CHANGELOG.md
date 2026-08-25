@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
-## Fixed
+### Fixed
 
+- Estimate native TRX/TRC-10 sends that activate a new account as 1 TRX plus 100 Bandwidth (or 0.1 TRX when staked Bandwidth is insufficient), instead of TransferContract byte size ([#175](https://github.com/MetaMask/internal-snaps/pull/175))
 - Fix SUN → USDT swaps routed through Rango and SunSwap displaying a zero SUN amount in transaction activity ([#134](https://github.com/MetaMask/internal-snaps/pull/134))
 
 ## [3.1.0]
