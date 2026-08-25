@@ -9,6 +9,8 @@ export {
   type RemoteFeatureFlagsProviderMessenger,
 } from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
 export { safeMerge } from './safeMerge/safeMerge';
+export { buildUrl } from './buildUrl/buildUrl';
+export type { BuildUrlParams } from './buildUrl/buildUrl';
 export { sanitizeControlCharacters, sanitizeUri } from './sanitize';
 export { UrlStruct } from './urlStruct/urlStruct';
 export { Logger, LogLevel } from './logger';
