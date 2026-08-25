@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   create,
@@ -16,7 +17,6 @@ import {
   Environment,
   LogLevelStruct,
   KnownCaip2ChainIdStruct,
-  UrlStruct,
   KnownCaip2ChainId,
 } from './api';
 import { getSupportedScopes } from './utils/scopes';

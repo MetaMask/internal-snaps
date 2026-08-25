@@ -1,7 +1,7 @@
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import type { CaipAssetType } from '@metamask/utils';
 
-import { UrlStruct } from '../../../api';
 import type { AnyErrorConstructor } from '../../../utils';
 import { buildUrl, rethrowIfInstanceElseThrow } from '../../../utils';
 import {
