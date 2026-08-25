@@ -1,9 +1,9 @@
-import { createPrefixedLogger, logger } from '../../utils/logger';
+import { logger } from '../../utils/logger';
 import { serialize } from '../../utils/serialization';
 import type { Serializable } from '../../utils/serialization';
 import type { ICache } from './api';
 
-const cacheLogger = createPrefixedLogger(logger, 'useCache');
+const cacheLogger = logger.withPrefix('useCache');
 
 /**
  * Result type for functions that provide their own expiry time.

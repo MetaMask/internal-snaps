@@ -23,6 +23,7 @@ import {
   InvalidTrustlineException,
   RemoveTrustlineWithNonZeroBalanceException,
   TransactionValidationException,
+  TrustlineExceedLimitException,
   TrustlineNotAuthorizedException,
   TrustlineNotFoundException,
   UpdateTrustlineException,
@@ -153,9 +154,7 @@ function validateCredit(params: {
   const trustlineBalance = balanceAfterDebit ?? line.balance;
   const newBalance = trustlineBalance.plus(amount);
   if (newBalance.isGreaterThan(line.limit)) {
-    throw new TransactionValidationException(
-      `Payment would exceed trustline limit for asset ${assetId} on destination`,
-    );
+    throw new TrustlineExceedLimitException(assetId);
   }
 }
 

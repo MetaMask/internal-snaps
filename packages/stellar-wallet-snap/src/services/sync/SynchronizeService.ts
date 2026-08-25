@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { E_ALREADY_LOCKED, Mutex, tryAcquire } from 'async-mutex';
 
 import type { KnownCaip2ChainId } from '../../api';
@@ -8,8 +9,6 @@ import {
   scheduleBackgroundEvent,
   trackErrorIfNeeded,
 } from '../../utils';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { StellarKeyringAccount } from '../account';
 import type {
   AssetMetadataService,
@@ -26,7 +25,7 @@ import type { ActivatedAccountPair, SynchronizeOptions } from './api';
  * them to downstream services.
  */
 export class SynchronizeService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #onChainAccountService: OnChainAccountService;
 
@@ -45,12 +44,12 @@ export class SynchronizeService {
     assetMetadataService,
     transactionService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     onChainAccountService: OnChainAccountService;
     assetMetadataService: AssetMetadataService;
     transactionService: TransactionService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🔄 SynchronizeService]');
+    this.#logger = logger.withPrefix('[🔄 SynchronizeService]');
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;
     this.#assetMetadataService = assetMetadataService;

@@ -1,3 +1,4 @@
+import { UrlStruct } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -15,7 +16,6 @@ import {
   KnownCaip19ClassicAssetStruct,
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,
-  UrlStruct,
 } from '../../../api';
 
 // The token metadata schema for the Token API.

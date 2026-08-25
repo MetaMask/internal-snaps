@@ -1,10 +1,10 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
 
 import type { KnownCaip2ChainId } from '../../api';
 import { AccountNotActivatedException } from '../../services/network';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import type { ILogger } from '../../utils/logger';
 import type {
   AccountResolver,
   FullActivatedAccountResolveOptions,
@@ -63,7 +63,7 @@ export abstract class BaseClientRequestHandler<
     requestStruct,
     responseStruct,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     resolveAccountOptions?: FullActivatedAccountResolveOptions;
     requestStruct: Struct<RequestType>;
