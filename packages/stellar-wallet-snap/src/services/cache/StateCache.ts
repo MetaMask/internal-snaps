@@ -49,6 +49,7 @@ export type StateValue = {
  * @example
  * ```ts
  * const state = new State({}); // Here we use the real snap's state
+ * const rootLogger = new Logger({ level: LogLevel.INFO });
  * const logger = rootLogger.withPrefix('[💾 StateCache]');
  * const cache = new StateCache(state, logger, '__cache__my-prefix');
  *

@@ -84,6 +84,17 @@ const selectedNetworkStruct = coerce(
 );
 
 /**
+ * A struct to validate and coerce log level from env.
+ * Converts the log level to lowercase and checks if it is a valid log level.
+ * If the log level is empty or missing, it defaults to silent.
+ */
+export const LogLevelStruct = coerce(
+  defaulted(enums(Object.values(LogLevel)), LogLevel.SILENT),
+  string(),
+  (value: string) => (value === '' ? undefined : value.toLowerCase()),
+);
+
+/**
  * A struct for validating the network config map.
  */
 const networkConfigMapStruct = record(
@@ -96,7 +107,7 @@ const networkConfigMapStruct = record(
  */
 const ConfigStruct = object({
   environment: enums(Object.values(Environment)),
-  logLevel: enums(Object.values(LogLevel)),
+  logLevel: LogLevelStruct,
   networks: networkConfigMapStruct,
   selectedNetwork: selectedNetworkStruct,
   transaction: object({
