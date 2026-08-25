@@ -1,5 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
-import { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
+import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
 
 import { transactionScanService, state } from '../../../../snapContext';
 import { METAMASK_ORIGIN, Network } from '../../../constants/solana';
