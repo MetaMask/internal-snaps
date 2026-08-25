@@ -11,9 +11,8 @@ Silently signs a proof-of-ownership message so `@metamask/profile-metrics-contro
 This is a **silent sign** — there is no confirmation dialog. That is intentional: the MetaMask client needs an ownership proof without interrupting the user. The method is scoped so it cannot be used as a general sign-message bypass:
 
 1. SIP-31 `onClientRequest` is only callable by the MetaMask client.
-2. The method is listed in `metamaskPermissions` (origin `metamask` only).
-3. The plaintext must be `metamask:proof-of-ownership:{nonce}:{address}`, and the embedded address must match the signing account.
-4. Signing uses [SEP-0053](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md) (`Wallet.signMessage`).
+2. The plaintext must be `metamask:proof-of-ownership:{nonce}:{address}`, and the embedded address must match the signing account.
+3. Signing uses [SEP-0053](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md) (`Wallet.signMessage`).
 
 ## Request / response (shape)
 

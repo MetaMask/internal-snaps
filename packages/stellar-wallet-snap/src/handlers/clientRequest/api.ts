@@ -55,7 +55,7 @@ export enum ClientRequestMethod {
   ComputeFee = 'computeFee',
   /**
    * Silent proof-of-ownership signing for `@metamask/profile-metrics-controller`.
-   * SIP-31 client-only; also listed in `metamaskPermissions`.
+   * SIP-31 client-only.
    */
   SignProofOfOwnership = 'signProofOfOwnership',
   /** -------------------------------- Stellar Specific -------------------------------- */
