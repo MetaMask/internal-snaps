@@ -1,7 +1,6 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { Serializable } from '../../utils/serialization';
 import type { IStateManager } from '../state/IStateManager';
 import type { ICache, CacheEntry } from './api';
@@ -50,8 +49,8 @@ export type StateValue = {
  * @example
  * ```ts
  * const state = new State({}); // Here we use the real snap's state
- * const logger = createPrefixedLogger(console, '[💾 StateCache]');
- * const cache = new StateCache(state, logger, '__cache__my-prefix');
+ * const rootLogger = new Logger({ level: LogLevel.INFO });
+ * const cache = new StateCache(state, rootLogger, '__cache__my-prefix');
  *
  * // state looks like this:
  * // {
@@ -75,15 +74,15 @@ export class StateCache implements ICache<Serializable | undefined> {
 
   public readonly prefix: CachePrefix;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     state: IStateManager<StateValue>,
-    logger: ILogger,
+    logger: Logger,
     prefix: CachePrefix = '__cache__default',
   ) {
     this.#state = state;
-    this.#logger = createPrefixedLogger(logger, '[💾 StateCache]');
+    this.#logger = logger.withPrefix('[💾 StateCache]');
     this.prefix = prefix;
   }
 

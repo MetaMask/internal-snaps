@@ -1,9 +1,9 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 
 import type { KnownCaip2ChainId } from '../../api';
-import type { ILogger } from '../../utils';
-import { createPrefixedLogger, trackErrorIfNeeded } from '../../utils';
+import { trackErrorIfNeeded } from '../../utils';
 import { validateRequest, validateResponse } from '../../utils/requestResponse';
 import type {
   AccountResolver,
@@ -65,14 +65,14 @@ export abstract class BaseSep43KeyringHandler<
     requestStruct,
     responseStruct,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     loggerPrefix: string;
     requestStruct: Struct<Request>;
     responseStruct: Struct<Response>;
   }) {
     super({
-      logger: createPrefixedLogger(logger, loggerPrefix),
+      logger: logger.withPrefix(loggerPrefix),
       requestStruct,
       responseStruct,
     });

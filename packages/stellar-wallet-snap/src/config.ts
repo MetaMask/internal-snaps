@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+import { LogLevel } from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   create,
@@ -14,7 +15,6 @@ import {
 
 import {
   Environment,
-  LogLevelStruct,
   KnownCaip2ChainIdStruct,
   UrlStruct,
   KnownCaip2ChainId,
@@ -79,6 +79,17 @@ const networkConfigStruct = object({
  */
 const selectedNetworkStruct = coerce(
   defaulted(enums(getSupportedScopes()), KnownCaip2ChainId.Mainnet),
+  string(),
+  (value: string) => (value === '' ? undefined : value.toLowerCase()),
+);
+
+/**
+ * A struct to validate and coerce log level from env.
+ * Converts the log level to lowercase and checks if it is a valid log level.
+ * If the log level is empty or missing, it defaults to silent.
+ */
+export const LogLevelStruct = coerce(
+  defaulted(enums(Object.values(LogLevel)), LogLevel.SILENT),
   string(),
   (value: string) => (value === '' ? undefined : value.toLowerCase()),
 );

@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
@@ -21,8 +22,6 @@ import type {
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import {
   trackTransactionAdded,
   trackTransactionApproved,
@@ -62,16 +61,13 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     assetMetadataService,
     confirmationUIController,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     assetMetadataService: AssetMetadataService;
     transactionService: TransactionService;
     confirmationUIController: ConfirmationUXController;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
-      '[💼 ChangeTrustOptHandler]',
-    );
+    const prefixedLogger = logger.withPrefix('[💼 ChangeTrustOptHandler]');
     super({
       accountResolver,
       logger: prefixedLogger,

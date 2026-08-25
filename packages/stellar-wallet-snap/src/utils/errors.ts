@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import {
   ChainDisconnectedError,
   DisconnectedError,
@@ -20,7 +21,6 @@ import {
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
-import type { ILogger } from './logger';
 import { logger as defaultLogger } from './logger';
 import { trackError } from './snap';
 
@@ -326,7 +326,7 @@ export function isStellarSnapException(
  */
 export const withCatchAndThrowSnapError = async <ResponseT>(
   fn: () => Promise<ResponseT>,
-  logger: ILogger = defaultLogger,
+  logger: Logger = defaultLogger,
 ): Promise<ResponseT> => {
   try {
     return await fn();

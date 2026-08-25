@@ -1,6 +1,7 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import type { KeyringEventPayload } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type {
@@ -8,9 +9,7 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../api';
-import type { ILogger } from '../../utils';
 import {
-  createPrefixedLogger,
   getSlip44AssetId,
   getSnapProvider,
   isClassicAssetId,
@@ -52,7 +51,7 @@ export class OnChainAccountSynchronizeService {
 
   readonly #onChainAccountRepository: OnChainAccountRepository;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     networkService,
@@ -61,14 +60,11 @@ export class OnChainAccountSynchronizeService {
   }: {
     networkService: NetworkService;
     onChainAccountRepository: OnChainAccountRepository;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#networkService = networkService;
     this.#onChainAccountRepository = onChainAccountRepository;
-    this.#logger = createPrefixedLogger(
-      logger,
-      '[💼 OnChainAccountSynchronizeService]',
-    );
+    this.#logger = logger.withPrefix('[💼 OnChainAccountSynchronizeService]');
   }
 
   /**

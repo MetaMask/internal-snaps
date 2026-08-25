@@ -1,5 +1,6 @@
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { Asset } from '@stellar/stellar-sdk';
 
 import type {
@@ -7,9 +8,7 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../api';
-import type { ILogger } from '../../utils';
 import {
-  createPrefixedLogger,
   removeTrailingZeros,
   stellarAssetToCaip19,
   toDisplayBalance,
@@ -46,17 +45,17 @@ import {
 export class TransactionMapper {
   readonly #keyringTransactionBuilder: KeyringTransactionBuilder;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     keyringTransactionBuilder,
     logger,
   }: {
     keyringTransactionBuilder: KeyringTransactionBuilder;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#keyringTransactionBuilder = keyringTransactionBuilder;
-    this.#logger = createPrefixedLogger(logger, '[💰 TransactionMapper]');
+    this.#logger = logger.withPrefix('[💰 TransactionMapper]');
   }
 
   /**

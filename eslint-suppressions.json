@@ -1626,11 +1626,6 @@
       "count": 6
     }
   },
-  "packages/stellar-wallet-snap/src/utils/logger.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "packages/stellar-wallet-snap/src/utils/snap.ts": {
     "no-restricted-syntax": {
       "count": 1

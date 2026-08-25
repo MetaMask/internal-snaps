@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
@@ -15,8 +16,6 @@ import {
   FetchStatus,
 } from '../../../ui/confirmation/api';
 import { toSmallestUnit } from '../../../utils/currency';
-import type { ILogger } from '../../../utils/logger';
-import { createPrefixedLogger } from '../../../utils/logger';
 import type { AccountResolver } from '../../accountResolver';
 import { ResolveAccountSource } from '../../accountResolver';
 import {
@@ -53,7 +52,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
 
   readonly #accountResolver: AccountResolver;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     logger,
@@ -61,7 +60,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
     assetMetadataService,
     accountResolver,
   }: {
-    logger: ILogger;
+    logger: Logger;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
     accountResolver: AccountResolver;
@@ -69,10 +68,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
     this.#transactionService = transactionService;
     this.#assetMetadataService = assetMetadataService;
     this.#accountResolver = accountResolver;
-    this.#logger = createPrefixedLogger(
-      logger,
-      '[🔄 ConfirmationTransactionRefresher]',
-    );
+    this.#logger = logger.withPrefix('[🔄 ConfirmationTransactionRefresher]');
   }
 
   shouldFetch(ctx: ConfirmationDataContext): boolean {
