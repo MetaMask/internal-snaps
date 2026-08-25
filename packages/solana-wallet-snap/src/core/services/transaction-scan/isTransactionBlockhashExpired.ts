@@ -8,7 +8,7 @@ import type {
 
 import {
   fromBytesToCompilableTransactionMessage,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../sdk-extensions/codecs';
 import { trackError } from '../../utils/errors';
 import logger from '../../utils/logger';
@@ -33,7 +33,7 @@ export const isTransactionBlockhashExpired = async (
 ): Promise<boolean> => {
   try {
     const transactionOrMessage =
-      await fromUnknowBase64StringToTransactionOrTransactionMessage(
+      await fromUnknownBase64StringToTransactionOrTransactionMessage(
         transaction,
         rpc,
       );

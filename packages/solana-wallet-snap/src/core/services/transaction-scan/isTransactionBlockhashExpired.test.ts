@@ -1,11 +1,11 @@
 import type { Rpc, SolanaRpcApi } from '@solana/kit';
 
-import { fromUnknowBase64StringToTransactionOrTransactionMessage } from '../../sdk-extensions/codecs';
+import { fromUnknownBase64StringToTransactionOrTransactionMessage } from '../../sdk-extensions/codecs';
 import { trackError } from '../../utils/errors';
 import { isTransactionBlockhashExpired } from './isTransactionBlockhashExpired';
 
 jest.mock('../../sdk-extensions/codecs', () => ({
-  fromUnknowBase64StringToTransactionOrTransactionMessage: jest.fn(),
+  fromUnknownBase64StringToTransactionOrTransactionMessage: jest.fn(),
   fromBytesToCompilableTransactionMessage: jest.fn(),
 }));
 
@@ -28,7 +28,7 @@ describe('isTransactionBlockhashExpired', () => {
   it('tracks a failure and treats the transaction as not expired', async () => {
     const error = new Error('RPC unavailable');
     jest
-      .mocked(fromUnknowBase64StringToTransactionOrTransactionMessage)
+      .mocked(fromUnknownBase64StringToTransactionOrTransactionMessage)
       .mockRejectedValue(error);
 
     expect(
