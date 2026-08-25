@@ -104,7 +104,6 @@ describe('SignProofOfOwnershipHandler', () => {
     expect(result).toStrictEqual({
       signature: wallet.signMessage(message),
     });
-    expect(result.signature).toStrictEqual(wallet.signMessage(message));
     expect(wallet.verifyMessage(message, result.signature)).toBe(true);
   });
 
