@@ -3,6 +3,7 @@ import { assert, StructError } from '@metamask/superstruct';
 import {
   StellarAddressOrContractStruct,
   StellarAddressStruct,
+  StellarSecretKeyStruct,
 } from './address';
 
 describe('StellarAddressStruct', () => {
@@ -18,6 +19,25 @@ describe('StellarAddressStruct', () => {
   it('rejects an invalid Stellar address', () => {
     const address = 'invalid-address';
     expect(() => assert(address, StellarAddressStruct)).toThrow(StructError);
+  });
+});
+
+describe('StellarSecretKeyStruct', () => {
+  it('accepts a valid Stellar secret seed', () => {
+    expect(() =>
+      assert(
+        'SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW',
+        StellarSecretKeyStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    'invalid-secret',
+    'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO',
+    '',
+  ])('rejects an invalid Stellar secret seed: "%s"', (secret) => {
+    expect(() => assert(secret, StellarSecretKeyStruct)).toThrow(StructError);
   });
 });
 

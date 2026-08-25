@@ -82,6 +82,7 @@ describe('validateOrigin', () => {
     KeyringSnapRpcMethod.GetAccountAssets,
     KeyringSnapRpcMethod.ResolveAccountAddress,
     KeyringSnapRpcMethod.SetSelectedAccounts,
+    KeyringSnapRpcMethod.ExportAccount,
   ])('allows method %s for metamask', (method) => {
     const origin = METAMASK_ORIGIN;
 

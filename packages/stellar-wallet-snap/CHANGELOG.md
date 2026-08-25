@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `exportAccount` keyring method for base32 Stellar secret-seed export
+
 ## [0.1.0]
 
 ### Added

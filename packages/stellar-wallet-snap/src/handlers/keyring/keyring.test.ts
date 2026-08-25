@@ -27,7 +27,8 @@ import {
   createMockTransactionService,
   generateMockTransactions,
 } from '../../services/transaction/__mocks__/transaction.fixtures';
-import { getDerivationPath } from '../../services/wallet';
+import { getDerivationPath, WalletService } from '../../services/wallet';
+import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import {
   getSlip44AssetId,
   getDefaultEntropySource,
@@ -43,6 +44,7 @@ import {
   SignTransactionResponseStruct,
 } from './api';
 import type { IKeyringRequestHandler } from './base';
+import { ExportAccountException } from './exceptions';
 import { KeyringHandler } from './keyring';
 
 jest.mock('../../utils/logger');
@@ -106,7 +108,7 @@ describe('KeyringHandler', () => {
     mockSignTransactionHandler = { handle: jest.fn() };
     mockSignAuthEntryHandler = { handle: jest.fn() };
 
-    const { accountService, onChainAccountService } =
+    const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
     const { transactionService } = createMockTransactionService();
     keyringHandler = new KeyringHandler({
@@ -114,6 +116,7 @@ describe('KeyringHandler', () => {
       accountService,
       onChainAccountService,
       transactionService,
+      walletService,
       handlers: {
         [MultichainMethod.SignMessage]: mockSignMessageHandler,
         [MultichainMethod.SignTransaction]: mockSignTransactionHandler,
@@ -153,6 +156,26 @@ describe('KeyringHandler', () => {
       const result = await keyringHandler.handle(METAMASK_ORIGIN, request);
 
       expect(result).toBeNull();
+    });
+
+    it('does not log the keyring result (exportAccount returns a secret seed)', async () => {
+      const privateKey =
+        'SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW';
+      jest.mocked(handleKeyringRequest).mockResolvedValue({
+        type: 'private-key',
+        encoding: 'base32',
+        privateKey,
+      });
+
+      await keyringHandler.handle(METAMASK_ORIGIN, {
+        method: 'keyring_exportAccount',
+        id: '1',
+        jsonrpc: '2.0',
+      } as JsonRpcRequest);
+
+      expect(JSON.stringify(jest.mocked(logger.debug).mock.calls)).not.toContain(
+        privateKey,
+      );
     });
   });
 
@@ -624,6 +647,161 @@ describe('KeyringHandler', () => {
           },
         }),
       ).rejects.toThrow(InvalidParamsError);
+    });
+  });
+
+  describe('exportAccount', () => {
+    it('exports the account private key as base32', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const wallet = getTestWallet();
+      jest
+        .spyOn(WalletService.prototype, 'resolveWallet')
+        .mockResolvedValue(wallet);
+
+      const result = await keyringHandler.exportAccount(mockAccountId, {
+        type: 'private-key',
+        encoding: 'base32',
+      });
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'base32',
+        privateKey: wallet.secret,
+      });
+    });
+
+    it('defaults encoding to base32 when options omit encoding', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const wallet = getTestWallet();
+      jest
+        .spyOn(WalletService.prototype, 'resolveWallet')
+        .mockResolvedValue(wallet);
+
+      const result = await keyringHandler.exportAccount(mockAccountId, {
+        type: 'private-key',
+      } as { type: 'private-key'; encoding: 'base32' });
+
+      expect(result.encoding).toBe('base32');
+    });
+
+    it('defaults to base32 encoding when options are omitted', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const wallet = getTestWallet();
+      jest
+        .spyOn(WalletService.prototype, 'resolveWallet')
+        .mockResolvedValue(wallet);
+
+      const result = await keyringHandler.exportAccount(mockAccountId);
+
+      expect(result).toStrictEqual({
+        type: 'private-key',
+        encoding: 'base32',
+        privateKey: wallet.secret,
+      });
+    });
+
+    it('throws if the account id is not a uuid', async () => {
+      await expect(
+        keyringHandler.exportAccount('not-a-uuid', {
+          type: 'private-key',
+          encoding: 'base32',
+        }),
+      ).rejects.toThrow(InvalidParamsError);
+    });
+
+    it('throws if the account is not found', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockRejectedValue(
+        new AccountNotFoundException(NON_EXISTENT_ID),
+      );
+
+      await expect(
+        keyringHandler.exportAccount(NON_EXISTENT_ID, {
+          type: 'private-key',
+          encoding: 'base32',
+        }),
+      ).rejects.toThrow(AccountNotFoundException);
+    });
+
+    it('rejects an unsupported encoding', async () => {
+      await expect(
+        keyringHandler.exportAccount(mockAccountId, {
+          type: 'private-key',
+          encoding: 'utf-8' as unknown as 'base32',
+        }),
+      ).rejects.toThrow(/Expected/u);
+    });
+
+    it('rejects hexadecimal export encoding', async () => {
+      await expect(
+        keyringHandler.exportAccount(mockAccountId, {
+          type: 'private-key',
+          encoding: 'hexadecimal',
+        }),
+      ).rejects.toThrow(InvalidParamsError);
+    });
+
+    it('rejects base58 export encoding', async () => {
+      await expect(
+        keyringHandler.exportAccount(mockAccountId, {
+          type: 'private-key',
+          encoding: 'base58',
+        }),
+      ).rejects.toThrow(InvalidParamsError);
+    });
+
+    it('rejects an unsupported export type', async () => {
+      await expect(
+        keyringHandler.exportAccount(mockAccountId, {
+          type: 'mnemonic' as unknown as 'private-key',
+          encoding: 'base32',
+        }),
+      ).rejects.toThrow(/Expected/u);
+    });
+
+    it('propagates wallet resolution errors', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      jest
+        .spyOn(WalletService.prototype, 'resolveWallet')
+        .mockRejectedValue(new Error('derivation failed'));
+
+      await expect(keyringHandler.exportAccount(mockAccountId)).rejects.toThrow(
+        'derivation failed',
+      );
+    });
+
+    it('throws ExportAccountException when the derived secret fails validation', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const wallet = getTestWallet();
+      jest.spyOn(wallet, 'secret', 'get').mockReturnValue('not-a-secret');
+      jest
+        .spyOn(WalletService.prototype, 'resolveWallet')
+        .mockResolvedValue(wallet);
+
+      await expect(keyringHandler.exportAccount(mockAccountId)).rejects.toThrow(
+        ExportAccountException,
+      );
+    });
+
+    it('throws a generic ExportAccountException when reading the secret fails', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const wallet = getTestWallet();
+      jest.spyOn(wallet, 'secret', 'get').mockImplementation(() => {
+        throw new Error('secret() exploded');
+      });
+      jest
+        .spyOn(WalletService.prototype, 'resolveWallet')
+        .mockResolvedValue(wallet);
+
+      await expect(keyringHandler.exportAccount(mockAccountId)).rejects.toThrow(
+        'Error exporting account',
+      );
     });
   });
 

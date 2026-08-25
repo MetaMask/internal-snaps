@@ -11,7 +11,8 @@ import {
 } from './exceptions';
 
 /**
- * Signing-only handle: Stellar SDK keypair for transaction and SEP-53 message signing.
+ * Handle over a Stellar SDK keypair: transaction / SEP-53 / SEP-43 signing
+ * and secret-seed export.
  */
 export class Wallet {
   readonly #signer: Keypair;
@@ -27,6 +28,17 @@ export class Wallet {
    */
   get address(): string {
     return this.#signer.publicKey();
+  }
+
+  /**
+   * The Stellar secret seed (`S…` strkey / base32).
+   *
+   * Used by keyring `exportAccount`.
+   *
+   * @returns Secret seed string (`S…`).
+   */
+  get secret(): string {
+    return this.#signer.secret();
   }
 
   /**

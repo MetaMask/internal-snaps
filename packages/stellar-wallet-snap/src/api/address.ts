@@ -21,6 +21,29 @@ export const StellarAddressStruct = refine(
   },
 );
 
+/**
+ * Validation struct for a Stellar secret seed (`S…` strkey / base32).
+ */
+export const StellarSecretKeyStruct = refine(
+  nonempty(string()),
+  'stellar_secret_key',
+  (value: string) => {
+    try {
+      if (!StrKey.isValidEd25519SecretSeed(value)) {
+        return 'Invalid Stellar secret key';
+      }
+      return true;
+    } catch {
+      return 'Invalid Stellar secret key';
+    }
+  },
+);
+
+/**
+ * Type for a Stellar secret seed.
+ */
+export type StellarSecretKey = Infer<typeof StellarSecretKeyStruct>;
+
 export const StellarAddressOrContractStruct = refine(
   nonempty(string()),
   'stellar_contract_or_address',

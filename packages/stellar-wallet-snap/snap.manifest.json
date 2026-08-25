@@ -26,6 +26,13 @@
       "allowedOrigins": ["https://portfolio.metamask.io"],
       "capabilities": {
         "scopes": ["stellar:pubnet"],
+        "privateKey": {
+          "exportFormats": [
+            {
+              "encoding": "base32"
+            }
+          ]
+        },
         "bip44": {
           "deriveIndex": true,
           "deriveIndexRange": true,
