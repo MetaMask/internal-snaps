@@ -133,10 +133,13 @@ export class TrustlineAlreadyExistsException extends TransactionValidationExcept
 
 /** Thrown when the payment would exceed the trustline limit on the destination account. */
 export class TrustlineExceedLimitException extends TransactionValidationException {
-  constructor(assetId: string) {
+  readonly assetId: KnownCaip19AssetIdOrSlip44Id;
+
+  constructor(assetId: KnownCaip19AssetIdOrSlip44Id) {
     super(
       `Payment would exceed trustline limit for asset ${assetId} on destination`,
     );
+    this.assetId = assetId;
   }
 }
 
