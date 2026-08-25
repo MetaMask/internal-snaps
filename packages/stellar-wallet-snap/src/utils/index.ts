@@ -8,7 +8,6 @@ export * from './number';
 export * from './caip';
 export * from './buffer';
 export * from './buildUrl';
-export * from './sanitize';
 export * from './async';
 export * from './assert';
 export * from './array';
