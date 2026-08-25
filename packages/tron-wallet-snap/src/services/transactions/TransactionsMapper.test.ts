@@ -922,6 +922,75 @@ describe('TransactionMapper', () => {
       expect(result?.to[0]?.asset).toHaveProperty('unit', 'USDC');
       expect(result?.to[0]?.asset).toHaveProperty('amount', '99.5');
     });
+
+    it('ignores approval events when mapping TRC20 swap transfers', () => {
+      const mockTrc20Swap = {
+        ...swapTransactionMock,
+      } as unknown as TransactionInfo;
+
+      const trc20Transfers: ContractTransactionInfo[] = [
+        {
+          transaction_id: mockTrc20Swap.txID,
+          token_info: {
+            symbol: 'USDT',
+            address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            decimals: 6,
+            name: 'Tether USD',
+          },
+          block_timestamp: 1632825600000,
+          from: 'TContractAddress',
+          to: mockAccount.address,
+          type: 'Transfer',
+          value: '4891342',
+        },
+        {
+          transaction_id: mockTrc20Swap.txID,
+          token_info: {
+            symbol: 'SUN',
+            address: 'TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S',
+            decimals: 18,
+            name: 'SUN',
+          },
+          block_timestamp: 1632825600000,
+          from: mockAccount.address,
+          to: 'TContractAddress',
+          type: 'Approval',
+          value: '0',
+        },
+        {
+          transaction_id: mockTrc20Swap.txID,
+          token_info: {
+            symbol: 'SUN',
+            address: 'TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S',
+            decimals: 18,
+            name: 'SUN',
+          },
+          block_timestamp: 1632825600000,
+          from: mockAccount.address,
+          to: 'TContractAddress',
+          type: 'Transfer',
+          value: '276791363098075785381',
+        },
+      ];
+
+      const result = TransactionMapper.mapTransaction({
+        scope: Network.Mainnet,
+        account: mockAccount,
+        trongridTransaction: mockTrc20Swap,
+        trc20Transfers,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toStrictEqual(TransactionType.Swap);
+      expect(result?.from[0]?.asset).toMatchObject({
+        unit: 'SUN',
+        amount: '276.791363098075785381',
+      });
+      expect(result?.to[0]?.asset).toMatchObject({
+        unit: 'USDT',
+        amount: '4.891342',
+      });
+    });
   });
 
   describe('Non-Swap Scenarios', () => {

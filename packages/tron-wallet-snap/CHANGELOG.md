@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.1]
+
+### Uncategorized
+
+- chore: move UrlStruct to shared lib ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: add safeMerge shared util ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
+- chore: replace tron logger with shared util ([#147](https://github.com/MetaMask/internal-snaps/pull/147))
+- fix(tron-wallet-snap): distinguish inactive accounts from HTTP failures on `fetchAssetsAndBalancesForAccount` ([#151](https://github.com/MetaMask/internal-snaps/pull/151))
+
 ### Added
 
 - Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
@@ -26,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
 - Coalesce concurrent account synchronization runs for the same accounts so stacked triggers (cronjob and background events) share one run instead of duplicating network fetches, state writes, and keyring events ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
+- Fix SUN → USDT swaps routed through Rango and SunSwap displaying a zero SUN amount in transaction activity ([#134](https://github.com/MetaMask/internal-snaps/pull/134))
 
 ## [3.1.0]
 
@@ -59,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.1...HEAD
+[3.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...@metamask/tron-wallet-snap@3.1.1
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.0.0...@metamask/tron-wallet-snap@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@2.0.0...@metamask/tron-wallet-snap@3.0.0
 [2.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/tron-wallet-snap@2.0.0
