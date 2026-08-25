@@ -1,4 +1,5 @@
-import { buildUrl } from '../../../utils';
+import { buildUrl } from '@metamask/snap-networks-utils';
+
 import {
   HttpException,
   HttpResponseException,
