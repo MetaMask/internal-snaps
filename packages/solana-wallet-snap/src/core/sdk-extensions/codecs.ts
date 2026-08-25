@@ -161,7 +161,7 @@ export const fromBase64StringCompiledMessageToTransaction = async (
  * @param config - The configuration to use to fetch lookup tables.
  * @returns The decoded transaction or compilable transaction message.
  */
-export const fromUnknowBase64StringToTransactionOrTransactionMessage = async (
+export const fromUnknownBase64StringToTransactionOrTransactionMessage = async (
   base64String: Infer<typeof Base64Struct>,
   rpc: Rpc<GetMultipleAccountsApi>,
   config?: DecompileTransactionMessageFetchingLookupTablesConfig,
@@ -177,7 +177,7 @@ export const fromUnknowBase64StringToTransactionOrTransactionMessage = async (
  * @param base64String - The base64 string to decode that represents either a transaction or a transaction message.
  * @returns The decoded transaction.
  */
-export const fromUnknowBase64StringToTransaction = async (
+export const fromUnknownBase64StringToTransaction = async (
   base64String: Infer<typeof Base64Struct>,
 ): Promise<Transaction> =>
   PromiseAny<Transaction>([

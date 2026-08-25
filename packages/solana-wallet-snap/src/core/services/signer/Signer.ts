@@ -20,8 +20,8 @@ import type { Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import {
   fromBytesToCompilableTransactionMessage,
-  fromUnknowBase64StringToTransaction,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransaction,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../sdk-extensions/codecs';
 import {
   estimateAndOverrideComputeUnitLimit,
@@ -81,7 +81,7 @@ export class Signer {
 
     if (preserveMessageBytes) {
       const transaction =
-        await fromUnknowBase64StringToTransaction(base64String);
+        await fromUnknownBase64StringToTransaction(base64String);
 
       return this.#partiallySignTransaction(transaction, account);
     }
@@ -90,7 +90,7 @@ export class Signer {
 
     // The received base64 string can either represent a transaction or a transaction message.
     const transactionMessageOrTransaction =
-      await fromUnknowBase64StringToTransactionOrTransactionMessage(
+      await fromUnknownBase64StringToTransactionOrTransactionMessage(
         base64String,
         rpc,
         config,

@@ -13,8 +13,8 @@ import {
   fromBytesToCompilableTransactionMessage,
   fromCompilableTransactionMessageToBase64String,
   fromTransactionToBase64String,
-  fromUnknowBase64StringToTransaction,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransaction,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from './codecs';
 
 describe('codecs', () => {
@@ -93,7 +93,7 @@ describe('codecs', () => {
       });
     });
 
-    describe(`fromUnknowBase64StringToTransaction | Scenario: ${name}`, () => {
+    describe(`fromUnknownBase64StringToTransaction | Scenario: ${name}`, () => {
       it('wraps bare compiled message bytes without changing the message bytes', async () => {
         const transactionMessageBytes = pipe(
           transactionMessage,
@@ -101,7 +101,7 @@ describe('codecs', () => {
           getCompiledTransactionMessageEncoder().encode,
         );
 
-        const result = await fromUnknowBase64StringToTransaction(
+        const result = await fromUnknownBase64StringToTransaction(
           transactionMessageBase64Encoded,
         );
 
@@ -112,7 +112,7 @@ describe('codecs', () => {
       });
 
       it('decodes a full transaction without changing the message bytes', async () => {
-        const result = await fromUnknowBase64StringToTransaction(
+        const result = await fromUnknownBase64StringToTransaction(
           signedTransactionBase64Encoded,
         );
 
@@ -122,10 +122,10 @@ describe('codecs', () => {
       });
     });
 
-    describe('fromUnknowBase64StringToTransactionOrTransactionMessage', () => {
+    describe('fromUnknownBase64StringToTransactionOrTransactionMessage', () => {
       it('decodes a base64 encoded transaction message to a transaction message', async () => {
         const result =
-          await fromUnknowBase64StringToTransactionOrTransactionMessage(
+          await fromUnknownBase64StringToTransactionOrTransactionMessage(
             transactionMessageBase64Encoded,
             mockRpc,
           );
@@ -135,7 +135,7 @@ describe('codecs', () => {
 
       it('decodes a base64 encoded transaction to a transaction', async () => {
         const result =
-          await fromUnknowBase64StringToTransactionOrTransactionMessage(
+          await fromUnknownBase64StringToTransactionOrTransactionMessage(
             signedTransactionBase64Encoded,
             mockRpc,
           );
