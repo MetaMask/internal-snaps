@@ -13,11 +13,7 @@ import {
   min,
 } from '@metamask/superstruct';
 
-import {
-  Environment,
-  KnownCaip2ChainIdStruct,
-  KnownCaip2ChainId,
-} from './api';
+import { Environment, KnownCaip2ChainIdStruct, KnownCaip2ChainId } from './api';
 import { getSupportedScopes } from './utils/scopes';
 
 const DEFAULT_TOKEN_API_BASE_URL = 'https://tokens.api.cx.metamask.io';
