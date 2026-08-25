@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-import { LogLevel } from '@metamask/snap-networks-utils';
+import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   create,
@@ -13,12 +13,7 @@ import {
   min,
 } from '@metamask/superstruct';
 
-import {
-  Environment,
-  KnownCaip2ChainIdStruct,
-  UrlStruct,
-  KnownCaip2ChainId,
-} from './api';
+import { Environment, KnownCaip2ChainIdStruct, KnownCaip2ChainId } from './api';
 import { getSupportedScopes } from './utils/scopes';
 
 const DEFAULT_TOKEN_API_BASE_URL = 'https://tokens.api.cx.metamask.io';
