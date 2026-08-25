@@ -15,7 +15,7 @@ export class UserInputHandler {
   readonly #logger: Logger;
 
   constructor({ logger }: { logger: Logger }) {
-    this.#logger = logger.withPrefix('[👵 LifecycleHandler]');
+    this.#logger = logger.withPrefix('[👵 UserInputHandler]');
   }
 
   /**
