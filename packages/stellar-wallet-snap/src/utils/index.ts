@@ -7,7 +7,6 @@ export * from './serialization';
 export * from './number';
 export * from './caip';
 export * from './buffer';
-export * from './buildUrl';
 export * from './async';
 export * from './assert';
 export * from './array';

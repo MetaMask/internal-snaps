@@ -1,9 +1,7 @@
-import {
-  sanitizeControlCharacters,
-  sanitizeUri,
-  UrlStruct,
-} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
+
+import { sanitizeControlCharacters, sanitizeUri } from '../sanitize';
+import { UrlStruct } from '../urlStruct/urlStruct';
 
 export type BuildUrlParams = {
   baseUrl: string;
@@ -14,14 +12,10 @@ export type BuildUrlParams = {
 };
 
 /**
- * Builds a URL with the given base URL and parameters:
- * - The `URL` API provides proper URL parsing and encoding.
- * - The `path` is sanitized to prevent path traversal attacks.
- *
- * Ensures that the built URL is safe, valid, and sanitized.
+ * Builds a safe URL from a base URL, path, and optional parameters.
  *
  * @param params - The parameters to build the URL from.
- * @returns The built URL.
+ * @returns The validated, sanitized URL.
  */
 export function buildUrl(params: BuildUrlParams): string {
   const {
@@ -52,11 +46,15 @@ export function buildUrl(params: BuildUrlParams): string {
   });
 
   const cleanPath = pathWithParams
-    .replace(/^\/+/u, '') // Remove leading slashes
-    .replace(/\/+/gu, '/') // Replace multiple slashes with single
-    .replace(/\/+$/u, ''); // Remove trailing slashes
+    .replace(/^\/+/u, '')
+    .replace(/\/+/gu, '/')
+    .replace(/\/+$/u, '');
 
-  const url = new URL(cleanPath, sanitizedBaseUrl);
+  const normalizedBaseUrl = sanitizedBaseUrl.endsWith('/')
+    ? sanitizedBaseUrl
+    : `${sanitizedBaseUrl}/`;
+
+  const url = new URL(cleanPath, normalizedBaseUrl);
 
   Object.entries(queryParams ?? {})
     .filter(([_, value]) => value !== undefined)
