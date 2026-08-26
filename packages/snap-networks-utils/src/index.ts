@@ -9,6 +9,8 @@ export {
   type RemoteFeatureFlagsProviderMessenger,
 } from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
 export { safeMerge } from './safeMerge/safeMerge';
+export { buildUrl } from './buildUrl/buildUrl';
+export type { BuildUrlParams } from './buildUrl/buildUrl';
 export { sanitizeControlCharacters, sanitizeUri } from './sanitize';
 export { UrlStruct } from './urlStruct/urlStruct';
 export { Logger, LogLevel } from './logger';
@@ -22,3 +24,11 @@ export type {
 export { serialize } from './serialization/serialize';
 export { deserialize } from './serialization/deserialize';
 export type { Serializable } from './serialization/types';
+export {
+  createOriginPermissions,
+  DEFAULT_PROD_ORIGINS,
+  DEFAULT_DEV_ORIGINS,
+  DEFAULT_METAMASK_ORIGIN,
+} from './originPermissions/createOriginPermissions';
+export type { CreateOriginPermissionsParams } from './originPermissions/createOriginPermissions';
+export { validateOrigin } from './originPermissions/validateOrigin';

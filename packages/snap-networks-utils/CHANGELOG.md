@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state.
+- Add origin permission helpers ([#193](https://github.com/MetaMask/internal-snaps/pull/193))
+  - `createOriginPermissions` for building origin-to-method maps
+  - `validateOrigin` for checking an origin against a permission map
+- Add a `buildUrl` utility for safely constructing URLs from paths and parameters. ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
+- Add `sanitizeControlCharacters` and `sanitizeUri` utilities for validating and sanitizing user-provided strings and URIs. ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
 - Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
 

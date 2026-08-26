@@ -1,7 +1,9 @@
+import { buildUrl } from '@metamask/snap-networks-utils';
+
 import { AssetType, KnownCaip2ChainId } from '../../api';
 import type { KnownCaip19AssetId } from '../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../constants';
-import { buildUrl, getSlip44AssetId, logger } from '../../utils';
+import { getSlip44AssetId, logger } from '../../utils';
 import type { NetworkService } from '../network';
 import type { StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
