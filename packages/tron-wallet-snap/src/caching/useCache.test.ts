@@ -207,9 +207,7 @@ describe('useCache', () => {
     it('should handle cache get errors gracefully', async () => {
       await withUseCache(
         async ({ actualExecutionSpy, cachedTestFunction, cache }) => {
-          jest
-            .spyOn(cache, 'get')
-            .mockRejectedValueOnce(new Error('Cache error'));
+          cache.get.mockRejectedValueOnce(new Error('Cache error'));
           actualExecutionSpy.mockResolvedValueOnce('test');
 
           const result = await cachedTestFunction();
@@ -224,10 +222,8 @@ describe('useCache', () => {
     it('should handle cache set errors gracefully', async () => {
       await withUseCache(
         async ({ actualExecutionSpy, cachedTestFunction, cache }) => {
-          jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-          jest
-            .spyOn(cache, 'set')
-            .mockRejectedValueOnce(new Error('Cache set error'));
+          cache.get.mockResolvedValue(undefined);
+          cache.set.mockRejectedValueOnce(new Error('Cache set error'));
           actualExecutionSpy.mockResolvedValueOnce('test');
 
           const result = await cachedTestFunction();
