@@ -52,7 +52,7 @@ const emptyAccountResources: AccountResources = {
  * @param options - Fields to set on the controller asset.
  * @param options.id - CAIP-19 asset ID.
  * @param options.chainId - Chain ID. Defaults to Mainnet.
- * @param options.amount - Raw balance amount.
+ * @param options.amount - UI balance amount (with decimals applied).
  * @param options.symbol - Asset symbol.
  * @param options.decimals - Asset decimals.
  * @param options.image - Asset icon URL.
@@ -69,7 +69,7 @@ function createControllerAsset(options: {
   const {
     id,
     chainId = Network.Mainnet,
-    amount = '1000000',
+    amount = '1',
     symbol = 'TRX',
     decimals = 6,
     image = 'https://example.com/trx.png',
