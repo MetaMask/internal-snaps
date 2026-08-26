@@ -13,6 +13,13 @@ export { buildUrl } from './buildUrl/buildUrl';
 export type { BuildUrlParams } from './buildUrl/buildUrl';
 export { sanitizeControlCharacters, sanitizeUri } from './sanitize';
 export { UrlStruct } from './urlStruct/urlStruct';
+export {
+  batchesAll,
+  batchesAllSettled,
+  batchesAllSettledWithChunks,
+  batchesAllWithChunks,
+  chunks,
+} from './async';
 export { Logger, LogLevel } from './logger';
 export type {
   LoggerOptions,
