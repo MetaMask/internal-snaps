@@ -144,6 +144,34 @@ describe('AccountsRepository', () => {
     ]);
   });
 
+  it('returns the merged state and added accounts from mergeKeyringAccounts', async () => {
+    const existing = createTestAccount({ id: 'existing-0' });
+    const repository = new AccountsRepository(
+      createEmptyState({ [existing.id]: existing }),
+    );
+    const newIndexAccount = createTestAccount({
+      id: 'new-index',
+      index: 1,
+      derivationPath: "m/44'/195'/0'/0/1",
+      address: 'TAddress1',
+    });
+
+    const result = await repository.mergeKeyringAccounts({
+      'duplicate-index': {
+        ...existing,
+        id: 'duplicate-index',
+      },
+      [newIndexAccount.id]: newIndexAccount,
+    });
+
+    // The conflict loser is omitted from `added`; the winner is in `merged`.
+    expect(Object.keys(result.added)).toStrictEqual(['new-index']);
+    expect(result.merged).toStrictEqual({
+      'existing-0': existing,
+      'new-index': newIndexAccount,
+    });
+  });
+
   it('skips duplicate indices within the same merge batch', async () => {
     const base = createTestAccount({ id: 'first' });
     const repository = new AccountsRepository(createEmptyState());
