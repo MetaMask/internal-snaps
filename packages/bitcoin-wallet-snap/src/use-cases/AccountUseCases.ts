@@ -230,7 +230,7 @@ export class AccountUseCases {
     // We need to do a full scan here to know if the account
     // has any previous activity since later on we filter out
     // accounts with no tx history
-    await this.#chain.fullScan(newAccount);
+    await this.#chain.fullScan(newAccount, 'discovery');
 
     this.#logger.info(
       'Bitcoin account discovered successfully. Request: %o',
@@ -779,6 +779,7 @@ export class AccountUseCases {
     const frozenUTXOs = await this.#repository.getFrozenUTXOs(account.id);
     const feeRateToUse = feeRate ?? (await this.getFallbackFeeRate(account));
 
+    let revealed = false;
     try {
       let builder = account
         .buildTx()
@@ -789,6 +790,7 @@ export class AccountUseCases {
       for (const txout of templatePsbt.unsigned_tx.output) {
         // if the PSBT contains an output that is sending to ourselves, we change its value. If the PSBT contains no change outputs, one will automatically be added.
         if (account.isMine(txout.script_pubkey)) {
+          revealed = account.revealToScript(txout.script_pubkey) || revealed;
           builder = builder.drainToByScript(txout.script_pubkey);
         } else {
           builder = builder.addRecipientByScript(
@@ -817,6 +819,10 @@ export class AccountUseCases {
           );
         }
         builtPsbt = builder.finish();
+      }
+
+      if (revealed) {
+        await this.#repository.update(account);
       }
 
       return builtPsbt;

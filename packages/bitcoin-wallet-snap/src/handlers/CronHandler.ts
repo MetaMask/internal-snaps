@@ -2,7 +2,11 @@ import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, object, string } from 'superstruct';
 
-import { InexistentMethodError, SynchronizationError } from '../entities';
+import {
+  InexistentMethodError,
+  SynchronizationError,
+  TrackingSnapEvent,
+} from '../entities';
 import type { SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
@@ -11,6 +15,8 @@ export enum CronMethod {
   RefreshRates = 'refreshRates',
   SyncSelectedAccounts = 'syncSelectedAccounts',
   FullScanAccount = 'fullScanAccount',
+  SynchronizeAllAccounts = 'synchronizeAllAccounts',
+  FullScanAccounts = 'fullScanAccounts',
 }
 
 export const SendFormRefreshRatesRequest = object({
@@ -69,6 +75,12 @@ export class CronHandler {
       case CronMethod.FullScanAccount: {
         assert(params, FullScanAccountRequest);
         return this.fullScanAccount(params.accountId);
+      }
+      case CronMethod.SynchronizeAllAccounts: {
+        return this.synchronizeAllAccounts();
+      }
+      case CronMethod.FullScanAccounts: {
+        return this.fullScanAccounts();
       }
       default:
         throw new InexistentMethodError(`Method not found: ${method}`);
@@ -186,5 +198,96 @@ export class CronHandler {
     const result = await this.#accountsUseCases.fullScan(account);
 
     await this.#emitSyncEvents([result]);
+  }
+
+  async synchronizeAllAccounts(): Promise<void> {
+    const accounts = await this.#accountsUseCases.list();
+
+    const results = await Promise.allSettled(
+      accounts.map(async (account) =>
+        this.#accountsUseCases.synchronize(account, 'cron'),
+      ),
+    );
+
+    const successfulResults: SyncResult[] = [];
+
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const errors: Record<string, any> = {};
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        successfulResults.push(result.value);
+      } else {
+        const id = accounts[index]?.id;
+        if (id) {
+          errors[id] = result.reason;
+        }
+      }
+    });
+
+    await this.#emitSyncEvents(successfulResults);
+
+    if (Object.keys(errors).length > 0) {
+      throw new SynchronizationError(
+        'Account synchronization failures',
+        errors,
+      );
+    }
+  }
+
+  async fullScanAccounts(): Promise<void> {
+    const accounts = await this.#accountsUseCases.list();
+
+    const results = await Promise.allSettled(
+      accounts.map(async (account) => {
+        const txsBefore = account.listTransactions();
+
+        const result = await this.#accountsUseCases.fullScan(account);
+
+        const txsAfter = account.listTransactions();
+        if (txsAfter.length > txsBefore.length) {
+          const txIdsBefore = new Set(
+            txsBefore.map((tx) => tx.txid.toString()),
+          );
+
+          for (const tx of txsAfter) {
+            if (!txIdsBefore.has(tx.txid.toString())) {
+              await this.#snapClient.emitTrackingEvent(
+                TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+                account,
+                tx,
+                'cron',
+              );
+            }
+          }
+        }
+
+        return result;
+      }),
+    );
+
+    const successfulResults: SyncResult[] = [];
+
+    // TODO: Replace `any` with type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const errors: Record<string, any> = {};
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        successfulResults.push(result.value);
+      } else {
+        const id = accounts[index]?.id;
+        if (id) {
+          errors[id] = result.reason;
+        }
+      }
+    });
+
+    await this.#emitSyncEvents(successfulResults);
+
+    if (Object.keys(errors).length > 0) {
+      throw new SynchronizationError('Full scan failures', errors);
+    }
   }
 }

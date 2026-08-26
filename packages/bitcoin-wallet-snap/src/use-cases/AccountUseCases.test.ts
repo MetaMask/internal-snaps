@@ -475,7 +475,10 @@ describe('AccountUseCases', () => {
           discoverParams.network,
           tAddressType,
         );
-        expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount);
+        expect(mockChain.fullScan).toHaveBeenCalledWith(
+          mockAccount,
+          'discovery',
+        );
       },
     );
 
@@ -508,7 +511,10 @@ describe('AccountUseCases', () => {
           tNetwork,
           discoverParams.addressType,
         );
-        expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount);
+        expect(mockChain.fullScan).toHaveBeenCalledWith(
+          mockAccount,
+          'discovery',
+        );
       },
     );
 
@@ -1007,6 +1013,7 @@ describe('AccountUseCases', () => {
       network: 'bitcoin',
       addressType: 'p2wpkh',
       sign: jest.fn(),
+      revealToScript: jest.fn(),
       capabilities: [AccountCapability.SignPsbt],
     });
     const mockWalletTx = mock<WalletTx>();
@@ -1291,6 +1298,7 @@ describe('AccountUseCases', () => {
       network: 'bitcoin',
       sign: jest.fn(),
       isMine: () => false,
+      revealToScript: jest.fn(),
       capabilities: [AccountCapability.FillPsbt],
     });
     const mockFeeRate = 3;
@@ -1367,6 +1375,45 @@ describe('AccountUseCases', () => {
         mockOutput.script_pubkey,
       );
       expect(psbt).toBe(mockFilledPsbt);
+    });
+
+    it('reveals the derivation index and persists the account when the mine output needs revealing', async () => {
+      const mineAccount = {
+        ...mockAccount,
+        isMine: (): boolean => true,
+        revealToScript: jest.fn().mockReturnValue(true),
+      };
+      mockRepository.get.mockResolvedValueOnce(mineAccount);
+
+      await useCases.fillPsbt('account-id', mockTemplatePsbt);
+
+      expect(mineAccount.revealToScript).toHaveBeenCalledWith(
+        mockOutput.script_pubkey,
+      );
+      expect(mockRepository.update).toHaveBeenCalledWith(mineAccount);
+    });
+
+    it('does not persist the account when revealToScript finds nothing new to reveal', async () => {
+      const mineAccount = {
+        ...mockAccount,
+        isMine: (): boolean => true,
+        revealToScript: jest.fn().mockReturnValue(false),
+      };
+      mockRepository.get.mockResolvedValueOnce(mineAccount);
+
+      await useCases.fillPsbt('account-id', mockTemplatePsbt);
+
+      expect(mineAccount.revealToScript).toHaveBeenCalledWith(
+        mockOutput.script_pubkey,
+      );
+      expect(mockRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('does not call revealToScript for outputs that are not mine', async () => {
+      await useCases.fillPsbt('account-id', mockTemplatePsbt);
+
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
+      expect(mockRepository.update).not.toHaveBeenCalled();
     });
 
     it('propagates an error if get fails', async () => {
@@ -1613,6 +1660,7 @@ describe('AccountUseCases', () => {
       id: 'account-id',
       network: 'bitcoin',
       isMine: () => false,
+      revealToScript: jest.fn(),
       capabilities: [AccountCapability.ComputeFee],
     });
     const mockFeeRate = 3;
