@@ -1,5 +1,6 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import { validateOrigin } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type {
   Json,
@@ -36,10 +37,10 @@ import { onProtocolRequest as onProtocolRequestHandler } from './core/handlers/o
 import { handlers as onRpcRequestHandlers } from './core/handlers/onRpcRequest';
 import { withCatchAndThrowSnapError } from './core/utils/errors';
 import logger from './core/utils/logger';
-import { validateOrigin } from './core/validation/validators';
 import { eventHandlers as confirmSignInEvents } from './features/confirmation/views/ConfirmSignIn/events';
 import { eventHandlers as confirmSignMessageEvents } from './features/confirmation/views/ConfirmSignMessage/events';
 import { eventHandlers as confirmSignAndSendTransactionEvents } from './features/confirmation/views/ConfirmTransactionRequest/events';
+import { originPermissions } from './permissions';
 import { installPolyfills } from './polyfills';
 import snapContext, {
   clientRequestHandler,
@@ -70,7 +71,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
 
   const { method } = request;
 
-  validateOrigin(origin, method);
+  validateOrigin(origin, method, originPermissions);
 
   const handler = onRpcRequestHandlers[method];
 
@@ -105,7 +106,7 @@ export const onKeyringRequest: OnKeyringRequestHandler = async ({
 }): Promise<Json> => {
   logger.log('[🔑 onKeyringRequest]', request.method, request);
 
-  validateOrigin(origin, request.method);
+  validateOrigin(origin, request.method, originPermissions);
 
   // This is a temporal fix to prevent the swap/bridge functionality breaking
   // TODO: Remove this once changes in bridge-status-controller are in place

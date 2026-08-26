@@ -1034,9 +1034,6 @@
   "packages/solana-wallet-snap/src/core/validation/validators.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 3
-    },
-    "@typescript-eslint/only-throw-error": {
-      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/entities/instructions/instructions.ts": {
