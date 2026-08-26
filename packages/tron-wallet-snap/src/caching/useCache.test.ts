@@ -193,35 +193,49 @@ describe('useCache', () => {
 
   describe('error handling', () => {
     it('should propagate errors from the original function', async () => {
-      const error = new Error('Test error');
-      actualExecutionSpy.mockRejectedValueOnce(error);
+      await withUseCache(
+        async ({ actualExecutionSpy, cachedTestFunction, cache }) => {
+          const error = new Error('Test error');
+          actualExecutionSpy.mockRejectedValueOnce(error);
 
-      await expect(cachedTestFunction()).rejects.toThrow('Test error');
-      expect(cache.set).not.toHaveBeenCalled();
+          await expect(cachedTestFunction()).rejects.toThrow('Test error');
+          expect(cache.set).not.toHaveBeenCalled();
+        },
+      );
     });
 
     it('should handle cache get errors gracefully', async () => {
-      jest.spyOn(cache, 'get').mockRejectedValueOnce(new Error('Cache error'));
-      actualExecutionSpy.mockResolvedValueOnce('test');
+      await withUseCache(
+        async ({ actualExecutionSpy, cachedTestFunction, cache }) => {
+          jest
+            .spyOn(cache, 'get')
+            .mockRejectedValueOnce(new Error('Cache error'));
+          actualExecutionSpy.mockResolvedValueOnce('test');
 
-      const result = await cachedTestFunction();
+          const result = await cachedTestFunction();
 
-      expect(result).toBe('test');
-      expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
-      expect(cache.set).toHaveBeenCalledWith('testFunction:', 'test', 1000);
+          expect(result).toBe('test');
+          expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+          expect(cache.set).toHaveBeenCalledWith('testFunction:', 'test', 1000);
+        },
+      );
     });
 
     it('should handle cache set errors gracefully', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
-      actualExecutionSpy.mockResolvedValueOnce('test');
+      await withUseCache(
+        async ({ actualExecutionSpy, cachedTestFunction, cache }) => {
+          jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+          jest
+            .spyOn(cache, 'set')
+            .mockRejectedValueOnce(new Error('Cache set error'));
+          actualExecutionSpy.mockResolvedValueOnce('test');
 
-      const result = await cachedTestFunction();
+          const result = await cachedTestFunction();
 
-      expect(result).toBe('test');
-      expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+          expect(result).toBe('test');
+          expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+        },
+      );
     });
   });
 
