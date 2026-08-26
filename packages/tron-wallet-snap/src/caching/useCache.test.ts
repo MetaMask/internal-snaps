@@ -4,6 +4,7 @@ import { useCache } from './useCache';
 import type { CacheOptions } from './useCache';
 
 type WithUseCacheCallback = (payload: {
+  actualExecutionSpy: jest.Mock<Promise<string>, Serializable[]>;
   cache: ICache<Serializable>;
   cachedTestFunction: () => Promise<string>;
   cachedTestFunctionWithArgs: (arg1: string, arg2: number) => Promise<string>;
@@ -71,6 +72,7 @@ async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
   );
 
   await testFn({
+    actualExecutionSpy,
     cache,
     cachedTestFunction,
     cachedTestFunctionWithArgs,
@@ -153,17 +155,19 @@ describe('useCache', () => {
 
   describe('when the data is not cached', () => {
     it('should cache the result of a function', async () => {
-      await withUseCache(async ({}) => {
-        // No cached data
-        jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      await withUseCache(
+        async ({ actualExecutionSpy, cache, cachedTestFunction }) => {
+          // No cached data
+          jest.spyOn(cache, 'get').mockResolvedValue(undefined);
 
-        const result = await cachedTestFunction();
+          const result = await cachedTestFunction();
 
-        expect(result).toBe('test');
-        expect(cache.get).toHaveBeenCalledTimes(1);
-        expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
-        expect(cache.set).toHaveBeenCalledWith('testFunction:', 'test', 1000);
-      });
+          expect(result).toBe('test');
+          expect(cache.get).toHaveBeenCalledTimes(1);
+          expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+          expect(cache.set).toHaveBeenCalledWith('testFunction:', 'test', 1000);
+        },
+      );
     });
   });
 
