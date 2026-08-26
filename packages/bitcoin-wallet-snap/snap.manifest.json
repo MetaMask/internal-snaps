@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "3PsJBdgKjheaLYSqQ36xT5/VYTp7g5FizHxNln8dPbo=",
+    "shasum": "YjJtm7/Fry4w1PHcxVbqr5v9/QU8Ql7FdzLwqwrvCqU=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -96,18 +96,6 @@
           "duration": "PT30S",
           "request": {
             "method": "synchronizeAccounts"
-          }
-        },
-        {
-          "duration": "PT10M",
-          "request": {
-            "method": "synchronizeAllAccounts"
-          }
-        },
-        {
-          "duration": "PT6H",
-          "request": {
-            "method": "fullScanAccounts"
           }
         }
       ]

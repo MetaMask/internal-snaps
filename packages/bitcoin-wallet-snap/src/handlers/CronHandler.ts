@@ -1,6 +1,6 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Json, JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
-import { array, assert, object, string } from 'superstruct';
+import { array, assert, boolean, object, optional, string } from 'superstruct';
 
 import {
   InexistentMethodError,
@@ -15,8 +15,6 @@ export enum CronMethod {
   RefreshRates = 'refreshRates',
   SyncSelectedAccounts = 'syncSelectedAccounts',
   FullScanAccount = 'fullScanAccount',
-  SynchronizeAllAccounts = 'synchronizeAllAccounts',
-  FullScanAccounts = 'fullScanAccounts',
 }
 
 export const SendFormRefreshRatesRequest = object({
@@ -29,6 +27,7 @@ export const SyncSelectedAccountsRequest = object({
 
 export const FullScanAccountRequest = object({
   accountId: string(),
+  trackMissed: optional(boolean()),
 });
 
 export class CronHandler {
@@ -74,13 +73,7 @@ export class CronHandler {
       }
       case CronMethod.FullScanAccount: {
         assert(params, FullScanAccountRequest);
-        return this.fullScanAccount(params.accountId);
-      }
-      case CronMethod.SynchronizeAllAccounts: {
-        return this.synchronizeAllAccounts();
-      }
-      case CronMethod.FullScanAccounts: {
-        return this.fullScanAccounts();
+        return this.fullScanAccount(params.accountId, params.trackMissed);
       }
       default:
         throw new InexistentMethodError(`Method not found: ${method}`);
@@ -88,6 +81,20 @@ export class CronHandler {
   }
 
   async synchronizeAccounts(): Promise<void> {
+    const rescanned = await this.#snapClient.getState('rescanV1');
+    if (rescanned !== true) {
+      await this.#snapClient.setState('rescanV1', true);
+
+      const allAccounts = await this.#accountsUseCases.list();
+      for (const account of allAccounts) {
+        await this.#snapClient.scheduleBackgroundEvent({
+          duration: 'PT5S',
+          method: CronMethod.FullScanAccount,
+          params: { accountId: account.id, trackMissed: true },
+        });
+      }
+    }
+
     const selectedAccounts: Set<string> = new Set(
       await getSelectedAccounts(this.#snap),
     );
@@ -173,61 +180,31 @@ export class CronHandler {
     }
   }
 
-  async fullScanAccount(accountId: string): Promise<void> {
+  async fullScanAccount(
+    accountId: string,
+    trackMissed?: boolean,
+  ): Promise<void> {
     const account = await this.#accountsUseCases.get(accountId);
+    const txIdsBefore = trackMissed
+      ? new Set(account.listTransactions().map((tx) => tx.txid.toString()))
+      : undefined;
+
     const result = await this.#accountsUseCases.fullScan(account);
 
-    await this.#emitSyncEvents([result]);
-  }
-
-  async synchronizeAllAccounts(): Promise<void> {
-    const accounts = await this.#accountsUseCases.list();
-
-    const results = await Promise.allSettled(
-      accounts.map(async (account) =>
-        this.#accountsUseCases.synchronize(account, 'cron'),
-      ),
-    );
-
-    await this.#finishSync(
-      accounts,
-      results,
-      'Account synchronization failures',
-    );
-  }
-
-  async fullScanAccounts(): Promise<void> {
-    const accounts = await this.#accountsUseCases.list();
-
-    const results = await Promise.allSettled(
-      accounts.map(async (account) => {
-        const txsBefore = account.listTransactions();
-
-        const result = await this.#accountsUseCases.fullScan(account);
-
-        const txsAfter = account.listTransactions();
-        if (txsAfter.length > txsBefore.length) {
-          const txIdsBefore = new Set(
-            txsBefore.map((tx) => tx.txid.toString()),
+    if (txIdsBefore) {
+      for (const tx of account.listTransactions()) {
+        if (!txIdsBefore.has(tx.txid.toString())) {
+          await this.#snapClient.emitTrackingEvent(
+            TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+            account,
+            tx,
+            'cron',
           );
-
-          for (const tx of txsAfter) {
-            if (!txIdsBefore.has(tx.txid.toString())) {
-              await this.#snapClient.emitTrackingEvent(
-                TrackingSnapEvent.ScanDiscoveredMissedTransactions,
-                account,
-                tx,
-                'cron',
-              );
-            }
-          }
         }
+      }
+    }
 
-        return result;
-      }),
-    );
-
-    await this.#finishSync(accounts, results, 'Full scan failures');
+    await this.#emitSyncEvents([result]);
   }
 
   async #finishSync(

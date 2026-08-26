@@ -149,6 +149,70 @@ describe('CronHandler', () => {
         mockSnapClient.emitAccountBalancesUpdatedEvent,
       ).toHaveBeenCalledWith([mockAccounts[0]]);
     });
+
+    it('schedules a one-time full scan for every account when rescanV1 state is not set', async () => {
+      const mockResult1: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [],
+      };
+      const mockResult2: SyncResult = {
+        account: mockAccount2,
+        transactionsToNotify: [],
+      };
+      mockSnapClient.getState.mockResolvedValue(null);
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+        'account-1',
+        'account-2',
+      ]);
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockResolvedValueOnce(mockResult1)
+        .mockResolvedValueOnce(mockResult2);
+
+      await handler.route(request);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('rescanV1');
+      expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', true);
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledTimes(2);
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        duration: 'PT5S',
+        method: CronMethod.FullScanAccount,
+        params: { accountId: 'account-1', trackMissed: true },
+      });
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        duration: 'PT5S',
+        method: CronMethod.FullScanAccount,
+        params: { accountId: 'account-2', trackMissed: true },
+      });
+      // Still proceeds with the normal sync
+      expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not schedule background events when rescanV1 state is already set', async () => {
+      const mockResult1: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [],
+      };
+      const mockResult2: SyncResult = {
+        account: mockAccount2,
+        transactionsToNotify: [],
+      };
+      mockSnapClient.getState.mockResolvedValue(true);
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+        'account-1',
+        'account-2',
+      ]);
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockResolvedValueOnce(mockResult1)
+        .mockResolvedValueOnce(mockResult2);
+
+      await handler.route(request);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('rescanV1');
+      expect(mockSnapClient.setState).not.toHaveBeenCalled();
+      expect(mockSnapClient.scheduleBackgroundEvent).not.toHaveBeenCalled();
+    });
   });
 
   describe('refreshRates', () => {
@@ -350,229 +414,73 @@ describe('CronHandler', () => {
 
       await expect(handler.route(request)).rejects.toThrow(error);
     });
-  });
 
-  describe('synchronizeAllAccounts', () => {
-    const mockAccount1 = mock<BitcoinAccount>({ id: 'account-1' });
-    const mockAccount2 = mock<BitcoinAccount>({ id: 'account-2' });
-    const mockAccounts = [mockAccount1, mockAccount2];
-    const request = {
-      method: CronMethod.SynchronizeAllAccounts,
-    } as unknown as JsonRpcRequest;
-
-    it('returns early if the client is not active', async () => {
-      mockSnapClient.getClientStatus.mockResolvedValue({
-        active: false,
-        locked: true,
-        clientVersion: '1.0.0',
-        platformVersion: '1.0.0',
-      });
-      await handler.route(request);
-
-      expect(mockAccountUseCases.synchronize).not.toHaveBeenCalled();
-    });
-
-    it('synchronizes every account from list without filtering by selection', async () => {
-      const mockResult1: SyncResult = {
-        account: mockAccount1,
-        transactionsToNotify: [],
-      };
-      const mockResult2: SyncResult = {
-        account: mockAccount2,
-        transactionsToNotify: [],
-      };
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
-      mockAccountUseCases.synchronize
-        .mockResolvedValueOnce(mockResult1)
-        .mockResolvedValueOnce(mockResult2);
-
-      await handler.route(request);
-
-      expect(getSelectedAccounts).not.toHaveBeenCalled();
-      expect(mockAccountUseCases.list).toHaveBeenCalled();
-      expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
-      expect(mockAccountUseCases.synchronize).toHaveBeenCalledWith(
-        mockAccount1,
-        'cron',
-      );
-      expect(mockAccountUseCases.synchronize).toHaveBeenCalledWith(
-        mockAccount2,
-        'cron',
-      );
-      expect(
-        mockSnapClient.emitAccountBalancesUpdatedEvent,
-      ).toHaveBeenCalledWith(mockAccounts);
-      expect(
-        mockSnapClient.emitAccountBalancesUpdatedEvent,
-      ).toHaveBeenCalledTimes(1);
-    });
-
-    it('throws error if some account fails but still emits for successful ones', async () => {
+    it('passes trackMissed through from the request params', async () => {
+      const trackMissedRequest = {
+        method: CronMethod.FullScanAccount,
+        params: { accountId: 'account-1', trackMissed: true },
+      } as unknown as JsonRpcRequest;
       const mockResult: SyncResult = {
-        account: mockAccount1,
+        account: mockAccount,
         transactionsToNotify: [],
       };
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
-      mockAccountUseCases.synchronize
-        .mockResolvedValueOnce(mockResult)
-        .mockRejectedValueOnce(new Error('error'));
+      mockAccountUseCases.get.mockResolvedValue(mockAccount);
+      mockAccount.listTransactions.mockReturnValue([]);
+      mockAccountUseCases.fullScan.mockResolvedValue(mockResult);
 
-      await expect(handler.route(request)).rejects.toThrow(
-        'Account synchronization failures',
-      );
+      await handler.route(trackMissedRequest);
 
-      expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
-      expect(
-        mockSnapClient.emitAccountBalancesUpdatedEvent,
-      ).toHaveBeenCalledWith([mockAccounts[0]]);
+      expect(mockAccountUseCases.get).toHaveBeenCalledWith('account-1');
+      expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount);
     });
 
-    it('propagates errors from list', async () => {
-      const error = new Error();
-      mockAccountUseCases.list.mockRejectedValue(error);
-
-      await expect(handler.route(request)).rejects.toThrow(error);
-    });
-  });
-
-  describe('fullScanAccounts', () => {
-    const mockAccount1 = mock<BitcoinAccount>({ id: 'account-1' });
-    const mockAccount2 = mock<BitcoinAccount>({ id: 'account-2' });
-    const mockAccounts = [mockAccount1, mockAccount2];
-    const request = {
-      method: CronMethod.FullScanAccounts,
-    } as unknown as JsonRpcRequest;
-
-    beforeEach(() => {
-      mockAccount1.listTransactions.mockReturnValue([]);
-      mockAccount2.listTransactions.mockReturnValue([]);
-    });
-
-    it('returns early if the client is not active', async () => {
-      mockSnapClient.getClientStatus.mockResolvedValue({
-        active: false,
-        locked: true,
-        clientVersion: '1.0.0',
-        platformVersion: '1.0.0',
-      });
-      await handler.route(request);
-
-      expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
-    });
-
-    it('calls fullScan for every account from list', async () => {
-      const mockResult1: SyncResult = {
-        account: mockAccount1,
-        transactionsToNotify: [],
-      };
-      const mockResult2: SyncResult = {
-        account: mockAccount2,
-        transactionsToNotify: [],
-      };
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
-      mockAccountUseCases.fullScan
-        .mockResolvedValueOnce(mockResult1)
-        .mockResolvedValueOnce(mockResult2);
-
-      await handler.route(request);
-
-      expect(mockAccountUseCases.list).toHaveBeenCalled();
-      expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
-      expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
-      expect(
-        mockSnapClient.emitAccountBalancesUpdatedEvent,
-      ).toHaveBeenCalledWith(mockAccounts);
-    });
-
-    it('emits a tracking event for each newly-found transaction after a scan increases the tx count', async () => {
+    it('emits a tracking event only for transactions not present before the scan when trackMissed is true', async () => {
+      const trackMissedRequest = {
+        method: CronMethod.FullScanAccount,
+        params: { accountId: 'account-1', trackMissed: true },
+      } as unknown as JsonRpcRequest;
       const existingTx = mock<WalletTx>({
         txid: { toString: () => 'existing-txid' },
       });
       const newTx = mock<WalletTx>({
         txid: { toString: () => 'new-txid' },
       });
-
-      mockAccount1.listTransactions
-        .mockReturnValueOnce([existingTx])
-        .mockReturnValueOnce([existingTx, newTx]);
-
-      const mockResult1: SyncResult = {
-        account: mockAccount1,
+      const mockResult: SyncResult = {
+        account: mockAccount,
         transactionsToNotify: [existingTx, newTx],
       };
-      const mockResult2: SyncResult = {
-        account: mockAccount2,
-        transactionsToNotify: [],
-      };
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
-      mockAccountUseCases.fullScan
-        .mockResolvedValueOnce(mockResult1)
-        .mockResolvedValueOnce(mockResult2);
+      mockAccountUseCases.get.mockResolvedValue(mockAccount);
+      mockAccount.listTransactions
+        .mockReturnValueOnce([existingTx])
+        .mockReturnValueOnce([existingTx, newTx]);
+      mockAccountUseCases.fullScan.mockResolvedValue(mockResult);
 
-      await handler.route(request);
+      await handler.route(trackMissedRequest);
 
       expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
       expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
         TrackingSnapEvent.ScanDiscoveredMissedTransactions,
-        mockAccount1,
+        mockAccount,
         newTx,
         'cron',
       );
     });
 
-    it('does not emit a tracking event when the scan finds no new transactions', async () => {
+    it('never emits a tracking event when trackMissed is false or undefined', async () => {
       const existingTx = mock<WalletTx>({
         txid: { toString: () => 'existing-txid' },
       });
-
-      mockAccount1.listTransactions
-        .mockReturnValueOnce([existingTx])
-        .mockReturnValueOnce([existingTx]);
-
-      const mockResult1: SyncResult = {
-        account: mockAccount1,
+      const mockResult: SyncResult = {
+        account: mockAccount,
         transactionsToNotify: [existingTx],
       };
-      const mockResult2: SyncResult = {
-        account: mockAccount2,
-        transactionsToNotify: [],
-      };
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
-      mockAccountUseCases.fullScan
-        .mockResolvedValueOnce(mockResult1)
-        .mockResolvedValueOnce(mockResult2);
+      mockAccountUseCases.get.mockResolvedValue(mockAccount);
+      mockAccountUseCases.fullScan.mockResolvedValue(mockResult);
 
       await handler.route(request);
 
       expect(mockSnapClient.emitTrackingEvent).not.toHaveBeenCalled();
-    });
-
-    it('aggregates failures without blocking other accounts', async () => {
-      const mockResult: SyncResult = {
-        account: mockAccount1,
-        transactionsToNotify: [],
-      };
-      const error = new Error('scan failed');
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
-      mockAccountUseCases.fullScan
-        .mockResolvedValueOnce(mockResult)
-        .mockRejectedValueOnce(error);
-
-      await expect(handler.route(request)).rejects.toThrow(
-        'Full scan failures',
-      );
-
-      expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(2);
-      expect(
-        mockSnapClient.emitAccountBalancesUpdatedEvent,
-      ).toHaveBeenCalledWith([mockAccounts[0]]);
-    });
-
-    it('propagates errors from list', async () => {
-      const error = new Error();
-      mockAccountUseCases.list.mockRejectedValue(error);
-
-      await expect(handler.route(request)).rejects.toThrow(error);
+      expect(mockAccount.listTransactions).not.toHaveBeenCalled();
     });
   });
 });

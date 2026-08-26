@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `synchronizeAllAccounts` (every 10 minutes) and `fullScanAccounts` (every 6 hours) cron jobs so balances of unselected accounts stay fresh and funds on unrevealed addresses are found without user action ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
-- Emit a `Scan Discovered Missed Transactions` tracking event when a full scan finds transactions that routine sync did not know about ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
+- Run a one-time full scan of every existing account after the update, so funds on previously unwatched addresses are found ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
+- Emit a `Scan Discovered Missed Transactions` tracking event during this rescan when a full scan finds transactions that routine sync did not know about ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
 
 ### Changed
 
