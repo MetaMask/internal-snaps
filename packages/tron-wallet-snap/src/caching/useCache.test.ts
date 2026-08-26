@@ -318,14 +318,16 @@ describe('useCache', () => {
 
   describe('function name override', () => {
     it('should use the provided function name if given', async () => {
-      const cachedWithCustomName = useCache(testFunction, cache, {
-        ttlMilliseconds: 1000,
-        functionName: 'customFunctionName',
+      await withUseCache(async ({ testFunction, cache }) => {
+        const cachedWithCustomName = useCache(testFunction, cache, {
+          ttlMilliseconds: 1000,
+          functionName: 'customFunctionName',
+        });
+
+        await cachedWithCustomName();
+
+        expect(cache.get).toHaveBeenCalledWith('customFunctionName:');
       });
-
-      await cachedWithCustomName();
-
-      expect(cache.get).toHaveBeenCalledWith('customFunctionName:');
     });
   });
 
