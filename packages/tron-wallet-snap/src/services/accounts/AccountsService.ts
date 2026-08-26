@@ -275,6 +275,7 @@ export class AccountsService {
     }
 
     const newAccounts: Record<string, TronKeyringAccount> = {};
+    let created = 0;
     let deriveMs = 0;
     let mergeMs = 0;
 
@@ -314,9 +315,10 @@ export class AccountsService {
       deriveMs = Date.now() - deriveStartMs;
 
       const mergeStartMs = Date.now();
-      const { merged } =
+      const { merged, added } =
         await this.#accountsRepository.mergeKeyringAccounts(newAccounts);
       mergeMs = Date.now() - mergeStartMs;
+      created = Object.keys(added).length;
 
       // Resolve the persisted account for each requested index from the merge
       // result: for indices lost to a concurrent writer, `merged` holds the
@@ -337,7 +339,7 @@ export class AccountsService {
     this.#logger.log(
       `[createAccounts] Phase timings ${JSON.stringify({
         range,
-        created: missingIndices.length,
+        created,
         readAndEntropyMs,
         deriveMs,
         mergeMs,
