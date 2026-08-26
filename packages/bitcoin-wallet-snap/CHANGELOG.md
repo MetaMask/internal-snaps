@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `synchronizeAllAccounts` (every 10 minutes) and `fullScanAccounts` (every 6 hours) cron jobs so balances of unselected accounts stay fresh and funds on unrevealed addresses are found without user action ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
+- Emit a `Scan Discovered Missed Transactions` tracking event when a full scan finds transactions that routine sync did not know about ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
+
+### Changed
+
+- Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while real account scans use the BIP44 gap limit ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
+
 ### Fixed
 
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
+- Reveal and persist the wallet's own change script when filling a partner-supplied PSBT, so bridged change is always covered by routine sync ([#201](https://github.com/MetaMask/internal-snaps/pull/201))
 
 ## [2.0.1]
 
