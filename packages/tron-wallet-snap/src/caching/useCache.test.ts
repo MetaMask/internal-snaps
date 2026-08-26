@@ -174,15 +174,19 @@ describe('useCache', () => {
 
   describe('when the data is cached', () => {
     it('should return the cached result', async () => {
-      // Init the cache with some data
-      jest.spyOn(cache, 'get').mockResolvedValue('test');
+      await withUseCache(
+        async ({ actualExecutionSpy, cache, cachedTestFunction }) => {
+          // Init the cache with some data
+          jest.spyOn(cache, 'get').mockResolvedValue('test');
 
-      const result = await cachedTestFunction();
+          const result = await cachedTestFunction();
 
-      expect(result).toBe('test');
-      expect(cache.get).toHaveBeenCalledTimes(1);
-      expect(actualExecutionSpy).not.toHaveBeenCalled();
-      expect(cache.set).not.toHaveBeenCalled();
+          expect(result).toBe('test');
+          expect(cache.get).toHaveBeenCalledTimes(1);
+          expect(actualExecutionSpy).not.toHaveBeenCalled();
+          expect(cache.set).not.toHaveBeenCalled();
+        },
+      );
     });
   });
 
