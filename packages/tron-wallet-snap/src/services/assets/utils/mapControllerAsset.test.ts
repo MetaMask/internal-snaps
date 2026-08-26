@@ -12,7 +12,7 @@ describe('mapControllerAsset', () => {
     const asset = {
       id: unknownAssetId,
       chainId: Network.Mainnet,
-      balance: { amount: '1234567' },
+      balance: { amount: '1.234567' },
       metadata: {
         type: 'fungible',
         symbol: 'TKN',
