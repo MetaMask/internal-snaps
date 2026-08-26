@@ -177,7 +177,8 @@ describe('useCache', () => {
       await withUseCache(
         async ({ actualExecutionSpy, cache, cachedTestFunction }) => {
           // Init the cache with some data
-          jest.spyOn(cache, 'get').mockResolvedValue('test');
+          cache.get.mockResolvedValue('test');
+          // jest.spyOn(cache, 'get').mockResolvedValue('test');
 
           const result = await cachedTestFunction();
 
