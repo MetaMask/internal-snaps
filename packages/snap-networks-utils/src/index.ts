@@ -26,3 +26,4 @@ export {
   DEFAULT_METAMASK_ORIGIN,
 } from './originPermissions/createOriginPermissions';
 export type { CreateOriginPermissionsParams } from './originPermissions/createOriginPermissions';
+export { validateOrigin } from './originPermissions/validateOrigin';

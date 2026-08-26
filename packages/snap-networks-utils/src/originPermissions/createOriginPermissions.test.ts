@@ -20,7 +20,7 @@ describe('createOriginPermissions', () => {
     expect(originPermissions.has('https://portfolio.metamask.io')).toBe(false);
   });
 
-  it('maps production origins to an empty dapp set in prod', () => {
+  it('maps production origins to the provided dapp methods', () => {
     const originPermissions = createOriginPermissions({
       isDev: false,
       dappMethods,
@@ -29,7 +29,7 @@ describe('createOriginPermissions', () => {
 
     expect(
       originPermissions.get('https://portfolio.metamask.io'),
-    ).toStrictEqual(new Set());
+    ).toStrictEqual(new Set(dappMethods));
     expect(originPermissions.get('metamask')).toStrictEqual(
       new Set(metamaskMethods),
     );
@@ -59,7 +59,7 @@ describe('createOriginPermissions', () => {
   it('uses custom production origins in prod', () => {
     const originPermissions = createOriginPermissions({
       isDev: false,
-      dappMethods,
+      dappMethods: [],
       metamaskMethods,
       prodOrigins: ['https://example.com'],
     });

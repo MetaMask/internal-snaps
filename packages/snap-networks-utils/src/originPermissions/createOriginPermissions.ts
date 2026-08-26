@@ -16,13 +16,13 @@ export type CreateOriginPermissionsParams = {
 /**
  * Builds the origin-to-method permission map used by network snaps.
  *
- * In development, `devOrigins` receive `dappMethods`. In production, `prodOrigins`
- * are still registered but with an empty method set, so dapp calls are rejected.
+ * `isDev` selects `devOrigins` or `prodOrigins`. Those origins receive
+ * `dappMethods` as provided (pass an empty list to deny dapp calls).
  * The MetaMask origin always receives `metamaskMethods`.
  *
  * @param params - Origin and method lists for the snap.
- * @param params.isDev - Whether to use development origins and dapp methods.
- * @param params.dappMethods - Methods allowed for connected dapps in development.
+ * @param params.isDev - Whether to register development origins instead of production origins.
+ * @param params.dappMethods - Methods allowed for connected dapps.
  * @param params.metamaskMethods - Methods allowed for the MetaMask origin.
  * @param params.prodOrigins - Origins registered in production. Defaults to Portfolio.
  * @param params.devOrigins - Origins registered in development. Defaults to localhost.
@@ -39,7 +39,7 @@ export const createOriginPermissions = ({
 }: CreateOriginPermissionsParams): Map<string, Set<string>> => {
   const originPermissions = new Map<string, Set<string>>();
   const allowedOrigins = isDev ? devOrigins : prodOrigins;
-  const dappPermissions = isDev ? new Set(dappMethods) : new Set<string>();
+  const dappPermissions = new Set(dappMethods);
 
   for (const origin of allowedOrigins) {
     originPermissions.set(origin, dappPermissions);
