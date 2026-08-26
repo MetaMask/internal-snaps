@@ -4,9 +4,16 @@ import type { ICache } from './ICache';
 import { useCache } from './useCache';
 import type { CacheOptions } from './useCache';
 
+// Define common cache options
+const cacheOptions = {
+  ttlMilliseconds: 1000,
+  functionName: 'testFunction',
+};
+
 type WithUseCacheCallback = (payload: {
   actualExecutionSpy: jest.Mock<Promise<string>, Serializable[]>;
   cache: ICache<Serializable>;
+  testFunction: () => Promise<string>;
   cachedTestFunction: () => Promise<string>;
   cachedTestFunctionWithArgs: (arg1: string, arg2: number) => Promise<string>;
   cachedTestFunctionWithComplexArgs: (obj: {
@@ -22,7 +29,6 @@ type WithUseCacheCallback = (payload: {
  * @param testFn - The test body receiving the cached functions.
  * @returns A promise that resolves when the test function completes.
  */
-
 async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
   // Reset mocks for each test
   const actualExecutionSpy = jest
@@ -34,12 +40,6 @@ async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
     get: jest.fn().mockResolvedValue(undefined),
     set: jest.fn().mockResolvedValue(undefined),
   } as unknown as ICache<Serializable>;
-
-  // Define common cache options
-  const cacheOptions = {
-    ttlMilliseconds: 1000,
-    functionName: 'testFunction',
-  };
 
   // Define original functions
   const testFunction = async (): Promise<string> => actualExecutionSpy();
@@ -75,6 +75,7 @@ async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
   await testFn({
     actualExecutionSpy,
     cache,
+    testFunction,
     cachedTestFunction,
     cachedTestFunctionWithArgs,
     cachedTestFunctionWithComplexArgs,
@@ -280,17 +281,19 @@ describe('useCache', () => {
 
   describe('custom generateCacheKey', () => {
     it('should use a custom key generator if provided', async () => {
-      const customKeyGenerator = jest.fn().mockReturnValue('custom-key');
+      await withUseCache(async ({ cache, testFunction }) => {
+        const customKeyGenerator = jest.fn().mockReturnValue('custom-key');
 
-      const customCachedFunction = useCache(testFunction, cache, {
-        ...cacheOptions,
-        generateCacheKey: customKeyGenerator,
+        const customCachedFunction = useCache(testFunction, cache, {
+          ...cacheOptions,
+          generateCacheKey: customKeyGenerator,
+        });
+
+        await customCachedFunction();
+
+        expect(customKeyGenerator).toHaveBeenCalledTimes(1);
+        expect(cache.get).toHaveBeenCalledWith('custom-key');
       });
-
-      await customCachedFunction();
-
-      expect(customKeyGenerator).toHaveBeenCalledTimes(1);
-      expect(cache.get).toHaveBeenCalledWith('custom-key');
     });
   });
 
