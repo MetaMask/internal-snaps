@@ -83,78 +83,6 @@ async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
 }
 
 describe('useCache', () => {
-  // Spy to check if the original function was executed or not
-  let actualExecutionSpy: jest.Mock;
-
-  // Mock cache
-  let cache: ICache<Serializable>;
-
-  // Common cache options
-  let cacheOptions: CacheOptions;
-
-  // Original test functions
-  let testFunction: () => Promise<string>;
-  let testFunctionWithArgs: (arg1: string, arg2: number) => Promise<string>;
-  let testFunctionWithComplexArgs: (obj: {
-    name: string;
-    age: number;
-  }) => Promise<string>;
-
-  // Cached versions
-  let cachedTestFunction: () => Promise<string>;
-  let cachedTestFunctionWithArgs: (
-    arg1: string,
-    arg2: number,
-  ) => Promise<string>;
-  let cachedTestFunctionWithComplexArgs: (obj: {
-    name: string;
-    age: number;
-  }) => Promise<string>;
-
-  beforeEach(() => {
-    // Reset mocks for each test
-    actualExecutionSpy = jest.fn().mockResolvedValue('test');
-
-    // Create a mock cache
-    cache = {
-      get: jest.fn().mockResolvedValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
-    } as unknown as ICache<Serializable>;
-
-    // Define common cache options
-    cacheOptions = {
-      ttlMilliseconds: 1000,
-      functionName: 'testFunction',
-    };
-
-    // Define original functions
-    testFunction = async () => actualExecutionSpy();
-    testFunctionWithArgs = async (arg1: string, arg2: number) =>
-      actualExecutionSpy(arg1, arg2);
-    testFunctionWithComplexArgs = async (obj: { name: string; age: number }) =>
-      actualExecutionSpy(obj);
-
-    // Create cached versions
-    cachedTestFunction = useCache(testFunction, cache, {
-      ...cacheOptions,
-      functionName: 'testFunction',
-    });
-
-    cachedTestFunctionWithArgs = useCache(testFunctionWithArgs, cache, {
-      ...cacheOptions,
-      functionName: 'testFunctionWithArgs',
-    });
-
-    cachedTestFunctionWithComplexArgs = useCache(
-      testFunctionWithComplexArgs,
-      cache,
-      {
-        ...cacheOptions,
-        functionName: 'testFunctionWithComplexArgs',
-      },
-    );
-  });
-
   describe('when the data is not cached', () => {
     it('should cache the result of a function', async () => {
       await withUseCache(
@@ -333,33 +261,41 @@ describe('useCache', () => {
 
   describe('falsy but valid cache values', () => {
     it('should handle falsy but valid cache values (false, 0, empty string)', async () => {
-      // Test with false
-      jest.spyOn(cache, 'get').mockResolvedValue(false);
-      let result = await cachedTestFunction();
-      expect(result).toBe(false);
-      expect(actualExecutionSpy).not.toHaveBeenCalled();
+      await withUseCache(
+        async ({ actualExecutionSpy, cache, cachedTestFunction }) => {
+          // Test with false
+          cache.get.mockResolvedValue(false);
+          let result = await cachedTestFunction();
+          expect(result).toBe(false);
+          expect(actualExecutionSpy).not.toHaveBeenCalled();
 
-      // Test with 0
-      jest.spyOn(cache, 'get').mockResolvedValue(0);
-      result = await cachedTestFunction();
-      expect(result).toBe(0);
-      expect(actualExecutionSpy).not.toHaveBeenCalled();
+          // Test with 0
+          cache.get.mockResolvedValue(0);
+          result = await cachedTestFunction();
+          expect(result).toBe(0);
+          expect(actualExecutionSpy).not.toHaveBeenCalled();
 
-      // Test with empty string
-      jest.spyOn(cache, 'get').mockResolvedValue('');
-      result = await cachedTestFunction();
-      expect(result).toBe('');
-      expect(actualExecutionSpy).not.toHaveBeenCalled();
+          // Test with empty string
+          cache.get.mockResolvedValue('');
+          result = await cachedTestFunction();
+          expect(result).toBe('');
+          expect(actualExecutionSpy).not.toHaveBeenCalled();
+        },
+      );
     });
 
     it('should execute the function when cache returns undefined', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      actualExecutionSpy.mockResolvedValueOnce('test');
+      await withUseCache(
+        async ({ actualExecutionSpy, cache, cachedTestFunction }) => {
+          cache.get.mockResolvedValue(undefined);
+          actualExecutionSpy.mockResolvedValueOnce('test');
 
-      const result = await cachedTestFunction();
+          const result = await cachedTestFunction();
 
-      expect(result).toBe('test');
-      expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+          expect(result).toBe('test');
+          expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+        },
+      );
     });
   });
 });
