@@ -237,30 +237,44 @@ describe('useCache', () => {
 
   describe('different argument types', () => {
     it('should handle primitive arguments correctly', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest.spyOn(cache, 'set').mockResolvedValueOnce(undefined);
-      actualExecutionSpy.mockResolvedValueOnce('test with args');
+      await withUseCache(
+        async ({ actualExecutionSpy, cache, cachedTestFunctionWithArgs }) => {
+          cache.get.mockResolvedValue(undefined);
+          cache.set.mockResolvedValueOnce(undefined);
+          actualExecutionSpy.mockResolvedValueOnce('test with args');
 
-      const result = await cachedTestFunctionWithArgs('hello', 42);
+          const result = await cachedTestFunctionWithArgs('hello', 42);
 
-      expect(result).toBe('test with args');
-      expect(cache.get).toHaveBeenCalledWith('testFunctionWithArgs:"hello":42');
-      expect(actualExecutionSpy).toHaveBeenCalledWith('hello', 42);
+          expect(result).toBe('test with args');
+          expect(cache.get).toHaveBeenCalledWith(
+            'testFunctionWithArgs:"hello":42',
+          );
+          expect(actualExecutionSpy).toHaveBeenCalledWith('hello', 42);
+        },
+      );
     });
 
     it('should handle complex object arguments correctly', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest.spyOn(cache, 'set').mockResolvedValueOnce(undefined);
-      const testObj = { name: 'John', age: 30 };
-      actualExecutionSpy.mockResolvedValueOnce('test with complex args');
+      await withUseCache(
+        async ({
+          actualExecutionSpy,
+          cache,
+          cachedTestFunctionWithComplexArgs,
+        }) => {
+          cache.get.mockResolvedValue(undefined);
+          cache.set.mockResolvedValueOnce(undefined);
+          actualExecutionSpy.mockResolvedValueOnce('test with complex args');
 
-      const result = await cachedTestFunctionWithComplexArgs(testObj);
+          const testObj = { name: 'John', age: 30 };
+          const result = await cachedTestFunctionWithComplexArgs(testObj);
 
-      expect(result).toBe('test with complex args');
-      expect(cache.get).toHaveBeenCalledWith(
-        'testFunctionWithComplexArgs:{"name":"John","age":30}',
+          expect(result).toBe('test with complex args');
+          expect(cache.get).toHaveBeenCalledWith(
+            'testFunctionWithComplexArgs:{"name":"John","age":30}',
+          );
+          expect(actualExecutionSpy).toHaveBeenCalledWith(testObj);
+        },
       );
-      expect(actualExecutionSpy).toHaveBeenCalledWith(testObj);
     });
   });
 
