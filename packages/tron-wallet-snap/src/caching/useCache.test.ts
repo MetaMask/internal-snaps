@@ -12,6 +12,13 @@ type WithUseCacheCallback = (payload: {
   }) => Promise<string>;
 }) => void | Promise<void>;
 
+/**
+ * Wraps tests for `useCache` by creating fresh cached functions backed by a
+ * mock cache.
+ *
+ * @param testFn - The test body receiving the cached functions.
+ * @returns A promise that resolves when the test function completes.
+ */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
   // Reset mocks for each test
