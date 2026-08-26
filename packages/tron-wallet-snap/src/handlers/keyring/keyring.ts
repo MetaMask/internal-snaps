@@ -60,10 +60,7 @@ import {
   UuidStruct,
 } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
-import {
-  validateRequest,
-  validateResponse,
-} from '../../validation/validators';
+import { validateRequest, validateResponse } from '../../validation/validators';
 import { BackgroundEventMethod } from '../cronjob/cronjob';
 import { TronMultichainMethod } from './keyring-types';
 
