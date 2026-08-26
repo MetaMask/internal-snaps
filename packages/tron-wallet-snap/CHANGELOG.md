@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
+- Use the Core's AssetsController as assets source of truth when the migration feature flag is on ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
 
 ### Changed
 
