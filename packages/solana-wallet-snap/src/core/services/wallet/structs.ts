@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import { sanitizeUri } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -21,7 +22,6 @@ import {
   sanitizeResources,
   sanitizeSolanaAddress,
   sanitizeTimestamp,
-  sanitizeUri,
 } from '../../utils/sanitize';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 

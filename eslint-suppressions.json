@@ -1005,7 +1005,7 @@
   },
   "packages/solana-wallet-snap/src/core/utils/sanitize.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 14
+      "count": 10
     }
   },
   "packages/solana-wallet-snap/src/core/utils/toTokenUnit.test.ts": {

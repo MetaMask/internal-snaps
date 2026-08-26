@@ -62,18 +62,35 @@ describe('PriceApiClient', () => {
     });
 
     it('caches the fiat exchange rates', async () => {
+      // TTL 0 expires on the next clock tick (`expiresAt < Date.now()`), so the
+      // second call can miss the cache and hit an exhausted fetch mock.
+      const cachingClient = new PriceApiClient(
+        {
+          get: jest.fn().mockReturnValue({
+            priceApi: {
+              baseUrl: 'https://some-mock-url.com',
+              chunkSize: 50,
+              cacheTtlsMilliseconds: {
+                fiatExchangeRates: 60_000,
+                spotPrices: 0,
+                historicalPrices: 0,
+              },
+            },
+          }),
+        } as unknown as ConfigProvider,
+        mockCache,
+        mockFetch,
+        mockLogger,
+      );
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValueOnce(MOCK_EXCHANGE_RATES),
       });
 
-      // Call a first time. It populates the cache
-      await client.getFiatExchangeRates();
+      await cachingClient.getFiatExchangeRates();
+      await cachingClient.getFiatExchangeRates();
 
-      // Call a second time. It should use the cache
-      await client.getFiatExchangeRates();
-
-      // Fetch should only be called once
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
