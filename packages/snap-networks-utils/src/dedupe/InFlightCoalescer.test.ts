@@ -40,7 +40,7 @@ describe('InFlightCoalescer', () => {
     const result = await coalescer.run('key', fn);
 
     expect(result).toBe('shared');
-    await expect(reentrant).resolves.toBe('shared');
+    expect(await reentrant).toBe('shared');
     expect(fn).toHaveBeenCalledTimes(1);
   });
 

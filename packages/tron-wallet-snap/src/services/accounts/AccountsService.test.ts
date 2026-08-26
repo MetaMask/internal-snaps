@@ -437,7 +437,11 @@ describe('AccountsService', () => {
       };
 
       await withAccountsService(
-        async ({ accountsService, mockAccountsRepository, mockLogger }) => {
+        async ({
+          accountsService,
+          mockAccountsRepository,
+          mockLogger: accountsMockLogger,
+        }) => {
           // The first read sees nothing; a concurrent writer wins the merge,
           // so the winner only appears in the merge result.
           mockAccountsRepository.findByEntropySourceAndRange.mockResolvedValue(
@@ -459,7 +463,7 @@ describe('AccountsService', () => {
           expect(
             mockAccountsRepository.findByEntropySourceAndRange,
           ).toHaveBeenCalledTimes(1);
-          expect(mockLogger.log).toHaveBeenCalledWith(
+          expect(accountsMockLogger.log).toHaveBeenCalledWith(
             '[🔑 AccountsService]',
             expect.stringMatching(/"created":0/u),
           );
