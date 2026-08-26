@@ -26,10 +26,13 @@ import {
 import { bufferToUint8Array } from '../../utils/buffer';
 import { XdrParseException } from './exceptions';
 
-export enum TransactionResultType {
-  PathPaymentStrictSendSuccess = 'pathPaymentStrictSendSuccess',
-  PathPaymentStrictReceiveSuccess = 'pathPaymentStrictReceiveSuccess',
-}
+export const TransactionResultType = {
+  PathPaymentStrictSendSuccess: 'pathPaymentStrictSendSuccess',
+  PathPaymentStrictReceiveSuccess: 'pathPaymentStrictReceiveSuccess',
+} as const;
+
+export type TransactionResultType =
+  (typeof TransactionResultType)[keyof typeof TransactionResultType];
 
 type TransactionResultAsset =
   | KnownCaip19ClassicAssetId
@@ -46,18 +49,18 @@ type AssetAndAmount = {
  *
  * `amount` and `asset` always describe the side extracted from the transaction
  * result XDR that is not fixed by the operation envelope:
- * - {@link TransactionResultType.PathPaymentStrictSendSuccess}: destination (receive) amount and asset from `last`.
- * - {@link TransactionResultType.PathPaymentStrictReceiveSuccess}: source (send) amount and asset from the first path offer's `amountBought` / `assetBought` (not the receive amount/asset in `last`).
+ * - {@link 'pathPaymentStrictSendSuccess'}: destination (receive) amount and asset from `last`.
+ * - {@link 'pathPaymentStrictReceiveSuccess'}: source (send) amount and asset from the first path offer's `amountBought` / `assetBought` (not the receive amount/asset in `last`).
  */
 type OperationResult =
   | {
-      type: TransactionResultType.PathPaymentStrictSendSuccess;
+      type: 'pathPaymentStrictSendSuccess';
       amount: string;
       asset: TransactionResultAsset;
       destination: string | undefined;
     }
   | {
-      type: TransactionResultType.PathPaymentStrictReceiveSuccess;
+      type: 'pathPaymentStrictReceiveSuccess';
       amount: string;
       asset: TransactionResultAsset;
       destination: string | undefined;
@@ -123,22 +126,20 @@ export function parseSuccessfulTransactionResult(
       const { name } = tr.value().switch();
 
       try {
-        if (name === TransactionResultType.PathPaymentStrictSendSuccess) {
+        if (name === 'pathPaymentStrictSendSuccess') {
           const success = tr.pathPaymentStrictSendResult().success();
           const receiveSide = extractLastReceiveSide(success.last(), scope);
 
           if (receiveSide) {
             operationResults.push({
-              type: TransactionResultType.PathPaymentStrictSendSuccess,
+              type: 'pathPaymentStrictSendSuccess',
               amount: toDisplayBalance(receiveSide.amount),
               asset: receiveSide.asset,
               destination: receiveSide.destination,
             });
             continue;
           }
-        } else if (
-          name === TransactionResultType.PathPaymentStrictReceiveSuccess
-        ) {
+        } else if (name === 'pathPaymentStrictReceiveSuccess') {
           const success = tr.pathPaymentStrictReceiveResult().success();
           const sendSide = extractFirstOfferSendSide(
             success.offers()[0],
@@ -148,7 +149,7 @@ export function parseSuccessfulTransactionResult(
 
           if (sendSide) {
             operationResults.push({
-              type: TransactionResultType.PathPaymentStrictReceiveSuccess,
+              type: 'pathPaymentStrictReceiveSuccess',
               amount: toDisplayBalance(sendSide.amount),
               asset: sendSide.asset,
               destination: sendSide.destination,

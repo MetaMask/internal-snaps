@@ -32,9 +32,12 @@ export const SECP256R1_PROGRAM_ADDRESS = address(
   'Secp256r1SigVerify1111111111111111111111111',
 );
 
-export enum Secp256Instruction {
-  Verify = 0,
-}
+export const Secp256Instruction = {
+  Verify: 0,
+} as const;
+
+export type Secp256Instruction =
+  (typeof Secp256Instruction)[keyof typeof Secp256Instruction];
 
 export const identifySecp256Instruction = (
   _instruction:
@@ -67,7 +70,7 @@ type ParsedVerifySecp256Instruction = {
 };
 
 export type ParsedSecp256Instruction = {
-  instructionType: Secp256Instruction.Verify;
+  instructionType: 0;
 } & ParsedVerifySecp256Instruction;
 
 export const parseVerifySecp256Instruction = (instruction: IInstruction) => {

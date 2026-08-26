@@ -359,15 +359,18 @@ export function isBridgeSendTransaction(
   }
   const operationTypes = transaction.transactionOperations;
   const [firstOperation] = operationTypes;
+  const supportedSwapFirstOperationTypes = [
+    StellarOperationType.InvokeHostFunction,
+    StellarOperationType.Payment,
+    StellarOperationType.PathPaymentStrictSend,
+    StellarOperationType.PathPaymentStrictReceive,
+  ] as const;
   if (
     operationTypes.length === 1 &&
     firstOperation &&
-    [
-      StellarOperationType.InvokeHostFunction,
-      StellarOperationType.Payment,
-      StellarOperationType.PathPaymentStrictSend,
-      StellarOperationType.PathPaymentStrictReceive,
-    ].includes(firstOperation.type as StellarOperationType)
+    supportedSwapFirstOperationTypes.includes(
+      firstOperation.type as (typeof supportedSwapFirstOperationTypes)[number],
+    )
   ) {
     return true;
   }

@@ -11,6 +11,7 @@ import bs58 from 'bs58';
 import type { AssetEntity } from '../../../entities';
 import { asStrictKeyringAccount } from '../../../entities';
 import { KnownCaip19Id, Network } from '../../constants/solana';
+import type { Caip10Address } from '../../constants/solana';
 import type {
   AssetsService,
   KeyringAccountMonitor,
@@ -418,7 +419,7 @@ describe('SolanaKeyring', () => {
 
       jest
         .spyOn(mockWalletService, 'resolveAccountAddress')
-        .mockResolvedValue(mockResolvedAddress);
+        .mockResolvedValue(mockResolvedAddress as Caip10Address);
 
       const result = await keyring.resolveAccountAddress(
         mockScope,

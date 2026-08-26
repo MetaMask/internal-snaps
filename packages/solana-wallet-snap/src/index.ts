@@ -181,7 +181,8 @@ export const onCronjob: OnCronjobHandler = async ({ request }) => {
   assert(
     method,
     enums([
-      ...Object.values(CronjobMethod),
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      ...(Object.values(CronjobMethod) as string[]),
       ...Object.values(ScheduleBackgroundEventMethod),
     ]),
   );
@@ -198,7 +199,8 @@ export const onCronjob: OnCronjobHandler = async ({ request }) => {
       throw new MethodNotFoundError(
         `Cronjob / ScheduleBackgroundEvent method ${method} not found. Available methods: ${Object.values(
           [
-            ...Object.values(CronjobMethod),
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+            ...(Object.values(CronjobMethod) as string[]),
             ...Object.values(ScheduleBackgroundEventMethod),
           ],
         ).toString()}`,

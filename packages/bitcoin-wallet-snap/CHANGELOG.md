@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+**BREAKING:** Convert `CronjobMethod`, `Slip44`, `Purpose`, `Sep43ErrorCode`, `Fiat`, `CurrencyUnit`, `AccountFeature`, `AddressType`, `BalanceChangeType`, `ConfirmationStatus`, and `TransactionType` from TypeScript enums to `as const` objects with derived union types ([#XXX](https://github.com/MetaMask/internal-snaps/pull/XXX))
+- Member access (`Enum.Member`) and runtime values are unchanged
+- Type signatures change: `Enum` is now a union of string/number literals instead of a nominal enum type
+- `typeof Enum.Member` expressions in type positions now refer to literal values instead of enum member types
+
+
 ### Fixed
 
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))

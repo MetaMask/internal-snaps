@@ -11,10 +11,13 @@ import { OnChainAccount } from '../services/on-chain-account';
 import type { WalletService } from '../services/wallet';
 import { Wallet } from '../services/wallet';
 
-export enum ResolveAccountSource {
-  OnChain = 'on-chain',
-  State = 'state',
-}
+export const ResolveAccountSource = {
+  OnChain: 'on-chain',
+  State: 'state',
+} as const;
+
+export type ResolveAccountSource =
+  (typeof ResolveAccountSource)[keyof typeof ResolveAccountSource];
 
 export type ResolveAccountOptions = {
   /** Whether to load the activated on-chain account. */

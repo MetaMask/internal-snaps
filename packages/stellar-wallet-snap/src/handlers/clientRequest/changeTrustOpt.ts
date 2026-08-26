@@ -18,7 +18,6 @@ import type {
   Transaction,
   TransactionService,
 } from '../../services/transaction';
-import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { createPrefixedLogger } from '../../utils/logger';
@@ -322,7 +321,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
   }): Promise<boolean> {
     return this.#confirmSignChangeTrust({
       ...params,
-      confirmationInterfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptIn,
+      confirmationInterfaceKey: 'ChangeTrustlineOptIn',
     });
   }
 
@@ -335,7 +334,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
   }): Promise<boolean> {
     return this.#confirmSignChangeTrust({
       ...params,
-      confirmationInterfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
+      confirmationInterfaceKey: 'ChangeTrustlineOptOut',
     });
   }
 
@@ -345,9 +344,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     assetMetadata: StellarAssetMetadata;
     fee: string;
     transaction: Transaction;
-    confirmationInterfaceKey:
-      | ConfirmationInterfaceKey.ChangeTrustlineOptIn
-      | ConfirmationInterfaceKey.ChangeTrustlineOptOut;
+    confirmationInterfaceKey: 'ChangeTrustlineOptIn' | 'ChangeTrustlineOptOut';
   }): Promise<boolean> {
     const {
       request,

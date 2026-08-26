@@ -1,4 +1,4 @@
-import type { KnownCaip19Id, Network } from '../constants';
+import type { Network } from '../constants';
 import type {
   InLockPeriodCaipAssetType,
   NativeCaipAssetType,
@@ -41,22 +41,22 @@ export type InLockPeriodAsset = BaseAsset & {
 
 export type ResourceAsset = BaseAsset & {
   assetType:
-    | KnownCaip19Id.EnergyMainnet
-    | KnownCaip19Id.EnergyNile
-    | KnownCaip19Id.EnergyShasta
-    | KnownCaip19Id.BandwidthMainnet
-    | KnownCaip19Id.BandwidthNile
-    | KnownCaip19Id.BandwidthShasta;
+    | 'tron:728126428/slip44:energy'
+    | 'tron:3448148188/slip44:energy'
+    | 'tron:2494104990/slip44:energy'
+    | 'tron:728126428/slip44:bandwidth'
+    | 'tron:3448148188/slip44:bandwidth'
+    | 'tron:2494104990/slip44:bandwidth';
 };
 
 export type MaximumResourceAsset = BaseAsset & {
   assetType:
-    | KnownCaip19Id.MaximumEnergyMainnet
-    | KnownCaip19Id.MaximumEnergyNile
-    | KnownCaip19Id.MaximumEnergyShasta
-    | KnownCaip19Id.MaximumBandwidthMainnet
-    | KnownCaip19Id.MaximumBandwidthNile
-    | KnownCaip19Id.MaximumBandwidthShasta;
+    | 'tron:728126428/slip44:maximum-energy'
+    | 'tron:3448148188/slip44:maximum-energy'
+    | 'tron:2494104990/slip44:maximum-energy'
+    | 'tron:728126428/slip44:maximum-bandwidth'
+    | 'tron:3448148188/slip44:maximum-bandwidth'
+    | 'tron:2494104990/slip44:maximum-bandwidth';
 };
 
 export type TokenAsset = BaseAsset & {

@@ -1,13 +1,15 @@
 import { coerce, defaulted, enums, string } from '@metamask/superstruct';
 
-export enum LogLevel {
-  ALL = 'all',
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug',
-  SILENT = 'silent',
-}
+export const LogLevel = {
+  ALL: 'all',
+  ERROR: 'error',
+  WARN: 'warn',
+  INFO: 'info',
+  DEBUG: 'debug',
+  SILENT: 'silent',
+} as const;
+
+export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
 
 /**
  * A struct to validate and coerce log level from env.

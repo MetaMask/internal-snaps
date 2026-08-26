@@ -298,11 +298,14 @@ export function shouldDisableConfirmation(params: {
  * The transaction-validation banner and the Blockaid scan banner are mutually
  * exclusive: only one is ever rendered, and validation takes priority.
  */
-export enum ConfirmationBanner {
-  None = 'none',
-  TransactionValidation = 'transaction-validation',
-  TransactionScan = 'transaction-scan',
-}
+export const ConfirmationBanner = {
+  None: 'none',
+  TransactionValidation: 'transaction-validation',
+  TransactionScan: 'transaction-scan',
+} as const;
+
+export type ConfirmationBanner =
+  (typeof ConfirmationBanner)[keyof typeof ConfirmationBanner];
 
 /**
  * Resolves which top-of-screen banner the confirmation should display.

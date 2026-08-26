@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+**BREAKING:** Convert `Network`, `KnownCaip19Id`, `FeeType`, `ClientRequestMethod`, `SendErrorCodes`, `TransactionScanType`, `TransactionStatus`, `TransactionType`, `AnalyticsEventType`, `SnapFunction`, and `ResourceType` from TypeScript enums to `as const` objects with derived union types ([#XXX](https://github.com/MetaMask/internal-snaps/pull/XXX))
+- Member access (`Enum.Member`) and runtime values are unchanged
+- Type signatures change: `Enum` is now a union of string/number literals instead of a nominal enum type
+
+
 ### Added
 
 - Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))

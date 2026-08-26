@@ -102,21 +102,25 @@ export class StakingService {
     let purpose: TronwebTypes.Resource | undefined;
 
     if (
-      [
-        KnownCaip19Id.TrxStakedForBandwidthMainnet,
-        KnownCaip19Id.TrxStakedForBandwidthNile,
-        KnownCaip19Id.TrxStakedForBandwidthShasta,
-      ].includes(assetId as KnownCaip19Id)
+      (
+        [
+          KnownCaip19Id.TrxStakedForBandwidthMainnet,
+          KnownCaip19Id.TrxStakedForBandwidthNile,
+          KnownCaip19Id.TrxStakedForBandwidthShasta,
+        ] as readonly KnownCaip19Id[]
+      ).includes(assetId as KnownCaip19Id)
     ) {
       purpose = 'BANDWIDTH';
     }
 
     if (
-      [
-        KnownCaip19Id.TrxStakedForEnergyMainnet,
-        KnownCaip19Id.TrxStakedForEnergyNile,
-        KnownCaip19Id.TrxStakedForEnergyShasta,
-      ].includes(assetId as KnownCaip19Id)
+      (
+        [
+          KnownCaip19Id.TrxStakedForEnergyMainnet,
+          KnownCaip19Id.TrxStakedForEnergyNile,
+          KnownCaip19Id.TrxStakedForEnergyShasta,
+        ] as readonly KnownCaip19Id[]
+      ).includes(assetId as KnownCaip19Id)
     ) {
       purpose = 'ENERGY';
     }

@@ -74,10 +74,10 @@ type RenderConfirmationDialogCommon<Props extends ConfirmationViewProps> = {
 };
 
 type ConfirmationDialogWithFee =
-  | ConfirmationInterfaceKey.SignTransaction
-  | ConfirmationInterfaceKey.ChangeTrustlineOptIn
-  | ConfirmationInterfaceKey.ChangeTrustlineOptOut
-  | ConfirmationInterfaceKey.ConfirmSendTransaction;
+  | 'SignTransaction'
+  | 'ChangeTrustlineOptIn'
+  | 'ChangeTrustlineOptOut'
+  | 'ConfirmSendTransaction';
 /**
  * Discriminated union: confirmations that have a fee (example: sign transaction)
  * MUST provide one; fee-less confirmations (sign message, etc.) MUST NOT.

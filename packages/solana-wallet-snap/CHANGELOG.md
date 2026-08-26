@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+**BREAKING:** Convert `SolMethod`, `AccountCreationType`, `TokenFeature`, `TokenStandard`, `TransactionScanType`, `TransactionStatus`, `TransactionType`, `AccountType`, `AccountScope`, `AccountFeature`, `Scope`, `CronjobMethod`, `ScheduleBackgroundEventMethod`, `Network`, `Sep43ErrorCode`, and `Secp256Instruction` from TypeScript enums to `as const` objects with derived union types ([#XXX](https://github.com/MetaMask/internal-snaps/pull/XXX))
+- Member access (`Enum.Member`) and runtime values are unchanged
+- Type signatures change: `Enum` is now a union of string/number literals instead of a nominal enum type
+
+
+### Changed
+
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssets`, and routing Keyring and Send through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))
 
