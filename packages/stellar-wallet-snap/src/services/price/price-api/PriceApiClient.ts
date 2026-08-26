@@ -1,9 +1,9 @@
-import { UrlStruct } from '@metamask/snap-networks-utils';
+import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import type { CaipAssetType } from '@metamask/utils';
 
 import type { AnyErrorConstructor } from '../../../utils';
-import { buildUrl, rethrowIfInstanceElseThrow } from '../../../utils';
+import { rethrowIfInstanceElseThrow } from '../../../utils';
 import {
   assertHttpRequestParams,
   assertHttpResponse,

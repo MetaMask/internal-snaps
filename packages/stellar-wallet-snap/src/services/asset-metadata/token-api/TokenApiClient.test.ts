@@ -1,5 +1,6 @@
+import { buildUrl } from '@metamask/snap-networks-utils';
+
 import { KnownCaip2ChainId } from '../../../api';
-import { buildUrl } from '../../../utils';
 import {
   HttpException,
   HttpResponseException,

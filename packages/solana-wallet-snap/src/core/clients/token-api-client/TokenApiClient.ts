@@ -1,4 +1,4 @@
-import { UrlStruct } from '@metamask/snap-networks-utils';
+import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
@@ -8,7 +8,6 @@ import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 import type { TokenCaipAssetType } from '../../constants/solana';
 import { Network, TokenCaipAssetTypeStruct } from '../../constants/solana';
 import type { ConfigProvider } from '../../services/config';
-import { buildUrl } from '../../utils/buildUrl';
 import logger from '../../utils/logger';
 import type { TokenMetadataStruct } from './structs';
 import { TokenMetadataResponseStruct } from './structs';
