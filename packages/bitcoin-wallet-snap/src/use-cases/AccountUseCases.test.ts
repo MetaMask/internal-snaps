@@ -1781,6 +1781,35 @@ describe('AccountUseCases', () => {
         changeOutput.script_pubkey,
       );
     });
+
+    it('throws when the rebuild changes the value of the wallet-owned output', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 100000n);
+      const changeOutput = identifiableOutput('0014aaaa', 5000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, changeOutput] },
+        toString: () => 'templateBase64',
+      });
+      // first attempt drops the sub-dust drain, so the rebuild adds every
+      // template output as a fixed recipient and no drain is configured
+      mockTxBuilder.finish
+        .mockReturnValueOnce(
+          mock<Psbt>({ unsigned_tx: { output: [depositOutput] } }),
+        )
+        .mockReturnValueOnce(
+          mock<Psbt>({
+            unsigned_tx: {
+              output: [depositOutput, identifiableOutput('0014aaaa', 1n)],
+            },
+          }),
+        );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
   });
 
   describe('computeFee', () => {
