@@ -18,6 +18,7 @@ import type {
 } from '@metamask/keyring-api/v2';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import { validateOrigin } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
@@ -38,6 +39,7 @@ import { ESSENTIAL_ASSETS } from '../../constants';
 import type { Network } from '../../constants';
 import { asStrictKeyringAccount } from '../../entities/keyring-account';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
+import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
@@ -59,7 +61,6 @@ import {
 } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import {
-  validateOrigin,
   validateRequest,
   validateResponse,
 } from '../../validation/validators';
@@ -108,7 +109,7 @@ export class KeyringHandler implements KeyringSnapRpc {
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
-    validateOrigin(origin, request.method);
+    validateOrigin(origin, request.method, originPermissions);
     const result = await handleKeyringRequest(this, request);
     return result ?? null;
   }
