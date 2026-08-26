@@ -21,3 +21,11 @@ export type {
   LogMethodDecorator,
   LoggerDecorators,
 } from './logger';
+export {
+  createOriginPermissions,
+  DEFAULT_PROD_ORIGINS,
+  DEFAULT_DEV_ORIGINS,
+  DEFAULT_METAMASK_ORIGIN,
+} from './originPermissions/createOriginPermissions';
+export type { CreateOriginPermissionsParams } from './originPermissions/createOriginPermissions';
+export { validateOrigin } from './originPermissions/validateOrigin';
