@@ -299,17 +299,20 @@ describe('useCache', () => {
 
   describe('anonymous functions', () => {
     it('should handle anonymous functions with a default name', async () => {
-      // Anonymous function with no name
-      const anonymousFunction = async () => actualExecutionSpy();
-      Object.defineProperty(anonymousFunction, 'name', { value: null });
+      await withUseCache(async ({ actualExecutionSpy, cache }) => {
+        // Anonymous function with no name
+        const anonymousFunction = async (): Promise<string> =>
+          actualExecutionSpy();
+        Object.defineProperty(anonymousFunction, 'name', { value: null });
 
-      const cachedAnonymousFunction = useCache(anonymousFunction, cache, {
-        ttlMilliseconds: 1000,
+        const cachedAnonymousFunction = useCache(anonymousFunction, cache, {
+          ttlMilliseconds: 1000,
+        });
+
+        await cachedAnonymousFunction();
+
+        expect(cache.get).toHaveBeenCalledWith('anonymousFunction:');
       });
-
-      await cachedAnonymousFunction();
-
-      expect(cache.get).toHaveBeenCalledWith('anonymousFunction:');
     });
   });
 
