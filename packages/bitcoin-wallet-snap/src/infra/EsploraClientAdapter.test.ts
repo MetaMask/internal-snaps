@@ -42,8 +42,7 @@ const setupTest = (): {
 describe('EsploraClientAdapter', () => {
   describe('fullScan', () => {
     it('uses the scan stop gap by default', async () => {
-      const { adapter, mockEsploraClient, account, mockRequest } =
-        setupTest();
+      const { adapter, mockEsploraClient, account, mockRequest } = setupTest();
 
       await adapter.fullScan(account);
 
@@ -55,8 +54,7 @@ describe('EsploraClientAdapter', () => {
     });
 
     it("uses the discovery stop gap in 'discovery' mode", async () => {
-      const { adapter, mockEsploraClient, account, mockRequest } =
-        setupTest();
+      const { adapter, mockEsploraClient, account, mockRequest } = setupTest();
 
       await adapter.fullScan(account, 'discovery');
 

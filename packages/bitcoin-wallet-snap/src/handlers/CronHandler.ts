@@ -1,5 +1,5 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
-import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
+import type { Json, JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, object, string } from 'superstruct';
 
 import {
@@ -7,7 +7,7 @@ import {
   SynchronizationError,
   TrackingSnapEvent,
 } from '../entities';
-import type { SnapClient, SyncResult } from '../entities';
+import type { BitcoinAccount, SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export enum CronMethod {
@@ -102,31 +102,11 @@ export class CronHandler {
       ),
     );
 
-    const successfulResults: SyncResult[] = [];
-
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const errors: Record<string, any> = {};
-
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        successfulResults.push(result.value);
-      } else {
-        const id = accounts[index]?.id;
-        if (id) {
-          errors[id] = result.reason;
-        }
-      }
-    });
-
-    await this.#emitSyncEvents(successfulResults);
-
-    if (Object.keys(errors).length > 0) {
-      throw new SynchronizationError(
-        'Account synchronization failures',
-        errors,
-      );
-    }
+    await this.#finishSync(
+      accounts,
+      results,
+      'Account synchronization failures',
+    );
   }
 
   async syncSelectedAccounts(accountIds: string[]): Promise<void> {
@@ -209,31 +189,11 @@ export class CronHandler {
       ),
     );
 
-    const successfulResults: SyncResult[] = [];
-
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const errors: Record<string, any> = {};
-
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        successfulResults.push(result.value);
-      } else {
-        const id = accounts[index]?.id;
-        if (id) {
-          errors[id] = result.reason;
-        }
-      }
-    });
-
-    await this.#emitSyncEvents(successfulResults);
-
-    if (Object.keys(errors).length > 0) {
-      throw new SynchronizationError(
-        'Account synchronization failures',
-        errors,
-      );
-    }
+    await this.#finishSync(
+      accounts,
+      results,
+      'Account synchronization failures',
+    );
   }
 
   async fullScanAccounts(): Promise<void> {
@@ -267,11 +227,16 @@ export class CronHandler {
       }),
     );
 
-    const successfulResults: SyncResult[] = [];
+    await this.#finishSync(accounts, results, 'Full scan failures');
+  }
 
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const errors: Record<string, any> = {};
+  async #finishSync(
+    accounts: BitcoinAccount[],
+    results: PromiseSettledResult<SyncResult>[],
+    message: string,
+  ): Promise<void> {
+    const successfulResults: SyncResult[] = [];
+    const errors: Record<string, Json> = {};
 
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
@@ -279,7 +244,7 @@ export class CronHandler {
       } else {
         const id = accounts[index]?.id;
         if (id) {
-          errors[id] = result.reason;
+          errors[id] = String(result.reason);
         }
       }
     });
@@ -287,7 +252,7 @@ export class CronHandler {
     await this.#emitSyncEvents(successfulResults);
 
     if (Object.keys(errors).length > 0) {
-      throw new SynchronizationError('Full scan failures', errors);
+      throw new SynchronizationError(message, errors);
     }
   }
 }
