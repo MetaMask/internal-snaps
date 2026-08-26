@@ -1,24 +1,25 @@
 import { KeyringSnapRpcMethod } from '@metamask/keyring-api/v2';
-import {
-  DEFAULT_DEV_ORIGINS,
-  DEFAULT_PROD_ORIGINS,
-} from '@metamask/snap-networks-utils';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
-import { TestDappRpcRequestMethod } from './handlers/rpc/types';
 import { originPermissions } from './permissions';
 
+// `ENVIRONMENT` differs between local runs (`test`) and CI (`production`), so
+// these assertions hold for both permission shapes.
 describe('originPermissions', () => {
-  it('allows localhost dapp methods and MetaMask keyring methods in test', () => {
+  it('grants MetaMask the privileged keyring methods', () => {
     expect(
       originPermissions
-        .get(DEFAULT_DEV_ORIGINS[0])
-        ?.has(TestDappRpcRequestMethod.ComputeFee),
-    ).toBe(true);
-    expect(
-      originPermissions
-        .get('metamask')
+        .get(DEFAULT_METAMASK_ORIGIN)
         ?.has(KeyringSnapRpcMethod.CreateAccounts),
     ).toBe(true);
-    expect(originPermissions.has(DEFAULT_PROD_ORIGINS[0])).toBe(false);
+  });
+
+  it('never grants privileged methods to dapp origins', () => {
+    const dappMethods = [...originPermissions.entries()]
+      .filter(([origin]) => origin !== DEFAULT_METAMASK_ORIGIN)
+      .flatMap(([, methods]) => [...methods]);
+
+    expect(dappMethods).not.toContain(KeyringSnapRpcMethod.CreateAccounts);
+    expect(dappMethods).not.toContain(KeyringSnapRpcMethod.ExportAccount);
   });
 });
