@@ -707,6 +707,7 @@ export class AccountUseCases {
         ? lastOutput
         : undefined;
 
+    let drainConfigured = drainOutput !== undefined;
     let builtPsbt: Psbt;
     try {
       let builder = account
@@ -728,7 +729,8 @@ export class AccountUseCases {
       builtPsbt = builder.finish();
 
       if (builtPsbt.unsigned_tx.output.length < templateOutputs.length) {
-        // Second attempt: use fixed recipients for all outputs
+        // Second attempt: use fixed recipients for all outputs, so no drain is configured
+        drainConfigured = false;
         builder = account
           .buildTx()
           .feeRate(feeRateToUse)
@@ -766,7 +768,7 @@ export class AccountUseCases {
         (txout, index) =>
           builtOutputs[index]?.script_pubkey.to_hex_string() ===
             txout.script_pubkey.to_hex_string() &&
-          (txout === drainOutput ||
+          ((drainConfigured && txout === drainOutput) ||
             builtOutputs[index]?.value.to_sat() === txout.value.to_sat()),
       );
     if (!preserved) {
