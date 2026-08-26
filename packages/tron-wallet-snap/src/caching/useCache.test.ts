@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
-import { useCache } from './useCache';
-import type { CacheOptions } from './useCache';
+import { CacheOptions, useCache } from './useCache';
 
 // Define common cache options
-const cacheOptions = {
+const cacheOptions: CacheOptions = {
   ttlMilliseconds: 1000,
   functionName: 'testFunction',
 };
