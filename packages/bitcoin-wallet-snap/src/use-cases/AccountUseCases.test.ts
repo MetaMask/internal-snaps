@@ -1595,6 +1595,221 @@ describe('AccountUseCases', () => {
       // Result should be the rebuilt PSBT with all outputs preserved
       expect(result).toBe(rebuiltPsbt);
     });
+
+    const identifiableOutput = (scriptHex: string, sats: bigint): TxOut => {
+      const scriptPubkey = mock<ScriptBuf>();
+      scriptPubkey.to_hex_string.mockReturnValue(scriptHex);
+      const value = mock<Amount>();
+      value.to_sat.mockReturnValue(sats);
+
+      return mock<TxOut>({ script_pubkey: scriptPubkey, value });
+    };
+
+    const accountOwning = (owned: ScriptBuf[]): BitcoinAccount => {
+      const account = mock<BitcoinAccount>({
+        id: 'account-id',
+        network: 'bitcoin',
+        isMine: (script: ScriptBuf) => owned.includes(script),
+        capabilities: [AccountCapability.FillPsbt],
+      });
+      account.buildTx.mockReturnValue(mockTxBuilder);
+      return account;
+    };
+
+    it('adds every template output as a fixed recipient when the wallet-owned output is not last', async () => {
+      const changeOutput = identifiableOutput('0014aaaa', 2548n);
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [changeOutput, depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: { output: [changeOutput, depositOutput] },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      await useCases.fillPsbt('account-id', template);
+
+      expect(mockTxBuilder.drainToByScript).not.toHaveBeenCalled();
+      expect(mockTxBuilder.addRecipientByScript).toHaveBeenCalledTimes(2);
+      expect(mockTxBuilder.addRecipientByScript).toHaveBeenNthCalledWith(
+        1,
+        changeOutput.value,
+        changeOutput.script_pubkey,
+      );
+      expect(mockTxBuilder.addRecipientByScript).toHaveBeenNthCalledWith(
+        2,
+        depositOutput.value,
+        depositOutput.script_pubkey,
+      );
+    });
+
+    it('throws when the built outputs are reordered against the template', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const opReturnOutput = identifiableOutput('6a3ecccc', 0n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, opReturnOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: {
+            output: [
+              opReturnOutput,
+              identifiableOutput('0014aaaa', 2548n),
+              depositOutput,
+            ],
+          },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(accountOwning([]));
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('throws when a built output value diverges from the template', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: { output: [identifiableOutput('5120bbbb', 1n)] },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(accountOwning([]));
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('accepts a built PSBT that appends a change output after the template outputs', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const opReturnOutput = identifiableOutput('6a3ecccc', 0n);
+      const appendedChange = identifiableOutput('0014aaaa', 2548n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, opReturnOutput] },
+        toString: () => 'templateBase64',
+      });
+      const builtPsbt = mock<Psbt>({
+        unsigned_tx: {
+          output: [depositOutput, opReturnOutput, appendedChange],
+        },
+      });
+      mockTxBuilder.finish.mockReturnValue(builtPsbt);
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([appendedChange.script_pubkey]),
+      );
+
+      expect(await useCases.fillPsbt('account-id', template)).toBe(builtPsbt);
+    });
+
+    it('throws when the built PSBT appends an output that is not ours', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: {
+            output: [depositOutput, identifiableOutput('5120dddd', 1000n)],
+          },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(accountOwning([]));
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('throws when the built PSBT appends more than one output', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const firstAppended = identifiableOutput('0014aaaa', 1000n);
+      const secondAppended = identifiableOutput('0014eeee', 1000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: {
+            output: [depositOutput, firstAppended, secondAppended],
+          },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([
+          firstAppended.script_pubkey,
+          secondAppended.script_pubkey,
+        ]),
+      );
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('accepts the drained output taking a value the template did not specify', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const changeOutput = identifiableOutput('0014aaaa', 1000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, changeOutput] },
+        toString: () => 'templateBase64',
+      });
+      const builtPsbt = mock<Psbt>({
+        unsigned_tx: {
+          output: [depositOutput, identifiableOutput('0014aaaa', 2548n)],
+        },
+      });
+      mockTxBuilder.finish.mockReturnValue(builtPsbt);
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      expect(await useCases.fillPsbt('account-id', template)).toBe(builtPsbt);
+      expect(mockTxBuilder.drainToByScript).toHaveBeenCalledWith(
+        changeOutput.script_pubkey,
+      );
+    });
+
+    it('throws when the rebuild changes the value of the wallet-owned output', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 100000n);
+      const changeOutput = identifiableOutput('0014aaaa', 5000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, changeOutput] },
+        toString: () => 'templateBase64',
+      });
+      // first attempt drops the sub-dust drain, so the rebuild adds every
+      // template output as a fixed recipient and no drain is configured
+      mockTxBuilder.finish
+        .mockReturnValueOnce(
+          mock<Psbt>({ unsigned_tx: { output: [depositOutput] } }),
+        )
+        .mockReturnValueOnce(
+          mock<Psbt>({
+            unsigned_tx: {
+              output: [depositOutput, identifiableOutput('0014aaaa', 1n)],
+            },
+          }),
+        );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
   });
 
   describe('computeFee', () => {
