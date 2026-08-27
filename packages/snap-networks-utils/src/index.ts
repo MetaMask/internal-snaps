@@ -21,8 +21,7 @@ export type {
   LogMethodDecorator,
   LoggerDecorators,
 } from './logger';
-export { serialize } from './serialization/serialize';
-export { deserialize } from './serialization/deserialize';
+export { serialize, deserialize } from './serialization/serialization';
 export type { Serializable } from './serialization/types';
 export {
   createOriginPermissions,
