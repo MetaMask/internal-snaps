@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import { useCache } from './useCache';
