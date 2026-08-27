@@ -11,7 +11,10 @@ export {
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export { buildUrl } from './utils/buildUrl/buildUrl';
 export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
-export { sanitizeControlCharacters, sanitizeUri } from './utils/sanitize/sanitize';
+export {
+  sanitizeControlCharacters,
+  sanitizeUri,
+} from './utils/sanitize/sanitize';
 export { UrlStruct } from './utils/urlStruct/urlStruct';
 export {
   batchesAll,
@@ -20,14 +23,14 @@ export {
   batchesAllWithChunks,
   chunks,
 } from './utils/async/async';
-export { Logger, LogLevel } from './utils/logger';
+export { Logger, LogLevel } from './utils/logger/Logger';
 export type {
   LoggerOptions,
   LoggerMethod,
   LogMethod,
   LogMethodDecorator,
   LoggerDecorators,
-} from './utils/logger';
+} from './utils/logger/Logger';
 export { serialize, deserialize } from './utils/serialization/serialization';
 export type { Serializable } from './utils/serialization/types';
 export {
