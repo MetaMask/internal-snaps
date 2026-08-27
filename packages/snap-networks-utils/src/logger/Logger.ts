@@ -87,7 +87,7 @@ export type LoggerOptions = {
  * **Example: create an enabled logger.**
  *
  * ```ts
- * import { Logger } from '@metamask/snap-networks-utils/logger';
+ * import { Logger } from '@metamask/snap-networks-utils';
  *
  * const logger = new Logger({ level: LogLevel.TRACE });
  * logger.info('Account synced');

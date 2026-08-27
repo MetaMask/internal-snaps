@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 
 import type { AddressType } from '@metamask/bitcoindevkit';
-import { LogLevel } from '@metamask/snap-networks-utils/logger';
+import { LogLevel } from '@metamask/snap-networks-utils';
 
 import type { SnapConfig } from './entities';
 

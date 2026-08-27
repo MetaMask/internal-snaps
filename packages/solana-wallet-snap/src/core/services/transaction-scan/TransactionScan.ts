@@ -1,10 +1,11 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import type { SolanaKeyringAccount } from '../../../entities';
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
 import { METAMASK_ORIGIN, METAMASK_ORIGIN_URL } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
-import type { ILogger } from '../../utils/logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { TransactionScanResult, TransactionScanValidation } from './types';
 import { ScanStatus, SecurityAlertResponse } from './types';
@@ -12,14 +13,14 @@ import { ScanStatus, SecurityAlertResponse } from './types';
 export class TransactionScanService {
   readonly #securityAlertsApiClient: SecurityAlertsApiClient;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #analyticsService: AnalyticsService;
 
   constructor(
     securityAlertsApiClient: SecurityAlertsApiClient,
     analyticsService: AnalyticsService,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#securityAlertsApiClient = securityAlertsApiClient;
     this.#analyticsService = analyticsService;

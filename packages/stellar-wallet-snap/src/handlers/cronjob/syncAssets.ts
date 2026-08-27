@@ -1,0 +1,40 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
+import { KnownCaip2ChainId } from '../../api';
+import type { SynchronizeService } from '../../services/sync/SynchronizeService';
+import type { SyncAssetsJsonRpcRequest } from './api';
+import { SyncAssetsJsonRpcRequestStruct } from './api';
+import { CronjobBaseHandler } from './base';
+
+export class SyncAssetsHandler extends CronjobBaseHandler<SyncAssetsJsonRpcRequest> {
+  readonly #synchronizeService: SynchronizeService;
+
+  constructor({
+    logger,
+    synchronizeService,
+  }: {
+    logger: Logger;
+    synchronizeService: SynchronizeService;
+  }) {
+    const prefixedLogger = logger.withPrefix('[SyncAssetsHandler]');
+    super({
+      logger: prefixedLogger,
+      requestStruct: SyncAssetsJsonRpcRequestStruct,
+    });
+    this.#synchronizeService = synchronizeService;
+  }
+
+  /**
+   * Declarative cron job with no `request.params` in `snap.manifest.json`.
+   * Asset metadata is only available on mainnet, so synchronization always uses
+   * mainnet scope regardless of the user's selected network.
+   *
+   * @param _request - Cron JSON-RPC request (method only).
+   */
+  protected async handleCronJobRequest(
+    _request: SyncAssetsJsonRpcRequest,
+  ): Promise<void> {
+    const scope = KnownCaip2ChainId.Mainnet;
+    await this.#synchronizeService.synchronizeAssets(scope);
+  }
+}

@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import type {
   BaseTransactionMessage,
@@ -19,7 +20,8 @@ import type { Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import {
   fromBytesToCompilableTransactionMessage,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransaction,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../sdk-extensions/codecs';
 import {
   estimateAndOverrideComputeUnitLimit,
@@ -30,8 +32,6 @@ import {
   setTransactionMessageLifetimeUsingBlockhashIfMissing,
 } from '../../sdk-extensions/transaction-messages';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 
@@ -41,13 +41,13 @@ import type { SolanaConnection } from '../connection';
 export class Signer {
   readonly #connection: SolanaConnection;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   static readonly defaultComputeUnitPriceInMicroLamportsPerComputeUnit = 10000n;
 
-  constructor(connection: SolanaConnection, logger: ILogger) {
+  constructor(connection: SolanaConnection, logger: Logger) {
     this.#connection = connection;
-    this.#logger = createPrefixedLogger(logger, '[🖋️ Signer]');
+    this.#logger = logger.withPrefix('[🖋️ Signer]');
   }
 
   /**
@@ -61,6 +61,7 @@ export class Signer {
    * @param account - The account to sign the transaction or transaction message with.
    * @param network - The network on which the transaction is being sent.
    * @param config - The configuration for the request.
+   * @param preserveMessageBytes - Whether to preserve the original message bytes.
    * @returns The signed transaction.
    * @throws If the base64 string is not a valid transaction or transaction message.
    */
@@ -69,6 +70,7 @@ export class Signer {
     account: SolanaKeyringAccount,
     network: Network,
     config?: DecompileTransactionMessageFetchingLookupTablesConfig,
+    preserveMessageBytes = false,
   ): Promise<Transaction> {
     this.#logger.log('Partially sign base64 string', {
       base64String,
@@ -77,11 +79,18 @@ export class Signer {
       config,
     });
 
+    if (preserveMessageBytes) {
+      const transaction =
+        await fromUnknownBase64StringToTransaction(base64String);
+
+      return this.#partiallySignTransaction(transaction, account);
+    }
+
     const rpc = this.#connection.getRpc(network);
 
     // The received base64 string can either represent a transaction or a transaction message.
     const transactionMessageOrTransaction =
-      await fromUnknowBase64StringToTransactionOrTransactionMessage(
+      await fromUnknownBase64StringToTransactionOrTransactionMessage(
         base64String,
         rpc,
         config,

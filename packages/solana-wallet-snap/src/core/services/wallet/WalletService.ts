@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
 import type { Commitment, SignatureBytes } from '@solana/kit';
@@ -17,14 +18,14 @@ import {
 } from '@solana/kit';
 
 import type { SolanaKeyringAccount } from '../../../entities';
+import { METAMASK_ORIGIN } from '../../constants/solana';
 import type { Caip10Address, Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import { addressToCaip10 } from '../../utils/addressToCaip10';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
-import type { ILogger } from '../../utils/logger';
-import logger, { createPrefixedLogger } from '../../utils/logger';
+import logger from '../../utils/logger';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
@@ -58,7 +59,7 @@ export class WalletService {
 
   readonly #analyticsService: AnalyticsService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     connection: SolanaConnection,
@@ -71,7 +72,7 @@ export class WalletService {
     this.#signer = signer;
     this.#signatureMonitor = signatureMonitor;
     this.#analyticsService = analyticsService;
-    this.#logger = createPrefixedLogger(_logger, '[👛 WalletService]');
+    this.#logger = _logger.withPrefix('[👛 WalletService]');
   }
 
   /**
@@ -180,12 +181,17 @@ export class WalletService {
           }
         : undefined;
 
+    // For transactions coming from DApps, preserve the original message bytes.
+    // Mutating them would change the signing payload and break multisig flows.
+    const shouldPreserveMessageBytes = origin !== METAMASK_ORIGIN;
+
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
         transaction,
         account,
         scope,
         config,
+        shouldPreserveMessageBytes,
       );
 
     const signedTransactionBase64 = fromTransactionToBase64String(
@@ -251,12 +257,17 @@ export class WalletService {
           }
         : undefined;
 
+    // For transactions coming from DApps, preserve the original message bytes.
+    // Mutating them would change the signing payload and break multisig flows.
+    const shouldPreserveMessageBytes = origin !== METAMASK_ORIGIN;
+
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
         transactionMessageBase64Encoded,
         account,
         scope,
         signConfig,
+        shouldPreserveMessageBytes,
       );
 
     const signature = getSignatureFromTransaction(partiallySignedTransaction);

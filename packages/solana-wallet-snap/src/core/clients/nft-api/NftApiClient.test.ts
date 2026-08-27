@@ -1,8 +1,8 @@
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import type { Serializable } from '../../serialization/types';
+import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
-import { mockLogger } from '../../services/mocks/logger';
 import { trackError } from '../../utils/errors';
 import { MOCK_NFT_METADATA_RESPONSE_MAPPED } from './mocks/mockNftMetadataResponseMapped';
 import { MOCK_NFT_METADATA_RESPONSE_RAW } from './mocks/mockNftMetadataResponseRaw';
@@ -38,12 +38,7 @@ describe('NftApiClient', () => {
       }),
     } as unknown as ConfigProvider;
 
-    client = new NftApiClient(
-      mockConfigProvider,
-      mockCache,
-      mockFetch,
-      mockLogger,
-    );
+    client = new NftApiClient(mockConfigProvider, mockCache, mockFetch);
   });
 
   describe('constructor', () => {
@@ -61,13 +56,7 @@ describe('NftApiClient', () => {
       } as unknown as ConfigProvider;
 
       expect(
-        () =>
-          new NftApiClient(
-            invalidConfigProvider,
-            mockCache,
-            mockFetch,
-            mockLogger,
-          ),
+        () => new NftApiClient(invalidConfigProvider, mockCache, mockFetch),
       ).toThrow('Invalid URL format');
     });
   });

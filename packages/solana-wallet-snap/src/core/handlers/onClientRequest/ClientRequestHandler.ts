@@ -1,4 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { assert, create } from '@metamask/superstruct';
@@ -13,7 +14,6 @@ import {
 } from '@solana/kit';
 
 import { METAMASK_ORIGIN, Networks } from '../../constants/solana';
-import type { Network } from '../../constants/solana';
 import { FeeCalculator } from '../../fees';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import type { AccountsService, ApproveTokenService } from '../../services';
@@ -21,8 +21,6 @@ import type { SendService } from '../../services/send/SendService';
 import type { OnAddressInputRequest } from '../../services/send/types';
 import type { WalletService } from '../../services/wallet/WalletService';
 import { lamportsToSol } from '../../utils/conversion';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { ClientRequestMethod } from './types';
 import {
   ApproveCardAmountRequestStruct,
@@ -55,7 +53,7 @@ export class ClientRequestHandler {
 
   readonly #walletService: WalletService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #sendService: SendService;
 
@@ -64,13 +62,13 @@ export class ClientRequestHandler {
   constructor(
     accountsService: AccountsService,
     walletService: WalletService,
-    logger: ILogger,
+    logger: Logger,
     sendService: SendService,
     approveTokenService: ApproveTokenService,
   ) {
     this.#accountsService = accountsService;
     this.#walletService = walletService;
-    this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
+    this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#sendService = sendService;
     this.#approveTokenService = approveTokenService;
   }

@@ -1,3 +1,5 @@
+import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
@@ -6,10 +8,7 @@ import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 import type { TokenCaipAssetType } from '../../constants/solana';
 import { Network, TokenCaipAssetTypeStruct } from '../../constants/solana';
 import type { ConfigProvider } from '../../services/config';
-import { buildUrl } from '../../utils/buildUrl';
-import type { ILogger } from '../../utils/logger';
 import logger from '../../utils/logger';
-import { UrlStruct } from '../../validation/structs';
 import type { TokenMetadataStruct } from './structs';
 import { TokenMetadataResponseStruct } from './structs';
 
@@ -26,7 +25,7 @@ const DEFAULT_TOKEN_METADATA: FungibleAssetMetadata = {
 export class TokenApiClient {
   readonly #fetch: typeof globalThis.fetch;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #baseUrl: string;
 
@@ -39,7 +38,7 @@ export class TokenApiClient {
   constructor(
     configProvider: ConfigProvider,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
-    _logger: ILogger = logger,
+    _logger: Logger = logger,
   ) {
     this.#fetch = _fetch;
     this.#logger = _logger;

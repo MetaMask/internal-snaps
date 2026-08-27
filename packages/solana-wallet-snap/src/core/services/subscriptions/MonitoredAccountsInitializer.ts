@@ -1,6 +1,6 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import type { EventEmitter } from '../../../infrastructure/event-emitter';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { KeyringAccountMonitor } from './KeyringAccountMonitor';
 
@@ -15,21 +15,18 @@ export class MonitoredAccountsInitializer {
 
   readonly #eventEmitter: EventEmitter;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor(
     accountsService: AccountsService,
     keyringAccountMonitor: KeyringAccountMonitor,
     eventEmitter: EventEmitter,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#accountsService = accountsService;
     this.#keyringAccountMonitor = keyringAccountMonitor;
     this.#eventEmitter = eventEmitter;
-    this.#logger = createPrefixedLogger(
-      logger,
-      '[🥾 MonitoredAccountsInitializer]',
-    );
+    this.#logger = logger.withPrefix('[🥾 MonitoredAccountsInitializer]');
 
     this.#bindHandlers();
   }

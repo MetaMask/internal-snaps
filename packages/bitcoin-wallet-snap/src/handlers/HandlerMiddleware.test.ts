@@ -103,6 +103,16 @@ describe('HandlerMiddleware', () => {
       expect(mockLogger.error).toHaveBeenCalledWith(thrown);
     });
 
+    it('uses the message property if it exists on a thrown plain object', async () => {
+      const thrown = { message: 'InsufficientFunds', code: 11 };
+      const mockFn = jest.fn().mockRejectedValue(thrown);
+
+      await expect(middleware.handle(mockFn)).rejects.toThrow(
+        'InsufficientFunds',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(thrown);
+    });
+
     it('handles error successfully if instance of BaseError', async () => {
       const error = new BaseError('Test error', 1);
       const mockFn = jest.fn().mockRejectedValue(error);

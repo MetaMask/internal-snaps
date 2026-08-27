@@ -28,7 +28,16 @@ type MockState = {
 
 jest.mock('../../context', () => ({
   configProvider: {
-    get() {
+    get(): {
+      priceApi: {
+        cacheTtlsMilliseconds: {
+          fiatExchangeRates: number;
+          spotPrices: number;
+          historicalPrices: number;
+        };
+      };
+      activeNetworks: never[];
+    } {
       return {
         priceApi: {
           cacheTtlsMilliseconds: {
@@ -53,6 +62,8 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 const { configProvider } = require('../../context');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { CoreAssetsAdapter } = require('./adapters/CoreAssetsAdapter');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { SnapAssetsAdapter } = require('./adapters/SnapAssetsAdapter');
 
@@ -141,7 +152,9 @@ const minimalTronAccount = createMockTronAccount({
  * @param overrides - Account-specific fields to set.
  * @returns A mock AccountResources object.
  */
-function getMockAccountResources(overrides: Record<string, number> = {}) {
+function getMockAccountResources(
+  overrides: Record<string, number> = {},
+): Record<string, number> {
   return {
     freeNetLimit: 600,
     TotalNetLimit: 0,
@@ -159,7 +172,10 @@ function getMockAccountResources(overrides: Record<string, number> = {}) {
  * @param assetType - The CAIP-19 asset type to match.
  * @returns The matching asset, or undefined.
  */
-function findAsset(assets: AssetEntity[], assetType: KnownCaip19Id) {
+function findAsset(
+  assets: AssetEntity[],
+  assetType: KnownCaip19Id,
+): AssetEntity | undefined {
   return assets.find((a: AssetEntity) => a.assetType === assetType);
 }
 
@@ -275,7 +291,15 @@ async function withAssetsService<ReturnValue>(
     snapClient: mockSnapClient,
     configProvider,
   });
-  const assetsService = new AssetsService({ snapAdapter });
+  const coreAdapter = new CoreAssetsAdapter({
+    getAccountAssetByID: jest.fn().mockResolvedValue(null),
+    getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
+    getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+    getAddressInfo: mockTrongridApiClient.getAccountInfoByAddress,
+    getAddressResources: mockTronHttpClient.getAccountResources,
+    getAddressStakingRewards: mockTronHttpClient.getReward,
+  });
+  const assetsService = new AssetsService({ snapAdapter, coreAdapter });
 
   return await testFunction({
     assetsService,

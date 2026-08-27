@@ -10,12 +10,13 @@ import type {
 } from '@metamask/keyring-api';
 import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
+import { LogLevel } from '@metamask/snap-networks-utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import type { ILogger } from '../../utils/logger';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
@@ -51,6 +52,7 @@ const EMPTY_NETWORK_URLS: Record<Network, string> = {
 
 const MOCK_CONFIG: Config = {
   environment: 'test',
+  logLevel: LogLevel.INFO,
   networks: [],
   activeNetworks: [],
   priceApi: {
@@ -106,7 +108,7 @@ type WithAccountsServiceCallback = (payload: {
     >
   >;
   mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>>;
-  mockLogger: ILogger;
+  mockLogger: Logger;
   mockAssetsService: jest.Mocked<
     Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
   >;
@@ -435,7 +437,11 @@ describe('AccountsService', () => {
       };
 
       await withAccountsService(
-        async ({ accountsService, mockAccountsRepository }) => {
+        async ({
+          accountsService,
+          mockAccountsRepository,
+          mockLogger: accountsMockLogger,
+        }) => {
           // The first read sees nothing; a concurrent writer wins the merge,
           // so the winner only appears in the merge result.
           mockAccountsRepository.findByEntropySourceAndRange.mockResolvedValue(
@@ -457,6 +463,10 @@ describe('AccountsService', () => {
           expect(
             mockAccountsRepository.findByEntropySourceAndRange,
           ).toHaveBeenCalledTimes(1);
+          expect(accountsMockLogger.log).toHaveBeenCalledWith(
+            '[🔑 AccountsService]',
+            expect.stringMatching(/"created":0/u),
+          );
         },
         coinJson,
       );

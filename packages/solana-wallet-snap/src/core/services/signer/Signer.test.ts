@@ -1,4 +1,5 @@
 import {
+  getBase64Encoder,
   getSignatureFromTransaction,
   isTransactionMessageWithBlockhashLifetime,
 } from '@solana/kit';
@@ -12,8 +13,8 @@ import {
 } from '../../sdk-extensions/transaction-messages';
 import { deriveSolanaKeypairMock } from '../../test/mocks/utils/deriveSolanaKeypair';
 import logger from '../../utils/logger';
+import { createMockConnection } from '../__mocks__/mockConnection';
 import type { SolanaConnection } from '../connection';
-import { createMockConnection } from '../mocks/mockConnection';
 import { MOCK_SIGN_SCENARIO_JUPITERZ_WITH_DIFFERENT_FEE_PAYER } from './mocks/jupiterzWithDifferentFeePayer';
 import { MOCK_EXECUTION_SCENARIOS } from './mocks/scenarios';
 import { Signer } from './Signer';
@@ -116,6 +117,25 @@ describe('Signer', () => {
               transactionMessageAfterSigning,
             ),
           ).toBe(true);
+        });
+
+        it(`Scenario ${name}: preserves message bytes when requested`, async () => {
+          const originalMessageBytes = getBase64Encoder().encode(
+            transactionMessageBase64Encoded,
+          );
+
+          const result = await signer.partiallySignBase64String(
+            transactionMessageBase64Encoded,
+            fromAccount,
+            scope,
+            undefined,
+            true,
+          );
+
+          expect(result.messageBytes).toStrictEqual(originalMessageBytes);
+          expect(Object.values(result.signatures)).toStrictEqual([
+            expect.any(Uint8Array),
+          ]);
         });
       });
     });

@@ -4,9 +4,9 @@ import { Network } from '../../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
 import { EXPECTED_SPAM_TRANSACTION_DATA } from '../../../test/mocks/transactions-data/spam';
 import { EXPECTED_SPAM_TRANSACTION_DATA_2 } from '../../../test/mocks/transactions-data/spam-2';
+import { mockLogger } from '../../__mocks__/logger';
 import type { AssetsService } from '../../assets/AssetsService';
 import type { TokenHelper } from '../../assets/TokenHelper';
-import { mockLogger } from '../../mocks/logger';
 import { TransactionMapper } from '../TransactionMapper';
 import { isSpam } from './isSpam';
 

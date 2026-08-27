@@ -14,9 +14,11 @@ export class InFlightCoalescer {
       return pending as Promise<Result>;
     }
 
-    const task = fn().finally(() => {
-      this.#inFlight.delete(key);
-    });
+    const task = Promise.resolve()
+      .then(fn)
+      .finally(() => {
+        this.#inFlight.delete(key);
+      });
     this.#inFlight.set(key, task);
 
     return task;

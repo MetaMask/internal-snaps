@@ -1,15 +1,14 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import { validateOrigin } from '../../validation/validators';
 
 export class RpcHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
-  constructor({ logger }: { logger: ILogger }) {
-    this.#logger = createPrefixedLogger(logger, '[👋 RpcHandler]');
+  constructor({ logger }: { logger: Logger }) {
+    this.#logger = logger.withPrefix('[👋 RpcHandler]');
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {

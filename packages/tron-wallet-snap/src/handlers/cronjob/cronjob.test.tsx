@@ -18,7 +18,7 @@ import { FetchStatus } from '../../types/snap';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import type { ILogger } from '../../utils/logger';
+import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
 
 /**
@@ -239,21 +239,6 @@ function buildMockSignTransactionInterfaceContext(
 }
 
 /**
- * Builds a mock logger satisfying the ILogger interface.
- *
- * @returns A mock ILogger.
- */
-function buildMockLogger(): ILogger {
-  return {
-    log: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  };
-}
-
-/**
  * Builds a mock SnapClient with only the methods exercised by the
  * `refreshConfirmationSend` flow.
  *
@@ -399,7 +384,7 @@ function buildCronHandler({
   >;
 }): CronHandler {
   return new CronHandler({
-    logger: buildMockLogger(),
+    logger: mockLogger,
     accountsService: {} as AccountsService,
     snapClient: mockSnapClient as unknown as SnapClient,
     state: mockState as unknown as State<UnencryptedStateValue>,
@@ -961,7 +946,7 @@ describe('CronHandler', () => {
         getTransactionInfoById: jest.fn(),
       };
       const cronHandler = new CronHandler({
-        logger: buildMockLogger(),
+        logger: mockLogger,
         accountsService: mockAccountsService as unknown as AccountsService,
         snapClient: mockSnapClient as unknown as SnapClient,
         state: {} as unknown as State<UnencryptedStateValue>,

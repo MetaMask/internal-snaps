@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -11,7 +12,6 @@ import {
 import { Duration } from '@metamask/utils';
 
 import { Network, Networks } from '../../constants';
-import { UrlStruct } from '../../validation/structs';
 
 const ENVIRONMENT_TO_ACTIVE_NETWORKS = {
   production: [Network.Mainnet],
@@ -27,6 +27,7 @@ const CommaSeparatedListOfUrlsStruct = coerce(
 
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
+  LOG_LEVEL: enums(Object.values(LogLevel)),
   RPC_URL_LIST_MAINNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,
@@ -47,7 +48,7 @@ const EnvStruct = object({
   TRON_HTTP_BASE_URL_SHASTA: UrlStruct,
 });
 
-export type Env = Infer<typeof EnvStruct>;
+type Env = Infer<typeof EnvStruct>;
 
 export type NetworkConfig = (typeof Networks)[Network] & {
   rpcUrls: string[];
@@ -56,6 +57,7 @@ export type NetworkConfig = (typeof Networks)[Network] & {
 
 export type Config = {
   environment: string;
+  logLevel: LogLevel;
   networks: NetworkConfig[];
   activeNetworks: Network[];
   priceApi: {
@@ -116,6 +118,7 @@ export class ConfigProvider {
   #parseEnvironment(): Env {
     const rawEnvironment = {
       ENVIRONMENT: process.env.ENVIRONMENT,
+      LOG_LEVEL: process.env.LOG_LEVEL,
       // RPC
       RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET,
       RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_LIST_NILE_TESTNET,
@@ -148,6 +151,7 @@ export class ConfigProvider {
   #buildConfig(environment: Env): Config {
     return {
       environment: environment.ENVIRONMENT,
+      logLevel: environment.LOG_LEVEL,
       networks: [
         {
           ...Networks[Network.Mainnet],

@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -9,13 +10,11 @@ import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { trxToSun } from '../../utils/conversion';
 import { executeOnChainActions } from '../../utils/executeOnChainActions';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { NativeCaipAssetType, StakedCaipAssetType } from '../assets/types';
 
 export class StakingService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #accountsService: AccountsService;
 
@@ -29,12 +28,12 @@ export class StakingService {
     tronWebFactory,
     snapClient,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
     snapClient: SnapClient;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[💸 StakingService]');
+    this.#logger = logger.withPrefix('[💸 StakingService]');
     this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
     this.#snapClient = snapClient;

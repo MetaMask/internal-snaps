@@ -9,11 +9,11 @@ import {
   MOCK_SOLANA_RPC_GET_FEE_FOR_MESSAGE_RESPONSE,
   MOCK_SOLANA_RPC_GET_LATEST_BLOCKHASH_RESPONSE,
   MOCK_SOLANA_RPC_GET_MULTIPLE_ACCOUNTS_SWAP_RESPONSE,
-} from '../../../../core/services/mocks/mockSolanaRpcResponses';
+} from '../../../../core/services/__mocks__/mockSolanaRpcResponses';
 import {
   MOCK_SCAN_TRANSACTION_RESPONSE,
   MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE,
-} from '../../../../core/services/mocks/scanResponses';
+} from '../../../../core/services/__mocks__/scanResponses';
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,

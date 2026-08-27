@@ -1,0 +1,68 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
+
+import { createEventHandlers as createConfirmSendTransactionEvents } from '../../ui/confirmation/views/ConfirmSendTransaction/events';
+import { createEventHandlers as createSignAuthEntryEvents } from '../../ui/confirmation/views/ConfirmSignAuthEntry/events';
+import { createEventHandlers as createSignChangeTrustOptInEvents } from '../../ui/confirmation/views/ConfirmSignChangeTrustOptIn/events';
+import { createEventHandlers as createSignChangeTrustOptOutEvents } from '../../ui/confirmation/views/ConfirmSignChangeTrustOptOut/events';
+import { createEventHandlers as createSignMessageEvents } from '../../ui/confirmation/views/ConfirmSignMessage/events';
+import { createEventHandlers as createSignTransactionEvents } from '../../ui/confirmation/views/ConfirmSignTransaction/events';
+import { createEventHandlers as createMaliciousAcknowledgementEvents } from '../../ui/confirmation/views/MaliciousAcknowledgement/events';
+import { withCatchAndThrowSnapError } from '../../utils';
+import type { UserInputUiEventHandler } from './api';
+
+export class UserInputHandler {
+  readonly #logger: Logger;
+
+  constructor({ logger }: { logger: Logger }) {
+    this.#logger = logger.withPrefix('[👵 UserInputHandler]');
+  }
+
+  /**
+   * Handle user events requests.
+   *
+   * @param args - The request handler args as object.
+   * @param args.id - The interface id associated with the event.
+   * @param args.event - The event object.
+   * @param args.context - The context object.
+   * @returns A promise that resolves to a JSON object.
+   * @throws If the request method is not valid for this snap.
+   */
+  async handle({
+    id,
+    event,
+    context,
+  }: {
+    id: string;
+    event: UserInputEvent;
+    context: InterfaceContext | null;
+  }): Promise<void> {
+    this.#logger.debug('[👇 onUserInput]', id, event);
+
+    if (!event.name) {
+      return;
+    }
+    const uiEventHandlers: Record<string, UserInputUiEventHandler> = {
+      ...createSignMessageEvents(),
+      ...createSignTransactionEvents(),
+      ...createSignAuthEntryEvents(),
+      ...createSignChangeTrustOptInEvents(),
+      ...createSignChangeTrustOptOutEvents(),
+      ...createConfirmSendTransactionEvents(),
+      ...createMaliciousAcknowledgementEvents(),
+    };
+
+    /**
+     * Using the name of the event, route it to the correct handler
+     */
+    const handler = uiEventHandlers[event.name];
+
+    if (!handler) {
+      return;
+    }
+
+    await withCatchAndThrowSnapError(async () =>
+      handler({ id, event, context }),
+    );
+  }
+}

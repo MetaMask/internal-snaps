@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
@@ -30,8 +31,6 @@ import {
 import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network } from '../../constants/solana';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { TokenHelper } from '../assets/TokenHelper';
 import type { SolanaConnection } from '../connection';
 
@@ -52,7 +51,7 @@ export class ApproveTokenService {
 
   readonly #tokenHelper: TokenHelper;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   /**
    * The transaction built here consumes up to ~10,000 compute units when approving
@@ -66,11 +65,11 @@ export class ApproveTokenService {
   constructor(
     connection: SolanaConnection,
     tokenHelper: TokenHelper,
-    logger: ILogger,
+    logger: Logger,
   ) {
     this.#connection = connection;
     this.#tokenHelper = tokenHelper;
-    this.#logger = createPrefixedLogger(logger, '[🔐 ApproveTokenService]');
+    this.#logger = logger.withPrefix('[🔐 ApproveTokenService]');
   }
 
   /**

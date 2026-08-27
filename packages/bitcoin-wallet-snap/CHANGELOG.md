@@ -20,12 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
 - Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#150](https://github.com/MetaMask/internal-snaps/pull/150))
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
+- Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
 
 ## [2.0.1]
 
 ### Fixed
 
 - Fix `onKeyringRequest` responses to correctly return `Json` directly (v2 protocol) instead of v1's `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
+
+- Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ## [2.0.0] [DEPRECATED]
 

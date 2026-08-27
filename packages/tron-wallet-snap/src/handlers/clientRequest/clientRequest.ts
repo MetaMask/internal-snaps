@@ -1,4 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -40,8 +41,6 @@ import { TransactionMapper } from '../../services/transactions/TransactionsMappe
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
 import { trxToSun } from '../../utils/conversion';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
@@ -74,7 +73,7 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
 };
 
 export class ClientRequestHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #accountsService: AccountsService;
 
@@ -109,7 +108,7 @@ export class ClientRequestHandler {
     transactionsService,
     transactionExpirationRefresherService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountsService: AccountsService;
     assetsService: AssetsService;
     sendService: SendService;
@@ -121,7 +120,7 @@ export class ClientRequestHandler {
     transactionsService: TransactionsService;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[👋 ClientRequestHandler]');
+    this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#sendService = sendService;

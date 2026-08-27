@@ -10,6 +10,7 @@ import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
 import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
+import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
@@ -197,6 +198,7 @@ async function withConfirmationHandler<ReturnValue>(
     tronWebFactory: mockTronWebFactory,
     assetsService: mockAssetsService,
     feeCalculatorService: mockFeeCalculatorService,
+    logger: mockLogger,
   });
 
   return await testFunction({

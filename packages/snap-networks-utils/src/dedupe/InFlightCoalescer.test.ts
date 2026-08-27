@@ -21,10 +21,26 @@ describe('InFlightCoalescer', () => {
 
     const first = coalescer.run('key', fn);
     const second = coalescer.run('key', fn);
+    await Promise.resolve();
     resolveRun('shared');
 
     expect(await first).toBe('shared');
     expect(await second).toBe('shared');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares one in-flight run with a same-key reentrant caller', async () => {
+    const coalescer = new InFlightCoalescer();
+    let reentrant: Promise<string> | undefined;
+    const fn = jest.fn(async () => {
+      reentrant = coalescer.run('key', async () => 'duplicate');
+      return 'shared';
+    });
+
+    const result = await coalescer.run('key', fn);
+
+    expect(result).toBe('shared');
+    expect(await reentrant).toBe('shared');
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
@@ -66,6 +82,7 @@ describe('InFlightCoalescer', () => {
 
     const first = coalescer.run('key', failing);
     const second = coalescer.run('key', failing);
+    await Promise.resolve();
     rejectRun(new Error('boom'));
 
     await expect(first).rejects.toThrow('boom');

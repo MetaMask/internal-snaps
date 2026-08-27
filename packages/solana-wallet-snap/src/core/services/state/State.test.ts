@@ -3,7 +3,7 @@
 import BigNumber from 'bignumber.js';
 
 import { EventEmitter } from '../../../infrastructure/event-emitter/EventEmitter';
-import { mockLogger } from '../mocks/logger';
+import { mockLogger } from '../__mocks__/logger';
 import { State } from './State';
 
 const snap = {
@@ -84,6 +84,12 @@ describe('State', () => {
       const stateValue = await state.get();
 
       expect(stateValue).toStrictEqual(DEFAULT_STATE);
+    });
+
+    it('preserves defaults when persisted state values are undefined', async () => {
+      snap.request.mockResolvedValue({ users: undefined });
+
+      expect(await state.get()).toStrictEqual(DEFAULT_STATE);
     });
 
     describe('when getting serialized non-JSON values', () => {

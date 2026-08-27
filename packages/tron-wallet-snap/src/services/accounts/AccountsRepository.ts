@@ -20,8 +20,8 @@ type KeyringAccountsState = Record<string, TronKeyringAccount>;
 /**
  * Result of merging accounts into `keyringAccounts`.
  *
- * @param merged - The full post-merge keyring accounts state.
- * @param added - The subset of incoming accounts that was actually persisted;
+ * @property merged - The full post-merge keyring accounts state.
+ * @property added - The subset of incoming accounts that was actually persisted;
  * conflict losers are omitted (their winners are present in `merged`).
  */
 export type KeyringAccountsMergeResult = {

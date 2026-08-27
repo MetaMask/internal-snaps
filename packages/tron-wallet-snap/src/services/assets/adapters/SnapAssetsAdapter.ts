@@ -5,6 +5,7 @@ import type {
   KeyringAccount,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   AssetMetadata,
@@ -55,8 +56,6 @@ import {
 } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
-import { createPrefixedLogger } from '../../../utils/logger';
-import type { ILogger } from '../../../utils/logger';
 import type { ConfigProvider } from '../../config';
 import type { State, UnencryptedStateValue } from '../../state/State';
 import type { AssetsRepository } from '../AssetsRepository';
@@ -101,7 +100,7 @@ type NormalizedAccountData = {
 };
 
 export class SnapAssetsAdapter {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #assetsRepository: AssetsRepository;
 
@@ -136,7 +135,7 @@ export class SnapAssetsAdapter {
     snapClient,
     configProvider,
   }: {
-    logger: ILogger;
+    logger: Logger;
     assetsRepository: AssetsRepository;
     state: State<UnencryptedStateValue>;
     trongridApiClient: TrongridApiClient;
@@ -146,7 +145,7 @@ export class SnapAssetsAdapter {
     snapClient: SnapClient;
     configProvider: ConfigProvider;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🪙 SnapAssetsAdapter]');
+    this.#logger = logger.withPrefix('[🪙 SnapAssetsAdapter]');
     this.#assetsRepository = assetsRepository;
     this.#state = state;
     this.#trongridApiClient = trongridApiClient;
