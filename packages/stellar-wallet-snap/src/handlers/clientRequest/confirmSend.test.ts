@@ -41,14 +41,25 @@ import {
 import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
+  InvalidAmountForCreateAccountException,
+  InvalidAssetForCreateAccountException,
+  RequiresMemoException,
+  TransactionExpireException,
   TransactionValidationException,
+  TrustlineExceedLimitException,
+  TrustlineNotAuthorizedException,
+  TrustlineNotFoundException,
   XdrParseException,
 } from '../../services/transaction/exceptions';
 import { KeyringTransactionType } from '../../services/transaction/KeyringTransactionBuilder';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
-import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
+import {
+  ConfirmationInterfaceKey,
+  FetchStatus,
+} from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
+import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import * as errorUtils from '../../utils/errors';
 import { logger } from '../../utils/logger';
 import * as snapUtils from '../../utils/snap';
@@ -475,66 +486,183 @@ describe('ConfirmSendHandler', () => {
     expect(sendTransaction).not.toHaveBeenCalled();
   });
 
-  it('returns insufficient balance when createValidatedSendTransaction throws InsufficientBalanceException', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
-    createValidatedSendTransaction.mockRejectedValueOnce(
-      new InsufficientBalanceException('0', '1'),
+  describe('pre-submit validation errors', () => {
+    it.each([
+      {
+        error: new InsufficientBalanceException('0', '1'),
+        code: MultiChainSendErrorCodes.InsufficientBalance,
+        message: 'confirmation.txnError.insufficientBalance',
+      },
+      {
+        error: new InsufficientBalanceToCoverFeeException('0', '1'),
+        code: MultiChainSendErrorCodes.InsufficientBalanceToCoverFee,
+        message: 'confirmation.txnError.insufficientBalanceToCoverFee',
+      },
+      {
+        error: new RequiresMemoException(destinationAddress),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.requiresMemo',
+      },
+      {
+        error: new InvalidAmountForCreateAccountException('0.5'),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.invalidCreateAccountAmount',
+      },
+      {
+        error: new InvalidAssetForCreateAccountException(assetId),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.invalidCreateAccountAsset',
+      },
+      {
+        error: new TrustlineNotAuthorizedException(assetId, destinationAddress),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.trustlineNotAuthorized',
+      },
+      {
+        error: new TrustlineNotFoundException(assetId, destinationAddress),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.trustlineNotFound',
+      },
+      {
+        error: new TrustlineExceedLimitException(assetId),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.trustlineExceedLimit',
+      },
+      {
+        error: new TransactionExpireException(0),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.expired',
+      },
+      {
+        error: new TransactionValidationException('x'),
+        code: MultiChainSendErrorCodes.Invalid,
+        message: 'confirmation.txnError.generic',
+      },
+    ])(
+      'shows the send confirmation with $message then returns $code',
+      async ({ error, code, message }) => {
+        const {
+          handler,
+          account,
+          assetMetadata,
+          createValidatedSendTransaction,
+          renderConfirmationDialog,
+          signTransactionSpy,
+          sendTransaction,
+        } = setup();
+        createValidatedSendTransaction.mockRejectedValueOnce(error);
+
+        expect(await handler.handle(baseRequest())).toStrictEqual({
+          valid: false,
+          errors: [{ code }],
+        });
+        expect(renderConfirmationDialog).toHaveBeenCalledWith({
+          scope,
+          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+          fee: '',
+          origin: METAMASK_ORIGIN,
+          renderContext: {
+            account,
+            toAddress: destinationAddress,
+            transactionsFetchStatus: FetchStatus.Error,
+            errorMessage: message,
+          },
+          renderOptions: {
+            loadPrice: false,
+            securityScanning: false,
+            localSimulation: false,
+          },
+          initialScan: {
+            status: 'ERROR',
+            estimatedChanges: {
+              assets: [
+                {
+                  type: AssetChangeDirection.Out,
+                  value: '1',
+                  price: null,
+                  symbol: assetMetadata.symbol,
+                  name: assetMetadata.name,
+                  logo: assetMetadata.iconUrl,
+                },
+              ],
+            },
+            validation: null,
+            error: null,
+          },
+          tokenPrices: {
+            [assetId]: null,
+          },
+        });
+        expect(signTransactionSpy).not.toHaveBeenCalled();
+        expect(sendTransaction).not.toHaveBeenCalled();
+      },
     );
+
+    it('returns the error code after the user dismisses the validation confirmation', async () => {
+      const {
+        handler,
+        createValidatedSendTransaction,
+        renderConfirmationDialog,
+      } = setup();
+      createValidatedSendTransaction.mockRejectedValueOnce(
+        new RequiresMemoException(destinationAddress),
+      );
+      renderConfirmationDialog.mockResolvedValue(false);
+
+      expect(await handler.handle(baseRequest())).toStrictEqual({
+        valid: false,
+        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
+      });
+    });
+  });
+
+  it('returns error codes without a second confirmation when refresh fails after approval', async () => {
+    const {
+      handler,
+      transaction,
+      createValidatedSendTransaction,
+      renderConfirmationDialog,
+      signTransactionSpy,
+      sendTransaction,
+    } = setup();
+    createValidatedSendTransaction
+      .mockResolvedValueOnce(transaction)
+      .mockRejectedValueOnce(new InsufficientBalanceException('0', '1'));
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
       errors: [{ code: MultiChainSendErrorCodes.InsufficientBalance }],
     });
-  });
-
-  it('returns insufficient balance to cover fee when createValidatedSendTransaction throws InsufficientBalanceToCoverFeeException', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
-    createValidatedSendTransaction.mockRejectedValueOnce(
-      new InsufficientBalanceToCoverFeeException('0', '1'),
+    expect(renderConfirmationDialog).toHaveBeenCalledTimes(1);
+    expect(renderConfirmationDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        renderOptions: {
+          loadPrice: true,
+          securityScanning: true,
+          localSimulation: true,
+        },
+      }),
     );
-
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [
-        { code: MultiChainSendErrorCodes.InsufficientBalanceToCoverFee },
-      ],
-    });
+    expect(signTransactionSpy).not.toHaveBeenCalled();
+    expect(sendTransaction).not.toHaveBeenCalled();
   });
 
-  it('returns invalid when createValidatedSendTransaction throws TransactionValidationException', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
-    createValidatedSendTransaction.mockRejectedValueOnce(
-      new TransactionValidationException('x'),
-    );
-
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
-  });
-
-  it('returns invalid when createValidatedSendTransaction throws AccountNotActivatedException', async () => {
-    const { handler, createValidatedSendTransaction, wallet } = setup();
-    createValidatedSendTransaction.mockRejectedValueOnce(
-      new AccountNotActivatedException(wallet.address, scope),
-    );
-
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
-  });
-
-  it('returns invalid when on-chain account is not activated', async () => {
-    const { handler, resolveOnChainAccountSpy, wallet } = setup();
+  it('shows the account activation prompt when the sender account is not activated', async () => {
+    const {
+      handler,
+      resolveOnChainAccountSpy,
+      renderConfirmationDialog,
+      wallet,
+    } = setup();
     resolveOnChainAccountSpy.mockRejectedValueOnce(
       new AccountNotActivatedException(wallet.address, scope),
     );
 
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
+    await expect(handler.handle(baseRequest())).rejects.toThrow(
+      AccountNotActivatedException,
+    );
+    expect(renderAccountActivationPrompt).toHaveBeenCalledWith(wallet.address);
+    expect(renderConfirmationDialog).not.toHaveBeenCalled();
   });
 
   it('returns invalid and tracks when createValidatedSendTransaction throws XdrParseException', async () => {

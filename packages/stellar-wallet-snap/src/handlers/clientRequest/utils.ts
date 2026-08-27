@@ -1,5 +1,20 @@
-import { TransactionValidationException } from '../../services/transaction';
 import type { Transaction } from '../../services/transaction';
+import {
+  InsufficientBalanceException,
+  InsufficientBalanceToCoverBaseReserveException,
+  InsufficientBalanceToCoverFeeException,
+  InvalidAmountForCreateAccountException,
+  InvalidAssetForCreateAccountException,
+  RemoveTrustlineWithNonZeroBalanceException,
+  RequiresMemoException,
+  TransactionExpireException,
+  TransactionValidationException,
+  TrustlineExceedLimitException,
+  TrustlineNotAuthorizedException,
+  TrustlineNotFoundException,
+  UpdateTrustlineException,
+} from '../../services/transaction';
+import type { LocalizedMessage } from '../../utils';
 
 /**
  * Guards the user-approved fee during submit-time transaction refresh.
@@ -26,4 +41,60 @@ export function assertRefreshedTransactionFeeNotHigher(params: {
       'Refreshed transaction fee exceeds confirmed fee',
     );
   }
+}
+
+/**
+ * Maps a displayable transaction validation error to its confirmation banner copy.
+ *
+ * Shared by send and change-trust confirmations. Unmapped subclasses fall back
+ * to `confirmation.txnError.generic`.
+ *
+ * @param error - The validation error shown in the confirmation banner.
+ * @param senderAddress - The sender account address, used to tell destination
+ * vs own-account trustline failures apart.
+ * @returns The localized message key for the banner subtitle.
+ */
+export function getTxnErrorMessageKey(
+  error: TransactionValidationException,
+  senderAddress: string,
+): LocalizedMessage {
+  if (error instanceof InsufficientBalanceException) {
+    return 'confirmation.txnError.insufficientBalance';
+  }
+  if (error instanceof InsufficientBalanceToCoverFeeException) {
+    return 'confirmation.txnError.insufficientBalanceToCoverFee';
+  }
+  if (error instanceof InsufficientBalanceToCoverBaseReserveException) {
+    return 'confirmation.txnError.insufficientBalanceToCoverBaseReserve';
+  }
+  if (error instanceof RequiresMemoException) {
+    return 'confirmation.txnError.requiresMemo';
+  }
+  if (error instanceof InvalidAmountForCreateAccountException) {
+    return 'confirmation.txnError.invalidCreateAccountAmount';
+  }
+  if (error instanceof InvalidAssetForCreateAccountException) {
+    return 'confirmation.txnError.invalidCreateAccountAsset';
+  }
+  if (error instanceof TrustlineNotAuthorizedException) {
+    return 'confirmation.txnError.trustlineNotAuthorized';
+  }
+  if (error instanceof TrustlineNotFoundException) {
+    return error.accountAddress === senderAddress
+      ? 'confirmation.txnError.trustlineNotFoundOnAccount'
+      : 'confirmation.txnError.trustlineNotFound';
+  }
+  if (error instanceof TrustlineExceedLimitException) {
+    return 'confirmation.txnError.trustlineExceedLimit';
+  }
+  if (error instanceof RemoveTrustlineWithNonZeroBalanceException) {
+    return 'confirmation.txnError.trustlineNonZeroBalance';
+  }
+  if (error instanceof UpdateTrustlineException) {
+    return 'confirmation.txnError.updateTrustlineLimit';
+  }
+  if (error instanceof TransactionExpireException) {
+    return 'confirmation.txnError.expired';
+  }
+  return 'confirmation.txnError.generic';
 }

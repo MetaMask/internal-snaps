@@ -148,11 +148,47 @@
     "confirmation.simulationErrorSubtitle": {
       "message": "{reason}"
     },
-    "confirmation.transactionInvalidTitle": {
-      "message": "Transaction is no longer valid"
+    "confirmation.txnError.requiresMemo": {
+      "message": "This account requires a memo. Sends to it are not supported."
     },
-    "confirmation.transactionInvalidSubtitle": {
-      "message": "It may have expired or your account balance changed. Close this request and try again."
+    "confirmation.txnError.invalidCreateAccountAmount": {
+      "message": "Update Send Amount. A new account requires 1 XLM minimum."
+    },
+    "confirmation.txnError.invalidCreateAccountAsset": {
+      "message": "Update Send Asset. New accounts must first be funded by 1 XLM."
+    },
+    "confirmation.txnError.trustlineNotAuthorized": {
+      "message": "The destination is not authorized to receive this asset."
+    },
+    "confirmation.txnError.trustlineNotFound": {
+      "message": "The destination has not activated a trustline for this asset."
+    },
+    "confirmation.txnError.trustlineNotFoundOnAccount": {
+      "message": "This account has not activated a trustline for this asset."
+    },
+    "confirmation.txnError.trustlineExceedLimit": {
+      "message": "This payment would exceed the destination's trustline limit."
+    },
+    "confirmation.txnError.insufficientBalance": {
+      "message": "Insufficient balance for this transaction."
+    },
+    "confirmation.txnError.insufficientBalanceToCoverFee": {
+      "message": "Insufficient balance to cover the network fee."
+    },
+    "confirmation.txnError.generic": {
+      "message": "This transaction cannot be completed. Close this request and try again."
+    },
+    "confirmation.txnError.trustlineNonZeroBalance": {
+      "message": "Send or swap the remaining balance before removing this trustline."
+    },
+    "confirmation.txnError.updateTrustlineLimit": {
+      "message": "The new trustline limit cannot be below the current balance."
+    },
+    "confirmation.txnError.insufficientBalanceToCoverBaseReserve": {
+      "message": "Insufficient balance to cover the account reserve."
+    },
+    "confirmation.txnError.expired": {
+      "message": "This transaction has expired. Close this request and try again."
     },
     "confirmation.validationScanErrorTitle": {
       "message": "Security check unavailable"
