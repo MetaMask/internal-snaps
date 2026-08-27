@@ -342,8 +342,8 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     fee: string;
     transaction: Transaction;
     confirmationInterfaceKey:
-      | ConfirmationInterfaceKey.ChangeTrustlineOptIn
-      | ConfirmationInterfaceKey.ChangeTrustlineOptOut;
+      | typeof ConfirmationInterfaceKey.ChangeTrustlineOptIn
+      | typeof ConfirmationInterfaceKey.ChangeTrustlineOptOut;
   }): Promise<boolean> {
     const {
       request,

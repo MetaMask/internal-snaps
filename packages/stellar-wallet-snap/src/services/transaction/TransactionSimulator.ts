@@ -51,13 +51,16 @@ type SupportedOPType =
 /**
  * Stellar operation kinds used when validating or simulating transactions.
  */
-export enum SupportedOperations {
-  Payment = 'payment',
-  PathPayment = 'pathPayment',
-  CreateAccount = 'createAccount',
-  ChangeTrust = 'changeTrust',
-  InvokeHostFunction = 'invokeHostFunction',
-}
+export const SupportedOperations = {
+  Payment: 'payment',
+  PathPayment: 'pathPayment',
+  CreateAccount: 'createAccount',
+  ChangeTrust: 'changeTrust',
+  InvokeHostFunction: 'invokeHostFunction',
+} as const;
+
+export type SupportedOperations =
+  (typeof SupportedOperations)[keyof typeof SupportedOperations];
 
 /**
  * Optional settings for {@link TransactionSimulator.simulate}.

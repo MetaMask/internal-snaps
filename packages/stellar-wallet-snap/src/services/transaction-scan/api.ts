@@ -28,33 +28,45 @@ import { KnownCaip2ChainId, XdrStruct } from '../../api';
  *
  * @see packages/snap/src/ui/confirmation/components/TransactionAlert.tsx
  */
-export enum TransactionScanErrorId {
-  InsufficientBalance = 'insufficientbalance',
-  InsufficientFunds = 'insufficientfunds',
-  InvalidTransaction = 'invalidtransaction',
-  InvalidAddress = 'invalidaddress',
-  NoTrustline = 'notrustline',
-  TransactionExpired = 'transactionexpired',
-}
+export const TransactionScanErrorId = {
+  InsufficientBalance: 'insufficientbalance',
+  InsufficientFunds: 'insufficientfunds',
+  InvalidTransaction: 'invalidtransaction',
+  InvalidAddress: 'invalidaddress',
+  NoTrustline: 'notrustline',
+  TransactionExpired: 'transactionexpired',
+} as const;
+
+export type TransactionScanErrorId =
+  (typeof TransactionScanErrorId)[keyof typeof TransactionScanErrorId];
 
 /** TransactionScanOption - Options for the transaction scan. */
-export enum TransactionScanOption {
-  Simulation = 'simulation',
-  Validation = 'validation',
-}
+export const TransactionScanOption = {
+  Simulation: 'simulation',
+  Validation: 'validation',
+} as const;
+
+export type TransactionScanOption =
+  (typeof TransactionScanOption)[keyof typeof TransactionScanOption];
 
 /** TransactionScanValidationType */
-export enum TransactionScanValidationType {
-  Benign = 'Benign',
-  Warning = 'Warning',
-  Malicious = 'Malicious',
-}
+export const TransactionScanValidationType = {
+  Benign: 'Benign',
+  Warning: 'Warning',
+  Malicious: 'Malicious',
+} as const;
+
+export type TransactionScanValidationType =
+  (typeof TransactionScanValidationType)[keyof typeof TransactionScanValidationType];
 
 /** AssetChangeDirection - Direction of an estimated balance change relative to the signer. */
-export enum AssetChangeDirection {
-  In = 'in',
-  Out = 'out',
-}
+export const AssetChangeDirection = {
+  In: 'in',
+  Out: 'out',
+} as const;
+
+export type AssetChangeDirection =
+  (typeof AssetChangeDirection)[keyof typeof AssetChangeDirection];
 
 /** Security Alerts API chain identifier. */
 export type SecurityAlertsChain = 'pubnet' | 'testnet' | 'futurenet';
