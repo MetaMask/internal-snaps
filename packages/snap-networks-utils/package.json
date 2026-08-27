@@ -32,6 +32,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./dedupe": {
+      "import": {
+        "types": "./dist/dedupe/index.d.mts",
+        "default": "./dist/dedupe/index.mjs"
+      },
+      "require": {
+        "types": "./dist/dedupe/index.d.cts",
+        "default": "./dist/dedupe/index.cjs"
+      }
+    },
     "./logger": {
       "import": {
         "types": "./dist/logger/index.d.mts",
