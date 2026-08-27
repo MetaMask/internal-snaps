@@ -18,6 +18,18 @@ type AccountCreationRange = {
 type KeyringAccountsState = Record<string, TronKeyringAccount>;
 
 /**
+ * Result of merging accounts into `keyringAccounts`.
+ *
+ * @property merged - The full post-merge keyring accounts state.
+ * @property added - The subset of incoming accounts that was actually persisted;
+ * conflict losers are omitted (their winners are present in `merged`).
+ */
+export type KeyringAccountsMergeResult = {
+  merged: Record<string, TronKeyringAccount>;
+  added: Record<string, TronKeyringAccount>;
+};
+
+/**
  * Tron accounts use a fixed BIP-44 path template; uniqueness is entropy + index.
  *
  * @param account - The account to key.
@@ -165,17 +177,24 @@ export class AccountsRepository {
    * Merges multiple keyring accounts into `keyringAccounts` in a single atomic state update.
    *
    * @param newAccounts - The new accounts to merge.
+   * @returns The post-merge state and the subset of accounts actually added,
+   * so callers can resolve persisted accounts (including conflict winners)
+   * without re-reading state.
    */
   async mergeKeyringAccounts(
     newAccounts: Record<string, TronKeyringAccount>,
-  ): Promise<void> {
+  ): Promise<KeyringAccountsMergeResult> {
+    let result: KeyringAccountsMergeResult = { merged: {}, added: {} };
+
     await this.#state.setKeyWith<KeyringAccountsState>(
       this.#storageKey,
       (current) => {
-        const existing = current ?? {};
-        return mergeAccountsWithoutIndexConflicts(existing, newAccounts).merged;
+        result = mergeAccountsWithoutIndexConflicts(current ?? {}, newAccounts);
+        return result.merged;
       },
     );
+
+    return result;
   }
 
   async delete(id: string): Promise<void> {

@@ -2,10 +2,15 @@ import type { Asset } from '@metamask/assets-controller';
 
 import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
-import { toUiAmount } from '../../../utils/conversion';
+import { toRawAmount } from '../../../utils/conversion';
 
 /**
  * Maps an AssetsController asset to the Snap's {@link AssetEntity} shape.
+ *
+ * The AssetsController returns balances in the asset's human-readable unit
+ * (i.e. with decimals already applied, e.g. TRX rather than Sun), so the
+ * source amount is used directly as the UI amount and the raw amount is
+ * derived from it.
  *
  * @param accountId - Keyring account ID.
  * @param asset - Asset returned by AssetsController.
@@ -27,8 +32,8 @@ export function mapControllerAsset(
     network: asset.chainId as Network,
     symbol,
     decimals,
-    rawAmount: amount,
-    uiAmount: toUiAmount(amount, decimals).toString(),
+    rawAmount: toRawAmount(amount, decimals),
+    uiAmount: amount,
     iconUrl,
   } as AssetEntity;
 }

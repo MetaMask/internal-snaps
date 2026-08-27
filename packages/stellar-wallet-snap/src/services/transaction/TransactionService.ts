@@ -1,4 +1,5 @@
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 
 import type {
   KnownCaip19AssetIdOrSlip44Id,
@@ -8,8 +9,6 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isSep41Id, isSlip44Id, trackErrorIfNeeded } from '../../utils';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type { AccountService } from '../account';
 import type { StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
@@ -20,7 +19,10 @@ import {
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import type { ActivatedAccountPair } from '../sync/api';
 import type { Wallet } from '../wallet';
-import { InsufficientBalanceException } from './exceptions';
+import {
+  InsufficientBalanceException,
+  InvalidAssetForCreateAccountException,
+} from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
 import { Transaction } from './Transaction';
@@ -39,7 +41,7 @@ import {
 } from './utils';
 
 export class TransactionService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #transactionRepository: TransactionRepository;
 
@@ -58,13 +60,13 @@ export class TransactionService {
     transactionBuilder,
     accountService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     transactionRepository: TransactionRepository;
     networkService: NetworkService;
     transactionBuilder: TransactionBuilder;
     accountService: AccountService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🧾 TransactionService]');
+    this.#logger = logger.withPrefix('[🧾 TransactionService]');
     this.#transactionRepository = transactionRepository;
     this.#networkService = networkService;
     this.#transactionBuilder = transactionBuilder;
@@ -181,9 +183,9 @@ export class TransactionService {
 
     // If it is SEP-41, run SEP-41 transfer flow to build and validate the transaction
     if (isSep41) {
-      // fail early if the destination account is not activated
+      // fail early: SEP-41 cannot fund a new account
       if (destinationAccount === null) {
-        throw new AccountNotActivatedException(destination, scope);
+        throw new InvalidAssetForCreateAccountException(assetId);
       }
 
       return this.#createValidatedSep41Transfer({
@@ -311,7 +313,7 @@ export class TransactionService {
    * If the destination is not activated, a `createAccount` operation can only
    * be added for slip44/native asset transfers. For non-slip44 classic assets,
    * the destination account must already be activated or an
-   * `AccountNotActivatedException` will be thrown.
+   * `InvalidAssetForCreateAccountException` will be thrown.
    * If the destination is activated, a payment operation will be added to the
    * transaction.
    *
@@ -343,9 +345,9 @@ export class TransactionService {
 
     const isDestinationActivated = destinationAccount !== null;
 
-    // fail early if the destination account is not activated and the asset is not slip44
+    // fail early: classic issued assets cannot fund a new account
     if (!isDestinationActivated && !isSlip44Id(assetId)) {
-      throw new AccountNotActivatedException(destination, scope);
+      throw new InvalidAssetForCreateAccountException(assetId);
     }
 
     const baseFee = await this.getBaseFee(scope);

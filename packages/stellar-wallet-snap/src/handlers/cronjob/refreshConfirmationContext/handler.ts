@@ -1,9 +1,8 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 
 import type { ConfirmationInterfaceKey } from '../../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../../ui/confirmation/controller';
-import type { ILogger } from '../../../utils/logger';
-import { createPrefixedLogger } from '../../../utils/logger';
 import {
   Duration,
   getInterfaceContextIfExists,
@@ -57,12 +56,11 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
     confirmationUIController,
     refreshers,
   }: {
-    logger: ILogger;
+    logger: Logger;
     confirmationUIController: ConfirmationUXController;
     refreshers: ConfirmationContextRefreshers;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
+    const prefixedLogger = logger.withPrefix(
       '[🔄 RefreshConfirmationContextHandler]',
     );
     super({

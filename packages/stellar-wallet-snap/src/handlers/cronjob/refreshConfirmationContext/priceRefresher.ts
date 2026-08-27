@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../../api';
@@ -7,8 +8,6 @@ import {
   ContextWithPricesStruct,
   FetchStatus,
 } from '../../../ui/confirmation/api';
-import type { ILogger } from '../../../utils/logger';
-import { createPrefixedLogger } from '../../../utils/logger';
 import { ConfirmationContextRefresherKey } from './api';
 import type {
   ConfirmationContextRefreshResult,
@@ -25,20 +24,17 @@ export class ConfirmationPriceRefresher implements IConfirmationContextRefresher
 
   readonly #priceService: PriceService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     logger,
     priceService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     priceService: PriceService;
   }) {
     this.#priceService = priceService;
-    this.#logger = createPrefixedLogger(
-      logger,
-      '[🔄 ConfirmationPriceRefresher]',
-    );
+    this.#logger = logger.withPrefix('[🔄 ConfirmationPriceRefresher]');
   }
 
   shouldFetch(ctx: ConfirmationDataContext): boolean {

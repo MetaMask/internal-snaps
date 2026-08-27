@@ -2,6 +2,7 @@
 import { FeeType } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
+import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -14,8 +15,9 @@ import { TrongridAccountNotFoundError } from '../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import type { Network } from '../../constants';
 import {
-  ACCOUNT_ACTIVATION_FEE_TRX,
   FALLBACK_ACCOUNT_UPGRADE_COST_SUN,
+  FALLBACK_CREATE_ACCOUNT_FEE_SUN,
+  FALLBACK_CREATE_NEW_ACCOUNT_FEE_SUN,
   FALLBACK_ENERGY_PRICE_SUN,
   FALLBACK_GET_ENERGY_FEE_SUN,
   FALLBACK_GET_TRANSACTION_FEE_SUN,
@@ -25,7 +27,11 @@ import {
   ZERO,
 } from '../../constants';
 import { FeeUnavailableError } from './errors';
-import type { ComputeFeeResult } from './types';
+import type {
+  ActivationAssessment,
+  ActivationTransfer,
+  ComputeFeeResult,
+} from './types';
 
 type Transaction = TronwebTypes.Transaction;
 
@@ -624,69 +630,185 @@ export class FeeCalculatorService {
   }
 
   /**
-   * Calculate account activation fees for the transaction.
-   * This happens when sending native TRX to addresses that haven't been activated yet.
+   * Collect TRX and TRC-10 transfers that can activate a recipient.
    *
-   * @param options - The options object
-   * @param options.scope - The network scope to check
-   * @param options.transaction - The transaction to check for activation fee requirement
-   * @returns Promise<BigNumber> - The total activation fees in TRX
+   * @param transaction - The transaction to inspect.
+   * @returns Transfer legs with owner and recipient addresses.
    */
-  async #accountActivationFees({
+  #getActivationTransfers(transaction: Transaction): ActivationTransfer[] {
+    const contracts = transaction.raw_data.contract;
+    if (!contracts || contracts.length === 0) {
+      return [];
+    }
+
+    const transfers: ActivationTransfer[] = [];
+
+    for (const contract of contracts) {
+      const contractType = contract.type as string;
+      if (
+        contractType !== 'TransferContract' &&
+        contractType !== 'TransferAssetContract'
+      ) {
+        continue;
+      }
+
+      const {
+        amount,
+        to_address: toAddress,
+        owner_address: ownerAddress,
+      } = contract.parameter.value as {
+        amount: number;
+        to_address: string;
+        owner_address: string;
+      };
+
+      if (amount > 0 && toAddress) {
+        transfers.push({ toAddress, ownerAddress });
+      }
+    }
+
+    return transfers;
+  }
+
+  /**
+   * Convert a hex or Base58 TRON address to Base58 for FullNode APIs that
+   * use `visible: true`.
+   *
+   * @param address - Hex (`41…`) or Base58 (`T…`) address.
+   * @returns Base58 address, or the original string if conversion fails.
+   */
+  #toBase58Address(address: string): string {
+    if (address.startsWith('T')) {
+      return address;
+    }
+
+    try {
+      return TronWeb.address.fromHex(address);
+    } catch {
+      return address;
+    }
+  }
+
+  /**
+   * Sender staked Bandwidth remaining (`NetLimit - NetUsed`). Daily free
+   * Bandwidth cannot pay for account activation.
+   *
+   * @param scope - Network scope.
+   * @param ownerAddress - Transaction owner (hex or Base58).
+   * @returns Staked Bandwidth remaining, or 0 if the fetch fails.
+   */
+  async #getSenderStakedBandwidth(
+    scope: Network,
+    ownerAddress: string | undefined,
+  ): Promise<BigNumber> {
+    if (!ownerAddress) {
+      return ZERO;
+    }
+
+    try {
+      const resources = await this.#tronHttpClient.getAccountResources(
+        scope,
+        this.#toBase58Address(ownerAddress),
+      );
+      const netLimit = resources.NetLimit ?? 0;
+      const netUsed = resources.NetUsed ?? 0;
+      return BigNumber.max(0, netLimit - netUsed);
+    } catch (error) {
+      await this.#snapClient.trackError(error as Error);
+      this.#logger.warn(
+        { error, ownerAddress },
+        'Failed to fetch sender staked Bandwidth for account activation',
+      );
+      return ZERO;
+    }
+  }
+
+  /**
+   * Assess whether this transaction activates any new accounts.
+   *
+   * Native TRX and TRC-10 transfers to never-funded addresses create the
+   * recipient on-chain.
+   *
+   * @see https://developers.tron.network/docs/account#activating-an-account
+   * @param options - Scope and transaction.
+   * @param options.scope - The network scope to check.
+   * @param options.transaction - The transaction that may activate recipients.
+   * @returns Whether an unactivated recipient exists and the sender address.
+   */
+  async #assessAccountActivation({
     scope,
     transaction,
   }: {
     scope: Network;
     transaction: Transaction;
-  }): Promise<BigNumber> {
-    const contracts = transaction.raw_data.contract;
-
-    if (!contracts || contracts.length === 0) {
-      return ZERO;
+  }): Promise<ActivationAssessment> {
+    const transfers = this.#getActivationTransfers(transaction);
+    if (transfers.length === 0) {
+      return { isActivatingAccount: false, ownerAddress: undefined };
     }
 
-    // Collect all recipient addresses from TransferContract operations
-    const recipientAddresses: string[] = [];
-
-    for (const contract of contracts) {
-      if ((contract.type as string) === 'TransferContract') {
-        const { amount, to_address: toAddress } = contract.parameter.value as {
-          amount: number;
-          to_address: string;
-        };
-
-        if (amount > 0 && toAddress) {
-          recipientAddresses.push(toAddress);
-        }
-      }
-    }
-
-    if (recipientAddresses.length === 0) {
-      return ZERO;
-    }
-
-    // Check all addresses in parallel
     const activationResults = await Promise.all(
-      recipientAddresses.map(async (address) => {
-        const isActivated = await this.#isAccountActivated(scope, address);
-        return { address, isActivated };
+      transfers.map(async ({ toAddress, ownerAddress }) => {
+        const isActivated = await this.#isAccountActivated(scope, toAddress);
+        return { toAddress, ownerAddress, isActivated };
       }),
     );
 
-    // Count unactivated accounts and calculate total fees
-    const unactivatedCount = activationResults.filter(
-      ({ address, isActivated }) => {
+    const unactivated = activationResults.filter(
+      ({ toAddress, isActivated }) => {
         if (!isActivated) {
           this.#logger.log(
-            `Account ${address} is not activated, activation fee required`,
+            `Account ${toAddress} is not activated, activation fee required`,
           );
           return true;
         }
         return false;
       },
-    ).length;
+    );
 
-    return ACCOUNT_ACTIVATION_FEE_TRX.multipliedBy(unactivatedCount);
+    return {
+      isActivatingAccount: unactivated.length > 0,
+      ownerAddress: unactivated[0]?.ownerAddress,
+    };
+  }
+
+  /**
+   * Chain-parameter values used to price account activation.
+   *
+   * Create-account Bandwidth = `getCreateAccountFee` / `getTransactionFee`
+   * (100,000 sun / 1,000 sun per byte = 100 Bandwidth on mainnet).
+   *
+   * @param chainParameters - Live or cached chain parameters.
+   * @returns Activation burn, Bandwidth-shortfall burn, and Bandwidth quota.
+   */
+  #getActivationFeeParams(chainParameters: ChainParameter[]): {
+    activationFeeTrx: BigNumber;
+    createAccountFeeTrx: BigNumber;
+    createAccountBandwidth: BigNumber;
+  } {
+    const createNewAccountFeeSun =
+      chainParameters.find(
+        (param) => param.key === 'getCreateNewAccountFeeInSystemContract',
+      )?.value ?? FALLBACK_CREATE_NEW_ACCOUNT_FEE_SUN;
+    const createAccountFeeSun =
+      chainParameters.find((param) => param.key === 'getCreateAccountFee')
+        ?.value ?? FALLBACK_CREATE_ACCOUNT_FEE_SUN;
+    const transactionFeeSun =
+      chainParameters.find((param) => param.key === 'getTransactionFee')
+        ?.value ?? FALLBACK_GET_TRANSACTION_FEE_SUN;
+
+    const bandwidthQuota =
+      transactionFeeSun > 0
+        ? BigNumber(createAccountFeeSun).dividedToIntegerBy(transactionFeeSun)
+        : BigNumber(createAccountFeeSun).dividedToIntegerBy(
+            FALLBACK_GET_TRANSACTION_FEE_SUN,
+          );
+
+    return {
+      activationFeeTrx: BigNumber(createNewAccountFeeSun).div(SUN_IN_TRX),
+      createAccountFeeTrx: BigNumber(createAccountFeeSun).div(SUN_IN_TRX),
+      createAccountBandwidth: bandwidthQuota,
+    };
   }
 
   /**
@@ -799,21 +921,66 @@ export class FeeCalculatorService {
     );
 
     // resources the transaction is expected to consume
-    const bandwidthNeeded = this.#calculateBandwidth(transaction);
     const energyNeeded = await this.#calculateEnergy(
       scope,
       transaction,
       feeLimit,
     );
 
-    /**
-     * Calculate consumption and overages:
-     * - Bandwidth: If we don't have enough, we pay for ALL of it in TRX (no partial consumption)
-     * - Energy: We consume what we have available and pay TRX only for the overage
-     */
-    const hasEnoughBandwidth =
-      availableBandwidth.isGreaterThanOrEqualTo(bandwidthNeeded);
-    const bandwidthToPayInTRX = hasEnoughBandwidth ? ZERO : bandwidthNeeded;
+    const activation = await this.#assessAccountActivation({
+      scope,
+      transaction,
+    });
+    const { isActivatingAccount } = activation;
+
+    let bandwidthNeeded: BigNumber;
+    let bandwidthToPayInTRX = ZERO;
+    let accountActivationFees = ZERO;
+    let createAccountBandwidthFee = ZERO;
+
+    if (isActivatingAccount) {
+      const chainParameters = await this.#getChainParameters(scope);
+      const { activationFeeTrx, createAccountFeeTrx, createAccountBandwidth } =
+        this.#getActivationFeeParams(chainParameters);
+
+      accountActivationFees = activationFeeTrx;
+
+      const stakedBandwidth = await this.#getSenderStakedBandwidth(
+        scope,
+        activation.ownerAddress,
+      );
+      const hasEnoughStakedBandwidth = stakedBandwidth.isGreaterThanOrEqualTo(
+        createAccountBandwidth,
+      );
+
+      if (hasEnoughStakedBandwidth) {
+        bandwidthNeeded = createAccountBandwidth;
+        this.#logger.log(
+          {
+            createAccountBandwidth: createAccountBandwidth.toString(),
+            stakedBandwidth: stakedBandwidth.toString(),
+          },
+          'Account activation covered by staked Bandwidth',
+        );
+      } else {
+        // Free daily Bandwidth cannot pay for activation. Burn getCreateAccountFee
+        // instead of tx-size * getTransactionFee.
+        bandwidthNeeded = ZERO;
+        createAccountBandwidthFee = createAccountFeeTrx;
+        this.#logger.log(
+          {
+            createAccountFeeTrx: createAccountFeeTrx.toString(),
+            stakedBandwidth: stakedBandwidth.toString(),
+          },
+          'Account activation Bandwidth shortfall paid in TRX',
+        );
+      }
+    } else {
+      bandwidthNeeded = this.#calculateBandwidth(transaction);
+      const hasEnoughBandwidth =
+        availableBandwidth.isGreaterThanOrEqualTo(bandwidthNeeded);
+      bandwidthToPayInTRX = hasEnoughBandwidth ? ZERO : bandwidthNeeded;
+    }
 
     const energyToPayInTRX = BigNumber.max(
       energyNeeded.minus(availableEnergy),
@@ -853,15 +1020,14 @@ export class FeeCalculatorService {
     }
 
     /**
-     * Second, account activation fees
+     * Second, account activation fees (1 TRX burn + optional 0.1 TRX Bandwidth shortfall)
      */
-    const accountActivationFees = await this.#accountActivationFees({
-      scope,
-      transaction,
-    });
-
     if (accountActivationFees.isGreaterThan(0)) {
       totalTrxCost = totalTrxCost.plus(accountActivationFees);
+    }
+
+    if (createAccountBandwidthFee.isGreaterThan(0)) {
+      totalTrxCost = totalTrxCost.plus(createAccountBandwidthFee);
     }
 
     /**

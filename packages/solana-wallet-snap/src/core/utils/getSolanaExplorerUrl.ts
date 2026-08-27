@@ -1,9 +1,10 @@
+import { buildUrl } from '@metamask/snap-networks-utils';
+
 import type { Network } from '../constants/solana';
 import {
   DEFAULT_NETWORK_BLOCK_EXPLORER_URL,
   Networks,
 } from '../constants/solana';
-import { buildUrl } from './buildUrl';
 
 /**
  * Get the Solana Explorer URL for a given scope, type, and value.

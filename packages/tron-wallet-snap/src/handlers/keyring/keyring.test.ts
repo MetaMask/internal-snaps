@@ -73,9 +73,8 @@ describe('KeyringHandler', () => {
     mockAccountsService = {
       findById: jest.fn().mockResolvedValue(mockAccount),
       findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
-      deriveAccount: jest.fn(),
-      create: jest.fn(),
       createAccounts: jest.fn(),
+      delete: jest.fn().mockResolvedValue(undefined),
       getAll: jest.fn().mockResolvedValue([mockAccount]),
       deriveTronKeypair: jest.fn().mockResolvedValue({
         privateKeyHex: 'a'.repeat(64),
@@ -558,6 +557,32 @@ describe('KeyringHandler', () => {
       await expect(keyringHandler.getAccounts()).rejects.toThrow(
         'Error listing accounts',
       );
+    });
+  });
+
+  describe('deleteAccount', () => {
+    it('deletes the account without emitting keyring events', async () => {
+      await keyringHandler.deleteAccount(mockAccount.id);
+
+      expect(mockAccountsService.delete).toHaveBeenCalledWith(mockAccount.id);
+    });
+
+    it('throws for an invalid account id', async () => {
+      await expect(keyringHandler.deleteAccount('not-a-uuid')).rejects.toThrow(
+        expect.anything(),
+      );
+
+      expect(mockAccountsService.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws when the account does not exist', async () => {
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        keyringHandler.deleteAccount(mockAccount.id),
+      ).rejects.toThrow(`Account "${mockAccount.id}" not found`);
+
+      expect(mockAccountsService.delete).not.toHaveBeenCalled();
     });
   });
 

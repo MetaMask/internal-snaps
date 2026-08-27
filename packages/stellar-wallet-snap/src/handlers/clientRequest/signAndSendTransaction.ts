@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
@@ -28,8 +29,6 @@ import {
   removeTrailingZeros,
   trackErrorIfNeeded,
 } from '../../utils';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import { trackTransactionSubmitted } from '../../utils/snap';
 import type {
   AccountResolver,
@@ -65,13 +64,12 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
     transactionService,
     assetMetadataService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
+    const prefixedLogger = logger.withPrefix(
       '[👋 SignAndSendTransactionHandler]',
     );
     super({

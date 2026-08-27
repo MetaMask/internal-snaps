@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import type { StellarKeyringAccount } from '../../services/account';
@@ -10,7 +11,6 @@ import type { Wallet } from '../../services/wallet';
 import type { ContextWithPrices } from '../../ui/confirmation/api';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
-import type { ILogger } from '../../utils';
 import type { AccountResolver } from '../accountResolver';
 import type { SignTransactionRequest, SignTransactionResponse } from './api';
 import {
@@ -41,7 +41,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
     accountResolver,
     confirmationUIController,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     confirmationUIController: ConfirmationUXController;
   }) {

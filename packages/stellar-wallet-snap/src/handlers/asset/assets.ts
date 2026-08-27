@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type {
   OnAssetHistoricalPriceArguments,
   OnAssetHistoricalPriceResponse,
@@ -13,12 +14,10 @@ import { assert } from '@metamask/superstruct';
 import type { AssetMetadataService } from '../../services/asset-metadata/AssetMetadataService';
 import type { PriceService } from '../../services/price/PriceService';
 import { withCatchAndThrowSnapError } from '../../utils/errors';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import { OnAssetsLookupRequestStruct } from './api';
 
 export class AssetsHandler {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #assetMetadataService: AssetMetadataService;
 
@@ -29,11 +28,11 @@ export class AssetsHandler {
     assetMetadataService,
     priceService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     assetMetadataService: AssetMetadataService;
     priceService: PriceService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🪙 AssetsHandler]');
+    this.#logger = logger.withPrefix('[🪙 AssetsHandler]');
     this.#assetMetadataService = assetMetadataService;
     this.#priceService = priceService;
   }
@@ -42,7 +41,7 @@ export class AssetsHandler {
     params: OnAssetHistoricalPriceArguments,
   ): Promise<OnAssetHistoricalPriceResponse> {
     return await withCatchAndThrowSnapError(async () => {
-      this.#logger.log('[📈 onAssetHistoricalPrice]', params);
+      this.#logger.debug('[📈 onAssetHistoricalPrice]', params);
 
       const { from, to } = params;
 
@@ -59,7 +58,7 @@ export class AssetsHandler {
     params: OnAssetsConversionArguments,
   ): Promise<OnAssetsConversionResponse> {
     return await withCatchAndThrowSnapError(async () => {
-      this.#logger.log('[📈 onAssetsConversion]', params);
+      this.#logger.debug('[📈 onAssetsConversion]', params);
 
       const { conversions } = params;
 
@@ -76,7 +75,7 @@ export class AssetsHandler {
     params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
     return await withCatchAndThrowSnapError(async () => {
-      this.#logger.log('[🔍 onAssetsLookup]', params);
+      this.#logger.debug('[🔍 onAssetsLookup]', params);
       // Ensure we only support Stellar assets here.
       assert(params, OnAssetsLookupRequestStruct);
 
@@ -95,7 +94,7 @@ export class AssetsHandler {
     params: OnAssetsMarketDataArguments,
   ): Promise<OnAssetsMarketDataResponse> {
     return await withCatchAndThrowSnapError(async () => {
-      this.#logger.log('[🔍 onAssetsMarketData]', params);
+      this.#logger.debug('[🔍 onAssetsMarketData]', params);
 
       const marketData = await this.#priceService.getMultipleTokensMarketData(
         params.assets,

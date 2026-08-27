@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
@@ -19,10 +20,9 @@ import {
   MAX_TRANSACTIONS_PAGE_SIZE,
   STELLAR_DECIMAL_PLACES,
 } from '../../constants';
-import type { AnyErrorConstructor, ILogger, Serializable } from '../../utils';
+import type { AnyErrorConstructor, Serializable } from '../../utils';
 import {
   isSameStr,
-  createPrefixedLogger,
   parseClassicAssetCodeIssuer,
   toCaip19ClassicAssetId,
   toCaip19Sep41AssetId,
@@ -69,7 +69,7 @@ import {
  * post-submit polling.
  */
 export class NetworkService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #cache: ICache<Serializable>;
 
@@ -84,10 +84,10 @@ export class NetworkService {
     logger,
     cache,
   }: {
-    logger: ILogger;
+    logger: Logger;
     cache: ICache<Serializable>;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🌐 NetworkService]');
+    this.#logger = logger.withPrefix('[🌐 NetworkService]');
     this.#cache = cache;
   }
 

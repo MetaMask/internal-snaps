@@ -1,7 +1,7 @@
+import type { Logger } from '@metamask/snap-networks-utils';
+
 import { KnownCaip2ChainId } from '../../api';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { SyncAssetsJsonRpcRequest } from './api';
 import { SyncAssetsJsonRpcRequestStruct } from './api';
 import { CronjobBaseHandler } from './base';
@@ -13,10 +13,10 @@ export class SyncAssetsHandler extends CronjobBaseHandler<SyncAssetsJsonRpcReque
     logger,
     synchronizeService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     synchronizeService: SynchronizeService;
   }) {
-    const prefixedLogger = createPrefixedLogger(logger, '[SyncAssetsHandler]');
+    const prefixedLogger = logger.withPrefix('[SyncAssetsHandler]');
     super({
       logger: prefixedLogger,
       requestStruct: SyncAssetsJsonRpcRequestStruct,

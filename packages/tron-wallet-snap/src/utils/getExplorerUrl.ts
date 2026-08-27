@@ -1,5 +1,6 @@
+import { buildUrl } from '@metamask/snap-networks-utils';
+
 import { Network } from '../constants';
-import { buildUrl } from './buildUrl';
 
 /**
  * Get the Solana Explorer URL for a given scope, type, and value.

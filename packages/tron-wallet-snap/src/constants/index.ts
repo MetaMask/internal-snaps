@@ -37,6 +37,19 @@ export const TRACK_TX_INTERVAL = 'PT3S';
  */
 export const TRACK_TX_MAX_ATTEMPTS = 5;
 
+/**
+ * Default `getCreateAccountFee` in SUN (0.1 TRX). Burned when the sender
+ * lacks enough *staked* Bandwidth to activate a new account.
+ *
+ * @see https://developers.tron.network/docs/account#activating-an-account
+ */
+export const FALLBACK_CREATE_ACCOUNT_FEE_SUN = 100_000;
+
+/**
+ * Default `getCreateNewAccountFeeInSystemContract` in SUN (1 TRX).
+ */
+export const FALLBACK_CREATE_NEW_ACCOUNT_FEE_SUN = 1_000_000;
+
 export enum Network {
   Mainnet = 'tron:728126428',
   Nile = 'tron:3448148188',

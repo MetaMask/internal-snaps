@@ -1,8 +1,8 @@
+import { buildUrl } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
-import { buildUrl } from '../../utils/buildUrl';
 import { hexToString } from '../../utils/hex';
 import {
   AccountResourcesStruct,
