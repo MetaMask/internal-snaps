@@ -1,7 +1,4 @@
-import {
-  KeyringEvent,
-  ListAccountAssetsResponseStruct,
-} from '@metamask/keyring-api';
+import { ListAccountAssetsResponseStruct } from '@metamask/keyring-api';
 import type {
   Balance,
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
@@ -16,7 +13,6 @@ import type {
   ExportedAccount,
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import type { Logger } from '@metamask/snap-networks-utils';
 import {
@@ -380,12 +376,11 @@ export class KeyringHandler implements KeyringSnapRpc {
     try {
       validateRequest({ accountId }, DeleteAccountStruct);
 
-      const account = await this.#getAccountOrThrow(accountId);
+      await this.#getAccountOrThrow(accountId);
 
-      await emitSnapKeyringEvent(snap, KeyringEvent.AccountDeleted, {
-        id: account.id,
-      });
-
+      // No AccountDeleted event: deletion is client-initiated in keyring v2,
+      // and v2 clients reject v1 lifecycle events (which would abort the
+      // deletion below).
       await this.#accountsService.delete(accountId);
     } catch (error: unknown) {
       this.#logger.error({ error }, 'Error deleting account');
