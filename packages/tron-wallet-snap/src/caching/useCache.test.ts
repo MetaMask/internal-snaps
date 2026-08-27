@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 import type { Serializable } from '../utils/serialization/types';
 import type { ICache } from './ICache';
 import { useCache } from './useCache';
