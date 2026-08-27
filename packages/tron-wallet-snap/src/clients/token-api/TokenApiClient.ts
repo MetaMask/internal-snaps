@@ -1,4 +1,4 @@
-import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
+import { UrlStruct, buildUrl, chunks } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
@@ -106,20 +106,14 @@ export class TokenApiClient {
         );
       }
 
-      // Split addresses into chunks
-      const chunks: TokenCaipAssetType[][] = [];
-      for (
-        let index = 0;
-        index < supportedAssetTypes.length;
-        index += this.#chunkSize
-      ) {
-        chunks.push(supportedAssetTypes.slice(index, index + this.#chunkSize));
-      }
+      const assetTypeChunks = chunks(supportedAssetTypes, this.#chunkSize);
 
       // Fetch metadata for each chunk
       const tokenMetadataResponses = (
         await Promise.all(
-          chunks.map(async (chunk) => this.#fetchTokenMetadataBatch(chunk)),
+          assetTypeChunks.map(async (chunk) =>
+            this.#fetchTokenMetadataBatch(chunk),
+          ),
         )
       ).flat();
 

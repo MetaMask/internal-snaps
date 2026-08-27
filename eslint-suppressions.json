@@ -1613,11 +1613,6 @@
       "count": 1
     }
   },
-  "packages/stellar-wallet-snap/src/utils/async.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 6
-    }
-  },
   "packages/stellar-wallet-snap/src/utils/snap.ts": {
     "no-restricted-syntax": {
       "count": 1
