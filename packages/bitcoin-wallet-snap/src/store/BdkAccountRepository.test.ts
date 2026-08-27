@@ -435,9 +435,7 @@ describe('BdkAccountRepository', () => {
 
       // Independent route: full-path derivation from the same mnemonic, the
       // way `snap_getBip32Entropy` would resolve it.
-      const expected = (
-        await deriveFixtureNode(["84'", "0'", "1'"])
-      ).neuter();
+      const expected = (await deriveFixtureNode(["84'", "0'", "1'"])).neuter();
 
       const passedNode = (slip10_to_extended as jest.Mock).mock
         .calls[0]?.[0] as RealSlip10Node;
