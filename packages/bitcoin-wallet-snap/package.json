@@ -58,7 +58,7 @@
     "@metamask/snap-networks-utils": "^1.0.0",
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.0",
-    "@metamask/snaps-sdk": "^11.2.0",
+    "@metamask/snaps-sdk": "^12.0.1",
     "@metamask/superstruct": "^3.4.1",
     "@metamask/utils": "^11.11.0",
     "bip322-js": "^3.0.0",
