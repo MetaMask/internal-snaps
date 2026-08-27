@@ -338,7 +338,8 @@ describe('AssetsService', () => {
               trc20Balances,
             );
 
-            const trc20AssetId = `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+            const trc20AssetId =
+              `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
               createSpotPrices({
                 [trc20AssetId]: { id: trc20AssetId, price: 1.0 },
@@ -558,7 +559,8 @@ describe('AssetsService', () => {
               trc20Balances,
             );
 
-            const trc20AssetId = `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+            const trc20AssetId =
+              `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
               createSpotPrices({
                 [trc20AssetId]: { id: trc20AssetId, price: 1.0 },
@@ -1564,7 +1566,8 @@ describe('AssetsService', () => {
 
     it('correctly updates non-essential assets with zero amounts', async () => {
       await withAssetsService(async ({ assetsService, mockState }) => {
-        const trc20AssetId = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+        const trc20AssetId =
+          `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
         const assets: AssetEntity[] = [
           {
             assetType: KnownCaip19Id.TrxMainnet,
@@ -1613,7 +1616,8 @@ describe('AssetsService', () => {
     it('updates stale non-essential assets balance to 0 if missed from the latest snapshot', async () => {
       await withAssetsService(
         async ({ assetsService, mockState, mockAssetsRepository }) => {
-          const trc20AssetId = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+          const trc20AssetId =
+            `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
           const savedAssets: AssetEntity[] = [
             {
               assetType: KnownCaip19Id.TrxMainnet as NativeCaipAssetType,
@@ -2038,7 +2042,8 @@ describe('AssetsService', () => {
       it('adds TRC20 token to the asset list when it updates from 0 to >0', async () => {
         await withAssetsService(
           async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const trc20AssetId = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+            const trc20AssetId =
+              `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
 
             const savedAssets: AssetEntity[] = [
               {
@@ -2117,7 +2122,8 @@ describe('AssetsService', () => {
       it('handles multiple assets updating from 0 to >0 simultaneously', async () => {
         await withAssetsService(
           async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const trc20AssetId = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+            const trc20AssetId =
+              `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
 
             const savedAssets: AssetEntity[] = [
               {
@@ -2509,7 +2515,8 @@ describe('AssetsService', () => {
       it('updates TRC20 token balance when it decreases but remains >0', async () => {
         await withAssetsService(
           async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const trc20AssetId = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
+            const trc20AssetId =
+              `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
 
             const savedAssets: AssetEntity[] = [
               {
