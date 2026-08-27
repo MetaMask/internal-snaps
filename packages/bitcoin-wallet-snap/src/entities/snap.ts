@@ -46,12 +46,15 @@ export type SyncResult = {
   transactionsToNotify: WalletTx[];
 };
 
-export enum TrackingSnapEvent {
-  TransactionFinalized = 'Transaction Finalized',
-  TransactionReceived = 'Transaction Received',
-  TransactionReorged = 'Transaction Reorged',
-  TransactionSubmitted = 'Transaction Submitted',
-}
+export const TrackingSnapEvent = {
+  TransactionFinalized: 'Transaction Finalized',
+  TransactionReceived: 'Transaction Received',
+  TransactionReorged: 'Transaction Reorged',
+  TransactionSubmitted: 'Transaction Submitted',
+} as const;
+
+export type TrackingSnapEvent =
+  (typeof TrackingSnapEvent)[keyof typeof TrackingSnapEvent];
 
 /**
  * The SnapClient represents the MetaMask Snap state and manages the BIP-32 entropy from the Wallet SRP.
