@@ -22,25 +22,29 @@ import {
 import type { BitcoinAccount, CodifiedError, Logger } from '../entities';
 import { ValidationError } from '../entities';
 
-export enum RpcMethod {
-  StartSendTransactionFlow = 'startSendTransactionFlow',
-  SignAndSendTransaction = 'signAndSendTransaction',
-  ComputeFee = 'computeFee',
-  VerifyMessage = 'verifyMessage',
-  OnAddressInput = 'onAddressInput',
-  OnAmountInput = 'onAmountInput',
-  ConfirmSend = 'confirmSend',
-  SignRewardsMessage = 'signRewardsMessage',
-  SignProofOfOwnership = 'signProofOfOwnership',
-}
+export const RpcMethod = {
+  StartSendTransactionFlow: 'startSendTransactionFlow',
+  SignAndSendTransaction: 'signAndSendTransaction',
+  ComputeFee: 'computeFee',
+  VerifyMessage: 'verifyMessage',
+  OnAddressInput: 'onAddressInput',
+  OnAmountInput: 'onAmountInput',
+  ConfirmSend: 'confirmSend',
+  SignRewardsMessage: 'signRewardsMessage',
+  SignProofOfOwnership: 'signProofOfOwnership',
+} as const;
 
-export enum SendErrorCodes {
-  // eslint-disable-next-line @typescript-eslint/no-shadow
-  Required = 'Required',
-  Invalid = 'Invalid',
-  InsufficientBalance = 'InsufficientBalance',
-  InsufficientBalanceToCoverFee = 'InsufficientBalanceToCoverFee',
-}
+export type RpcMethod = (typeof RpcMethod)[keyof typeof RpcMethod];
+
+export const SendErrorCodes = {
+  Required: 'Required',
+  Invalid: 'Invalid',
+  InsufficientBalance: 'InsufficientBalance',
+  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
+} as const;
+
+export type SendErrorCodes =
+  (typeof SendErrorCodes)[keyof typeof SendErrorCodes];
 
 export const NonEmptyStringStruct = refine(
   nonempty(string()),
