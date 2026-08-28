@@ -125,6 +125,20 @@ jobs:
         uses: MetaMask/action-is-release@v2
         with:
           commit-starts-with: ${{ vars.RELEASE_COMMIT_PREFIX }}
+      - name: Restore build artifacts
+        if: steps.is-release.outputs.IS_RELEASE == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: package-dist-${{ github.sha }}
+          path: packages
+      - name: Require clean working directory
+        if: steps.is-release.outputs.IS_RELEASE == 'true'
+        shell: bash
+        run: |
+          if ! git diff --exit-code; then
+            echo "Working tree dirty at end of job"
+            exit 1
+          fi
 
   publish-release:
     name: Publish release

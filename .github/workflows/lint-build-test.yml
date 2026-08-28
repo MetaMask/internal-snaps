@@ -182,8 +182,11 @@ jobs:
           name: package-dist-${{ github.sha }}
           # Glob discards the path before the first wildcard (`packages/`), so
           # the artifact root is `<package>/dist/...`. Download into `packages/`
-          # to restore `packages/<package>/dist/...`.
-          path: packages/*/dist
+          # to restore `packages/<package>/dist/...`. Include post-build
+          # manifests so is-release can run a strict dirty check.
+          path: |
+            packages/*/dist
+            packages/*/snap.manifest.json
           retention-days: 1
 
   test-scripts:
