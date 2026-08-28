@@ -12,8 +12,10 @@ runs:
   steps:
     - name: Require clean working directory
       shell: bash
+      env:
+        SKIP_SHASUM_DIFF: ${{ inputs.skip-shasum-diff }}
       run: |
-        if [[ "${{ inputs.skip-shasum-diff }}" == "true" ]]; then
+        if [[ "$SKIP_SHASUM_DIFF" == "true" ]]; then
           echo "Skipping shasum-only diff check for snap.manifest.json"
 
           # mm-snap rewrites source.shasum during yarn build. Ignore shasum-only

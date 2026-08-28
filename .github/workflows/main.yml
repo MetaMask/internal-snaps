@@ -122,6 +122,8 @@ jobs:
       - check-release
       - lint-build-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
