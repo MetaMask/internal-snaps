@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- test(tron-wallet-snap): removed beforeEach from useCacheUntil tests ([#228](https://github.com/MetaMask/internal-snaps/pull/228))
-- test(tron-wallet-snap): remove before each usage in useCache ([#223](https://github.com/MetaMask/internal-snaps/pull/223))
-- feat: move batch utils into shared pkg ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
-- feat(tron-wallet-snap): use shareable permissions helpers in Tron snap ([#204](https://github.com/MetaMask/internal-snaps/pull/204))
-- fix(tron-wallet-snap): balance from the AssetsController is in display format, not raw balance ([#196](https://github.com/MetaMask/internal-snaps/pull/196))
-- feat: move buildUrl into shared util pkg ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
-- feat: move sanitize utils into shared pkg ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
-- Revert "Release/9.0.0 (#184)" ([#184](https://github.com/MetaMask/internal-snaps/pull/184))
-
 ### Added
 
 - Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
