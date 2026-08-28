@@ -1,21 +1,36 @@
 name: Require clean working directory
 description: Fail if the working tree is dirty, ignoring snap.manifest.json shasum-only drift.
 
+inputs:
+  skip-shasum-diff:
+    description: "Skip shasum-only diff check for snap.manifest.json"
+    required: false
+    default: true
+
 runs:
   using: composite
   steps:
     - name: Require clean working directory
       shell: bash
       run: |
-        # mm-snap rewrites source.shasum during yarn build. Ignore shasum-only
-        # drift so CI doesn't require restamping manifests after each build.
-        # Other manifest fields and all other files still fail the check.
-        # publish-release keeps a strict dirty check so npm publish stays valid.
-        if ! git diff --exit-code -- ':!packages/*/snap.manifest.json'; then
-          echo "Working tree dirty at end of job"
-          exit 1
-        fi
-        if ! git diff --exit-code -I '"shasum":' -- 'packages/*/snap.manifest.json'; then
-          echo "Working tree dirty at end of job (non-shasum snap.manifest.json changes)"
-          exit 1
+        if [[ "${{ inputs.skip-shasum-diff }}" == "true" ]]; then
+          echo "Skipping shasum-only diff check for snap.manifest.json"
+
+          # mm-snap rewrites source.shasum during yarn build. Ignore shasum-only
+          # drift so CI doesn't require restamping manifests after each build.
+          # Other manifest fields and all other files still fail the check.
+          # publish-release keeps a strict dirty check so npm publish stays valid.
+          if ! git diff --exit-code -- ':!packages/*/snap.manifest.json'; then
+            echo "Working tree dirty at end of job"
+            exit 1
+          fi
+          if ! git diff --exit-code -I '"shasum":' -- 'packages/*/snap.manifest.json'; then
+            echo "Working tree dirty at end of job (non-shasum snap.manifest.json changes)"
+            exit 1
+          fi
+        else
+          if ! git diff --exit-code; then
+            echo "Working tree dirty at end of job"
+            exit 1
+          fi
         fi
