@@ -28,6 +28,8 @@ export type {
   LogMethodDecorator,
   LoggerDecorators,
 } from './logger';
+export { serialize, deserialize } from './serialization/serialization';
+export type { Serializable } from './serialization/types';
 export {
   createOriginPermissions,
   DEFAULT_PROD_ORIGINS,
