@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { CaipAssetType } from '@metamask/keyring-api';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
@@ -7,7 +8,6 @@ import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { mockLogger } from '../../utils/mockLogger';
-import type { Serializable } from '../../utils/serialization/types';
 import { MOCK_EXCHANGE_RATES } from './mocks/exchange-rates';
 import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
 import { PriceApiClient } from './PriceApiClient';
