@@ -18,8 +18,7 @@ import { getTxnErrorMessageKey } from './utils';
 
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
-const senderAddress =
-  'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4';
+const senderAddress = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4';
 const assetId = USDC_CLASSIC;
 
 describe('getTxnErrorMessageKey', () => {

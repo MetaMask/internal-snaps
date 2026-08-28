@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Show pre-submit send and change-trust validation failures in the confirmation dialog, then return structured error codes (send) or rethrow (change-trust)
+- Show pre-submit send and change-trust validation failures in the confirmation dialog, then return structured error codes (send) or rethrow (change-trust) ([#220](https://github.com/MetaMask/internal-snaps/pull/220))
   - Banner copy uses `confirmation.txnError.*` locale keys
-- `onAmountInput` now always validates a self-transfer so destination errors surface in `confirmSend`
+- `onAmountInput` now always validates a self-transfer so destination errors surface in `confirmSend` ([#220](https://github.com/MetaMask/internal-snaps/pull/220))
 - `createValidatedSendTransaction` now throws `InvalidAssetForCreateAccountException` instead of `AccountNotActivatedException` when sending a non-native asset to an unfunded destination ([#185](https://github.com/MetaMask/internal-snaps/pull/185))
 
 ## [0.1.0]
