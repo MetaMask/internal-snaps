@@ -1,5 +1,5 @@
 name: Require clean working directory
-description: Fail if the working tree is dirty, ignoring snap.manifest.json shasum-only drift.
+description: Fail if the working tree is dirty; optionally ignore snap.manifest.json shasum-only drift.
 
 inputs:
   skip-shasum-diff:
