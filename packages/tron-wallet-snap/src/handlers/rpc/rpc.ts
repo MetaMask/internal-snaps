@@ -1,8 +1,9 @@
+import { validateOrigin } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 
-import { validateOrigin } from '../../validation/validators';
+import { originPermissions } from '../../permissions';
 
 export class RpcHandler {
   readonly #logger: Logger;
@@ -12,7 +13,7 @@ export class RpcHandler {
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
-    validateOrigin(origin, request.method);
+    validateOrigin(origin, request.method, originPermissions);
 
     this.#logger.log('Handling RPC request', request);
 

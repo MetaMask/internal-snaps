@@ -1,4 +1,5 @@
-import type { KnownCaip19Id, Network } from '../constants';
+import { KnownCaip19Id } from '../constants';
+import type { Network } from '../constants';
 import type {
   InLockPeriodCaipAssetType,
   NativeCaipAssetType,
@@ -41,22 +42,22 @@ export type InLockPeriodAsset = BaseAsset & {
 
 export type ResourceAsset = BaseAsset & {
   assetType:
-    | KnownCaip19Id.EnergyMainnet
-    | KnownCaip19Id.EnergyNile
-    | KnownCaip19Id.EnergyShasta
-    | KnownCaip19Id.BandwidthMainnet
-    | KnownCaip19Id.BandwidthNile
-    | KnownCaip19Id.BandwidthShasta;
+    | typeof KnownCaip19Id.EnergyMainnet
+    | typeof KnownCaip19Id.EnergyNile
+    | typeof KnownCaip19Id.EnergyShasta
+    | typeof KnownCaip19Id.BandwidthMainnet
+    | typeof KnownCaip19Id.BandwidthNile
+    | typeof KnownCaip19Id.BandwidthShasta;
 };
 
 export type MaximumResourceAsset = BaseAsset & {
   assetType:
-    | KnownCaip19Id.MaximumEnergyMainnet
-    | KnownCaip19Id.MaximumEnergyNile
-    | KnownCaip19Id.MaximumEnergyShasta
-    | KnownCaip19Id.MaximumBandwidthMainnet
-    | KnownCaip19Id.MaximumBandwidthNile
-    | KnownCaip19Id.MaximumBandwidthShasta;
+    | typeof KnownCaip19Id.MaximumEnergyMainnet
+    | typeof KnownCaip19Id.MaximumEnergyNile
+    | typeof KnownCaip19Id.MaximumEnergyShasta
+    | typeof KnownCaip19Id.MaximumBandwidthMainnet
+    | typeof KnownCaip19Id.MaximumBandwidthNile
+    | typeof KnownCaip19Id.MaximumBandwidthShasta;
 };
 
 export type TokenAsset = BaseAsset & {

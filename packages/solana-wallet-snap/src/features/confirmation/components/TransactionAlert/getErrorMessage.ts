@@ -1,3 +1,4 @@
+import { TRANSACTION_BLOCKHASH_EXPIRED } from '../../../../core/services/transaction-scan/buildExpiredScanResult';
 import type { TransactionScanError } from '../../../../core/services/transaction-scan/types';
 import type { Preferences } from '../../../../core/types/snap';
 import { i18n } from '../../../../core/utils/i18n';
@@ -11,6 +12,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   SlippageToleranceExceeded: 'transactionScan.errors.slippageToleranceExceeded', // Jupiter
   ExceededDesiredSlippageLimit:
     'transactionScan.errors.slippageToleranceExceeded', // Raydium
+  [TRANSACTION_BLOCKHASH_EXPIRED]:
+    'transactionScan.errors.transactionBlockhashExpired',
 };
 
 /**

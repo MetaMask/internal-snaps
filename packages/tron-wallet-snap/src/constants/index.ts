@@ -50,70 +50,74 @@ export const FALLBACK_CREATE_ACCOUNT_FEE_SUN = 100_000;
  */
 export const FALLBACK_CREATE_NEW_ACCOUNT_FEE_SUN = 1_000_000;
 
-export enum Network {
-  Mainnet = 'tron:728126428',
-  Nile = 'tron:3448148188',
-  Shasta = 'tron:2494104990',
-}
+export const Network = {
+  Mainnet: 'tron:728126428',
+  Nile: 'tron:3448148188',
+  Shasta: 'tron:2494104990',
+} as const;
 
-export enum KnownCaip19Id {
-  TrxMainnet = `${Network.Mainnet}/slip44:195`,
-  TrxNile = `${Network.Nile}/slip44:195`,
-  TrxShasta = `${Network.Shasta}/slip44:195`,
+export type Network = (typeof Network)[keyof typeof Network];
 
-  UsdtMainnet = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
+export const KnownCaip19Id = {
+  TrxMainnet: `${Network.Mainnet}/slip44:195`,
+  TrxNile: `${Network.Nile}/slip44:195`,
+  TrxShasta: `${Network.Shasta}/slip44:195`,
+
+  UsdtMainnet: `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
 
   /**
    * Staked Tron
    */
-  TrxStakedForBandwidthMainnet = `${Network.Mainnet}/slip44:195-staked-for-bandwidth`,
-  TrxStakedForBandwidthNile = `${Network.Nile}/slip44:195-staked-for-bandwidth`,
-  TrxStakedForBandwidthShasta = `${Network.Shasta}/slip44:195-staked-for-bandwidth`,
+  TrxStakedForBandwidthMainnet: `${Network.Mainnet}/slip44:195-staked-for-bandwidth`,
+  TrxStakedForBandwidthNile: `${Network.Nile}/slip44:195-staked-for-bandwidth`,
+  TrxStakedForBandwidthShasta: `${Network.Shasta}/slip44:195-staked-for-bandwidth`,
 
-  TrxStakedForEnergyMainnet = `${Network.Mainnet}/slip44:195-staked-for-energy`,
-  TrxStakedForEnergyNile = `${Network.Nile}/slip44:195-staked-for-energy`,
-  TrxStakedForEnergyShasta = `${Network.Shasta}/slip44:195-staked-for-energy`,
+  TrxStakedForEnergyMainnet: `${Network.Mainnet}/slip44:195-staked-for-energy`,
+  TrxStakedForEnergyNile: `${Network.Nile}/slip44:195-staked-for-energy`,
+  TrxStakedForEnergyShasta: `${Network.Shasta}/slip44:195-staked-for-energy`,
 
   /**
    * TRX Ready for Withdrawal (unstaked TRX that has completed the withdrawal period)
    */
-  TrxReadyForWithdrawalMainnet = `${Network.Mainnet}/slip44:195-ready-for-withdrawal`,
-  TrxReadyForWithdrawalNile = `${Network.Nile}/slip44:195-ready-for-withdrawal`,
-  TrxReadyForWithdrawalShasta = `${Network.Shasta}/slip44:195-ready-for-withdrawal`,
+  TrxReadyForWithdrawalMainnet: `${Network.Mainnet}/slip44:195-ready-for-withdrawal`,
+  TrxReadyForWithdrawalNile: `${Network.Nile}/slip44:195-ready-for-withdrawal`,
+  TrxReadyForWithdrawalShasta: `${Network.Shasta}/slip44:195-ready-for-withdrawal`,
 
   /**
    * Staking Rewards TRX
    */
-  TrxStakingRewardsMainnet = `${Network.Mainnet}/slip44:195-staking-rewards`,
-  TrxStakingRewardsNile = `${Network.Nile}/slip44:195-staking-rewards`,
-  TrxStakingRewardsShasta = `${Network.Shasta}/slip44:195-staking-rewards`,
+  TrxStakingRewardsMainnet: `${Network.Mainnet}/slip44:195-staking-rewards`,
+  TrxStakingRewardsNile: `${Network.Nile}/slip44:195-staking-rewards`,
+  TrxStakingRewardsShasta: `${Network.Shasta}/slip44:195-staking-rewards`,
 
   /**
    * TRX in Lock Period (unstaked but waiting for lock period to end)
    */
-  TrxInLockPeriodMainnet = `${Network.Mainnet}/slip44:195-in-lock-period`,
-  TrxInLockPeriodNile = `${Network.Nile}/slip44:195-in-lock-period`,
-  TrxInLockPeriodShasta = `${Network.Shasta}/slip44:195-in-lock-period`,
+  TrxInLockPeriodMainnet: `${Network.Mainnet}/slip44:195-in-lock-period`,
+  TrxInLockPeriodNile: `${Network.Nile}/slip44:195-in-lock-period`,
+  TrxInLockPeriodShasta: `${Network.Shasta}/slip44:195-in-lock-period`,
 
   /**
    * Tron Resource Assets
    */
-  EnergyMainnet = `${Network.Mainnet}/slip44:energy`,
-  EnergyNile = `${Network.Nile}/slip44:energy`,
-  EnergyShasta = `${Network.Shasta}/slip44:energy`,
+  EnergyMainnet: `${Network.Mainnet}/slip44:energy`,
+  EnergyNile: `${Network.Nile}/slip44:energy`,
+  EnergyShasta: `${Network.Shasta}/slip44:energy`,
 
-  MaximumEnergyMainnet = `${Network.Mainnet}/slip44:maximum-energy`,
-  MaximumEnergyNile = `${Network.Nile}/slip44:maximum-energy`,
-  MaximumEnergyShasta = `${Network.Shasta}/slip44:maximum-energy`,
+  MaximumEnergyMainnet: `${Network.Mainnet}/slip44:maximum-energy`,
+  MaximumEnergyNile: `${Network.Nile}/slip44:maximum-energy`,
+  MaximumEnergyShasta: `${Network.Shasta}/slip44:maximum-energy`,
 
-  BandwidthMainnet = `${Network.Mainnet}/slip44:bandwidth`,
-  BandwidthNile = `${Network.Nile}/slip44:bandwidth`,
-  BandwidthShasta = `${Network.Shasta}/slip44:bandwidth`,
+  BandwidthMainnet: `${Network.Mainnet}/slip44:bandwidth`,
+  BandwidthNile: `${Network.Nile}/slip44:bandwidth`,
+  BandwidthShasta: `${Network.Shasta}/slip44:bandwidth`,
 
-  MaximumBandwidthMainnet = `${Network.Mainnet}/slip44:maximum-bandwidth`,
-  MaximumBandwidthNile = `${Network.Nile}/slip44:maximum-bandwidth`,
-  MaximumBandwidthShasta = `${Network.Shasta}/slip44:maximum-bandwidth`,
-}
+  MaximumBandwidthMainnet: `${Network.Mainnet}/slip44:maximum-bandwidth`,
+  MaximumBandwidthNile: `${Network.Nile}/slip44:maximum-bandwidth`,
+  MaximumBandwidthShasta: `${Network.Shasta}/slip44:maximum-bandwidth`,
+} as const;
+
+export type KnownCaip19Id = (typeof KnownCaip19Id)[keyof typeof KnownCaip19Id];
 
 export const TRX_METADATA = {
   fungible: true as const,

@@ -223,17 +223,20 @@ export type BitcoinAccount = {
   applyUnconfirmedTx(tx: Transaction, lastSeen: number): void;
 };
 
-export enum AccountCapability {
-  SignPsbt = 'signPsbt',
-  ComputeFee = 'computeFee',
-  FillPsbt = 'fillPsbt',
-  BroadcastPsbt = 'broadcastPsbt',
-  SendTransfer = 'sendTransfer',
-  GetUtxo = 'getUtxo',
-  ListUtxos = 'listUtxos',
-  PublicDescriptor = 'publicDescriptor',
-  SignMessage = 'signMessage',
-}
+export const AccountCapability = {
+  SignPsbt: 'signPsbt',
+  ComputeFee: 'computeFee',
+  FillPsbt: 'fillPsbt',
+  BroadcastPsbt: 'broadcastPsbt',
+  SendTransfer: 'sendTransfer',
+  GetUtxo: 'getUtxo',
+  ListUtxos: 'listUtxos',
+  PublicDescriptor: 'publicDescriptor',
+  SignMessage: 'signMessage',
+} as const;
+
+export type AccountCapability =
+  (typeof AccountCapability)[keyof typeof AccountCapability];
 
 /**
  * BitcoinAccountRepository is a repository that manages Bitcoin accounts.
@@ -357,18 +360,22 @@ export type BitcoinAccountRepository = {
   getFrozenUTXOs(id: string): Promise<string[]>;
 };
 
-export enum Purpose {
-  Legacy = 44,
-  Segwit = 49,
-  NativeSegwit = 84,
-  Taproot = 86,
-  Multisig = 45,
-}
+export const Purpose = {
+  Legacy: 44,
+  Segwit: 49,
+  NativeSegwit: 84,
+  Taproot: 86,
+  Multisig: 45,
+} as const;
 
-export enum Slip44 {
-  Bitcoin = 0,
-  Testnet = 1,
-}
+export type Purpose = (typeof Purpose)[keyof typeof Purpose];
+
+export const Slip44 = {
+  Bitcoin: 0,
+  Testnet: 1,
+} as const;
+
+export type Slip44 = (typeof Slip44)[keyof typeof Slip44];
 
 export const addressTypeToPurpose: Record<AddressType, Purpose> = {
   p2pkh: Purpose.Legacy,

@@ -280,6 +280,9 @@
     "transactionScan.errors.slippageToleranceExceeded": {
       "message": "The transaction was reverted because the slippage tolerance was exceeded."
     },
+    "transactionScan.errors.transactionBlockhashExpired": {
+      "message": "Please go back and try again"
+    },
     "transactionScan.errors.unknownError": {
       "message": "An unknown error occurred."
     }

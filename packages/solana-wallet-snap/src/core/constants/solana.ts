@@ -14,26 +14,30 @@ export const METAMASK_ORIGIN_URL = 'https://metamask.io';
  *
  * @see https://namespaces.chainagnostic.org/solana/caip2
  */
-export enum Network {
-  Mainnet = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  Devnet = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
-  Testnet = 'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
-  Localnet = 'solana:123456789abcdef',
-}
+export const Network = {
+  Mainnet: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  Devnet: 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
+  Testnet: 'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
+  Localnet: 'solana:123456789abcdef',
+} as const;
 
-export enum KnownCaip19Id {
-  SolMainnet = `${Network.Mainnet}/slip44:501`,
-  SolDevnet = `${Network.Devnet}/slip44:501`,
-  SolTestnet = `${Network.Testnet}/slip44:501`,
-  SolLocalnet = `${Network.Localnet}/slip44:501`,
-  UsdcMainnet = `${Network.Mainnet}/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`,
-  UsdcDevnet = `${Network.Devnet}/token:4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`,
-  UsdcLocalnet = `${Network.Localnet}/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`,
-  EurcMainnet = `${Network.Mainnet}/token:HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr`,
-  EurcDevnet = `${Network.Devnet}/token:HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr`,
-  EurcLocalnet = `${Network.Localnet}/token:HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr`,
-  Ai16zMainnet = `${Network.Mainnet}/token:HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC`,
-}
+export type Network = (typeof Network)[keyof typeof Network];
+
+export const KnownCaip19Id = {
+  SolMainnet: `${Network.Mainnet}/slip44:501`,
+  SolDevnet: `${Network.Devnet}/slip44:501`,
+  SolTestnet: `${Network.Testnet}/slip44:501`,
+  SolLocalnet: `${Network.Localnet}/slip44:501`,
+  UsdcMainnet: `${Network.Mainnet}/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`,
+  UsdcDevnet: `${Network.Devnet}/token:4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`,
+  UsdcLocalnet: `${Network.Localnet}/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`,
+  EurcMainnet: `${Network.Mainnet}/token:HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr`,
+  EurcDevnet: `${Network.Devnet}/token:HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr`,
+  EurcLocalnet: `${Network.Localnet}/token:HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr`,
+  Ai16zMainnet: `${Network.Mainnet}/token:HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC`,
+} as const;
+
+export type KnownCaip19Id = (typeof KnownCaip19Id)[keyof typeof KnownCaip19Id];
 
 export type NativeCaipAssetType = `${Network}/slip44:501`;
 export type TokenCaipAssetType = `${Network}/token:${string}`;
@@ -92,9 +96,12 @@ export const NETWORK_TO_EXPLORER_CLUSTER = {
   [Network.Localnet]: 'local',
 };
 
-export enum SolanaCaip19Tokens {
-  SOL = 'slip44:501',
-}
+export const SolanaCaip19Tokens = {
+  SOL: 'slip44:501',
+} as const;
+
+export type SolanaCaip19Tokens =
+  (typeof SolanaCaip19Tokens)[keyof typeof SolanaCaip19Tokens];
 
 export type TokenInfo = {
   symbol: string;
