@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat: move batch utils into shared pkg ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
+- feat(solana-wallet-snap): use shareable permissions helpers in Solana snap ([#207](https://github.com/MetaMask/internal-snaps/pull/207))
+- feat: move buildUrl into shared util pkg ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
+- test(solana-wallet-snap): use a non-zero TTL in the fiat cache test ([#194](https://github.com/MetaMask/internal-snaps/pull/194))
+- feat: move sanitize utils into shared pkg ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
+- chore: move UrlStruct to shared lib ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: add safeMerge shared util ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
+- fix: mocklogger types in solana snap ([#164](https://github.com/MetaMask/internal-snaps/pull/164))
+- chore: disable eslint rules `jest/no-mocks-import` for test file ([#163](https://github.com/MetaMask/internal-snaps/pull/163))
+- chore: replace solana logger with shared util ([#148](https://github.com/MetaMask/internal-snaps/pull/148))
+
 ### Changed
 
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
