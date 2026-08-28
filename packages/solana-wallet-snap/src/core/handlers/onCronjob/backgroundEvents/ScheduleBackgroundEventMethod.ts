@@ -1,12 +1,15 @@
-export enum ScheduleBackgroundEventMethod {
+export const ScheduleBackgroundEventMethod = {
   /** Triggered when a transaction is shown in confirmation UI */
-  OnTransactionAdded = 'onTransactionAdded',
+  OnTransactionAdded: 'onTransactionAdded',
   /** Triggered when the user confirms a transaction in the confirmation UI */
-  OnTransactionApproved = 'onTransactionApproved',
+  OnTransactionApproved: 'onTransactionApproved',
   /** Triggered when a transaction is rejected */
-  OnTransactionRejected = 'onTransactionRejected',
+  OnTransactionRejected: 'onTransactionRejected',
   /** Use it to schedule a background event to refresh the confirmation estimation */
-  RefreshConfirmationEstimation = 'refreshConfirmationEstimation',
+  RefreshConfirmationEstimation: 'refreshConfirmationEstimation',
   /** Use it to schedule a background event to close WebSocket connections */
-  CloseWebSocketConnections = 'closeWebSocketConnections',
-}
+  CloseWebSocketConnections: 'closeWebSocketConnections',
+} as const;
+
+export type ScheduleBackgroundEventMethod =
+  (typeof ScheduleBackgroundEventMethod)[keyof typeof ScheduleBackgroundEventMethod];
