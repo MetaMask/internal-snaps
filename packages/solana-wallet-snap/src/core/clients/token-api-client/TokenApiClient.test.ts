@@ -128,6 +128,58 @@ describe('TokenApiClient', () => {
       await client.getTokensMetadata(tokenAddresses);
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(
+        mockFetch.mock.calls.map(([url]) =>
+          new URL(url as string).searchParams.get('assetIds')?.split(','),
+        ),
+      ).toStrictEqual([tokenAddresses.slice(0, 50), tokenAddresses.slice(50)]);
+    });
+
+    it('merges metadata returned from consecutive chunks', async () => {
+      const thirdTokenAddress = tokenAddressToCaip19(
+        Network.Mainnet,
+        '9GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
+      );
+      const tokenAddresses = [
+        tokenAddressToCaip19(
+          Network.Mainnet,
+          '1GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
+        ),
+        tokenAddressToCaip19(
+          Network.Mainnet,
+          '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
+        ),
+        thirdTokenAddress,
+      ];
+      const chunkedConfigProvider = {
+        get: jest.fn().mockReturnValue({
+          tokenApi: { baseUrl: 'https://some-mock-url.com', chunkSize: 2 },
+          staticApi: { baseUrl: 'https://some-mock-static-url.com' },
+        }),
+      } as unknown as ConfigProvider;
+      client = new TokenApiClient(chunkedConfigProvider, mockFetch, mockLogger);
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValueOnce(MOCK_METADATA_RESPONSE),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValueOnce([
+            {
+              decimals: 6,
+              assetId: thirdTokenAddress,
+              name: 'Popcat 3',
+              symbol: 'POPCAT3',
+            },
+          ]),
+        });
+
+      const metadata = await client.getTokensMetadata(tokenAddresses);
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(Object.keys(metadata)).toStrictEqual(tokenAddresses);
+      expect(metadata[thirdTokenAddress]?.name).toBe('Popcat 3');
     });
 
     it('rejects caip19Ids that are invalid', async () => {

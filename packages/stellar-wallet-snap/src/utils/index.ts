@@ -7,7 +7,13 @@ export * from './serialization';
 export * from './number';
 export * from './caip';
 export * from './buffer';
-export * from './async';
+export {
+  batchesAll,
+  batchesAllSettled,
+  batchesAllSettledWithChunks,
+  batchesAllWithChunks,
+  chunks,
+} from '@metamask/snap-networks-utils';
 export * from './assert';
 export * from './array';
 export * from './i18n';

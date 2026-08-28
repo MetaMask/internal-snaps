@@ -6,12 +6,14 @@ import { InexistentMethodError, SynchronizationError } from '../entities';
 import type { SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
-export enum CronMethod {
-  SynchronizeAccounts = 'synchronizeAccounts',
-  RefreshRates = 'refreshRates',
-  SyncSelectedAccounts = 'syncSelectedAccounts',
-  FullScanAccount = 'fullScanAccount',
-}
+export const CronMethod = {
+  SynchronizeAccounts: 'synchronizeAccounts',
+  RefreshRates: 'refreshRates',
+  SyncSelectedAccounts: 'syncSelectedAccounts',
+  FullScanAccount: 'fullScanAccount',
+} as const;
+
+export type CronMethod = (typeof CronMethod)[keyof typeof CronMethod];
 
 export const SendFormRefreshRatesRequest = object({
   interfaceId: string(),

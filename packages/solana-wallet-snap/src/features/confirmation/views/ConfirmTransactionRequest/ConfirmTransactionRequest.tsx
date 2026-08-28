@@ -26,13 +26,17 @@ export const ConfirmTransactionRequest = ({
   const { nativeToken } = Networks[context.scope];
   const nativePrice = context.tokenPrices[nativeToken.caip19Id]?.price ?? null;
 
+  const isScanError = context.scan?.status === 'ERROR';
+
   const shouldDisableConfirmButton =
-    context.scanFetchStatus === 'fetching' || context.scan?.status === 'ERROR';
+    context.scanFetchStatus === 'fetching' || isScanError;
+
+  const shouldShowAlert = context.preferences.useSecurityAlerts || isScanError;
 
   return (
     <Container>
       <Box>
-        {context.preferences.useSecurityAlerts ? (
+        {shouldShowAlert ? (
           <TransactionAlert
             scanFetchStatus={context.scanFetchStatus}
             validation={context.scan?.validation ?? null}
