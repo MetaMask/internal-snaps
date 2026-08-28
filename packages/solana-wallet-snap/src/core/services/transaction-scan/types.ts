@@ -36,13 +36,18 @@ export type TransactionScanResult = {
   error: TransactionScanError | null;
 };
 
-export enum SecurityAlertResponse {
-  Benign = 'Benign',
-  Warning = 'Warning',
-  Malicious = 'Malicious',
-}
+export const SecurityAlertResponse = {
+  Benign: 'Benign',
+  Warning: 'Warning',
+  Malicious: 'Malicious',
+} as const;
 
-export enum ScanStatus {
-  SUCCESS = 'SUCCESS',
-  ERROR = 'ERROR',
-}
+export type SecurityAlertResponse =
+  (typeof SecurityAlertResponse)[keyof typeof SecurityAlertResponse];
+
+export const ScanStatus = {
+  SUCCESS: 'SUCCESS',
+  ERROR: 'ERROR',
+} as const;
+
+export type ScanStatus = (typeof ScanStatus)[keyof typeof ScanStatus];

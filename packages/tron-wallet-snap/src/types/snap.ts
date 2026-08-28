@@ -13,13 +13,14 @@ export type Preferences = {
   useNftDetection: boolean;
 };
 
-export enum FetchStatus {
-  Initial = 'initial',
+export const FetchStatus = {
+  Initial: 'initial',
   // Loading: Before and during first fetch.
-  Loading = 'loading',
+  Loading: 'loading',
   // Fetching: During 2nd and nth fetch.
-  Fetching = 'fetching',
-  Fetched = 'fetched',
-  // eslint-disable-next-line @typescript-eslint/no-shadow
-  Error = 'error',
-}
+  Fetching: 'fetching',
+  Fetched: 'fetched',
+  Error: 'error',
+} as const;
+
+export type FetchStatus = (typeof FetchStatus)[keyof typeof FetchStatus];

@@ -23,7 +23,7 @@ const mockConnectionId = 'mock-connection-id';
 const createMockWebSocketConnection = (
   id = mockConnectionId,
   url = mockWebSocketUrl,
-  network = Network.Mainnet,
+  network: Network = Network.Mainnet,
 ): WebSocketConnection => ({
   id,
   url,
