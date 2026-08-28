@@ -1,5 +1,9 @@
 import type { Transaction } from '@metamask/keyring-api';
-import { deserialize, safeMerge, serialize } from '@metamask/snap-networks-utils';
+import {
+  deserialize,
+  safeMerge,
+  serialize,
+} from '@metamask/snap-networks-utils';
 import type { Serializable } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import type { MutexInterface } from 'async-mutex';

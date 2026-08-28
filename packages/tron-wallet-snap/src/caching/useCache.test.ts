@@ -1,4 +1,5 @@
 import type { Serializable } from '@metamask/snap-networks-utils';
+
 import type { ICache } from './ICache';
 import { CacheOptions, useCache } from './useCache';
 
