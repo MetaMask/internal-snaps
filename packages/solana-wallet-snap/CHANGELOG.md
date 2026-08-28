@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **BREAKING:** Preserve dapp-origin `signTransaction` and `signAndSendTransaction` payloads by signing the decoded transaction directly ([#156](https://github.com/MetaMask/internal-snaps/pull/156))
+- Prevent signing dapp transactions with expired blockhashes, and refresh the blockhash for MetaMask-originated transactions before signing. ([#183](https://github.com/MetaMask/internal-snaps/pull/183))
 
 ## [6.0.0]
 

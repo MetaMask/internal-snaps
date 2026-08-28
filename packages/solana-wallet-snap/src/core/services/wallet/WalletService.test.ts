@@ -256,7 +256,7 @@ describe('WalletService', () => {
             fromAccount,
             scope,
             undefined,
-            true,
+            'dapp',
           );
         });
 
@@ -273,7 +273,7 @@ describe('WalletService', () => {
             fromAccount,
             scope,
             undefined,
-            false,
+            'metamask',
           );
         });
 
@@ -322,7 +322,7 @@ describe('WalletService', () => {
             fromAccount,
             scope,
             undefined,
-            true,
+            'dapp',
           );
         });
 
@@ -339,7 +339,7 @@ describe('WalletService', () => {
             fromAccount,
             scope,
             undefined,
-            false,
+            'metamask',
           );
         });
 

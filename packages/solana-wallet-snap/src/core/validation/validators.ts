@@ -2,21 +2,9 @@ import {
   getJsonError,
   InvalidParamsError,
   SnapError,
-  UnauthorizedError,
 } from '@metamask/snaps-sdk';
 import type { Infer, Struct } from '@metamask/superstruct';
 import { assert } from '@metamask/superstruct';
-
-import { originPermissions } from '../../permissions';
-
-export const validateOrigin = (origin: string, method: string): void => {
-  if (!origin) {
-    throw new UnauthorizedError('Origin not found');
-  }
-  if (!originPermissions.get(origin)?.has(method)) {
-    throw new UnauthorizedError('Permission denied');
-  }
-};
 
 /**
  * Validates that the request parameters conform to the expected structure defined by the provided struct.
