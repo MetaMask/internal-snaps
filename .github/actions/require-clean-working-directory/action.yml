@@ -3,7 +3,7 @@ description: Fail if the working tree is dirty, ignoring snap.manifest.json shas
 
 inputs:
   skip-shasum-diff:
-    description: "Skip shasum-only diff check for snap.manifest.json"
+    description: 'Skip shasum-only diff check for snap.manifest.json'
     required: false
     default: true
 

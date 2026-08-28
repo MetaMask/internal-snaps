@@ -8,7 +8,7 @@ inputs:
 
 outputs:
   IS_RELEASE_PR:
-    description: "Whether this pull request is a release PR."
+    description: 'Whether this pull request is a release PR.'
     value: ${{ steps.is-release.outputs.IS_RELEASE }}
 
 runs:
