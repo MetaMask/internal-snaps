@@ -88,7 +88,9 @@ export class TokenApiClient {
       // The Token API only supports the networks in TokenApiClient.supportedNetworks
       const supportedAssetTypes = assetTypes.filter((assetType) => {
         const { chainId } = parseCaipAssetType(assetType);
-        return TokenApiClient.supportedNetworks.includes(chainId as Network);
+        return TokenApiClient.supportedNetworks.includes(
+          chainId as (typeof TokenApiClient.supportedNetworks)[number],
+        );
       });
 
       if (supportedAssetTypes.length !== assetTypes.length) {

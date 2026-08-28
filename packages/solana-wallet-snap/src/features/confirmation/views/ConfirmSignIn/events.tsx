@@ -20,10 +20,13 @@ async function onConfirmButtonClick({ id }: { id: string }) {
   await resolveInterface(id, true);
 }
 
-export enum ConfirmSignInFormNames {
-  Cancel = 'confirm-sign-in-cancel',
-  Confirm = 'confirm-sign-in-confirm',
-}
+export const ConfirmSignInFormNames = {
+  Cancel: 'confirm-sign-in-cancel',
+  Confirm: 'confirm-sign-in-confirm',
+} as const;
+
+export type ConfirmSignInFormNames =
+  (typeof ConfirmSignInFormNames)[keyof typeof ConfirmSignInFormNames];
 
 export const eventHandlers = {
   [ConfirmSignInFormNames.Cancel]: onCancelButtonClick,

@@ -197,12 +197,10 @@ export const onCronjob: OnCronjobHandler = async ({ request }) => {
 
     if (!handler) {
       throw new MethodNotFoundError(
-        `Cronjob / ScheduleBackgroundEvent method ${method} not found. Available methods: ${Object.values(
-          [
-            ...Object.values(CronjobMethod),
-            ...Object.values(ScheduleBackgroundEventMethod),
-          ],
-        ).toString()}`,
+        `Cronjob / ScheduleBackgroundEvent method ${String(method)} not found. Available methods: ${[
+          ...Object.values(CronjobMethod),
+          ...Object.values(ScheduleBackgroundEventMethod),
+        ].join(',')}`,
       ) as unknown as Error;
     }
     return handler({ request });

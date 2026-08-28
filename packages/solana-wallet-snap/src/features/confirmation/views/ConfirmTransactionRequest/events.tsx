@@ -62,11 +62,14 @@ async function onConfirmButtonClick({ id }: { id: string }) {
   );
 }
 
-export enum ConfirmSignAndSendTransactionFormNames {
-  ShowAdvanced = 'confirm-sign-and-send-transaction-show-advanced',
-  Cancel = 'confirm-sign-and-send-transaction-cancel',
-  Confirm = 'confirm-sign-and-send-transaction-confirm',
-}
+export const ConfirmSignAndSendTransactionFormNames = {
+  ShowAdvanced: 'confirm-sign-and-send-transaction-show-advanced',
+  Cancel: 'confirm-sign-and-send-transaction-cancel',
+  Confirm: 'confirm-sign-and-send-transaction-confirm',
+} as const;
+
+export type ConfirmSignAndSendTransactionFormNames =
+  (typeof ConfirmSignAndSendTransactionFormNames)[keyof typeof ConfirmSignAndSendTransactionFormNames];
 
 export const eventHandlers = {
   [ConfirmSignAndSendTransactionFormNames.ShowAdvanced]:
