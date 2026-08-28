@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { Transaction } from '@metamask/keyring-api';
-import { safeMerge } from '@metamask/snap-networks-utils';
+import { deserialize, safeMerge, serialize } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
+import type { Json } from '@metamask/snaps-sdk';
 import type { Address, Signature } from '@solana/kit';
 import type { MutexInterface } from 'async-mutex';
 import { Mutex } from 'async-mutex';
@@ -14,9 +16,6 @@ import type {
 } from '../../../entities';
 import type { EventEmitter } from '../../../infrastructure';
 import type { SpotPrices } from '../../clients/price-api/types';
-import { deserialize } from '../../serialization/deserialize';
-import { serialize } from '../../serialization/serialize';
-import type { Serializable } from '../../serialization/types';
 import type { IStateManager } from './IStateManager';
 
 export type AccountId = string;
@@ -248,7 +247,8 @@ export class State<
         method: 'snap_manageState',
         params: {
           operation: 'update',
-          newState: serialize(newState),
+          // State values are always objects, so the serialized result is too.
+          newState: serialize(newState) as Record<string, Json>,
           encrypted: this.#config.encrypted,
         },
       });

@@ -1,9 +1,9 @@
+import type { Serializable } from '@metamask/snap-networks-utils';
 import type { GetWebSocketsResult } from '@metamask/snaps-sdk';
 import type { JsonRpcParams } from '@metamask/utils';
 import type { SolanaRpcResponse } from '@solana/kit';
 
 import type { Network } from '../core/constants/solana';
-import type { Serializable } from '../core/serialization/types';
 
 export type WebSocketConnection = GetWebSocketsResult[number] & {
   readonly network: Network;

@@ -1,3 +1,4 @@
+import type { Serializable } from '@metamask/snap-networks-utils';
 import type { ICache } from './core/caching/ICache';
 import { InMemoryCache } from './core/caching/InMemoryCache';
 import { StateCache } from './core/caching/StateCache';
@@ -7,7 +8,6 @@ import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/Secu
 import { TokenApiClient } from './core/clients/token-api-client/TokenApiClient';
 import { ClientRequestHandler } from './core/handlers';
 import { SolanaKeyring } from './core/handlers/onKeyringRequest/Keyring';
-import type { Serializable } from './core/serialization/types';
 import {
   AccountsRepository,
   AccountsService,
