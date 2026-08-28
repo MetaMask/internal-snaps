@@ -6,7 +6,7 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import type {
   FungibleAssetMarketData,
   FungibleAssetMetadata,
@@ -40,7 +40,6 @@ import type {
   TokenCaipAssetType,
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
-import type { Serializable } from '../../../serialization/types';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';
