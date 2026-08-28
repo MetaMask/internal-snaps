@@ -116,8 +116,8 @@ jobs:
         with:
           commit-starts-with: ${{ vars.RELEASE_COMMIT_PREFIX }}
 
-  require-clean-release-pr:
-    name: Require clean working directory on release PR
+  require-correct-shasum:
+    name: Require correct shasum
     needs:
       - check-release
       - lint-build-test
@@ -191,7 +191,7 @@ jobs:
       - analyse-code
       - check-release
       - lint-build-test
-      - require-clean-release-pr
+      - require-correct-shasum
     outputs:
       passed: ${{ steps.set-output.outputs.passed }}
     steps:
