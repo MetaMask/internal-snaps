@@ -1,5 +1,6 @@
 import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
+
 import type { IStateManager } from '../services/state/IStateManager';
 import defaultLogger from '../utils/logger';
 import type { ICache } from './ICache';
