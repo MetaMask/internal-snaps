@@ -75,7 +75,7 @@ export class HandlerMiddleware {
         const errMsg =
           messages[`error.${error.code}`]?.message ??
           messages['error.internal']?.message ??
-          'Internal error in Bitcoin Wallet Snap';
+          'Internal error';
 
         /* eslint-disable @typescript-eslint/only-throw-error */
         // User errors that he can rectify: Equivalent to 4xx errors

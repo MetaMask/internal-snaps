@@ -8,7 +8,7 @@ runs:
       shell: bash
       run: |
         # mm-snap rewrites source.shasum during yarn build. Ignore shasum-only
-        # drift on PRs so parallel snap PRs do not need to restamp manifests.
+        # drift so CI doesn't require restamping manifests after each build.
         # Other manifest fields and all other files still fail the check.
         # publish-release keeps a strict dirty check so npm publish stays valid.
         if ! git diff --exit-code -- ':!packages/*/snap.manifest.json'; then
