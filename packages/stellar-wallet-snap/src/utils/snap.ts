@@ -1,5 +1,7 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
+import { deserialize, serialize } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { getJsonError } from '@metamask/snaps-sdk';
 import type {
   ComponentOrElement,
@@ -16,8 +18,6 @@ import { ensureError } from '@metamask/utils';
 
 import { StellarSnapException } from './errors';
 import { logger } from './logger';
-import { serialize, deserialize } from './serialization';
-import type { Serializable } from './serialization';
 
 export enum Duration {
   OneSecond = 'PT1S',

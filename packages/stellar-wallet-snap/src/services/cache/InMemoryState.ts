@@ -1,6 +1,6 @@
 import { get, set, unset } from 'lodash';
 
-import type { Serializable } from '../../utils/serialization';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '../state/IStateManager';
 
 /**
