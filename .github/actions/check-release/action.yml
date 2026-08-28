@@ -6,6 +6,11 @@ inputs:
     description: "Validate that the release commit starts with a string in this comma-separated list. Use '[version]' to refer to the current release version."
     required: true
 
+outputs:
+  IS_RELEASE_PR:
+    description: 'Whether this pull request is a release PR.'
+    value: ${{ steps.is-release.outputs.IS_RELEASE }}
+
 runs:
   using: composite
   steps:

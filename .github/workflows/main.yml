@@ -104,14 +104,41 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      IS_RELEASE_PR: ${{ steps.check-release.outputs.IS_RELEASE_PR }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
       - name: Check release
+        id: check-release
         if: github.event_name != 'push'
         uses: ./.github/actions/check-release
         with:
           commit-starts-with: ${{ vars.RELEASE_COMMIT_PREFIX }}
+
+  require-correct-shasum:
+    name: Require correct shasum
+    needs:
+      - check-release
+      - lint-build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
+        uses: actions/checkout@v7
+      - name: Restore build artifacts
+        if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: package-dist-${{ github.sha }}
+          path: packages
+      - name: Require clean working directory
+        if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
+        uses: ./.github/actions/require-clean-working-directory
+        with:
+          skip-shasum-diff: false
 
   is-release:
     name: Determine whether this is a release merge commit
@@ -164,6 +191,7 @@ jobs:
       - analyse-code
       - check-release
       - lint-build-test
+      - require-correct-shasum
     outputs:
       passed: ${{ steps.set-output.outputs.passed }}
     steps:
