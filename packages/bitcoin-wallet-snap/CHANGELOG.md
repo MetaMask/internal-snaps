@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
 - Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
+- Reveal and persist the wallet's own output scripts when signing a PSBT, so change from partner-supplied templates is always covered by routine sync ([#225](https://github.com/MetaMask/internal-snaps/pull/225))
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
 
 ## [2.0.1]
