@@ -1,59 +1,30 @@
 import {
-  MethodNotFoundError,
-  ParseError,
-  ResourceNotFoundError,
-  ResourceUnavailableError,
-  ChainDisconnectedError,
-  TransactionRejected,
-  DisconnectedError,
-  InternalError,
-  UnauthorizedError,
-  UnsupportedMethodError,
-  InvalidInputError,
-  InvalidParamsError,
-  InvalidRequestError,
-  LimitExceededError,
-  SnapError,
-  MethodNotSupportedError,
-  UserRejectedRequestError,
-  getJsonError,
-} from '@metamask/snaps-sdk';
+  createWithCatchAndThrowSnapError,
+  isSnapRpcError,
+} from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError, getJsonError } from '@metamask/snaps-sdk';
+
+export { isSnapRpcError };
+export type { SnapRpcError } from '@metamask/snap-networks-utils';
 
 import logger from './logger';
 
 /**
- * Determines if the given error is a Snap RPC error.
+ * Reports an error to MetaMask via Sentry (`snap_trackError`).
  *
- * @param error - The error instance to be checked.
- * @returns A boolean indicating whether the error is a Snap RPC error.
+ * Skips user rejections. Callers decide whether to invoke this for a given
+ * error in a given context.
+ *
+ * @param error - The error to report.
+ * @returns The Sentry event ID on success, or `undefined` on failure or if the error is skipped.
  */
-export function isSnapRpcError(error: Error): boolean {
-  const errors = [
-    SnapError,
-    MethodNotFoundError,
-    UserRejectedRequestError,
-    MethodNotSupportedError,
-    MethodNotFoundError,
-    ParseError,
-    ResourceNotFoundError,
-    ResourceUnavailableError,
-    TransactionRejected,
-    ChainDisconnectedError,
-    DisconnectedError,
-    UnauthorizedError,
-    UnsupportedMethodError,
-    InternalError,
-    InvalidInputError,
-    InvalidParamsError,
-    InvalidRequestError,
-    LimitExceededError,
-  ];
-  return errors.some((errType) => error instanceof errType);
-}
-
 export const trackError = async (
   error: unknown,
 ): Promise<string | undefined> => {
+  if (error instanceof UserRejectedRequestError) {
+    return undefined;
+  }
+
   try {
     return await snap.request({
       method: 'snap_trackError',
@@ -67,29 +38,7 @@ export const trackError = async (
   }
 };
 
-const shouldTrackError = (error: Error): boolean => {
-  return !(error instanceof UserRejectedRequestError);
-};
-
-export const withCatchAndThrowSnapError = async <ResponseT>(
-  fn: () => Promise<ResponseT>,
-): Promise<ResponseT> => {
-  try {
-    return await fn();
-  } catch (errorInstance: any) {
-    if (shouldTrackError(errorInstance)) {
-      await trackError(errorInstance);
-    }
-
-    const error = isSnapRpcError(errorInstance)
-      ? errorInstance
-      : new SnapError(errorInstance);
-
-    logger.error(
-      { error },
-      `[SnapError] ${JSON.stringify(error.toJSON(), null, 2)}`,
-    );
-
-    throw error;
-  }
-};
+export const withCatchAndThrowSnapError = createWithCatchAndThrowSnapError({
+  logError: logger.error.bind(logger),
+  trackError,
+});
