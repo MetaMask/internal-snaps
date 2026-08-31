@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { lamports } from '@solana/kit';
 
 import type { AssetEntity, SolanaKeyringAccount } from '../../../entities';
@@ -13,7 +14,6 @@ import {
 import { ClientRequestMethod } from '../../handlers/onClientRequest/types';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
-import type { Serializable } from '../../serialization/types';
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,

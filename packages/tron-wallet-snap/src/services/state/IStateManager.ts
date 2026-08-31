@@ -1,4 +1,4 @@
-import type { Serializable } from '../../utils/serialization/types';
+import type { Serializable } from '@metamask/snap-networks-utils';
 
 export type IStateManager<TStateValue extends Record<string, Serializable>> = {
   /**

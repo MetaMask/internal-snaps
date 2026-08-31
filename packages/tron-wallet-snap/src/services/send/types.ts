@@ -38,8 +38,8 @@ export type ActivationAssessment = {
 };
 
 export type SendValidationErrorCode =
-  | SendErrorCodes.InsufficientBalance
-  | SendErrorCodes.InsufficientBalanceToCoverFee;
+  | (typeof SendErrorCodes)['InsufficientBalance']
+  | (typeof SendErrorCodes)['InsufficientBalanceToCoverFee'];
 
 export type SendValidationResult = {
   valid: boolean;

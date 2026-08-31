@@ -1,6 +1,7 @@
+import type { Serializable } from '@metamask/snap-networks-utils';
+
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
-import type { Serializable } from '../../serialization/types';
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
 import { trackError } from '../../utils/errors';

@@ -1,9 +1,9 @@
 import { SolMethod } from '@metamask/keyring-api';
+import { serialize } from '@metamask/snap-networks-utils';
 import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
 
 import { transactionScanService, state } from '../../../../snapContext';
 import { METAMASK_ORIGIN, Network } from '../../../constants/solana';
-import { serialize } from '../../../serialization/serialize';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
@@ -21,7 +21,8 @@ jest.mock('../../../utils/errors', () => ({
   trackError: jest.fn().mockResolvedValue('tracked-error-id'),
 }));
 
-jest.mock('../../../serialization/serialize', () => ({
+jest.mock('@metamask/snap-networks-utils', () => ({
+  ...jest.requireActual('@metamask/snap-networks-utils'),
   serialize: jest.fn((value) => value),
 }));
 

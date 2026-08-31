@@ -29,10 +29,13 @@ export const SIMULATION_ACCOUNT: string =
  * it is recommended by Stellar official site.
  * @see https://developers.stellar.org/docs/tools/sdks/contract-sdks#stellar-multicall--router-sdk
  */
-export enum StellarRouterContract {
-  V0 = 'CBZV3HBP672BV7FF3ZILVT4CNPW3N5V2WTJ2LAGOAYW5R7L2D5SLUDFZ',
-  V1 = 'CCM23MFAJHDWUMF3IM3UPUI4ZUFFKX6OWJNJRUKO2W6MUTQNQWWFH7DC',
-}
+export const StellarRouterContract = {
+  V0: 'CBZV3HBP672BV7FF3ZILVT4CNPW3N5V2WTJ2LAGOAYW5R7L2D5SLUDFZ',
+  V1: 'CCM23MFAJHDWUMF3IM3UPUI4ZUFFKX6OWJNJRUKO2W6MUTQNQWWFH7DC',
+} as const;
+
+export type StellarRouterContract =
+  (typeof StellarRouterContract)[keyof typeof StellarRouterContract];
 
 export type StellarRouterParams = {
   rpcClient: rpc.Server;
