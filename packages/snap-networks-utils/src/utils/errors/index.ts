@@ -11,7 +11,6 @@ export type {
 } from './trackError';
 export type {
   CreateWithCatchAndThrowSnapErrorOptions,
-  LogErrorFn,
   NormalizeErrorFn,
   TrackErrorFn,
 } from './errors';
