@@ -1279,6 +1279,74 @@ describe('AccountUseCases', () => {
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
     });
+
+    it('reveals and persists own output scripts after signing (broadcast: false)', async () => {
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(true);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: false,
+      });
+
+      expect(mockAccount.revealToScript).toHaveBeenCalledWith(
+        mockOutput.script_pubkey,
+      );
+      expect(mockRepository.update).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('reveals and persists own output scripts after signing (broadcast: true)', async () => {
+      mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(true);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: true,
+      });
+
+      expect(mockAccount.revealToScript).toHaveBeenCalledWith(
+        mockOutput.script_pubkey,
+      );
+      expect(mockRepository.update).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('does not persist when no output scripts get revealed (broadcast: false)', async () => {
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(false);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: false,
+      });
+
+      expect(mockRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('only persists once via #broadcast when no output scripts get revealed (broadcast: true)', async () => {
+      mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(false);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: true,
+      });
+
+      expect(mockRepository.update).toHaveBeenCalledTimes(1);
+      expect(mockRepository.update).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('does not call revealToScript for outputs that are not isMine', async () => {
+      mockAccount.isMine.mockReturnValue(false);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: false,
+      });
+
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
+    });
   });
 
   describe('fillPsbt', () => {
@@ -1372,6 +1440,7 @@ describe('AccountUseCases', () => {
       expect(mockTxBuilder.drainToByScript).toHaveBeenCalledWith(
         mockOutput.script_pubkey,
       );
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
       expect(psbt).toBe(mockFilledPsbt);
     });
 
@@ -1690,6 +1759,7 @@ describe('AccountUseCases', () => {
         mockOutput.script_pubkey,
       );
       expect(mockTxBuilder.addRecipientByScript).not.toHaveBeenCalled();
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
       expect(fee).toBe(mockFee);
     });
 
