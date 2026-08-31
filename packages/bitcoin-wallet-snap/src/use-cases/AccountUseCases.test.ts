@@ -116,181 +116,6 @@ describe('AccountUseCases', () => {
     });
   });
 
-  describe('create', () => {
-    const createParams: CreateAccountParams = {
-      network: 'bitcoin',
-      entropySource: 'some-source',
-      index: 1,
-      addressType: 'p2wpkh',
-      synchronize: false,
-      correlationId: 'correlation-id',
-      accountName: 'My account',
-    };
-    const mockAccount = mock<BitcoinAccount>({ network: createParams.network });
-
-    beforeEach(() => {
-      mockRepository.create.mockResolvedValue(mockAccount);
-    });
-
-    it.each([
-      { tAddressType: 'p2pkh', purpose: "44'" },
-      { tAddressType: 'p2sh', purpose: "49'" },
-      { tAddressType: 'p2wsh', purpose: "45'" },
-      { tAddressType: 'p2wpkh', purpose: "84'" },
-      { tAddressType: 'p2tr', purpose: "86'" },
-    ] as { tAddressType: AddressType; purpose: string }[])(
-      'creates an account of type: %s',
-      async ({ tAddressType, purpose }) => {
-        const derivationPath = [
-          createParams.entropySource,
-          purpose,
-          "0'",
-          `${createParams.index}'`,
-        ];
-
-        await useCases.create({
-          ...createParams,
-          addressType: tAddressType,
-          synchronize: true,
-        });
-
-        expect(mockRepository.getByDerivationPath).toHaveBeenCalledWith(
-          derivationPath,
-        );
-        expect(mockRepository.create).toHaveBeenCalledWith(
-          derivationPath,
-          createParams.network,
-          tAddressType,
-        );
-        expect(mockAccount.revealNextAddress).toHaveBeenCalled();
-        expect(mockRepository.insert).toHaveBeenCalledWith(mockAccount);
-        expect(mockSnapClient.emitAccountCreatedEvent).toHaveBeenCalledWith(
-          mockAccount,
-          createParams.correlationId,
-          createParams.accountName,
-        );
-        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-          duration: 'PT1S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: mockAccount.id },
-        });
-      },
-    );
-
-    it.each([
-      { tNetwork: 'bitcoin', coinType: "0'" },
-      { tNetwork: 'testnet', coinType: "1'" },
-      { tNetwork: 'testnet4', coinType: "1'" },
-      { tNetwork: 'signet', coinType: "1'" },
-      { tNetwork: 'regtest', coinType: "1'" },
-    ] as { tNetwork: Network; coinType: string }[])(
-      'should create an account on network: %s',
-      async ({ tNetwork, coinType }) => {
-        const expectedDerivationPath = [
-          createParams.entropySource,
-          "84'",
-          coinType,
-          `${createParams.index}'`,
-        ];
-
-        await useCases.create({
-          ...createParams,
-          network: tNetwork,
-          synchronize: true,
-        });
-
-        expect(mockRepository.getByDerivationPath).toHaveBeenCalledWith(
-          expectedDerivationPath,
-        );
-        expect(mockRepository.create).toHaveBeenCalledWith(
-          expectedDerivationPath,
-          tNetwork,
-          createParams.addressType,
-        );
-        expect(mockRepository.insert).toHaveBeenCalledWith(mockAccount);
-        expect(mockSnapClient.emitAccountCreatedEvent).toHaveBeenCalledWith(
-          mockAccount,
-          createParams.correlationId,
-          createParams.accountName,
-        );
-        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-          duration: 'PT1S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: mockAccount.id },
-        });
-      },
-    );
-
-    it('returns an existing account if one already exists on same network', async () => {
-      mockRepository.getByDerivationPath.mockResolvedValue(mockAccount);
-
-      const result = await useCases.create(createParams);
-
-      expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
-      expect(mockRepository.create).not.toHaveBeenCalled();
-
-      expect(result).toBe(mockAccount);
-    });
-
-    it('propagates an error if getByDerivationPath throws', async () => {
-      const error = new Error('getByDerivationPath failed');
-      mockRepository.getByDerivationPath.mockRejectedValue(error);
-
-      await expect(useCases.create(createParams)).rejects.toBe(error);
-
-      expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
-      expect(mockRepository.create).not.toHaveBeenCalled();
-    });
-
-    it('propagates an error if create throws', async () => {
-      const error = new Error('create failed');
-      mockRepository.create.mockRejectedValue(error);
-
-      await expect(useCases.create(createParams)).rejects.toBe(error);
-
-      expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
-      expect(mockRepository.create).toHaveBeenCalled();
-    });
-
-    it('propagates an error if insert throws', async () => {
-      const error = new Error('insert failed');
-      mockRepository.insert.mockRejectedValue(error);
-
-      await expect(useCases.create(createParams)).rejects.toBe(error);
-
-      expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
-      expect(mockRepository.create).toHaveBeenCalled();
-      expect(mockRepository.insert).toHaveBeenCalled();
-    });
-
-    it('propagates an error if emitAccountCreatedEvent throws', async () => {
-      const error = new Error('emitAccountCreatedEvent failed');
-      mockSnapClient.emitAccountCreatedEvent.mockRejectedValue(error);
-
-      await expect(useCases.create(createParams)).rejects.toBe(error);
-
-      expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
-      expect(mockRepository.create).toHaveBeenCalled();
-      expect(mockRepository.insert).toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountCreatedEvent).toHaveBeenCalled();
-    });
-
-    it('propagates an error if scheduleBackgroundEvent throws', async () => {
-      const error = new Error('scheduleBackgroundEvent failed');
-      mockSnapClient.scheduleBackgroundEvent.mockRejectedValue(error);
-
-      await expect(
-        useCases.create({ ...createParams, synchronize: true }),
-      ).rejects.toBe(error);
-
-      expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
-      expect(mockRepository.create).toHaveBeenCalled();
-      expect(mockRepository.insert).toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountCreatedEvent).toHaveBeenCalled();
-      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
-    });
-  });
-
   describe('createMany', () => {
     const createParams: CreateAccountParams = {
       network: 'bitcoin',
@@ -311,13 +136,17 @@ describe('AccountUseCases', () => {
       id: 'new-id',
       network: createParams.network,
     });
+    const mockSnapshot = {
+      accounts: null,
+      derivationPaths: null,
+    };
 
     it('reuses existing accounts and bulk-inserts newly-created accounts', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue([
-        existingAccount,
-        null,
-      ]);
-      mockRepository.create.mockResolvedValue(newAccount);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [existingAccount, null],
+        snapshot: mockSnapshot,
+      });
+      mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([
         createParams,
@@ -328,14 +157,18 @@ describe('AccountUseCases', () => {
         firstDerivationPath,
         secondDerivationPath,
       ]);
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        secondDerivationPath,
-        createParams.network,
-        createParams.addressType,
-      );
+      expect(mockRepository.createMany).toHaveBeenCalledWith([
+        {
+          derivationPath: secondDerivationPath,
+          network: createParams.network,
+          addressType: createParams.addressType,
+        },
+      ]);
       expect(newAccount.revealNextAddress).toHaveBeenCalled();
-      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
-      expect(mockSnapClient.emitAccountCreatedEvent).not.toHaveBeenCalled();
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [newAccount],
+        mockSnapshot,
+      );
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         duration: 'PT1S',
         method: CronMethod.FullScanAccount,
@@ -345,89 +178,89 @@ describe('AccountUseCases', () => {
     });
 
     it('creates only one account for duplicate derivation paths in the same batch', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
-      mockRepository.create.mockResolvedValue(newAccount);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
+      });
+      mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([createParams, createParams]);
 
       expect(mockRepository.getByDerivationPaths).toHaveBeenCalledWith([
         firstDerivationPath,
       ]);
-      expect(mockRepository.create).toHaveBeenCalledTimes(1);
-      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
-      expect(mockSnapClient.emitAccountCreatedEvent).not.toHaveBeenCalled();
+      expect(mockRepository.createMany).toHaveBeenCalledTimes(1);
+      expect(mockRepository.createMany).toHaveBeenCalledWith([
+        {
+          derivationPath: firstDerivationPath,
+          network: createParams.network,
+          addressType: createParams.addressType,
+        },
+      ]);
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [newAccount],
+        mockSnapshot,
+      );
       expect(result).toStrictEqual([newAccount, newAccount]);
     });
 
     it('does not create or insert accounts when all accounts already exist', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue([existingAccount]);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [existingAccount],
+        snapshot: mockSnapshot,
+      });
 
       const result = await useCases.createMany([createParams]);
 
-      expect(mockRepository.create).not.toHaveBeenCalled();
+      expect(mockRepository.createMany).not.toHaveBeenCalled();
       expect(mockRepository.insertMany).not.toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountCreatedEvent).not.toHaveBeenCalled();
       expect(result).toStrictEqual([existingAccount]);
     });
 
     it('propagates insertMany errors without emitting account-created events', async () => {
       const error = new Error('insertMany failed');
-      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
-      mockRepository.create.mockResolvedValue(newAccount);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
+      });
+      mockRepository.createMany.mockResolvedValue([newAccount]);
       mockRepository.insertMany.mockRejectedValue(error);
 
       await expect(useCases.createMany([createParams])).rejects.toBe(error);
 
-      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
-      expect(mockSnapClient.emitAccountCreatedEvent).not.toHaveBeenCalled();
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [newAccount],
+        mockSnapshot,
+      );
     });
 
-    it('waits for in-flight creates before rejecting when one create fails', async () => {
-      const error = new Error('create failed');
-      const slowAccount = mock<BitcoinAccount>({
-        id: 'slow-id',
-        network: createParams.network,
+    it('logs phase timings for a batch creation', async () => {
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
       });
-      let resolveSlowCreate: (account: BitcoinAccount) => void = () =>
-        undefined;
-      const slowCreate = new Promise<BitcoinAccount>((resolve) => {
-        resolveSlowCreate = resolve;
+      mockRepository.createMany.mockResolvedValue([newAccount]);
+
+      await useCases.createMany([createParams]);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[createMany\] Phase timings \{.*"requested":1.*"created":1.*"lookupMs":\d+.*"deriveMs":\d+.*"persistMs":\d+.*"totalMs":\d+.*\}$/u,
+        ),
+      );
+    });
+
+    it('propagates createMany errors without inserting accounts', async () => {
+      const error = new Error('createMany failed');
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: mockSnapshot,
       });
-      const callOrder: string[] = [];
+      mockRepository.createMany.mockRejectedValue(error);
 
-      mockRepository.getByDerivationPaths.mockResolvedValue([null, null]);
-      mockRepository.create
-        .mockImplementationOnce(async () => {
-          callOrder.push('create-1');
-          throw error;
-        })
-        .mockImplementationOnce(async () => {
-          callOrder.push('create-2');
-          const account = await slowCreate;
-          callOrder.push('resolve-2');
-          return account;
-        });
+      await expect(useCases.createMany([createParams])).rejects.toBe(error);
 
-      const createManyPromise = useCases.createMany([
-        createParams,
-        { ...createParams, index: 2 },
-      ]);
-      const onSettled = jest.fn();
-      const settlementObserver = createManyPromise.then(onSettled, onSettled);
-
-      await new Promise((resolve) => {
-        setTimeout(resolve, 0);
-      });
-
-      expect(onSettled).not.toHaveBeenCalled();
-
-      resolveSlowCreate(slowAccount);
-
-      await expect(createManyPromise).rejects.toBe(error);
-      await settlementObserver;
-      expect(callOrder).toStrictEqual(['create-1', 'create-2', 'resolve-2']);
       expect(mockRepository.insertMany).not.toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountCreatedEvent).not.toHaveBeenCalled();
     });
   });
 
@@ -938,11 +771,10 @@ describe('AccountUseCases', () => {
       );
 
       expect(mockRepository.get).toHaveBeenCalledWith('non-existent-id');
-      expect(mockSnapClient.emitAccountDeletedEvent).not.toHaveBeenCalled();
       expect(mockRepository.delete).not.toHaveBeenCalled();
     });
 
-    it('removes an account', async () => {
+    it('removes an account without emitting keyring events', async () => {
       const mockAccount = mock<BitcoinAccount>();
       mockAccount.id = 'some-id';
 
@@ -951,25 +783,7 @@ describe('AccountUseCases', () => {
       await useCases.delete(mockAccount.id);
 
       expect(mockRepository.get).toHaveBeenCalledWith(mockAccount.id);
-      expect(mockSnapClient.emitAccountDeletedEvent).toHaveBeenCalledWith(
-        mockAccount.id,
-      );
       expect(mockRepository.delete).toHaveBeenCalledWith(mockAccount.id);
-    });
-
-    it('propagates an error if the event emitting fails', async () => {
-      const mockAccount = mock<BitcoinAccount>();
-      mockAccount.id = 'some-id';
-      const error = new Error('Event emit failed');
-
-      mockRepository.get.mockResolvedValue(mockAccount);
-      mockSnapClient.emitAccountDeletedEvent.mockRejectedValue(error);
-
-      await expect(useCases.delete(mockAccount.id)).rejects.toBe(error);
-
-      expect(mockRepository.get).toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountDeletedEvent).toHaveBeenCalled();
-      expect(mockRepository.delete).not.toHaveBeenCalled();
     });
 
     it('propagates an error if the repository fails', async () => {
@@ -983,7 +797,6 @@ describe('AccountUseCases', () => {
       await expect(useCases.delete(mockAccount.id)).rejects.toBe(error);
 
       expect(mockRepository.get).toHaveBeenCalled();
-      expect(mockSnapClient.emitAccountDeletedEvent).toHaveBeenCalled();
       expect(mockRepository.delete).toHaveBeenCalled();
     });
   });

@@ -288,6 +288,80 @@ describe('CronHandler', () => {
     });
   });
 
+  describe('sync coalescing', () => {
+    it('coalesces concurrent synchronizeAccounts calls into one run', async () => {
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([]);
+      mockAccountUseCases.list.mockResolvedValue([]);
+
+      await Promise.all([
+        handler.synchronizeAccounts(),
+        handler.synchronizeAccounts(),
+        handler.synchronizeAccounts(),
+      ]);
+
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs synchronizeAccounts again once the previous run has finished', async () => {
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([]);
+      mockAccountUseCases.list.mockResolvedValue([]);
+
+      await handler.synchronizeAccounts();
+      await handler.synchronizeAccounts();
+
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects all coalesced synchronizeAccounts callers on a shared failure', async () => {
+      const mockAccount = mock<BitcoinAccount>({ id: 'account-1' });
+      (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+      mockAccountUseCases.list.mockResolvedValue([mockAccount]);
+      mockAccountUseCases.synchronize.mockRejectedValue(
+        new Error('sync failed'),
+      );
+
+      const first = handler.synchronizeAccounts();
+      const second = handler.synchronizeAccounts();
+
+      await expect(first).rejects.toThrow('Account synchronization failures');
+      await expect(second).rejects.toThrow('Account synchronization failures');
+      expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(1);
+    });
+
+    it('coalesces concurrent syncSelectedAccounts calls for the same accounts regardless of order', async () => {
+      mockAccountUseCases.list.mockResolvedValue([]);
+
+      await Promise.all([
+        handler.syncSelectedAccounts(['account-1', 'account-2']),
+        handler.syncSelectedAccounts(['account-2', 'account-1']),
+      ]);
+
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+    });
+
+    it('coalesces concurrent syncSelectedAccounts calls for duplicate account IDs', async () => {
+      mockAccountUseCases.list.mockResolvedValue([]);
+
+      await Promise.all([
+        handler.syncSelectedAccounts(['account-1']),
+        handler.syncSelectedAccounts(['account-1', 'account-1']),
+      ]);
+
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not coalesce syncSelectedAccounts calls for different accounts', async () => {
+      mockAccountUseCases.list.mockResolvedValue([]);
+
+      await Promise.all([
+        handler.syncSelectedAccounts(['account-1']),
+        handler.syncSelectedAccounts(['account-2']),
+      ]);
+
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('fullScanAccount', () => {
     const mockAccount = mock<BitcoinAccount>({ id: 'account-1' });
     const request = {
