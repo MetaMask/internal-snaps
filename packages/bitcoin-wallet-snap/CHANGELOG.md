@@ -7,16 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- Release/9.0.0 ([#240](https://github.com/MetaMask/internal-snaps/pull/240))
-- refactor(snap-networks-utils): move util sources under `src/utils` ([#222](https://github.com/MetaMask/internal-snaps/pull/222))
-- refactor(bitcoin-wallet-snap): convert enums to `as const` objects ([#216](https://github.com/MetaMask/internal-snaps/pull/216))
-- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
-- chore: replace bitcoin logger with shared util class ([#142](https://github.com/MetaMask/internal-snaps/pull/142))
-- chore: update lint-build ci vars, add clean working dir check to release workflow ([#146](https://github.com/MetaMask/internal-snaps/pull/146))
-- chore: ts issues fixes ([#139](https://github.com/MetaMask/internal-snaps/pull/139))
-
 ### Changed
 
 - Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while full account scans use the BIP44 gap limit ([#224](https://github.com/MetaMask/internal-snaps/pull/224))
@@ -30,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `onKeyringRequest` responses to correctly return `Json` directly (v2 protocol) instead of v1's `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
+
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ## [2.0.0] [DEPRECATED]
