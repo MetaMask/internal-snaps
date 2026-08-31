@@ -41,3 +41,14 @@ export {
 } from './utils/originPermissions/createOriginPermissions';
 export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions';
 export { validateOrigin } from './utils/originPermissions/validateOrigin';
+export {
+  createWithCatchAndThrowSnapError,
+  isSnapRpcError,
+  normalizeError,
+} from './errors';
+export type {
+  CreateWithCatchAndThrowSnapErrorOptions,
+  NormalizeErrorFn,
+  SnapRpcError,
+  TrackErrorFn,
+} from './errors';
