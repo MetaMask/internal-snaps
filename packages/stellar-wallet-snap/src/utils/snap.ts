@@ -2,7 +2,7 @@ import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
 import { deserialize, serialize } from '@metamask/snap-networks-utils';
 import type { Serializable } from '@metamask/snap-networks-utils';
-import { getJsonError } from '@metamask/snaps-sdk';
+import { getJsonError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type {
   ComponentOrElement,
   DialogResult,
@@ -640,11 +640,15 @@ export async function trackSecurityScanCompleted(properties: {
  * of masking the original failure.
  *
  * @param error - The error to report to Sentry.
- * @returns The Sentry event ID on success, or `undefined` on failure.
+ * @returns The Sentry event ID on success, or `undefined` on failure or if the error is skipped.
  */
 export async function trackError(
   error: Error | unknown,
 ): Promise<string | undefined> {
+  if (error instanceof UserRejectedRequestError) {
+    return undefined;
+  }
+
   try {
     let errorToTrack = error;
 

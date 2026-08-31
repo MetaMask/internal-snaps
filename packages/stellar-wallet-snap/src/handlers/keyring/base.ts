@@ -3,7 +3,7 @@ import type { Struct } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { trackErrorIfNeeded } from '../../utils';
+import { trackError } from '../../utils/snap';
 import { validateRequest, validateResponse } from '../../utils/requestResponse';
 import type {
   AccountResolver,
@@ -115,7 +115,7 @@ export abstract class BaseSep43KeyringHandler<
     // in the SEP-43 envelope without tracking.
     if (sep43Error.code === Sep43ErrorCode.Internal) {
       // Send the raw error to Sentry to be tracked
-      await trackErrorIfNeeded(error);
+      await trackError(error);
     }
   }
 

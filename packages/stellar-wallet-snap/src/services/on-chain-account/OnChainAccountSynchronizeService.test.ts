@@ -10,7 +10,7 @@ import type { KnownCaip19Sep41AssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
 import { bufferToUint8Array } from '../../utils/buffer';
-import * as errorUtils from '../../utils/errors';
+import * as snapUtils from '../../utils/snap';
 import { logger } from '../../utils/logger';
 import type { StellarKeyringAccount } from '../account';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
@@ -200,7 +200,7 @@ describe('OnChainAccountSynchronizeService', () => {
 
   const setupTest = () => {
     jest.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
-    jest.spyOn(errorUtils, 'trackErrorIfNeeded').mockResolvedValue(undefined);
+    jest.spyOn(snapUtils, 'trackError').mockResolvedValue(undefined);
   };
 
   const buildActivatedAccountPair = (
@@ -974,7 +974,7 @@ describe('OnChainAccountSynchronizeService', () => {
       mockSep41Assets,
     );
 
-    expect(errorUtils.trackErrorIfNeeded).toHaveBeenCalledWith(
+    expect(snapUtils.trackError).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'sep41 fetch temporarily unavailable',
       }),
@@ -1144,7 +1144,7 @@ describe('OnChainAccountSynchronizeService', () => {
     );
 
     expect(saveManySpy).toHaveBeenCalled();
-    expect(errorUtils.trackErrorIfNeeded).toHaveBeenCalledWith(emitError);
+    expect(snapUtils.trackError).toHaveBeenCalledWith(emitError);
     expect(logger.warn).toHaveBeenCalledWith(
       '[💼 OnChainAccountSynchronizeService]',
       'Failed to emit keyring events after synchronize',
