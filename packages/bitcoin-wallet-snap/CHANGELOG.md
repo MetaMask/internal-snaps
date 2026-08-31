@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while full account scans use the BIP44 gap limit ([#224](https://github.com/MetaMask/internal-snaps/pull/224))
 
 ### Fixed
 
