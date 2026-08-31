@@ -51,6 +51,7 @@ export const TrackingSnapEvent = {
   TransactionReceived: 'Transaction Received',
   TransactionReorged: 'Transaction Reorged',
   TransactionSubmitted: 'Transaction Submitted',
+  ScanDiscoveredMissedTransactions: 'Scan Discovered Missed Transactions',
 } as const;
 
 export type TrackingSnapEvent =

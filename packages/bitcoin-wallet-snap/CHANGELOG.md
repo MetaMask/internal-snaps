@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Run a one-time full scan of every existing account after the update, so funds on previously unwatched addresses are found ([#226](https://github.com/MetaMask/internal-snaps/pull/226))
+- Emit a `Scan Discovered Missed Transactions` tracking event when the repair scan finds transactions that routine sync did not know about ([#226](https://github.com/MetaMask/internal-snaps/pull/226))
+
 ### Changed
 
 - Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while full account scans use the BIP44 gap limit ([#224](https://github.com/MetaMask/internal-snaps/pull/224))
