@@ -1,6 +1,6 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { SolMethod } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { address as asAddress, compileTransaction } from '@solana/kit';
@@ -12,7 +12,6 @@ import type { Network } from '../../constants/solana';
 import { METAMASK_ORIGIN, Networks } from '../../constants/solana';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
-import type { Serializable } from '../../serialization/types';
 import { solToLamports } from '../../utils/conversion';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';

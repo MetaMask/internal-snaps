@@ -1,5 +1,7 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
+import { deserialize, serialize } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { getJsonError } from '@metamask/snaps-sdk';
 import type {
   ComponentOrElement,
@@ -16,40 +18,46 @@ import { ensureError } from '@metamask/utils';
 
 import { StellarSnapException } from './errors';
 import { logger } from './logger';
-import { serialize, deserialize } from './serialization';
-import type { Serializable } from './serialization';
 
-export enum Duration {
-  OneSecond = 'PT1S',
-  TwoSeconds = 'PT2S',
-  FiveSeconds = 'PT5S',
-  TwentySeconds = 'PT20S',
-  ThirtySeconds = 'PT30S',
-  OneMinute = 'PT1M',
-  FiveMinutes = 'PT5M',
-  TenMinutes = 'PT10M',
-  ThirtyMinutes = 'PT30M',
-  OneHour = 'PT1H',
-}
+export const Duration = {
+  OneSecond: 'PT1S',
+  TwoSeconds: 'PT2S',
+  FiveSeconds: 'PT5S',
+  TwentySeconds: 'PT20S',
+  ThirtySeconds: 'PT30S',
+  OneMinute: 'PT1M',
+  FiveMinutes: 'PT5M',
+  TenMinutes: 'PT10M',
+  ThirtyMinutes: 'PT30M',
+  OneHour: 'PT1H',
+} as const;
+
+export type Duration = (typeof Duration)[keyof typeof Duration];
 
 /**
  * Enum for transaction tracking event types.
  */
-export enum TransactionEventType {
-  TransactionAdded = 'Transaction Added',
-  TransactionRejected = 'Transaction Rejected',
-  TransactionApproved = 'Transaction Approved',
-  TransactionSubmitted = 'Transaction Submitted',
-  TransactionFinalized = 'Transaction Finalized',
-}
+export const TransactionEventType = {
+  TransactionAdded: 'Transaction Added',
+  TransactionRejected: 'Transaction Rejected',
+  TransactionApproved: 'Transaction Approved',
+  TransactionSubmitted: 'Transaction Submitted',
+  TransactionFinalized: 'Transaction Finalized',
+} as const;
+
+export type TransactionEventType =
+  (typeof TransactionEventType)[keyof typeof TransactionEventType];
 
 /**
  * Enum for security alert tracking event types.
  */
-export enum SecurityEventType {
-  SecurityAlertDetected = 'Security Alert Detected',
-  SecurityScanCompleted = 'Security Scan Completed',
-}
+export const SecurityEventType = {
+  SecurityAlertDetected: 'Security Alert Detected',
+  SecurityScanCompleted: 'Security Scan Completed',
+} as const;
+
+export type SecurityEventType =
+  (typeof SecurityEventType)[keyof typeof SecurityEventType];
 
 /**
  * Returns the Snap provider.

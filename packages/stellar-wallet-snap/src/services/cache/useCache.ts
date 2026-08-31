@@ -1,8 +1,9 @@
 /* eslint-disable no-void */
 
+import { serialize } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
+
 import { logger } from '../../utils/logger';
-import { serialize } from '../../utils/serialization';
-import type { Serializable } from '../../utils/serialization';
 import type { ICache } from './api';
 
 const cacheLogger = logger.withPrefix('useCache');

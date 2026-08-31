@@ -12,20 +12,23 @@ import { getSlip44AssetId, toDisplayBalance } from '../../utils';
 import type { StellarKeyringAccount } from '../account/api';
 import { KeyringTransactionBuilderException } from './exceptions';
 
-export enum KeyringTransactionType {
-  Swap = 'swap',
-  BridgeSend = 'bridgeSend',
-  ChangeTrustOptIn = 'changeTrustOptIn',
-  ChangeTrustOptOut = 'changeTrustOptOut',
-  Send = 'send',
-  Pending = 'pending',
-  Unknown = 'unknown',
-}
+export const KeyringTransactionType = {
+  Swap: 'swap',
+  BridgeSend: 'bridgeSend',
+  ChangeTrustOptIn: 'changeTrustOptIn',
+  ChangeTrustOptOut: 'changeTrustOptOut',
+  Send: 'send',
+  Pending: 'pending',
+  Unknown: 'unknown',
+} as const;
 
-enum KeyringTransactionTypeLabel {
-  ChangeTrustOptIn = 'trustline-approve',
-  ChangeTrustOptOut = 'trustline-disapprove',
-}
+export type KeyringTransactionType =
+  (typeof KeyringTransactionType)[keyof typeof KeyringTransactionType];
+
+const KeyringTransactionTypeLabel = {
+  ChangeTrustOptIn: 'trustline-approve',
+  ChangeTrustOptOut: 'trustline-disapprove',
+} as const;
 
 export type KeyringTransactionAsset = {
   unit: string;
@@ -102,31 +105,31 @@ export type UnknownTransactionRequest = {
 
 export type KeyringTransactionRequest =
   | {
-      type: KeyringTransactionType.ChangeTrustOptIn;
+      type: typeof KeyringTransactionType.ChangeTrustOptIn;
       request: ChangeTrustTransactionRequest;
     }
   | {
-      type: KeyringTransactionType.ChangeTrustOptOut;
+      type: typeof KeyringTransactionType.ChangeTrustOptOut;
       request: ChangeTrustTransactionRequest;
     }
   | {
-      type: KeyringTransactionType.Send;
+      type: typeof KeyringTransactionType.Send;
       request: SendTransactionRequest;
     }
   | {
-      type: KeyringTransactionType.Pending;
+      type: typeof KeyringTransactionType.Pending;
       request: PendingTransactionRequest;
     }
   | {
-      type: KeyringTransactionType.Unknown;
+      type: typeof KeyringTransactionType.Unknown;
       request: UnknownTransactionRequest;
     }
   | {
-      type: KeyringTransactionType.Swap;
+      type: typeof KeyringTransactionType.Swap;
       request: SwapTransactionRequest;
     }
   | {
-      type: KeyringTransactionType.BridgeSend;
+      type: typeof KeyringTransactionType.BridgeSend;
       request: UnknownTransactionRequest;
     };
 
@@ -170,8 +173,8 @@ export class KeyringTransactionBuilder {
   #createChangeTrustTransaction(
     request: ChangeTrustTransactionRequest,
     optInOrOut:
-      | KeyringTransactionType.ChangeTrustOptIn
-      | KeyringTransactionType.ChangeTrustOptOut,
+      | typeof KeyringTransactionType.ChangeTrustOptIn
+      | typeof KeyringTransactionType.ChangeTrustOptOut,
   ): KeyringTransaction {
     const {
       txId,

@@ -1,4 +1,5 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import type { ICache } from '../../caching/ICache';
@@ -6,7 +7,6 @@ import { useCacheUntil } from '../../caching/useCacheUntil';
 import type { ResultWithExpiry } from '../../caching/useCacheUntil';
 import type { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
-import type { Serializable } from '../../utils/serialization/types';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
 import {

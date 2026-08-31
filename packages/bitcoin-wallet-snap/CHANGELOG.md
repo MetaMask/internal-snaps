@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The creation concurrency throttle is removed: with derivation local, the remaining per-account work is synchronous WASM wallet construction.
 - Reduce full-state round trips during batch account creation: the insert step reuses the state snapshot loaded by the existing-accounts lookup instead of re-reading both account maps, and the two state writes now run in parallel ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
 - Process the entire requested account range as a single batch instead of chunks of 100, so the existing-accounts lookup and state I/O happen once per request ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
+- Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while full account scans use the BIP44 gap limit ([#224](https://github.com/MetaMask/internal-snaps/pull/224))
 
 ### Fixed
 

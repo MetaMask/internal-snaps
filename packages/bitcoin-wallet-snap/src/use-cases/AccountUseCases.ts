@@ -174,7 +174,7 @@ export class AccountUseCases {
     // We need to do a full scan here to know if the account
     // has any previous activity since later on we filter out
     // accounts with no tx history
-    await this.#chain.fullScan(newAccount);
+    await this.#chain.fullScan(newAccount, 'discovery');
 
     this.#logger.info(
       'Bitcoin account discovered successfully. Request: %o',

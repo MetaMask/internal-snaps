@@ -35,12 +35,15 @@ export type ICronjobRequestHandler = {
   handle: (request: JsonRpcRequest) => Promise<Json>;
 };
 
-export enum BackgroundEventMethod {
-  SynchronizeAssets = 'synchronizeAssets',
-  SynchronizeAccounts = 'synchronizeAccounts',
-  TrackTransaction = 'trackTransaction',
-  RefreshConfirmationContext = 'refreshConfirmationContext',
-}
+export const BackgroundEventMethod = {
+  SynchronizeAssets: 'synchronizeAssets',
+  SynchronizeAccounts: 'synchronizeAccounts',
+  TrackTransaction: 'trackTransaction',
+  RefreshConfirmationContext: 'refreshConfirmationContext',
+} as const;
+
+export type BackgroundEventMethod =
+  (typeof BackgroundEventMethod)[keyof typeof BackgroundEventMethod];
 
 export const BackgroundEventMethodStruct = enums(
   Object.values(BackgroundEventMethod),
