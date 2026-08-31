@@ -364,8 +364,8 @@ export class TransactionMapper {
     transaction: Transaction,
     keyringAccount: StellarKeyringAccount,
     type:
-      | KeyringTransactionType.ChangeTrustOptIn
-      | KeyringTransactionType.ChangeTrustOptOut,
+      | typeof KeyringTransactionType.ChangeTrustOptIn
+      | typeof KeyringTransactionType.ChangeTrustOptOut,
   ): KeyringTransaction {
     const operationTypes = transaction.transactionOperations;
     const { scope } = transaction;

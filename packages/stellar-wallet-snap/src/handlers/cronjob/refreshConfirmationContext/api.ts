@@ -4,11 +4,14 @@ import type { Json } from '@metamask/utils';
 import type { ContextWithPrices } from '../../../ui/confirmation/api';
 
 /** Identifies which confirmation context refreshers to run for a cron cycle. */
-export enum ConfirmationContextRefresherKey {
-  Prices = 'prices',
-  Scan = 'scan',
-  Transaction = 'transaction',
-}
+export const ConfirmationContextRefresherKey = {
+  Prices: 'prices',
+  Scan: 'scan',
+  Transaction: 'transaction',
+} as const;
+
+export type ConfirmationContextRefresherKey =
+  (typeof ConfirmationContextRefresherKey)[keyof typeof ConfirmationContextRefresherKey];
 
 export const ConfirmationContextRefresherKeyStruct = enums(
   Object.values(ConfirmationContextRefresherKey),

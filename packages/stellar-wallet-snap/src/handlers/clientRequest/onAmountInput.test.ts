@@ -201,7 +201,7 @@ describe('OnAmountInputHandler', () => {
   });
 
   it('resolves on-chain account using scope derived from assetId', async () => {
-    const testnetAssetId = `${KnownCaip2ChainId.Testnet}/slip44:148`;
+    const testnetAssetId = `${KnownCaip2ChainId.Testnet}/slip44:148` as const;
     const {
       handler,
       account,
