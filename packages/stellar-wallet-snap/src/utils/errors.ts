@@ -2,11 +2,11 @@ import { createWithCatchAndThrowSnapError } from '@metamask/snap-networks-utils'
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
-export { isSnapRpcError } from '@metamask/snap-networks-utils';
-export type { SnapRpcError } from '@metamask/snap-networks-utils';
-
 import { logger } from './logger';
 import { trackError } from './snap';
+
+export { isSnapRpcError } from '@metamask/snap-networks-utils';
+export type { SnapRpcError } from '@metamask/snap-networks-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- must accept arbitrary `Error` subclass ctor signatures
 export type AnyErrorConstructor = abstract new (...args: any[]) => Error;
