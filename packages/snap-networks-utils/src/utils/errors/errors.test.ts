@@ -23,27 +23,36 @@ import { createWithCatchAndThrowSnapError, normalizeError } from './errors';
 import type { CreateWithCatchAndThrowSnapErrorOptions } from './errors';
 import { isSnapRpcError } from './snapRpcError';
 
-const setupTest = () => {
+type SetupTestResult = {
+  trackError: jest.Mock;
+  withCatchAndThrowSnapError: ReturnType<
+    typeof createWithCatchAndThrowSnapError
+  >;
+  createBoundWithCatchAndThrowSnapError: (
+    options?: Omit<CreateWithCatchAndThrowSnapErrorOptions, 'logError'>,
+  ) => ReturnType<typeof createWithCatchAndThrowSnapError>;
+};
+
+const setupTest = (): SetupTestResult => {
   jest.clearAllMocks();
 
   const trackError = jest.fn();
   const withCatchAndThrowSnapError = createWithCatchAndThrowSnapError({
-    logError: mockLogger['error'],
+    logError: mockLogger.error.bind(mockLogger),
     trackError,
   });
 
   return {
-    mockLogger,
     trackError,
     withCatchAndThrowSnapError,
     createBoundWithCatchAndThrowSnapError: (
       options: Omit<CreateWithCatchAndThrowSnapErrorOptions, 'logError'> = {
         trackError,
       },
-    ) =>
+    ): ReturnType<typeof createWithCatchAndThrowSnapError> =>
       createWithCatchAndThrowSnapError({
         ...options,
-        logError: mockLogger['error'],
+        logError: mockLogger.error.bind(mockLogger),
       }),
   };
 };
@@ -108,7 +117,7 @@ describe('errors', () => {
 
   describe('createWithCatchAndThrowSnapError', () => {
     it('returns the result when the function succeeds', async () => {
-      const { mockLogger, withCatchAndThrowSnapError } = setupTest();
+      const { withCatchAndThrowSnapError } = setupTest();
       const mockFn = jest.fn().mockResolvedValue('success');
 
       const result = await withCatchAndThrowSnapError(mockFn);
@@ -119,8 +128,7 @@ describe('errors', () => {
     });
 
     it('tracks, logs, and re-throws errors as SnapError', async () => {
-      const { mockLogger, trackError, withCatchAndThrowSnapError } =
-        setupTest();
+      const { trackError, withCatchAndThrowSnapError } = setupTest();
       const originalError = new Error('Test error');
       const mockFn = jest.fn().mockRejectedValue(originalError);
 
@@ -145,7 +153,7 @@ describe('errors', () => {
     });
 
     it('handles non-Error objects and converts them to SnapError', async () => {
-      const { mockLogger, withCatchAndThrowSnapError } = setupTest();
+      const { withCatchAndThrowSnapError } = setupTest();
       const mockFn = jest.fn().mockRejectedValue('string error');
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
@@ -156,7 +164,7 @@ describe('errors', () => {
     });
 
     it('handles null errors', async () => {
-      const { mockLogger, withCatchAndThrowSnapError } = setupTest();
+      const { withCatchAndThrowSnapError } = setupTest();
       const mockFn = jest.fn().mockRejectedValue(null);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(

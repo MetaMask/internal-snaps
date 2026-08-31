@@ -37,8 +37,8 @@ export function sanitizeSensitiveError(error: any): Error {
       'Key derivation failed. Please check your connection and try again.',
     );
     if (isSnapRpcError(error)) {
-      const ErrorConstructor = error.constructor as new () => Error;
-      return ErrorConstructor ? new ErrorConstructor() : sanitizedError;
+      const RpcErrorConstructor = error.constructor as new () => Error;
+      return RpcErrorConstructor ? new RpcErrorConstructor() : sanitizedError;
     }
     return sanitizedError;
   }

@@ -45,10 +45,10 @@ export {
   createWithCatchAndThrowSnapError,
   isSnapRpcError,
   normalizeError,
-} from './errors';
+} from './utils/errors';
 export type {
   CreateWithCatchAndThrowSnapErrorOptions,
   NormalizeErrorFn,
   SnapRpcError,
   TrackErrorFn,
-} from './errors';
+} from './utils/errors';

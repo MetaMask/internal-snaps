@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
-- Add shared snap error utilities to the main package entry point
+- Add shared snap error utilities to the main package entry point ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
   - `createWithCatchAndThrowSnapError` for handler-boundary error catching, logging, and Snap RPC normalization
   - `normalizeError` for converting caught values into Snap RPC errors, with optional custom normalizers via `createWithCatchAndThrowSnapError`'s `normalizeErrorFn` option
   - `isSnapRpcError` type guard and `SnapRpcError` union type

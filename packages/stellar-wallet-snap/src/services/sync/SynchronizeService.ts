@@ -4,11 +4,7 @@ import { E_ALREADY_LOCKED, Mutex, tryAcquire } from 'async-mutex';
 import type { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { BackgroundEventMethod } from '../../handlers/cronjob/api';
-import {
-  Duration,
-  scheduleBackgroundEvent,
-  trackError,
-} from '../../utils';
+import { Duration, scheduleBackgroundEvent, trackError } from '../../utils';
 import type { StellarKeyringAccount } from '../account';
 import type {
   AssetMetadataService,

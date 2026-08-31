@@ -10,8 +10,8 @@ import type { KnownCaip19Sep41AssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
 import { bufferToUint8Array } from '../../utils/buffer';
-import * as snapUtils from '../../utils/snap';
 import { logger } from '../../utils/logger';
+import * as snapUtils from '../../utils/snap';
 import type { StellarKeyringAccount } from '../account';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
 import {

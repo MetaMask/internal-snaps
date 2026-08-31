@@ -4,10 +4,10 @@ import {
 } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError, getJsonError } from '@metamask/snaps-sdk';
 
+import logger from './logger';
+
 export { isSnapRpcError };
 export type { SnapRpcError } from '@metamask/snap-networks-utils';
-
-import logger from './logger';
 
 /**
  * Reports an error to MetaMask via Sentry (`snap_trackError`).

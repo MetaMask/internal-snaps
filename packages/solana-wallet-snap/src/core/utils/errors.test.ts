@@ -25,9 +25,7 @@ describe('errors', () => {
     it('does not track UserRejectedRequestError', async () => {
       const { mockSnapRequest } = setupTest();
 
-      expect(
-        await trackError(new UserRejectedRequestError()),
-      ).toBeUndefined();
+      expect(await trackError(new UserRejectedRequestError())).toBeUndefined();
 
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });

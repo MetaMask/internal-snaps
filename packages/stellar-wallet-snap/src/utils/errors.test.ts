@@ -96,9 +96,9 @@ describe('errors', () => {
 
   describe('InvalidHttpRequestParamsException', () => {
     it('can be constructed with a message', () => {
-      expect(
-        new InvalidHttpRequestParamsException('bad params').message,
-      ).toBe('bad params');
+      expect(new InvalidHttpRequestParamsException('bad params').message).toBe(
+        'bad params',
+      );
     });
   });
 });

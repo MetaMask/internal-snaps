@@ -1,5 +1,5 @@
-import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import { mockLogger } from '../../utils/mockLogger';
 import { SnapClient } from './SnapClient';
