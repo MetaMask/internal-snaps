@@ -4,10 +4,10 @@
 # Note: Please keep this synchronized with the `teams.json` file in the repository root.
 # That file is used for some automated workflows, and maps controller to owning team(s).
 
-* @MetaMask/core-platform @MetaMask/networks
+* @MetaMask/core-platform @MetaMask/networks @MetaMask/emerging-opportunities
 
-packages/bitcoin-wallet-snap @MetaMask/networks
-packages/snap-networks-utils @MetaMask/networks
-packages/tron-wallet-snap @MetaMask/networks
-packages/solana-wallet-snap @MetaMask/networks
-packages/stellar-wallet-snap @MetaMask/networks
+packages/bitcoin-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
+packages/snap-networks-utils @MetaMask/networks @MetaMask/emerging-opportunities
+packages/tron-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
+packages/solana-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
+packages/stellar-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
