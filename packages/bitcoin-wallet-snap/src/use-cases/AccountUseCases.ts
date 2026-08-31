@@ -251,8 +251,9 @@ export class AccountUseCases {
 
         const persistStartMs = Date.now();
         if (newAccounts.length > 0) {
-          // Reuse the lookup's state snapshot: we're inside the account
-          // mutation, so it cannot have been changed by another creation.
+          // Reuse the lookup's derivation-path snapshot: account lifecycle
+          // mutations are serialized, while `insertMany` refreshes the
+          // accounts map to preserve concurrent sync updates.
           await this.#repository.insertMany(newAccounts, snapshot);
         }
         const persistMs = Date.now() - persistStartMs;

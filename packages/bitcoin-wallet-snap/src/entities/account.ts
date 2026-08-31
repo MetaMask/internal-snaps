@@ -278,8 +278,8 @@ export type BitcoinAccountRepository = {
    *
    * @param derivationPaths - derivation paths.
    * @returns the accounts or null if they do not exist (in input order), and
-   * the state snapshot the lookup was resolved from, reusable by `insertMany`
-   * within the same account mutation
+   * the derivation-path snapshot the lookup was resolved from, reusable by
+   * `insertMany` within the same account mutation
    */
   getByDerivationPaths(derivationPaths: string[][]): Promise<{
     accounts: (BitcoinAccount | null)[];
@@ -327,8 +327,8 @@ export type BitcoinAccountRepository = {
    *
    * @param accounts - Bitcoin accounts.
    * @param snapshot - Optional state snapshot (from `getByDerivationPaths`)
-   * to merge into, avoiding a redundant state read. Only safe when the
-   * snapshot was taken within the same account mutation.
+   * used to reuse the derivation-path map. The accounts map is still refreshed
+   * before writing so concurrent sync updates are preserved.
    */
   insertMany(
     accounts: BitcoinAccount[],

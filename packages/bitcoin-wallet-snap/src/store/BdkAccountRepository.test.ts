@@ -9,7 +9,7 @@ import {
   xpriv_to_descriptor,
   xpub_to_descriptor,
 } from '@metamask/bitcoindevkit';
-import type { SLIP10Node } from '@metamask/key-tree';
+import type { BIP32Node, BIP39Node, SLIP10Node } from '@metamask/key-tree';
 import {
   mnemonicPhraseToBytes,
   SLIP10Node as RealSlip10Node,
@@ -406,11 +406,13 @@ describe('BdkAccountRepository', () => {
     async function deriveFixtureNode(
       segments: string[],
     ): Promise<RealSlip10Node> {
+      const derivationPath: [BIP39Node, ...BIP32Node[]] = [
+        mnemonicPhraseToBytes(mnemonic) as BIP39Node,
+        ...segments.map((segment) => `bip32:${segment}` as BIP32Node),
+      ];
+
       return RealSlip10Node.fromDerivationPath({
-        derivationPath: [
-          mnemonicPhraseToBytes(mnemonic),
-          ...segments.map((segment) => `bip32:${segment}` as const),
-        ],
+        derivationPath,
         curve: 'secp256k1',
       });
     }
@@ -624,11 +626,15 @@ describe('BdkAccountRepository', () => {
       );
     });
 
-    it('merges into a provided snapshot without re-reading state', async () => {
-      const existingAccountState: AccountState = {
+    it('reuses the provided derivation-path snapshot while refreshing accounts', async () => {
+      const staleExistingAccountState: AccountState = {
         wallet: mockWalletData,
         inscriptions: [],
         derivationPath: mockDerivationPath,
+      };
+      const freshExistingAccountState: AccountState = {
+        ...staleExistingAccountState,
+        wallet: 'fresh-wallet-data',
       };
       const makeInsertableAccount = (
         id: string,
@@ -659,17 +665,21 @@ describe('BdkAccountRepository', () => {
         "0'",
         "2'",
       ]);
+      mockSnapClient.getState.mockResolvedValueOnce({
+        'existing-id': freshExistingAccountState,
+      });
 
       await repo.insertMany([account1, account2], {
-        accounts: { 'existing-id': existingAccountState },
+        accounts: { 'existing-id': staleExistingAccountState },
         derivationPaths: { "m/84'/0'/0'": 'existing-id' },
       });
 
-      expect(mockSnapClient.getState).not.toHaveBeenCalled();
+      expect(mockSnapClient.getState).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
       expect(mockSnapClient.setState).toHaveBeenCalledWith(
         'accounts',
         expect.objectContaining({
-          'existing-id': existingAccountState,
+          'existing-id': freshExistingAccountState,
           'some-id-1': expect.anything(),
           'some-id-2': expect.anything(),
         }),

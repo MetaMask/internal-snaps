@@ -136,10 +136,11 @@ export class CronHandler {
     // dedupe, so bursts of identical syncs fire together during onboarding
     // and imports. Concurrent invocations for the same account set share one
     // in-flight run.
-    const key = `syncSelectedAccounts:${[...accountIds].sort().join(',')}`;
+    const uniqueAccountIds = [...new Set(accountIds)].sort();
+    const key = `syncSelectedAccounts:${JSON.stringify(uniqueAccountIds)}`;
 
     await this.#syncCoalescer.run(key, async () => {
-      const accountIdSet = new Set(accountIds);
+      const accountIdSet = new Set(uniqueAccountIds);
       const allAccounts = await this.#accountsUseCases.list();
 
       const selectedAccounts = allAccounts.filter((account) =>

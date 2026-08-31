@@ -18,8 +18,10 @@ export type SnapState = {
 };
 
 /**
- * In-memory snapshot of the account maps, as loaded from state. Lets a lookup
- * and a subsequent insert within the same account mutation share one read.
+ * In-memory snapshot loaded while resolving derivation paths. The
+ * derivation-path map can be reused by a subsequent insert within the same
+ * account mutation; the accounts map is retained for lookup results but
+ * refreshed before full-map writes to avoid overwriting sync updates.
  */
 export type AccountStateSnapshot = {
   accounts: SnapState['accounts'] | null;

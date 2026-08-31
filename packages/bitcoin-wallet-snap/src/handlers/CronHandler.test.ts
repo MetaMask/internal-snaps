@@ -339,6 +339,17 @@ describe('CronHandler', () => {
       expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
     });
 
+    it('coalesces concurrent syncSelectedAccounts calls for duplicate account IDs', async () => {
+      mockAccountUseCases.list.mockResolvedValue([]);
+
+      await Promise.all([
+        handler.syncSelectedAccounts(['account-1']),
+        handler.syncSelectedAccounts(['account-1', 'account-1']),
+      ]);
+
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+    });
+
     it('does not coalesce syncSelectedAccounts calls for different accounts', async () => {
       mockAccountUseCases.list.mockResolvedValue([]);
 

@@ -377,25 +377,20 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       derivationPathEntries.push([getDerivationPathKey(derivationPath), id]);
     }
 
-    // Reuse the caller's snapshot when provided (safe within the same account
-    // mutation) instead of re-reading state that was just loaded.
-    let existingAccounts: SnapState['accounts'] | null;
-    let existingDerivationPaths: SnapState['derivationPaths'] | null;
-    if (snapshot) {
-      ({
-        accounts: existingAccounts,
-        derivationPaths: existingDerivationPaths,
-      } = snapshot);
-    } else {
-      [existingAccounts, existingDerivationPaths] = await Promise.all([
-        this.#snapClient.getState('accounts') as Promise<
-          SnapState['accounts'] | null
-        >,
-        this.#snapClient.getState('derivationPaths') as Promise<
-          SnapState['derivationPaths'] | null
-        >,
-      ]);
-    }
+    // Re-read accounts before the full-map write so account updates from sync
+    // are not overwritten by a stale lookup snapshot. Derivation paths are only
+    // mutated by account lifecycle operations, so the mutation-local snapshot
+    // can still safely avoid one redundant state read.
+    const [existingAccounts, existingDerivationPaths] = await Promise.all([
+      this.#snapClient.getState('accounts') as Promise<
+        SnapState['accounts'] | null
+      >,
+      snapshot
+        ? Promise.resolve(snapshot.derivationPaths)
+        : (this.#snapClient.getState('derivationPaths') as Promise<
+            SnapState['derivationPaths'] | null
+          >),
+    ]);
 
     // The two maps are independent, so write them in parallel.
     await Promise.all([
