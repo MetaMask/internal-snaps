@@ -31,7 +31,7 @@ export const Config: SnapConfig = {
   encrypt: false,
   chain: {
     parallelRequests: 5,
-    stopGap: 5,
+    stopGap: { discovery: 5, scan: 20 },
     maxRetries: 3,
     url: {
       bitcoin: fromEnv('ESPLORA_BITCOIN', 'https://blockstream.info/api'),
