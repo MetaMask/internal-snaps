@@ -2,7 +2,7 @@
 
 import type { CaipAssetType } from '@metamask/keyring-api';
 import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
@@ -12,7 +12,6 @@ import { useCache } from '../../caching/useCache';
 import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import logger from '../../utils/logger';
-import type { Serializable } from '../../utils/serialization/types';
 import type {
   FiatExchangeRatesResponse,
   GetHistoricalPricesParams,

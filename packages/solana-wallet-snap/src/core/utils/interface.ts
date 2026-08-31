@@ -1,3 +1,5 @@
+import { deserialize, serialize } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import type {
   ComponentOrElement,
   DialogResult,
@@ -10,9 +12,6 @@ import type {
 } from '@metamask/snaps-sdk';
 
 import type { ScheduleBackgroundEventMethod } from '../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
-import { deserialize } from '../serialization/deserialize';
-import { serialize } from '../serialization/serialize';
-import type { Serializable } from '../serialization/types';
 import type { Preferences } from '../types/snap';
 
 export const CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME =
@@ -31,7 +30,8 @@ export async function createInterface<TContext extends Serializable>(
   ui: ComponentOrElement,
   context: TContext,
 ): Promise<string> {
-  const serializedContext = serialize(context);
+  // Contexts are always objects, so the serialized result is too.
+  const serializedContext = serialize(context) as Record<string, Json>;
   return snap.request({
     method: 'snap_createInterface',
     params: {
@@ -54,7 +54,8 @@ export async function updateInterface<TContext extends Serializable>(
   ui: ComponentOrElement,
   context: TContext,
 ): Promise<UpdateInterfaceResult> {
-  const serializedContext = serialize(context);
+  // Contexts are always objects, so the serialized result is too.
+  const serializedContext = serialize(context) as Record<string, Json>;
   return snap.request({
     method: 'snap_updateInterface',
     params: {

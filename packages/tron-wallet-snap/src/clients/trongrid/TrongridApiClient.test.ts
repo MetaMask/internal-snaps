@@ -1,3 +1,5 @@
+import type { Serializable } from '@metamask/snap-networks-utils';
+
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { Network } from '../../constants';
@@ -5,7 +7,6 @@ import { ConfigProvider } from '../../services/config';
 import nativeTransferWithoutTimestampMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer-without-timestamp.json';
 import nativeTransferMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer.json';
 import { mockLogger } from '../../utils/mockLogger';
-import type { Serializable } from '../../utils/serialization/types';
 import { TronHttpClient } from '../tron-http/TronHttpClient';
 import { TrongridApiClient } from './TrongridApiClient';
 import type { Trc20Balance, TransactionInfo } from './types';

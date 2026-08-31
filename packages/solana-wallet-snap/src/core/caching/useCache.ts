@@ -1,6 +1,7 @@
 /* eslint-disable no-void */
 
-import type { Serializable } from '../serialization/types';
+import type { Serializable } from '@metamask/snap-networks-utils';
+
 import logger from '../utils/logger';
 import type { ICache } from './ICache';
 

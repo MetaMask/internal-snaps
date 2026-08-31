@@ -362,12 +362,14 @@ export function isBridgeSendTransaction(
   if (
     operationTypes.length === 1 &&
     firstOperation &&
-    [
-      StellarOperationType.InvokeHostFunction,
-      StellarOperationType.Payment,
-      StellarOperationType.PathPaymentStrictSend,
-      StellarOperationType.PathPaymentStrictReceive,
-    ].includes(firstOperation.type as StellarOperationType)
+    (
+      [
+        StellarOperationType.InvokeHostFunction,
+        StellarOperationType.Payment,
+        StellarOperationType.PathPaymentStrictSend,
+        StellarOperationType.PathPaymentStrictReceive,
+      ] as readonly StellarOperationType[]
+    ).includes(firstOperation.type as StellarOperationType)
   ) {
     return true;
   }
