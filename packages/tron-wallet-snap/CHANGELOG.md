@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0]
+
 ### Added
 
-- Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
-- Use the Core's AssetsController as assets source of truth when the migration feature flag is on ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
+- Use Core's `AssetsController` as the source of truth for fungible assets when the Tron assets migration feature flag is enabled ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
 
 ### Changed
 
@@ -18,8 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduce extension RPC round trips in `keyring_createAccounts` from 5 to at most 4 ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
   - `mergeKeyringAccounts` now returns the merge result instead of requiring a post-merge state re-read, and the existing-accounts read runs in parallel with the BIP-32 entropy fetch.
   - `snap_getBip32Entropy` is now called even when all requested indices already exist (this path only occurs on idempotent retries); no new permissions are required.
-- Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService` ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
-- Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 
 ### Fixed
 
@@ -62,7 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.2.0...HEAD
+[3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...@metamask/tron-wallet-snap@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.0.0...@metamask/tron-wallet-snap@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@2.0.0...@metamask/tron-wallet-snap@3.0.0
 [2.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/tron-wallet-snap@2.0.0
