@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Use Core's AssetsController as the source of truth for fungible assets when the Tron assets migration feature flag is enabled ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
+- Use Core's `AssetsController` as the source of truth for fungible assets when the Tron assets migration feature flag is enabled ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
 
 ### Changed
 
