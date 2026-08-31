@@ -9,24 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.2.0]
 
-### Uncategorized
-
-- feat(tron-wallet-snap): use shareable serialization in Tron snap ([#236](https://github.com/MetaMask/internal-snaps/pull/236))
-- chore(tron-wallet-snap): remove unused TRC20 log parser ([#234](https://github.com/MetaMask/internal-snaps/pull/234))
-- refactor(tron-wallet-snap): convert enums to `as const` objects ([#218](https://github.com/MetaMask/internal-snaps/pull/218))
-- test(tron-wallet-snap): removed beforeEach from useCacheUntil tests ([#228](https://github.com/MetaMask/internal-snaps/pull/228))
-- test(tron-wallet-snap): remove before each usage in useCache ([#223](https://github.com/MetaMask/internal-snaps/pull/223))
-- feat: move batch utils into shared pkg ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
-- feat(tron-wallet-snap): use shareable permissions helpers in Tron snap ([#204](https://github.com/MetaMask/internal-snaps/pull/204))
-- fix(tron-wallet-snap): balance from the AssetsController is in display format, not raw balance ([#196](https://github.com/MetaMask/internal-snaps/pull/196))
-- feat: move buildUrl into shared util pkg ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
-- feat: move sanitize utils into shared pkg ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
-- Revert "Release/9.0.0 (#184)" ([#184](https://github.com/MetaMask/internal-snaps/pull/184))
-
 ### Added
 
-- Add `CoreAssetsAdapter` and `mapControllerAsset` for AssetsController integration (wired unused until routing lands) ([#144](https://github.com/MetaMask/internal-snaps/pull/144))
-- Use the Core's AssetsController as assets source of truth when the migration feature flag is on ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
+- Use Core's AssetsController as the source of truth for fungible assets when the Tron assets migration feature flag is enabled ([#145](https://github.com/MetaMask/internal-snaps/pull/145))
 
 ### Changed
 
@@ -34,17 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduce extension RPC round trips in `keyring_createAccounts` from 5 to at most 4 ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
   - `mergeKeyringAccounts` now returns the merge result instead of requiring a post-merge state re-read, and the existing-accounts read runs in parallel with the BIP-32 entropy fetch.
   - `snap_getBip32Entropy` is now called even when all requested indices already exist (this path only occurs on idempotent retries); no new permissions are required.
-- Extract shared asset util functions and inject `SnapAssetsAdapter` from `context` into `AssetsService` ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
-- Rename `getByKeyringAccountId` to `getAccountAssets` (with essential-asset synthesis) and update keyring callers ([#143](https://github.com/MetaMask/internal-snaps/pull/143))
 
 ### Fixed
 
 - Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from `keyring_deleteAccount` ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
 - Coalesce concurrent account synchronization runs for the same accounts so stacked triggers (cronjob and background events) share one run instead of duplicating network fetches, state writes, and keyring events ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
-- Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 - Estimate native TRX/TRC-10 sends that activate a new account as 1 TRX plus 100 Bandwidth (or 0.1 TRX when staked Bandwidth is insufficient), instead of TransferContract byte size ([#175](https://github.com/MetaMask/internal-snaps/pull/175))
-- Fix SUN → USDT swaps routed through Rango and SunSwap displaying a zero SUN amount in transaction activity ([#134](https://github.com/MetaMask/internal-snaps/pull/134))
 
 ## [3.1.0]
 
