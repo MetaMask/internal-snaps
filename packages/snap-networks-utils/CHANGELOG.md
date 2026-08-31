@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- refactor(snap-networks-utils): move util sources under `src/utils` ([#222](https://github.com/MetaMask/internal-snaps/pull/222))
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: ts issues fixes ([#139](https://github.com/MetaMask/internal-snaps/pull/139))
+
 ### Added
 
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
