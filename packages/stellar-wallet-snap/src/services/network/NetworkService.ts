@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
@@ -20,7 +20,7 @@ import {
   MAX_TRANSACTIONS_PAGE_SIZE,
   STELLAR_DECIMAL_PLACES,
 } from '../../constants';
-import type { AnyErrorConstructor, Serializable } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import {
   isSameStr,
   parseClassicAssetCodeIssuer,
