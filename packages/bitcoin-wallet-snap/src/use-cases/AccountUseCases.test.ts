@@ -475,7 +475,10 @@ describe('AccountUseCases', () => {
           discoverParams.network,
           tAddressType,
         );
-        expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount);
+        expect(mockChain.fullScan).toHaveBeenCalledWith(
+          mockAccount,
+          'discovery',
+        );
       },
     );
 
@@ -508,7 +511,10 @@ describe('AccountUseCases', () => {
           tNetwork,
           discoverParams.addressType,
         );
-        expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount);
+        expect(mockChain.fullScan).toHaveBeenCalledWith(
+          mockAccount,
+          'discovery',
+        );
       },
     );
 
