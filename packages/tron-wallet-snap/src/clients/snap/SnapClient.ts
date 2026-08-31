@@ -1,7 +1,7 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
-import { getJsonError } from '@metamask/snaps-sdk';
+import { getJsonError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type {
   DialogResult,
   EntropySource,
@@ -255,9 +255,13 @@ export class SnapClient {
    * of masking the original failure.
    *
    * @param error - The error to report to Sentry.
-   * @returns The Sentry event ID on success, or `undefined` on failure.
+   * @returns The Sentry event ID on success, or `undefined` on failure or if the error is skipped.
    */
   async trackError(error: Error): Promise<string | undefined> {
+    if (error instanceof UserRejectedRequestError) {
+      return undefined;
+    }
+
     try {
       return await snap.request({
         method: 'snap_trackError',

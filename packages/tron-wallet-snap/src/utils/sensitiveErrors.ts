@@ -1,22 +1,6 @@
-import {
-  ChainDisconnectedError,
-  DisconnectedError,
-  InternalError,
-  InvalidInputError,
-  InvalidParamsError,
-  InvalidRequestError,
-  LimitExceededError,
-  MethodNotFoundError,
-  MethodNotSupportedError,
-  ParseError,
-  ResourceNotFoundError,
-  ResourceUnavailableError,
-  SnapError,
-  TransactionRejected,
-  UnauthorizedError,
-  UnsupportedMethodError,
-  UserRejectedRequestError,
-} from '@metamask/snaps-sdk';
+import { isSnapRpcError } from '@metamask/snap-networks-utils';
+
+export { isSnapRpcError };
 
 /**
  * Sanitizes error messages that may contain sensitive cryptographic information.
@@ -53,40 +37,11 @@ export function sanitizeSensitiveError(error: any): Error {
       'Key derivation failed. Please check your connection and try again.',
     );
     if (isSnapRpcError(error)) {
-      return error.constructor ? new error.constructor() : sanitizedError;
+      const ErrorConstructor = error.constructor as new () => Error;
+      return ErrorConstructor ? new ErrorConstructor() : sanitizedError;
     }
     return sanitizedError;
   }
 
   return error;
-}
-
-/**
- * Determines if the given error is a Snap RPC error.
- *
- * @param error - The error instance to be checked.
- * @returns A boolean indicating whether the error is a Snap RPC error.
- */
-export function isSnapRpcError(error: Error): boolean {
-  const errors = [
-    SnapError,
-    MethodNotFoundError,
-    UserRejectedRequestError,
-    MethodNotSupportedError,
-    MethodNotFoundError,
-    ParseError,
-    ResourceNotFoundError,
-    ResourceUnavailableError,
-    TransactionRejected,
-    ChainDisconnectedError,
-    DisconnectedError,
-    UnauthorizedError,
-    UnsupportedMethodError,
-    InternalError,
-    InvalidInputError,
-    InvalidParamsError,
-    InvalidRequestError,
-    LimitExceededError,
-  ];
-  return errors.some((errType) => error instanceof errType);
 }
