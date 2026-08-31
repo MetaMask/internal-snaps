@@ -111,6 +111,7 @@ jobs:
         uses: actions/checkout@v7
       - name: Check release
         id: check-release
+        ### This action run on pull request and merge queue.
         if: github.event_name != 'push'
         uses: ./.github/actions/check-release
         with:
