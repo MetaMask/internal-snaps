@@ -1,10 +1,11 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import { InFlightCoalescer } from '@metamask/snap-networks-utils';
-import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
-import { array, assert, object, string } from 'superstruct';
+import type { Json, JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
+import { array, assert, boolean, object, optional, string } from 'superstruct';
 
 import { InexistentMethodError, SynchronizationError } from '../entities';
-import type { SnapClient, SyncResult } from '../entities';
+import type { BitcoinAccount, SnapClient, SyncResult } from '../entities';
+import { TrackingSnapEvent } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export const CronMethod = {
@@ -26,6 +27,7 @@ export const SyncSelectedAccountsRequest = object({
 
 export const FullScanAccountRequest = object({
   accountId: string(),
+  trackMissed: optional(boolean()),
 });
 
 export class CronHandler {
@@ -73,7 +75,7 @@ export class CronHandler {
       }
       case CronMethod.FullScanAccount: {
         assert(params, FullScanAccountRequest);
-        return this.fullScanAccount(params.accountId);
+        return this.fullScanAccount(params.accountId, params.trackMissed);
       }
       default:
         throw new InexistentMethodError(`Method not found: ${method}`);
@@ -87,6 +89,18 @@ export class CronHandler {
     // that coalesced callers share the run's outcome, including a
     // `SynchronizationError` from partial failures.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
+      if ((await this.#snapClient.getState('rescanV1')) !== true) {
+        const allAccounts = await this.#accountsUseCases.list();
+        for (const account of allAccounts) {
+          await this.#snapClient.scheduleBackgroundEvent({
+            duration: 'PT5S',
+            method: CronMethod.FullScanAccount,
+            params: { accountId: account.id, trackMissed: true },
+          });
+        }
+        await this.#snapClient.setState('rescanV1', true);
+      }
+
       const selectedAccounts: Set<string> = new Set(
         await getSelectedAccounts(this.#snap),
       );
@@ -103,32 +117,45 @@ export class CronHandler {
         ),
       );
 
-      const successfulResults: SyncResult[] = [];
+      await this.#finishSync(
+        accounts,
+        results,
+        'Account synchronization failures',
+      );
+    });
+  }
 
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const errors: Record<string, any> = {};
+  /**
+   * Aggregate settled sync results, emit events for successes, and throw for failures.
+   *
+   * @param accounts - The accounts that were synchronized, in the same order as `results`.
+   * @param results - The settled synchronization results.
+   * @param message - The error message to use if any synchronization failed.
+   */
+  async #finishSync(
+    accounts: BitcoinAccount[],
+    results: PromiseSettledResult<SyncResult>[],
+    message: string,
+  ): Promise<void> {
+    const successfulResults: SyncResult[] = [];
+    const errors: Record<string, Json> = {};
 
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          successfulResults.push(result.value);
-        } else {
-          const id = accounts[index]?.id;
-          if (id) {
-            errors[id] = result.reason;
-          }
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        successfulResults.push(result.value);
+      } else {
+        const id = accounts[index]?.id;
+        if (id) {
+          errors[id] = String(result.reason);
         }
-      });
-
-      await this.#emitSyncEvents(successfulResults);
-
-      if (Object.keys(errors).length > 0) {
-        throw new SynchronizationError(
-          'Account synchronization failures',
-          errors,
-        );
       }
     });
+
+    await this.#emitSyncEvents(successfulResults);
+
+    if (Object.keys(errors).length > 0) {
+      throw new SynchronizationError(message, errors);
+    }
   }
 
   async syncSelectedAccounts(accountIds: string[]): Promise<void> {
@@ -205,9 +232,30 @@ export class CronHandler {
     }
   }
 
-  async fullScanAccount(accountId: string): Promise<void> {
+  async fullScanAccount(
+    accountId: string,
+    trackMissed?: boolean,
+  ): Promise<void> {
     const account = await this.#accountsUseCases.get(accountId);
+
+    const before = trackMissed
+      ? new Set(account.listTransactions().map((tx) => tx.txid.toString()))
+      : undefined;
+
     const result = await this.#accountsUseCases.fullScan(account);
+
+    if (before) {
+      for (const tx of account.listTransactions()) {
+        if (!before.has(tx.txid.toString())) {
+          await this.#snapClient.emitTrackingEvent(
+            TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+            account,
+            tx,
+            'cron',
+          );
+        }
+      }
+    }
 
     await this.#emitSyncEvents([result]);
   }
