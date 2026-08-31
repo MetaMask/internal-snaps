@@ -98,6 +98,15 @@ export type BitcoinAccount = {
   revealNextAddress(): AddressInfo;
 
   /**
+   * Reveals addresses up to and including the derivation index of `script` if it belongs to
+   * this wallet and lies beyond the revealed set.
+   *
+   * @param script - the script to reveal up to.
+   * @returns true if new addresses were revealed.
+   */
+  revealToScript(script: ScriptBuf): boolean;
+
+  /**
    * Start a full scan.
    *
    * @returns the full scan request

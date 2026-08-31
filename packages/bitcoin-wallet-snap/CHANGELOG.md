@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reveal and persist the wallet's own output scripts when signing a PSBT, so change from partner-supplied templates is always covered by routine sync ([#225](https://github.com/MetaMask/internal-snaps/pull/225))
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
 
 ## [2.0.1]

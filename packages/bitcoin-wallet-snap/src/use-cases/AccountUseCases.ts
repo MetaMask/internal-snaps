@@ -567,6 +567,16 @@ export class AccountUseCases {
       : psbt;
     const signedPsbt = account.sign(psbtToSign);
 
+    let revealed = false;
+    for (const txout of psbtToSign.unsigned_tx.output) {
+      if (account.isMine(txout.script_pubkey)) {
+        revealed = account.revealToScript(txout.script_pubkey) || revealed;
+      }
+    }
+    if (revealed) {
+      await this.#repository.update(account);
+    }
+
     if (options.broadcast) {
       const psbtString = signedPsbt.toString();
       const tx = account.extractTransaction(signedPsbt);
