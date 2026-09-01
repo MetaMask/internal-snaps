@@ -5,10 +5,15 @@ import type { DescriptorPair } from '@metamask/bitcoindevkit';
 import {
   Address,
   ChangeSet,
+  slip10_to_extended,
   xpriv_to_descriptor,
   xpub_to_descriptor,
 } from '@metamask/bitcoindevkit';
-import type { SLIP10Node } from '@metamask/key-tree';
+import type { BIP32Node, BIP39Node, SLIP10Node } from '@metamask/key-tree';
+import {
+  mnemonicPhraseToBytes,
+  SLIP10Node as RealSlip10Node,
+} from '@metamask/key-tree';
 import { mock } from 'jest-mock-extended';
 
 import type {
@@ -240,7 +245,17 @@ describe('BdkAccountRepository', () => {
       expect(mockSnapClient.getState).toHaveBeenCalledWith('derivationPaths');
       expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
       expect(mockSnapClient.getState).toHaveBeenCalledTimes(2);
-      expect(result).toStrictEqual([mockAccount2, mockAccount1]);
+      expect(result.accounts).toStrictEqual([mockAccount2, mockAccount1]);
+      expect(result.snapshot).toStrictEqual({
+        accounts: {
+          'some-id-1': accountState1,
+          'some-id-2': accountState2,
+        },
+        derivationPaths: {
+          "m/84'/0'/1'": 'some-id-1',
+          "m/84'/0'/2'": 'some-id-2',
+        },
+      });
       expect(mockSnapClient.setState).not.toHaveBeenCalled();
     });
 
@@ -265,7 +280,7 @@ describe('BdkAccountRepository', () => {
       (ChangeSet.from_json as jest.Mock).mockClear();
 
       const result = await repo.getByDerivationPaths([derivationPath1]);
-      const account = result[0];
+      const account = result.accounts[0];
 
       expect(account?.id).toBe('some-id-1');
       expect(account?.publicAddress.toString()).toBe('bc1qaddress...');
@@ -296,8 +311,13 @@ describe('BdkAccountRepository', () => {
         derivationPath2,
       ]);
 
-      expect(result).toStrictEqual([mockAccount1, mockAccount2]);
+      expect(result.accounts).toStrictEqual([mockAccount1, mockAccount2]);
       expect(mockSnapClient.setState).toHaveBeenCalledWith('derivationPaths', {
+        "m/84'/0'/1'": 'some-id-1',
+        "m/84'/0'/2'": 'some-id-2',
+      });
+      // The snapshot reflects the repaired index so later merges keep it.
+      expect(result.snapshot.derivationPaths).toStrictEqual({
         "m/84'/0'/1'": 'some-id-1',
         "m/84'/0'/2'": 'some-id-2',
       });
@@ -311,7 +331,7 @@ describe('BdkAccountRepository', () => {
 
       const result = await repo.getByDerivationPaths([derivationPath1]);
 
-      expect(result).toStrictEqual([mockAccount1]);
+      expect(result.accounts).toStrictEqual([mockAccount1]);
       expect(mockSnapClient.setState).toHaveBeenCalledWith('derivationPaths', {
         "m/84'/0'/1'": 'some-id-1',
       });
@@ -357,6 +377,81 @@ describe('BdkAccountRepository', () => {
         'bitcoin',
       );
       expect(result).toBe(mockAccount);
+    });
+  });
+
+  describe('createMany', () => {
+    const mnemonic =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const parentPath = ['entropy-1', "84'", "0'"];
+    const requests = [
+      {
+        derivationPath: ['entropy-1', "84'", "0'", "0'"],
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      },
+      {
+        derivationPath: ['entropy-1', "84'", "0'", "1'"],
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      },
+    ] as Parameters<BdkAccountRepository['createMany']>[0];
+
+    /**
+     * Derives the real SLIP-10 node for a path from the fixture mnemonic.
+     *
+     * @param segments - Hardened path segments below the master node.
+     * @returns The derived node.
+     */
+    async function deriveFixtureNode(
+      segments: string[],
+    ): Promise<RealSlip10Node> {
+      const derivationPath: [BIP39Node, ...BIP32Node[]] = [
+        mnemonicPhraseToBytes(mnemonic) as BIP39Node,
+        ...segments.map((segment) => `bip32:${segment}` as BIP32Node),
+      ];
+
+      return RealSlip10Node.fromDerivationPath({
+        derivationPath,
+        curve: 'secp256k1',
+      });
+    }
+
+    beforeEach(async () => {
+      const parentNode = await deriveFixtureNode(["84'", "0'"]);
+      mockSnapClient.getPrivateEntropy.mockResolvedValue(parentNode.toJSON());
+    });
+
+    it('fetches entropy once per distinct parent path', async () => {
+      const result = await repo.createMany(requests);
+
+      expect(mockSnapClient.getPrivateEntropy).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.getPrivateEntropy).toHaveBeenCalledWith(parentPath);
+      expect(mockSnapClient.getPublicEntropy).not.toHaveBeenCalled();
+      expect(BdkAccountAdapter.create).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(2);
+    });
+
+    it('derives neutered children byte-identical to full-path derivation', async () => {
+      await repo.createMany([requests[1]] as typeof requests);
+
+      // Independent route: full-path derivation from the same mnemonic, the
+      // way `snap_getBip32Entropy` would resolve it.
+      const expected = (await deriveFixtureNode(["84'", "0'", "1'"])).neuter();
+
+      const passedNode = (slip10_to_extended as jest.Mock).mock
+        .calls[0]?.[0] as RealSlip10Node;
+      expect(passedNode.privateKey).toBeUndefined();
+      expect(passedNode.publicKey).toStrictEqual(expected.publicKey);
+      expect(passedNode.chainCode).toStrictEqual(expected.chainCode);
+      expect(passedNode.masterFingerprint).toBe(expected.masterFingerprint);
+    });
+
+    it('returns an empty array without entropy fetches for empty input', async () => {
+      const result = await repo.createMany([]);
+
+      expect(result).toStrictEqual([]);
+      expect(mockSnapClient.getPrivateEntropy).not.toHaveBeenCalled();
     });
   });
 
@@ -529,6 +624,71 @@ describe('BdkAccountRepository', () => {
           "m/84'/0'/2'": 'some-id-2',
         },
       );
+    });
+
+    it('reuses the provided derivation-path snapshot while refreshing accounts', async () => {
+      const staleExistingAccountState: AccountState = {
+        wallet: mockWalletData,
+        inscriptions: [],
+        derivationPath: mockDerivationPath,
+      };
+      const freshExistingAccountState: AccountState = {
+        ...staleExistingAccountState,
+        wallet: 'fresh-wallet-data',
+      };
+      const makeInsertableAccount = (
+        id: string,
+        derivationPath: string[],
+      ): BitcoinAccount => {
+        const account = mock<BitcoinAccount>();
+        account.id = id;
+        account.derivationPath = derivationPath;
+        account.network = 'bitcoin';
+        account.addressType = 'p2wpkh';
+        account.publicAddress = mockAddress;
+        account.publicDescriptor = 'mock-public-descriptor';
+        (account.takeStaged as jest.Mock) = jest
+          .fn()
+          .mockReturnValue(mockChangeSet);
+        (account.hasStaged as jest.Mock) = jest.fn().mockReturnValue(true);
+        return account;
+      };
+      const account1 = makeInsertableAccount('some-id-1', [
+        'm',
+        "84'",
+        "0'",
+        "1'",
+      ]);
+      const account2 = makeInsertableAccount('some-id-2', [
+        'm',
+        "84'",
+        "0'",
+        "2'",
+      ]);
+      mockSnapClient.getState.mockResolvedValueOnce({
+        'existing-id': freshExistingAccountState,
+      });
+
+      await repo.insertMany([account1, account2], {
+        accounts: { 'existing-id': staleExistingAccountState },
+        derivationPaths: { "m/84'/0'/0'": 'existing-id' },
+      });
+
+      expect(mockSnapClient.getState).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(mockSnapClient.setState).toHaveBeenCalledWith(
+        'accounts',
+        expect.objectContaining({
+          'existing-id': freshExistingAccountState,
+          'some-id-1': expect.anything(),
+          'some-id-2': expect.anything(),
+        }),
+      );
+      expect(mockSnapClient.setState).toHaveBeenCalledWith('derivationPaths', {
+        "m/84'/0'/0'": 'existing-id',
+        "m/84'/0'/1'": 'some-id-1',
+        "m/84'/0'/2'": 'some-id-2',
+      });
     });
   });
 

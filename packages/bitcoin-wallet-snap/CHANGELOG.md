@@ -12,10 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- Reduce `keyring_createAccounts` entropy RPCs from one per account to one per distinct parent path by fetching the account-level parent node once and deriving hardened children locally ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
+  - The private parent node is held transiently in memory during the batch — the same trust boundary as the previous per-account implementation — and children are neutered before descriptor construction.
+  - The creation concurrency throttle is removed: with derivation local, the remaining per-account work is synchronous WASM wallet construction.
+- Reduce full-state round trips during batch account creation: the insert step reuses the state snapshot loaded by the existing-accounts lookup instead of re-reading both account maps, and the two state writes now run in parallel ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
+- Process the entire requested account range as a single batch instead of chunks of 100, so the existing-accounts lookup and state I/O happen once per request ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
 - Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while full account scans use the BIP44 gap limit ([#224](https://github.com/MetaMask/internal-snaps/pull/224))
 
 ### Fixed
 
+- Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
+- Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
+  - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
 
 ## [2.0.1]

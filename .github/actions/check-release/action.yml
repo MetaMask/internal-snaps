@@ -78,18 +78,8 @@ runs:
           echo "✅ No package version bumps detected; skipping root package.json check."
         fi
 
-    - name: Check if the commit or pull request is a release
-      id: is-release
-      uses: MetaMask/action-is-release@v2
-      with:
-        commit-starts-with: ${{ inputs.commit-starts-with }}
-        commit-message: ${{ github.event.pull_request.title }}
-        before: ${{ steps.merge-base.outputs.MERGE_BASE }}
-        skip-checkout: true
-
     - name: Get pull request number
       id: pr-number
-      if: steps.is-release.outputs.IS_RELEASE == 'true'
       shell: bash
       env:
         EVENT_NAME: ${{ github.event_name }}
@@ -107,6 +97,50 @@ runs:
             exit 1
           fi
         fi
+
+    # action-is-release only reads `commit-message`, not env. merge_group has no
+    # pull_request.title (or .title); look the source PR up from the number above.
+    - name: Resolve release commit message
+      id: release-commit-message
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+        PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        if [ "$EVENT_NAME" = "pull_request" ]; then
+          COMMIT_MESSAGE="$PULL_REQUEST_TITLE"
+        elif [ "$EVENT_NAME" = "merge_group" ]; then
+          COMMIT_MESSAGE=$(gh pr view "$PR_NUMBER" --json title --template "{{ .title }}")
+        else
+          echo "::error::This action only supports \`pull_request\` and \`merge_group\` events."
+          exit 1
+        fi
+
+        if [[ -z "$COMMIT_MESSAGE" ]]; then
+          echo "::error::Could not resolve a release commit message for $EVENT_NAME."
+          exit 1
+        fi
+
+        # Using '<<EOF' to avoid escaping the commit message
+        echo "Using commit message: $COMMIT_MESSAGE"
+        {
+          echo "COMMIT_MESSAGE<<EOF"
+          echo "$COMMIT_MESSAGE"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Check if the commit or pull request is a release
+      id: is-release
+      uses: MetaMask/action-is-release@v2
+      with:
+        commit-starts-with: ${{ inputs.commit-starts-with }}
+        commit-message: ${{ steps.release-commit-message.outputs.COMMIT_MESSAGE }}
+        before: ${{ steps.merge-base.outputs.MERGE_BASE }}
+        skip-checkout: true
 
     - name: Get target reference
       id: get-target
