@@ -31,12 +31,14 @@ function getParsedArgv(
   $0: 'create-package';
   name: `@metamask/${string}`;
   description: string;
+  type: 'library';
 } {
   return {
     _: [],
     $0: 'create-package',
     name: `@metamask/${name}`,
     description,
+    type: 'library',
   };
 }
 
@@ -82,8 +84,6 @@ describe('create-package/cli', () => {
       jest.spyOn(defaultCommand, 'handler');
 
       jest.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
-        tsConfig: {},
-        tsConfigBuild: {},
         nodeVersions: '>=18.0.0',
         // TODO: Replace `any` with type
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,8 +108,6 @@ describe('create-package/cli', () => {
       jest.spyOn(defaultCommand, 'handler');
 
       jest.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
-        tsConfig: {},
-        tsConfigBuild: {},
         nodeVersions: '>=18.0.0',
         // TODO: Replace `any` with type
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,6 +141,74 @@ describe('create-package/cli', () => {
       expect(defaultCommand.handler).toHaveBeenCalledTimes(1);
       expect(defaultCommand.handler).toHaveBeenCalledWith(
         expect.objectContaining(getParsedArgv('foo', 'bar')),
+      );
+    });
+
+    it('should create a Snap package', async () => {
+      const defaultCommand = commandMap.$0;
+      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+
+      await cli(
+        getMockArgv(
+          '--type',
+          'snap',
+          '--name',
+          'foo-snap',
+          '--description',
+          'bar',
+          '--proposed-name',
+          'Foo Snap',
+        ),
+        commands,
+      );
+
+      expect(defaultCommand.handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '@metamask/foo-snap',
+          description: 'bar',
+          type: 'snap',
+          proposedName: 'Foo Snap',
+        }),
+      );
+    });
+
+    it('should require a proposed name for Snap packages', async () => {
+      await expect(
+        cli(
+          getMockArgv(
+            '--type',
+            'snap',
+            '--name',
+            'foo-snap',
+            '--description',
+            'bar',
+          ),
+          commands,
+        ),
+      ).rejects.toThrow('exit: 1');
+
+      expect(console.error).toHaveBeenCalledWith(
+        'Missing required argument for Snap packages: "proposed-name"',
+      );
+    });
+
+    it('should reject a proposed name for library packages', async () => {
+      await expect(
+        cli(
+          getMockArgv(
+            '--name',
+            'foo',
+            '--description',
+            'bar',
+            '--proposed-name',
+            'Foo',
+          ),
+          commands,
+        ),
+      ).rejects.toThrow('exit: 1');
+
+      expect(console.error).toHaveBeenCalledWith(
+        'The argument "proposed-name" is only valid for Snap packages.',
       );
     });
 

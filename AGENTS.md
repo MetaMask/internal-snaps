@@ -165,7 +165,7 @@ Each consumer-facing change to a package should be accompanied by one or more en
 
 ## Adding new packages
 
-Use `yarn create-package --name <name> --description <description>` to add a new package to the monorepo.
+Use `yarn create-package --name <name> --description <description>` to add a library package, or pass `--type snap --proposed-name <name>` to add a Snap package.
 
 ## Code guidelines
 

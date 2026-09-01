@@ -3,8 +3,6 @@
  */
 export const MonorepoFiles = {
   PackageJson: 'package.json',
-  TsConfig: 'tsconfig.json',
-  TsConfigBuild: 'tsconfig.build.json',
 } as const;
 
 export type MonorepoFiles = (typeof MonorepoFiles)[keyof typeof MonorepoFiles];
@@ -19,6 +17,7 @@ export const Placeholders = {
   PackageName: 'PACKAGE_NAME',
   PackageDescription: 'PACKAGE_DESCRIPTION',
   PackageDirectoryName: 'PACKAGE_DIRECTORY_NAME',
+  ProposedName: 'PROPOSED_NAME',
 } as const;
 
 export type Placeholders = (typeof Placeholders)[keyof typeof Placeholders];

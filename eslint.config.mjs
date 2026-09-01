@@ -78,6 +78,7 @@ const config = createConfig([
       '**/docs/**',
       '.yarn/**',
       'scripts/create-package/package-template/**',
+      'scripts/create-package/snap-package-template/**',
     ],
   },
   {

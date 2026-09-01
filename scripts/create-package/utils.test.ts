@@ -1,8 +1,6 @@
-import * as commentJson from 'comment-json';
 import execa from 'execa';
 import fs from 'fs';
 import path from 'path';
-import { format } from 'prettier';
 
 import { MonorepoFiles } from './constants';
 import * as fsUtils from './fs-utils';
@@ -21,10 +19,6 @@ jest.mock('fs', () => ({
 
 jest.mock('execa', () => jest.fn());
 
-jest.mock('prettier', () => ({
-  format: jest.fn(),
-}));
-
 jest.mock('./fs-utils', () => ({
   readAllFiles: jest.fn(),
   writeFiles: jest.fn(),
@@ -32,12 +26,6 @@ jest.mock('./fs-utils', () => ({
 
 describe('create-package/utils', () => {
   describe('readMonorepoFiles', () => {
-    const tsConfig = JSON.stringify({
-      references: [{ path: '../packages/foo' }],
-    });
-    const tsConfigBuild = JSON.stringify({
-      references: [{ path: '../packages/foo' }],
-    });
     const packageJson = JSON.stringify({
       engines: { node: '>=18.0.0' },
     });
@@ -46,10 +34,6 @@ describe('create-package/utils', () => {
       (fs.promises.readFile as jest.Mock).mockImplementation(
         async (filePath: string) => {
           switch (path.basename(filePath)) {
-            case MonorepoFiles.TsConfig:
-              return tsConfig;
-            case MonorepoFiles.TsConfigBuild:
-              return tsConfigBuild;
             case MonorepoFiles.PackageJson:
               return packageJson;
             default:
@@ -61,8 +45,6 @@ describe('create-package/utils', () => {
       const monorepoFileData = await readMonorepoFiles();
 
       expect(monorepoFileData).toStrictEqual({
-        tsConfig: commentJson.parse(tsConfig),
-        tsConfigBuild: commentJson.parse(tsConfigBuild),
         nodeVersions: '>=18.0.0',
       });
     });
@@ -73,19 +55,10 @@ describe('create-package/utils', () => {
       const packageData: PackageData = {
         name: '@metamask/foo',
         description: 'A foo package.',
+        type: 'library',
         directoryName: 'foo',
         nodeVersions: '>=18.0.0',
         currentYear: '2023',
-      };
-
-      const monorepoFileData = {
-        tsConfig: {
-          references: [{ path: './packages/bar' }],
-        },
-        tsConfigBuild: {
-          references: [{ path: './packages/bar' }],
-        },
-        nodeVersions: '>=18.0.0',
       };
 
       const mockError = new Error('Not found') as NodeJS.ErrnoException;
@@ -102,9 +75,7 @@ describe('create-package/utils', () => {
         'mock3.file': 'PACKAGE_DESCRIPTION PACKAGE_DIRECTORY_NAME',
       });
 
-      (format as jest.Mock).mockImplementation((input) => input);
-
-      await finalizeAndWriteData(packageData, monorepoFileData);
+      await finalizeAndWriteData(packageData);
 
       // processTemplateFiles and writeFiles
       expect(fsUtils.readAllFiles).toHaveBeenCalledTimes(1);
@@ -124,35 +95,7 @@ describe('create-package/utils', () => {
         },
       );
 
-      // Writing monorepo files
-      expect(fs.promises.writeFile).toHaveBeenCalledTimes(2);
-      expect(format).toHaveBeenCalledTimes(2);
-      expect(fs.promises.writeFile).toHaveBeenCalledWith(
-        expect.stringMatching(/tsconfig\.json$/u),
-        JSON.stringify(
-          {
-            references: [
-              { path: './packages/bar' },
-              { path: './packages/foo' },
-            ],
-          },
-          null,
-          2,
-        ),
-      );
-      expect(fs.promises.writeFile).toHaveBeenCalledWith(
-        expect.stringMatching(/tsconfig\.build\.json$/u),
-        JSON.stringify(
-          {
-            references: [
-              { path: './packages/bar' },
-              { path: './packages/foo/tsconfig.build.json' },
-            ],
-          },
-          null,
-          2,
-        ),
-      );
+      expect(fs.promises.writeFile).not.toHaveBeenCalled();
 
       // Postprocessing
       expect(execa).toHaveBeenCalledTimes(2);
@@ -168,26 +111,17 @@ describe('create-package/utils', () => {
       const packageData: PackageData = {
         name: '@metamask/foo',
         description: 'A foo package.',
+        type: 'library',
         directoryName: 'foo',
         nodeVersions: '20.0.0',
         currentYear: '2023',
       };
 
-      const monorepoFileData = {
-        tsConfig: {
-          references: [{ path: './packages/bar' }],
-        },
-        tsConfigBuild: {
-          references: [{ path: './packages/bar' }],
-        },
-        nodeVersions: '20.0.0',
-      };
-
       (fs.promises.stat as jest.Mock).mockResolvedValue({});
 
-      await expect(
-        finalizeAndWriteData(packageData, monorepoFileData),
-      ).rejects.toThrow(/^The package directory already exists:/u);
+      await expect(finalizeAndWriteData(packageData)).rejects.toThrow(
+        /^The package directory already exists:/u,
+      );
 
       expect(fs.promises.mkdir).not.toHaveBeenCalled();
       expect(fs.promises.writeFile).not.toHaveBeenCalled();
@@ -202,24 +136,81 @@ describe('create-package/utils', () => {
       const packageData: PackageData = {
         name: '@metamask/foo',
         description: 'A foo package.',
+        type: 'library',
         directoryName: 'foo',
         nodeVersions: '20.0.0',
         currentYear: '2023',
       };
 
-      const monorepoFileData = {
-        tsConfig: {
-          references: [{ path: './packages/bar' }],
-        },
-        tsConfigBuild: {
-          references: [{ path: './packages/bar' }],
-        },
-        nodeVersions: '20.0.0',
+      await expect(finalizeAndWriteData(packageData)).rejects.toThrow(
+        'Permission denied',
+      );
+    });
+
+    it('uses the Snap template without library-only files', async () => {
+      const packageData: PackageData = {
+        name: '@metamask/foo-snap',
+        description: 'A foo Snap.',
+        type: 'snap',
+        proposedName: 'Foo Snap',
+        directoryName: 'foo-snap',
+        nodeVersions: '>=18.0.0',
+        currentYear: '2023',
       };
+      const notFound = new Error('Not found') as NodeJS.ErrnoException;
+      notFound.code = 'ENOENT';
+      jest.spyOn(fs.promises, 'stat').mockRejectedValue(notFound);
+      (fsUtils.readAllFiles as jest.Mock)
+        .mockResolvedValueOnce({
+          'src/index.ts': 'library',
+          'src/index.test.ts': 'library test',
+          'tsconfig.build.json': 'library build',
+          'typedoc.json': 'library docs',
+          LICENSE: 'CURRENT_YEAR',
+        })
+        .mockResolvedValueOnce({
+          'src/index.tsx': 'snap',
+          'src/index.test.tsx': 'snap test',
+          'snap.config.ts': 'snap config',
+          'snap.manifest.json': 'PROPOSED_NAME PACKAGE_NAME',
+        });
+
+      await finalizeAndWriteData(packageData);
+
+      expect(fsUtils.readAllFiles).toHaveBeenCalledTimes(2);
+      expect(fsUtils.readAllFiles).toHaveBeenLastCalledWith(
+        expect.stringMatching(/\/snap-package-template$/u),
+      );
+      expect(fsUtils.writeFiles).toHaveBeenCalledWith(
+        expect.stringMatching(/packages\/foo-snap$/u),
+        {
+          LICENSE: '2023',
+          'snap.config.ts': 'snap config',
+          'snap.manifest.json': 'Foo Snap @metamask/foo-snap',
+          'src/index.test.tsx': 'snap test',
+          'src/index.tsx': 'snap',
+        },
+      );
+    });
+
+    it('rejects a proposed-name placeholder for non-Snap package data', async () => {
+      const notFound = new Error('Not found') as NodeJS.ErrnoException;
+      notFound.code = 'ENOENT';
+      jest.spyOn(fs.promises, 'stat').mockRejectedValue(notFound);
+      (fsUtils.readAllFiles as jest.Mock).mockResolvedValue({
+        'invalid.file': 'PROPOSED_NAME',
+      });
 
       await expect(
-        finalizeAndWriteData(packageData, monorepoFileData),
-      ).rejects.toThrow('Permission denied');
+        finalizeAndWriteData({
+          name: '@metamask/foo',
+          description: 'A foo library.',
+          type: 'library',
+          directoryName: 'foo',
+          nodeVersions: '>=18.0.0',
+          currentYear: '2023',
+        }),
+      ).rejects.toThrow('Snap package data must include a proposed name.');
     });
   });
 });

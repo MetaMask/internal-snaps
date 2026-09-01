@@ -7,6 +7,7 @@ Manually creating a new monorepo package can be a tedious, even frustrating proc
 
 1. Create a new package using `yarn create-package`.
    - Use the `--help` flag for usage information.
+   - Library packages are created by default. Use `--type snap --proposed-name "My Snap"` to create a Snap package instead.
    - Once this is done, you can find a package with your chosen name in `/packages`.
 2. Make sure your license is correct.
    - By default, `create-package` gives your package an MIT license.
@@ -14,7 +15,8 @@ Manually creating a new monorepo package can be a tedious, even frustrating proc
 3. Update `.github/CODEOWNERS` to assign a team as the owner of the new package.
 4. Add your dependencies.
    - Do this as normal using `yarn`.
-   - Remember, if you are adding other monorepo packages as dependents, don't forget to add them to the `references` array in your package's `tsconfig.json` and `tsconfig.build.json`.
+   - Remember, if you are adding other monorepo packages as dependents, don't forget to add them to the `references` array in your package's `tsconfig.json` and, for library packages, `tsconfig.build.json`.
+   - Every package is checked through its `tsconfig.json`. Library packages also have a `tsconfig.build.json` for declaration builds, while Snap packages are built with `mm-snap`.
 
 And that's it!
 
@@ -22,8 +24,8 @@ And that's it!
 
 Along with this documentation, `create-package` is intended to be the source of truth for the process of adding new packages to the monorepo. Consequently, to change that process, you will want to change `create-package`.
 
-The `create-package` directory contains a [template package](../../scripts/create-package/package-template/). The CLI is not aware of the contents of the template, only that its files have [placeholder values](../../scripts/create-package/constants.ts). When a new package is created, the template files are read from disk, the placeholder values are replaced with real ones, and the updated files are added to a new directory in `/packages`. To modify the template package:
+The `create-package` directory contains a shared [library template](../../scripts/create-package/package-template/) and [Snap-specific overrides](../../scripts/create-package/snap-package-template/). The CLI replaces their [placeholder values](../../scripts/create-package/constants.ts) and writes the selected files to a new directory in `/packages`. To modify a template:
 
-- If you need to add or modify any files or folders, just go ahead and make your changes in [`/scripts/create-package/package-template`](../../scripts/create-package/package-template/). The CLI will read whatever's in that directory and write it to disk.
+- Put files shared by both package types, and all library files, in [`/scripts/create-package/package-template`](../../scripts/create-package/package-template/). Put Snap-specific replacements in [`/scripts/create-package/snap-package-template`](../../scripts/create-package/snap-package-template/).
 - If you need to add or modify any placeholders, make sure that your desired values are added to both the relevant file(s) and [`/scripts/create-package/constants.ts`](../../scripts/create-package/constants.ts). Then, update the implementation of the CLI accordingly.
 - As with placeholders, updating the monorepo files that the CLI interacts with begins by updating [`/scripts/create-package/constants.ts`](../../scripts/create-package/constants.ts).

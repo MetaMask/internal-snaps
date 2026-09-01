@@ -14,7 +14,10 @@ module.exports = {
   coverageDirectory: '<rootDir>/scripts/coverage',
 
   // An array of regexp pattern strings used to skip coverage collection
-  coveragePathIgnorePatterns: ['/package-template/'],
+  coveragePathIgnorePatterns: ['/(?:snap-)?package-template/'],
+
+  // Ignore template package metadata when building Jest's module map.
+  modulePathIgnorePatterns: ['/(?:snap-)?package-template/'],
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: 'babel',
@@ -65,7 +68,7 @@ module.exports = {
   ],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
-  testPathIgnorePatterns: ['/package-template/'],
+  testPathIgnorePatterns: ['/(?:snap-)?package-template/'],
 
   // Default timeout of a test in milliseconds.
   testTimeout: 5000,

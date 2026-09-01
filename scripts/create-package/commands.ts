@@ -4,12 +4,14 @@ import type {
   Arguments,
 } from 'yargs';
 
-import type { PackageData } from './utils';
+import type { PackageData, PackageType } from './utils';
 import { finalizeAndWriteData, readMonorepoFiles } from './utils';
 
 export type CreatePackageOptions = {
   name: string;
   description: string;
+  type: PackageType;
+  proposedName?: string;
 };
 
 export type CommandModule = YargsCommandModule<object, CreatePackageOptions> & {
@@ -40,10 +42,27 @@ const defaultCommand: CommandModule = {
           type: 'string',
           requiresArg: true,
         },
+
+        type: {
+          alias: 't',
+          choices: ['library', 'snap'] as const,
+          default: 'library' as const,
+          describe: 'The type of package to create.',
+        },
+
+        proposedName: {
+          describe: 'The human-readable name shown for a Snap.',
+          type: 'string',
+          requiresArg: true,
+        },
       })
       .example(
         '$0 --name fabulous-package --description "A fabulous package."',
-        'Create a new package with the given name and description.',
+        'Create a new library package with the given name and description.',
+      )
+      .example(
+        '$0 --type snap --name fabulous-snap --description "A fabulous Snap." --proposed-name "Fabulous Snap"',
+        'Create a new Snap package.',
       )
       .check((args) => {
         if (!args.name || typeof args.name !== 'string') {
@@ -51,6 +70,16 @@ const defaultCommand: CommandModule = {
         }
         if (!args.description || typeof args.description !== 'string') {
           throw new Error('Missing required argument: "description"');
+        }
+        if (args.type === 'snap' && !args.proposedName) {
+          throw new Error(
+            'Missing required argument for Snap packages: "proposed-name"',
+          );
+        }
+        if (args.type === 'library' && args.proposedName) {
+          throw new Error(
+            'The argument "proposed-name" is only valid for Snap packages.',
+          );
         }
 
         if (!args.name.startsWith('@metamask/')) {
@@ -85,11 +114,13 @@ export async function createPackageHandler(
   const packageData: PackageData = {
     name: args.name,
     description: args.description,
+    type: args.type,
+    ...(args.type === 'snap' && { proposedName: args.proposedName as string }),
     directoryName: args.name.slice('@metamask/'.length),
     nodeVersions: monorepoFileData.nodeVersions,
     currentYear: new Date().getFullYear().toString(),
   };
 
-  await finalizeAndWriteData(packageData, monorepoFileData);
+  await finalizeAndWriteData(packageData);
   console.log(`Created package "${packageData.name}"!`);
 }

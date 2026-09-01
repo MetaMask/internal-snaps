@@ -1,0 +1,60 @@
+{
+  "name": "PACKAGE_NAME",
+  "version": "0.0.0",
+  "description": "PACKAGE_DESCRIPTION",
+  "keywords": [
+    "Ethereum",
+    "MetaMask"
+  ],
+  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/PACKAGE_DIRECTORY_NAME#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/internal-snaps/issues"
+  },
+  "license": "(MIT OR Apache-2.0)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
+  "files": [
+    "dist/",
+    "snap.manifest.json",
+    "images/",
+    "locales/"
+  ],
+  "main": "./dist/bundle.js",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "allow-scripts": "yarn workspace root allow-scripts",
+    "build": "mm-snap build",
+    "build:clean": "yarn clean && yarn build",
+    "changelog:update": "../../scripts/update-changelog.sh PACKAGE_NAME",
+    "changelog:validate": "../../scripts/validate-changelog.sh PACKAGE_NAME",
+    "clean": "rimraf dist",
+    "prepublishOnly": "mm-snap manifest",
+    "serve": "mm-snap serve",
+    "since-latest-release": "../../scripts/since-latest-release.sh",
+    "start": "mm-snap watch",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
+    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
+    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+  },
+  "devDependencies": {
+    "@metamask/auto-changelog": "^6.1.1",
+    "@metamask/snaps-cli": "^8.4.1",
+    "@metamask/snaps-jest": "^10.2.1",
+    "@metamask/snaps-sdk": "^12.0.1",
+    "@types/react": "18.2.4",
+    "@types/react-dom": "18.2.4",
+    "jest": "30.0.3",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.1",
+    "typescript": "~5.8.3"
+  },
+  "engines": {
+    "node": "NODE_VERSIONS"
+  }
+}
