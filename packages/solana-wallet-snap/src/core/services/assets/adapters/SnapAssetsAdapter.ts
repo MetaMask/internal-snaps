@@ -372,7 +372,6 @@ export class SnapAssetsAdapter {
           keyringAccountId: tokenAccount.keyringAccount.id,
           network: tokenAccount.scope,
           mint: tokenAccount.token.account.data.parsed.info.mint,
-          pubkey: tokenAccount.token.pubkey,
           symbol: tokensMetadata[assetType]?.symbol ?? 'UNKNOWN',
           decimals,
           rawAmount: amount,

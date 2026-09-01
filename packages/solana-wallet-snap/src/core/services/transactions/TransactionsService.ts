@@ -1,6 +1,7 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { findAssociatedTokenPda } from '@solana-program/token';
 import type { Address, Commitment, Signature, Slot } from '@solana/kit';
 import { address as asAddress, signature as asSignature } from '@solana/kit';
 import { get, groupBy } from 'lodash';
@@ -81,14 +82,16 @@ export class TransactionsService {
       limit?: number;
     },
   ): Promise<Transaction[]> {
-    const accounts = await this.#accountsService.getAll();
-
     const assetTypes = assets.map((asset) => asset.assetType);
 
-    const assetsMetadata =
-      await this.#assetsService.getAssetsMetadata(assetTypes);
+    const [accounts, assetsMetadata, savedTransactions] = await Promise.all([
+      this.#accountsService.getAll(),
+      this.#assetsService.getAssetsMetadata(assetTypes),
+      this.#transactionsRepository.getAll(),
+    ]);
 
-    const savedTransactions = await this.#transactionsRepository.getAll();
+    const findAccountById = (id: string) =>
+      accounts.find((account) => account.id === id);
 
     const findLatestTransactionForAsset = async (asset: AssetEntity) => {
       const { network } = asset;
@@ -129,17 +132,24 @@ export class TransactionsService {
       asset: AssetEntity,
     ): Promise<SignatureWithAsset[]> => {
       const { network } = asset;
-      const addressOrPubkey = 'pubkey' in asset ? asset.pubkey : asset.address;
+      const account = findAccountById(asset.keyringAccountId);
 
-      const latestTransaction = await findLatestTransactionForAsset(asset);
+      const [address, latestTransaction] = await Promise.all([
+        this.#resolveAssetAddress(asset, account?.address),
+        findLatestTransactionForAsset(asset),
+      ]);
+
+      if (!address) {
+        return [];
+      }
 
       const latestSignature = latestTransaction
-        ? asSignature(latestTransaction?.id)
+        ? asSignature(latestTransaction.id)
         : undefined;
 
       const response = await this.#connection
         .getRpc(network)
-        .getSignaturesForAddress(asAddress(addressOrPubkey), {
+        .getSignaturesForAddress(address, {
           limit: 5,
           ...(latestSignature ? { until: latestSignature } : {}),
         })
@@ -199,9 +209,6 @@ export class TransactionsService {
       await Promise.all(signaturesToFetch.map(fetchTransaction))
     ).filter((item) => item !== null);
 
-    const findAccountById = (id: string) =>
-      accounts.find((account) => account.id === id);
-
     const mapTransaction = async (
       transactionWithAsset: TransactionWithAsset,
     ) => {
@@ -234,6 +241,31 @@ export class TransactionsService {
       });
 
     return mappedTransactions;
+  }
+
+  async #resolveAssetAddress(
+    asset: AssetEntity,
+    owner?: string,
+  ): Promise<Address | null> {
+    if (!('mint' in asset)) {
+      return asAddress(asset.address);
+    }
+
+    if (!owner) {
+      return null;
+    }
+
+    const mintAccount = await this.#connection.fetchMint(
+      asset.mint,
+      asset.network,
+    );
+    const [associatedTokenAccount] = await findAssociatedTokenPda({
+      mint: asAddress(asset.mint),
+      owner: asAddress(owner),
+      tokenProgram: mintAccount.programAddress,
+    });
+
+    return associatedTokenAccount;
   }
 
   async fetchLatestSignatures(
