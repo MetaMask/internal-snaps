@@ -3,8 +3,8 @@ import type { Struct } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 
 import type { KnownCaip2ChainId } from '../../api';
+import { trackError } from '../../utils/errors';
 import { validateRequest, validateResponse } from '../../utils/requestResponse';
-import { trackError } from '../../utils/snap';
 import type {
   AccountResolver,
   ResolvedKeyringAndWalletOnly,

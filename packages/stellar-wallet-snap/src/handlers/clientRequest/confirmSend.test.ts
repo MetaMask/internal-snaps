@@ -49,6 +49,7 @@ import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
+import * as errorsUtils from '../../utils/errors';
 import { logger } from '../../utils/logger';
 import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
@@ -543,7 +544,7 @@ describe('ConfirmSendHandler', () => {
     );
     createValidatedSendTransaction.mockRejectedValueOnce(xdrParseError);
     const trackErrorSpy = jest
-      .spyOn(snapUtils, 'trackError')
+      .spyOn(errorsUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
@@ -558,7 +559,7 @@ describe('ConfirmSendHandler', () => {
     const unexpectedError = new Error('unexpected');
     createValidatedSendTransaction.mockRejectedValueOnce(unexpectedError);
     const trackErrorSpy = jest
-      .spyOn(snapUtils, 'trackError')
+      .spyOn(errorsUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
@@ -574,7 +575,7 @@ describe('ConfirmSendHandler', () => {
       new TransactionValidationException('x'),
     );
     const trackErrorSpy = jest
-      .spyOn(snapUtils, 'trackError')
+      .spyOn(errorsUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
