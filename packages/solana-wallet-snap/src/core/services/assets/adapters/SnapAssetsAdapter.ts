@@ -21,6 +21,7 @@ import type {
   Address,
 } from '@solana/kit';
 import { address as asAddress } from '@solana/kit';
+import { BigNumber } from 'bignumber.js';
 
 import type {
   AssetEntity,
@@ -360,24 +361,41 @@ export class SnapAssetsAdapter {
     const tokensMetadata =
       await this.#tokenApiClient.getTokensMetadata(assetTypes);
 
-    const tokenAssets: TokenAsset[] = tokenAccounts
-      .filter((tokenAccount) => tokenAccount.assetType.includes('/token:'))
-      .map((tokenAccount) => {
-        const { assetType } = tokenAccount;
-        const { decimals, amount, uiAmountString } =
-          tokenAccount.token.account.data.parsed.info.tokenAmount;
+    const tokenAssetsByKey = new Map<string, TokenAsset>();
 
-        return {
+    tokenAccounts
+      .filter((tokenAccount) => tokenAccount.assetType.includes('/token:'))
+      .forEach((tokenAccount) => {
+        const { assetType, scope, keyringAccount } = tokenAccount;
+        const { mint, tokenAmount } =
+          tokenAccount.token.account.data.parsed.info;
+        const { decimals, amount, uiAmountString } = tokenAmount;
+        const key = `${keyringAccount.id}:${scope}:${mint}`;
+        const existingAsset = tokenAssetsByKey.get(key);
+
+        if (existingAsset) {
+          existingAsset.rawAmount = (
+            BigInt(existingAsset.rawAmount) + BigInt(amount)
+          ).toString();
+          existingAsset.uiAmount = new BigNumber(existingAsset.uiAmount)
+            .plus(uiAmountString ?? fromTokenUnits(amount, decimals))
+            .toFixed();
+          return;
+        }
+
+        tokenAssetsByKey.set(key, {
           assetType,
-          keyringAccountId: tokenAccount.keyringAccount.id,
-          network: tokenAccount.scope,
-          mint: tokenAccount.token.account.data.parsed.info.mint,
+          keyringAccountId: keyringAccount.id,
+          network: scope,
+          mint,
           symbol: tokensMetadata[assetType]?.symbol ?? 'UNKNOWN',
           decimals,
           rawAmount: amount,
           uiAmount: uiAmountString ?? fromTokenUnits(amount, decimals),
-        };
+        });
       });
+
+    const tokenAssets = [...tokenAssetsByKey.values()];
 
     // const nftAssets = await this.#fetchNftAssets(account, tokenAccounts.filter(
     //   (token) => token.assetType.includes('/nft:'),

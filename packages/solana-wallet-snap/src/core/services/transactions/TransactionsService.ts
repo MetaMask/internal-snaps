@@ -1,7 +1,8 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import { findAssociatedTokenPda } from '@solana-program/token';
+import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import type { Address, Commitment, Signature, Slot } from '@solana/kit';
 import { address as asAddress, signature as asSignature } from '@solana/kit';
 import { get, groupBy } from 'lodash';
@@ -90,10 +91,12 @@ export class TransactionsService {
       this.#transactionsRepository.getAll(),
     ]);
 
-    const findAccountById = (id: string) =>
+    const findAccountById = (id: string): SolanaKeyringAccount | undefined =>
       accounts.find((account) => account.id === id);
 
-    const findLatestTransactionForAsset = async (asset: AssetEntity) => {
+    const findLatestTransactionForAsset = async (
+      asset: AssetEntity,
+    ): Promise<Transaction | null> => {
       const { network } = asset;
       const addressOrMint = 'mint' in asset ? asset.mint : asset.address;
 
@@ -120,6 +123,59 @@ export class TransactionsService {
       return existingTransaction;
     };
 
+    const tokenAccountsByOwnerAndNetwork = new Map<
+      string,
+      Promise<Map<string, Address[]>>
+    >();
+
+    const getTokenAccounts = async (
+      account: SolanaKeyringAccount,
+      network: Network,
+    ): Promise<Map<string, Address[]>> => {
+      const key = `${account.id}:${network}`;
+      const cached = tokenAccountsByOwnerAndNetwork.get(key);
+      if (cached) {
+        return cached;
+      }
+
+      const request: Promise<Map<string, Address[]>> = (async () => {
+        const rpc = this.#connection.getRpc(network);
+        const responses = await Promise.allSettled(
+          [TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS].map(
+            async (tokenProgram) =>
+              rpc
+                .getTokenAccountsByOwner(
+                  asAddress(account.address),
+                  { programId: tokenProgram },
+                  { encoding: 'jsonParsed' },
+                )
+                .send(),
+          ),
+        );
+
+        const accountsByMint = new Map<string, Address[]>();
+        for (const response of responses) {
+          if (response.status === 'rejected') {
+            await trackError(response.reason);
+            continue;
+          }
+
+          const { value } = response.value;
+          for (const tokenAccount of value) {
+            const { mint } = tokenAccount.account.data.parsed.info;
+            const accountsForMint = accountsByMint.get(mint) ?? [];
+            accountsForMint.push(tokenAccount.pubkey);
+            accountsByMint.set(mint, accountsForMint);
+          }
+        }
+
+        return accountsByMint;
+      })();
+
+      tokenAccountsByOwnerAndNetwork.set(key, request);
+      return request;
+    };
+
     type SignatureWithAsset = {
       signatureResponse: {
         signature: Signature;
@@ -134,34 +190,49 @@ export class TransactionsService {
       const { network } = asset;
       const account = findAccountById(asset.keyringAccountId);
 
-      const [address, latestTransaction] = await Promise.all([
-        this.#resolveAssetAddress(asset, account?.address),
-        findLatestTransactionForAsset(asset),
-      ]);
-
-      if (!address) {
+      if (!account) {
         return [];
       }
+
+      const addresses =
+        'mint' in asset
+          ? ((await getTokenAccounts(account, network)).get(asset.mint) ?? [])
+          : [asAddress(asset.address)];
+      const latestTransaction = await findLatestTransactionForAsset(asset);
 
       const latestSignature = latestTransaction
         ? asSignature(latestTransaction.id)
         : undefined;
 
-      const response = await this.#connection
-        .getRpc(network)
-        .getSignaturesForAddress(address, {
-          limit: 5,
-          ...(latestSignature ? { until: latestSignature } : {}),
-        })
-        .send();
+      const responses = await Promise.allSettled(
+        addresses.map(async (address) => {
+          const response = await this.#connection
+            .getRpc(network)
+            .getSignaturesForAddress(address, {
+              limit: 5,
+              ...(latestSignature ? { until: latestSignature } : {}),
+            })
+            .send();
+          return response.map((item) => ({
+            signatureResponse: {
+              signature: item.signature,
+              blockTime: Number(item.blockTime ?? 0),
+            },
+            asset,
+          }));
+        }),
+      );
 
-      return response.map((item) => ({
-        signatureResponse: {
-          signature: item.signature,
-          blockTime: Number(item.blockTime ?? 0),
-        },
-        asset,
-      }));
+      const signatureResponses: SignatureWithAsset[][] = [];
+      for (const response of responses) {
+        if (response.status === 'rejected') {
+          await trackError(response.reason);
+          continue;
+        }
+        signatureResponses.push(response.value);
+      }
+
+      return signatureResponses.flat();
     };
 
     const signatures = (
@@ -169,15 +240,27 @@ export class TransactionsService {
     ).flat();
 
     // If limit is provided, only fetch the most recent signatures with the limit
+    const uniqueSignatures = [
+      ...new Map(
+        signatures.map(
+          (item) =>
+            [
+              `${item.asset.keyringAccountId}:${item.asset.network}:${item.signatureResponse.signature}`,
+              item,
+            ] as const,
+        ),
+      ).values(),
+    ];
+
     const signaturesToFetch = options?.limit
-      ? signatures
+      ? uniqueSignatures
           .sort(
             (a, b) =>
               (b.signatureResponse.blockTime ?? 0) -
               (a.signatureResponse.blockTime ?? 0),
           )
           .slice(0, options.limit)
-      : signatures;
+      : uniqueSignatures;
 
     type TransactionWithAsset = {
       transaction: SolanaTransaction | null;
@@ -211,7 +294,7 @@ export class TransactionsService {
 
     const mapTransaction = async (
       transactionWithAsset: TransactionWithAsset,
-    ) => {
+    ): Promise<Transaction | null> => {
       const { transaction, asset } = transactionWithAsset;
       if (!transaction) {
         return null;
@@ -241,31 +324,6 @@ export class TransactionsService {
       });
 
     return mappedTransactions;
-  }
-
-  async #resolveAssetAddress(
-    asset: AssetEntity,
-    owner?: string,
-  ): Promise<Address | null> {
-    if (!('mint' in asset)) {
-      return asAddress(asset.address);
-    }
-
-    if (!owner) {
-      return null;
-    }
-
-    const mintAccount = await this.#connection.fetchMint(
-      asset.mint,
-      asset.network,
-    );
-    const [associatedTokenAccount] = await findAssociatedTokenPda({
-      mint: asAddress(asset.mint),
-      owner: asAddress(owner),
-      tokenProgram: mintAccount.programAddress,
-    });
-
-    return associatedTokenAccount;
   }
 
   async fetchLatestSignatures(

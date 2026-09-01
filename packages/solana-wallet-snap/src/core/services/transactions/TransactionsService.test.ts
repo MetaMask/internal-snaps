@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
+import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { address as asAddress } from '@solana/kit';
-import type { NativeAsset } from 'src/entities';
+import type { NativeAsset, TokenAsset } from 'src/entities';
 
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import {
@@ -18,6 +20,19 @@ import type { SolanaConnection } from '../connection/SolanaConnection';
 import type { TransactionMapper } from './TransactionMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { TransactionsService } from './TransactionsService';
+
+const MOCK_TOKEN_ACCOUNT_RESPONSE = {
+  account: {
+    data: {
+      parsed: {
+        info: {
+          mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        },
+      },
+    },
+  },
+  pubkey: asAddress('9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg'),
+};
 
 jest.mock('../../utils/errors', () => ({
   trackError: jest.fn().mockResolvedValue('tracked-error-id'),
@@ -82,7 +97,7 @@ describe('TransactionsService', () => {
         getTransaction: jest.fn().mockReturnValue({
           send: jest.fn().mockResolvedValue(mockTransactionData),
         }),
-      } as any);
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
       jest
         .spyOn(mockTransactionMapper, 'mapRpcTransaction')
@@ -102,7 +117,7 @@ describe('TransactionsService', () => {
         getTransaction: jest.fn().mockReturnValue({
           send: jest.fn().mockResolvedValue(null),
         }),
-      } as any);
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
       const result = await service.fetchBySignature(
         mockSignature,
@@ -120,7 +135,7 @@ describe('TransactionsService', () => {
         getSignaturesForAddress: jest.fn().mockReturnValue({
           send: jest.fn().mockResolvedValue(MOCK_GET_SIGNATURES_FOR_ADDRESS),
         }),
-      } as any);
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
       const result = await service.fetchLatestSignatures(
         Network.Localnet,
@@ -195,11 +210,183 @@ describe('TransactionsService', () => {
         getTransaction: jest.fn().mockReturnValue({
           send: jest.fn().mockRejectedValue(error),
         }),
-      } as any);
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
       expect(await service.fetchAssetsTransactions([asset])).toStrictEqual([]);
       expect(trackError).toHaveBeenCalledTimes(1);
       expect(trackError).toHaveBeenCalledWith(error);
+    });
+
+    it('fetches signatures for every token account, including non-ATA accounts', async () => {
+      const asset: TokenAsset = {
+        assetType: KnownCaip19Id.UsdcMainnet,
+        keyringAccountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        network: Network.Mainnet,
+        mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        symbol: 'USDC',
+        decimals: 6,
+        rawAmount: '1',
+        uiAmount: '0.000001',
+      };
+      const ata = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
+      const nonAta = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
+      const signature = MOCK_GET_SIGNATURES_FOR_ADDRESS[0]!;
+      const getSignaturesForAddress = jest.fn((address: string) => ({
+        send: jest.fn().mockResolvedValue(
+          address === nonAta
+            ? [
+                {
+                  ...signature,
+                  signature: 'non-ata-signature',
+                },
+              ]
+            : [],
+        ),
+      }));
+
+      jest
+        .spyOn(mockAccountsService, 'getAll')
+        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
+      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTokenAccountsByOwner: jest.fn(
+          (_owner: string, filter: { programId: string }) => ({
+            send: jest.fn().mockResolvedValue({
+              value:
+                filter.programId === TOKEN_PROGRAM_ADDRESS
+                  ? [
+                      {
+                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+                        pubkey: asAddress(ata),
+                      },
+                      {
+                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+                        pubkey: asAddress(nonAta),
+                      },
+                    ]
+                  : [],
+            }),
+          }),
+        ),
+        getSignaturesForAddress,
+        getTransaction: jest.fn().mockReturnValue({
+          send: jest.fn().mockResolvedValue(null),
+        }),
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+
+      await service.fetchAssetsTransactions([asset]);
+
+      expect(getSignaturesForAddress).toHaveBeenCalledTimes(2);
+      expect(getSignaturesForAddress).toHaveBeenCalledWith(ata, {
+        limit: 5,
+      });
+      expect(getSignaturesForAddress).toHaveBeenCalledWith(nonAta, {
+        limit: 5,
+      });
+    });
+
+    it('continues when one token program request fails', async () => {
+      const asset: TokenAsset = {
+        assetType: KnownCaip19Id.UsdcMainnet,
+        keyringAccountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        network: Network.Mainnet,
+        mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        symbol: 'USDC',
+        decimals: 6,
+        rawAmount: '1',
+        uiAmount: '0.000001',
+      };
+      const tokenAccount = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
+      const getSignaturesForAddress = jest.fn().mockReturnValue({
+        send: jest.fn().mockResolvedValue([]),
+      });
+
+      jest
+        .spyOn(mockAccountsService, 'getAll')
+        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
+      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTokenAccountsByOwner: jest.fn(
+          (_owner: string, filter: { programId: string }) => ({
+            send:
+              filter.programId === TOKEN_PROGRAM_ADDRESS
+                ? jest.fn().mockResolvedValue({
+                    value: [
+                      {
+                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+                        pubkey: asAddress(tokenAccount),
+                      },
+                    ],
+                  })
+                : jest.fn().mockRejectedValue(new Error('Token-2022 failed')),
+          }),
+        ),
+        getSignaturesForAddress,
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+
+      expect(await service.fetchAssetsTransactions([asset])).toStrictEqual([]);
+      expect(getSignaturesForAddress).toHaveBeenCalledWith(tokenAccount, {
+        limit: 5,
+      });
+      expect(trackError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Token-2022 failed' }),
+      );
+    });
+
+    it('queries Token-2022 token accounts as well', async () => {
+      const asset: TokenAsset = {
+        assetType: KnownCaip19Id.UsdcMainnet,
+        keyringAccountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        network: Network.Mainnet,
+        mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        symbol: 'USDC',
+        decimals: 6,
+        rawAmount: '1',
+        uiAmount: '0.000001',
+      };
+      const token2022Account = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
+      const getTokenAccountsByOwner = jest.fn(
+        (_owner: string, filter: { programId: string }) => ({
+          send: jest.fn().mockResolvedValue({
+            value:
+              filter.programId === TOKEN_2022_PROGRAM_ADDRESS
+                ? [
+                    {
+                      ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+                      pubkey: asAddress(token2022Account),
+                    },
+                  ]
+                : [],
+          }),
+        }),
+      );
+
+      jest
+        .spyOn(mockAccountsService, 'getAll')
+        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
+      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTokenAccountsByOwner,
+        getSignaturesForAddress: jest.fn().mockReturnValue({
+          send: jest.fn().mockResolvedValue([]),
+        }),
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+
+      await service.fetchAssetsTransactions([asset]);
+
+      expect(getTokenAccountsByOwner).toHaveBeenCalledWith(
+        asAddress(MOCK_SOLANA_KEYRING_ACCOUNT_0.address),
+        { programId: TOKEN_PROGRAM_ADDRESS },
+        { encoding: 'jsonParsed' },
+      );
+      expect(getTokenAccountsByOwner).toHaveBeenCalledWith(
+        asAddress(MOCK_SOLANA_KEYRING_ACCOUNT_0.address),
+        { programId: TOKEN_2022_PROGRAM_ADDRESS },
+        { encoding: 'jsonParsed' },
+      );
     });
   });
 
