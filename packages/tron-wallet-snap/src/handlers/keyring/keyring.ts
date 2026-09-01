@@ -14,7 +14,7 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { validateOrigin } from '@metamask/snap-networks-utils';
+import { UuidStruct, validateOrigin } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
@@ -53,7 +53,6 @@ import {
   PrivateKeyHexStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
-  UuidStruct,
 } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { validateRequest, validateResponse } from '../../validation/validators';
