@@ -1,3 +1,12 @@
+import {
+  AssetsProvider,
+  RemoteFeatureFlagsProvider,
+} from '@metamask/snap-networks-utils';
+import type {
+  AssetsProviderMessenger,
+  RemoteFeatureFlagsProviderMessenger,
+} from '@metamask/snap-networks-utils';
+import { getMessenger } from '@metamask/snaps-sdk';
 import type { Serializable } from '@metamask/snap-networks-utils';
 
 import type { ICache } from './core/caching/ICache';
@@ -14,6 +23,7 @@ import {
   AccountsService,
   AccountsSynchronizer,
   ApproveTokenService,
+  CoreAssetsAdapter,
   SnapAssetsAdapter,
   AssetsRepository,
   AssetsService,
@@ -48,6 +58,10 @@ import { TransactionScanService } from './core/services/transaction-scan/Transac
 import { WalletService } from './core/services/wallet/WalletService';
 import logger, { noOpLogger } from './core/utils/logger';
 import { EventEmitter } from './infrastructure';
+import type {
+  CoreMessenger,
+  CoreMessengerClient,
+} from './types/core-messenger';
 
 /**
  * Initializes all the services using dependency injection.
@@ -79,6 +93,12 @@ export type SnapExecutionContext = {
   accountsService: AccountsService;
   accountsSynchronizer: AccountsSynchronizer;
   tokenHelper: TokenHelper;
+  /**
+   * Core messenger plumbing (routing wired in a follow-up PR).
+   */
+  coreMessenger: CoreMessengerClient;
+  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+  assetsProvider: AssetsProvider;
 };
 
 const configProvider = new ConfigProvider();
@@ -162,8 +182,32 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   nftApiClient,
 });
 
+/**
+ * Core controllers plumbing
+ */
+const coreMessenger = getMessenger<CoreMessenger>();
+const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
+  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
+});
+const assetsProvider = new AssetsProvider({
+  messenger: coreMessenger as AssetsProviderMessenger,
+});
+
+const coreAssetsAdapter = new CoreAssetsAdapter({
+  logger,
+  getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
+  getAccountAssetsByIDs:
+    assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
+  getAccountAssetsByScope:
+    assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+  fetchMint: connection.fetchMint.bind(connection),
+  findAccountById: accountsService.findById.bind(accountsService),
+  getActiveNetworks: configProvider.getActiveNetworks.bind(configProvider),
+});
+
 const assetsService = new AssetsService({
   snapAdapter: snapAssetsAdapter,
+  coreAdapter: coreAssetsAdapter,
 });
 
 const transactionsRepository = new TransactionsRepository(state);
@@ -295,22 +339,28 @@ const snapContext: SnapExecutionContext = {
   accountsService,
   accountsSynchronizer,
   tokenHelper,
+  coreMessenger,
+  remoteFeatureFlagsProvider,
+  assetsProvider,
 };
 
 export {
   accountsService,
   accountsSynchronizer,
   analyticsService,
+  assetsProvider,
   assetsService,
   clientRequestHandler,
   configProvider,
   confirmationHandler,
   connection,
+  coreMessenger,
   eventEmitter,
   keyring,
   nameResolutionService,
   nftService,
   priceApiClient,
+  remoteFeatureFlagsProvider,
   sendSolBuilder,
   sendSplTokenBuilder,
   signer,

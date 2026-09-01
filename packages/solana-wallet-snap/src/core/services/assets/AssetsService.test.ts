@@ -24,6 +24,7 @@ import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
 import type { TokenPricesService } from '../token-prices/TokenPrices';
+import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';
@@ -101,8 +102,20 @@ describe('AssetsService', () => {
       nftApiClient: mockNftApiClient,
     });
 
+    const coreAdapter = new CoreAssetsAdapter({
+      logger: mockLogger,
+      getAccountAssetByID: jest.fn().mockResolvedValue(null),
+      getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
+      getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+      findAccountById: mockAccountsService.findById.bind(mockAccountsService),
+      getActiveNetworks:
+        mockConfigProvider.getActiveNetworks.bind(mockConfigProvider),
+      fetchMint: mockConnection.fetchMint.bind(mockConnection),
+    });
+
     assetsService = new AssetsService({
       snapAdapter: snapAssetsAdapter,
+      coreAdapter,
     });
   });
 

@@ -3710,10 +3710,13 @@ __metadata:
   resolution: "@metamask/solana-wallet-snap@workspace:packages/solana-wallet-snap"
   dependencies:
     "@jest/globals": "npm:^29.5.0"
+    "@metamask/assets-controller": "npm:^13.0.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
+    "@metamask/messenger": "npm:^2.0.0"
+    "@metamask/remote-feature-flag-controller": "npm:^5.0.0"
     "@metamask/snap-networks-utils": "npm:^1.0.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.1"

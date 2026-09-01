@@ -88,7 +88,15 @@
     "snap_manageAccounts": {},
     "snap_manageState": {},
     "snap_dialog": {},
-    "snap_getPreferences": {}
+    "snap_getPreferences": {},
+    "endowment:messenger": {
+      "actions": [
+        "RemoteFeatureFlagController:getState",
+        "AssetsController:getAccountAssetByID",
+        "AssetsController:getAccountAssetsByIDs",
+        "AssetsController:getAccountAssetsByScope"
+      ]
+    }
   },
   "platformVersion": "12.0.1",
   "manifestVersion": "0.1"
