@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { BitcoinAccount, Logger } from '../entities';
 import { TrackingSnapEvent } from '../entities';
+import logger from '../utils/logger';
 import { SnapClientAdapter } from './SnapClientAdapter';
 
 jest.mock('@metamask/bitcoindevkit', () => ({
@@ -13,6 +14,13 @@ jest.mock('@metamask/bitcoindevkit', () => ({
         toString: jest.fn(() => '0'),
       })),
     })),
+  },
+}));
+
+jest.mock('../utils/logger', () => ({
+  __esModule: true,
+  default: {
+    error: jest.fn(),
   },
 }));
 
@@ -27,10 +35,19 @@ const setupTest = () => {
     writable: true,
   });
 
-  return { snapClient, mockLogger, mockRequest };
+  return {
+    snapClient,
+    mockLogger,
+    mockRequest,
+    mockTrackingLogger: jest.mocked(logger),
+  };
 };
 
 describe('SnapClientAdapter', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('emitTrackingEvent', () => {
     it("doesn't throw and logs when event tracking fails", async () => {
       const { snapClient, mockLogger, mockRequest } = setupTest();
@@ -79,7 +96,7 @@ describe('SnapClientAdapter', () => {
 
   describe('emitTrackingError', () => {
     it('sends the tracking error payload to the snap client', async () => {
-      const { snapClient, mockRequest } = setupTest();
+      const { snapClient, mockRequest, mockTrackingLogger } = setupTest();
 
       const error = new Error('boom');
       mockRequest.mockResolvedValue(undefined);
@@ -90,19 +107,25 @@ describe('SnapClientAdapter', () => {
         method: 'snap_trackError',
         params: { error: getJsonError(error) },
       });
+      expect(mockTrackingLogger.error).not.toHaveBeenCalled();
     });
 
     it("doesn't break execution when error tracking fails", async () => {
-      const { snapClient, mockLogger, mockRequest } = setupTest();
+      const { snapClient, mockRequest, mockTrackingLogger } = setupTest();
 
       const error = new Error('boom');
       const trackingError = new Error('track failed');
       mockRequest.mockRejectedValue(trackingError);
 
       expect(await snapClient.emitTrackingError(error)).toBeUndefined();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_trackError',
+        params: { error: getJsonError(error) },
+      });
+      expect(mockTrackingLogger.error).toHaveBeenCalledWith(
+        { error: trackingError },
         'Failed to track error',
-        trackingError,
       );
     });
   });
