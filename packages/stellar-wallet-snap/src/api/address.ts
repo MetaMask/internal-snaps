@@ -1,4 +1,4 @@
-import { refine, string, nonempty } from '@metamask/superstruct';
+import { refine, string, nonempty, sensitive } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
 import { StrKey } from '@stellar/stellar-sdk';
 
@@ -7,7 +7,7 @@ import { StrKey } from '@stellar/stellar-sdk';
  * We only support non-muxed addresses.
  */
 export const StellarAddressStruct = refine(
-  nonempty(string()),
+  nonempty(sensitive(string())),
   'stellar_address',
   (value: string) => {
     try {
