@@ -1,4 +1,5 @@
 import { KeyringRequestStruct } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import {
   object,
   min,
@@ -27,7 +28,6 @@ import {
 import { StellarAddressStruct } from '../../api/address';
 import { KnownCaip2ChainId, KnownCaip2ChainIdStruct } from '../../api/network';
 import { Utf8StringStruct } from '../../api/string';
-import { UuidStruct } from '../../api/uuid';
 import { HashIdPreimageXdrStruct, XdrStruct } from '../../api/xdr';
 import { networkToCaip2ChainId } from '../../services/network/utils';
 

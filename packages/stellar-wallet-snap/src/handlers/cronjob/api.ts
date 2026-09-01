@@ -1,3 +1,4 @@
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -22,7 +23,6 @@ import {
   KnownCaip2ChainIdStruct,
   StellarAddressStruct,
   StellarTransactionHashStruct,
-  UuidStruct,
 } from '../../api';
 import { AppConfig } from '../../config';
 import { ConfirmationInterfaceKeyStruct } from '../../ui/confirmation/api';
