@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -8,7 +8,6 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Networks, ZERO } from '../../constants';
 import type { Network } from '../../constants';
-import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { TRX_IMAGE_SVG } from '../../static/tron-logo';
@@ -25,7 +24,6 @@ import { formatOrigin } from '../../utils/formatOrigin';
 import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
-import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
 import type { State, UnencryptedStateValue } from '../state/State';
@@ -39,7 +37,7 @@ export class ConfirmationHandler {
 
   readonly #tronWebFactory: TronWebFactory;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsProvider: AssetsProvider;
 
   readonly #feeCalculatorService: FeeCalculatorService;
 
@@ -47,14 +45,14 @@ export class ConfirmationHandler {
     snapClient,
     state,
     tronWebFactory,
-    assetsService,
+    assetsProvider,
     feeCalculatorService,
     logger,
   }: {
     snapClient: SnapClient;
     state: State<UnencryptedStateValue>;
     tronWebFactory: TronWebFactory;
-    assetsService: AssetsService;
+    assetsProvider: AssetsProvider;
     feeCalculatorService: FeeCalculatorService;
     logger: Logger;
   }) {
@@ -62,7 +60,7 @@ export class ConfirmationHandler {
     this.#snapClient = snapClient;
     this.#state = state;
     this.#tronWebFactory = tronWebFactory;
-    this.#assetsService = assetsService;
+    this.#assetsProvider = assetsProvider;
     this.#feeCalculatorService = feeCalculatorService;
   }
 
@@ -163,7 +161,7 @@ export class ConfirmationHandler {
     toAddress: string;
     amount: string;
     fees: ComputeFeeResult;
-    asset: AssetEntity;
+    asset: NonNullable<Awaited<ReturnType<AssetsProvider['getAccountAssetByID']>>>;
     accountType: string;
     origin: string;
     transactionRawData: TronwebTypes.Transaction['raw_data'];
@@ -236,16 +234,16 @@ export class ConfirmationHandler {
     );
 
     const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(account.id, [
+      await this.#assetsProvider.getAccountAssetsByIDs(account.id, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
 
     const availableEnergy = energyAsset
-      ? new BigNumber(energyAsset.rawAmount)
+      ? new BigNumber(energyAsset.balance.amount)
       : ZERO;
     const availableBandwidth = bandwidthAsset
-      ? new BigNumber(bandwidthAsset.rawAmount)
+      ? new BigNumber(bandwidthAsset.balance.amount)
       : ZERO;
 
     const fees = await this.#feeCalculatorService.computeFee({

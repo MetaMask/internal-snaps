@@ -88,12 +88,12 @@ export async function render(
     feesFetchStatus: FetchStatus.Initial,
   };
 
-  const { assetsService, feeCalculatorService, priceApiClient } = snapContext;
+  const { assetsProvider, feeCalculatorService, priceApiClient } = snapContext;
 
   // Parallelize: Get preferences + Fetch account assets
   const [preferences, accountAssets] = await Promise.all([
     snapClient.getPreferences().catch(() => DEFAULT_CONTEXT.preferences),
-    assetsService.getAccountAssetsByIDs(account.id, [
+    assetsProvider.getAccountAssetsByIDs(account.id, [
       Networks[scope as Network].nativeToken.id,
       Networks[scope as Network].bandwidth.id,
       Networks[scope as Network].energy.id,
@@ -110,10 +110,10 @@ export async function render(
     const [nativeTokenAsset, bandwidthAsset, energyAsset] = accountAssets;
 
     const availableEnergy = energyAsset
-      ? new BigNumber(energyAsset.rawAmount)
+      ? new BigNumber(energyAsset.balance.amount)
       : ZERO;
     const availableBandwidth = bandwidthAsset
-      ? new BigNumber(bandwidthAsset.rawAmount)
+      ? new BigNumber(bandwidthAsset.balance.amount)
       : ZERO;
 
     // Build transaction object from raw data
@@ -162,7 +162,7 @@ export async function render(
       )?.asset.amount ?? '0',
     );
     const trxBalance = nativeTokenAsset
-      ? sunToTrx(nativeTokenAsset.rawAmount)
+      ? new BigNumber(nativeTokenAsset.balance.amount)
       : ZERO;
     context.isInsufficientBalance = getTransactionTrxValue(rawData)
       .plus(trxFee)

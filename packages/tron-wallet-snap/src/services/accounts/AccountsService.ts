@@ -25,7 +25,6 @@ import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { DerivationPathStruct } from '../../validation/structs';
-import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
@@ -101,8 +100,6 @@ export class AccountsService {
 
   readonly #logger: Logger;
 
-  readonly #assetsService: AssetsService;
-
   readonly #transactionsService: TransactionsService;
 
   readonly #snapClient: SnapClient;
@@ -113,21 +110,18 @@ export class AccountsService {
     accountsRepository,
     configProvider,
     logger,
-    assetsService,
     snapClient,
     transactionsService,
   }: {
     accountsRepository: AccountsRepository;
     configProvider: ConfigProvider;
     logger: Logger;
-    assetsService: AssetsService;
     snapClient: SnapClient;
     transactionsService: TransactionsService;
   }) {
     this.#logger = logger.withPrefix('[🔑 AccountsService]');
     this.#configProvider = configProvider;
     this.#accountsRepository = accountsRepository;
-    this.#assetsService = assetsService;
     this.#transactionsService = transactionsService;
     this.#snapClient = snapClient;
   }
@@ -411,34 +405,6 @@ export class AccountsService {
 
   async delete(id: string): Promise<void> {
     return this.#accountsRepository.delete(id);
-  }
-
-  /**
-   * Synchronizes only assets for the given accounts.
-   * This method can be called independently to sync assets without syncing transactions.
-   *
-   * @param accounts - The accounts to synchronize assets for.
-   */
-  async synchronizeAssets(accounts: TronKeyringAccount[]): Promise<void> {
-    const scopes = this.#configProvider.get().activeNetworks;
-    const combinations = accounts.flatMap((account) =>
-      scopes.map((scope) => ({ account, scope })),
-    );
-
-    const assetResponses = await Promise.allSettled(
-      combinations.map(async ({ account, scope }) => {
-        return this.#assetsService.fetchAssetsAndBalancesForAccount(
-          scope,
-          account,
-        );
-      }),
-    );
-
-    const assets = assetResponses.flatMap((response) =>
-      response.status === 'fulfilled' ? response.value : [],
-    );
-
-    await this.#assetsService.saveMany(assets);
   }
 
   async synchronizeTransactions(accounts: TronKeyringAccount[]): Promise<void> {

@@ -10,22 +10,22 @@ import type {
   OnAssetsMarketDataResponse,
 } from '@metamask/snaps-sdk';
 
-import type { AssetsService } from '../../services/assets/AssetsService';
+import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 
 export class AssetsHandler {
   readonly #logger: Logger;
 
-  readonly #assetsService: AssetsService;
+  readonly #priceApiClient: PriceApiClient;
 
   constructor({
     logger,
-    assetsService,
+    priceApiClient,
   }: {
     logger: Logger;
-    assetsService: AssetsService;
+    priceApiClient: PriceApiClient;
   }) {
     this.#logger = logger.withPrefix('[🪙 AssetsHandler]');
-    this.#assetsService = assetsService;
+    this.#priceApiClient = priceApiClient;
   }
 
   async onAssetHistoricalPrice(
@@ -35,7 +35,7 @@ export class AssetsHandler {
 
     const { from, to } = params;
 
-    const historicalPrice = await this.#assetsService.getHistoricalPrice(
+    const historicalPrice = await this.#priceApiClient.getHistoricalPrice(
       from,
       to,
     );
@@ -53,7 +53,7 @@ export class AssetsHandler {
     const { conversions } = params;
 
     const conversionRates =
-      await this.#assetsService.getMultipleTokenConversions(conversions);
+      await this.#priceApiClient.getMultipleTokenConversions(conversions);
 
     return {
       conversionRates,
@@ -63,7 +63,7 @@ export class AssetsHandler {
   async onAssetsLookup(
     params: OnAssetsLookupArguments,
   ): Promise<OnAssetsLookupResponse> {
-    const assets = await this.#assetsService.getAssetsMetadata(params.assets);
+    const assets = await this.#priceApiClient.getAssetsMetadata(params.assets);
 
     return { assets };
   }
@@ -71,7 +71,7 @@ export class AssetsHandler {
   async onAssetsMarketData(
     params: OnAssetsMarketDataArguments,
   ): Promise<OnAssetsMarketDataResponse> {
-    const marketData = await this.#assetsService.getMultipleTokensMarketData(
+    const marketData = await this.#priceApiClient.getMultipleTokensMarketData(
       params.assets,
     );
 

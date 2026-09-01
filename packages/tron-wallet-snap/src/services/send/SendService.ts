@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
@@ -7,13 +7,11 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
-import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
-import { toRawAmount, trxToSun } from '../../utils/conversion';
+import { trxToSun } from '../../utils/conversion';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
-import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { FeeCalculatorService } from './FeeCalculatorService';
 import type { SendValidationResult } from './types';
@@ -21,7 +19,7 @@ import type { SendValidationResult } from './types';
 export class SendService {
   readonly #accountsService: AccountsService;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsProvider: AssetsProvider;
 
   readonly #tronWebFactory: TronWebFactory;
 
@@ -35,7 +33,7 @@ export class SendService {
 
   constructor({
     accountsService,
-    assetsService,
+    assetsProvider,
     tronWebFactory,
     feeCalculatorService,
     logger,
@@ -43,7 +41,7 @@ export class SendService {
     transactionExpirationRefresherService,
   }: {
     accountsService: AccountsService;
-    assetsService: AssetsService;
+    assetsProvider: AssetsProvider;
     tronWebFactory: TronWebFactory;
     feeCalculatorService: FeeCalculatorService;
     logger: Logger;
@@ -51,7 +49,7 @@ export class SendService {
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#accountsService = accountsService;
-    this.#assetsService = assetsService;
+    this.#assetsProvider = assetsProvider;
     this.#tronWebFactory = tronWebFactory;
     this.#feeCalculatorService = feeCalculatorService;
     this.#logger = logger.withPrefix('[💸 SendService]');
@@ -85,7 +83,7 @@ export class SendService {
     scope: Network;
     fromAccountId: string;
     toAddress: string;
-    asset: AssetEntity;
+    asset: NonNullable<Awaited<ReturnType<AssetsProvider['getAccountAssetByID']>>>;
     amount: BigNumber;
     feeLimit?: number;
   }): Promise<SendValidationResult> {
@@ -104,7 +102,7 @@ export class SendService {
      * Get the user's current balances for the asset being sent and TRX (for fees).
      */
     const [assetBalance, nativeTokenAsset, bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
+      await this.#assetsProvider.getAccountAssetsByIDs(fromAccountId, [
         asset.assetType,
         nativeTokenId,
         Networks[scope].bandwidth.id,
@@ -112,16 +110,16 @@ export class SendService {
       ]);
 
     const assetToSendBalance = assetBalance
-      ? new BigNumber(assetBalance.uiAmount)
+      ? new BigNumber(assetBalance.balance.amount)
       : ZERO;
     const nativeTokenBalance = nativeTokenAsset
-      ? new BigNumber(nativeTokenAsset.uiAmount)
+      ? new BigNumber(nativeTokenAsset.balance.amount)
       : ZERO;
     const availableBandwidth = bandwidthAsset
-      ? new BigNumber(bandwidthAsset.rawAmount)
+      ? new BigNumber(bandwidthAsset.balance.amount)
       : ZERO;
     const availableEnergy = energyAsset
-      ? new BigNumber(energyAsset.rawAmount)
+      ? new BigNumber(energyAsset.balance.amount)
       : ZERO;
 
     /**
@@ -214,7 +212,7 @@ export class SendService {
   }: {
     fromAccountId: string;
     toAddress: string;
-    asset: AssetEntity;
+    asset: NonNullable<Awaited<ReturnType<AssetsProvider['getAccountAssetByID']>>>;
     amount: BigNumber;
     feeLimit?: number;
   }): Promise<
@@ -246,7 +244,7 @@ export class SendService {
             toAddress,
             amount,
             tokenId: assetReference,
-            decimals: asset.decimals,
+            decimals: asset.metadata.decimals,
             feeLimit,
           });
 
@@ -258,7 +256,7 @@ export class SendService {
             toAddress,
             contractAddress: assetReference,
             amount,
-            decimals: asset.decimals,
+            decimals: asset.metadata.decimals,
             feeLimit,
           });
 

@@ -1,5 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -27,7 +27,6 @@ import {
   ZERO,
 } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
   NativeCaipAssetType,
   StakedCaipAssetType,
@@ -77,7 +76,7 @@ export class ClientRequestHandler {
 
   readonly #accountsService: AccountsService;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsProvider: AssetsProvider;
 
   readonly #sendService: SendService;
 
@@ -98,7 +97,7 @@ export class ClientRequestHandler {
   constructor({
     logger,
     accountsService,
-    assetsService,
+    assetsProvider,
     sendService,
     feeCalculatorService,
     tronWebFactory,
@@ -110,7 +109,7 @@ export class ClientRequestHandler {
   }: {
     logger: Logger;
     accountsService: AccountsService;
-    assetsService: AssetsService;
+    assetsProvider: AssetsProvider;
     sendService: SendService;
     feeCalculatorService: FeeCalculatorService;
     tronWebFactory: TronWebFactory;
@@ -122,7 +121,7 @@ export class ClientRequestHandler {
   }) {
     this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
-    this.#assetsService = assetsService;
+    this.#assetsProvider = assetsProvider;
     this.#sendService = sendService;
     this.#feeCalculatorService = feeCalculatorService;
     this.#tronWebFactory = tronWebFactory;
@@ -369,7 +368,7 @@ export class ClientRequestHandler {
       const scope = chainId as Network;
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
-        await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        await this.#assetsProvider.getAccountAssetsByIDs(accountId, [
           assetId,
           Networks[scope].nativeToken.id,
           Networks[scope].bandwidth.id,
@@ -377,15 +376,17 @@ export class ClientRequestHandler {
         ]);
 
       const valueBN = new BigNumber(value);
-      const assetToSendBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
+      const assetToSendBalance = asset
+        ? new BigNumber(asset.balance.amount)
+        : ZERO;
       const nativeTokenBalance = nativeTokenAsset
-        ? new BigNumber(nativeTokenAsset.uiAmount)
+        ? new BigNumber(nativeTokenAsset.balance.amount)
         : ZERO;
       const bandwidthBalance = bandwidthAsset
-        ? new BigNumber(bandwidthAsset.uiAmount)
+        ? new BigNumber(bandwidthAsset.balance.amount)
         : ZERO;
       const energyBalance = energyAsset
-        ? new BigNumber(energyAsset.uiAmount)
+        ? new BigNumber(energyAsset.balance.amount)
         : ZERO;
 
       if (!asset || valueBN.isGreaterThan(assetToSendBalance)) {
@@ -482,7 +483,7 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAccountAssetByID(
+    const asset = await this.#assetsProvider.getAccountAssetByID(
       fromAccountId,
       assetId,
     );
@@ -526,7 +527,7 @@ export class ClientRequestHandler {
       /**
        * Get available Energy and Bandwidth from account assets.
        */
-      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
+      this.#assetsProvider.getAccountAssetsByIDs(fromAccountId, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]),
@@ -672,7 +673,7 @@ export class ClientRequestHandler {
      * Get available Energy and Bandwidth from account assets.
      */
     const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(accountId, [
+      await this.#assetsProvider.getAccountAssetsByIDs(accountId, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
@@ -727,12 +728,14 @@ export class ClientRequestHandler {
 
     const scope = Network.Mainnet;
 
-    const asset = await this.#assetsService.getAccountAssetByID(
+    const asset = await this.#assetsProvider.getAccountAssetByID(
       fromAccountId,
       Networks[scope].nativeToken.id,
     );
 
-    const accountBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
+    const accountBalance = asset
+      ? new BigNumber(asset.balance.amount)
+      : ZERO;
     const requestBalance = BigNumber(value);
 
     /**
@@ -803,7 +806,7 @@ export class ClientRequestHandler {
     const { accountId, assetId, value } = request.params;
 
     await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAccountAssetByID(
+    const asset = await this.#assetsProvider.getAccountAssetByID(
       accountId,
       assetId,
     );
@@ -811,7 +814,9 @@ export class ClientRequestHandler {
     /**
      * If the account doesn't have this asset, treat it as having zero balance
      */
-    const accountBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
+    const accountBalance = asset
+      ? new BigNumber(asset.balance.amount)
+      : ZERO;
     const requestBalance = new BigNumber(value);
 
     if (requestBalance.isGreaterThan(accountBalance)) {
@@ -850,12 +855,14 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
+    const asset = await this.#assetsProvider.getAccountAssetByID(
       fromAccountId,
       assetId,
     );
 
-    const accountBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
+    const accountBalance = asset
+      ? new BigNumber(asset.balance.amount)
+      : ZERO;
     const requestBalance = new BigNumber(value);
     /**
      * Check if account has enough of the asset...
@@ -912,12 +919,14 @@ export class ClientRequestHandler {
     const stakedAssetId = `${assetId}-staked-for-${purpose.toLowerCase()}`;
 
     await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAccountAssetByID(
+    const asset = await this.#assetsProvider.getAccountAssetByID(
       accountId,
       stakedAssetId,
     );
 
-    const accountBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
+    const accountBalance = asset
+      ? new BigNumber(asset.balance.amount)
+      : ZERO;
     const requestBalance = new BigNumber(value);
 
     /**

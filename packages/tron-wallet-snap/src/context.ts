@@ -1,11 +1,5 @@
-import {
-  AssetsProvider,
-  RemoteFeatureFlagsProvider,
-} from '@metamask/snap-networks-utils';
-import type {
-  AssetsProviderMessenger,
-  RemoteFeatureFlagsProviderMessenger,
-} from '@metamask/snap-networks-utils';
+import { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { AssetsProviderMessenger } from '@metamask/snap-networks-utils';
 import { getMessenger } from '@metamask/snaps-sdk';
 
 import { InMemoryCache } from './caching/InMemoryCache';
@@ -13,7 +7,6 @@ import { StateCache } from './caching/StateCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './clients/security-alerts-api/SecurityAlertsApiClient';
 import { SnapClient } from './clients/snap/SnapClient';
-import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
 import { TrongridApiClient } from './clients/trongrid/TrongridApiClient';
 import { TronWebFactory } from './clients/tronweb/TronWebFactory';
@@ -27,8 +20,6 @@ import { AccountsRepository } from './services/accounts/AccountsRepository';
 import { AccountsService } from './services/accounts/AccountsService';
 import { CoreAssetsAdapter } from './services/assets/adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './services/assets/adapters/SnapAssetsAdapter';
-import { AssetsRepository } from './services/assets/AssetsRepository';
-import { AssetsService } from './services/assets/AssetsService';
 import { ConfigProvider } from './services/config';
 import { ConfirmationHandler } from './services/confirmation/ConfirmationHandler';
 import { FeeCalculatorService } from './services/send/FeeCalculatorService';
@@ -52,8 +43,8 @@ import logger, { noOpLogger } from './utils/logger';
  *
  * Dependency injection order:
  * 1. Core services (ConfigProvider, State, Connection)
- * 2. Repositories (AssetsRepository, TransactionsRepository, AccountsRepository)
- * 3. Business services (AssetsService, TransactionsService, AccountsService)
+ * 2. Repositories (TransactionsRepository, AccountsRepository)
+ * 3. Business services (TransactionsService, AccountsService)
  * 4. Handlers (AssetsHandler, CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
  */
 export const configProvider = new ConfigProvider();
@@ -62,7 +53,6 @@ const state = new State({
   encrypted: false,
   defaultState: {
     keyringAccounts: {},
-    assets: {},
     tokenPrices: {},
     transactions: {},
     mapInterfaceNameToId: {},
@@ -73,7 +63,6 @@ const snapClient = new SnapClient({ logger });
 
 // Repositories - depend on State
 const accountsRepository = new AccountsRepository(state);
-const assetsRepository = new AssetsRepository(state);
 const transactionsRepository = new TransactionsRepository(state);
 
 // Clients
@@ -95,16 +84,10 @@ const tronWebFactory = new TronWebFactory({
 const priceCache = new InMemoryCache(noOpLogger);
 const priceApiClient = new PriceApiClient(configProvider, priceCache);
 
-// Token API client
-const tokenApiClient = new TokenApiClient(configProvider);
-
 /**
  * Core controllers plumbing
  */
 const coreMessenger = getMessenger<CoreMessenger>();
-const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
-  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
-});
 const assetsProvider = new AssetsProvider({
   messenger: coreMessenger as AssetsProviderMessenger,
 });
@@ -114,36 +97,6 @@ const securityAlertsApiClient = new SecurityAlertsApiClient(
   configProvider,
   logger,
 );
-
-const snapAssetsAdapter = new SnapAssetsAdapter({
-  logger,
-  state,
-  assetsRepository,
-  trongridApiClient,
-  tronHttpClient,
-  priceApiClient,
-  tokenApiClient,
-  snapClient,
-  configProvider,
-});
-const coreAssetsAdapter = new CoreAssetsAdapter({
-  getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
-  getAccountAssetsByIDs:
-    assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
-  getAccountAssetsByScope:
-    assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
-  getAddressInfo:
-    trongridApiClient.getAccountInfoByAddress.bind(trongridApiClient),
-  getAddressResources: tronHttpClient.getAccountResources.bind(tronHttpClient),
-  getAddressStakingRewards: tronHttpClient.getReward.bind(tronHttpClient),
-});
-
-// Business Services
-const assetsService = new AssetsService({
-  snapAdapter: snapAssetsAdapter,
-  coreAdapter: coreAssetsAdapter,
-  remoteFeatureFlagsProvider,
-});
 
 const transactionsService = new TransactionsService({
   logger,
@@ -159,7 +112,6 @@ const accountsService = new AccountsService({
   snapClient,
   accountsRepository,
   configProvider,
-  assetsService,
   transactionsService,
 });
 
@@ -179,7 +131,7 @@ const sendService = new SendService({
   logger,
   snapClient,
   accountsService,
-  assetsService,
+  assetsProvider,
   tronWebFactory,
   feeCalculatorService,
   transactionExpirationRefresherService,
@@ -208,7 +160,7 @@ const confirmationHandler = new ConfirmationHandler({
   snapClient,
   state,
   tronWebFactory,
-  assetsService,
+  assetsProvider,
   feeCalculatorService,
   logger,
 });
@@ -218,13 +170,13 @@ const confirmationHandler = new ConfirmationHandler({
  */
 const assetsHandler = new AssetsHandler({
   logger,
-  assetsService,
+  assetsProvider,
 });
 const clientRequestHandler = new ClientRequestHandler({
   logger,
   snapClient,
   accountsService,
-  assetsService,
+  assetsProvider,
   sendService,
   tronWebFactory,
   feeCalculatorService,
@@ -271,7 +223,6 @@ export type SnapExecutionContext = {
   state: State<UnencryptedStateValue>;
   priceApiClient: PriceApiClient;
   feeCalculatorService: FeeCalculatorService;
-  assetsService: AssetsService;
   accountsService: AccountsService;
   transactionsService: TransactionsService;
   sendService: SendService;
@@ -285,7 +236,6 @@ export type SnapExecutionContext = {
    * Core messenger plumbing.
    */
   coreMessenger: CoreMessengerClient;
-  remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
   assetsProvider: AssetsProvider;
   /**
    * Handlers
@@ -309,7 +259,6 @@ const snapContext: SnapExecutionContext = {
   state,
   priceApiClient,
   feeCalculatorService,
-  assetsService,
   accountsService,
   transactionsService,
   sendService,
@@ -320,7 +269,6 @@ const snapContext: SnapExecutionContext = {
   transactionScanService,
   transactionExpirationRefresherService,
   coreMessenger,
-  remoteFeatureFlagsProvider,
   assetsProvider,
   /**
    * Handlers

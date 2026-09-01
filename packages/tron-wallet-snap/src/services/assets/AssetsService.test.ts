@@ -1,17 +1,8 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
-import {
-  SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
-  SnapsAssetsMigrationStage,
-} from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import {
-  AssetsProvider,
-  RemoteFeatureFlagsProvider,
-} from '@metamask/snap-networks-utils';
 
-import { MOCK_EXCHANGE_RATES } from '../../clients/price-api/mocks/exchange-rates';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -24,33 +15,12 @@ import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { mockLogger } from '../../utils/mockLogger';
-import type { ConfigProvider } from '../config';
-import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
-import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
-import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
-
-/**
- * Subset of State methods.
- */
-type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
-};
+import type { TokenCaipAssetType } from './types';
 
 jest.mock('../../context', () => ({
   configProvider: {
-    get(): {
-      priceApi: {
-        cacheTtlsMilliseconds: {
-          fiatExchangeRates: number;
-          spotPrices: number;
-          historicalPrices: number;
-        };
-      };
-      activeNetworks: never[];
-    } {
+    get() {
       return {
         priceApi: {
           cacheTtlsMilliseconds: {
@@ -74,18 +44,13 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AssetsService } = require('./AssetsService');
 
-const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
-
 function createMessengerCallMock(
-  getState: () => unknown,
   getAccountAssetByID: jest.Mock,
   getAccountAssetsByIDs: jest.Mock = jest.fn().mockResolvedValue({}),
   getAccountAssetsByScope: jest.Mock = jest.fn().mockResolvedValue({}),
 ): CoreMessengerCaller['call'] {
   return async (actionType, ...args) => {
     switch (actionType) {
-      case 'RemoteFeatureFlagController:getState':
-        return getState() as Awaited<ReturnType<CoreMessengerCaller['call']>>;
       case 'AssetsController:getAccountAssetByID':
         return getAccountAssetByID(...args);
       case 'AssetsController:getAccountAssetsByIDs':
@@ -124,22 +89,6 @@ function buildControllerAsset(
   } as Asset;
 }
 
-/**
- * Builds a SpotPrices map for test mocks.
- *
- * @param entries - Map of asset ID to price info.
- * @returns SpotPrices object.
- */
-const createSpotPrices = (
-  entries: Record<string, { id: string; price: number }>,
-): SpotPrices =>
-  Object.fromEntries(
-    Object.entries(entries).map(([key, value]) => [
-      key,
-      { id: value.id, price: value.price },
-    ]),
-  );
-
 const mockAccount: KeyringAccount = {
   id: 'test-account-id',
   address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
@@ -160,6 +109,22 @@ const emptyAccountResources: AccountResources = {
   TotalEnergyLimit: 0,
   TotalEnergyWeight: 0,
 };
+
+/**
+ * Creates properly typed SpotPrices for tests.
+ *
+ * @param entries - Map of asset ID to price info.
+ * @returns SpotPrices object.
+ */
+const createSpotPrices = (
+  entries: Record<string, { id: string; price: number }>,
+): SpotPrices =>
+  Object.fromEntries(
+    Object.entries(entries).map(([key, value]) => [
+      key,
+      { id: value.id, price: value.price },
+    ]),
+  );
 
 /**
  * Creates a properly typed TronAccount for tests.
@@ -209,9 +174,7 @@ const minimalTronAccount = createMockTronAccount({
  * @param overrides - Account-specific fields to set.
  * @returns A mock AccountResources object.
  */
-function getMockAccountResources(
-  overrides: Record<string, number> = {},
-): Record<string, number> {
+function getMockAccountResources(overrides: Record<string, number> = {}) {
   return {
     freeNetLimit: 600,
     TotalNetLimit: 0,
@@ -229,10 +192,7 @@ function getMockAccountResources(
  * @param assetType - The CAIP-19 asset type to match.
  * @returns The matching asset, or undefined.
  */
-function findAsset(
-  assets: AssetEntity[],
-  assetType: KnownCaip19Id,
-): AssetEntity | undefined {
+function findAsset(assets: AssetEntity[], assetType: KnownCaip19Id) {
   return assets.find((a: AssetEntity) => a.assetType === assetType);
 }
 
@@ -242,12 +202,12 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
     Pick<
       AssetsRepository,
       | 'saveMany'
+      | 'getAll'
       | 'getByAccountId'
       | 'getByAccountIdAndAssetType'
       | 'getByAccountIdAndAssetTypes'
     >
   >;
-  mockState: MockState;
   mockTrongridApiClient: jest.Mocked<
     Pick<
       TrongridApiClient,
@@ -266,7 +226,6 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
   mockTokenApiClient: jest.Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
   mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
   mockCoreMessenger: jest.Mocked<CoreMessengerCaller>;
-  setMigrationStage: (stage: SnapsAssetsMigrationStage) => void;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -283,6 +242,7 @@ async function withAssetsService<ReturnValue>(
   const mockAssetsRepository: jest.Mocked<
     Pick<
       AssetsRepository,
+      | 'getAll'
       | 'getByAccountId'
       | 'getByAccountIdAndAssetType'
       | 'getByAccountIdAndAssetTypes'
@@ -290,15 +250,10 @@ async function withAssetsService<ReturnValue>(
     >
   > = {
     saveMany: jest.fn().mockResolvedValue(undefined),
+    getAll: jest.fn().mockResolvedValue([]),
     getByAccountId: jest.fn().mockResolvedValue([]),
     getByAccountIdAndAssetType: jest.fn().mockResolvedValue(null),
     getByAccountIdAndAssetTypes: jest.fn().mockResolvedValue([]),
-  };
-
-  const mockState: MockState = {
-    getKey: jest.fn().mockResolvedValue({}),
-    setKey: jest.fn().mockResolvedValue(undefined),
-    setKeyWith: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockTrongridApiClient: jest.Mocked<
@@ -342,99 +297,97 @@ async function withAssetsService<ReturnValue>(
   const mockGetAccountAssetByID = jest.fn();
   const mockGetAccountAssetsByIDs = jest.fn().mockResolvedValue({});
   const mockGetAccountAssetsByScope = jest.fn().mockResolvedValue({});
-  let migrationStage = SnapsAssetsMigrationStage.Off;
   const mockCoreMessenger: jest.Mocked<CoreMessengerCaller> = {
-    call: jest.fn().mockImplementation(
-      createMessengerCallMock(
-        () => ({
-          remoteFeatureFlags: {
-            [TRON_FLAG_KEY]: { stage: migrationStage },
-          },
-        }),
-        mockGetAccountAssetByID,
-        mockGetAccountAssetsByIDs,
-        mockGetAccountAssetsByScope,
+    call: jest
+      .fn()
+      .mockImplementation(
+        createMessengerCallMock(
+          mockGetAccountAssetByID,
+          mockGetAccountAssetsByIDs,
+          mockGetAccountAssetsByScope,
+        ),
       ),
-    ),
   };
 
-  const setMigrationStage = (stage: SnapsAssetsMigrationStage): void => {
-    migrationStage = stage;
+  const assetsProvider = {
+    getAccountAssetByID: (
+      accountId: string,
+      assetId: Caip19AssetId,
+    ): Promise<Asset | null> =>
+      mockCoreMessenger.call(
+        'AssetsController:getAccountAssetByID',
+        accountId,
+        assetId,
+      ) as Promise<Asset | null>,
+    getAccountAssetsByIDs: (
+      accountId: string,
+      assetIds: Caip19AssetId[],
+    ): Promise<Record<Caip19AssetId, Asset | null>> =>
+      mockCoreMessenger.call(
+        'AssetsController:getAccountAssetsByIDs',
+        accountId,
+        assetIds,
+      ) as Promise<Record<Caip19AssetId, Asset | null>>,
+    getAccountAssetsByScope: (
+      scope: string,
+      accountId: string,
+    ): Promise<Record<Caip19AssetId, Asset>> =>
+      mockCoreMessenger.call(
+        'AssetsController:getAccountAssetsByScope',
+        scope,
+        accountId,
+      ) as Promise<Record<Caip19AssetId, Asset>>,
   };
-
-  const assetsProvider = new AssetsProvider({
-    messenger: mockCoreMessenger as never,
-  });
-  const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
-    messenger: mockCoreMessenger as never,
-  });
-
-  const mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>> = {
-    get: jest.fn().mockReturnValue({
-      priceApi: {
-        cacheTtlsMilliseconds: {
-          fiatExchangeRates: 3600000,
-          spotPrices: 3600000,
-          historicalPrices: 3600000,
-        },
-      },
-      activeNetworks: [],
-    }),
-  };
-
-  const snapAdapter = new SnapAssetsAdapter({
-    logger: mockLogger,
-    assetsRepository: mockAssetsRepository as never,
-    state: mockState as never,
-    trongridApiClient: mockTrongridApiClient as never,
-    tronHttpClient: mockTronHttpClient as never,
-    priceApiClient: mockPriceApiClient as never,
-    tokenApiClient: mockTokenApiClient as never,
-    snapClient: mockSnapClient as never,
-    configProvider: mockConfigProvider as never,
-  });
-  const coreAdapter = new CoreAssetsAdapter({
-    getAccountAssetByID:
-      assetsProvider.getAccountAssetByID.bind(assetsProvider),
-    getAccountAssetsByIDs:
-      assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
-    getAccountAssetsByScope:
-      assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
-    getAddressInfo: mockTrongridApiClient.getAccountInfoByAddress,
-    getAddressResources: mockTronHttpClient.getAccountResources,
-    getAddressStakingRewards: mockTronHttpClient.getReward,
-  });
 
   const assetsService = new AssetsService({
-    snapAdapter,
-    coreAdapter,
-    remoteFeatureFlagsProvider,
+    logger: mockLogger,
+    assetsRepository: mockAssetsRepository,
+    trongridApiClient: mockTrongridApiClient,
+    tronHttpClient: mockTronHttpClient,
+    priceApiClient: mockPriceApiClient,
+    tokenApiClient: mockTokenApiClient,
+    snapClient: mockSnapClient,
+    assetsProvider,
   });
 
   return await testFunction({
     assetsService,
     mockAssetsRepository,
-    mockState,
     mockTrongridApiClient,
     mockTronHttpClient,
     mockPriceApiClient,
     mockTokenApiClient,
     mockSnapClient,
     mockCoreMessenger,
-    setMigrationStage,
   });
 }
 
+/**
+ * Runs syncSnapOwnedAssets and returns the assets passed to repository saveMany.
+ *
+ * @param assetsService - The assets service under test.
+ * @param mockAssetsRepository - The mocked assets repository.
+ * @returns The snap-owned assets persisted by the sync.
+ */
+async function syncAndGetSavedAssets(
+  assetsService: InstanceType<typeof AssetsService>,
+  mockAssetsRepository: jest.Mocked<Pick<AssetsRepository, 'saveMany'>>,
+): Promise<AssetEntity[]> {
+  await assetsService.syncSnapOwnedAssets([mockAccount], [Network.Mainnet]);
+  expect(mockAssetsRepository.saveMany).toHaveBeenCalled();
+  return mockAssetsRepository.saveMany.mock.calls.at(-1)?.[0] as AssetEntity[];
+}
+
 describe('AssetsService', () => {
-  describe('fetchAssetsAndBalancesForAccount', () => {
+  describe('syncSnapOwnedAssets', () => {
     describe('inactive account fallback', () => {
-      it('falls back to TRC20 balance endpoint when account info fails (inactive account)', async () => {
+      it('returns zero snap-owned resources when account info fails (inactive account)', async () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
-            mockPriceApiClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
               new TrongridAccountNotFoundError(),
@@ -443,176 +396,38 @@ describe('AssetsService', () => {
               emptyAccountResources,
             );
 
-            const trc20Balances = [
-              { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' },
-            ];
-            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
-              trc20Balances,
-            );
-
-            const trc20AssetId =
-              `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-            mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
-              createSpotPrices({
-                [trc20AssetId]: { id: trc20AssetId, price: 1.0 },
-              }),
-            );
-
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
               mockTrongridApiClient.getTrc20BalancesByAddress,
-            ).toHaveBeenCalledWith(Network.Mainnet, mockAccount.address);
+            ).not.toHaveBeenCalled();
 
-            const trxAsset = assets.find(
-              (asset: AssetEntity) =>
-                asset.assetType === KnownCaip19Id.TrxMainnet,
+            const bandwidthAsset = findAsset(
+              assets,
+              KnownCaip19Id.BandwidthMainnet,
             );
-            expect(trxAsset).toBeDefined();
-            expect(trxAsset?.rawAmount).toBe('0');
-
-            const trc20Asset = assets.find(
-              (asset: AssetEntity) => asset.assetType === trc20AssetId,
-            );
-            expect(trc20Asset).toBeDefined();
-            expect(trc20Asset?.rawAmount).toBe('24249143');
-          },
-        );
-      });
-
-      it('returns protocol resources when inactive account has empty resources', async () => {
-        await withAssetsService(
-          async ({
-            assetsService,
-            mockTrongridApiClient,
-            mockTronHttpClient,
-          }) => {
-            mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new TrongridAccountNotFoundError(),
-            );
-            mockTronHttpClient.getAccountResources.mockResolvedValue(
-              emptyAccountResources,
-            );
-            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
-              [],
-            );
-
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
-            );
-
-            const bandwidthAsset = assets.find(
-              (asset: AssetEntity) =>
-                asset.assetType === KnownCaip19Id.BandwidthMainnet,
-            );
-            const energyAsset = assets.find(
-              (asset: AssetEntity) =>
-                asset.assetType === KnownCaip19Id.EnergyMainnet,
-            );
+            const energyAsset = findAsset(assets, KnownCaip19Id.EnergyMainnet);
             expect(bandwidthAsset).toBeDefined();
             expect(energyAsset).toBeDefined();
-          },
-        );
-      });
-
-      it('returns protocol assets when inactive account info fails', async () => {
-        await withAssetsService(
-          async ({
-            assetsService,
-            mockTrongridApiClient,
-            mockTronHttpClient,
-          }) => {
-            mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new TrongridAccountNotFoundError(),
-            );
-            mockTronHttpClient.getAccountResources.mockResolvedValue(
-              emptyAccountResources,
-            );
-            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
-              [],
-            );
-
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
-            );
-
-            expect(assets.length).toBeGreaterThan(0);
             expect(
-              assets.some((asset: AssetEntity) =>
-                SNAP_OWNED_ASSETS.includes(asset.assetType),
+              assets.some(
+                (asset) => asset.assetType === KnownCaip19Id.TrxMainnet,
               ),
-            ).toBe(true);
+            ).toBe(false);
           },
         );
       });
     });
 
     describe('partial failure handling', () => {
-      it('returns protocol assets when account info fails even if resources succeed (inactive account)', async () => {
-        await withAssetsService(
-          async ({
-            assetsService,
-            mockTrongridApiClient,
-            mockTronHttpClient,
-            mockPriceApiClient,
-          }) => {
-            mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
-              new TrongridAccountNotFoundError(),
-            );
-            mockTronHttpClient.getAccountResources.mockResolvedValue({
-              ...emptyAccountResources,
-              freeNetLimit: 600,
-              NetLimit: 0,
-              EnergyLimit: 0,
-            });
-            const trc20Balances = [
-              { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '100000' },
-            ];
-            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
-              trc20Balances,
-            );
-
-            const trc20AssetId =
-              `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-            mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
-              createSpotPrices({
-                [trc20AssetId]: { id: trc20AssetId, price: 1.0 },
-              }),
-            );
-
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
-            );
-
-            expect(
-              mockTrongridApiClient.getTrc20BalancesByAddress,
-            ).toHaveBeenCalled();
-            expect(
-              assets.some((asset: AssetEntity) =>
-                SNAP_OWNED_ASSETS.includes(asset.assetType),
-              ),
-            ).toBe(true);
-
-            const bandwidthAsset = assets.find(
-              (asset: AssetEntity) =>
-                asset.assetType === KnownCaip19Id.BandwidthMainnet,
-            );
-            expect(bandwidthAsset).toBeDefined();
-            expect(bandwidthAsset?.rawAmount).toBe('600');
-          },
-        );
-      });
-
       it('continues with zero resources when only resources request fails', async () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -627,21 +442,20 @@ describe('AssetsService', () => {
               new Error('Resources endpoint unavailable'),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
               assets.some(
-                (asset: AssetEntity) =>
-                  asset.assetType === KnownCaip19Id.TrxMainnet,
+                (asset) => asset.assetType === KnownCaip19Id.TrxMainnet,
               ),
-            ).toBe(true);
+            ).toBe(false);
 
-            const bandwidthAsset = assets.find(
-              (asset: AssetEntity) =>
-                asset.assetType === KnownCaip19Id.BandwidthMainnet,
+            const bandwidthAsset = findAsset(
+              assets,
+              KnownCaip19Id.BandwidthMainnet,
             );
             expect(bandwidthAsset).toBeDefined();
             expect(bandwidthAsset?.rawAmount).toBe('0');
@@ -655,6 +469,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -663,9 +478,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -679,6 +494,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -689,9 +505,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ freeNetUsed: 200 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -705,6 +521,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -715,9 +532,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ freeNetUsed: 326, NetLimit: 16 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -731,6 +548,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -745,9 +563,9 @@ describe('AssetsService', () => {
               }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -763,6 +581,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -771,9 +590,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -788,6 +607,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -798,9 +618,9 @@ describe('AssetsService', () => {
               getMockAccountResources({}),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -815,6 +635,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -825,9 +646,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ NetLimit: 48 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -844,6 +665,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -855,9 +677,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -874,6 +696,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -888,9 +711,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -907,6 +730,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -924,9 +748,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -943,6 +767,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -959,9 +784,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -978,6 +803,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -997,9 +823,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -1018,6 +844,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1029,9 +856,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1048,6 +875,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1065,9 +893,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1084,6 +912,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1101,9 +930,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1120,6 +949,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1142,9 +972,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1161,6 +991,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1180,9 +1011,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1199,20 +1030,18 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
             mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
               new Error('account not found'),
             );
-            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
-              [],
-            );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1231,6 +1060,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1239,9 +1069,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1255,6 +1085,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1265,9 +1096,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 329 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1281,6 +1112,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1291,9 +1123,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 5000, EnergyUsed: 4383 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1307,6 +1139,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1317,9 +1150,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 46, EnergyUsed: 6511 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1335,6 +1168,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1343,9 +1177,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1359,6 +1193,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1369,9 +1204,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 329 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1387,6 +1222,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1396,9 +1232,9 @@ describe('AssetsService', () => {
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
             mockTronHttpClient.getReward.mockResolvedValue(0);
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1413,6 +1249,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1422,9 +1259,9 @@ describe('AssetsService', () => {
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
             mockTronHttpClient.getReward.mockResolvedValue(5000000);
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             const stakingRewardsAsset = findAsset(
@@ -1442,6 +1279,7 @@ describe('AssetsService', () => {
         await withAssetsService(
           async ({
             assetsService,
+            mockAssetsRepository,
             mockTrongridApiClient,
             mockTronHttpClient,
           }) => {
@@ -1453,9 +1291,9 @@ describe('AssetsService', () => {
               new Error('API Error'),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
+            const assets = await syncAndGetSavedAssets(
+              assetsService,
+              mockAssetsRepository,
             );
 
             expect(
@@ -1466,735 +1304,43 @@ describe('AssetsService', () => {
         );
       });
     });
-  });
 
-  describe('getHistoricalPrice', () => {
-    it('tracks historical price errors', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockSnapClient, mockPriceApiClient }) => {
-          const error = new Error('Price error');
-
-          mockPriceApiClient.getHistoricalPrices.mockRejectedValue(error);
-
-          await assetsService.getHistoricalPrice(
-            KnownCaip19Id.TrxMainnet,
-            'tron:728126428/slip44:usd',
-          );
-
-          expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
-        },
-      );
-    });
-  });
-
-  describe('saveMany', () => {
-    it('does not remove energy and bandwidth assets even when they have zero amounts', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockState, mockAssetsRepository }) => {
-          const assets: AssetEntity[] = [
-            {
-              assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.EnergyMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'ENERGY',
-              decimals: 0,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.BandwidthMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'BANDWIDTH',
-              decimals: 0,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-          ];
-
-          mockState.getKey.mockResolvedValue(assets);
-
-          await assetsService.saveMany(assets);
-
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [mockAccount.id]: {
-                  added: expect.arrayContaining([
-                    KnownCaip19Id.EnergyMainnet,
-                    KnownCaip19Id.BandwidthMainnet,
-                  ]),
-                  removed: [],
-                },
-              },
-            },
-          );
-        },
-      );
-    });
-
-    it('correctly updates non-essential assets with zero amounts', async () => {
-      await withAssetsService(async ({ assetsService, mockState }) => {
-        const trc20AssetId =
-          `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-        const assets: AssetEntity[] = [
-          {
-            assetType: KnownCaip19Id.TrxMainnet,
-            keyringAccountId: mockAccount.id,
-            network: Network.Mainnet,
-            symbol: 'TRX',
-            decimals: 6,
-            rawAmount: '1000000',
-            uiAmount: '1',
-            iconUrl: '',
-          },
-          {
-            assetType: trc20AssetId,
-            keyringAccountId: mockAccount.id,
-            network: Network.Mainnet,
-            symbol: 'USDT',
-            decimals: 6,
-            rawAmount: '0',
-            uiAmount: '0',
-            iconUrl: '',
-          },
-        ];
-
-        mockState.getKey.mockResolvedValue({
-          [mockAccount.id]: assets,
-        });
-
-        await assetsService.saveMany(assets);
-
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountAssetListUpdated,
-          {
-            assets: {
-              [mockAccount.id]: {
-                added: [KnownCaip19Id.TrxMainnet],
-                removed: [trc20AssetId],
-              },
-            },
-          },
-        );
-      });
-    });
-
-    it('updates stale non-essential assets balance to 0 if missed from the latest snapshot', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockState, mockAssetsRepository }) => {
-          const trc20AssetId =
-            `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-          const savedAssets: AssetEntity[] = [
-            {
-              assetType: KnownCaip19Id.TrxMainnet as NativeCaipAssetType,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: trc20AssetId as TokenCaipAssetType,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'USDT',
-              decimals: 6,
-              rawAmount: '1658250000',
-              uiAmount: '1658.25',
-              iconUrl: '',
-            },
-          ];
-          const finalSavedAssets: AssetEntity[] = [
-            {
-              assetType: KnownCaip19Id.TrxMainnet as NativeCaipAssetType,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: trc20AssetId as TokenCaipAssetType,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'USDT',
-              decimals: 6,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-          ];
-
-          const updatedAssets: AssetEntity[] = [savedAssets[0] as AssetEntity];
-
-          mockState.getKey.mockResolvedValue({
-            [mockAccount.id]: savedAssets,
-          });
-
-          await assetsService.saveMany(updatedAssets);
-
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-            finalSavedAssets,
-          );
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [mockAccount.id]: {
-                  added: [KnownCaip19Id.TrxMainnet],
-                  removed: [trc20AssetId],
-                },
-              },
-            },
-          );
-
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountBalancesUpdated,
-            {
-              balances: {
-                [mockAccount.id]: {
-                  [KnownCaip19Id.TrxMainnet]: {
-                    unit: 'TRX',
-                    amount: '1',
-                  },
-                  [trc20AssetId]: {
-                    unit: 'USDT',
-                    amount: '0',
-                  },
-                },
-              },
-            },
-          );
-        },
-      );
-    });
-
-    it('keeps maximum energy and bandwidth assets even with zero amounts', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockState, mockAssetsRepository }) => {
-          const assets: AssetEntity[] = [
-            {
-              assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.MaximumEnergyMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'MAX-ENERGY',
-              decimals: 0,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.MaximumBandwidthMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'MAX-BANDWIDTH',
-              decimals: 0,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-          ];
-
-          mockState.getKey.mockResolvedValue(assets);
-
-          await assetsService.saveMany(assets);
-
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [mockAccount.id]: {
-                  added: expect.arrayContaining([
-                    KnownCaip19Id.MaximumEnergyMainnet,
-                    KnownCaip19Id.MaximumBandwidthMainnet,
-                  ]),
-                  removed: [],
-                },
-              },
-            },
-          );
-        },
-      );
-    });
-
-    it('keeps staked assets even with zero amounts', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockState, mockAssetsRepository }) => {
-          const assets: AssetEntity[] = [
-            {
-              assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.TrxStakedForBandwidthMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'sTRX-BANDWIDTH',
-              decimals: 6,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.TrxStakedForEnergyMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'sTRX-ENERGY',
-              decimals: 6,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-          ];
-
-          mockState.getKey.mockResolvedValue(assets);
-
-          await assetsService.saveMany(assets);
-
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [mockAccount.id]: {
-                  added: expect.arrayContaining([
-                    KnownCaip19Id.TrxStakedForBandwidthMainnet,
-                    KnownCaip19Id.TrxStakedForEnergyMainnet,
-                  ]),
-                  removed: [],
-                },
-              },
-            },
-          );
-        },
-      );
-    });
-
-    it('keeps ready for withdrawal assets even with zero amounts', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockState, mockAssetsRepository }) => {
-          const assets: AssetEntity[] = [
-            {
-              assetType: KnownCaip19Id.TrxMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'TRX',
-              decimals: 6,
-              rawAmount: '1000000',
-              uiAmount: '1',
-              iconUrl: '',
-            },
-            {
-              assetType: KnownCaip19Id.TrxReadyForWithdrawalMainnet,
-              keyringAccountId: mockAccount.id,
-              network: Network.Mainnet,
-              symbol: 'trx-ready-for-withdrawal',
-              decimals: 6,
-              rawAmount: '0',
-              uiAmount: '0',
-              iconUrl: '',
-            },
-          ];
-
-          mockState.getKey.mockResolvedValue(assets);
-
-          await assetsService.saveMany(assets);
-
-          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [mockAccount.id]: {
-                  added: expect.arrayContaining([
-                    KnownCaip19Id.TrxReadyForWithdrawalMainnet,
-                  ]),
-                  removed: [],
-                },
-              },
-            },
-          );
-        },
-      );
-    });
-
-    describe('updating assets from 0 to >0', () => {
-      it('adds energy to the asset list when it updates from 0 to >0', async () => {
+    describe('persistence and events via sync', () => {
+      it('does not remove energy and bandwidth assets even when they have zero amounts', async () => {
         await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '50000',
-                uiAmount: '50000',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.EnergyMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
             );
-          },
-        );
-      });
 
-      it('adds bandwidth to the asset list when it updates from 0 to >0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '1500',
-                uiAmount: '1500',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.BandwidthMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('adds TRC20 token to the asset list when it updates from 0 to >0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const trc20AssetId =
-              `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: trc20AssetId,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'USDT',
-                decimals: 6,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: trc20AssetId,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'USDT',
-                decimals: 6,
-                rawAmount: '100000000',
-                uiAmount: '100',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      trc20AssetId,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('handles multiple assets updating from 0 to >0 simultaneously', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const trc20AssetId =
-              `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-              {
-                assetType: trc20AssetId,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'USDT',
-                decimals: 6,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '50000',
-                uiAmount: '50000',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '1500',
-                uiAmount: '1500',
-                iconUrl: '',
-              },
-              {
-                assetType: trc20AssetId,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'USDT',
-                decimals: 6,
-                rawAmount: '100000000',
-                uiAmount: '100',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
+            const savedAssets =
+              mockAssetsRepository.saveMany.mock.calls[0]?.[0] ?? [];
+            expect(
+              savedAssets.some(
+                (asset) => asset.assetType === KnownCaip19Id.EnergyMainnet,
+              ),
+            ).toBe(true);
+            expect(
+              savedAssets.some(
+                (asset) => asset.assetType === KnownCaip19Id.BandwidthMainnet,
+              ),
+            ).toBe(true);
+            expect(
+              savedAssets.some(
+                (asset) => asset.assetType === KnownCaip19Id.TrxMainnet,
+              ),
+            ).toBe(false);
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
@@ -2214,87 +1360,15 @@ describe('AssetsService', () => {
         );
       });
 
-      it('handles staked assets updating from 0 to >0', async () => {
+      it('does not zero or remove TRC20 when missing from sync snapshot', async () => {
         await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '5000000',
-                uiAmount: '5',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.TrxStakedForEnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'sTRX-ENERGY',
-                decimals: 6,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '2000000',
-                uiAmount: '2',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.TrxStakedForEnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'sTRX-ENERGY',
-                decimals: 6,
-                rawAmount: '3000000',
-                uiAmount: '3',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxStakedForEnergyMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-    });
-
-    describe('updating assets going down', () => {
-      it('updates energy balance when it decreases but remains >0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const trc20AssetId = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
             const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.TrxMainnet,
@@ -2306,6 +1380,215 @@ describe('AssetsService', () => {
                 uiAmount: '1',
                 iconUrl: '',
               },
+              {
+                assetType: trc20AssetId,
+                keyringAccountId: mockAccount.id,
+                network: Network.Mainnet,
+                symbol: 'USDT',
+                decimals: 6,
+                rawAmount: '1658250000',
+                uiAmount: '1658.25',
+                iconUrl: '',
+              },
+            ];
+
+            mockAssetsRepository.getAll.mockResolvedValue(savedAssets);
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue(
+              getMockAccountResources({ EnergyLimit: 329 }),
+            );
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
+            );
+
+            const persistedAssets =
+              mockAssetsRepository.saveMany.mock.calls[0]?.[0] ?? [];
+            expect(
+              persistedAssets.find((asset) => asset.assetType === trc20AssetId),
+            ).toBeUndefined();
+            expect(
+              persistedAssets.find(
+                (asset) => asset.assetType === KnownCaip19Id.TrxMainnet,
+              ),
+            ).toBeUndefined();
+            expect(
+              persistedAssets.find(
+                (asset) => asset.assetType === KnownCaip19Id.EnergyMainnet,
+              ),
+            ).toBeDefined();
+          },
+        );
+      });
+
+      it('keeps maximum energy and bandwidth assets even with zero amounts', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
+            );
+
+            const savedAssets =
+              mockAssetsRepository.saveMany.mock.calls[0]?.[0] ?? [];
+            expect(
+              savedAssets.some(
+                (asset) =>
+                  asset.assetType === KnownCaip19Id.MaximumEnergyMainnet,
+              ),
+            ).toBe(true);
+            expect(
+              savedAssets.some(
+                (asset) =>
+                  asset.assetType === KnownCaip19Id.MaximumBandwidthMainnet,
+              ),
+            ).toBe(true);
+          },
+        );
+      });
+
+      it('keeps staked assets even with zero amounts', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
+            );
+
+            const savedAssets =
+              mockAssetsRepository.saveMany.mock.calls[0]?.[0] ?? [];
+            expect(
+              savedAssets.some(
+                (asset) =>
+                  asset.assetType ===
+                  KnownCaip19Id.TrxStakedForBandwidthMainnet,
+              ),
+            ).toBe(true);
+            expect(
+              savedAssets.some(
+                (asset) =>
+                  asset.assetType === KnownCaip19Id.TrxStakedForEnergyMainnet,
+              ),
+            ).toBe(true);
+          },
+        );
+      });
+
+      it('keeps ready for withdrawal assets even with zero amounts', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue({});
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
+            );
+
+            const savedAssets =
+              mockAssetsRepository.saveMany.mock.calls[0]?.[0] ?? [];
+            expect(
+              savedAssets.some(
+                (asset) =>
+                  asset.assetType ===
+                  KnownCaip19Id.TrxReadyForWithdrawalMainnet,
+              ),
+            ).toBe(true);
+          },
+        );
+      });
+
+      it('emits balance updates when snap-owned energy increases', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const savedAssets: AssetEntity[] = [
+              {
+                assetType: KnownCaip19Id.EnergyMainnet,
+                keyringAccountId: mockAccount.id,
+                network: Network.Mainnet,
+                symbol: 'ENERGY',
+                decimals: 0,
+                rawAmount: '0',
+                uiAmount: '0',
+                iconUrl: '',
+              },
+            ];
+
+            mockAssetsRepository.getAll.mockResolvedValue(savedAssets);
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue(
+              getMockAccountResources({ EnergyLimit: 50000 }),
+            );
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
+            );
+
+            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+              expect.anything(),
+              KeyringEvent.AccountBalancesUpdated,
+              {
+                balances: {
+                  [mockAccount.id]: expect.objectContaining({
+                    [KnownCaip19Id.EnergyMainnet]: {
+                      unit: 'ENERGY',
+                      amount: '50000',
+                    },
+                  }),
+                },
+              },
+            );
+          },
+        );
+      });
+
+      it('emits balance updates when snap-owned energy decreases but remains >0', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockAssetsRepository,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+          }) => {
+            const savedAssets: AssetEntity[] = [
               {
                 assetType: KnownCaip19Id.EnergyMainnet,
                 keyringAccountId: mockAccount.id,
@@ -2318,52 +1601,20 @@ describe('AssetsService', () => {
               },
             ];
 
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '35000',
-                uiAmount: '35000',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
+            mockAssetsRepository.getAll.mockResolvedValue(savedAssets);
+            mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+              minimalTronAccount,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      KnownCaip19Id.EnergyMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
+            mockTronHttpClient.getAccountResources.mockResolvedValue(
+              getMockAccountResources({
+                EnergyLimit: 100000,
+                EnergyUsed: 65000,
+              }),
+            );
+
+            await assetsService.syncSnapOwnedAssets(
+              [mockAccount],
+              [Network.Mainnet],
             );
 
             expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
@@ -2371,467 +1622,12 @@ describe('AssetsService', () => {
               KeyringEvent.AccountBalancesUpdated,
               {
                 balances: {
-                  [mockAccount.id]: {
-                    [KnownCaip19Id.TrxMainnet]: {
-                      unit: 'TRX',
-                      amount: '1',
-                    },
+                  [mockAccount.id]: expect.objectContaining({
                     [KnownCaip19Id.EnergyMainnet]: {
                       unit: 'ENERGY',
                       amount: '35000',
                     },
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('updates bandwidth balance when it decreases but remains >0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '5000',
-                uiAmount: '5000',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '4700',
-                uiAmount: '4700',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      KnownCaip19Id.BandwidthMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountBalancesUpdated,
-              {
-                balances: {
-                  [mockAccount.id]: {
-                    [KnownCaip19Id.TrxMainnet]: {
-                      unit: 'TRX',
-                      amount: '1',
-                    },
-                    [KnownCaip19Id.BandwidthMainnet]: {
-                      unit: 'BANDWIDTH',
-                      amount: '4700',
-                    },
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('updates TRC20 token balance when it decreases but remains >0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const trc20AssetId =
-              `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
-
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: trc20AssetId,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'USDT',
-                decimals: 6,
-                rawAmount: '100000000',
-                uiAmount: '100',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: trc20AssetId,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'USDT',
-                decimals: 6,
-                rawAmount: '50000000',
-                uiAmount: '50',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      trc20AssetId,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('keeps energy in the list when it drops to 0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '50000',
-                uiAmount: '50000',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      KnownCaip19Id.EnergyMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('keeps bandwidth in the list when it drops to 0', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '300',
-                uiAmount: '300',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '1000000',
-                uiAmount: '1',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '0',
-                uiAmount: '0',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      KnownCaip19Id.BandwidthMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-          },
-        );
-      });
-
-      it('handles both energy and bandwidth fluctuating in a transaction', async () => {
-        await withAssetsService(
-          async ({ assetsService, mockState, mockAssetsRepository }) => {
-            const savedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '2000000',
-                uiAmount: '2',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '80000',
-                uiAmount: '80000',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '1500',
-                uiAmount: '1500',
-                iconUrl: '',
-              },
-            ];
-
-            const updatedAssets: AssetEntity[] = [
-              {
-                assetType: KnownCaip19Id.TrxMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'TRX',
-                decimals: 6,
-                rawAmount: '2000000',
-                uiAmount: '2',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.EnergyMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'ENERGY',
-                decimals: 0,
-                rawAmount: '45000',
-                uiAmount: '45000',
-                iconUrl: '',
-              },
-              {
-                assetType: KnownCaip19Id.BandwidthMainnet,
-                keyringAccountId: mockAccount.id,
-                network: Network.Mainnet,
-                symbol: 'BANDWIDTH',
-                decimals: 0,
-                rawAmount: '1235',
-                uiAmount: '1235',
-                iconUrl: '',
-              },
-            ];
-
-            mockState.getKey.mockResolvedValue({
-              [mockAccount.id]: savedAssets,
-            });
-
-            await assetsService.saveMany(updatedAssets);
-
-            expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
-              updatedAssets,
-            );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountAssetListUpdated,
-              {
-                assets: {
-                  [mockAccount.id]: {
-                    added: expect.arrayContaining([
-                      KnownCaip19Id.TrxMainnet,
-                      KnownCaip19Id.EnergyMainnet,
-                      KnownCaip19Id.BandwidthMainnet,
-                    ]),
-                    removed: [],
-                  },
-                },
-              },
-            );
-
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-              expect.anything(),
-              KeyringEvent.AccountBalancesUpdated,
-              {
-                balances: {
-                  [mockAccount.id]: {
-                    [KnownCaip19Id.TrxMainnet]: {
-                      unit: 'TRX',
-                      amount: '2',
-                    },
-                    [KnownCaip19Id.EnergyMainnet]: {
-                      unit: 'ENERGY',
-                      amount: '45000',
-                    },
-                    [KnownCaip19Id.BandwidthMainnet]: {
-                      unit: 'BANDWIDTH',
-                      amount: '1235',
-                    },
-                  },
+                  }),
                 },
               },
             );
@@ -2885,25 +1681,90 @@ describe('AssetsService', () => {
     });
   });
 
-  describe('assets migration', () => {
+  describe('AssetsController routing', () => {
     const accountId = mockAccount.id;
     const fungibleAssetId = KnownCaip19Id.TrxMainnet;
-    const activeMigrationStage =
-      SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback;
+    const snapAssetId = KnownCaip19Id.EnergyMainnet;
 
-    it('routes getAccountAssetByID through AssetsController when migration is active', async () => {
+    it('syncSnapOwnedAssets returns protocol assets only', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockAssetsRepository,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+        }) => {
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            createMockTronAccount({
+              address: mockAccount.address,
+              balance: 1_000_000,
+              trc20: [{ TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '1000' }],
+            }),
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+
+          await assetsService.syncSnapOwnedAssets(
+            [mockAccount],
+            [Network.Mainnet],
+          );
+
+          const assets =
+            mockAssetsRepository.saveMany.mock.calls.at(-1)?.[0] ?? [];
+
+          expect(
+            assets.every((asset: AssetEntity) =>
+              SNAP_OWNED_ASSETS.includes(asset.assetType),
+            ),
+          ).toBe(true);
+          expect(
+            assets.some(
+              (asset: AssetEntity) => asset.assetType === fungibleAssetId,
+            ),
+          ).toBe(false);
+        },
+      );
+    });
+
+    it('routes snap-owned reads through the repository', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
+          const snapAsset: AssetEntity = {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '100',
+            uiAmount: '100',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            snapAsset,
+          );
+
+          const asset = await assetsService.getAccountAssetByID(
+            accountId,
+            snapAssetId,
+          );
+
+          expect(asset).toStrictEqual(snapAsset);
+          expect(mockCoreMessenger.call).not.toHaveBeenCalledWith(
+            'AssetsController:getAccountAssetByID',
+            expect.anything(),
+            expect.anything(),
+          );
+        },
+      );
+    });
+
+    it('routes fungible reads through AssetsController', async () => {
       await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         mockCoreMessenger.call.mockImplementation(
           createMessengerCallMock(
-            () => ({
-              remoteFeatureFlags: {
-                [TRON_FLAG_KEY]: {
-                  stage: activeMigrationStage,
-                },
-              },
-            }),
             jest.fn().mockResolvedValue(
-              buildControllerAsset(fungibleAssetId, '2', {
+              buildControllerAsset(fungibleAssetId, '2000000', {
                 symbol: 'TRX',
                 name: 'TRON',
                 decimals: 6,
@@ -2925,29 +1786,22 @@ describe('AssetsService', () => {
       });
     });
 
-    it('routes getAccountAssetsByIDs through AssetsController when migration is active', async () => {
+    it('getAccountAssetsByIDs uses a single AssetsController:getAccountAssetsByIDs call for fungibles', async () => {
       await withAssetsService(async ({ assetsService, mockCoreMessenger }) => {
         const trx = KnownCaip19Id.TrxMainnet;
         const usdt = `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`;
 
         mockCoreMessenger.call.mockImplementation(
           createMessengerCallMock(
-            () => ({
-              remoteFeatureFlags: {
-                [TRON_FLAG_KEY]: {
-                  stage: activeMigrationStage,
-                },
-              },
-            }),
             jest.fn(),
             jest.fn().mockImplementation(async () => {
               return {
-                [trx as Caip19AssetId]: buildControllerAsset(trx, '1', {
+                [trx as Caip19AssetId]: buildControllerAsset(trx, '1000000', {
                   symbol: 'TRX',
                   name: 'TRON',
                   decimals: 6,
                 }),
-                [usdt as Caip19AssetId]: buildControllerAsset(usdt, '0.5', {
+                [usdt as Caip19AssetId]: buildControllerAsset(usdt, '500000', {
                   symbol: 'USDT',
                   name: 'Tether',
                   decimals: 6,
@@ -2972,196 +1826,220 @@ describe('AssetsService', () => {
       });
     });
 
-    it('routes getAccountAssets through AssetsController when migration is active', async () => {
+    it('getAccountAssetsByIDs batches snap-owned reads without calling AssetsController', async () => {
       await withAssetsService(
-        async ({ assetsService, mockCoreMessenger, setMigrationStage }) => {
-          setMigrationStage(activeMigrationStage);
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
+          const snapAsset: AssetEntity = {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '100',
+            uiAmount: '100',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            snapAsset,
+          );
+
+          const results = await assetsService.getAccountAssetsByIDs(accountId, [
+            snapAssetId,
+          ]);
+
+          expect(results[0]).toStrictEqual(snapAsset);
+          expect(mockCoreMessenger.call).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('getAccountAssetsByIDs merges snap-owned and fungible reads in request order', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, mockCoreMessenger }) => {
+          const snapAsset: AssetEntity = {
+            assetType: snapAssetId,
+            keyringAccountId: accountId,
+            network: Network.Mainnet,
+            symbol: 'ENERGY',
+            decimals: 0,
+            rawAmount: '250',
+            uiAmount: '250',
+            iconUrl: '',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            snapAsset,
+          );
 
           mockCoreMessenger.call.mockImplementation(
             createMessengerCallMock(
-              () => ({
-                remoteFeatureFlags: {
-                  [TRON_FLAG_KEY]: {
-                    stage: activeMigrationStage,
-                  },
-                },
-              }),
               jest.fn(),
-              jest.fn(),
-              jest.fn().mockResolvedValue({
-                [fungibleAssetId as Caip19AssetId]: buildControllerAsset(
-                  fungibleAssetId,
-                  '2',
-                  {
-                    symbol: 'TRX',
-                    name: 'TRON',
-                    decimals: 6,
-                  },
-                ),
+              jest.fn().mockImplementation(async () => {
+                return {
+                  [fungibleAssetId as Caip19AssetId]: buildControllerAsset(
+                    fungibleAssetId,
+                    '3000000',
+                    {
+                      symbol: 'TRX',
+                      name: 'TRON',
+                      decimals: 6,
+                    },
+                  ),
+                };
               }),
             ),
           );
 
-          const assets = await assetsService.getAccountAssets(accountId);
+          const results = await assetsService.getAccountAssetsByIDs(accountId, [
+            fungibleAssetId,
+            snapAssetId,
+          ]);
 
+          expect(results[0]?.rawAmount).toBe('3000000');
+          expect(results[1]).toStrictEqual(snapAsset);
           expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-            'AssetsController:getAccountAssetsByScope',
+            'AssetsController:getAccountAssetsByIDs',
             accountId,
-            Network.Mainnet,
+            [fungibleAssetId],
           );
-          expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-            'AssetsController:getAccountAssetsByScope',
-            accountId,
-            Network.Nile,
-          );
-          expect(mockCoreMessenger.call).toHaveBeenCalledWith(
-            'AssetsController:getAccountAssetsByScope',
-            accountId,
-            Network.Shasta,
-          );
+        },
+      );
+    });
+
+    it('getByKeyringAccountId excludes fungibles', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository }) => {
+          mockAssetsRepository.getByAccountId.mockResolvedValue([
+            {
+              assetType: fungibleAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+            {
+              assetType: snapAssetId,
+              keyringAccountId: accountId,
+              network: Network.Mainnet,
+              symbol: 'ENERGY',
+              decimals: 0,
+              rawAmount: '100',
+              uiAmount: '100',
+              iconUrl: '',
+            },
+          ]);
+
+          const assets = await assetsService.getByKeyringAccountId(accountId);
+
           expect(
             assets.some(
               (asset: AssetEntity) => asset.assetType === fungibleAssetId,
             ),
+          ).toBe(false);
+          expect(
+            assets.some(
+              (asset: AssetEntity) => asset.assetType === snapAssetId,
+            ),
           ).toBe(true);
         },
       );
     });
 
-    it('fetches only snap-owned assets when migration is active', async () => {
+    it('syncSnapOwnedAssets emits only snap-owned assets', async () => {
       await withAssetsService(
         async ({
           assetsService,
+          mockAssetsRepository,
           mockTrongridApiClient,
           mockTronHttpClient,
-          setMigrationStage,
         }) => {
-          setMigrationStage(activeMigrationStage);
-
-          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue({
-            address: mockAccount.address,
-            balance: 5_000_000,
-            trc20: [
-              {
-                TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '1000000',
-              },
-            ],
-            assetV2: [],
-            frozenV2: [],
-            unfrozenV2: [],
-          } as unknown as TronAccount);
-          mockTronHttpClient.getAccountResources.mockResolvedValue({
-            ...emptyAccountResources,
-            freeNetLimit: 600,
-            EnergyLimit: 1000,
-          });
-          mockTronHttpClient.getReward.mockResolvedValue(0);
-
-          const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-            Network.Mainnet,
-            mockAccount,
+          mockAssetsRepository.getAll.mockResolvedValue([]);
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            minimalTronAccount,
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            getMockAccountResources({ EnergyLimit: 100 }),
           );
 
-          expect(
-            mockTrongridApiClient.getTrc20BalancesByAddress,
-          ).not.toHaveBeenCalled();
-          expect(assets.length).toBeGreaterThan(0);
-          expect(
-            assets.every((asset: AssetEntity) =>
-              SNAP_OWNED_ASSETS.includes(asset.assetType),
-            ),
-          ).toBe(true);
-          expect(
-            assets.some(
-              (asset: AssetEntity) =>
-                asset.assetType === KnownCaip19Id.TrxMainnet,
-            ),
-          ).toBe(false);
-        },
-      );
-    });
+          await assetsService.syncSnapOwnedAssets(
+            [mockAccount],
+            [Network.Mainnet],
+          );
 
-    it('emits only snap-owned assets and does not persist when migration is active', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockAssetsRepository, setMigrationStage }) => {
-          setMigrationStage(activeMigrationStage);
-
-          const specialAsset: AssetEntity = {
-            assetType: KnownCaip19Id.BandwidthMainnet,
-            keyringAccountId: mockAccount.id,
-            network: Network.Mainnet,
-            symbol: 'BANDWIDTH',
-            decimals: 0,
-            rawAmount: '600',
-            uiAmount: '600',
-            iconUrl: '',
-          };
-          const fungibleAsset: AssetEntity = {
-            assetType: KnownCaip19Id.TrxMainnet,
-            keyringAccountId: mockAccount.id,
-            network: Network.Mainnet,
-            symbol: 'TRX',
-            decimals: 6,
-            rawAmount: '1000000',
-            uiAmount: '1',
-            iconUrl: '',
-          };
-
-          await assetsService.saveMany([specialAsset, fungibleAsset]);
-
-          expect(mockAssetsRepository.saveMany).not.toHaveBeenCalled();
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
-            {
-              assets: {
-                [mockAccount.id]: {
-                  added: [KnownCaip19Id.BandwidthMainnet],
-                  removed: [],
-                },
-              },
-            },
-          );
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-            expect.anything(),
-            KeyringEvent.AccountBalancesUpdated,
-            {
-              balances: {
-                [mockAccount.id]: {
-                  [KnownCaip19Id.BandwidthMainnet]: {
-                    unit: 'BANDWIDTH',
-                    amount: '600',
-                  },
-                },
-              },
-            },
+            expect.objectContaining({
+              assets: expect.objectContaining({
+                [accountId]: expect.objectContaining({
+                  added: expect.arrayContaining([snapAssetId]),
+                }),
+              }),
+            }),
           );
         },
       );
     });
   });
 
-  describe('facade delegation', () => {
-    it('delegates static helpers and empty batch reads to SnapAssetsAdapter', async () => {
+  describe('getHistoricalPrice', () => {
+    it('tracks historical price errors', async () => {
       await withAssetsService(
-        async ({ assetsService, mockAssetsRepository, mockPriceApiClient }) => {
-          const asset: AssetEntity = {
-            iconUrl: '',
-            assetType: KnownCaip19Id.TrxMainnet,
+        async ({ assetsService, mockSnapClient, mockPriceApiClient }) => {
+          const error = new Error('Price error');
+
+          mockPriceApiClient.getHistoricalPrices.mockRejectedValue(error);
+
+          await assetsService.getHistoricalPrice(
+            KnownCaip19Id.TrxMainnet,
+            'tron:728126428/slip44:usd',
+          );
+
+          expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+        },
+      );
+    });
+  });
+
+  describe('facade delegation', () => {
+    it('routes fungible reads through AssetsProvider and keeps handler logic in AssetsService', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockAssetsRepository,
+          mockCoreMessenger,
+          mockPriceApiClient,
+        }) => {
+          const snapAsset: AssetEntity = {
+            assetType: KnownCaip19Id.EnergyMainnet,
             keyringAccountId: mockAccount.id,
             network: Network.Mainnet,
-            symbol: 'TRX',
-            decimals: 6,
+            symbol: 'ENERGY',
+            decimals: 0,
             rawAmount: '1',
             uiAmount: '1',
           };
 
-          mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
-            asset,
-          ]);
-          mockPriceApiClient.getFiatExchangeRates.mockResolvedValue(
-            MOCK_EXCHANGE_RATES,
+          mockAssetsRepository.getByAccountId.mockResolvedValue([snapAsset]);
+          mockAssetsRepository.getByAccountIdAndAssetType.mockResolvedValue(
+            snapAsset,
           );
+          mockCoreMessenger.call.mockImplementation(
+            createMessengerCallMock(
+              jest.fn().mockResolvedValue(
+                buildControllerAsset(KnownCaip19Id.TrxMainnet, '1', {
+                  symbol: 'TRX',
+                  name: 'TRON',
+                  decimals: 6,
+                }),
+              ),
+            ),
+          );
+          mockPriceApiClient.getFiatExchangeRates.mockResolvedValue({
+            usd: { value: 1 },
+          });
           mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
             createSpotPrices({
               [KnownCaip19Id.TrxMainnet]: {
@@ -3173,19 +2051,41 @@ describe('AssetsService', () => {
 
           expect(AssetsService.isFiat('eip155:1/erc20:0x0')).toBe(false);
           expect(AssetsService.isFiat('swift:0/iso4217:usd')).toBe(true);
-          expect(AssetsService.hasChanged(asset, [])).toBe(true);
-          expect(AssetsService.hasChanged(asset, [asset])).toBe(false);
+
           expect(
-            await assetsService.getAccountAssetsByIDs(mockAccount.id, []),
-          ).toStrictEqual([]);
+            await assetsService.getAccountAssetByID(
+              mockAccount.id,
+              KnownCaip19Id.TrxMainnet,
+            ),
+          ).toMatchObject({
+            assetType: KnownCaip19Id.TrxMainnet,
+            rawAmount: '1',
+          });
           expect(
-            await assetsService.getMultipleTokensMarketData([
-              {
-                asset: KnownCaip19Id.TrxMainnet,
-                unit: 'swift:0/iso4217:usd',
-              },
-            ]),
-          ).toBeDefined();
+            await assetsService.getAccountAssetByID(
+              mockAccount.id,
+              KnownCaip19Id.EnergyMainnet,
+            ),
+          ).toStrictEqual(snapAsset);
+          const byKeyringAccountId = await assetsService.getByKeyringAccountId(
+            mockAccount.id,
+          );
+          expect(
+            byKeyringAccountId.some(
+              (savedAsset) =>
+                savedAsset.assetType === KnownCaip19Id.EnergyMainnet,
+            ),
+          ).toBe(true);
+          const marketData = await assetsService.getMultipleTokensMarketData([
+            {
+              asset: KnownCaip19Id.TrxMainnet,
+              unit: 'swift:0/iso4217:usd',
+            },
+          ]);
+          expect(marketData[KnownCaip19Id.TrxMainnet]).toBeDefined();
+          expect(assetsService.cacheTtlsMilliseconds.historicalPrices).toBe(
+            3600000,
+          );
         },
       );
     });

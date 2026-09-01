@@ -15,7 +15,7 @@ import type {
 } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import { validateOrigin } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,
@@ -31,13 +31,11 @@ import type {
 import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
-import { ESSENTIAL_ASSETS } from '../../constants';
 import type { Network } from '../../constants';
 import { asStrictKeyringAccount } from '../../entities/keyring-account';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import type { WalletService } from '../../services/wallet/WalletService';
@@ -67,7 +65,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   readonly #accountsService: AccountsService;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsProvider: AssetsProvider;
 
   readonly #transactionsService: TransactionsService;
 
@@ -79,7 +77,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     logger,
     snapClient,
     accountsService,
-    assetsService,
+    assetsProvider,
     transactionsService,
     walletService,
     confirmationHandler,
@@ -87,7 +85,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     logger: Logger;
     snapClient: SnapClient;
     accountsService: AccountsService;
-    assetsService: AssetsService;
+    assetsProvider: AssetsProvider;
     transactionsService: TransactionsService;
     walletService: WalletService;
     confirmationHandler: ConfirmationHandler;
@@ -95,7 +93,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
     this.#snapClient = snapClient;
     this.#accountsService = accountsService;
-    this.#assetsService = assetsService;
+    this.#assetsProvider = assetsProvider;
     this.#transactionsService = transactionsService;
     this.#walletService = walletService;
     this.#confirmationHandler = confirmationHandler;
@@ -183,15 +181,14 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       this.#logger.info('Listing account assets', { accountId });
 
-      const assetEntities =
-        await this.#assetsService.getAccountAssets(accountId);
-      const result = assetEntities
-        .filter(
-          (asset) =>
-            ESSENTIAL_ASSETS.includes(asset.assetType) ||
-            Number(asset.rawAmount) > 0,
-        )
-        .map((asset) => asset.assetType);
+      const result = Object.values(
+        await this.#assetsProvider.getAccountAssetsByScope(
+          accountId,
+          Network.Mainnet,
+        ),
+      )
+        .filter((asset) => Number(asset.balance.amount) > 0)
+        .map((asset) => asset.id);
 
       this.#logger.info('Account assets', { accountId, result });
 
@@ -273,22 +270,23 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       await this.#getAccountOrThrow(accountId);
 
-      const assetsList = await this.#assetsService.getAccountAssets(accountId);
+      const assetsList = Object.values(
+        await this.#assetsProvider.getAccountAssetsByScope(
+          accountId,
+          Network.Mainnet,
+        ),
+      );
 
       const assetsToUse = assetsList
         .filter((asset) => assets.includes(asset.assetType))
         // Remove token assets with zero balance
-        .filter(
-          (asset) =>
-            ESSENTIAL_ASSETS.includes(asset.assetType) ||
-            Number(asset.rawAmount) > 0,
-        );
+        .filter((asset) => Number(asset.balance.amount) > 0);
 
       const result = assetsToUse.reduce<Record<CaipAssetType, Balance>>(
         (acc, asset) => {
-          acc[asset.assetType] = {
-            unit: asset.symbol,
-            amount: asset.uiAmount,
+          acc[asset.id] = {
+            unit: asset.metadata.symbol,
+            amount: asset.balance.amount,
           };
           return acc;
         },
