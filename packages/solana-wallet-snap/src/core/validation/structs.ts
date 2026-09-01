@@ -1,5 +1,6 @@
 import { CaipAssetTypeStruct, SolMethod } from '@metamask/keyring-api';
 import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import {
   array,
@@ -16,12 +17,6 @@ import {
 import { address } from '@solana/kit';
 
 import { Network } from '../constants/solana';
-
-// create a uuid validation
-export const UuidStruct = pattern(
-  string(),
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
-);
 
 export const PositiveNumberStringStruct = pattern(
   string(),
