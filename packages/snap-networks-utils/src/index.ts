@@ -48,6 +48,7 @@ export {
 } from './utils/errors';
 export type {
   CreateWithCatchAndThrowSnapErrorOptions,
+  LogErrorFn,
   NormalizeErrorFn,
   SnapRpcError,
   TrackErrorFn,

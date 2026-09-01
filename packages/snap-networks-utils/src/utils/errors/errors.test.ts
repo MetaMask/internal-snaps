@@ -200,5 +200,20 @@ describe('errors', () => {
         expect.objectContaining({ message: 'Test error' }),
       );
     });
+
+    it('uses a custom logError when provided', async () => {
+      const { trackError, withCatchAndThrowSnapError } = setupTest();
+      const customLogError = jest.fn();
+      const originalError = new Error('Test error');
+      const mockFn = jest.fn().mockRejectedValue(originalError);
+
+      await expect(
+        withCatchAndThrowSnapError(mockFn, customLogError),
+      ).rejects.toThrow(SnapError);
+
+      expect(customLogError).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(trackError).toHaveBeenCalledWith(originalError);
+    });
   });
 });

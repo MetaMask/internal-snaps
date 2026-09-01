@@ -29,8 +29,10 @@ export function normalizeError(error: unknown): SnapRpcError {
     : new SnapError(error instanceof Error ? error : getErrorMessage(error));
 }
 
+export type LogErrorFn = Logger['error'];
+
 export type CreateWithCatchAndThrowSnapErrorOptions = {
-  logError: Logger['error'];
+  logError: LogErrorFn;
   trackError: TrackErrorFn;
   normalizeErrorFn?: NormalizeErrorFn;
 };
@@ -50,10 +52,14 @@ export function createWithCatchAndThrowSnapError({
   normalizeErrorFn = normalizeError,
 }: CreateWithCatchAndThrowSnapErrorOptions): <ResponseT>(
   fn: () => Promise<ResponseT>,
+  logErrorOverride?: LogErrorFn,
 ) => Promise<ResponseT> {
-  return <ResponseT>(fn: () => Promise<ResponseT>): Promise<ResponseT> =>
+  return <ResponseT>(
+    fn: () => Promise<ResponseT>,
+    logErrorOverride?: LogErrorFn,
+  ): Promise<ResponseT> =>
     withCatchAndThrowSnapErrorHandler(
-      logError,
+      logErrorOverride ?? logError,
       trackError,
       normalizeErrorFn,
       fn,
@@ -61,7 +67,7 @@ export function createWithCatchAndThrowSnapError({
 }
 
 async function withCatchAndThrowSnapErrorHandler<ResponseT>(
-  logError: Logger['error'],
+  logError: LogErrorFn,
   trackError: TrackErrorFn,
   normalizeErrorFn: NormalizeErrorFn,
   fn: () => Promise<ResponseT>,
