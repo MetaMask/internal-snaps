@@ -1,11 +1,12 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { findAssociatedTokenPda } from '@solana-program/token';
 import type { Address, Commitment, Signature, Slot } from '@solana/kit';
 import { address as asAddress, signature as asSignature } from '@solana/kit';
 import { get, groupBy } from 'lodash';
 
-import type { AssetEntity } from '../../../entities';
+import type { AssetEntity, NativeAsset, TokenAsset } from '../../../entities';
 import type { SolanaKeyringAccount } from '../../../entities/keyring-account';
 import type { Network } from '../../constants/solana';
 import type { SolanaTransaction } from '../../types/solana';
@@ -81,18 +82,27 @@ export class TransactionsService {
       limit?: number;
     },
   ): Promise<Transaction[]> {
-    const accounts = await this.#accountsService.getAll();
-
     const assetTypes = assets.map((asset) => asset.assetType);
 
-    const assetsMetadata =
-      await this.#assetsService.getAssetsMetadata(assetTypes);
+    // Start all independent requests before awaiting any of them. Core token
+    // assets can then resolve their token account while the saved history is
+    // still being loaded.
+    const accountsPromise = this.#accountsService.getAll();
+    const assetsMetadataPromise =
+      this.#assetsService.getAssetsMetadata(assetTypes);
+    const savedTransactionsPromise = this.#transactionsRepository.getAll();
 
-    const savedTransactions = await this.#transactionsRepository.getAll();
+    const accounts = await accountsPromise;
+
+    const findAccountById = (id: string) =>
+      accounts.find((account) => account.id === id);
 
     const findLatestTransactionForAsset = async (asset: AssetEntity) => {
+      const savedTransactions = await savedTransactionsPromise;
       const { network } = asset;
-      const addressOrMint = 'mint' in asset ? asset.mint : asset.address;
+      const addressOrMint = asset.assetType.endsWith('/slip44:501')
+        ? (asset as NativeAsset).address
+        : (asset as TokenAsset).mint;
 
       const existingTransaction = savedTransactions
         .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
@@ -129,17 +139,27 @@ export class TransactionsService {
       asset: AssetEntity,
     ): Promise<SignatureWithAsset[]> => {
       const { network } = asset;
-      const addressOrPubkey = 'pubkey' in asset ? asset.pubkey : asset.address;
+      const account = findAccountById(asset.keyringAccountId);
 
-      const latestTransaction = await findLatestTransactionForAsset(asset);
+      // The address lookup and local history lookup are independent. This is
+      // especially important for Core assets, where resolving the token
+      // account may require a mint RPC request.
+      const [addressOrPubkey, latestTransaction] = await Promise.all([
+        this.#resolveAssetAddress(asset, account?.address),
+        findLatestTransactionForAsset(asset),
+      ]);
+
+      if (!addressOrPubkey) {
+        return [];
+      }
 
       const latestSignature = latestTransaction
-        ? asSignature(latestTransaction?.id)
+        ? asSignature(latestTransaction.id)
         : undefined;
 
       const response = await this.#connection
         .getRpc(network)
-        .getSignaturesForAddress(asAddress(addressOrPubkey), {
+        .getSignaturesForAddress(addressOrPubkey, {
           limit: 5,
           ...(latestSignature ? { until: latestSignature } : {}),
         })
@@ -199,8 +219,7 @@ export class TransactionsService {
       await Promise.all(signaturesToFetch.map(fetchTransaction))
     ).filter((item) => item !== null);
 
-    const findAccountById = (id: string) =>
-      accounts.find((account) => account.id === id);
+    const assetsMetadata = await assetsMetadataPromise;
 
     const mapTransaction = async (
       transactionWithAsset: TransactionWithAsset,
@@ -234,6 +253,41 @@ export class TransactionsService {
       });
 
     return mappedTransactions;
+  }
+
+  async #resolveAssetAddress(
+    asset: AssetEntity,
+    accountAddress?: string,
+  ): Promise<Address | null> {
+    if (asset.assetType.endsWith('/slip44:501')) {
+      return asAddress((asset as NativeAsset).address);
+    }
+
+    const tokenAsset = asset as TokenAsset;
+    if (tokenAsset.pubkey) {
+      return asAddress(tokenAsset.pubkey);
+    }
+
+    if (!accountAddress) {
+      return null;
+    }
+
+    try {
+      const mintAccount = await this.#connection.fetchMint(
+        tokenAsset.mint,
+        asset.network,
+      );
+      const [associatedTokenAccount] = await findAssociatedTokenPda({
+        mint: asAddress(tokenAsset.mint),
+        owner: asAddress(accountAddress),
+        tokenProgram: mintAccount.programAddress,
+      });
+
+      return associatedTokenAccount;
+    } catch (error) {
+      await trackError(error);
+      return null;
+    }
   }
 
   async fetchLatestSignatures(

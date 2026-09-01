@@ -6,8 +6,8 @@ import type {
   AssetsProviderMessenger,
   RemoteFeatureFlagsProviderMessenger,
 } from '@metamask/snap-networks-utils';
-import { getMessenger } from '@metamask/snaps-sdk';
 import type { Serializable } from '@metamask/snap-networks-utils';
+import { getMessenger } from '@metamask/snaps-sdk';
 
 import type { ICache } from './core/caching/ICache';
 import { InMemoryCache } from './core/caching/InMemoryCache';
@@ -200,7 +200,6 @@ const coreAssetsAdapter = new CoreAssetsAdapter({
     assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
   getAccountAssetsByScope:
     assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
-  fetchMint: connection.fetchMint.bind(connection),
   findAccountById: accountsService.findById.bind(accountsService),
   getActiveNetworks: configProvider.getActiveNetworks.bind(configProvider),
 });

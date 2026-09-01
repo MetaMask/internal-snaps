@@ -110,7 +110,6 @@ describe('AssetsService', () => {
       findAccountById: mockAccountsService.findById.bind(mockAccountsService),
       getActiveNetworks:
         mockConfigProvider.getActiveNetworks.bind(mockConfigProvider),
-      fetchMint: mockConnection.fetchMint.bind(mockConnection),
     });
 
     assetsService = new AssetsService({

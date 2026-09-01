@@ -1,19 +1,10 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import type { CaipChainId } from '@metamask/utils';
-import {
-  findAssociatedTokenPda,
-  TOKEN_PROGRAM_ADDRESS,
-} from '@solana-program/token';
-import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
-import type { Address } from '@solana/kit';
-import { address as asAddress } from '@solana/kit';
 
 import { KnownCaip19Id, Network } from '../../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
 import { mockLogger } from '../../__mocks__/logger';
-import { MOCK_MINT_ACCOUNT } from '../../__mocks__/mockSolanaRpcResponses';
-import type { SolanaConnection } from '../../connection';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
 
 const ACCOUNT_ID = MOCK_SOLANA_KEYRING_ACCOUNT_0.id;
@@ -21,27 +12,6 @@ const ACCOUNT_ADDRESS = MOCK_SOLANA_KEYRING_ACCOUNT_0.address;
 const MAINNET_ASSET_ID = KnownCaip19Id.SolMainnet as Caip19AssetId;
 const USDC_ASSET_ID = KnownCaip19Id.UsdcMainnet as Caip19AssetId;
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-
-/**
- * Derives the associated token account address for a mint/owner/program.
- *
- * @param mint - Mint address.
- * @param owner - Owner address.
- * @param tokenProgram - Token program that owns the mint.
- * @returns The ATA address.
- */
-async function expectedAssociatedTokenAccount(
-  mint: string,
-  owner: string,
-  tokenProgram: Address,
-): Promise<string> {
-  const [ata] = await findAssociatedTokenPda({
-    mint: asAddress(mint),
-    owner: asAddress(owner),
-    tokenProgram,
-  });
-  return ata;
-}
 
 /**
  * Builds a controller asset for adapter mapping tests.
@@ -106,7 +76,6 @@ function createCoreAssetsAdapterContext(): {
   >;
   mockFindAccountById: jest.Mock;
   mockGetActiveNetworks: jest.Mock;
-  mockFetchMint: jest.MockedFunction<SolanaConnection['fetchMint']>;
 } {
   const mockAssetsProvider = {
     getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
@@ -118,11 +87,6 @@ function createCoreAssetsAdapterContext(): {
     .fn()
     .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
   const mockGetActiveNetworks = jest.fn().mockResolvedValue([Network.Mainnet]);
-  const mockFetchMint = jest
-    .fn()
-    .mockResolvedValue(MOCK_MINT_ACCOUNT) as jest.MockedFunction<
-    SolanaConnection['fetchMint']
-  >;
 
   const adapter = new CoreAssetsAdapter({
     logger: mockLogger,
@@ -131,7 +95,6 @@ function createCoreAssetsAdapterContext(): {
     getAccountAssetsByScope: mockAssetsProvider.getAccountAssetsByScope,
     findAccountById: mockFindAccountById,
     getActiveNetworks: mockGetActiveNetworks,
-    fetchMint: mockFetchMint,
   });
 
   return {
@@ -139,7 +102,6 @@ function createCoreAssetsAdapterContext(): {
     mockAssetsProvider,
     mockFindAccountById,
     mockGetActiveNetworks,
-    mockFetchMint,
   };
 }
 
@@ -160,139 +122,64 @@ async function withCoreAssetsAdapter<ReturnValue>(
 describe('CoreAssetsAdapter', () => {
   describe('getAccountAssetByID', () => {
     it('maps a native controller asset without deriving an ATA', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockAssetsProvider, mockFetchMint }) => {
-          const controllerAsset = createControllerAsset({
-            id: MAINNET_ASSET_ID,
-          });
-          mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
-            controllerAsset,
-          );
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        const controllerAsset = createControllerAsset({
+          id: MAINNET_ASSET_ID,
+        });
+        mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
+          controllerAsset,
+        );
 
-          const asset = await adapter.getAccountAssetByID(
-            ACCOUNT_ID,
-            MAINNET_ASSET_ID,
-          );
+        const asset = await adapter.getAccountAssetByID(
+          ACCOUNT_ID,
+          MAINNET_ASSET_ID,
+        );
 
-          expect(mockAssetsProvider.getAccountAssetByID).toHaveBeenCalledWith(
-            ACCOUNT_ID,
-            MAINNET_ASSET_ID,
-          );
-          expect(mockFetchMint).not.toHaveBeenCalled();
-          expect(asset).toStrictEqual({
-            assetType: MAINNET_ASSET_ID,
-            keyringAccountId: ACCOUNT_ID,
-            network: Network.Mainnet,
-            address: ACCOUNT_ADDRESS,
-            symbol: 'SOL',
-            decimals: 9,
-            rawAmount: '1000000000',
-            uiAmount: '1',
-          });
-        },
-      );
+        expect(mockAssetsProvider.getAccountAssetByID).toHaveBeenCalledWith(
+          ACCOUNT_ID,
+          MAINNET_ASSET_ID,
+        );
+        expect(asset).toStrictEqual({
+          assetType: MAINNET_ASSET_ID,
+          keyringAccountId: ACCOUNT_ID,
+          network: Network.Mainnet,
+          address: ACCOUNT_ADDRESS,
+          symbol: 'SOL',
+          decimals: 9,
+          rawAmount: '1000000000',
+          uiAmount: '1',
+        });
+      });
     });
 
-    it('maps an SPL token and derives its associated token account pubkey', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockAssetsProvider, mockFetchMint }) => {
-          const controllerAsset = createControllerAsset({
-            id: USDC_ASSET_ID,
-            symbol: 'USDC',
-            decimals: 6,
-            amount: '1.234567',
-          });
-          mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
-            controllerAsset,
-          );
+    it('maps an SPL token without resolving its associated token account pubkey', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        const controllerAsset = createControllerAsset({
+          id: USDC_ASSET_ID,
+          symbol: 'USDC',
+          decimals: 6,
+          amount: '1.234567',
+        });
+        mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
+          controllerAsset,
+        );
 
-          const asset = await adapter.getAccountAssetByID(
-            ACCOUNT_ID,
-            USDC_ASSET_ID,
-          );
+        const asset = await adapter.getAccountAssetByID(
+          ACCOUNT_ID,
+          USDC_ASSET_ID,
+        );
 
-          expect(mockFetchMint).toHaveBeenCalledWith(
-            USDC_MINT,
-            Network.Mainnet,
-          );
-          expect(asset).toStrictEqual({
-            assetType: USDC_ASSET_ID,
-            keyringAccountId: ACCOUNT_ID,
-            network: Network.Mainnet,
-            mint: USDC_MINT,
-            pubkey: await expectedAssociatedTokenAccount(
-              USDC_MINT,
-              ACCOUNT_ADDRESS,
-              TOKEN_PROGRAM_ADDRESS,
-            ),
-            symbol: 'USDC',
-            decimals: 6,
-            rawAmount: '1234567',
-            uiAmount: '1.234567',
-          });
-        },
-      );
-    });
-
-    it('derives the ATA with the Token-2022 program when the mint is Token-2022', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockAssetsProvider, mockFetchMint }) => {
-          mockFetchMint.mockResolvedValue({
-            ...MOCK_MINT_ACCOUNT,
-            programAddress: TOKEN_2022_PROGRAM_ADDRESS,
-          });
-          mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
-            createControllerAsset({
-              id: USDC_ASSET_ID,
-              symbol: 'USDC',
-              decimals: 6,
-              amount: '1.234567',
-            }),
-          );
-
-          const asset = await adapter.getAccountAssetByID(
-            ACCOUNT_ID,
-            USDC_ASSET_ID,
-          );
-
-          const tokenProgramAta = await expectedAssociatedTokenAccount(
-            USDC_MINT,
-            ACCOUNT_ADDRESS,
-            TOKEN_PROGRAM_ADDRESS,
-          );
-          const token2022Ata = await expectedAssociatedTokenAccount(
-            USDC_MINT,
-            ACCOUNT_ADDRESS,
-            TOKEN_2022_PROGRAM_ADDRESS,
-          );
-
-          expect(token2022Ata).not.toBe(tokenProgramAta);
-          expect(asset).toMatchObject({ pubkey: token2022Ata });
-        },
-      );
-    });
-
-    it('returns null when the ATA cannot be derived', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockAssetsProvider, mockFetchMint }) => {
-          mockFetchMint.mockRejectedValue(new Error('mint missing'));
-          mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
-            createControllerAsset({
-              id: USDC_ASSET_ID,
-              symbol: 'USDC',
-              decimals: 6,
-              amount: '1.234567',
-            }),
-          );
-
-          const asset = await adapter.getAccountAssetByID(
-            ACCOUNT_ID,
-            USDC_ASSET_ID,
-          );
-
-          expect(asset).toBeNull();
-        },
-      );
+        expect(asset).toStrictEqual({
+          assetType: USDC_ASSET_ID,
+          keyringAccountId: ACCOUNT_ID,
+          network: Network.Mainnet,
+          mint: USDC_MINT,
+          symbol: 'USDC',
+          decimals: 6,
+          rawAmount: '1234567',
+          uiAmount: '1.234567',
+        });
+      });
     });
 
     it('returns null when the controller has no matching asset', async () => {
@@ -345,7 +232,7 @@ describe('CoreAssetsAdapter', () => {
       });
     });
 
-    it('derives ATA pubkeys for SPL tokens returned by ID', async () => {
+    it('does not resolve ATA pubkeys for SPL tokens returned by ID', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
         mockAssetsProvider.getAccountAssetsByIDs.mockResolvedValue({
           [MAINNET_ASSET_ID]: createControllerAsset({ id: MAINNET_ASSET_ID }),
@@ -362,14 +249,8 @@ describe('CoreAssetsAdapter', () => {
           USDC_ASSET_ID,
         ]);
 
-        expect(assets[USDC_ASSET_ID]).toMatchObject({
-          mint: USDC_MINT,
-          pubkey: await expectedAssociatedTokenAccount(
-            USDC_MINT,
-            ACCOUNT_ADDRESS,
-            TOKEN_PROGRAM_ADDRESS,
-          ),
-        });
+        expect(assets[USDC_ASSET_ID]).toMatchObject({ mint: USDC_MINT });
+        expect(assets[USDC_ASSET_ID]).not.toHaveProperty('pubkey');
         expect(assets[MAINNET_ASSET_ID]).not.toHaveProperty('pubkey');
       });
     });
@@ -436,40 +317,33 @@ describe('CoreAssetsAdapter', () => {
           assets.every((asset) => asset.keyringAccountId === ACCOUNT_ID),
         ).toBe(true);
         const usdc = assets.find((asset) => asset.assetType === USDC_ASSET_ID);
-        expect(usdc).toMatchObject({
-          mint: USDC_MINT,
-          pubkey: await expectedAssociatedTokenAccount(
-            USDC_MINT,
-            ACCOUNT_ADDRESS,
-            TOKEN_PROGRAM_ADDRESS,
-          ),
-        });
+        expect(usdc).toMatchObject({ mint: USDC_MINT });
+        expect(usdc).not.toHaveProperty('pubkey');
       });
     });
 
-    it('omits SPL tokens whose ATA cannot be derived', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockAssetsProvider, mockFetchMint }) => {
-          mockFetchMint.mockRejectedValue(new Error('mint missing'));
-          mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
-            [MAINNET_ASSET_ID]: createControllerAsset({ id: MAINNET_ASSET_ID }),
-            [USDC_ASSET_ID]: createControllerAsset({
-              id: USDC_ASSET_ID,
-              symbol: 'USDC',
-              decimals: 6,
-              amount: '1.234567',
-            }),
-          });
+    it('does not resolve ATA pubkeys when mapping assets by scope', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
+          [MAINNET_ASSET_ID]: createControllerAsset({ id: MAINNET_ASSET_ID }),
+          [USDC_ASSET_ID]: createControllerAsset({
+            id: USDC_ASSET_ID,
+            symbol: 'USDC',
+            decimals: 6,
+            amount: '1.234567',
+          }),
+        });
 
-          const assets = await adapter.getAccountAssetsByScope(
-            Network.Mainnet,
-            ACCOUNT_ID,
-          );
+        const assets = await adapter.getAccountAssetsByScope(
+          Network.Mainnet,
+          ACCOUNT_ID,
+        );
 
-          expect(assets).toHaveLength(1);
-          expect(assets[0]?.assetType).toBe(MAINNET_ASSET_ID);
-        },
-      );
+        expect(assets).toHaveLength(2);
+        expect(assets.map((asset) => asset.assetType).sort()).toStrictEqual(
+          [MAINNET_ASSET_ID, USDC_ASSET_ID].sort(),
+        );
+      });
     });
 
     it('skips null controller assets for the requested scope', async () => {

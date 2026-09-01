@@ -15,18 +15,17 @@ import { toTokenUnits } from '../../../utils/toTokenUnit';
  *
  * AssetsController returns balances in display format, so the source amount
  * is used directly as the UI amount and converted to raw token units. The
- * mapper does not derive token account addresses; the adapter supplies them.
+ * mapper does not derive token account addresses. Core-backed assets resolve
+ * them lazily when transaction history is requested.
  *
  * Native SOL uses the account address. SPL tokens use the mint from the
- * CAIP-19 ID and require the associated token account pubkey — Core does not
- * store ATAs, so the Core assets adapter derives them before calling this
- * mapper.
+ * CAIP-19 ID. Snap-fetched assets may also include their token account pubkey.
  *
  * @param accountId - Keyring account ID.
  * @param accountAddress - Solana account address (owner).
  * @param asset - Asset returned by AssetsController.
- * @param tokenAccountPubkey - Associated token account address. Required for
- * SPL tokens; ignored for native SOL.
+ * @param tokenAccountPubkey - Associated token account address, when already
+ * known; ignored for native SOL.
  * @returns Mapped asset entity.
  */
 export function mapControllerAsset(
@@ -56,18 +55,12 @@ export function mapControllerAsset(
     };
   }
 
-  if (!tokenAccountPubkey) {
-    throw new Error(
-      `Token account pubkey is required to map token asset ${assetId}`,
-    );
-  }
-
   return {
     assetType: assetId as TokenCaipAssetType,
     keyringAccountId: accountId,
     network,
     mint: assetReference,
-    pubkey: tokenAccountPubkey,
+    ...(tokenAccountPubkey ? { pubkey: tokenAccountPubkey } : {}),
     symbol,
     decimals,
     rawAmount,

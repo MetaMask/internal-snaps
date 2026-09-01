@@ -86,19 +86,19 @@ describe('mapControllerAsset', () => {
     });
   });
 
-  it('throws when mapping an SPL token without a token account pubkey', () => {
+  it('maps an SPL token without a token account pubkey', () => {
     const asset = buildControllerAsset(KnownCaip19Id.UsdcMainnet, '1234567', {
       symbol: 'USDC',
       decimals: 6,
     });
 
-    expect(() =>
+    expect(
       mapControllerAsset(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
         MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
         asset,
       ),
-    ).toThrow('Token account pubkey is required to map token asset');
+    ).not.toHaveProperty('pubkey');
   });
 
   it('uses UNKNOWN and 0 decimals when metadata is missing', () => {

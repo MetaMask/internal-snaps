@@ -21,7 +21,8 @@ export type TokenAsset = {
   keyringAccountId: string;
   network: Network;
   mint: string;
-  pubkey: string;
+  /** The token account address, when it was obtained from an RPC response. */
+  pubkey?: string;
   symbol: string;
   decimals: number;
   rawAmount: string; // Without decimals nor multiplier
