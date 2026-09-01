@@ -8,7 +8,8 @@ import {
 
 describe('batchesAll', () => {
   it('throws when batchSize is less than 1', async () => {
-    const run = async () => batchesAll([1], 0, async (value) => value);
+    const run = async (): Promise<number[]> =>
+      batchesAll([1], 0, async (value) => value);
     await expect(run()).rejects.toThrow(RangeError);
   });
 
@@ -62,7 +63,8 @@ describe('batchesAll', () => {
 
 describe('batchesAllSettled', () => {
   it('throws when batchSize is less than 1', async () => {
-    const run = async () => batchesAllSettled([1], 0, async (value) => value);
+    const run = async (): Promise<PromiseSettledResult<number>[]> =>
+      batchesAllSettled([1], 0, async (value) => value);
     await expect(run()).rejects.toThrow(RangeError);
   });
 
@@ -95,11 +97,11 @@ describe('batchesAllSettled', () => {
 
   it('records rejected promises without failing the whole batch', async () => {
     const fns = [
-      async () => 10,
-      async () => {
+      async (): Promise<number> => 10,
+      async (): Promise<never> => {
         throw new Error('boom');
       },
-      async () => 90,
+      async (): Promise<number> => 90,
     ];
 
     const settled = await batchesAllSettled(fns, 2, async (fn) => fn());
@@ -153,7 +155,7 @@ describe('chunks', () => {
   });
 
   it('throws when chunkSize is less than 1', () => {
-    const run = () => chunks(['a', 'b', 'c'], 0);
+    const run = (): string[][] => chunks(['a', 'b', 'c'], 0);
     expect(run).toThrow(RangeError);
   });
 });

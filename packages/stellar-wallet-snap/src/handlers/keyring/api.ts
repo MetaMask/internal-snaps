@@ -34,11 +34,14 @@ import { PRIVATE_KEY_EXPORT_ENCODING } from '../../constants';
 import { networkToCaip2ChainId } from '../../services/network/utils';
 
 /** JSON-RPC methods supported by this snap's multichain keyring. */
-export enum MultichainMethod {
-  SignMessage = 'signMessage',
-  SignTransaction = 'signTransaction',
-  SignAuthEntry = 'signAuthEntry',
-}
+export const MultichainMethod = {
+  SignMessage: 'signMessage',
+  SignTransaction: 'signTransaction',
+  SignAuthEntry: 'signAuthEntry',
+} as const;
+
+export type MultichainMethod =
+  (typeof MultichainMethod)[keyof typeof MultichainMethod];
 
 /** Superstruct validator for {@link MultichainMethod} string values. */
 export const MultichainMethodStruct = enums(Object.values(MultichainMethod));

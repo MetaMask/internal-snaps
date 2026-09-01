@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   FungibleAssetMarketData,
@@ -11,7 +11,6 @@ import { pick } from 'lodash';
 
 import { AppConfig } from '../../config';
 import { getFiatTicker, isFiat, trackErrorIfNeeded } from '../../utils';
-import type { Serializable } from '../../utils';
 import type { ICache } from '../cache';
 import { useCache } from '../cache';
 import { GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT } from './api';

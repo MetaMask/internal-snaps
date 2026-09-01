@@ -48,9 +48,6 @@ export type CreateAccountParams = DiscoverAccountParams & {
   accountName?: string;
 };
 
-// Snap entropy derivation can become very spiky under wider parallelism.
-const CREATE_ACCOUNTS_CONCURRENCY = 2;
-
 /**
  * @param req - Account creation or discovery request.
  * @returns The BIP-44 account derivation path.
@@ -70,59 +67,6 @@ function getAccountDerivationPath(req: DiscoverAccountParams): string[] {
  */
 function getDerivationPathKey(derivationPath: string[]): string {
   return derivationPath.join('/');
-}
-
-/**
- * Map items to results with at most `concurrency` in-flight async operations.
- * Output order matches `items` order.
- *
- * @param items - Values to map in pool order.
- * @param concurrency - Maximum number of concurrent mapper executions.
- * @param mapper - Async function applied to each item.
- * @returns Results in the same order as `items`.
- */
-async function runWithConcurrencyLimit<Item, Result>(
-  items: readonly Item[],
-  concurrency: number,
-  mapper: (item: Item, index: number) => Promise<Result>,
-): Promise<Result[]> {
-  if (items.length === 0) {
-    return [];
-  }
-
-  const results: Result[] = new Array(items.length);
-  let next = 0;
-  let firstError: unknown;
-  let hasError = false;
-
-  const worker = async (): Promise<void> => {
-    while (!hasError) {
-      const idx = next;
-      next += 1;
-      if (idx >= items.length) {
-        return;
-      }
-
-      try {
-        results[idx] = await mapper(items[idx] as Item, idx);
-      } catch (error) {
-        if (!hasError) {
-          firstError = error;
-          hasError = true;
-        }
-        return;
-      }
-    }
-  };
-
-  const poolSize = Math.min(Math.max(1, concurrency), items.length);
-  await Promise.all(Array.from({ length: poolSize }, async () => worker()));
-
-  if (hasError) {
-    throw firstError;
-  }
-
-  return results;
 }
 
 /**
@@ -230,7 +174,7 @@ export class AccountUseCases {
     // We need to do a full scan here to know if the account
     // has any previous activity since later on we filter out
     // accounts with no tx history
-    await this.#chain.fullScan(newAccount);
+    await this.#chain.fullScan(newAccount, 'discovery');
 
     this.#logger.info(
       'Bitcoin account discovered successfully. Request: %o',
@@ -239,69 +183,16 @@ export class AccountUseCases {
     return newAccount;
   }
 
-  async create(req: CreateAccountParams): Promise<BitcoinAccount> {
-    this.#logger.debug('Creating new Bitcoin account. Request: %o', req);
-
-    return this.#runAccountMutation(async () => {
-      const { addressType, network, correlationId, accountName, synchronize } =
-        req;
-      const derivationPath = getAccountDerivationPath(req);
-
-      // Idempotent account creation + ensures only one account per derivation path
-      const account =
-        await this.#repository.getByDerivationPath(derivationPath);
-      if (account?.network === network) {
-        this.#logger.debug('Account already exists: %s,', account.id);
-        await this.#snapClient.emitAccountCreatedEvent(
-          account,
-          correlationId,
-          accountName,
-        );
-        return account;
-      }
-
-      const newAccount = await this.#repository.create(
-        derivationPath,
-        network,
-        addressType,
-      );
-
-      newAccount.revealNextAddress();
-
-      await this.#repository.insert(newAccount);
-
-      // First notify the event has been created, then schedule full scan.
-      await this.#snapClient.emitAccountCreatedEvent(
-        newAccount,
-        correlationId,
-        accountName,
-      );
-
-      if (synchronize) {
-        await this.#snapClient.scheduleBackgroundEvent({
-          duration: 'PT1S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: newAccount.id },
-        });
-      }
-
-      this.#logger.info(
-        'Bitcoin account created successfully: %s. Public address: %s, Request: %o',
-        newAccount.id,
-        newAccount.publicAddress,
-        req,
-      );
-      return newAccount;
-    });
-  }
-
   async createMany(reqs: CreateAccountParams[]): Promise<BitcoinAccount[]> {
     if (reqs.length === 0) {
       return [];
     }
 
+    const startMs = Date.now();
+
     const { accounts, createdAccountKeys } = await this.#runAccountMutation(
       async () => {
+        const lookupStartMs = Date.now();
         const entries = reqs.map((req, index) => {
           const derivationPath = getAccountDerivationPath(req);
           return {
@@ -320,9 +211,10 @@ export class AccountUseCases {
         }
         const uniqueEntries = [...uniqueEntriesByPath.values()];
 
-        const existingAccounts = await this.#repository.getByDerivationPaths(
-          uniqueEntries.map(({ derivationPath }) => derivationPath),
-        );
+        const { accounts: existingAccounts, snapshot } =
+          await this.#repository.getByDerivationPaths(
+            uniqueEntries.map(({ derivationPath }) => derivationPath),
+          );
         const existingAccountsByPath = new Map<string, BitcoinAccount>();
 
         uniqueEntries.forEach((entry, index) => {
@@ -335,23 +227,49 @@ export class AccountUseCases {
         const entriesToCreate = uniqueEntries.filter(
           ({ pathKey }) => !existingAccountsByPath.has(pathKey),
         );
-        const newAccounts = await runWithConcurrencyLimit(
-          entriesToCreate,
-          CREATE_ACCOUNTS_CONCURRENCY,
-          async ({ derivationPath, req }) => {
-            const newAccount = await this.#repository.create(
-              derivationPath,
-              req.network,
-              req.addressType,
-            );
-            newAccount.revealNextAddress();
-            return newAccount;
-          },
-        );
+        const lookupMs = Date.now() - lookupStartMs;
 
-        if (newAccounts.length > 0) {
-          await this.#repository.insertMany(newAccounts);
+        // Batch-create so entropy is fetched once per parent path instead of
+        // once per account; remaining per-account work is local derivation
+        // plus synchronous WASM wallet construction, so no throttling needed.
+        const deriveStartMs = Date.now();
+        const newAccounts =
+          entriesToCreate.length > 0
+            ? await this.#repository.createMany(
+                entriesToCreate.map(({ derivationPath, req }) => ({
+                  derivationPath,
+                  network: req.network,
+                  addressType: req.addressType,
+                })),
+              )
+            : [];
+
+        for (const newAccount of newAccounts) {
+          newAccount.revealNextAddress();
         }
+        const deriveMs = Date.now() - deriveStartMs;
+
+        const persistStartMs = Date.now();
+        if (newAccounts.length > 0) {
+          // Reuse the lookup's derivation-path snapshot: account lifecycle
+          // mutations are serialized, while `insertMany` refreshes the
+          // accounts map to preserve concurrent sync updates.
+          await this.#repository.insertMany(newAccounts, snapshot);
+        }
+        const persistMs = Date.now() - persistStartMs;
+
+        // Stringified so the values survive in the console after the snap's
+        // execution environment is torn down.
+        this.#logger.info(
+          `[createMany] Phase timings ${JSON.stringify({
+            requested: reqs.length,
+            created: newAccounts.length,
+            lookupMs,
+            deriveMs,
+            persistMs,
+            totalMs: Date.now() - startMs,
+          })}`,
+        );
 
         const newAccountsByPath = new Map(
           entriesToCreate.map((entry, index) => [
@@ -516,7 +434,9 @@ export class AccountUseCases {
         throw new NotFoundError('Account not found', { id });
       }
 
-      await this.#snapClient.emitAccountDeletedEvent(id);
+      // No AccountDeleted event: deletion is client-initiated in keyring v2,
+      // and v2 clients reject v1 lifecycle events (which would abort the
+      // deletion below).
       await this.#repository.delete(id);
 
       this.#logger.info('Account deleted successfully: %s', account.id);

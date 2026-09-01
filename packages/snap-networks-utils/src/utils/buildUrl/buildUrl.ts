@@ -1,6 +1,6 @@
 import { assert } from '@metamask/superstruct';
 
-import { sanitizeControlCharacters, sanitizeUri } from '../sanitize';
+import { sanitizeControlCharacters, sanitizeUri } from '../sanitize/sanitize';
 import { UrlStruct } from '../urlStruct/urlStruct';
 
 export type BuildUrlParams = {

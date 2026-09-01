@@ -1,7 +1,6 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
-import type { Serializable } from '../../utils/serialization';
 import type { ICache, CacheEntry } from './api';
 
 /**

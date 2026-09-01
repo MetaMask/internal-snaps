@@ -39,10 +39,13 @@ export type SignPsbtConfirmationContext = {
   inputCount: number;
 };
 
-export enum ConfirmationEvent {
-  Confirm = 'confirmation-confirm',
-  Cancel = 'confirmation-cancel',
-}
+export const ConfirmationEvent = {
+  Confirm: 'confirmation-confirm',
+  Cancel: 'confirmation-cancel',
+} as const;
+
+export type ConfirmationEvent =
+  (typeof ConfirmationEvent)[keyof typeof ConfirmationEvent];
 
 /**
  * ConfirmationRepository is a repository that manages request confirmations for dApps.

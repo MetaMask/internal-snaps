@@ -28,16 +28,19 @@ export class ExportAccountException extends KeyringException {}
  *
  * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0043.md
  */
-export enum Sep43ErrorCode {
+export const Sep43ErrorCode = {
   /** Internal wallet error (JS runtime, programmer error, etc.). */
-  Internal = -1,
+  Internal: -1,
   /** External service (Horizon, RPC, …) returned an error. */
-  ExternalService = -2,
+  ExternalService: -2,
   /** Client app request is invalid (bad params, malformed XDR, unsupported option). */
-  InvalidRequest = -3,
+  InvalidRequest: -3,
   /** User declined the confirmation. */
-  UserRejected = -4,
-}
+  UserRejected: -4,
+} as const;
+
+export type Sep43ErrorCode =
+  (typeof Sep43ErrorCode)[keyof typeof Sep43ErrorCode];
 
 /**
  * Generic SEP-43 message that's user-safe to forward to the dapp.

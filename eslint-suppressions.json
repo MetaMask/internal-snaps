@@ -229,9 +229,6 @@
   "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.test.tsx": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.tsx": {
@@ -277,31 +274,6 @@
       "count": 4
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/serialization/deserialize.test.ts": {
-    "import-x/no-named-as-default": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/serialization/deserialize.ts": {
-    "import-x/no-named-as-default": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/serialization/serialize.test.ts": {
-    "import-x/no-named-as-default": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/serialization/serialize.ts": {
-    "import-x/no-named-as-default": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/serialization/types.ts": {
-    "import-x/no-named-as-default": {
       "count": 1
     }
   },
@@ -493,11 +465,6 @@
   "packages/solana-wallet-snap/src/core/services/send/SendSplTokenBuilder.test.ts": {
     "n/global-require": {
       "count": 2
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/send/types.ts": {
-    "@typescript-eslint/no-shadow": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/services/signer/Signer.ts": {
@@ -1034,9 +1001,6 @@
   "packages/solana-wallet-snap/src/core/validation/validators.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 3
-    },
-    "@typescript-eslint/only-throw-error": {
-      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/entities/instructions/instructions.ts": {
@@ -1616,11 +1580,6 @@
       "count": 1
     }
   },
-  "packages/stellar-wallet-snap/src/utils/async.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 6
-    }
-  },
   "packages/stellar-wallet-snap/src/utils/snap.ts": {
     "no-restricted-syntax": {
       "count": 1
@@ -1647,16 +1606,6 @@
   "packages/tron-wallet-snap/src/caching/StateCache.ts": {
     "no-restricted-syntax": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/caching/useCache.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 4
-    }
-  },
-  "packages/tron-wallet-snap/src/caching/useCacheUntil.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
     }
   },
   "packages/tron-wallet-snap/src/clients/security-alerts-api/utils.ts": {

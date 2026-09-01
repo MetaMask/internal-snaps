@@ -17,6 +17,7 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import { validateOrigin } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -33,6 +34,7 @@ import type {
 } from '../../api';
 import { StellarSecretKeyStruct } from '../../api';
 import { AppConfig } from '../../config';
+import { originPermissions } from '../../permissions';
 import type {
   AccountService,
   StellarKeyringAccount,
@@ -56,7 +58,6 @@ import {
   isClassicAssetId,
   isSlip44Id,
   rethrowIfInstanceElseThrow,
-  validateOrigin,
   validateRequest,
   withCatchAndThrowSnapError,
 } from '../../utils';
@@ -120,7 +121,7 @@ export class KeyringHandler implements KeyringSnapRpc {
           origin,
           method: request.method,
         });
-        validateOrigin(origin, request.method);
+        validateOrigin(origin, request.method, originPermissions);
         const keyringRequestResult = await handleKeyringRequest(this, request);
         this.#logger.debug('Keyring request handled', {
           origin,

@@ -119,6 +119,50 @@ describe('TokenApiClient', () => {
       await client.getTokensMetadata(tokenAddresses);
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(
+        mockFetch.mock.calls.map(([url]) =>
+          new URL(url as string).searchParams.get('assetIds')?.split(','),
+        ),
+      ).toStrictEqual([tokenAddresses.slice(0, 50), tokenAddresses.slice(50)]);
+    });
+
+    it('merges metadata returned from consecutive chunks', async () => {
+      const thirdTokenAddress =
+        `${Networks[Network.Mainnet].caip2Id}/trc20:THirdTokenAddressForChunkingTest` as TokenCaipAssetType;
+      const tokenAddresses = [
+        `${Networks[Network.Mainnet].caip2Id}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as TokenCaipAssetType,
+        `${Networks[Network.Mainnet].caip2Id}/trc20:TUpMhErZL2fhh4sVNULAbNKLokS4GjC1F4` as TokenCaipAssetType,
+        thirdTokenAddress,
+      ];
+      const chunkedConfigProvider = {
+        get: jest.fn().mockReturnValue({
+          tokenApi: { baseUrl: 'https://some-mock-url.com', chunkSize: 2 },
+          staticApi: { baseUrl: 'https://some-mock-static-url.com' },
+        }),
+      } as unknown as ConfigProvider;
+      client = new TokenApiClient(chunkedConfigProvider, mockFetch, mockLogger);
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValueOnce(MOCK_METADATA_RESPONSE),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValueOnce([
+            {
+              decimals: 6,
+              assetId: thirdTokenAddress,
+              name: 'Third token',
+              symbol: 'THIRD',
+            },
+          ]),
+        });
+
+      const metadata = await client.getTokensMetadata(tokenAddresses);
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(Object.keys(metadata)).toStrictEqual(tokenAddresses);
+      expect(metadata[thirdTokenAddress]?.name).toBe('Third token');
     });
 
     it('rejects caip19Ids that are invalid', async () => {

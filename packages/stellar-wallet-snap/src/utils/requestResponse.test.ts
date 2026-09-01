@@ -1,5 +1,6 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { KeyringSnapRpcMethod } from '@metamask/keyring-api/v2';
+import { validateOrigin } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,
@@ -8,11 +9,8 @@ import {
 import { string, object } from '@metamask/superstruct';
 
 import { METAMASK_ORIGIN } from '../constants';
-import {
-  validateRequest,
-  validateResponse,
-  validateOrigin,
-} from './requestResponse';
+import { originPermissions } from '../permissions';
+import { validateRequest, validateResponse } from './requestResponse';
 
 const TestStruct = object({
   url: string(),
@@ -55,9 +53,9 @@ describe('validateOrigin', () => {
     KeyringSnapRpcMethod.CreateAccounts,
     KeyringSnapRpcMethod.SubmitRequest,
   ])('rejects method %s for dapps', (method) => {
-    expect(() => validateOrigin('http://localhost:3000', method)).toThrow(
-      UnauthorizedError,
-    );
+    expect(() =>
+      validateOrigin('http://localhost:3000', method, originPermissions),
+    ).toThrow(UnauthorizedError);
   });
 
   it.each([
@@ -67,7 +65,11 @@ describe('validateOrigin', () => {
     KeyringRpcMethod.ListAccountAssets,
   ])('rejects method %s for the connected dapp origin', (method) => {
     expect(() =>
-      validateOrigin('https://portfolio.metamask.io', method),
+      validateOrigin(
+        'https://portfolio.metamask.io',
+        method,
+        originPermissions,
+      ),
     ).toThrow(UnauthorizedError);
   });
 
@@ -86,14 +88,20 @@ describe('validateOrigin', () => {
   ])('allows method %s for metamask', (method) => {
     const origin = METAMASK_ORIGIN;
 
-    expect(() => validateOrigin(origin, method)).not.toThrow();
+    expect(() =>
+      validateOrigin(origin, method, originPermissions),
+    ).not.toThrow();
   });
 
   it.each(['invalid', undefined, '', null])(
     'rejects unauthorized origin %s',
     (origin) => {
       expect(() =>
-        validateOrigin(origin as string, KeyringSnapRpcMethod.GetAccounts),
+        validateOrigin(
+          origin as string,
+          KeyringSnapRpcMethod.GetAccounts,
+          originPermissions,
+        ),
       ).toThrow(UnauthorizedError);
     },
   );

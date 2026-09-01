@@ -1,8 +1,9 @@
+import { serialize } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { AppConfig } from '../../config';
-import { logger, serialize } from '../../utils';
+import { logger } from '../../utils';
 import { createMemoryCache } from '../cache/__mocks__/cache.fixtures';
 import { GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT } from './api';
 import type {

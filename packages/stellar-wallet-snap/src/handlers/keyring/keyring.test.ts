@@ -49,8 +49,8 @@ import { KeyringHandler } from './keyring';
 
 jest.mock('../../utils/logger');
 jest.mock('../../utils/snap');
-jest.mock('../../utils/requestResponse', () => ({
-  ...jest.requireActual('../../utils/requestResponse'),
+jest.mock('@metamask/snap-networks-utils', () => ({
+  ...jest.requireActual('@metamask/snap-networks-utils'),
   validateOrigin: jest.fn(),
 }));
 jest.mock('@metamask/keyring-snap-sdk/v2', () => ({
