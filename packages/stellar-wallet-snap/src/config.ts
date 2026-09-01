@@ -61,7 +61,13 @@ const parseFloatStruct = (
 /**
  * A struct for validating the network config.
  */
-const networkConfigStruct = object({
+type NetworkConfigStruct = {
+  rpcUrl: string;
+  horizonUrl: string;
+  explorerBaseUrl: string;
+};
+
+const networkConfigStruct: Struct<NetworkConfigStruct> = object({
   rpcUrl: UrlStruct,
   horizonUrl: UrlStruct,
   explorerBaseUrl: UrlStruct,
@@ -84,7 +90,10 @@ const selectedNetworkStruct = coerce(
  * If the log level is empty or missing, it defaults to silent.
  */
 export const LogLevelStruct = coerce(
-  defaulted(enums(Object.values(LogLevel)), LogLevel.SILENT),
+  defaulted(
+    enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
+    LogLevel.SILENT,
+  ),
   string(),
   (value: string) => (value === '' ? undefined : value.toLowerCase()),
 );
@@ -100,7 +109,40 @@ const networkConfigMapStruct = record(
 /**
  * A struct for validating the config.
  */
-const ConfigStruct = object({
+type ConfigValues = {
+  environment: Environment;
+  logLevel: LogLevel;
+  networks: Record<KnownCaip2ChainId, NetworkConfigStruct>;
+  selectedNetwork: KnownCaip2ChainId;
+  transaction: {
+    timeout: number;
+    pollingAttempts: number;
+    trackTransactionMaxReschedules: number;
+    baseFeeMultiplier: number;
+    maxFeeThresholdInXLM: number;
+    maxReconcileAttempts: number;
+    maxPendingTransactionAge: number;
+  };
+  api: {
+    tokenApi: { baseUrl: string };
+    staticApi: { baseUrl: string };
+    priceApi: { baseUrl: string };
+    securityAlertsApi: { baseUrl: string };
+  };
+  cache: {
+    ttlMilliseconds: {
+      spotPrices: number;
+      fiatExchangeRates: number;
+      historicalPrices: number;
+      baseFee: number;
+      loadOnChainAccount: number;
+      simulateTransaction: number;
+      sep41AssetBalance: number;
+    };
+  };
+};
+
+const ConfigStruct: Struct<ConfigValues> = object({
   environment: enums(Object.values(Environment)),
   logLevel: LogLevelStruct,
   networks: networkConfigMapStruct,

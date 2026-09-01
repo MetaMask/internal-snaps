@@ -120,9 +120,9 @@ export type LoggerOptions = {
 export class Logger {
   readonly #level: LogLevel;
 
-  readonly #prefix?: string;
+  readonly #prefix: string | undefined;
 
-  readonly #decorators?: LoggerDecorators;
+  readonly #decorators: LoggerDecorators | undefined;
 
   constructor({ level, prefix, decorators }: LoggerOptions) {
     assert(level, LogLevelStruct);
@@ -146,7 +146,7 @@ export class Logger {
     return new Logger({
       level: this.#level,
       prefix: this.#prefix ? `${this.#prefix} ${prefix}` : prefix,
-      decorators: this.#decorators,
+      ...(this.#decorators && { decorators: this.#decorators }),
     });
   }
 

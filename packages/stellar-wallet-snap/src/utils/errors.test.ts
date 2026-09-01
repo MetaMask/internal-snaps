@@ -32,7 +32,7 @@ jest.mock('./logger');
 jest.mock('./snap');
 
 describe('errors', () => {
-  const mockLogger = logger as jest.Mocked<typeof logger>;
+  const mockLogger = jest.mocked(logger);
 
   beforeEach(() => {
     jest.clearAllMocks();

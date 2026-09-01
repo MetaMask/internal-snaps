@@ -120,9 +120,9 @@ const priceService = new PriceService({
 });
 
 const transactionScanService = new TransactionScanService({
-  securityAlertsApiClient: new SecurityAlertsApiClient(
-    AppConfig.api.securityAlertsApi,
-  ),
+  securityAlertsApiClient: new SecurityAlertsApiClient({
+    baseUrl: AppConfig.api.securityAlertsApi.baseUrl,
+  }),
   logger,
 });
 

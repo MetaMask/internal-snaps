@@ -165,7 +165,7 @@ export class AccountService {
     const returnAccounts = await batchesAll(
       rangeIndices,
       BATCH_DERIVATION_SIZE,
-      async (index) => {
+      async (index: number) => {
         let account = existingAccountsByIndex.get(index);
         if (account === undefined) {
           const wallet = await walletResolver(index);
@@ -181,7 +181,8 @@ export class AccountService {
     );
 
     const createdAccounts = returnAccounts.filter(
-      (account) => !existingAccountsByIndex.has(account.index),
+      (account: StellarKeyringAccount) =>
+        !existingAccountsByIndex.has(account.index),
     );
 
     // 4. Save all new accounts
