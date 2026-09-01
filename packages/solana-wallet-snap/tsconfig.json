@@ -16,6 +16,11 @@
     "moduleResolution": "bundler",
     "types": ["jest"]
   },
-  "references": [{ "path": "../snap-networks-utils" }],
-  "include": ["**/*.ts", "**/*.tsx", "locales/*.json"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "locales/*.json",
+    "snap.manifest.json",
+    "src/**/*.json"
+  ]
 }
