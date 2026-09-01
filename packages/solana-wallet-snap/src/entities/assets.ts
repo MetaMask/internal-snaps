@@ -21,7 +21,6 @@ export type TokenAsset = {
   keyringAccountId: string;
   network: Network;
   mint: string;
-  pubkey: string;
   symbol: string;
   decimals: number;
   rawAmount: string; // Without decimals nor multiplier
@@ -33,7 +32,6 @@ export type NftAsset = {
   keyringAccountId: string;
   network: Network;
   mint: string;
-  pubkey: string;
   symbol: string;
   rawAmount: string; // Without decimals
   uiAmount: string; // With decimals
