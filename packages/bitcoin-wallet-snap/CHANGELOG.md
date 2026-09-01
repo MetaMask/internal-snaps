@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - Reduce `keyring_createAccounts` entropy RPCs from one per account to one per distinct parent path by fetching the account-level parent node once and deriving hardened children locally ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
   - The private parent node is held transiently in memory during the batch — the same trust boundary as the previous per-account implementation — and children are neutered before descriptor construction.
   - The creation concurrency throttle is removed: with derivation local, the remaining per-account work is synchronous WASM wallet construction.
