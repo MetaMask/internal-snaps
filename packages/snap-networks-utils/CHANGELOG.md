@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a `UuidStruct` Superstruct for validating UUID v4 strings. ([#243](https://github.com/MetaMask/internal-snaps/pull/243))
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
 - Add `InFlightCoalescer`, exported from a new `./dedupe` entry point, which coalesces concurrent async operations by key so callers share one in-flight run ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
 - Add shared async batching utilities. ([#211](https://github.com/MetaMask/internal-snaps/pull/211))

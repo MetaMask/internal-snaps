@@ -16,6 +16,7 @@ export {
   sanitizeUri,
 } from './utils/sanitize/sanitize';
 export { UrlStruct } from './utils/urlStruct/urlStruct';
+export { UuidStruct } from './utils/uuidStruct/uuidStruct';
 export {
   batchesAll,
   batchesAllSettled,
