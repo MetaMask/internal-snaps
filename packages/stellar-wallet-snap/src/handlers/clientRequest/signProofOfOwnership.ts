@@ -1,7 +1,6 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
 
-import { createPrefixedLogger } from '../../utils/logger';
-import type { ILogger } from '../../utils/logger';
 import type { AccountResolver } from '../accountResolver';
 import { RESOLVE_ACCOUNT_KEYRING_AND_WALLET } from '../accountResolver';
 import { BaseHandler } from '../base';
@@ -40,11 +39,11 @@ export class SignProofOfOwnershipHandler
     logger,
     accountResolver,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
   }) {
     super({
-      logger: createPrefixedLogger(logger, '[🔏 SignProofOfOwnershipHandler]'),
+      logger: logger.withPrefix('[🔏 SignProofOfOwnershipHandler]'),
       requestStruct: SignProofOfOwnershipJsonRpcRequestStruct,
       responseStruct: SignProofOfOwnershipJsonRpcResponseStruct,
     });
