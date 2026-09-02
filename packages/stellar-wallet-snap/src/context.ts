@@ -3,7 +3,6 @@ import { assert, object } from '@metamask/superstruct';
 import { AppConfig } from './config';
 import { KeyringHandler, CronjobHandler, UserInputHandler } from './handlers';
 import { AccountResolver } from './handlers/accountResolver';
-import { AssetsHandler } from './handlers/asset/assets';
 import type { IClientRequestHandler } from './handlers/clientRequest';
 import {
   ChangeTrustOptHandler,
@@ -247,13 +246,6 @@ const cronjobHandler = new CronjobHandler({
   handlers: cronjobMethodHandlers,
 });
 
-/** ------------------------------ Asset Handler ------------------------------ */
-const assetsHandler = new AssetsHandler({
-  logger,
-  assetMetadataService,
-  priceService,
-});
-
 /** ------------------------------ Client Request Handlers ------------------------------ */
 const changeTrustOptHandler = new ChangeTrustOptHandler({
   logger,
@@ -320,7 +312,6 @@ const clientRequestHandler = new ClientRequestHandler({
 export {
   clientRequestHandler,
   cronjobHandler,
-  assetsHandler,
   keyringHandler,
   userInputHandler,
   signTransactionHandler,
