@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 
+### Fixed
+
+- Show contract asset receives in transaction history instead of marking them as unknown ([#255](https://github.com/MetaMask/internal-snaps/pull/255))
+
 ## [0.1.0]
 
 ### Added
