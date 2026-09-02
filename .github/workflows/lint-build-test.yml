@@ -114,6 +114,7 @@ jobs:
       matrix:
         node-version: [24.x]
         script:
+          - lint:tsc
           - lint:eslint
           - lint:misc:check
           - constraints

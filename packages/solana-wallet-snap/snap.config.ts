@@ -27,6 +27,9 @@ const environment = {
 
 const config: SnapConfig = {
   input: resolve(__dirname, 'src/index.ts'),
+  typescript: {
+    enabled: true,
+  },
   server: {
     port: 8080,
   },

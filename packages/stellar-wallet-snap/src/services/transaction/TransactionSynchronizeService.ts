@@ -256,7 +256,7 @@ export class TransactionSynchronizeService {
     const fetchResults = await batchesAllSettled(
       context.keyringAccounts,
       10,
-      async (keyringAccount) => {
+      async (keyringAccount: StellarKeyringAccount) => {
         const lastScanToken =
           context.lastScanTokenByAccountId[keyringAccount.id] ?? null;
 
@@ -339,7 +339,7 @@ export class TransactionSynchronizeService {
     const fetchResults = await batchesAllSettled(
       transactionIdsToFetch,
       10,
-      async (transactionId) =>
+      async (transactionId: string) =>
         this.#fetchOnChainTransaction(transactionId, context.scope),
     );
 

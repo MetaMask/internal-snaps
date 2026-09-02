@@ -302,7 +302,7 @@ export class NetworkService {
       const settled = await batchesAllSettled(
         accountAddresses,
         batchSize,
-        async (accountId) => this.loadOnChainAccount(accountId, scope), // Assume the onChainAccount scope is the same as the transaction scope
+        async (accountId: string) => this.loadOnChainAccount(accountId, scope), // Assume the onChainAccount scope is the same as the transaction scope
       );
 
       const onChainAccounts: (OnChainAccount | null)[] = [];

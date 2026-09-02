@@ -44,13 +44,15 @@ describe('create-package/cli', () => {
   beforeEach(() => {
     // yargs calls process.exit() with 1 on failure and sometimes 0 on success.
     // We have to intercept it.
-    jest.spyOn(process, 'exit').mockImplementation((code?: number) => {
-      if (code === 1) {
-        throw new Error('exit: 1');
-      } else {
-        return undefined as never;
-      }
-    });
+    jest
+      .spyOn(process, 'exit')
+      .mockImplementation((code?: number | string | null) => {
+        if (code === 1) {
+          throw new Error('exit: 1');
+        } else {
+          return undefined as never;
+        }
+      });
 
     // We actually check these.
     jest.spyOn(console, 'error');

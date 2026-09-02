@@ -59,12 +59,14 @@ BigNumber.config({ EXPONENTIAL_AT: 16 });
  * @param args - The request handler args as object.
  * @param args.origin - The origin of the request, e.g., the website that
  * invoked the snap.
+ * @param args.originMetadata - Metadata reported by the requesting origin.
  * @param args.request - A validated JSON-RPC request object.
  * @returns A promise that resolves to the result of the RPC request.
  * @throws If the request method is not valid for this snap.
  */
 export const onRpcRequest: OnRpcRequestHandler = async ({
   origin,
+  originMetadata,
   request,
 }) => {
   logger.log('[🔄 onRpcRequest]', request.method, request);
@@ -84,7 +86,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   }
 
   const result = await withCatchAndThrowSnapError(async () =>
-    handler({ origin, request }),
+    handler({ origin, originMetadata, request }),
   );
 
   return result ?? null;
@@ -179,13 +181,12 @@ export const onCronjob: OnCronjobHandler = async ({ request }) => {
   _logger.log(request.method, request);
 
   const { method } = request;
-  assert(
-    method,
-    enums([
-      ...Object.values(CronjobMethod),
-      ...Object.values(ScheduleBackgroundEventMethod),
-    ]),
-  );
+  const validMethods = [
+    ...Object.values(CronjobMethod),
+    ...Object.values(ScheduleBackgroundEventMethod),
+  ];
+
+  assert(method, enums(validMethods as [string, ...string[]]));
 
   const result = await withCatchAndThrowSnapError(async () => {
     _logger.log('Running cronjob', { method });
@@ -197,10 +198,7 @@ export const onCronjob: OnCronjobHandler = async ({ request }) => {
 
     if (!handler) {
       throw new MethodNotFoundError(
-        `Cronjob / ScheduleBackgroundEvent method ${String(method)} not found. Available methods: ${[
-          ...Object.values(CronjobMethod),
-          ...Object.values(ScheduleBackgroundEventMethod),
-        ].join(',')}`,
+        `Cronjob / ScheduleBackgroundEvent method ${method} not found. Available methods: ${validMethods.toString()}`,
       ) as unknown as Error;
     }
     return handler({ request });
