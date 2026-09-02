@@ -1043,24 +1043,32 @@ describe('SignProofOfOwnershipJsonRpcRequestStruct', () => {
 });
 
 describe('SignProofOfOwnershipJsonRpcResponseStruct', () => {
-  it('accepts a standard base64 signature', () => {
+  it('accepts a 0x-prefixed 64-byte hex signature', () => {
     expect(() =>
       assert(
         {
-          signature:
-            'fO5dbYhXUhBMhe6kId/cuVq/AfEnHRHEvsP8vXh03M1uLpi5e46yO2Q8rEBzu3feXQewcQE5GArp88u6ePK6BA==',
+          signature: `0x${'ab'.repeat(64)}`,
         },
         SignProofOfOwnershipJsonRpcResponseStruct,
       ),
     ).not.toThrow();
   });
 
-  it.each([{ signature: 'not!!!valid-base64' }, { signature: '' }, {}])(
-    'rejects an invalid signProofOfOwnership response',
-    (response) => {
-      expect(() =>
-        assert(response, SignProofOfOwnershipJsonRpcResponseStruct),
-      ).toThrow(StructError);
+  it.each([
+    {
+      signature:
+        'fO5dbYhXUhBMhe6kId/cuVq/AfEnHRHEvsP8vXh03M1uLpi5e46yO2Q8rEBzu3feXQewcQE5GArp88u6ePK6BA==',
     },
-  );
+    { signature: 'ab'.repeat(64) }, // missing 0x
+    { signature: `0x${'ab'.repeat(63)}` }, // 63 bytes
+    { signature: `0x${'ab'.repeat(65)}` }, // 65 bytes
+    { signature: `0x${'AB'.repeat(64)}` }, // uppercase
+    { signature: 'not!!!valid-hex' },
+    { signature: '' },
+    {},
+  ])('rejects an invalid signProofOfOwnership response', (response) => {
+    expect(() =>
+      assert(response, SignProofOfOwnershipJsonRpcResponseStruct),
+    ).toThrow(StructError);
+  });
 });

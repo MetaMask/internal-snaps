@@ -86,7 +86,7 @@ describe('SignProofOfOwnershipHandler', () => {
     };
   }
 
-  it('signs the proof message and returns the SEP-0053 base64 signature', async () => {
+  it('signs the proof message and returns the SEP-0053 signature as 0x-prefixed hex', async () => {
     const {
       handler,
       wallet,
@@ -96,15 +96,20 @@ describe('SignProofOfOwnershipHandler', () => {
       createRequest,
     } = setup();
     const message = buildProofMessage();
+    const hexSignature = wallet.signMessage(message, 'hex');
 
     const result = await handler.handle(createRequest());
 
     expect(resolveAccountSpy).toHaveBeenCalledWith({ accountId });
     expect(resolveWalletSpy).toHaveBeenCalled();
     expect(result).toStrictEqual({
-      signature: wallet.signMessage(message),
+      signature: `0x${hexSignature}`,
     });
-    expect(wallet.verifyMessage(message, result.signature)).toBe(true);
+    // make sure the signature is a valid 0x-prefixed 64-byte hex string
+    expect((result as { signature: string }).signature).toMatch(
+      /^0x[0-9a-f]{128}$/u,
+    );
+    expect(wallet.verifyMessage(message, hexSignature, 'hex')).toBe(true);
   });
 
   it('throws if the address in the message does not match the signing account', async () => {

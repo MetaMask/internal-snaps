@@ -1,5 +1,6 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
+import { add0x } from '@metamask/utils';
 
 import type { AccountResolver } from '../accountResolver';
 import { RESOLVE_ACCOUNT_KEYRING_AND_WALLET } from '../accountResolver';
@@ -56,7 +57,8 @@ export class SignProofOfOwnershipHandler
    *
    * @param request - The JSON-RPC request containing `accountId`, `message`,
    * and coerced `address`.
-   * @returns `{ signature }` as standard base64 of the SEP-0053 ed25519 signature.
+   * @returns `{ signature }` — SEP-0053 64-byte ed25519 signature as hex
+   * (128 chars) with a leading `0x` (prefix not included in the 64 bytes).
    * @throws {InvalidParamsError} If the address in the message does not match
    * the signing account.
    */
@@ -78,7 +80,7 @@ export class SignProofOfOwnershipHandler
     }
 
     return {
-      signature: wallet.signMessage(message),
+      signature: add0x(wallet.signMessage(message, 'hex')),
     };
   }
 }

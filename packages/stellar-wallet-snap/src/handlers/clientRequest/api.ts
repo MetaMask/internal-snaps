@@ -17,13 +17,10 @@ import {
   integer,
   min,
   coerce,
+  pattern,
 } from '@metamask/superstruct';
 import type { JsonRpcRequest } from '@metamask/utils';
-import {
-  base64,
-  CaipAssetTypeStruct,
-  parseCaipAssetType,
-} from '@metamask/utils';
+import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 
 import {
   JsonRpcRequestStruct,
@@ -450,10 +447,13 @@ export const SignProofOfOwnershipJsonRpcRequestStruct = coerce(
 
 /**
  * Validation struct for the signProofOfOwnership JSON-RPC response.
- * Standard base64 of the 64-byte ed25519 signature (SEP-0053).
+ *
+ * Signature is the SEP-0053 Stellar signed-message ed25519 signature (64 bytes →
+ * 128 lowercase hex chars) with a leading `0x` for the identity auth API.
+ * The `0x` prefix is not part of the 64-byte signature length.
  */
 export const SignProofOfOwnershipJsonRpcResponseStruct = object({
-  signature: nonempty(base64(string())),
+  signature: pattern(string(), /^0x[0-9a-f]{128}$/u),
 });
 
 /**

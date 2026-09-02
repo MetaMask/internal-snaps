@@ -12,7 +12,7 @@ This is a **silent sign** — there is no confirmation dialog. That is intention
 
 1. SIP-31 `onClientRequest` is only callable by the MetaMask client.
 2. The plaintext must be `metamask:proof-of-ownership:{nonce}:{address}`, and the embedded address must match the signing account.
-3. Signing uses [SEP-0053](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md) (`Wallet.signMessage`).
+3. Signing uses [SEP-0053](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md) (`Wallet.signMessage`); the response is 0x-prefixed hex for the identity auth API.
 
 ## Request / response (shape)
 
@@ -24,7 +24,9 @@ This is a **silent sign** — there is no confirmation dialog. That is intention
 
 **Response**
 
-- `{ signature }` — standard base64 of the 64-byte ed25519 signature (SEP-0053)
+- `{ signature }` — SEP-0053 Stellar signed-message ed25519 signature as hex, plus a `0x` prefix for the identity auth API:
+  - The raw signature is **64 bytes** → **128** lowercase hex characters (the `0x` prefix is **not** part of those 64 bytes).
+  - Wire form: `0x` + 128 hex chars (130 characters total), e.g. validated by `/^0x[0-9a-f]{128}$/`.
 
 ## Message format
 
@@ -54,7 +56,7 @@ No confirmation UI or network calls.
 2. **Validate** — Request must match `SignProofOfOwnershipJsonRpcRequestStruct` (prefix, nonce, Stellar address). `nonce` and `address` are coerced from `message`.
 3. **Resolve** — `AccountResolver.resolveAccount` with `RESOLVE_ACCOUNT_KEYRING_AND_WALLET` loads keyring account and wallet only. The signing account does not need to be activated on-chain.
 4. **Bind** — The address in the message must equal the signing account address.
-5. **Sign** — `Wallet.signMessage(message)` (SEP-0053, base64).
+5. **Sign** — `Wallet.signMessage(message, 'hex')` returns the 64-byte SEP-0053 signature as 128 hex chars (no `0x`), then the handler prefixes `0x`.
 
 ## Sequence (happy path)
 
@@ -70,7 +72,7 @@ sequenceDiagram
   Handler->>Resolver: resolve keyring account + wallet
   Resolver-->>Handler: account, wallet
   Handler->>Handler: message address == account.address
-  Handler->>Wallet: signMessage (SEP-0053, base64)
-  Wallet-->>Handler: signature
-  Handler-->>Client: { signature }
+  Handler->>Wallet: signMessage (SEP-0053, hex)
+  Wallet-->>Handler: 64-byte signature as 128 hex chars (no 0x)
+  Handler-->>Client: { signature } (0x + 128 hex chars)
 ```
