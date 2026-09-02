@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#256](https://github.com/MetaMask/internal-snaps/pull/256))
+
 ### Changed
 
 - Migrate `trackError` and `withCatchAndThrowSnapError` to `@metamask/snap-networks-utils` `createSnapErrorHandling`, and add `getSnapProvider` for Snap RPC access
