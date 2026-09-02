@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { fetchJsonParsedAccount } from '@solana/kit';
 
 import type { ICache } from '../../caching/ICache';
 import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id, Network } from '../../constants/solana';
-import type { Serializable } from '../../serialization/types';
 import { mockLogger } from '../__mocks__/logger';
 import {
   MOCK_JSON_PARSED_ACCOUNT,

@@ -30,10 +30,13 @@ async function onConfirmButtonClick(
   await resolveInterface(id, true);
 }
 
-export enum ConfirmSignChangeTrustOptOutFormNames {
-  Cancel = 'confirm-sign-change-trust-opt-out-cancel',
-  Confirm = 'confirm-sign-change-trust-opt-out-confirm',
-}
+export const ConfirmSignChangeTrustOptOutFormNames = {
+  Cancel: 'confirm-sign-change-trust-opt-out-cancel',
+  Confirm: 'confirm-sign-change-trust-opt-out-confirm',
+} as const;
+
+export type ConfirmSignChangeTrustOptOutFormNames =
+  (typeof ConfirmSignChangeTrustOptOutFormNames)[keyof typeof ConfirmSignChangeTrustOptOutFormNames];
 
 /**
  * Create event handlers bound to a SnapClient instance.

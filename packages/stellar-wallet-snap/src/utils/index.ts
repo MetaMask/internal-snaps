@@ -4,13 +4,16 @@ export * from './requestResponse';
 export * from './errors';
 export * from './snap';
 export * from './serialization';
-export * from './safeMerge';
 export * from './number';
 export * from './caip';
 export * from './buffer';
-export * from './buildUrl';
-export * from './sanitize';
-export * from './async';
+export {
+  batchesAll,
+  batchesAllSettled,
+  batchesAllSettledWithChunks,
+  batchesAllWithChunks,
+  chunks,
+} from '@metamask/snap-networks-utils';
 export * from './assert';
 export * from './array';
 export * from './i18n';

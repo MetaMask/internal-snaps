@@ -27,9 +27,19 @@ export type ComputeFeeResult = {
   asset: FeeAsset;
 }[];
 
+export type ActivationTransfer = {
+  toAddress: string;
+  ownerAddress: string;
+};
+
+export type ActivationAssessment = {
+  isActivatingAccount: boolean;
+  ownerAddress: string | undefined;
+};
+
 export type SendValidationErrorCode =
-  | SendErrorCodes.InsufficientBalance
-  | SendErrorCodes.InsufficientBalanceToCoverFee;
+  | (typeof SendErrorCodes)['InsufficientBalance']
+  | (typeof SendErrorCodes)['InsufficientBalanceToCoverFee'];
 
 export type SendValidationResult = {
   valid: boolean;

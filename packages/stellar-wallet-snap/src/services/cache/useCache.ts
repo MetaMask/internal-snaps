@@ -1,11 +1,12 @@
 /* eslint-disable no-void */
 
-import { createPrefixedLogger, logger } from '../../utils/logger';
-import { serialize } from '../../utils/serialization';
-import type { Serializable } from '../../utils/serialization';
+import { serialize } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
+
+import { logger } from '../../utils/logger';
 import type { ICache } from './api';
 
-const cacheLogger = createPrefixedLogger(logger, 'useCache');
+const cacheLogger = logger.withPrefix('useCache');
 /**
  * Options for configuring the caching behavior of a function.
  */

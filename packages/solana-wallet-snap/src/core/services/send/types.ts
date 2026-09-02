@@ -15,9 +15,12 @@ export type OnAmountInputRequest = Infer<typeof OnAmountInputRequestStruct>;
 
 export type ValidationResponse = Infer<typeof ValidationResponseStruct>;
 
-export enum SendErrorCodes {
-  Required = 'Required',
-  Invalid = 'Invalid',
-  InsufficientBalanceToCoverFee = 'InsufficientBalanceToCoverFee',
-  InsufficientBalance = 'InsufficientBalance',
-}
+export const SendErrorCodes = {
+  Required: 'Required',
+  Invalid: 'Invalid',
+  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
+  InsufficientBalance: 'InsufficientBalance',
+} as const;
+
+export type SendErrorCodes =
+  (typeof SendErrorCodes)[keyof typeof SendErrorCodes];

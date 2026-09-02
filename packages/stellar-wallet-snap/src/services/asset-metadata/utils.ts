@@ -1,3 +1,4 @@
+import { buildUrl } from '@metamask/snap-networks-utils';
 import type { AssetMetadata } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { parseCaipAssetType } from '@metamask/utils';
@@ -16,7 +17,7 @@ import {
   NATIVE_ASSET_SYMBOL,
   STELLAR_DECIMAL_PLACES,
 } from '../../constants';
-import { buildUrl, getSlip44AssetId, isSlip44Id } from '../../utils';
+import { getSlip44AssetId, isSlip44Id } from '../../utils';
 import type { StellarAssetMetadata } from './api';
 
 /**

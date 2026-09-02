@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import type { xdr, OperationOptions } from '@stellar/stellar-sdk';
 import {
@@ -20,13 +21,11 @@ import type {
 } from '../../api';
 import { AppConfig } from '../../config';
 import {
-  createPrefixedLogger,
   isSep41Id,
   isSlip44Id,
   normalizeAmount,
   rethrowIfInstanceElseThrow,
 } from '../../utils';
-import type { ILogger } from '../../utils';
 import { baseInclusionFee, caip2ChainIdToNetwork } from '../network/utils';
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
@@ -41,10 +40,10 @@ import { assertAssetScopeMatch, caip19ToStellarAsset } from './utils';
  * transactions with an updated sequence. All methods return a {@link Transaction} wrapper.
  */
 export class TransactionBuilder {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
-  constructor({ logger }: { logger: ILogger }) {
-    this.#logger = createPrefixedLogger(logger, '[💰 TransactionBuilder]');
+  constructor({ logger }: { logger: Logger }) {
+    this.#logger = logger.withPrefix('[💰 TransactionBuilder]');
   }
 
   /**

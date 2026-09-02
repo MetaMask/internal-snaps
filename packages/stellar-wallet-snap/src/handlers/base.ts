@@ -1,7 +1,7 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
 
-import type { ILogger } from '../utils';
 import { serializeToString, validateRequest, validateResponse } from '../utils';
 
 export abstract class BaseHandler<
@@ -12,14 +12,14 @@ export abstract class BaseHandler<
 
   protected readonly responseStruct: Struct<ResponseType>;
 
-  protected readonly logger: ILogger;
+  protected readonly logger: Logger;
 
   constructor({
     logger,
     requestStruct,
     responseStruct,
   }: {
-    logger: ILogger;
+    logger: Logger;
     requestStruct: Struct<RequestType>;
     responseStruct: Struct<ResponseType>;
   }) {

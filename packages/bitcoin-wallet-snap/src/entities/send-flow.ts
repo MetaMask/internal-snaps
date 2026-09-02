@@ -43,18 +43,20 @@ export type SendFormContext = {
   locale: string;
 };
 
-export enum SendFormEvent {
-  Amount = 'amount',
-  Recipient = 'recipient',
-  ClearRecipient = 'clearRecipient',
-  ClearAmount = 'clearAmount',
-  Confirm = 'confirm',
-  Cancel = 'cancel',
-  Max = 'max',
-  Account = 'account',
-  Asset = 'asset',
-  SwitchCurrency = 'switchCurrency',
-}
+export const SendFormEvent = {
+  Amount: 'amount',
+  Recipient: 'recipient',
+  ClearRecipient: 'clearRecipient',
+  ClearAmount: 'clearAmount',
+  Confirm: 'confirm',
+  Cancel: 'cancel',
+  Max: 'max',
+  Account: 'account',
+  Asset: 'asset',
+  SwitchCurrency: 'switchCurrency',
+} as const;
+
+export type SendFormEvent = (typeof SendFormEvent)[keyof typeof SendFormEvent];
 
 export type ReviewTransactionContext = {
   from: string;
@@ -75,10 +77,13 @@ export type ReviewTransactionContext = {
   sendForm?: SendFormContext;
 };
 
-export enum ReviewTransactionEvent {
-  Send = 'send',
-  HeaderBack = 'headerBack',
-}
+export const ReviewTransactionEvent = {
+  Send: 'send',
+  HeaderBack: 'headerBack',
+} as const;
+
+export type ReviewTransactionEvent =
+  (typeof ReviewTransactionEvent)[keyof typeof ReviewTransactionEvent];
 
 /**
  * SendFlowRepository is a repository that manages Bitcoin Send flow interfaces.

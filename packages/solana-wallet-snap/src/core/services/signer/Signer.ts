@@ -13,6 +13,7 @@ import {
   partiallySignTransaction,
   partiallySignTransactionMessageWithSigners,
   pipe,
+  setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 
 import type { SolanaKeyringAccount } from '../../../entities';
@@ -20,7 +21,8 @@ import type { Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import {
   fromBytesToCompilableTransactionMessage,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransaction,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../sdk-extensions/codecs';
 import {
   estimateAndOverrideComputeUnitLimit,
@@ -28,11 +30,12 @@ import {
   isTransactionMessageWithComputeUnitPriceInstruction,
   setComputeUnitPriceInstructionIfMissing,
   setTransactionMessageFeePayerIfMissing,
-  setTransactionMessageLifetimeUsingBlockhashIfMissing,
 } from '../../sdk-extensions/transaction-messages';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
 import type { Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
+
+type TransactionSource = 'dapp' | 'metamask';
 
 /**
  * Signer class for signing transactions and transaction messages.
@@ -60,6 +63,7 @@ export class Signer {
    * @param account - The account to sign the transaction or transaction message with.
    * @param network - The network on which the transaction is being sent.
    * @param config - The configuration for the request.
+   * @param transactionSource - The source of the transaction.
    * @returns The signed transaction.
    * @throws If the base64 string is not a valid transaction or transaction message.
    */
@@ -68,6 +72,7 @@ export class Signer {
     account: SolanaKeyringAccount,
     network: Network,
     config?: DecompileTransactionMessageFetchingLookupTablesConfig,
+    transactionSource?: TransactionSource,
   ): Promise<Transaction> {
     this.#logger.log('Partially sign base64 string', {
       base64String,
@@ -76,11 +81,21 @@ export class Signer {
       config,
     });
 
+    const preserveMessageBytes = transactionSource === 'dapp';
+    const refreshBlockhashBeforeSigning = transactionSource === 'metamask';
+
+    if (preserveMessageBytes) {
+      const transaction =
+        await fromUnknownBase64StringToTransaction(base64String);
+
+      return this.#partiallySignTransaction(transaction, account);
+    }
+
     const rpc = this.#connection.getRpc(network);
 
     // The received base64 string can either represent a transaction or a transaction message.
     const transactionMessageOrTransaction =
-      await fromUnknowBase64StringToTransactionOrTransactionMessage(
+      await fromUnknownBase64StringToTransactionOrTransactionMessage(
         base64String,
         rpc,
         config,
@@ -92,6 +107,7 @@ export class Signer {
         transactionMessageOrTransaction,
         account,
         network,
+        transactionSource === 'metamask',
       );
     }
 
@@ -114,6 +130,7 @@ export class Signer {
         transactionMessageFromUnsignedTransaction,
         account,
         network,
+        refreshBlockhashBeforeSigning,
       );
     }
 
@@ -135,20 +152,23 @@ export class Signer {
    * @param transactionMessage - The transaction message to sign.
    * @param account - The account to sign the transaction message with.
    * @param scope - The network where the transaction is to be sent.
+   * @param refreshBlockhashBeforeSigning - Whether to refresh the blockhash before signing the transaction message.
    * @returns The partially signed transaction.
    */
   async #prepareAndPartiallySignTransactionMessage(
     transactionMessage: BaseTransactionMessage,
     account: SolanaKeyringAccount,
     scope: Network,
+    refreshBlockhashBeforeSigning: boolean,
   ): Promise<Readonly<Transaction & TransactionWithLifetime>> {
     // First, make sure the transaction message has a fee payer, lifetime constraint and compute unit price
     const hasLifetimeConstraint =
       isTransactionMessageWithBlockhashLifetime(transactionMessage);
 
-    const blockhash = hasLifetimeConstraint
-      ? transactionMessage.lifetimeConstraint // Use any value, it won't be used
-      : await this.#connection.getLatestBlockhash(scope);
+    const blockhash =
+      hasLifetimeConstraint && !refreshBlockhashBeforeSigning
+        ? transactionMessage.lifetimeConstraint
+        : await this.#connection.getLatestBlockhash(scope);
 
     const hasComputeUnitPrice =
       isTransactionMessageWithComputeUnitPriceInstruction(transactionMessage);
@@ -177,8 +197,7 @@ export class Signer {
     const compilableTransactionMessage = await pipe(
       transactionMessage,
       (tx) => setTransactionMessageFeePayerIfMissing(signer.address, tx),
-      (tx) =>
-        setTransactionMessageLifetimeUsingBlockhashIfMissing(blockhash, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(blockhash, tx),
       (tx) =>
         setComputeUnitPriceInstructionIfMissing(tx, {
           microLamports,

@@ -92,5 +92,6 @@
   "transactionScan.errors.accountAlreadyInUse": "An account with the same address already exists.",
   "transactionScan.errors.insufficientSol": "Account does not have enough SOL to perform the operation.",
   "transactionScan.errors.slippageToleranceExceeded": "The transaction was reverted because the slippage tolerance was exceeded.",
+  "transactionScan.errors.transactionBlockhashExpired": "Please go back and try again",
   "transactionScan.errors.unknownError": "An unknown error occurred."
 }

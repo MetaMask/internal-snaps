@@ -17,6 +17,17 @@ export type SnapState = {
   derivationPaths: Record<string, string>;
 };
 
+/**
+ * In-memory snapshot loaded while resolving derivation paths. The
+ * derivation-path map can be reused by a subsequent insert within the same
+ * account mutation; the accounts map is retained for lookup results but
+ * refreshed before full-map writes to avoid overwriting sync updates.
+ */
+export type AccountStateSnapshot = {
+  accounts: SnapState['accounts'] | null;
+  derivationPaths: SnapState['derivationPaths'] | null;
+};
+
 export type AccountState = {
   // Split derivation path.
   derivationPath: string[];
@@ -46,12 +57,15 @@ export type SyncResult = {
   transactionsToNotify: WalletTx[];
 };
 
-export enum TrackingSnapEvent {
-  TransactionFinalized = 'Transaction Finalized',
-  TransactionReceived = 'Transaction Received',
-  TransactionReorged = 'Transaction Reorged',
-  TransactionSubmitted = 'Transaction Submitted',
-}
+export const TrackingSnapEvent = {
+  TransactionFinalized: 'Transaction Finalized',
+  TransactionReceived: 'Transaction Received',
+  TransactionReorged: 'Transaction Reorged',
+  TransactionSubmitted: 'Transaction Submitted',
+} as const;
+
+export type TrackingSnapEvent =
+  (typeof TrackingSnapEvent)[keyof typeof TrackingSnapEvent];
 
 /**
  * The SnapClient represents the MetaMask Snap state and manages the BIP-32 entropy from the Wallet SRP.
@@ -88,25 +102,6 @@ export type SnapClient = {
    * @returns The public SLIP10 node.
    */
   getPublicEntropy(derivationPath: string[]): Promise<SLIP10Node>;
-
-  /**
-   * Emit an event notifying the extension of a newly created Bitcoin account
-   *
-   * @param account - The Bitcoin account.
-   * @param correlationId - The correlation ID to be used for the event.
-   */
-  emitAccountCreatedEvent(
-    account: BitcoinAccount,
-    correlationId?: string,
-    accountName?: string,
-  ): Promise<void>;
-
-  /**
-   * Emit an event notifying the extension of a deleted Bitcoin account
-   *
-   * @param id - The Bitcoin account id.
-   */
-  emitAccountDeletedEvent(id: string): Promise<void>;
 
   /**
    * Emit an event notifying the extension of updated balances

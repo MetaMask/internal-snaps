@@ -1,14 +1,13 @@
 import type { EntropySourceId } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 
 import type { StellarAddress, KnownCaip2ChainId } from '../../api';
 import { KEYRING_ACCOUNT_TYPE } from '../../constants';
 import { MultichainMethod } from '../../handlers/keyring/api';
-import type { ILogger } from '../../utils';
 import {
   batchesAll,
-  createPrefixedLogger,
   getDefaultEntropySource,
   getSnapProvider,
 } from '../../utils';
@@ -24,7 +23,7 @@ import { assertSameAddress } from './utils';
  * Manages Stellar keyring accounts: creation, resolution from state, derivation checks, and persistence.
  */
 export class AccountService {
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #walletService: WalletService;
 
@@ -35,11 +34,11 @@ export class AccountService {
     accountsRepository,
     walletService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountsRepository: AccountsRepository;
     walletService: WalletService;
   }) {
-    this.#logger = createPrefixedLogger(logger, '[🔑 AccountService]');
+    this.#logger = logger.withPrefix('[🔑 AccountService]');
     this.#walletService = walletService;
     this.#accountsRepository = accountsRepository;
   }

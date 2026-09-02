@@ -45,38 +45,46 @@ import { parseProofOfOwnershipMessage } from './utils';
 /**
  * Enum for the client request method.
  */
-export enum ClientRequestMethod {
+export const ClientRequestMethod = {
   /** -------------------------------- Wallet Standard -------------------------------- */
-  OnAddressInput = 'onAddressInput',
-  OnAmountInput = 'onAmountInput',
-  ConfirmSend = 'confirmSend',
+  OnAddressInput: 'onAddressInput',
+  OnAmountInput: 'onAmountInput',
+  ConfirmSend: 'confirmSend',
   // Standard multichain workflow for bridge
-  SignAndSendTransaction = 'signAndSendTransaction',
-  ComputeFee = 'computeFee',
+  SignAndSendTransaction: 'signAndSendTransaction',
+  ComputeFee: 'computeFee',
   /**
    * Silent proof-of-ownership signing for `@metamask/profile-metrics-controller`.
    * SIP-31 client-only.
    */
-  SignProofOfOwnership = 'signProofOfOwnership',
+  SignProofOfOwnership: 'signProofOfOwnership',
   /** -------------------------------- Stellar Specific -------------------------------- */
-  ChangeTrustOpt = 'changeTrustOpt',
-}
+  ChangeTrustOpt: 'changeTrustOpt',
+} as const;
 
-export enum MultiChainSendErrorCodes {
-  // eslint-disable-next-line @typescript-eslint/no-shadow
-  Required = 'Required',
-  Invalid = 'Invalid',
-  InsufficientBalance = 'InsufficientBalance',
-  InsufficientBalanceToCoverFee = 'InsufficientBalanceToCoverFee',
-}
+export type ClientRequestMethod =
+  (typeof ClientRequestMethod)[keyof typeof ClientRequestMethod];
+
+export const MultiChainSendErrorCodes = {
+  Required: 'Required',
+  Invalid: 'Invalid',
+  InsufficientBalance: 'InsufficientBalance',
+  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
+} as const;
+
+export type MultiChainSendErrorCodes =
+  (typeof MultiChainSendErrorCodes)[keyof typeof MultiChainSendErrorCodes];
 
 /**
  * Trustline change intent for {@link ClientRequestMethod.ChangeTrustOpt}.
  */
-export enum ChangeTrustOptAction {
-  Add = 'add',
-  Delete = 'delete',
-}
+export const ChangeTrustOptAction = {
+  Add: 'add',
+  Delete: 'delete',
+} as const;
+
+export type ChangeTrustOptAction =
+  (typeof ChangeTrustOptAction)[keyof typeof ChangeTrustOptAction];
 
 /**
  * Validation struct for the client request method.

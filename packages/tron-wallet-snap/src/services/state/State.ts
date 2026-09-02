@@ -1,5 +1,11 @@
 import type { Transaction } from '@metamask/keyring-api';
-import { safeMerge } from '@metamask/snap-networks-utils';
+import {
+  deserialize,
+  safeMerge,
+  serialize,
+} from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
+import type { Json } from '@metamask/snaps-sdk';
 import type { MutexInterface } from 'async-mutex';
 import { Mutex } from 'async-mutex';
 import { unset } from 'lodash';
@@ -7,9 +13,6 @@ import { unset } from 'lodash';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { deserialize } from '../../utils/serialization/deserialize';
-import { serialize } from '../../utils/serialization/serialize';
-import type { Serializable } from '../../utils/serialization/types';
 import type { IStateManager } from './IStateManager';
 
 export type AccountId = string;
@@ -234,7 +237,8 @@ export class State<
         method: 'snap_manageState',
         params: {
           operation: 'update',
-          newState: serialize(newState),
+          // State values are always objects, so the serialized result is too.
+          newState: serialize(newState) as Record<string, Json>,
           encrypted: this.#config.encrypted,
         },
       });

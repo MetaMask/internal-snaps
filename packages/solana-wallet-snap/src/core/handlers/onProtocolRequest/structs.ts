@@ -8,11 +8,14 @@ import {
 } from '@metamask/superstruct';
 import { JsonRpcIdStruct, JsonRpcVersionStruct } from '@metamask/utils';
 
-export enum SolanaProtocolRequestMethod {
-  GetGenesisHash = 'getGenesisHash',
-  GetLatestBlockhash = 'getLatestBlockhash',
-  GetMinimumBalanceForRentExemption = 'getMinimumBalanceForRentExemption',
-}
+export const SolanaProtocolRequestMethod = {
+  GetGenesisHash: 'getGenesisHash',
+  GetLatestBlockhash: 'getLatestBlockhash',
+  GetMinimumBalanceForRentExemption: 'getMinimumBalanceForRentExemption',
+} as const;
+
+export type SolanaProtocolRequestMethod =
+  (typeof SolanaProtocolRequestMethod)[keyof typeof SolanaProtocolRequestMethod];
 
 export const SolanaGetGenesisHashRequestStruct = object({
   jsonrpc: JsonRpcVersionStruct,

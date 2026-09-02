@@ -6,19 +6,21 @@ import type { KnownCaip19AssetId } from '../../api';
  *
  * @see https://developers.stellar.org/docs/data/apis/horizon/api-reference/errors/result-codes/transactions
  */
-export enum KnownRpcError {
-  TxBadSeq = 'txBadSeq',
-  TxBadAuth = 'txBadAuth',
-  TxTooEarly = 'txTooEarly',
-  TxTooLate = 'txTooLate',
-  TxInsufficientFee = 'txInsufficientFee',
-  TxInsufficientBalance = 'txInsufficientBalance',
-  TxInsufficientReserve = 'txInsufficientReserve',
-  TxFailed = 'txFailed',
-  TxMissingOperation = 'txMissingOperation',
-  TxInternalError = 'txInternalError',
-  TxBadAuthExtra = 'txBadAuthExtra',
-}
+export const KnownRpcError = {
+  TxBadSeq: 'txBadSeq',
+  TxBadAuth: 'txBadAuth',
+  TxTooEarly: 'txTooEarly',
+  TxTooLate: 'txTooLate',
+  TxInsufficientFee: 'txInsufficientFee',
+  TxInsufficientBalance: 'txInsufficientBalance',
+  TxInsufficientReserve: 'txInsufficientReserve',
+  TxFailed: 'txFailed',
+  TxMissingOperation: 'txMissingOperation',
+  TxInternalError: 'txInternalError',
+  TxBadAuthExtra: 'txBadAuthExtra',
+} as const;
+
+export type KnownRpcError = (typeof KnownRpcError)[keyof typeof KnownRpcError];
 
 /**
  * Asset data for a Stellar classic asset.

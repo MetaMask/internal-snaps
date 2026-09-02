@@ -1,3 +1,4 @@
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   FungibleAssetMarketData,
@@ -9,13 +10,7 @@ import { BigNumber } from 'bignumber.js';
 import { pick } from 'lodash';
 
 import { AppConfig } from '../../config';
-import {
-  createPrefixedLogger,
-  getFiatTicker,
-  isFiat,
-  trackErrorIfNeeded,
-} from '../../utils';
-import type { ILogger, Serializable } from '../../utils';
+import { getFiatTicker, isFiat, trackErrorIfNeeded } from '../../utils';
 import type { ICache } from '../cache';
 import { useCache } from '../cache';
 import { GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT } from './api';
@@ -53,7 +48,7 @@ export type HistoricalPriceTimePeriod =
 export class PriceService {
   readonly #priceApiClient: PriceApiClient;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   readonly #cache: ICache<Serializable>;
 
@@ -62,13 +57,13 @@ export class PriceService {
     logger,
   }: {
     cache: ICache<Serializable>;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#priceApiClient = new PriceApiClient({
       baseUrl: AppConfig.api.priceApi.baseUrl,
     });
     this.#cache = cache;
-    this.#logger = createPrefixedLogger(logger, '[🪙 PriceService]');
+    this.#logger = logger.withPrefix('[🪙 PriceService]');
   }
 
   /**

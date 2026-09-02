@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import type { NonEmptyArray } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
@@ -12,11 +13,9 @@ import { AppConfig } from '../../config';
 import {
   batchesAllSettled,
   batchesAllSettledWithChunks,
-  createPrefixedLogger,
   isClassicAssetId,
   isSep41Id,
 } from '../../utils';
-import type { ILogger } from '../../utils';
 import type { AssetDataResponse, NetworkService } from '../network';
 import type {
   AssetUnit,
@@ -54,7 +53,7 @@ export class AssetMetadataService {
 
   readonly #assetMetadataRepository: AssetMetadataRepository;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     networkService,
@@ -63,14 +62,14 @@ export class AssetMetadataService {
   }: {
     networkService: NetworkService;
     assetMetadataRepository: AssetMetadataRepository;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#networkService = networkService;
     this.#tokenApiClient = new TokenApiClient({
       baseUrl: AppConfig.api.tokenApi.baseUrl,
     });
     this.#assetMetadataRepository = assetMetadataRepository;
-    this.#logger = createPrefixedLogger(logger, '[🪙 AssetMetadataService]');
+    this.#logger = logger.withPrefix('[🪙 AssetMetadataService]');
   }
 
   /**

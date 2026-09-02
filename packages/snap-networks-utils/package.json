@@ -32,14 +32,24 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./logger": {
+    "./dedupe": {
       "import": {
-        "types": "./dist/logger/index.d.mts",
-        "default": "./dist/logger/index.mjs"
+        "types": "./dist/utils/dedupe/InFlightCoalescer.d.mts",
+        "default": "./dist/utils/dedupe/InFlightCoalescer.mjs"
       },
       "require": {
-        "types": "./dist/logger/index.d.cts",
-        "default": "./dist/logger/index.cjs"
+        "types": "./dist/utils/dedupe/InFlightCoalescer.d.cts",
+        "default": "./dist/utils/dedupe/InFlightCoalescer.cjs"
+      }
+    },
+    "./logger": {
+      "import": {
+        "types": "./dist/utils/logger/Logger.d.mts",
+        "default": "./dist/utils/logger/Logger.mjs"
+      },
+      "require": {
+        "types": "./dist/utils/logger/Logger.d.cts",
+        "default": "./dist/utils/logger/Logger.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -63,15 +73,18 @@
   "dependencies": {
     "@metamask/assets-controller": "^13.0.0",
     "@metamask/remote-feature-flag-controller": "^5.0.0",
-    "@metamask/snaps-sdk": "^11.2.0",
+    "@metamask/snaps-sdk": "^12.0.1",
     "@metamask/superstruct": "^3.4.1",
-    "@metamask/utils": "^11.11.0"
+    "@metamask/utils": "^11.11.0",
+    "bignumber.js": "^9.3.1",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@metamask/auto-changelog": "^6.1.1",
     "@metamask/messenger": "^2.0.0",
     "@ts-bridge/cli": "^0.6.4",
     "@types/jest": "^30.0.0",
+    "@types/lodash": "^4.17.15",
     "deepmerge": "^4.2.2",
     "jest": "30.0.3",
     "ts-jest": "^29.4.1",

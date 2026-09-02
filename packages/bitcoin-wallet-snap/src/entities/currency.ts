@@ -1,12 +1,14 @@
 import type { Network } from '@metamask/bitcoindevkit';
 
-export enum CurrencyUnit {
-  Bitcoin = 'BTC',
-  Testnet = 'tBTC',
-  Signet = 'sBTC',
-  Regtest = 'rBTC',
-  Fiat = 'fiat', // Can also be cryptos like ETH, but will be fiat for 99% of users
-}
+export const CurrencyUnit = {
+  Bitcoin: 'BTC',
+  Testnet: 'tBTC',
+  Signet: 'sBTC',
+  Regtest: 'rBTC',
+  Fiat: 'fiat', // Can also be cryptos like ETH, but will be fiat for 99% of users
+} as const;
+
+export type CurrencyUnit = (typeof CurrencyUnit)[keyof typeof CurrencyUnit];
 
 export type CurrencyRate = {
   conversionRate: number;

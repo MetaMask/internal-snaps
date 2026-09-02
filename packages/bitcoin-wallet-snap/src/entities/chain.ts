@@ -20,8 +20,10 @@ export type BlockchainClient = {
    * Note that this operation modifies the account in place.
    *
    * @param account - the account to full scan.
+   * @param mode - 'discovery' uses the short discovery stop gap for probing
+   * candidate accounts; the default 'scan' uses the full BIP44-sized gap.
    */
-  fullScan(account: BitcoinAccount): Promise<void>;
+  fullScan(account: BitcoinAccount, mode?: 'discovery' | 'scan'): Promise<void>;
 
   /**
    * Perform a sync operation on the account.

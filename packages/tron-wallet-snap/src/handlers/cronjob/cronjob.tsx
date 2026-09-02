@@ -24,20 +24,26 @@ import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTr
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 
-export enum CronjobMethod {
-  ContinuouslySynchronizeSelectedAccounts = 'onSynchronizeSelectedAccountsCronjob',
-}
+export const CronjobMethod = {
+  ContinuouslySynchronizeSelectedAccounts:
+    'onSynchronizeSelectedAccountsCronjob',
+} as const;
 
-export enum BackgroundEventMethod {
-  SynchronizeSelectedAccounts = 'onSynchronizeSelectedAccounts',
-  SynchronizeAccounts = 'onSynchronizeAccounts',
-  SynchronizeAccount = 'onSynchronizeAccount',
-  SynchronizeAccountTransactions = 'onSynchronizeAccountTransactions',
-  RefreshConfirmationPrices = 'refreshConfirmationPrices',
-  RefreshConfirmationSend = 'refreshConfirmationSend',
-  RefreshSignTransaction = 'refreshSignTransaction',
-  TrackTransaction = 'onTrackTransaction',
-}
+export type CronjobMethod = (typeof CronjobMethod)[keyof typeof CronjobMethod];
+
+export const BackgroundEventMethod = {
+  SynchronizeSelectedAccounts: 'onSynchronizeSelectedAccounts',
+  SynchronizeAccounts: 'onSynchronizeAccounts',
+  SynchronizeAccount: 'onSynchronizeAccount',
+  SynchronizeAccountTransactions: 'onSynchronizeAccountTransactions',
+  RefreshConfirmationPrices: 'refreshConfirmationPrices',
+  RefreshConfirmationSend: 'refreshConfirmationSend',
+  RefreshSignTransaction: 'refreshSignTransaction',
+  TrackTransaction: 'onTrackTransaction',
+} as const;
+
+export type BackgroundEventMethod =
+  (typeof BackgroundEventMethod)[keyof typeof BackgroundEventMethod];
 
 export class CronHandler {
   readonly #logger: Logger;

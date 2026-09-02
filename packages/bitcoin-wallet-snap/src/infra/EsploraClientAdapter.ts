@@ -30,12 +30,19 @@ export class EsploraClientAdapter implements BlockchainClient {
     this.#config = config;
   }
 
-  async fullScan(account: BitcoinAccount): Promise<void> {
+  async fullScan(
+    account: BitcoinAccount,
+    mode: 'discovery' | 'scan' = 'scan',
+  ): Promise<void> {
     try {
+      const stopGap =
+        mode === 'discovery'
+          ? this.#config.stopGap.discovery
+          : this.#config.stopGap.scan;
       const request = account.startFullScan();
       const update = await this.#clients[account.network].full_scan(
         request,
-        this.#config.stopGap,
+        stopGap,
         this.#config.parallelRequests,
       );
       account.applyUpdate(update);

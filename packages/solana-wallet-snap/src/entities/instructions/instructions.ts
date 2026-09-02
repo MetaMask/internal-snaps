@@ -160,7 +160,7 @@ import type { IInstruction } from '@solana/kit';
 
 import {
   fromBytesToCompilableTransactionMessage,
-  fromUnknowBase64StringToTransactionOrTransactionMessage,
+  fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../core/sdk-extensions/codecs';
 import type {
   SolanaInstruction,
@@ -619,7 +619,7 @@ export const extractInstructionsFromUnknownBase64String = async (
   base64EncodedString: Infer<typeof Base64Struct>,
 ): Promise<InstructionParseResult[]> => {
   const transactionOrTransactionMessage =
-    await fromUnknowBase64StringToTransactionOrTransactionMessage(
+    await fromUnknownBase64StringToTransactionOrTransactionMessage(
       base64EncodedString,
       rpc,
     );

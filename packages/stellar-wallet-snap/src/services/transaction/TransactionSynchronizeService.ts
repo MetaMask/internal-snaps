@@ -4,6 +4,7 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import type {
@@ -12,10 +13,8 @@ import type {
   StellarAddress,
   TransactionId,
 } from '../../api';
-import type { ILogger } from '../../utils';
 import {
   batchesAllSettled,
-  createPrefixedLogger,
   isSameStr,
   isSep41Id,
   pushToRecordArray,
@@ -79,7 +78,7 @@ export class TransactionSynchronizeService {
 
   readonly #accountService: AccountService;
 
-  readonly #logger: ILogger;
+  readonly #logger: Logger;
 
   constructor({
     networkService,
@@ -92,16 +91,13 @@ export class TransactionSynchronizeService {
     transactionRepository: TransactionRepository;
     transactionMapper: TransactionMapper;
     accountService: AccountService;
-    logger: ILogger;
+    logger: Logger;
   }) {
     this.#networkService = networkService;
     this.#transactionRepository = transactionRepository;
     this.#transactionMapper = transactionMapper;
     this.#accountService = accountService;
-    this.#logger = createPrefixedLogger(
-      logger,
-      '[💼 TransactionSynchronizeService]',
-    );
+    this.#logger = logger.withPrefix('[💼 TransactionSynchronizeService]');
   }
 
   async synchronize(

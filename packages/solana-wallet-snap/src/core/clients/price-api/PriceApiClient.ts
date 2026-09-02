@@ -1,17 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { CaipAssetType } from '@metamask/keyring-api';
-import { UrlStruct } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
 import { useCache } from '../../caching/useCache';
-import type { Serializable } from '../../serialization/types';
 import type { ConfigProvider } from '../../services/config';
-import { buildUrl } from '../../utils/buildUrl';
 import logger from '../../utils/logger';
 import type {
   ExchangeRate,

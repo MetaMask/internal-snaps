@@ -1,8 +1,9 @@
+import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
-import { KnownCaip2ChainId, UrlStruct } from '../../api';
+import { KnownCaip2ChainId } from '../../api';
 import type { AnyErrorConstructor } from '../../utils';
-import { buildUrl, rethrowIfInstanceElseThrow } from '../../utils';
+import { rethrowIfInstanceElseThrow } from '../../utils';
 import {
   assertHttpRequestParams,
   assertHttpResponse,

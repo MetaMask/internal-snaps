@@ -360,7 +360,7 @@ describe('ConfirmationHandler', () => {
     it('sets iconUrl on each fee asset via getIconUrlForKnownAsset', async () => {
       await withConfirmationHandler(
         async ({ handler, mockFeeCalculatorService }) => {
-          const feeAssetType = `${Network.Mainnet}/slip44:195`;
+          const feeAssetType = `${Network.Mainnet}/slip44:195` as const;
           const feesWithIcon: ComputeFeeResult = [
             {
               type: FeeType.Base,

@@ -1,3 +1,4 @@
+import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { AssetMetadataService } from '../../services/asset-metadata';
@@ -8,8 +9,6 @@ import {
   InsufficientBalanceToCoverFeeException,
 } from '../../services/transaction/exceptions';
 import { hasDecimals, toSmallestUnit } from '../../utils';
-import type { ILogger } from '../../utils/logger';
-import { createPrefixedLogger } from '../../utils/logger';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -40,15 +39,12 @@ export class OnAmountInputHandler extends BaseClientRequestHandler<
     assetMetadataService,
     transactionService,
   }: {
-    logger: ILogger;
+    logger: Logger;
     accountResolver: AccountResolver;
     assetMetadataService: AssetMetadataService;
     transactionService: TransactionService;
   }) {
-    const prefixedLogger = createPrefixedLogger(
-      logger,
-      '[💰 OnAmountInputHandler]',
-    );
+    const prefixedLogger = logger.withPrefix('[💰 OnAmountInputHandler]');
     super({
       accountResolver,
       logger: prefixedLogger,

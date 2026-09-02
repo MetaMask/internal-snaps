@@ -24,8 +24,8 @@ import {
   updateInterfaceIfExists,
 } from '../../utils';
 import { xlmIcon } from '../images';
-import { FetchStatus } from './api';
-import type { ConfirmationInterfaceKey, ContextWithPrices } from './api';
+import { ConfirmationInterfaceKey, FetchStatus } from './api';
+import type { ContextWithPrices } from './api';
 import {
   formatFeeData,
   formatOrigin,
@@ -74,10 +74,10 @@ type RenderConfirmationDialogCommon<Props extends ConfirmationViewProps> = {
 };
 
 type ConfirmationDialogWithFee =
-  | ConfirmationInterfaceKey.SignTransaction
-  | ConfirmationInterfaceKey.ChangeTrustlineOptIn
-  | ConfirmationInterfaceKey.ChangeTrustlineOptOut
-  | ConfirmationInterfaceKey.ConfirmSendTransaction;
+  | typeof ConfirmationInterfaceKey.SignTransaction
+  | typeof ConfirmationInterfaceKey.ChangeTrustlineOptIn
+  | typeof ConfirmationInterfaceKey.ChangeTrustlineOptOut
+  | typeof ConfirmationInterfaceKey.ConfirmSendTransaction;
 /**
  * Discriminated union: confirmations that have a fee (example: sign transaction)
  * MUST provide one; fee-less confirmations (sign message, etc.) MUST NOT.
