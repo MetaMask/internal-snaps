@@ -585,12 +585,14 @@ export function parseContractEventsFromResultMeta<Result>(params: {
       case 3: {
         const sorobanMeta = meta.v3().sorobanMeta();
         events = sorobanMeta ? [...sorobanMeta.events()] : [];
+        break;
       }
       case 4: {
         events = meta
           .v4()
           .operations()
           .flatMap((op) => [...op.events()]);
+        break;
       }
       default:
         break;
