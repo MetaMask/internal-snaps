@@ -1,12 +1,8 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import type {
-  OnAssetsConversionHandler,
-  OnAssetsLookupHandler,
   OnCronjobHandler,
   OnKeyringRequestHandler,
   OnUserInputHandler,
-  OnAssetHistoricalPriceHandler,
-  OnAssetsMarketDataHandler,
   OnClientRequestHandler,
   OnActiveHandler,
 } from '@metamask/snaps-sdk';
@@ -17,7 +13,6 @@ import {
   CronHandler,
   UserInputHandler,
   RpcHandler,
-  AssetsHandler,
 } from './handlers';
 import { HandlerMiddleware } from './handlers/HandlerMiddleware';
 import { KeyringRequestHandler } from './handlers/KeyringRequestHandler';
@@ -28,11 +23,9 @@ import {
   LocalTranslatorAdapter,
 } from './infra';
 import { BdkAccountRepository, JSXSendFlowRepository } from './store';
-import { InMemoryCache } from './store/InMemoryCache';
 import { JSXConfirmationRepository } from './store/JSXConfirmationRepository';
 import {
   AccountUseCases,
-  AssetsUseCases,
   ConfirmationUseCases,
   SendFlowUseCases,
 } from './use-cases';
@@ -78,12 +71,6 @@ const sendFlowUseCases = new SendFlowUseCases(
   Config.fallbackFeeRate,
   Config.ratesRefreshInterval,
 );
-const assetsUseCases = new AssetsUseCases(
-  logger,
-  assetRatesClient,
-  new InMemoryCache(),
-  snapClient,
-);
 const confirmationUseCases = new ConfirmationUseCases(logger, snapClient);
 
 // Application layer
@@ -109,12 +96,6 @@ const userInputHandler = new UserInputHandler(
   sendFlowUseCases,
   confirmationUseCases,
 );
-const assetsHandler = new AssetsHandler(
-  assetsUseCases,
-  Config.conversionsExpirationInterval,
-  logger,
-  snapClient,
-);
 
 export const onCronjob: OnCronjobHandler = async ({ request }) =>
   middleware.handle(async () => cronHandler.route(request));
@@ -129,22 +110,6 @@ export const onKeyringRequest: OnKeyringRequestHandler = async ({ request }) =>
 
 export const onUserInput: OnUserInputHandler = async ({ id, event, context }) =>
   middleware.handle(async () => userInputHandler.route(id, event, context));
-
-export const onAssetsLookup: OnAssetsLookupHandler = async () =>
-  middleware.handle(async () => assetsHandler.lookup());
-
-export const onAssetsConversion: OnAssetsConversionHandler = async ({
-  conversions,
-}) => middleware.handle(async () => assetsHandler.conversion(conversions));
-
-export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async ({
-  from,
-  to,
-}) => middleware.handle(async () => assetsHandler.historicalPrice(from, to));
-
-export const onAssetsMarketData: OnAssetsMarketDataHandler = async ({
-  assets,
-}) => middleware.handle(async () => assetsHandler.marketData(assets));
 
 export const onActive: OnActiveHandler = async () =>
   middleware.handle(async () => cronHandler.synchronizeAccounts());
