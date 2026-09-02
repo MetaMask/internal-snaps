@@ -12,6 +12,7 @@ import {
   optional,
   refine,
   string,
+  union,
 } from '@metamask/superstruct';
 import {
   CaipAssetTypeStruct,
@@ -519,4 +520,52 @@ export const SignProofOfOwnershipResponseStruct = object({
 
 export type SignProofOfOwnershipResponse = Infer<
   typeof SignProofOfOwnershipResponseStruct
+>;
+
+/**
+ * signProofOfOwnershipBatch request/response validation.
+ *
+ * Batch items intentionally validate messages as plain strings so invalid
+ * proof messages can be reported per item instead of failing the whole batch.
+ */
+export const SignProofOfOwnershipBatchRequestItemStruct = object({
+  accountId: string(),
+  message: string(),
+});
+
+export const SignProofOfOwnershipBatchRequestParamsStruct = object({
+  items: array(SignProofOfOwnershipBatchRequestItemStruct),
+});
+
+export const SignProofOfOwnershipBatchRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignProofOfOwnershipBatch),
+  params: SignProofOfOwnershipBatchRequestParamsStruct,
+});
+
+export const SignProofOfOwnershipBatchSuccessStruct = object({
+  accountId: string(),
+  /**
+   * 0x-prefixed hex encoding of the 64-byte ed25519 signature.
+   */
+  signature: StrictHexStruct,
+});
+
+export const SignProofOfOwnershipBatchErrorStruct = object({
+  accountId: string(),
+  error: string(),
+});
+
+export const SignProofOfOwnershipBatchItemResponseStruct = union([
+  SignProofOfOwnershipBatchSuccessStruct,
+  SignProofOfOwnershipBatchErrorStruct,
+]);
+
+export const SignProofOfOwnershipBatchResponseStruct = object({
+  results: array(SignProofOfOwnershipBatchItemResponseStruct),
+});
+
+export type SignProofOfOwnershipBatchResponse = Infer<
+  typeof SignProofOfOwnershipBatchResponseStruct
 >;

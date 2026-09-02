@@ -48,6 +48,7 @@ describe('ClientRequestHandler', () => {
     // Create mock keyring
     mockAccountsService = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findByAddress: jest.fn(),
     } as unknown as jest.Mocked<AccountsService>;
 
@@ -55,6 +56,7 @@ describe('ClientRequestHandler', () => {
     mockWalletService = {
       signAndSendTransaction: jest.fn(),
       signMessage: jest.fn(),
+      signMessages: jest.fn(),
     } as unknown as jest.Mocked<WalletService>;
 
     // Create mock logger
@@ -735,6 +737,126 @@ describe('ClientRequestHandler', () => {
       await expect(handler.handle(createRequest())).rejects.toThrow(
         'signer unavailable',
       );
+    });
+  });
+
+  describe('signProofOfOwnershipBatch', () => {
+    const utf8ToBase64 = (utf8: string): string =>
+      pipe(utf8, getUtf8Codec().encode, getBase64Codec().decode);
+
+    const base58Signature =
+      '2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2';
+    const nonce = 'a1b2c3d4e5f6789012345678';
+    const account0 = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+    const account1 = MOCK_SOLANA_KEYRING_ACCOUNT_1;
+
+    const buildProofMessage = (
+      proofNonce: string,
+      proofAddress: string,
+    ): string => `metamask:proof-of-ownership:${proofNonce}:${proofAddress}`;
+
+    const createRequest = (
+      items: { accountId: string; message: string }[],
+    ): JsonRpcRequest => ({
+      jsonrpc: '2.0',
+      id: 1,
+      method: ClientRequestMethod.SignProofOfOwnershipBatch,
+      params: { items },
+    });
+
+    it('signs a batch and returns 0x-prefixed hex signatures in input order', async () => {
+      const message0 = buildProofMessage(nonce, account0.address);
+      const message1 = buildProofMessage(nonce, account1.address);
+      mockAccountsService.findByIds.mockResolvedValue([account1, account0]);
+      mockWalletService.signMessages.mockResolvedValue([
+        {
+          signature: base58Signature,
+          signedMessage: utf8ToBase64(message0),
+          signatureType: 'ed25519',
+        },
+        {
+          signature: base58Signature,
+          signedMessage: utf8ToBase64(message1),
+          signatureType: 'ed25519',
+        },
+      ]);
+
+      const result = await handler.handle(
+        createRequest([
+          { accountId: account0.id, message: message0 },
+          { accountId: account1.id, message: message1 },
+        ]),
+      );
+
+      expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
+        account0.id,
+        account1.id,
+      ]);
+      expect(mockWalletService.signMessages).toHaveBeenCalledWith([
+        { account: account0, message: utf8ToBase64(message0) },
+        { account: account1, message: utf8ToBase64(message1) },
+      ]);
+      expect(result).toStrictEqual({
+        results: [
+          { accountId: account0.id, signature: `0x${'01'.repeat(64)}` },
+          { accountId: account1.id, signature: `0x${'01'.repeat(64)}` },
+        ],
+      });
+    });
+
+    it('returns item-level errors for missing accounts and address mismatches', async () => {
+      const missingAccountId = '123e4567-e89b-42d3-a456-426614174099';
+      const validMessage = buildProofMessage(nonce, account0.address);
+      const mismatchedMessage = buildProofMessage(nonce, account1.address);
+      mockAccountsService.findByIds.mockResolvedValue([account0]);
+      mockWalletService.signMessages.mockResolvedValue([
+        {
+          signature: base58Signature,
+          signedMessage: utf8ToBase64(validMessage),
+          signatureType: 'ed25519',
+        },
+      ]);
+
+      const result = await handler.handle(
+        createRequest([
+          { accountId: account0.id, message: validMessage },
+          { accountId: missingAccountId, message: validMessage },
+          { accountId: account0.id, message: mismatchedMessage },
+        ]),
+      );
+
+      expect(mockWalletService.signMessages).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual({
+        results: [
+          { accountId: account0.id, signature: `0x${'01'.repeat(64)}` },
+          {
+            accountId: missingAccountId,
+            error: `Account not found: ${missingAccountId}`,
+          },
+          {
+            accountId: account0.id,
+            error: `Address in proof-of-ownership message (${account1.address}) does not match signing account address (${account0.address})`,
+          },
+        ],
+      });
+    });
+
+    it('returns item-level errors from wallet batch signing', async () => {
+      const message = buildProofMessage(nonce, account0.address);
+      mockAccountsService.findByIds.mockResolvedValue([account0]);
+      mockWalletService.signMessages.mockResolvedValue([
+        { error: 'Unable to derive private key' },
+      ]);
+
+      const result = await handler.handle(
+        createRequest([{ accountId: account0.id, message }]),
+      );
+
+      expect(result).toStrictEqual({
+        results: [
+          { accountId: account0.id, error: 'Unable to derive private key' },
+        ],
+      });
     });
   });
 

@@ -29,6 +29,10 @@ export class AccountsService {
     return this.#accountsRepository.findById(id);
   }
 
+  async findByIds(ids: string[]): Promise<SolanaKeyringAccount[]> {
+    return this.#accountsRepository.findByIds(ids);
+  }
+
   async findByAddress(address: string): Promise<SolanaKeyringAccount | null> {
     return this.#accountsRepository.findByAddress(address);
   }

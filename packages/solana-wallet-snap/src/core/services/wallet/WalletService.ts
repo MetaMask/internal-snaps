@@ -1,3 +1,4 @@
+import { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
@@ -23,7 +24,11 @@ import type { Caip10Address, Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import { addressToCaip10 } from '../../utils/addressToCaip10';
-import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
+import {
+  deriveSolanaKeypair,
+  deriveSolanaKeypairFromCoinTypeNode,
+} from '../../utils/deriveSolanaKeypair';
+import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
@@ -49,6 +54,42 @@ import type {
   SolanaSignMessageResponse,
   SolanaSignTransactionResponse,
 } from './structs';
+
+export type SolanaSignMessageBatchRequest = {
+  account: SolanaKeyringAccount;
+  message: string;
+};
+
+export type SolanaSignMessageBatchResult =
+  | SolanaSignMessageResponse
+  | { error: string };
+
+const DEFAULT_SOLANA_DERIVATION_PATH_REGEX = /^m\/44'\/501'\/([0-9]+)'\/0'$/u;
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getDefaultSolanaAccountIndex(account: SolanaKeyringAccount): number {
+  const match = DEFAULT_SOLANA_DERIVATION_PATH_REGEX.exec(
+    account.derivationPath,
+  );
+
+  if (!match?.[1]) {
+    throw new Error(
+      `Unsupported Solana derivation path: ${account.derivationPath}`,
+    );
+  }
+
+  const accountIndex = Number(match[1]);
+  if (!Number.isSafeInteger(accountIndex) || accountIndex !== account.index) {
+    throw new Error(
+      `Solana derivation path index (${accountIndex}) does not match account index (${account.index})`,
+    );
+  }
+
+  return accountIndex;
+}
 
 export class WalletService {
   readonly #connection: SolanaConnection;
@@ -342,16 +383,88 @@ export class WalletService {
   ): Promise<SolanaSignMessageResponse> {
     this.#logger.log('Signing message', account, message);
 
-    const { address, entropySource, derivationPath } = account;
-    const addressAsAddress = asAddress(address);
-    const messageBytes = getBase64Codec().encode(message);
-    const messageUtf8 = getUtf8Codec().decode(messageBytes);
-    const signableMessage = createSignableMessage(messageUtf8);
-
+    const { entropySource, derivationPath } = account;
     const { privateKeyBytes } = await deriveSolanaKeypair({
       entropySource,
       derivationPath,
     });
+
+    return this.#signMessageWithPrivateKey(account, message, privateKeyBytes);
+  }
+
+  async signMessages(
+    requests: SolanaSignMessageBatchRequest[],
+  ): Promise<SolanaSignMessageBatchResult[]> {
+    this.#logger.log('Signing message batch', { count: requests.length });
+
+    const results: SolanaSignMessageBatchResult[] = new Array(requests.length);
+    const requestsByEntropySource = new Map<
+      string,
+      { index: number; request: SolanaSignMessageBatchRequest }[]
+    >();
+
+    requests.forEach((request, index) => {
+      const sourceRequests =
+        requestsByEntropySource.get(request.account.entropySource) ?? [];
+      sourceRequests.push({ index, request });
+      requestsByEntropySource.set(
+        request.account.entropySource,
+        sourceRequests,
+      );
+    });
+
+    await Promise.all(
+      [...requestsByEntropySource.entries()].map(
+        async ([entropySource, sourceRequests]) => {
+          try {
+            const coinTypeNodeJson = await getBip32Entropy({
+              entropySource,
+              path: ['m', "44'", "501'"],
+              curve: 'ed25519',
+            });
+            const coinTypeNode = await SLIP10Node.fromJSON(coinTypeNodeJson);
+
+            for (const { index, request } of sourceRequests) {
+              try {
+                const accountIndex = getDefaultSolanaAccountIndex(
+                  request.account,
+                );
+                const { privateKeyBytes } =
+                  await deriveSolanaKeypairFromCoinTypeNode({
+                    coinTypeNode,
+                    accountIndex,
+                  });
+
+                results[index] = await this.#signMessageWithPrivateKey(
+                  request.account,
+                  request.message,
+                  privateKeyBytes,
+                );
+              } catch (error) {
+                results[index] = { error: getErrorMessage(error) };
+              }
+            }
+          } catch (error) {
+            for (const { index } of sourceRequests) {
+              results[index] = { error: getErrorMessage(error) };
+            }
+          }
+        },
+      ),
+    );
+
+    return results;
+  }
+
+  async #signMessageWithPrivateKey(
+    account: SolanaKeyringAccount,
+    message: string,
+    privateKeyBytes: Uint8Array,
+  ): Promise<SolanaSignMessageResponse> {
+    const addressAsAddress = asAddress(account.address);
+    const messageBytes = getBase64Codec().encode(message);
+    const messageUtf8 = getUtf8Codec().decode(messageBytes);
+    const signableMessage = createSignableMessage(messageUtf8);
 
     const signer =
       await createKeyPairSignerFromPrivateKeyBytes(privateKeyBytes);

@@ -10,6 +10,7 @@ export const ClientRequestMethod = {
   SignCardMessage: 'signCardMessage',
   ApproveCardAmount: 'approveCardAmount',
   SignProofOfOwnership: 'signProofOfOwnership',
+  SignProofOfOwnershipBatch: 'signProofOfOwnershipBatch',
 } as const;
 
 export type ClientRequestMethod =
