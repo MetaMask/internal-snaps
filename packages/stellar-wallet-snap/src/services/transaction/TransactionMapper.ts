@@ -8,7 +8,10 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../api';
+import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
 import {
+  isSlip44Id,
+  parseClassicAssetCodeIssuer,
   removeTrailingZeros,
   stellarAssetToCaip19,
   toDisplayBalance,
@@ -33,13 +36,19 @@ import {
   isReceiveOperation,
   isPathPaymentOperation,
   isInvokeHostFunctionOperation,
+  parseOperationAssetReferenceSafe,
 } from './utils';
-import type { SuccessfulTransactionResult } from './xdrParser';
+import type {
+  ParsedContractReceiveTransfer,
+  SuccessfulTransactionResult,
+} from './xdrParser';
 import {
   isSep41TransferInvoke,
+  parseContractEventsFromResultMeta,
   parseSep41TransferInvoke,
   parseSuccessfulTransactionResult,
   TransactionResultType,
+  parseTransferContractEventSafe,
 } from './xdrParser';
 
 export class TransactionMapper {
@@ -124,13 +133,15 @@ export class TransactionMapper {
     const { address } = keyringAccount;
 
     if (transaction.hasInvokeHostFunction && transaction.operationCount === 1) {
-      // Invoke host function: try SEP-41 send mapping first; fall back to unknown.
+      // Invoke host function: try SEP-41 send, then contract-receive from result meta.
       return (
         this.#mapSep41SendTransaction(
           transaction,
           keyringAccount,
           assetMetadata,
-        ) ?? this.#mapUnknownTransaction(transaction, keyringAccount)
+        ) ??
+        this.#tryMapReceiveContractTxn(transaction, keyringAccount) ??
+        this.#mapUnknownTransaction(transaction, keyringAccount)
       );
     }
 
@@ -480,6 +491,105 @@ export class TransactionMapper {
         toAddress: toAccountId,
       },
     });
+  }
+
+  /**
+   * Maps an invoke-host-function credit as a receive when `result_meta_xdr`
+   * has a SAC `transfer` event credited to this wallet.
+   *
+   * @param transaction - On-chain invoke transaction.
+   * @param keyringAccount - Wallet that may have been credited.
+   * @returns Receive keyring transaction, or `undefined` when meta does not match.
+   */
+  #tryMapReceiveContractTxn(
+    transaction: Transaction,
+    keyringAccount: StellarKeyringAccount,
+  ): KeyringTransaction | undefined {
+    // A failed transaction does not contain the result_meta_xdr for us to extract the event data.
+    if (transaction.status === TransactionStatus.Failed) {
+      return undefined;
+    }
+
+    const resultMetaXdr = transaction.rawData?.result_meta_xdr;
+    if (!resultMetaXdr) {
+      return undefined;
+    }
+
+    const transfers = parseContractEventsFromResultMeta({
+      resultMetaXdr,
+      parseEvent: (event) =>
+        parseTransferContractEventSafe(event, keyringAccount.address),
+    });
+
+    // Same as classic receive: surface the first credited asset when several match.
+    const [parsed] = transfers;
+    if (!parsed) {
+      return undefined;
+    }
+
+    const receiveAsset = this.#mapContractTransferForNativeOrClassicAsset(
+      parsed,
+      transaction.scope,
+    );
+    if (!receiveAsset) {
+      return undefined;
+    }
+
+    return this.#keyringTransactionBuilder.createTransaction({
+      type: KeyringTransactionType.Unknown,
+      request: {
+        ...this.#commonOnChainFields(transaction, keyringAccount),
+        transactionType: TransactionType.Receive,
+        from: [
+          {
+            address: parsed.fromAddress,
+            asset: receiveAsset,
+          },
+        ],
+        to: [
+          {
+            address: keyringAccount.address,
+            asset: receiveAsset,
+          },
+        ],
+      },
+    });
+  }
+
+  /**
+   * Resolves a SAC transfer event token topic to a keyring asset row.
+   *
+   * Only `"native"` and classic `"CODE:ISSUER"` topics are supported.
+   *
+   * @param parsed - Parsed SAC transfer from result meta.
+   * @param scope - CAIP-2 chain id.
+   * @returns Keyring asset row, or `undefined` when the token is not SAC native/classic.
+   */
+  #mapContractTransferForNativeOrClassicAsset(
+    parsed: ParsedContractReceiveTransfer,
+    scope: KnownCaip2ChainId,
+  ): KeyringTransactionAsset | undefined {
+    const { token, amount } = parsed;
+
+    // SAC topics use `'native'` or classic `'CODE:ISSUER'` — same shape as operation asset refs.
+    const classicOrNativeAssetId = parseOperationAssetReferenceSafe(
+      scope,
+      token,
+    );
+
+    if (!classicOrNativeAssetId) {
+      return undefined;
+    }
+
+    const unit = isSlip44Id(classicOrNativeAssetId)
+      ? NATIVE_ASSET_SYMBOL
+      : parseClassicAssetCodeIssuer(token).assetCode;
+
+    return this.#toKeyringAssetRow(
+      unit,
+      classicOrNativeAssetId,
+      toDisplayBalance(amount, STELLAR_DECIMAL_PLACES),
+    );
   }
 
   #getCreateTime(transaction: Transaction): number {
