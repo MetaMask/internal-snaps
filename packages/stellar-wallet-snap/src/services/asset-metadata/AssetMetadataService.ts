@@ -95,8 +95,8 @@ export class AssetMetadataService {
    * Returns keyring-format metadata for the given asset IDs from snap state only.
    *
    * Read-only — does not fetch missing assets or persist. Intended for
-   * `onAssetsLookup` so handlers do not contend with catalog sync. Missing ids
-   * are `null` until filled by `synchronize` / `resolve`.
+   * keyring balance reads so they do not contend with catalog sync. Missing
+   * ids are `null` until filled by `synchronize` / `resolve`.
    *
    * @param assetIds - The asset IDs to look up.
    * @returns A Promise that resolves to all assets metadata for the given asset IDs.

@@ -1,34 +1,35 @@
 import type {
   OnUserInputHandler,
   OnKeyringRequestHandler,
-  OnAssetsConversionHandler,
-  OnAssetHistoricalPriceHandler,
-  OnAssetsLookupHandler,
-  OnAssetsMarketDataHandler,
   OnClientRequestHandler,
   OnCronjobHandler,
+  OnAssetHistoricalPriceHandler,
+  OnAssetsConversionHandler,
+  OnAssetsLookupHandler,
+  OnAssetsMarketDataHandler,
 } from '@metamask/snaps-sdk';
 
 import {
   keyringHandler,
   userInputHandler,
-  assetsHandler,
   clientRequestHandler,
   cronjobHandler,
 } from './context';
 
-export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async (
-  args,
-) => assetsHandler.onAssetHistoricalPrice(args);
+export const onAssetsLookup: OnAssetsLookupHandler = async () => ({
+  assets: {},
+});
 
-export const onAssetsConversion: OnAssetsConversionHandler = async (args) =>
-  assetsHandler.onAssetsConversion(args);
+export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
+  conversionRates: {},
+});
 
-export const onAssetsLookup: OnAssetsLookupHandler = async (args) =>
-  assetsHandler.onAssetsLookup(args);
+export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler =
+  async () => null;
 
-export const onAssetsMarketData: OnAssetsMarketDataHandler = async (args) =>
-  assetsHandler.onAssetsMarketData(args);
+export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
+  marketData: {},
+});
 
 export const onKeyringRequest: OnKeyringRequestHandler = async ({
   origin,
