@@ -15,6 +15,7 @@ Account management and SEP-43 signing entry points via `onKeyringRequest` → `K
 | `AccountService`        | `services/account`          | Persist / derive / select accounts (snap state)                         |
 | `OnChainAccountService` | `services/on-chain-account` | Snap-state snapshots for balances/assets; live activation for discovery |
 | `TransactionService`    | `services/transaction`      | Local pending keyring txs for `listAccountTransactions`                 |
+| `WalletService`         | `services/wallet`           | HD derive signing material; used by `exportAccount` (never persisted)   |
 | `SyncAccountsHandler`   | `handlers/cronjob`          | Scheduled after selection changes to refresh on-chain snapshots         |
 
 ## Request / response
@@ -45,6 +46,7 @@ Requests are origin-checked, then dispatched to the methods below.
 | `listAccountTransactions` | Paginated keyring transactions for the account                                                                           | **Snap state** (pending / local txs via `TransactionService` — **not** Horizon history)        |
 | `discoverAccounts`        | Derive BIP-44 address for index; return it only if activated on any requested scope                                      | Derive locally; activation check is **live on-chain** (`NetworkService.getAccount`)            |
 | `resolveAccountAddress`   | Given an address, return CAIP-10 if this snap owns it; else `null` (MetaMask may fall back)                              | **Snap state** (keyring account lookup by address)                                             |
+| `exportAccount`           | Export the Stellar secret seed (`S…` strkey / base32). Only `encoding: "base32"` is supported                            | **Derived** via `WalletService` (never persisted)                                              |
 | `filterAccountChains`     | Not implemented                                                                                                          | Throws `MethodNotSupportedError`                                                               |
 | `updateAccount`           | Not implemented                                                                                                          | Throws `MethodNotSupportedError`                                                               |
 | `submitRequest`           | [signTransaction.md](./signTransaction.md) · [signMessage.md](./signMessage.md) · [signAuthEntry.md](./signAuthEntry.md) |                                                                                                |

@@ -1,6 +1,7 @@
 import type { Network, AddressType } from '@metamask/bitcoindevkit';
 import { Address, Amount } from '@metamask/bitcoindevkit';
 import { BtcMethod } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import type { Infer } from 'superstruct';
 import {
@@ -50,11 +51,6 @@ export const NonEmptyStringStruct = refine(
   nonempty(string()),
   'non-whitespace string',
   (value) => value.trim().length > 0,
-);
-
-export const UuidStruct = pattern(
-  NonEmptyStringStruct,
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
 );
 
 export const OnAddressInputRequestStruct = object({

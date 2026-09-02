@@ -8,7 +8,7 @@ import type {
   KnownCaip19Slip44Id,
   KnownCaip2ChainId,
 } from '../../api';
-import { isSep41Id, isSlip44Id, trackErrorIfNeeded } from '../../utils';
+import { isSep41Id, isSlip44Id, trackError } from '../../utils';
 import type { AccountService } from '../account';
 import type { StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
@@ -492,7 +492,7 @@ export class TransactionService {
     try {
       return await this.savePendingKeyringTransaction(request);
     } catch (error: unknown) {
-      await trackErrorIfNeeded(error);
+      await trackError(error);
 
       this.#logger.warn('Failed to save pending transaction', { error });
       return null;

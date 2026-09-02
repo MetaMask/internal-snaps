@@ -62,7 +62,7 @@ jest.mock('../../utils/errors', () => ({
   trackError: jest.fn().mockResolvedValue('tracked-error-id'),
 }));
 
-const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-12d3-a456-426614174009';
+const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174009';
 
 (globalThis as any).snap = {
   request: jest.fn().mockImplementation(async ({ method }) => {

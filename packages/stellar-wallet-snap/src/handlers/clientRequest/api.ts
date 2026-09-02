@@ -1,4 +1,5 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   enums,
@@ -30,7 +31,6 @@ import {
   KnownCaip19AssetIdOrSlip44IdStruct,
   KnownCaip19ClassicAssetStruct,
   StellarTransactionHashStruct,
-  UuidStruct,
   NonZeroValidStellarAmountStruct,
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,

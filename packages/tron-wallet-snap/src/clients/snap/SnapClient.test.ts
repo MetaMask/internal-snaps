@@ -1,4 +1,5 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import { mockLogger } from '../../utils/mockLogger';
 import { SnapClient } from './SnapClient';
@@ -117,6 +118,24 @@ describe('SnapClient', () => {
   });
 
   describe('trackError', () => {
+    it('does not call snap_trackError for user rejections', async () => {
+      await withSnapClient(
+        async ({
+          snapClient,
+          mockSnapRequest: mockRequest,
+          mockLogger: logger,
+        }) => {
+          const result = await snapClient.trackError(
+            new UserRejectedRequestError(),
+          );
+
+          expect(result).toBeUndefined();
+          expect(mockRequest).not.toHaveBeenCalled();
+          expect(logger.warn).not.toHaveBeenCalled();
+        },
+      );
+    });
+
     it('returns the Sentry event ID and forwards the serialized error', async () => {
       await withSnapClient(
         async ({

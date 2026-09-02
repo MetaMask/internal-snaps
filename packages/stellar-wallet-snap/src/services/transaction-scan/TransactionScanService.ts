@@ -6,7 +6,7 @@ import { xlmIcon } from '../../ui/images';
 import {
   toCaip19ClassicAssetId,
   toCaip19Sep41AssetId,
-  trackErrorIfNeeded,
+  trackError,
 } from '../../utils';
 import { toDisplayBalance } from '../../utils/currency';
 import { getIconUrl } from '../asset-metadata/utils';
@@ -87,7 +87,7 @@ export class TransactionScanService {
         reason: error,
       });
 
-      await trackErrorIfNeeded(error);
+      await trackError(error);
 
       return null;
     }
