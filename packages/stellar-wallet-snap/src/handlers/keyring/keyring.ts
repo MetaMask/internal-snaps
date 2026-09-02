@@ -11,12 +11,17 @@ import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
 } from '@metamask/keyring-api';
-import type { KeyringSnapRpc } from '@metamask/keyring-api/v2';
+import type {
+  ExportAccountOptions,
+  ExportedAccount,
+  KeyringSnapRpc,
+} from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import { validateOrigin } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
+import { is } from '@metamask/superstruct';
 import type {
   CaipAssetType,
   CaipAssetTypeOrId,
@@ -27,6 +32,7 @@ import type {
   KnownCaip19AssetIdOrSlip44Id,
   KnownCaip2ChainId,
 } from '../../api';
+import { StellarSecretKeyStruct } from '../../api';
 import { AppConfig } from '../../config';
 import { originPermissions } from '../../permissions';
 import type {
@@ -45,11 +51,13 @@ import {
   toStandardBalanceEntry,
 } from '../../services/on-chain-account';
 import type { TransactionService } from '../../services/transaction/TransactionService';
+import type { WalletService } from '../../services/wallet';
 import {
   Duration,
   getSlip44AssetId,
   isClassicAssetId,
   isSlip44Id,
+  rethrowIfInstanceElseThrow,
   validateRequest,
   withCatchAndThrowSnapError,
 } from '../../utils';
@@ -58,6 +66,7 @@ import { SyncAccountsHandler } from '../cronjob/syncAccounts';
 import type { GetAccountRequest, MultichainMethod } from './api';
 import {
   DeleteAccountRequestStruct,
+  ExportAccountRequestStruct,
   GetAccountRequestStruct,
   ListAccountTransactionsRequestStruct,
   MultichainMethodStruct,
@@ -67,6 +76,7 @@ import {
   GetAccountBalancesRequestStruct,
 } from './api';
 import type { IKeyringRequestHandler } from './base';
+import { ExportAccountException } from './exceptions';
 
 export class KeyringHandler implements KeyringSnapRpc {
   readonly #logger: Logger;
@@ -77,6 +87,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   readonly #transactionService: TransactionService;
 
+  readonly #walletService: WalletService;
+
   readonly #handlers: Record<MultichainMethod, IKeyringRequestHandler>;
 
   constructor({
@@ -84,18 +96,21 @@ export class KeyringHandler implements KeyringSnapRpc {
     accountService,
     onChainAccountService,
     transactionService,
+    walletService,
     handlers,
   }: {
     logger: Logger;
     accountService: AccountService;
     onChainAccountService: OnChainAccountService;
     transactionService: TransactionService;
+    walletService: WalletService;
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
     this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;
+    this.#walletService = walletService;
     this.#handlers = handlers;
   }
 
@@ -111,7 +126,6 @@ export class KeyringHandler implements KeyringSnapRpc {
         this.#logger.debug('Keyring request handled', {
           origin,
           method: request.method,
-          result: keyringRequestResult,
         });
         return keyringRequestResult;
       }, this.#logger.error.bind(this.#logger))) ?? null;
@@ -366,6 +380,57 @@ export class KeyringHandler implements KeyringSnapRpc {
       }
 
       throw error;
+    }
+  }
+
+  /**
+   * Exports the Stellar secret seed for an account (`S…` strkey / base32).
+   * Triggered by the client when the user requests a private-key export.
+   *
+   * @param accountId - The id of the account to export.
+   * @param options - Export options. Encoding must be `base32`; omitted
+   * `options` / `encoding` default to `base32`.
+   * @returns The exported private key (`type`, `encoding`, `privateKey`).
+   * @throws {ExportAccountException} If the derived seed fails validation, or
+   * another error occurs while reading it (the latter uses a generic message
+   * so the secret is not leaked).
+   */
+  async exportAccount(
+    accountId: string,
+    options?: ExportAccountOptions,
+  ): Promise<ExportedAccount> {
+    const { options: exportOptions } = validateRequest(
+      { accountId, options },
+      ExportAccountRequestStruct,
+    );
+
+    const { account } = await this.#accountService.resolveAccount({
+      accountId,
+    });
+    const wallet = await this.#walletService.resolveWallet(account);
+
+    // For security reasons, we wrap the export in a try-catch block to avoid leaking the private key in case of an error.
+    try {
+      const privateKey = wallet.secret;
+      // SECURITY: Use `is` rather than `assert`. A StructError would embed the
+      // private key in its message.
+      if (!is(privateKey, StellarSecretKeyStruct)) {
+        throw new ExportAccountException(
+          'Derived private key failed encoding validation',
+        );
+      }
+
+      return {
+        type: exportOptions.type,
+        encoding: exportOptions.encoding,
+        privateKey,
+      };
+    } catch (error: unknown) {
+      return rethrowIfInstanceElseThrow(
+        error,
+        [ExportAccountException],
+        new ExportAccountException('Error exporting account'),
+      );
     }
   }
 

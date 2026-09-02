@@ -26,6 +26,16 @@ describe('Wallet', () => {
     });
   });
 
+  describe('secret', () => {
+    it('returns the Stellar secret seed for a derived wallet', () => {
+      const wallet = getTestWallet({ seed });
+      const expected = Keypair.fromRawEd25519Seed(
+        bufferToUint8Array(seed),
+      ).secret();
+      expect(wallet.secret).toStrictEqual(expected);
+    });
+  });
+
   describe('signMessage', () => {
     it('returns a base64-encoded signature for a string message', () => {
       const wallet = getTestWallet({ seed });
