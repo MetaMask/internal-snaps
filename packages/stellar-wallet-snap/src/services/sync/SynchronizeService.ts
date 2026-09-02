@@ -4,11 +4,7 @@ import { E_ALREADY_LOCKED, Mutex, tryAcquire } from 'async-mutex';
 import type { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { BackgroundEventMethod } from '../../handlers/cronjob/api';
-import {
-  Duration,
-  scheduleBackgroundEvent,
-  trackErrorIfNeeded,
-} from '../../utils';
+import { Duration, scheduleBackgroundEvent, trackError } from '../../utils';
 import type { StellarKeyringAccount } from '../account';
 import type {
   AssetMetadataService,
@@ -137,7 +133,7 @@ export class SynchronizeService {
 
           for (const [index, result] of results.entries()) {
             if (result.status === 'rejected') {
-              await trackErrorIfNeeded(result.reason);
+              await trackError(result.reason);
 
               const taskName = tasks[index]?.name ?? 'synchronize';
               this.#logger.warn(`Failed to ${taskName}`, {
@@ -159,7 +155,7 @@ export class SynchronizeService {
       }
 
       this.#logger.error('Synchronize failed', { error });
-      await trackErrorIfNeeded(error);
+      await trackError(error);
     }
   }
 
@@ -209,7 +205,7 @@ export class SynchronizeService {
     try {
       await this.#assetMetadataService.synchronize(scope);
     } catch (error: unknown) {
-      await trackErrorIfNeeded(error);
+      await trackError(error);
 
       this.#logger.warn('Failed to synchronize assets', {
         error,
@@ -229,7 +225,7 @@ export class SynchronizeService {
     try {
       return await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
     } catch (error: unknown) {
-      await trackErrorIfNeeded(error);
+      await trackError(error);
 
       this.#logger.warn('Failed to load SEP-41 assets', {
         error,
@@ -269,7 +265,7 @@ export class SynchronizeService {
           // Only capture the error if it is unexpected.
           // AccountNotActivatedException is expected when the account is not activated yet.
           if (!(error instanceof AccountNotActivatedException)) {
-            await trackErrorIfNeeded(error);
+            await trackError(error);
 
             this.#logger.warn('Failed to load account for sync', {
               error,

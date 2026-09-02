@@ -1,28 +1,12 @@
-import type { Logger } from '@metamask/snap-networks-utils';
-import {
-  ChainDisconnectedError,
-  DisconnectedError,
-  InternalError,
-  InvalidInputError,
-  InvalidParamsError,
-  InvalidRequestError,
-  LimitExceededError,
-  MethodNotFoundError,
-  MethodNotSupportedError,
-  ParseError,
-  ResourceNotFoundError,
-  ResourceUnavailableError,
-  SnapError,
-  TransactionRejected,
-  UnauthorizedError,
-  UnsupportedMethodError,
-  UserRejectedRequestError,
-} from '@metamask/snaps-sdk';
+import { createWithCatchAndThrowSnapError } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
-import { logger as defaultLogger } from './logger';
+import { logger } from './logger';
 import { trackError } from './snap';
+
+export { isSnapRpcError } from '@metamask/snap-networks-utils';
+export type { SnapRpcError } from '@metamask/snap-networks-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- must accept arbitrary `Error` subclass ctor signatures
 export type AnyErrorConstructor = abstract new (...args: any[]) => Error;
@@ -47,55 +31,6 @@ export function rethrowIfInstanceElseThrow<Err extends Error>(
     }
   }
   throw fallback;
-}
-
-/** Union of Snap RPC error instance types (for type narrowing). */
-export type SnapRpcError =
-  | InstanceType<typeof SnapError>
-  | InstanceType<typeof MethodNotFoundError>
-  | InstanceType<typeof UserRejectedRequestError>
-  | InstanceType<typeof MethodNotSupportedError>
-  | InstanceType<typeof ParseError>
-  | InstanceType<typeof ResourceNotFoundError>
-  | InstanceType<typeof ResourceUnavailableError>
-  | InstanceType<typeof TransactionRejected>
-  | InstanceType<typeof ChainDisconnectedError>
-  | InstanceType<typeof DisconnectedError>
-  | InstanceType<typeof UnauthorizedError>
-  | InstanceType<typeof UnsupportedMethodError>
-  | InstanceType<typeof InternalError>
-  | InstanceType<typeof InvalidInputError>
-  | InstanceType<typeof InvalidParamsError>
-  | InstanceType<typeof InvalidRequestError>
-  | InstanceType<typeof LimitExceededError>;
-
-/**
- * Determines if the given error is a Snap RPC error.
- *
- * @param error - The error instance to be checked.
- * @returns A boolean indicating whether the error is a Snap RPC error.
- */
-export function isSnapRpcError(error: Error): error is SnapRpcError {
-  const errors = [
-    SnapError,
-    MethodNotFoundError,
-    UserRejectedRequestError,
-    MethodNotSupportedError,
-    ParseError,
-    ResourceNotFoundError,
-    ResourceUnavailableError,
-    TransactionRejected,
-    ChainDisconnectedError,
-    DisconnectedError,
-    UnauthorizedError,
-    UnsupportedMethodError,
-    InternalError,
-    InvalidInputError,
-    InvalidParamsError,
-    InvalidRequestError,
-    LimitExceededError,
-  ];
-  return errors.some((errType) => error instanceof errType);
 }
 
 export type StellarSnapExceptionOptions = {
@@ -317,58 +252,7 @@ export function isStellarSnapException(
   return error instanceof StellarSnapException;
 }
 
-/**
- * A utility function that catches errors and throws them as SnapError.
- *
- * @param fn - The function to catch errors from.
- * @param logger - The logger to use for logging errors. Defaults to the default logger.
- * @returns The result of the function.
- */
-export const withCatchAndThrowSnapError = async <ResponseT>(
-  fn: () => Promise<ResponseT>,
-  logger: Logger = defaultLogger,
-): Promise<ResponseT> => {
-  try {
-    return await fn();
-  } catch (errorInstance: unknown) {
-    await trackErrorIfNeeded(errorInstance);
-
-    let error: SnapRpcError;
-
-    if (errorInstance instanceof Error) {
-      if (isStellarSnapException(errorInstance)) {
-        error = new SnapError(errorInstance);
-      } else if (isSnapRpcError(errorInstance)) {
-        error = errorInstance;
-      } else {
-        error = new SnapError(errorInstance);
-      }
-    } else {
-      error = new SnapError(errorInstance as string | Error);
-    }
-
-    logger.error(
-      { error },
-      `[SnapError] ${JSON.stringify(error.toJSON(), null, 2)}`,
-    );
-
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
-    throw error;
-  }
-};
-
-/**
- * Sends `error` to Sentry when it represents an unexpected failure.
- *
- * Skips tracking for explicit user rejections.
- * Callers should prefer this over {@link trackError} in swallow paths;
- *
- * @param error - Value from a `catch` clause.
- */
-export async function trackErrorIfNeeded(error: unknown): Promise<void> {
-  if (error instanceof UserRejectedRequestError) {
-    return;
-  }
-
-  await trackError(error);
-}
+export const withCatchAndThrowSnapError = createWithCatchAndThrowSnapError({
+  logError: logger.error.bind(logger),
+  trackError,
+});

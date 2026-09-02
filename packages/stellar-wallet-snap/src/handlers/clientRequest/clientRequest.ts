@@ -38,7 +38,7 @@ export class ClientRequestHandler {
     const result =
       (await withCatchAndThrowSnapError(async () => {
         return this.#handleClientRequest(request);
-      }, this.#logger)) ?? null;
+      }, this.#logger.error.bind(this.#logger))) ?? null;
 
     return result;
   }

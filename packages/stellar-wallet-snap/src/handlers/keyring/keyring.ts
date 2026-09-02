@@ -114,7 +114,7 @@ export class KeyringHandler implements KeyringSnapRpc {
           result: keyringRequestResult,
         });
         return keyringRequestResult;
-      }, this.#logger)) ?? null;
+      }, this.#logger.error.bind(this.#logger))) ?? null;
 
     return result;
   }

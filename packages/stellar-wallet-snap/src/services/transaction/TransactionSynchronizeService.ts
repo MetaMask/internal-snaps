@@ -18,7 +18,7 @@ import {
   isSameStr,
   isSep41Id,
   pushToRecordArray,
-  trackErrorIfNeeded,
+  trackError,
 } from '../../utils';
 import type {
   AccountService,
@@ -278,7 +278,7 @@ export class TransactionSynchronizeService {
           fetchResult.reason,
         );
 
-        await trackErrorIfNeeded(fetchResult.reason);
+        await trackError(fetchResult.reason);
         continue;
       }
 
@@ -357,7 +357,7 @@ export class TransactionSynchronizeService {
           error: fetchResult.reason,
         });
 
-        await trackErrorIfNeeded(fetchResult.reason);
+        await trackError(fetchResult.reason);
         continue;
       }
 
