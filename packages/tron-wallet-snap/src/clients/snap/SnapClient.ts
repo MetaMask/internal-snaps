@@ -1,7 +1,5 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
-import { getJsonError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type {
   DialogResult,
   EntropySource,
@@ -13,19 +11,13 @@ import type {
 
 import { SecurityEventType, TransactionEventType } from '../../types/analytics';
 import type { Preferences } from '../../types/snap';
-import { sanitizeSensitiveError } from '../../utils/sensitiveErrors';
+import { trackError as reportErrorToSentry } from '../../utils/errors';
 
 /**
  * Client for interacting with the Snap API.
  * Provides methods for managing interfaces, dialogs, preferences, and background events.
  */
 export class SnapClient {
-  readonly #logger: Logger;
-
-  constructor({ logger }: { logger: Logger }) {
-    this.#logger = logger.withPrefix('[📡 SnapClient]');
-  }
-
   /**
    * Retrieves a `SLIP10NodeInterface` object for the specified path and curve.
    *
@@ -258,22 +250,7 @@ export class SnapClient {
    * @returns The Sentry event ID on success, or `undefined` on failure or if the error is skipped.
    */
   async trackError(error: Error): Promise<string | undefined> {
-    if (error instanceof UserRejectedRequestError) {
-      return undefined;
-    }
-
-    try {
-      return await snap.request({
-        method: 'snap_trackError',
-        params: { error: getJsonError(sanitizeSensitiveError(error)) },
-      });
-    } catch (rpcError) {
-      this.#logger.warn(
-        { rpcError },
-        'Failed to track error via snap_trackError',
-      );
-      return undefined;
-    }
+    return reportErrorToSentry(error);
   }
 
   /**

@@ -1,33 +1,58 @@
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 
-import { withCatchAndThrowSnapError } from './errors';
+import { trackError, withCatchAndThrowSnapError } from './errors';
 import { mockLogger } from './mockLogger';
-
-jest.mock('../clients/snap/SnapClient', () => {
-  const trackError = jest.fn();
-
-  return {
-    trackError,
-    SnapClient: jest.fn().mockImplementation(() => ({
-      trackError,
-    })),
-  };
-});
 
 jest.mock('./logger', () => ({
   __esModule: true,
   default: jest.requireActual('./mockLogger').mockLogger,
 }));
 
-const { trackError } = jest.requireMock('../clients/snap/SnapClient');
+const setupTest = (): { mockSnapRequest: jest.Mock } => {
+  jest.clearAllMocks();
+
+  const mockSnapRequest = jest.fn();
+  Object.defineProperty(globalThis, 'snap', {
+    configurable: true,
+    value: { request: mockSnapRequest },
+    writable: true,
+  });
+
+  return { mockSnapRequest };
+};
 
 describe('errors', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  describe('trackError', () => {
+    it('does not track UserRejectedRequestError', async () => {
+      const { mockSnapRequest } = setupTest();
+
+      expect(await trackError(new UserRejectedRequestError())).toBeUndefined();
+
+      expect(mockSnapRequest).not.toHaveBeenCalled();
+    });
+
+    it('sanitizes errors before tracking', async () => {
+      const { mockSnapRequest } = setupTest();
+      mockSnapRequest.mockResolvedValue('tracked-error-id');
+
+      await trackError(new Error('Failed to derive private key'));
+
+      expect(mockSnapRequest).toHaveBeenCalledWith({
+        method: 'snap_trackError',
+        params: {
+          error: expect.objectContaining({
+            message:
+              'Key derivation failed. Please check your connection and try again.',
+          }),
+        },
+      });
+    });
   });
 
   describe('withCatchAndThrowSnapError', () => {
     it('returns the result when the function succeeds', async () => {
+      setupTest();
+
       const mockFn = jest.fn().mockResolvedValue('success');
 
       const result = await withCatchAndThrowSnapError(mockFn);
@@ -38,6 +63,9 @@ describe('errors', () => {
     });
 
     it('tracks, logs, and re-throws errors as SnapError', async () => {
+      const { mockSnapRequest } = setupTest();
+      mockSnapRequest.mockResolvedValue('tracked-error-id');
+
       const originalError = new Error('Test error');
       const mockFn = jest.fn().mockRejectedValue(originalError);
 
@@ -45,12 +73,13 @@ describe('errors', () => {
         SnapError,
       );
 
-      expect(trackError).toHaveBeenCalledWith(originalError);
+      expect(mockSnapRequest).toHaveBeenCalledTimes(1);
       expect(mockFn).toHaveBeenCalledTimes(1);
       expect(mockLogger.error).toHaveBeenCalledTimes(1);
     });
 
-    it('delegates tracking to SnapClient for user rejections', async () => {
+    it('skips tracking RPC for user rejections', async () => {
+      const { mockSnapRequest } = setupTest();
       const mockFn = jest
         .fn()
         .mockRejectedValue(new UserRejectedRequestError());
@@ -59,9 +88,7 @@ describe('errors', () => {
         UserRejectedRequestError,
       );
 
-      expect(trackError).toHaveBeenCalledWith(
-        expect.any(UserRejectedRequestError),
-      );
+      expect(mockSnapRequest).not.toHaveBeenCalled();
     });
   });
 });
