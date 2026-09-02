@@ -26,6 +26,17 @@ export function shouldTrackError(error: unknown): boolean {
   }
 }
 
+/**
+ * Tracks an error in MetaMask via Sentry (`snap_trackError`).
+ *
+ * Skips errors that {@link shouldTrackError} filters out. RPC failures are
+ * caught and logged but never rethrown, so this is safe to call from
+ * already-failing error-handling paths without masking the original failure.
+ *
+ * @param error - The error to report to Sentry.
+ * @returns The Sentry event ID on success, or `undefined` on failure or if the
+ * error is skipped.
+ */
 export const trackError = createTrackError({
   getSnapProvider,
   logError: logger.error.bind(logger),
