@@ -19,27 +19,40 @@ This is a **silent sign** — there is no confirmation dialog. That is intention
 **Request params**
 
 - `accountId` — keyring account UUID
-- `message` — plaintext `metamask:proof-of-ownership:{nonce}:{address}` (nonce may contain colons; the address is the last `:`-separated field)
+- `message` — plaintext `metamask:proof-of-ownership:{nonce}:{address}` (see [Message format](#message-format))
 - `nonce`, `address` — coerced from `message` internally (clients do not send these)
 
 **Response**
 
 - `{ signature }` — standard base64 of the 64-byte ed25519 signature (SEP-0053)
 
+## Message format
+
+Parsed by [`parseProofOfOwnershipMessage`](../../../src/handlers/clientRequest/utils.ts) during request validation:
+
+- Prefix must be exactly `metamask:proof-of-ownership:` (case-sensitive).
+- `{nonce}` is non-empty and may contain `:` characters; parsing splits on the **last** `:` in the remainder.
+- `{address}` must be a valid Stellar strkey (G… public key).
+
+Example: `metamask:proof-of-ownership:ns:abc:123:GBX…` → nonce `ns:abc:123`, address `GBX…`.
+
 ## Participants
 
-| Component                     | Path                     | Role in this flow                                    |
-| ----------------------------- | ------------------------ | ---------------------------------------------------- |
-| `ClientRequestHandler`        | `handlers/clientRequest` | Routes `signProofOfOwnership` to the handler         |
-| `SignProofOfOwnershipHandler` | `handlers/clientRequest` | Validates message, resolves wallet, signs            |
-| `AccountResolver`             | `handlers/`              | Loads keyring account + wallet (no on-chain account) |
-| `Wallet`                      | `services/wallet`        | SEP-0053 `signMessage`                               |
+| Component                     | Path                        | Role in this flow                                    |
+| ----------------------------- | --------------------------- | ---------------------------------------------------- |
+| `ClientRequestHandler`        | `handlers/clientRequest`    | Routes `signProofOfOwnership` to the handler         |
+| `SignProofOfOwnershipHandler` | `handlers/clientRequest`    | Validates message, resolves wallet, signs            |
+| `AccountResolver`             | `handlers/`                 | Loads keyring account + wallet (no on-chain account) |
+| `AccountService`              | `services/account`          | Keyring account lookup (via resolver)                |
+| `WalletService` / `Wallet`    | `services/wallet`           | Signing key material + SEP-0053 `signMessage`        |
+
+No confirmation UI or network calls.
 
 ## Step-by-step
 
 1. **Route** — `onClientRequest` dispatches to `SignProofOfOwnershipHandler`.
 2. **Validate** — Request must match `SignProofOfOwnershipJsonRpcRequestStruct` (prefix, nonce, Stellar address). `nonce` and `address` are coerced from `message`.
-3. **Resolve** — `BaseClientRequestHandler` loads keyring account and wallet only (`RESOLVE_ACCOUNT_KEYRING_AND_WALLET`). The destination account does not need to be activated on-chain.
+3. **Resolve** — `AccountResolver.resolveAccount` with `RESOLVE_ACCOUNT_KEYRING_AND_WALLET` loads keyring account and wallet only. The signing account does not need to be activated on-chain.
 4. **Bind** — The address in the message must equal the signing account address.
 5. **Sign** — `Wallet.signMessage(message)` (SEP-0053, base64).
 
