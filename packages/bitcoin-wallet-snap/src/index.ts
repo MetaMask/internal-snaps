@@ -1,5 +1,4 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { Logger } from '@metamask/snap-networks-utils';
 import type {
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
@@ -37,9 +36,9 @@ import {
   ConfirmationUseCases,
   SendFlowUseCases,
 } from './use-cases';
+import logger from './utils/logger';
 
 // Infra layer
-const logger = new Logger({ level: Config.logLevel });
 const snapClient = new SnapClientAdapter(logger, Config.encrypt);
 const chainClient = new EsploraClientAdapter(Config.chain);
 const assetRatesClient = new PriceApiClientAdapter(Config.priceApi);
