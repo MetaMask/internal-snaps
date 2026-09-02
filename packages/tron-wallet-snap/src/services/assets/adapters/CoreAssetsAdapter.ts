@@ -1,4 +1,4 @@
-import type { Caip19AssetId } from '@metamask/assets-controller';
+import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
 import { KeyringEvent } from '@metamask/keyring-api';
 import type {
   AccountAssetListUpdatedEvent,
@@ -112,7 +112,7 @@ export class CoreAssetsAdapter {
       accountId,
     );
 
-    return Object.values(controllerAssets).map((asset) =>
+    return Object.values(controllerAssets).map((asset: Asset) =>
       mapControllerAsset(accountId, asset),
     );
   }
@@ -124,7 +124,7 @@ export class CoreAssetsAdapter {
       this.#getAccountAssetsByScope(Network.Shasta, accountId),
     ]);
 
-    const allUnmappedAssets = [
+    const allUnmappedAssets: Asset[] = [
       ...Object.values(mainnetAssets),
       ...Object.values(nileAssets),
       ...Object.values(shastaAssets),

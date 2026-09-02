@@ -60,9 +60,13 @@ export const GetAccounBalancesResponseStruct = record(
 
 export const ListAccountAssetsResponseStruct = array(CaipAssetTypeStruct);
 
-export const SubmitRequestMethodStruct = enums(Object.values(SolMethod));
+export const SubmitRequestMethodStruct = enums(
+  Object.values(SolMethod) as [SolMethod, ...SolMethod[]],
+);
 
-export const NetworkStruct = enums(Object.values(Network));
+export const NetworkStruct = enums(
+  Object.values(Network) as [Network, ...Network[]],
+);
 
 export const Curenc = enums([
   'btc',

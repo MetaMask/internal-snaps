@@ -11,7 +11,7 @@ import {
 } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
-import { InFlightCoalescer } from '@metamask/snap-networks-utils/dedupe';
+import { InFlightCoalescer } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';

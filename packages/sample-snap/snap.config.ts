@@ -5,6 +5,9 @@ import { resolve } from 'path';
 const config: SnapConfig = {
   // eslint-disable-next-line no-restricted-globals
   input: resolve(__dirname, 'src/index.tsx'),
+  typescript: {
+    enabled: true,
+  },
   server: {
     port: 8080,
   },

@@ -245,9 +245,6 @@
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    },
     "@typescript-eslint/no-explicit-any": {
       "count": 10
     },
@@ -258,7 +255,7 @@
       "count": 1
     },
     "@typescript-eslint/restrict-template-expressions": {
-      "count": 2
+      "count": 1
     },
     "no-restricted-syntax": {
       "count": 1

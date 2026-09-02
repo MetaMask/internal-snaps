@@ -335,7 +335,8 @@ export class AssetMetadataService {
       assetIds,
       this.#sepAssetChunkSize,
       this.#sepAssetBatchSize,
-      async (chunk) => this.#networkService.getSep41AssetsData(chunk, scope),
+      async (chunk: KnownCaip19Sep41AssetId[]) =>
+        this.#networkService.getSep41AssetsData(chunk, scope),
     );
 
     const { assets, missingAssetIds } =
@@ -365,7 +366,7 @@ export class AssetMetadataService {
     const settled = await batchesAllSettled(
       assetIds,
       this.#classicAssetBatchSize,
-      async (assetId) =>
+      async (assetId: KnownCaip19ClassicAssetId) =>
         this.#networkService.getClassicAssetData(assetId, scope),
     );
 
