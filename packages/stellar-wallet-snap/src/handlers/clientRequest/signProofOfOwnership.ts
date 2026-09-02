@@ -1,5 +1,5 @@
-import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
+import { InvalidParamsError } from '@metamask/snaps-sdk';
 
 import type { AccountResolver } from '../accountResolver';
 import { RESOLVE_ACCOUNT_KEYRING_AND_WALLET } from '../accountResolver';
