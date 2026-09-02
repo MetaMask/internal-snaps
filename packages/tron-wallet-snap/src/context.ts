@@ -17,7 +17,6 @@ import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
 import { TrongridApiClient } from './clients/trongrid/TrongridApiClient';
 import { TronWebFactory } from './clients/tronweb/TronWebFactory';
-
 import { ClientRequestHandler } from './handlers/clientRequest/clientRequest';
 import { CronHandler } from './handlers/cronjob/cronjob';
 import { KeyringHandler } from './handlers/keyring/keyring';
