@@ -109,7 +109,8 @@ export function createTrackError<TProvider extends TrackErrorCapableProvider>({
  * @param options.getSnapProvider - Returns the Snap provider used for `snap_trackError`.
  * @param options.prepareError - Optional error normalizer before Sentry serialization.
  * @param options.shouldTrack - Optional tracking filter passed to {@link createTrackError}.
- * @returns Bound `trackError` and `withCatchAndThrowSnapError` functions.
+ * @returns Bound {@link createTrackError trackError} and
+ * {@link createWithCatchAndThrowSnapError withCatchAndThrowSnapError} functions.
  */
 export function createSnapErrorHandling<
   TProvider extends TrackErrorCapableProvider,
