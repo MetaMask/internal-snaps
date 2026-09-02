@@ -1,18 +1,12 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "../../tsconfig.packages.libs.build.json",
   "compilerOptions": {
     "baseUrl": "./",
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": true,
-    "inlineSources": true,
-    "noEmit": false,
-    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "references": [],
-  "include": ["../../types", "./src"],
-  "exclude": ["**/*.test.ts", "**/tests", "**/jest.config.ts"]
+  /**
+   * Unlike `tsconfig.json`, for builds, we only include the source code.
+   */
+  "include": ["./src"]
 }
