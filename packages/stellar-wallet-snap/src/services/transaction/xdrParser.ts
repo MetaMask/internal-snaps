@@ -104,7 +104,9 @@ export type ParsedContractReceiveTransfer = {
  * Caller-supplied parser for a single contract event from transaction meta.
  * Return a value to keep it, or `null` to skip.
  */
-export type ContractEventParser<T> = (event: xdr.ContractEvent) => T | null;
+export type ContractEventParser<Result> = (
+  event: xdr.ContractEvent,
+) => Result | null;
 
 /**
  * Parses a successful Stellar transaction result XDR into operation-level outcomes.
