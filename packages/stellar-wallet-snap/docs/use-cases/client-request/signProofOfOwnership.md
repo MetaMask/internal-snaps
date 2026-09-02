@@ -38,13 +38,13 @@ Example: `metamask:proof-of-ownership:ns:abc:123:GBX…` → nonce `ns:abc:123`,
 
 ## Participants
 
-| Component                     | Path                        | Role in this flow                                    |
-| ----------------------------- | --------------------------- | ---------------------------------------------------- |
-| `ClientRequestHandler`        | `handlers/clientRequest`    | Routes `signProofOfOwnership` to the handler         |
-| `SignProofOfOwnershipHandler` | `handlers/clientRequest`    | Validates message, resolves wallet, signs            |
-| `AccountResolver`             | `handlers/`                 | Loads keyring account + wallet (no on-chain account) |
-| `AccountService`              | `services/account`          | Keyring account lookup (via resolver)                |
-| `WalletService` / `Wallet`    | `services/wallet`           | Signing key material + SEP-0053 `signMessage`        |
+| Component                     | Path                     | Role in this flow                                    |
+| ----------------------------- | ------------------------ | ---------------------------------------------------- |
+| `ClientRequestHandler`        | `handlers/clientRequest` | Routes `signProofOfOwnership` to the handler         |
+| `SignProofOfOwnershipHandler` | `handlers/clientRequest` | Validates message, resolves wallet, signs            |
+| `AccountResolver`             | `handlers/`              | Loads keyring account + wallet (no on-chain account) |
+| `AccountService`              | `services/account`       | Keyring account lookup (via resolver)                |
+| `WalletService` / `Wallet`    | `services/wallet`        | Signing key material + SEP-0053 `signMessage`        |
 
 No confirmation UI or network calls.
 
