@@ -21,6 +21,8 @@ import {
   ConfirmSendJsonRpcResponseStruct,
   SignAndSendTransactionJsonRpcRequestStruct,
   SignAndSendTransactionJsonRpcResponseStruct,
+  SignProofOfOwnershipJsonRpcRequestStruct,
+  SignProofOfOwnershipJsonRpcResponseStruct,
 } from './api';
 
 const accountId = '11111111-1111-4111-8111-111111111111';
@@ -916,5 +918,157 @@ describe('ConfirmSendJsonRpcResponseStruct', () => {
     expect(() => assert(response, ConfirmSendJsonRpcResponseStruct)).toThrow(
       StructError,
     );
+  });
+});
+
+describe('SignProofOfOwnershipJsonRpcRequestStruct', () => {
+  const nonce = 'a1b2c3d4e5f6789012345678';
+
+  it.each([
+    {
+      message: `metamask:proof-of-ownership:${nonce}:${stellarAddress}`,
+      nonce,
+      address: stellarAddress,
+    },
+    {
+      message: `metamask:proof-of-ownership:abc-DEF_123:${stellarAddress}`,
+      nonce: 'abc-DEF_123',
+      address: stellarAddress,
+    },
+    {
+      message: `metamask:proof-of-ownership:ns:abc:123:${stellarAddress}`,
+      nonce: 'ns:abc:123',
+      address: stellarAddress,
+    },
+  ])(
+    'accepts a valid signProofOfOwnership request: "$message"',
+    ({ message, nonce: expectedNonce, address }) => {
+      const result = create(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: ClientRequestMethod.SignProofOfOwnership,
+          params: { accountId, message },
+        },
+        SignProofOfOwnershipJsonRpcRequestStruct,
+      );
+
+      expect(result.params).toStrictEqual({
+        accountId,
+        message,
+        nonce: expectedNonce,
+        address,
+      });
+    },
+  );
+
+  it.each([
+    {
+      method: ClientRequestMethod.ConfirmSend,
+      params: {
+        accountId,
+        message: `metamask:proof-of-ownership:${nonce}:${stellarAddress}`,
+      },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId, message: `rewards,${stellarAddress},123` },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: {
+        accountId,
+        message: `metamask:proof:${nonce}:${stellarAddress}`,
+      },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: {
+        accountId,
+        message: `Metamask:proof-of-ownership:${nonce}:${stellarAddress}`,
+      },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId, message: `${nonce}:${stellarAddress}` },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId, message: '' },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId, message: `metamask:proof-of-ownership:${nonce}` },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: {
+        accountId,
+        message: `metamask:proof-of-ownership::${stellarAddress}`,
+      },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { accountId, message: `metamask:proof-of-ownership:${nonce}:` },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: {
+        accountId,
+        message: `metamask:proof-of-ownership:${nonce}:not-a-stellar-address`,
+      },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: {
+        accountId,
+        message: `metamask:proof-of-ownership:${nonce}:0x1234567890abcdef1234567890abcdef12345678`,
+      },
+    },
+  ])(
+    'rejects an invalid signProofOfOwnership request',
+    ({ method, params }) => {
+      expect(() =>
+        assert(
+          { jsonrpc: '2.0', id: 1, method, params },
+          SignProofOfOwnershipJsonRpcRequestStruct,
+        ),
+      ).toThrow(StructError);
+    },
+  );
+});
+
+describe('SignProofOfOwnershipJsonRpcResponseStruct', () => {
+  it('accepts a 0x-prefixed 64-byte hex signature', () => {
+    expect(() =>
+      assert(
+        {
+          signature: `0x${'ab'.repeat(64)}`,
+        },
+        SignProofOfOwnershipJsonRpcResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {
+      signature:
+        'fO5dbYhXUhBMhe6kId/cuVq/AfEnHRHEvsP8vXh03M1uLpi5e46yO2Q8rEBzu3feXQewcQE5GArp88u6ePK6BA==',
+    },
+    { signature: 'ab'.repeat(64) }, // missing 0x
+    { signature: `0x${'ab'.repeat(63)}` }, // 63 bytes
+    { signature: `0x${'ab'.repeat(65)}` }, // 65 bytes
+    { signature: `0x${'AB'.repeat(64)}` }, // uppercase
+    { signature: 'not!!!valid-hex' },
+    { signature: '' },
+    {},
+  ])('rejects an invalid signProofOfOwnership response', (response) => {
+    expect(() =>
+      assert(response, SignProofOfOwnershipJsonRpcResponseStruct),
+    ).toThrow(StructError);
   });
 });

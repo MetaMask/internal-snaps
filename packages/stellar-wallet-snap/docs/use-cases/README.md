@@ -12,6 +12,7 @@ High-level flows for the Stellar Wallet Snap. Each doc focuses on **handlers**, 
 | Quote swap / bridge fee             | `computeFee`             | [computeFee.md](./client-request/computeFee.md)                         |
 | Sign & submit swap / bridge         | `signAndSendTransaction` | [signAndSendTransaction.md](./client-request/signAndSendTransaction.md) |
 | Change trustline (opt-in / opt-out) | `changeTrustOpt`         | [changeTrustOpt.md](./client-request/changeTrustOpt.md)                 |
+| Silent proof-of-ownership signing   | `signProofOfOwnership`   | [signProofOfOwnership.md](./client-request/signProofOfOwnership.md)     |
 
 ## Cronjob (`onCronjob`)
 
