@@ -47,7 +47,7 @@ describe('errors', () => {
           }),
         },
       });
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
         {
           error: trackingError,
         },
@@ -71,7 +71,7 @@ describe('errors', () => {
           }),
         },
       });
-      expect(mockLogger.warn).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
   });
 

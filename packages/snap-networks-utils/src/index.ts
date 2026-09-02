@@ -43,14 +43,22 @@ export {
 export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions';
 export { validateOrigin } from './utils/originPermissions/validateOrigin';
 export {
+  createSnapErrorHandling,
+  createTrackError,
   createWithCatchAndThrowSnapError,
   isSnapRpcError,
   normalizeError,
 } from './utils/errors';
 export type {
+  CreateSnapErrorHandlingOptions,
+  CreateTrackErrorOptions,
   CreateWithCatchAndThrowSnapErrorOptions,
   LogErrorFn,
   NormalizeErrorFn,
+  PrepareErrorForTrackingFn,
+  ShouldTrackErrorFn,
   SnapRpcError,
+  SnapTrackErrorRequest,
+  TrackErrorCapableProvider,
   TrackErrorFn,
 } from './utils/errors';
