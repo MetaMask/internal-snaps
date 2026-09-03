@@ -14,7 +14,7 @@ module.exports = {
   coverageDirectory: '<rootDir>/scripts/coverage',
 
   // An array of regexp pattern strings used to skip coverage collection
-  coveragePathIgnorePatterns: ['/package-template/'],
+  coveragePathIgnorePatterns: ['/(snap|library)-template/'],
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: 'babel',
@@ -65,7 +65,7 @@ module.exports = {
   ],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
-  testPathIgnorePatterns: ['/package-template/'],
+  testPathIgnorePatterns: ['/(snap|library)-template/'],
 
   // Default timeout of a test in milliseconds.
   testTimeout: 5000,

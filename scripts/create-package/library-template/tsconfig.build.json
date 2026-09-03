@@ -5,5 +5,8 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
+  /**
+   * Unlike `tsconfig.json`, for builds, we only include the source code.
+   */
   "include": ["./src"]
 }

@@ -1,18 +1,13 @@
-import * as commentJson from 'comment-json';
 import execa from 'execa';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { format as prettierFormat } from 'prettier';
-import type { Options as PrettierOptions } from 'prettier';
 
-import { MonorepoFiles, Placeholders } from './constants';
+import type { PackageType } from './constants';
+import { MonorepoFiles, Placeholders, TemplateDirectories } from './constants';
 import type { FileMap } from './fs-utils';
 import { readAllFiles, writeFiles } from './fs-utils';
 
-const PACKAGE_TEMPLATE_DIR = path.join(__dirname, 'package-template');
 const REPO_ROOT = path.join(__dirname, '..', '..');
-const REPO_TS_CONFIG = path.join(REPO_ROOT, MonorepoFiles.TsConfig);
-const REPO_TS_CONFIG_BUILD = path.join(REPO_ROOT, MonorepoFiles.TsConfigBuild);
 const REPO_PACKAGE_JSON = path.join(REPO_ROOT, MonorepoFiles.PackageJson);
 const PACKAGES_PATH = path.join(REPO_ROOT, 'packages');
 
@@ -21,18 +16,13 @@ const allPlaceholdersRegex = new RegExp(
   'gu',
 );
 
-// Our lint config really hates this, but it works.
-// eslint-disable-next-line
-const prettierRc = require(
-  path.join(REPO_ROOT, '.prettierrc.js'),
-) as PrettierOptions;
-
 /**
  * The data necessary to create a new package.
  */
 export type PackageData = Readonly<{
   name: string;
   description: string;
+  type: PackageType;
   directoryName: string;
   nodeVersions: string;
   currentYear: string;
@@ -42,17 +32,7 @@ export type PackageData = Readonly<{
  * Data parsed from relevant monorepo files.
  */
 type MonorepoFileData = {
-  tsConfig: Tsconfig;
-  tsConfigBuild: Tsconfig;
   nodeVersions: string;
-};
-
-/**
- * A parsed tsconfig file.
- */
-type Tsconfig = {
-  references: { path: string }[];
-  [key: string]: unknown;
 };
 
 /**
@@ -69,15 +49,9 @@ type PackageJson = {
  * @returns A map of file paths to file contents.
  */
 export async function readMonorepoFiles(): Promise<MonorepoFileData> {
-  const [tsConfig, tsConfigBuild, packageJson] = await Promise.all([
-    fs.readFile(REPO_TS_CONFIG, 'utf-8'),
-    fs.readFile(REPO_TS_CONFIG_BUILD, 'utf-8'),
-    fs.readFile(REPO_PACKAGE_JSON, 'utf-8'),
-  ]);
+  const packageJson = await fs.readFile(REPO_PACKAGE_JSON, 'utf-8');
 
   return {
-    tsConfig: commentJson.parse(tsConfig) as unknown as Tsconfig,
-    tsConfigBuild: commentJson.parse(tsConfigBuild) as unknown as Tsconfig,
     nodeVersions: (JSON.parse(packageJson) as PackageJson).engines.node,
   };
 }
@@ -103,20 +77,12 @@ export async function finalizeAndWriteData(
     }
   }
 
-  console.log('Writing package and monorepo files...');
+  console.log('Writing package files...');
 
   // Read and write package files
-  await writeFiles(packagePath, await processTemplateFiles(packageData));
-
-  // Write monorepo files
-  updateTsConfigs(packageData, monorepoFileData);
-  await writeJsonFile(
-    REPO_TS_CONFIG,
-    commentJson.stringify(monorepoFileData.tsConfig, null, 2),
-  );
-  await writeJsonFile(
-    REPO_TS_CONFIG_BUILD,
-    commentJson.stringify(monorepoFileData.tsConfigBuild, null, 2),
+  await writeFiles(
+    packagePath,
+    await processTemplateFiles(packageData, monorepoFileData),
   );
 
   // Postprocess
@@ -130,60 +96,30 @@ export async function finalizeAndWriteData(
 }
 
 /**
- * Formats a JSON file with `prettier` and writes it to disk.
- *
- * @param filePath - The absolute path of the file to write.
- * @param fileContent - The file content to write.
- */
-async function writeJsonFile(
-  filePath: string,
-  fileContent: string,
-): Promise<void> {
-  await fs.writeFile(
-    filePath,
-    await prettierFormat(fileContent, { ...prettierRc, parser: 'json' }),
-  );
-}
-
-/**
- * Updates the tsconfig file data in place to include the new package.
- *
- * @param packageData - = The package data.
- * @param monorepoFileData - The monorepo file data.
- */
-function updateTsConfigs(
-  packageData: PackageData,
-  monorepoFileData: MonorepoFileData,
-): void {
-  const { tsConfig, tsConfigBuild } = monorepoFileData;
-
-  tsConfig.references.push({
-    path: `./${path.basename(PACKAGES_PATH)}/${packageData.directoryName}`,
-  });
-  tsConfig.references.sort((a, b) => a.path.localeCompare(b.path));
-
-  tsConfigBuild.references.push({
-    path: `./${path.basename(PACKAGES_PATH)}/${
-      packageData.directoryName
-    }/tsconfig.build.json`,
-  });
-  tsConfigBuild.references.sort((a, b) => a.path.localeCompare(b.path));
-}
-
-/**
- * Reads the template files and updates them with the specified package data.
+ * Reads the template files for the package type and updates them with the
+ * specified package data.
  *
  * @param packageData - The package data.
+ * @param monorepoFileData - The monorepo file data.
  * @returns A map of file paths to processed template file contents.
  */
 async function processTemplateFiles(
   packageData: PackageData,
+  monorepoFileData: MonorepoFileData,
 ): Promise<FileMap> {
   const result: FileMap = {};
-  const templateFiles = await readAllFiles(PACKAGE_TEMPLATE_DIR);
+  const templateDir = path.join(
+    __dirname,
+    TemplateDirectories[packageData.type],
+  );
+  const templateFiles = await readAllFiles(templateDir);
 
   for (const [relativePath, content] of Object.entries(templateFiles)) {
-    result[relativePath] = processTemplateContent(packageData, content);
+    result[relativePath] = processTemplateContent(
+      packageData,
+      monorepoFileData,
+      content,
+    );
   }
 
   return result;
@@ -194,14 +130,17 @@ async function processTemplateFiles(
  * from the specified package data.
  *
  * @param packageData - The package data.
+ * @param monorepoFileData - The monorepo file data.
  * @param content - The template file content.
  * @returns The processed template file content.
  */
 function processTemplateContent(
   packageData: PackageData,
+  monorepoFileData: MonorepoFileData,
   content: string,
 ): string {
-  const { name, description, nodeVersions, currentYear } = packageData;
+  const { name, description, currentYear } = packageData;
+  const { nodeVersions } = monorepoFileData;
 
   return content.replace(allPlaceholdersRegex, (match) => {
     switch (match) {
