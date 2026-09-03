@@ -34,7 +34,9 @@ import { Base58Struct, Base64Struct } from '../../validation/structs';
  * @see https://github.com/anza-xyz/wallet-standard/tree/master/packages/core/features/src
  */
 
-export const ScopeStringStruct = enums(Object.values(Network));
+export const ScopeStringStruct = enums(
+  Object.values(Network) as [Network, ...Network[]],
+);
 
 // Sanitizing structs that transform values during validation
 const SanitizedSolanaAddressStruct = coerce(

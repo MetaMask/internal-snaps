@@ -3,10 +3,7 @@
    * This configuration is intended for the `scripts/` directory, both for linting and for editor
    * TypeScript-related features.
    *
-   * It's currently not actually used for that purpose, but it will be in a future PR.
-   *
-   * This is also extended by the `tsconfig.json` file in `scripts/create-package/`, which _is_
-   * actively used to support TypeScript-related editor features in that directory.
+   * This is also extended by the `tsconfig.json` file in `scripts/create-package/`.
    */
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
@@ -18,6 +15,6 @@
     "noErrorTruncation": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["./scripts/**/*.ts"],
+  "include": ["./scripts/**/*.ts", "./scripts/**/*.mts"],
   "exclude": ["**/node_modules"]
 }

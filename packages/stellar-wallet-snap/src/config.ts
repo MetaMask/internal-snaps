@@ -84,7 +84,10 @@ const selectedNetworkStruct = coerce(
  * If the log level is empty or missing, it defaults to silent.
  */
 export const LogLevelStruct = coerce(
-  defaulted(enums(Object.values(LogLevel)), LogLevel.SILENT),
+  defaulted(
+    enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
+    LogLevel.SILENT,
+  ),
   string(),
   (value: string) => (value === '' ? undefined : value.toLowerCase()),
 );

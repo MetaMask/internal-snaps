@@ -13,7 +13,7 @@ import { Duration } from '@metamask/utils';
 
 import { Network, Networks } from '../../constants';
 
-const ENVIRONMENT_TO_ACTIVE_NETWORKS = {
+const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<Env['ENVIRONMENT'], Network[]> = {
   production: [Network.Mainnet],
   local: [Network.Mainnet],
   test: [Network.Mainnet],
@@ -27,7 +27,7 @@ const CommaSeparatedListOfUrlsStruct = coerce(
 
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
-  LOG_LEVEL: enums(Object.values(LogLevel)),
+  LOG_LEVEL: enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
   RPC_URL_LIST_MAINNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
   RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,

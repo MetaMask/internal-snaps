@@ -24,8 +24,8 @@ import type {
   ExportedAccount,
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
-import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,

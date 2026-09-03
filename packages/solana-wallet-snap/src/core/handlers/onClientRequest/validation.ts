@@ -399,7 +399,9 @@ export const ValidationResponseStruct = object({
   valid: boolean(),
   errors: array(
     object({
-      code: enums(Object.values(SendErrorCodes)),
+      code: enums(
+        Object.values(SendErrorCodes) as [SendErrorCodes, ...SendErrorCodes[]],
+      ),
     }),
   ),
 });
@@ -424,7 +426,7 @@ export const ComputeFeeRequestStruct = object({
 
 export const ComputeFeeResponseStruct = array(
   object({
-    type: enums(Object.values(FeeType)),
+    type: enums(Object.values(FeeType) as [FeeType, ...FeeType[]]),
     asset: AssetStruct,
   }),
 );

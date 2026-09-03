@@ -8,6 +8,7 @@ import {
   xpriv_to_descriptor,
   xpub_to_descriptor,
 } from '@metamask/bitcoindevkit';
+import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
 import { v4 } from 'uuid';
 
@@ -271,7 +272,7 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       const parentNode = parentNodes.get(parentKey) as SLIP10Node;
       const childSegment = derivationPath[derivationPath.length - 1] as string;
       const childNode = (
-        await parentNode.derive([`bip32:${childSegment}`])
+        await parentNode.derive([`bip32:${childSegment}` as BIP32Node])
       ).neuter();
 
       accounts.push(

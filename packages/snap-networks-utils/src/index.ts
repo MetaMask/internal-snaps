@@ -49,6 +49,7 @@ export {
   isSnapRpcError,
   normalizeError,
 } from './utils/errors';
+export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,

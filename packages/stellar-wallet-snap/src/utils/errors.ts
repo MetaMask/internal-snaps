@@ -1,9 +1,9 @@
-import { createWithCatchAndThrowSnapError } from '@metamask/snap-networks-utils';
+import { createSnapErrorHandling } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
 import { logger } from './logger';
-import { trackError } from './snap';
+import { getSnapProvider } from './snap';
 
 export { isSnapRpcError } from '@metamask/snap-networks-utils';
 export type { SnapRpcError } from '@metamask/snap-networks-utils';
@@ -252,7 +252,8 @@ export function isStellarSnapException(
   return error instanceof StellarSnapException;
 }
 
-export const withCatchAndThrowSnapError = createWithCatchAndThrowSnapError({
-  logError: logger.error.bind(logger),
-  trackError,
-});
+export const { trackError, withCatchAndThrowSnapError } =
+  createSnapErrorHandling({
+    getSnapProvider,
+    logError: logger.error.bind(logger),
+  });

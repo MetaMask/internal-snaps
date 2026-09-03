@@ -1,10 +1,12 @@
 {
-  "extends": "../../tsconfig.packages.build.json",
+  "extends": "../../tsconfig.packages.libs.build.json",
   "compilerOptions": {
     "baseUrl": "./",
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "references": [],
-  "include": ["../../types", "./src"]
+  /**
+   * Unlike `tsconfig.json`, for builds, we only include the source code.
+   */
+  "include": ["./src"]
 }

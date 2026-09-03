@@ -1,33 +1,19 @@
 {
   /**
-   * This configuration is used by the `lint` script in `package.json`, and by editors such as
-   * VSCode for TypeScript-related features.
+   * Repository-level configuration used by the `lint` script and editors.
    */
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": "./",
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@metamask/snaps-sdk",
+    "lib": ["ES2020"],
     "noEmit": true,
+    "noErrorTruncation": true,
+    "noUncheckedIndexedAccess": true,
     "skipLibCheck": true
   },
-  "references": [
-    {
-      "path": "./packages/bitcoin-wallet-snap"
-    },
-    {
-      "path": "./packages/sample-snap"
-    },
-    {
-      "path": "./packages/snap-networks-utils"
-    },
-    {
-      "path": "./packages/solana-wallet-snap"
-    },
-    {
-      "path": "./packages/stellar-wallet-snap"
-    },
-    {
-      "path": "./packages/tron-wallet-snap"
-    }
-  ],
   "files": [],
   "include": ["./docs", "./tests", "./scripts"]
 }
