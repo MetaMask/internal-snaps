@@ -22,7 +22,10 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import { asStrictKeyringAccount } from '../../entities/keyring-account';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
+import {
+  createTronBip44AddressDeriver,
+  createTronBip44KeypairDeriver,
+} from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
@@ -61,6 +64,70 @@ type AccountCreationRange = {
 type TronAddressDeriver = Awaited<
   ReturnType<typeof createTronBip44AddressDeriver>
 >;
+
+/**
+ * A function that derives a TRON keypair from a BIP44 account index.
+ */
+type TronKeypairDeriver = Awaited<
+  ReturnType<typeof createTronBip44KeypairDeriver>
+>;
+
+/**
+ * Key material derived for one TRON account.
+ */
+export type DerivedTronKeypair = {
+  privateKeyBytes: Uint8Array;
+  publicKeyBytes: Uint8Array;
+  privateKeyHex: string;
+  address: string;
+};
+
+/**
+ * Result for one account in a batch TRON keypair derivation.
+ */
+export type DerivedTronKeypairBatchResult =
+  | DerivedTronKeypair
+  | { error: string };
+
+const DEFAULT_TRON_DERIVATION_PATH_REGEX = /^m\/44'\/195'\/0'\/0\/([0-9]+)$/u;
+
+/**
+ * Converts an unknown thrown value into a JSON-serializable error message.
+ *
+ * @param error - The thrown value.
+ * @returns A string error message.
+ */
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Extracts the address index from the default TRON BIP-44 derivation path.
+ *
+ * Batch derivation starts at the coin-type node (`m/44'/195'`), so it only
+ * supports the snap's default `m/44'/195'/0'/0/index` path shape.
+ *
+ * @param account - The TRON account whose derivation path should be parsed.
+ * @returns The BIP-44 address index.
+ */
+function getDefaultTronAddressIndex(account: TronKeyringAccount): number {
+  const match = DEFAULT_TRON_DERIVATION_PATH_REGEX.exec(account.derivationPath);
+
+  if (!match?.[1]) {
+    throw new Error(
+      `Unsupported Tron derivation path: ${account.derivationPath}`,
+    );
+  }
+
+  const addressIndex = Number(match[1]);
+  if (!Number.isSafeInteger(addressIndex) || addressIndex !== account.index) {
+    throw new Error(
+      `Tron derivation path index (${addressIndex}) does not match account index (${account.index})`,
+    );
+  }
+
+  return addressIndex;
+}
 
 /**
  * Validates account creation ranges before any expensive state or entropy work.
@@ -149,12 +216,7 @@ export class AccountsService {
   }: {
     entropySource?: EntropySourceId | undefined;
     derivationPath: string;
-  }): Promise<{
-    privateKeyBytes: Uint8Array;
-    publicKeyBytes: Uint8Array;
-    privateKeyHex: string;
-    address: string;
-  }> {
+  }): Promise<DerivedTronKeypair> {
     try {
       this.#logger.log({ derivationPath }, 'Generating TRON wallet');
 
@@ -194,6 +256,59 @@ export class AccountsService {
       // Sanitize errors to prevent leaking sensitive cryptographic information
       throw sanitizeSensitiveError(error);
     }
+  }
+
+  /**
+   * Derives keypairs for multiple TRON accounts with one coin-type entropy
+   * fetch per entropy source.
+   *
+   * Results are returned in input order. Individual account derivation failures
+   * are returned as item-level errors so callers can preserve partial success.
+   *
+   * @param accounts - The accounts to derive key material for.
+   * @returns One derivation result per account, in input order.
+   */
+  async deriveTronKeypairs(
+    accounts: TronKeyringAccount[],
+  ): Promise<DerivedTronKeypairBatchResult[]> {
+    const results: DerivedTronKeypairBatchResult[] = new Array(accounts.length);
+    const accountsByEntropySource = new Map<
+      EntropySourceId,
+      { index: number; account: TronKeyringAccount }[]
+    >();
+
+    accounts.forEach((account, index) => {
+      const sourceAccounts =
+        accountsByEntropySource.get(account.entropySource) ?? [];
+      sourceAccounts.push({ index, account });
+      accountsByEntropySource.set(account.entropySource, sourceAccounts);
+    });
+
+    await Promise.all(
+      [...accountsByEntropySource.entries()].map(
+        async ([entropySource, sourceAccounts]) => {
+          try {
+            const keypairDeriver =
+              await this.#createTronKeypairDeriver(entropySource);
+
+            for (const { index, account } of sourceAccounts) {
+              try {
+                const addressIndex = getDefaultTronAddressIndex(account);
+                results[index] = await keypairDeriver(addressIndex);
+              } catch (error) {
+                results[index] = { error: getErrorMessage(error) };
+              }
+            }
+          } catch (error) {
+            for (const { index } of sourceAccounts) {
+              results[index] = { error: getErrorMessage(error) };
+            }
+          }
+        },
+      ),
+    );
+
+    return results;
   }
 
   /**
@@ -395,6 +510,15 @@ export class AccountsService {
     return account;
   }
 
+  /**
+   * Finds multiple TRON keyring accounts.
+   *
+   * Missing accounts are logged but not thrown so callers can decide whether
+   * partial results are acceptable.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts.
+   */
   async findByIds(ids: string[]): Promise<TronKeyringAccount[]> {
     const accounts = await this.#accountsRepository.findByIds(ids);
 
@@ -491,6 +615,24 @@ export class AccountsService {
     })) as JsonBIP44Node;
 
     return createTronBip44AddressDeriver(bip44Node);
+  }
+
+  /**
+   * Creates a TRON keypair deriver from the coin-type node.
+   *
+   * @param entropySource - Entropy source used to fetch the coin-type node.
+   * @returns A deriver for `m/44'/195'/0'/0/index` keypairs.
+   */
+  async #createTronKeypairDeriver(
+    entropySource: EntropySourceId,
+  ): Promise<TronKeypairDeriver> {
+    const bip44Node = (await this.#snapClient.getBip32Entropy({
+      entropySource,
+      path: ['m', "44'", "195'"],
+      curve: CURVE,
+    })) as JsonBIP44Node;
+
+    return createTronBip44KeypairDeriver(bip44Node);
   }
 
   static getDefaultDerivationPath(index: number): `m/${string}` {
