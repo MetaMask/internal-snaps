@@ -37,12 +37,8 @@ import {
   isReceiveOperation,
   isPathPaymentOperation,
   isInvokeHostFunctionOperation,
-  parseOperationAssetReferenceSafe,
 } from './utils';
-import type {
-  ParsedContractReceiveTransfer,
-  SuccessfulTransactionResult,
-} from './xdrParser';
+import type { SuccessfulTransactionResult } from './xdrParser';
 import {
   isSep41TransferInvoke,
   parseContractEventsFromResultMeta,
