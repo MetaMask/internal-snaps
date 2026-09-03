@@ -407,7 +407,7 @@ describe('transaction-xdr-decoder', () => {
         resultMetaXdr:
           contractSwapReceiveNativeTransactionResponse.result_meta_xdr,
         parseEvent: (event) =>
-          parseTransferContractEventSafe(event, accountAddress),
+          parseTransferContractEventSafe(event, accountAddress, scope),
       });
 
       expect(results).toStrictEqual([
@@ -415,7 +415,7 @@ describe('transaction-xdr-decoder', () => {
           fromAddress:
             'CCLWL5NYSV2WJQ3VBU44AMDHEVKEPA45N2QP2LL62O3JVKPGWWAQUVAG',
           toAddress: accountAddress,
-          token: 'native',
+          assetId: getSlip44AssetId(scope),
           amount: new BigNumber('591762381'),
         },
       ]);
@@ -430,6 +430,7 @@ describe('transaction-xdr-decoder', () => {
             parseTransferContractEventSafe(
               event,
               'GBX2CFNBNJOLHK3RQXG5RKUMM4WCZ3SRUFZBL6CT76J6CACW7AEZ3SHN',
+              scope,
             ),
         }),
       ).toStrictEqual([]);
@@ -440,7 +441,7 @@ describe('transaction-xdr-decoder', () => {
         parseContractEventsFromResultMeta({
           resultMetaXdr: 'not-valid-xdr',
           parseEvent: (event) =>
-            parseTransferContractEventSafe(event, accountAddress),
+            parseTransferContractEventSafe(event, accountAddress, scope),
         }),
       ).toStrictEqual([]);
     });
