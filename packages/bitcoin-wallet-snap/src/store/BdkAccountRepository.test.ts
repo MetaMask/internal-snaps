@@ -179,6 +179,46 @@ describe('BdkAccountRepository', () => {
     });
   });
 
+  describe('getByIds', () => {
+    it('returns empty array if no account IDs are provided', async () => {
+      const result = await repo.getByIds([]);
+
+      expect(mockSnapClient.getState).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
+    });
+
+    it('returns requested accounts in requested order', async () => {
+      const id1 = 'some-id-1';
+      const id2 = 'some-id-2';
+      const state = {
+        [id1]: { ...mockAccountState, id: id1 },
+        [id2]: { ...mockAccountState, id: id2 },
+      };
+      const mockAccount1 = { ...mockAccount, id: id1 };
+      const mockAccount2 = { ...mockAccount, id: id2 };
+
+      mockSnapClient.getState.mockResolvedValue(state);
+      (BdkAccountAdapter.load as jest.Mock)
+        .mockReturnValueOnce(mockAccount2)
+        .mockReturnValueOnce(mockAccount1);
+
+      const result = await repo.getByIds([id2, 'missing-id', id1]);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(BdkAccountAdapter.load).toHaveBeenCalledTimes(2);
+      expect(result).toStrictEqual([mockAccount2, mockAccount1]);
+    });
+
+    it('returns empty array if no accounts are found', async () => {
+      mockSnapClient.getState.mockResolvedValue(null);
+
+      const result = await repo.getByIds(['some-id']);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(result).toStrictEqual([]);
+    });
+  });
+
   describe('getByDerivationPath', () => {
     it('returns null if account not found', async () => {
       mockSnapClient.getState.mockResolvedValue(null);

@@ -1252,5 +1252,131 @@ describe('RpcHandler', () => {
         handler.route(origin, buildRequest(message)),
       ).rejects.toThrow('signer unavailable');
     });
+
+    describe('signProofOfOwnershipBatch', () => {
+      const secondAccountId = '8eb1f949-c0cc-4f7d-b0ca-880b17f442b3';
+      const secondAccountAddress = 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8';
+      const secondBitcoinAccount = mock<BitcoinAccount>({
+        id: secondAccountId,
+        publicAddress: {
+          toString: () => secondAccountAddress,
+        } as never,
+        network: 'bitcoin',
+      });
+
+      const buildBatchRequest = (
+        items: { accountId: string; message: string }[],
+      ): JsonRpcRequest => ({
+        jsonrpc: '2.0',
+        id: '1',
+        method: RpcMethod.SignProofOfOwnershipBatch,
+        params: { items },
+      });
+
+      it('signs a batch and returns signatures in input order', async () => {
+        const message1 = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
+        const message2 = `metamask:proof-of-ownership:${nonce}:${secondAccountAddress}`;
+        mockAccountsUseCases.getByIds.mockResolvedValue([
+          mockBitcoinAccount,
+          secondBitcoinAccount,
+        ]);
+        mockAccountsUseCases.signProofOfOwnershipMessages.mockResolvedValue([
+          { signature: 'mock-bip322-signature-1' },
+          { signature: 'mock-bip322-signature-2' },
+        ]);
+
+        const result = await handler.route(
+          origin,
+          buildBatchRequest([
+            { accountId: validAccountId, message: message1 },
+            { accountId: secondAccountId, message: message2 },
+          ]),
+        );
+
+        expect(mockAccountsUseCases.getByIds).toHaveBeenCalledWith([
+          validAccountId,
+          secondAccountId,
+        ]);
+        expect(
+          mockAccountsUseCases.signProofOfOwnershipMessages,
+        ).toHaveBeenCalledWith([
+          { account: mockBitcoinAccount, message: message1 },
+          { account: secondBitcoinAccount, message: message2 },
+        ]);
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: validAccountId,
+              signature: 'mock-bip322-signature-1',
+            },
+            {
+              accountId: secondAccountId,
+              signature: 'mock-bip322-signature-2',
+            },
+          ],
+        });
+      });
+
+      it('returns item-level errors for missing accounts and address mismatches', async () => {
+        const missingAccountId = '6b3df9d2-07fc-4e08-baf9-769254ab3fc8';
+        const validMessage = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
+        const mismatchedMessage = `metamask:proof-of-ownership:${nonce}:${secondAccountAddress}`;
+        mockAccountsUseCases.getByIds.mockResolvedValue([mockBitcoinAccount]);
+        mockAccountsUseCases.signProofOfOwnershipMessages.mockResolvedValue([
+          { signature: 'mock-bip322-signature' },
+        ]);
+
+        const result = await handler.route(
+          origin,
+          buildBatchRequest([
+            { accountId: validAccountId, message: validMessage },
+            { accountId: missingAccountId, message: validMessage },
+            { accountId: validAccountId, message: mismatchedMessage },
+          ]),
+        );
+
+        expect(
+          mockAccountsUseCases.signProofOfOwnershipMessages,
+        ).toHaveBeenCalledTimes(1);
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: validAccountId,
+              signature: 'mock-bip322-signature',
+            },
+            {
+              accountId: missingAccountId,
+              error: `Account not found: ${missingAccountId}`,
+            },
+            {
+              accountId: validAccountId,
+              error: `Address in proof-of-ownership message (${secondAccountAddress}) does not match signing account address (${accountAddress})`,
+            },
+          ],
+        });
+      });
+
+      it('returns item-level errors from batch signing', async () => {
+        const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
+        mockAccountsUseCases.getByIds.mockResolvedValue([mockBitcoinAccount]);
+        mockAccountsUseCases.signProofOfOwnershipMessages.mockResolvedValue([
+          { error: 'Failed to get private entropy' },
+        ]);
+
+        const result = await handler.route(
+          origin,
+          buildBatchRequest([{ accountId: validAccountId, message }]),
+        );
+
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: validAccountId,
+              error: 'Failed to get private entropy',
+            },
+          ],
+        });
+      });
+    });
   });
 });

@@ -33,6 +33,11 @@ export const RpcMethod = {
   ConfirmSend: 'confirmSend',
   SignRewardsMessage: 'signRewardsMessage',
   SignProofOfOwnership: 'signProofOfOwnership',
+  /**
+   * Sign multiple proof-of-ownership messages for MetaMask identity
+   * authentication.
+   */
+  SignProofOfOwnershipBatch: 'signProofOfOwnershipBatch',
 } as const;
 
 export type RpcMethod = (typeof RpcMethod)[keyof typeof RpcMethod];
