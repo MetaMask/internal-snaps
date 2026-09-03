@@ -36,7 +36,10 @@ const config: SnapConfig = {
   environment,
   polyfills: {
     buffer: true,
-    crypto: true,
+  },
+  preinstalled: {
+    removable: false,
+    hideSnapBranding: true,
   },
 };
 

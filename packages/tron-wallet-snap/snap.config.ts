@@ -41,7 +41,24 @@ const config: SnapConfig = {
     TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE ?? '',
     TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA ?? '',
   },
-  polyfills: true,
+  polyfills: {
+    assert: true,
+    buffer: true,
+    crypto: true,
+    events: true,
+    http: true,
+    https: true,
+    punycode: true,
+    stream: true,
+    string_decoder: true,
+    url: true,
+    util: true,
+    zlib: true,
+  },
+  preinstalled: {
+    removable: false,
+    hideSnapBranding: true,
+  },
 };
 
 export default config;

@@ -55,7 +55,14 @@ const config: SnapConfig = {
     STELLAR_MAX_PENDING_TRANSACTION_AGE:
       process.env.STELLAR_MAX_PENDING_TRANSACTION_AGE ?? '',
   },
-  polyfills: true,
+  polyfills: {
+    buffer: true,
+    process: true,
+  },
+  preinstalled: {
+    removable: false,
+    hideSnapBranding: true,
+  },
 };
 
 export default config;

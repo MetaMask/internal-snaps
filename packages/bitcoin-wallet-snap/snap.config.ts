@@ -27,8 +27,19 @@ const config: SnapConfig = {
     SIGNET_EXPLORER: process.env.SIGNET_EXPLORER,
     REGTEST_EXPLORER: process.env.REGTEST_EXPLORER,
   },
-  polyfills: true,
+  polyfills: {
+    buffer: true,
+    crypto: true,
+    events: true,
+    stream: true,
+    string_decoder: true,
+    util: true,
+  },
   experimental: { wasm: true },
+  preinstalled: {
+    removable: false,
+    hideSnapBranding: true,
+  },
 };
 
 export default config;

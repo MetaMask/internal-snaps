@@ -31,11 +31,6 @@
       "count": 3
     }
   },
-  "packages/bitcoin-wallet-snap/scripts/build-preinstalled-snap.js": {
-    "n/no-sync": {
-      "count": 2
-    }
-  },
   "packages/bitcoin-wallet-snap/scripts/populate-en-locale.js": {
     "n/no-sync": {
       "count": 1
@@ -1209,11 +1204,6 @@
       "count": 1
     }
   },
-  "packages/stellar-wallet-snap/scripts/build-preinstalled-snap.js": {
-    "n/no-sync": {
-      "count": 2
-    }
-  },
   "packages/stellar-wallet-snap/scripts/populate-en-locale.js": {
     "n/no-sync": {
       "count": 1
@@ -1572,11 +1562,6 @@
   "packages/stellar-wallet-snap/src/utils/snap.ts": {
     "no-restricted-syntax": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/scripts/build-preinstalled-snap.js": {
-    "n/no-sync": {
-      "count": 2
     }
   },
   "packages/tron-wallet-snap/scripts/populate-en-locale.js": {
