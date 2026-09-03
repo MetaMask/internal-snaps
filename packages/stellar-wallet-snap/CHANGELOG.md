@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Show contract asset receives in transaction history instead of marking them as unknown ([#255](https://github.com/MetaMask/internal-snaps/pull/255))
+- Fill contract-based receive transactions in history instead of marking them as unknown ([#255](https://github.com/MetaMask/internal-snaps/pull/255))
 
 ## [0.1.0]
 
