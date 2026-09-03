@@ -43,7 +43,6 @@ import { NftService } from './core/services/nft/NftService';
 import type { IStateManager } from './core/services/state/IStateManager';
 import type { UnencryptedStateValue } from './core/services/state/State';
 import { DEFAULT_UNENCRYPTED_STATE, State } from './core/services/state/State';
-import { TokenPricesService } from './core/services/token-prices/TokenPrices';
 import { TransactionScanService } from './core/services/transaction-scan/TransactionScan';
 import { WalletService } from './core/services/wallet/WalletService';
 import logger, { noOpLogger } from './core/utils/logger';
@@ -60,7 +59,6 @@ export type SnapExecutionContext = {
   priceApiClient: PriceApiClient;
   state: IStateManager<UnencryptedStateValue>;
   assetsService: AssetsService;
-  tokenPricesService: TokenPricesService;
   signer: Signer;
   transactionsService: TransactionsService;
   sendSolBuilder: SendSolBuilder;
@@ -138,11 +136,6 @@ const priceApiClient = new PriceApiClient(configProvider, inMemoryCache);
 const tokenApiClient = new TokenApiClient(configProvider);
 const nftApiClient = new NftApiClient(configProvider, inMemoryCache);
 
-const tokenPricesService = new TokenPricesService({
-  configProvider,
-  priceApiClient,
-  logger,
-});
 const nameResolutionService = new NameResolutionService(connection, logger);
 
 const assetsRepository = new AssetsRepository(state);
@@ -157,7 +150,6 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   assetsRepository,
   accountsService,
   tokenApiClient,
-  tokenPricesService,
   cache: inMemoryCache,
   nftApiClient,
 });
@@ -277,7 +269,6 @@ const snapContext: SnapExecutionContext = {
   cache: stateCache,
   /* Services */
   assetsService,
-  tokenPricesService,
   signer,
   transactionsService,
   sendSolBuilder,
@@ -319,7 +310,6 @@ export {
   subscriptionService,
   tokenApiClient,
   tokenHelper,
-  tokenPricesService,
   transactionScanService,
   transactionsService,
   walletService,

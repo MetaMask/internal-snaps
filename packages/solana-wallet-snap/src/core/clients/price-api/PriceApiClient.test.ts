@@ -9,7 +9,6 @@ import { KnownCaip19Id } from '../../constants/solana';
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
 import { MOCK_EXCHANGE_RATES } from '../../test/mocks/price-api/exchange-rates';
-import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
 import { MOCK_SPOT_PRICES } from './mocks/spot-prices';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
@@ -357,61 +356,6 @@ describe('PriceApiClient', () => {
           'usd\x00\x1F',
         ),
       ).rejects.toThrow(/Expected/u);
-    });
-  });
-
-  describe('getHistoricalPrices', () => {
-    describe('when the data is not cached', () => {
-      it('fetches historical prices successfully', async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockResolvedValueOnce(MOCK_HISTORICAL_PRICES),
-        });
-
-        const cacheSetSpy = jest.spyOn(mockCache, 'set');
-
-        const result = await client.getHistoricalPrices({
-          assetType: KnownCaip19Id.SolMainnet,
-          timePeriod: '5d',
-          from: 123,
-          to: 456,
-          vsCurrency: 'usd',
-        });
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/historical-prices/solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501?timePeriod=5d&from=123&to=456&vsCurrency=usd',
-        );
-        expect(cacheSetSpy).toHaveBeenCalledWith(
-          'PriceApiClient:getHistoricalPrices:{"assetType":"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501","timePeriod":"5d","from":123,"to":456,"vsCurrency":"usd"}',
-          MOCK_HISTORICAL_PRICES,
-          0,
-        );
-        expect(result).toStrictEqual(MOCK_HISTORICAL_PRICES);
-      });
-    });
-
-    describe('when the data is cached', () => {
-      it('returns the cached data', async () => {
-        jest
-          .spyOn(mockCache, 'get')
-          .mockResolvedValueOnce(MOCK_HISTORICAL_PRICES);
-
-        const cacheGetSpy = jest.spyOn(mockCache, 'get');
-        const cacheSetSpy = jest.spyOn(mockCache, 'set');
-
-        const result = await client.getHistoricalPrices({
-          assetType: KnownCaip19Id.SolMainnet,
-          timePeriod: '5d',
-          from: 123,
-          to: 456,
-          vsCurrency: 'usd',
-        });
-
-        expect(cacheGetSpy).toHaveBeenCalled();
-        expect(mockFetch).not.toHaveBeenCalled();
-        expect(result).toStrictEqual(MOCK_HISTORICAL_PRICES);
-        expect(cacheSetSpy).not.toHaveBeenCalled();
-      });
     });
   });
 });
