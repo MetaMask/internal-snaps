@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import type {
   AssetConversion,
   FungibleAssetMarketData,
@@ -10,8 +10,7 @@ import { BigNumber } from 'bignumber.js';
 import { pick } from 'lodash';
 
 import { AppConfig } from '../../config';
-import { getFiatTicker, isFiat, trackErrorIfNeeded } from '../../utils';
-import type { Serializable } from '../../utils';
+import { getFiatTicker, isFiat, trackError } from '../../utils';
 import type { ICache } from '../cache';
 import { useCache } from '../cache';
 import { GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT } from './api';
@@ -122,7 +121,7 @@ export class PriceService {
         : await this.#cache.mget(uniqueAssetTypes.map(toCacheKey));
     } catch (error) {
       this.#logger.warn('Error fetching cached spot prices', error);
-      await trackErrorIfNeeded(error);
+      await trackError(error);
     }
 
     const cachedSpotPricesByAssetId: Partial<SpotPricesResponse> = {};
@@ -168,7 +167,7 @@ export class PriceService {
       );
     } catch (error) {
       this.#logger.warn('Error caching spot prices', error);
-      await trackErrorIfNeeded(error);
+      await trackError(error);
     }
 
     return {
@@ -281,7 +280,7 @@ export class PriceService {
           response,
         };
       } catch (error) {
-        await trackErrorIfNeeded(error);
+        await trackError(error);
         // Gracefully handle individual errors to avoid breaking the entire operation
         this.#logger.warn(
           `Error fetching historical prices for ${from} to ${to} with time period ${timePeriod}. Returning null object.`,

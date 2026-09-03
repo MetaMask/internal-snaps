@@ -18,7 +18,7 @@ import {
   isSameStr,
   isSep41Id,
   pushToRecordArray,
-  trackErrorIfNeeded,
+  trackError,
 } from '../../utils';
 import type {
   AccountService,
@@ -256,7 +256,7 @@ export class TransactionSynchronizeService {
     const fetchResults = await batchesAllSettled(
       context.keyringAccounts,
       10,
-      async (keyringAccount) => {
+      async (keyringAccount: StellarKeyringAccount) => {
         const lastScanToken =
           context.lastScanTokenByAccountId[keyringAccount.id] ?? null;
 
@@ -278,7 +278,7 @@ export class TransactionSynchronizeService {
           fetchResult.reason,
         );
 
-        await trackErrorIfNeeded(fetchResult.reason);
+        await trackError(fetchResult.reason);
         continue;
       }
 
@@ -339,7 +339,7 @@ export class TransactionSynchronizeService {
     const fetchResults = await batchesAllSettled(
       transactionIdsToFetch,
       10,
-      async (transactionId) =>
+      async (transactionId: string) =>
         this.#fetchOnChainTransaction(transactionId, context.scope),
     );
 
@@ -357,7 +357,7 @@ export class TransactionSynchronizeService {
           error: fetchResult.reason,
         });
 
-        await trackErrorIfNeeded(fetchResult.reason);
+        await trackError(fetchResult.reason);
         continue;
       }
 

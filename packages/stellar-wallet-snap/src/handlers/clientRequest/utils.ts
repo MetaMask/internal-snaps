@@ -1,3 +1,4 @@
+import { StellarAddressStruct } from '../../api/address';
 import type { Transaction } from '../../services/transaction';
 import {
   InsufficientBalanceException,
@@ -97,4 +98,47 @@ export function getTxnErrorMessageKey(
     return 'confirmation.txnError.expired';
   }
   return 'confirmation.txnError.generic';
+}
+
+/**
+ * Parses a proof-of-ownership message of format
+ * `'metamask:proof-of-ownership:{nonce}:{address}'`.
+ * Splits on the last `:` so opaque nonces may contain colons.
+ *
+ * @param message - The plaintext proof-of-ownership message.
+ * @returns The parsed nonce and Stellar address.
+ * @throws Error if the message format is invalid.
+ */
+export function parseProofOfOwnershipMessage(message: string): {
+  nonce: string;
+  address: string;
+} {
+  const messagePrefix = 'metamask:proof-of-ownership:';
+
+  if (!message.startsWith(messagePrefix)) {
+    throw new Error(`Message must start with "${messagePrefix}"`);
+  }
+
+  const remainder = message.slice(messagePrefix.length);
+  const separatorIdx = remainder.lastIndexOf(':');
+  if (separatorIdx === -1) {
+    throw new Error(
+      'Message must follow the format "metamask:proof-of-ownership:{nonce}:{address}"',
+    );
+  }
+
+  const nonce = remainder.slice(0, separatorIdx);
+  const address = remainder.slice(separatorIdx + 1);
+
+  if (nonce === '') {
+    throw new Error(
+      'Proof-of-ownership message must contain a non-empty nonce',
+    );
+  }
+
+  if (!StellarAddressStruct.is(address)) {
+    throw new Error('Invalid Stellar address in proof-of-ownership message');
+  }
+
+  return { nonce, address };
 }

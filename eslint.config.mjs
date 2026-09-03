@@ -161,6 +161,11 @@ const config = createConfig([
           typescript,
         ]),
         ...NO_CONTROLLER_STATE_CHANGE_SELECTOR_OBJECTS,
+        {
+          selector: 'TSEnumDeclaration',
+          message:
+            "Don't use enums. There are a number of reasons why they are problematic, but the most important is that TypeScript treats them nominally, not structurally, and this can cause unexpected breaking changes. Instead, use an object + type, an array + type, or just a type. Learn more here: https://github.com/MetaMask/eslint-config/issues/417",
+        },
       ],
     },
   },

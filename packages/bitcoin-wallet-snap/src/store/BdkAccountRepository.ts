@@ -8,10 +8,13 @@ import {
   xpriv_to_descriptor,
   xpub_to_descriptor,
 } from '@metamask/bitcoindevkit';
+import type { BIP32Node } from '@metamask/key-tree';
+import { SLIP10Node } from '@metamask/key-tree';
 import { v4 } from 'uuid';
 
 import { StorageError } from '../entities';
 import type {
+  AccountStateSnapshot,
   BitcoinAccountRepository,
   BitcoinAccount,
   SnapClient,
@@ -117,11 +120,15 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     return this.get(id as string);
   }
 
-  async getByDerivationPaths(
-    derivationPaths: string[][],
-  ): Promise<(BitcoinAccount | null)[]> {
+  async getByDerivationPaths(derivationPaths: string[][]): Promise<{
+    accounts: (BitcoinAccount | null)[];
+    snapshot: AccountStateSnapshot;
+  }> {
     if (derivationPaths.length === 0) {
-      return [];
+      return {
+        accounts: [],
+        snapshot: { accounts: null, derivationPaths: null },
+      };
     }
 
     const [derivationPathIndex, accounts] = await Promise.all([
@@ -166,14 +173,20 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       return this.#loadPersistedAccount(id, account);
     });
 
-    if (Object.keys(repairs).length > 0) {
-      await this.#snapClient.setState('derivationPaths', {
-        ...existingDerivationPathIndex,
-        ...repairs,
-      });
+    const hasRepairs = Object.keys(repairs).length > 0;
+    const repairedIndex = hasRepairs
+      ? { ...existingDerivationPathIndex, ...repairs }
+      : derivationPathIndex;
+
+    if (hasRepairs) {
+      await this.#snapClient.setState('derivationPaths', repairedIndex);
     }
 
-    return results;
+    return {
+      accounts: results,
+      // Include repairs so a later merge from this snapshot preserves them.
+      snapshot: { accounts, derivationPaths: repairedIndex },
+    };
   }
 
   async getWithSigner(id: string): Promise<BitcoinAccount | null> {
@@ -218,6 +231,78 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     addressType: AddressType,
   ): Promise<BitcoinAccount> {
     const slip10 = await this.#snapClient.getPublicEntropy(derivationPath);
+
+    return BdkAccountRepository.#buildAccount(
+      slip10,
+      derivationPath,
+      network,
+      addressType,
+    );
+  }
+
+  async createMany(
+    requests: {
+      derivationPath: string[];
+      network: Network;
+      addressType: AddressType;
+    }[],
+  ): Promise<BitcoinAccount[]> {
+    if (requests.length === 0) {
+      return [];
+    }
+
+    // One entropy RPC per distinct parent path (entropy source + purpose +
+    // coin type); hardened account children are derived locally. The private
+    // parent node only lives in this scope — the same trust boundary as
+    // `getPublicEntropy`, which also fetches private entropy before
+    // neutering — and is never persisted or logged.
+    const parentNodes = new Map<string, SLIP10Node>();
+    for (const { derivationPath } of requests) {
+      const parentPath = derivationPath.slice(0, -1);
+      const parentKey = getDerivationPathKey(parentPath);
+      if (!parentNodes.has(parentKey)) {
+        const parentJson = await this.#snapClient.getPrivateEntropy(parentPath);
+        parentNodes.set(parentKey, await SLIP10Node.fromJSON(parentJson));
+      }
+    }
+
+    const accounts: BitcoinAccount[] = [];
+    for (const { derivationPath, network, addressType } of requests) {
+      const parentKey = getDerivationPathKey(derivationPath.slice(0, -1));
+      const parentNode = parentNodes.get(parentKey) as SLIP10Node;
+      const childSegment = derivationPath[derivationPath.length - 1] as string;
+      const childNode = (
+        await parentNode.derive([`bip32:${childSegment}` as BIP32Node])
+      ).neuter();
+
+      accounts.push(
+        BdkAccountRepository.#buildAccount(
+          childNode,
+          derivationPath,
+          network,
+          addressType,
+        ),
+      );
+    }
+
+    return accounts;
+  }
+
+  /**
+   * Builds an in-memory BDK account from a neutered SLIP-10 node.
+   *
+   * @param slip10 - Neutered node at the account-level derivation path.
+   * @param derivationPath - The account's derivation path.
+   * @param network - The account's network.
+   * @param addressType - The account's address type.
+   * @returns The new, not yet persisted, account.
+   */
+  static #buildAccount(
+    slip10: SLIP10Node,
+    derivationPath: string[],
+    network: Network,
+    addressType: AddressType,
+  ): BitcoinAccount {
     const id = v4();
     const fingerprint = toBdkFingerprint(
       slip10.masterFingerprint ?? slip10.parentFingerprint,
@@ -257,7 +342,10 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     return account;
   }
 
-  async insertMany(accounts: BitcoinAccount[]): Promise<BitcoinAccount[]> {
+  async insertMany(
+    accounts: BitcoinAccount[],
+    snapshot?: AccountStateSnapshot,
+  ): Promise<BitcoinAccount[]> {
     if (accounts.length === 0) {
       return [];
     }
@@ -290,24 +378,32 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       derivationPathEntries.push([getDerivationPathKey(derivationPath), id]);
     }
 
+    // Re-read accounts before the full-map write so account updates from sync
+    // are not overwritten by a stale lookup snapshot. Derivation paths are only
+    // mutated by account lifecycle operations, so the mutation-local snapshot
+    // can still safely avoid one redundant state read.
     const [existingAccounts, existingDerivationPaths] = await Promise.all([
       this.#snapClient.getState('accounts') as Promise<
         SnapState['accounts'] | null
       >,
-      this.#snapClient.getState('derivationPaths') as Promise<
-        SnapState['derivationPaths'] | null
-      >,
+      snapshot
+        ? Promise.resolve(snapshot.derivationPaths)
+        : (this.#snapClient.getState('derivationPaths') as Promise<
+            SnapState['derivationPaths'] | null
+          >),
     ]);
 
-    await this.#snapClient.setState('accounts', {
-      ...(existingAccounts ?? {}),
-      ...Object.fromEntries(accountStateEntries),
-    });
-
-    await this.#snapClient.setState('derivationPaths', {
-      ...(existingDerivationPaths ?? {}),
-      ...Object.fromEntries(derivationPathEntries),
-    });
+    // The two maps are independent, so write them in parallel.
+    await Promise.all([
+      this.#snapClient.setState('accounts', {
+        ...(existingAccounts ?? {}),
+        ...Object.fromEntries(accountStateEntries),
+      }),
+      this.#snapClient.setState('derivationPaths', {
+        ...(existingDerivationPaths ?? {}),
+        ...Object.fromEntries(derivationPathEntries),
+      }),
+    ]);
 
     return accounts;
   }

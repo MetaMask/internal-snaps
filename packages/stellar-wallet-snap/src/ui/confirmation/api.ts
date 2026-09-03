@@ -1,3 +1,4 @@
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -21,7 +22,6 @@ import {
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,
   KnownCaip2ChainIdStruct,
-  UuidStruct,
   XdrStruct,
 } from '../../api';
 import {
@@ -45,13 +45,14 @@ export type FeeData = {
   amount: string;
 };
 
-export enum FetchStatus {
-  Initial = 'initial',
-  Fetching = 'fetching',
-  Fetched = 'fetched',
-  // eslint-disable-next-line @typescript-eslint/no-shadow
-  Error = 'error',
-}
+export const FetchStatus = {
+  Initial: 'initial',
+  Fetching: 'fetching',
+  Fetched: 'fetched',
+  Error: 'error',
+} as const;
+
+export type FetchStatus = (typeof FetchStatus)[keyof typeof FetchStatus];
 
 export const ContextWithPricesStruct = type({
   tokenPrices: record(
@@ -110,14 +111,17 @@ export type ContextWithTransactionValidation = Infer<
   typeof ContextWithTransactionValidationStruct
 >;
 
-export enum ConfirmationInterfaceKey {
-  ChangeTrustlineOptIn = 'ChangeTrustlineOptIn',
-  ChangeTrustlineOptOut = 'ChangeTrustlineOptOut',
-  SignMessage = 'SignMessage',
-  SignTransaction = 'SignTransaction',
-  SignAuthEntry = 'SignAuthEntry',
-  ConfirmSendTransaction = 'ConfirmSendTransaction',
-}
+export const ConfirmationInterfaceKey = {
+  ChangeTrustlineOptIn: 'ChangeTrustlineOptIn',
+  ChangeTrustlineOptOut: 'ChangeTrustlineOptOut',
+  SignMessage: 'SignMessage',
+  SignTransaction: 'SignTransaction',
+  SignAuthEntry: 'SignAuthEntry',
+  ConfirmSendTransaction: 'ConfirmSendTransaction',
+} as const;
+
+export type ConfirmationInterfaceKey =
+  (typeof ConfirmationInterfaceKey)[keyof typeof ConfirmationInterfaceKey];
 
 export const ConfirmationInterfaceKeyStruct = enums(
   Object.values(ConfirmationInterfaceKey),

@@ -11,7 +11,7 @@ import {
 import type { NetworkService } from '../../services/network';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { isCompletedTransactionStatus } from '../../services/transaction/utils';
-import { trackErrorIfNeeded } from '../../utils';
+import { trackError } from '../../utils';
 import {
   Duration,
   scheduleBackgroundEvent,
@@ -129,7 +129,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
         attempt,
       });
 
-      await trackErrorIfNeeded(error);
+      await trackError(error);
     }
   }
 

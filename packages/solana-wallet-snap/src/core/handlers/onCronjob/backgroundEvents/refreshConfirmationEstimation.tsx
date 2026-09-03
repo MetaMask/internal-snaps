@@ -1,3 +1,4 @@
+import { serialize } from '@metamask/snap-networks-utils';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
@@ -8,7 +9,6 @@ import {
   transactionScanService,
 } from '../../../../snapContext';
 import { METAMASK_ORIGIN } from '../../../constants/solana';
-import { serialize } from '../../../serialization/serialize';
 import type { UnencryptedStateValue } from '../../../services/state/State';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';

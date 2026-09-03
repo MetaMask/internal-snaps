@@ -26,10 +26,13 @@ import {
 import { bufferToUint8Array } from '../../utils/buffer';
 import { XdrParseException } from './exceptions';
 
-export enum TransactionResultType {
-  PathPaymentStrictSendSuccess = 'pathPaymentStrictSendSuccess',
-  PathPaymentStrictReceiveSuccess = 'pathPaymentStrictReceiveSuccess',
-}
+export const TransactionResultType = {
+  PathPaymentStrictSendSuccess: 'pathPaymentStrictSendSuccess',
+  PathPaymentStrictReceiveSuccess: 'pathPaymentStrictReceiveSuccess',
+} as const;
+
+export type TransactionResultType =
+  (typeof TransactionResultType)[keyof typeof TransactionResultType];
 
 type TransactionResultAsset =
   | KnownCaip19ClassicAssetId
@@ -51,13 +54,13 @@ type AssetAndAmount = {
  */
 type OperationResult =
   | {
-      type: TransactionResultType.PathPaymentStrictSendSuccess;
+      type: typeof TransactionResultType.PathPaymentStrictSendSuccess;
       amount: string;
       asset: TransactionResultAsset;
       destination: string | undefined;
     }
   | {
-      type: TransactionResultType.PathPaymentStrictReceiveSuccess;
+      type: typeof TransactionResultType.PathPaymentStrictReceiveSuccess;
       amount: string;
       asset: TransactionResultAsset;
       destination: string | undefined;

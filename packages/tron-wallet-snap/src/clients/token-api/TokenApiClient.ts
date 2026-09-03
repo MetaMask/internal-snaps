@@ -111,7 +111,7 @@ export class TokenApiClient {
       // Fetch metadata for each chunk
       const tokenMetadataResponses = (
         await Promise.all(
-          assetTypeChunks.map(async (chunk) =>
+          assetTypeChunks.map(async (chunk: TokenCaipAssetType[]) =>
             this.#fetchTokenMetadataBatch(chunk),
           ),
         )
@@ -129,7 +129,8 @@ export class TokenApiClient {
        */
       assetTypes.forEach((assetType) => {
         const tokenMetadata = tokenMetadataResponses.find(
-          (item) => item.assetId === assetType,
+          (item: Infer<typeof TokenMetadataResponseStruct>[number]) =>
+            item.assetId === assetType,
         );
 
         if (!tokenMetadata) {

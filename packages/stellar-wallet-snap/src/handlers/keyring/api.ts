@@ -1,4 +1,5 @@
 import { KeyringRequestStruct } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import {
   object,
   min,
@@ -15,6 +16,7 @@ import {
   nullable,
   enums,
   refine,
+  defaulted,
 } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
 import { base64 } from '@metamask/utils';
@@ -27,16 +29,19 @@ import {
 import { StellarAddressStruct } from '../../api/address';
 import { KnownCaip2ChainId, KnownCaip2ChainIdStruct } from '../../api/network';
 import { Utf8StringStruct } from '../../api/string';
-import { UuidStruct } from '../../api/uuid';
 import { HashIdPreimageXdrStruct, XdrStruct } from '../../api/xdr';
+import { PRIVATE_KEY_EXPORT_ENCODING } from '../../constants';
 import { networkToCaip2ChainId } from '../../services/network/utils';
 
 /** JSON-RPC methods supported by this snap's multichain keyring. */
-export enum MultichainMethod {
-  SignMessage = 'signMessage',
-  SignTransaction = 'signTransaction',
-  SignAuthEntry = 'signAuthEntry',
-}
+export const MultichainMethod = {
+  SignMessage: 'signMessage',
+  SignTransaction: 'signTransaction',
+  SignAuthEntry: 'signAuthEntry',
+} as const;
+
+export type MultichainMethod =
+  (typeof MultichainMethod)[keyof typeof MultichainMethod];
 
 /** Superstruct validator for {@link MultichainMethod} string values. */
 export const MultichainMethodStruct = enums(Object.values(MultichainMethod));
@@ -307,6 +312,29 @@ export const SignAuthEntryResponseStruct = union([
 export const GetAccountRequestStruct = UuidStruct;
 
 /**
+ * Validation struct for the exportAccount request.
+ *
+ * Only {@link PRIVATE_KEY_EXPORT_ENCODING} (`base32`) is accepted. Missing
+ * `options` or `encoding` default to that encoding.
+ */
+export const ExportAccountRequestStruct = object({
+  accountId: UuidStruct,
+  options: defaulted(
+    object({
+      type: literal('private-key'),
+      encoding: defaulted(
+        enums([PRIVATE_KEY_EXPORT_ENCODING]),
+        PRIVATE_KEY_EXPORT_ENCODING,
+      ),
+    }),
+    {
+      type: 'private-key' as const,
+      encoding: PRIVATE_KEY_EXPORT_ENCODING,
+    },
+  ),
+});
+
+/**
  * Validation struct for the deleteAccount request.
  */
 export const DeleteAccountRequestStruct = UuidStruct;
@@ -348,6 +376,11 @@ export type ResolveAccountAddressJsonRpcRequest = Infer<
  * Type for the getAccount request.
  */
 export type GetAccountRequest = Infer<typeof GetAccountRequestStruct>;
+
+/**
+ * Type for the exportAccount request.
+ */
+export type ExportAccountRequest = Infer<typeof ExportAccountRequestStruct>;
 
 /**
  * Type for the deleteAccount request.

@@ -1,4 +1,4 @@
-import type { Serializable } from '../serialization/types';
+import type { Serializable } from '@metamask/snap-networks-utils';
 
 export type TimestampMilliseconds = number;
 

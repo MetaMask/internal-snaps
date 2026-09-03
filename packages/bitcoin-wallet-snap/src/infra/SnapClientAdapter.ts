@@ -12,7 +12,7 @@ import type {
   GetPreferencesResult,
   Json,
 } from '@metamask/snaps-sdk';
-import { DialogType, getJsonError } from '@metamask/snaps-sdk';
+import { DialogType } from '@metamask/snaps-sdk';
 
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
 import {
@@ -26,7 +26,8 @@ import {
   networkToCaip19,
   networkToScope,
 } from '../handlers';
-import { mapToKeyringAccount, mapToTransaction } from '../handlers/mappings';
+import { mapToTransaction } from '../handlers/mappings';
+import { trackError } from '../utils/errors';
 
 export class SnapClientAdapter implements SnapClient {
   readonly #encrypt: boolean;
@@ -84,26 +85,6 @@ export class SnapClientAdapter implements SnapClient {
   async getPublicEntropy(derivationPath: string[]): Promise<SLIP10Node> {
     const slip10 = await this.getPrivateEntropy(derivationPath);
     return (await SLIP10Node.fromJSON(slip10)).neuter();
-  }
-
-  async emitAccountCreatedEvent(
-    account: BitcoinAccount,
-    correlationId?: string,
-    accountName?: string,
-  ): Promise<void> {
-    return emitSnapKeyringEvent(snap, KeyringEvent.AccountCreated, {
-      account: mapToKeyringAccount(account),
-      accountNameSuggestion: accountName,
-      displayConfirmation: false,
-      displayAccountNameSuggestion: false,
-      ...(correlationId ? { metamask: { correlationId } } : {}),
-    });
-  }
-
-  async emitAccountDeletedEvent(id: string): Promise<void> {
-    return emitSnapKeyringEvent(snap, KeyringEvent.AccountDeleted, {
-      id,
-    });
   }
 
   async emitAccountBalancesUpdatedEvent(
@@ -306,14 +287,7 @@ export class SnapClientAdapter implements SnapClient {
   }
 
   async emitTrackingError(error: Error): Promise<void> {
-    try {
-      await snap.request({
-        method: 'snap_trackError',
-        params: { error: getJsonError(error) },
-      });
-    } catch (trackingError) {
-      this.#logger.error('Failed to track error', trackingError);
-    }
+    await trackError(error);
   }
 
   async startTrace(name: string): Promise<boolean> {

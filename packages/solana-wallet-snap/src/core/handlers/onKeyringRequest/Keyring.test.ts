@@ -10,6 +10,7 @@ import bs58 from 'bs58';
 
 import type { AssetEntity } from '../../../entities';
 import { asStrictKeyringAccount } from '../../../entities';
+import type { Caip10Address } from '../../constants/solana';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import type {
   AssetsService,
@@ -62,7 +63,7 @@ jest.mock('../../utils/errors', () => ({
   trackError: jest.fn().mockResolvedValue('tracked-error-id'),
 }));
 
-const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-12d3-a456-426614174009';
+const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174009';
 
 (globalThis as any).snap = {
   request: jest.fn().mockImplementation(async ({ method }) => {
@@ -414,7 +415,7 @@ describe('SolanaKeyring', () => {
         jsonrpc: '2.0',
         ...MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST,
       } as unknown as JsonRpcRequest;
-      const mockResolvedAddress = `${mockScope}:resolved-address`;
+      const mockResolvedAddress: Caip10Address = `${mockScope}:resolved-address`;
 
       jest
         .spyOn(mockWalletService, 'resolveAccountAddress')

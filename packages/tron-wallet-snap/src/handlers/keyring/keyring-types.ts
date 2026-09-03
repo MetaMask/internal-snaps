@@ -1,10 +1,13 @@
 /**
  * Enum for Tron Multichain API methods that are handled via submitRequest
  */
-export enum TronMultichainMethod {
-  SignMessage = 'signMessage',
-  SignTransaction = 'signTransaction',
-}
+export const TronMultichainMethod = {
+  SignMessage: 'signMessage',
+  SignTransaction: 'signTransaction',
+} as const;
+
+export type TronMultichainMethod =
+  (typeof TronMultichainMethod)[keyof typeof TronMultichainMethod];
 
 /**
  * Error codes for Tron Multichain API

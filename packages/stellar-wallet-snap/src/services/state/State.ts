@@ -1,10 +1,10 @@
 import { safeMerge } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import type { MutexInterface } from 'async-mutex';
 import { Mutex } from 'async-mutex';
 import { unset } from 'lodash';
 
 import { getState, setState, updateState } from '../../utils';
-import type { Serializable } from '../../utils';
 import type { IStateManager } from './IStateManager';
 
 export type StateConfig<TValue extends Record<string, Serializable>> = {

@@ -37,7 +37,7 @@ const CommaSeparatedListOfStringsStruct = coerce(
 
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
-  LOG_LEVEL: enums(Object.values(LogLevel)),
+  LOG_LEVEL: enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
   RPC_URL_MAINNET_LIST: CommaSeparatedListOfUrlsStruct,
   RPC_URL_DEVNET_LIST: CommaSeparatedListOfUrlsStruct,
   RPC_URL_TESTNET_LIST: CommaSeparatedListOfUrlsStruct,

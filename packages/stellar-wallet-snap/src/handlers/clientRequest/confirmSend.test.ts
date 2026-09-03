@@ -60,7 +60,6 @@ import {
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import * as errorUtils from '../../utils/errors';
 import { logger } from '../../utils/logger';
 import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
@@ -671,30 +670,30 @@ describe('ConfirmSendHandler', () => {
       'Invalid transfer function arguments',
     );
     createValidatedSendTransaction.mockRejectedValueOnce(xdrParseError);
-    const trackErrorIfNeededSpy = jest
-      .spyOn(errorUtils, 'trackErrorIfNeeded')
+    const trackErrorSpy = jest
+      .spyOn(snapUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
       errors: [{ code: MultiChainSendErrorCodes.Invalid }],
     });
-    expect(trackErrorIfNeededSpy).toHaveBeenCalledWith(xdrParseError);
+    expect(trackErrorSpy).toHaveBeenCalledWith(xdrParseError);
   });
 
   it('returns invalid for unexpected errors from createValidatedSendTransaction', async () => {
     const { handler, createValidatedSendTransaction } = setup();
     const unexpectedError = new Error('unexpected');
     createValidatedSendTransaction.mockRejectedValueOnce(unexpectedError);
-    const trackErrorIfNeededSpy = jest
-      .spyOn(errorUtils, 'trackErrorIfNeeded')
+    const trackErrorSpy = jest
+      .spyOn(snapUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
       errors: [{ code: MultiChainSendErrorCodes.Invalid }],
     });
-    expect(trackErrorIfNeededSpy).toHaveBeenCalledWith(unexpectedError);
+    expect(trackErrorSpy).toHaveBeenCalledWith(unexpectedError);
   });
 
   it('does not track expected validation errors from createValidatedSendTransaction', async () => {
@@ -702,15 +701,15 @@ describe('ConfirmSendHandler', () => {
     createValidatedSendTransaction.mockRejectedValueOnce(
       new TransactionValidationException('x'),
     );
-    const trackErrorIfNeededSpy = jest
-      .spyOn(errorUtils, 'trackErrorIfNeeded')
+    const trackErrorSpy = jest
+      .spyOn(snapUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
       errors: [{ code: MultiChainSendErrorCodes.Invalid }],
     });
-    expect(trackErrorIfNeededSpy).not.toHaveBeenCalled();
+    expect(trackErrorSpy).not.toHaveBeenCalled();
   });
 
   it('continues successfully when saving pending transaction fails', async () => {

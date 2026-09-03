@@ -46,9 +46,6 @@ import { mapToKeyringAccount, mapToTransaction } from './mappings';
 import { parseDerivationPath } from './parsers';
 import { BtcWalletRequestStruct, validateSelectedAccounts } from './validation';
 
-/** Maximum number of accounts to create in one internal createMany call. */
-const MAX_CREATE_ACCOUNTS_PER_BATCH = 100;
-
 /**
  * Scopes declared in the snap manifest's keyring capabilities block.
  * Used to determine which networks are supported for account discovery.
@@ -181,34 +178,27 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       // `AccountUseCases.createMany` is idempotent: if an account already
       // exists for the resolved derivation path, it will be returned as-is.
+      // The whole range goes in one batch so the existing-accounts lookup and
+      // state I/O happen once per request; entropy is fetched once per parent
+      // path regardless of range size, and per-account work is local.
       const created: KeyringAccount[] = [];
 
       for (const scope of SUPPORTED_SCOPES) {
         const network = scopeToNetwork[scope];
-        let chunkFrom = range.from;
+        const requests: CreateAccountParams[] = [];
 
-        while (chunkFrom <= range.to) {
-          const chunkTo = Math.min(
-            chunkFrom + MAX_CREATE_ACCOUNTS_PER_BATCH - 1,
-            range.to,
-          );
-          const chunkRequests: CreateAccountParams[] = [];
-
-          for (let index = chunkFrom; index <= chunkTo; index += 1) {
-            chunkRequests.push({
-              network,
-              entropySource,
-              index,
-              addressType,
-              synchronize: false,
-            });
-          }
-
-          const chunk = await this.#accountsUseCases.createMany(chunkRequests);
-          created.push(...chunk.map(mapToKeyringAccount));
-
-          chunkFrom = chunkTo + 1;
+        for (let index = range.from; index <= range.to; index += 1) {
+          requests.push({
+            network,
+            entropySource,
+            index,
+            addressType,
+            synchronize: false,
+          });
         }
+
+        const accounts = await this.#accountsUseCases.createMany(requests);
+        created.push(...accounts.map(mapToKeyringAccount));
       }
 
       return created;

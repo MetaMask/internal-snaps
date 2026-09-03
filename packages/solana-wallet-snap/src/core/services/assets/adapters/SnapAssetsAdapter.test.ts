@@ -1,3 +1,4 @@
+import type { Serializable } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import type { ICache } from '../../../caching/ICache';
@@ -5,7 +6,6 @@ import { InMemoryCache } from '../../../caching/InMemoryCache';
 import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from '../../../clients/nft-api/mocks/mockNftsListResponseMapped';
 import type { NftApiClient } from '../../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../../clients/token-api-client/TokenApiClient';
-import type { Serializable } from '../../../serialization/types';
 import {
   MOCK_ASSET_ENTITY_0,
   MOCK_ASSET_ENTITY_1,

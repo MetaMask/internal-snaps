@@ -1,3 +1,4 @@
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -22,7 +23,6 @@ import {
   KnownCaip2ChainIdStruct,
   StellarAddressStruct,
   StellarTransactionHashStruct,
-  UuidStruct,
 } from '../../api';
 import { AppConfig } from '../../config';
 import { ConfirmationInterfaceKeyStruct } from '../../ui/confirmation/api';
@@ -35,12 +35,15 @@ export type ICronjobRequestHandler = {
   handle: (request: JsonRpcRequest) => Promise<Json>;
 };
 
-export enum BackgroundEventMethod {
-  SynchronizeAssets = 'synchronizeAssets',
-  SynchronizeAccounts = 'synchronizeAccounts',
-  TrackTransaction = 'trackTransaction',
-  RefreshConfirmationContext = 'refreshConfirmationContext',
-}
+export const BackgroundEventMethod = {
+  SynchronizeAssets: 'synchronizeAssets',
+  SynchronizeAccounts: 'synchronizeAccounts',
+  TrackTransaction: 'trackTransaction',
+  RefreshConfirmationContext: 'refreshConfirmationContext',
+} as const;
+
+export type BackgroundEventMethod =
+  (typeof BackgroundEventMethod)[keyof typeof BackgroundEventMethod];
 
 export const BackgroundEventMethodStruct = enums(
   Object.values(BackgroundEventMethod),

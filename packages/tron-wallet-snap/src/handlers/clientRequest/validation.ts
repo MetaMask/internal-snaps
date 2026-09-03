@@ -1,4 +1,5 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import { literal } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -24,7 +25,6 @@ import {
   PositiveNumberStringStruct,
   ScopeStringStruct,
   TronAddressStruct,
-  UuidStruct,
 } from '../../validation/structs';
 import { ClientRequestMethod, SendErrorCodes } from './types';
 

@@ -1,4 +1,5 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import { literal } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -32,7 +33,6 @@ import {
   Base64Struct,
   PositiveNumberStringStruct,
   SolanaAddressStruct,
-  UuidStruct,
 } from '../../validation/structs';
 import { ClientRequestMethod } from './types';
 
@@ -398,7 +398,9 @@ export const ValidationResponseStruct = object({
   valid: boolean(),
   errors: array(
     object({
-      code: enums(Object.values(SendErrorCodes)),
+      code: enums(
+        Object.values(SendErrorCodes) as [SendErrorCodes, ...SendErrorCodes[]],
+      ),
     }),
   ),
 });
@@ -423,7 +425,7 @@ export const ComputeFeeRequestStruct = object({
 
 export const ComputeFeeResponseStruct = array(
   object({
-    type: enums(Object.values(FeeType)),
+    type: enums(Object.values(FeeType) as [FeeType, ...FeeType[]]),
     asset: AssetStruct,
   }),
 );

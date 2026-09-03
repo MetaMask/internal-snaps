@@ -1,10 +1,11 @@
-import { assert, StructError } from '@metamask/superstruct';
+import { assert, create, StructError } from '@metamask/superstruct';
 
 import { KnownCaip2ChainId } from '../../api';
 import type { StellarKeyringAccount } from '../../services/account';
 import { generateMockStellarKeyringAccounts } from '../../services/account/__mocks__/account.fixtures';
 import {
   CreateAccountOptionsStruct,
+  ExportAccountRequestStruct,
   ResolveAccountAddressRequestStruct,
   ListAccountTransactionsRequestStruct,
   MultichainMethod,
@@ -582,6 +583,64 @@ describe('ListAccountTransactionsRequestStruct', () => {
     },
   ])('rejects an invalid listAccountTransactions request', (request) => {
     expect(() => assert(request, ListAccountTransactionsRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('ExportAccountRequestStruct', () => {
+  it.each([
+    {
+      request: { accountId: account.id },
+      expected: {
+        accountId: account.id,
+        options: { type: 'private-key' as const, encoding: 'base32' as const },
+      },
+    },
+    {
+      request: {
+        accountId: account.id,
+        options: { type: 'private-key' as const },
+      },
+      expected: {
+        accountId: account.id,
+        options: { type: 'private-key' as const, encoding: 'base32' as const },
+      },
+    },
+    {
+      request: {
+        accountId: account.id,
+        options: { type: 'private-key' as const, encoding: 'base32' as const },
+      },
+      expected: {
+        accountId: account.id,
+        options: { type: 'private-key' as const, encoding: 'base32' as const },
+      },
+    },
+  ])('accepts a valid exportAccount request', ({ request, expected }) => {
+    expect(create(request, ExportAccountRequestStruct)).toStrictEqual(expected);
+  });
+
+  it.each([
+    { accountId: 'not-a-uuid' },
+    {
+      accountId: account.id,
+      options: { type: 'mnemonic', encoding: 'base32' },
+    },
+    {
+      accountId: account.id,
+      options: { type: 'private-key', encoding: 'utf-8' },
+    },
+    {
+      accountId: account.id,
+      options: { type: 'private-key', encoding: 'hexadecimal' },
+    },
+    {
+      accountId: account.id,
+      options: { type: 'private-key', encoding: 'base58' },
+    },
+  ])('rejects an invalid exportAccount request', (request) => {
+    expect(() => assert(request, ExportAccountRequestStruct)).toThrow(
       StructError,
     );
   });

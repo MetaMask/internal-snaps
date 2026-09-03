@@ -1,4 +1,5 @@
-import type { Serializable } from '../utils/serialization/types';
+import type { Serializable } from '@metamask/snap-networks-utils';
+
 import type { ICache } from './ICache';
 import { useCacheUntil } from './useCacheUntil';
 import type { CacheUntilOptions, ResultWithExpiry } from './useCacheUntil';
@@ -12,14 +13,19 @@ const mockNow = 1700000000000; // Fixed timestamp for testing
 
 type WithUseCacheUntilCallback = (payload: {
   actualExecutionSpy: jest.Mock<
-    Promise<ResultWithExpiry<string>>,
+    Promise<ResultWithExpiry<Serializable>>,
     Serializable[]
   >;
-  cache: ICache<Serializable>;
+  cache: MockCache;
   testFunction: () => Promise<ResultWithExpiry<string>>;
   cachedTestFunction: () => Promise<string>;
-  cachedTestFunctionWithArgs: (arg1: string, arg2: number) => Promise<string>;
+  cachedTestFunctionWithArgs: (arg1: string) => Promise<string>;
 }) => void | Promise<void>;
+
+type MockCache = ICache<Serializable> & {
+  get: jest.Mock<Promise<Serializable | undefined>, [string]>;
+  set: jest.Mock<Promise<void>, [string, Serializable, (number | undefined)?]>;
+};
 
 /**
  * Wraps tests for `useCacheUntil` by creating fresh cached functions backed by a
@@ -36,7 +42,7 @@ async function withUseCacheUntil(
 
   // Reset mocks for each test
   const actualExecutionSpy = jest
-    .fn<Promise<ResultWithExpiry<string>>, Serializable[]>()
+    .fn<Promise<ResultWithExpiry<Serializable>>, Serializable[]>()
     .mockResolvedValue({
       result: 'test',
       expiresAt: mockNow + 60000, // Expires in 60 seconds
@@ -46,14 +52,15 @@ async function withUseCacheUntil(
   const cache = {
     get: jest.fn().mockResolvedValue(undefined),
     set: jest.fn().mockResolvedValue(undefined),
-  } as unknown as ICache<Serializable>;
+  } as unknown as MockCache;
 
   // Define original functions
   const testFunction = async (): Promise<ResultWithExpiry<string>> =>
-    actualExecutionSpy();
+    (await actualExecutionSpy()) as ResultWithExpiry<string>;
   const testFunctionWithArgs = async (
     arg1: string,
-  ): Promise<ResultWithExpiry<string>> => actualExecutionSpy(arg1);
+  ): Promise<ResultWithExpiry<string>> =>
+    (await actualExecutionSpy(arg1)) as ResultWithExpiry<string>;
 
   // Create cached versions
   const cachedTestFunction = useCacheUntil(testFunction, cache, {
@@ -290,7 +297,7 @@ describe('useCacheUntil', () => {
     it('handles anonymous functions with a default name', async () => {
       await withUseCacheUntil(async ({ cache, actualExecutionSpy }) => {
         const anonymousFunction = async (): Promise<ResultWithExpiry<string>> =>
-          actualExecutionSpy();
+          (await actualExecutionSpy()) as ResultWithExpiry<string>;
         Object.defineProperty(anonymousFunction, 'name', { value: null });
 
         const cachedAnonymousFunction = useCacheUntil(

@@ -17,6 +17,7 @@ import type {
 } from '@metamask/bitcoindevkit';
 
 import type { Inscription } from './meta-protocols';
+import type { AccountStateSnapshot } from './snap';
 import type { TransactionBuilder } from './transaction';
 
 /**
@@ -276,11 +277,14 @@ export type BitcoinAccountRepository = {
    * Get accounts by derivation path.
    *
    * @param derivationPaths - derivation paths.
-   * @returns the accounts or null if they do not exist, in input order
+   * @returns the accounts or null if they do not exist (in input order), and
+   * the derivation-path snapshot the lookup was resolved from, reusable by
+   * `insertMany` within the same account mutation
    */
-  getByDerivationPaths(
-    derivationPaths: string[][],
-  ): Promise<(BitcoinAccount | null)[]>;
+  getByDerivationPaths(derivationPaths: string[][]): Promise<{
+    accounts: (BitcoinAccount | null)[];
+    snapshot: AccountStateSnapshot;
+  }>;
 
   /**
    * Create a new account, without persisting it.
@@ -297,6 +301,21 @@ export type BitcoinAccountRepository = {
   ): Promise<BitcoinAccount>;
 
   /**
+   * Create multiple accounts, without persisting them. Fetches entropy once
+   * per distinct parent path and derives hardened account children locally.
+   *
+   * @param requests - Account creation requests.
+   * @returns the new accounts, in input order
+   */
+  createMany(
+    requests: {
+      derivationPath: string[];
+      network: Network;
+      addressType: AddressType;
+    }[],
+  ): Promise<BitcoinAccount[]>;
+
+  /**
    * Insert an account.
    *
    * @param account - Bitcoin account.
@@ -307,8 +326,14 @@ export type BitcoinAccountRepository = {
    * Insert accounts.
    *
    * @param accounts - Bitcoin accounts.
+   * @param snapshot - Optional state snapshot (from `getByDerivationPaths`)
+   * used to reuse the derivation-path map. The accounts map is still refreshed
+   * before writing so concurrent sync updates are preserved.
    */
-  insertMany(accounts: BitcoinAccount[]): Promise<BitcoinAccount[]>;
+  insertMany(
+    accounts: BitcoinAccount[],
+    snapshot?: AccountStateSnapshot,
+  ): Promise<BitcoinAccount[]>;
 
   /**
    * Update an account.

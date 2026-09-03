@@ -1,10 +1,11 @@
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 import { assert, literal, object, string } from '@metamask/superstruct';
 
 import { analyticsService, keyring } from '../../../../snapContext';
 import logger from '../../../utils/logger';
-import { NetworkStruct, UuidStruct } from '../../../validation/structs';
+import { NetworkStruct } from '../../../validation/structs';
 import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
 
 export const OnTransactionApprovedRequestStruct = object({

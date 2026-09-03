@@ -1,6 +1,6 @@
 {
   "name": "@metamask/internal-snaps-monorepo",
-  "version": "8.0.0",
+  "version": "9.0.0",
   "private": true,
   "description": "Monorepo for first-party snaps",
   "repository": {
@@ -19,13 +19,14 @@
     "changelog:validate": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run changelog:validate",
     "create-release-branch": "create-release-branch --formatter oxfmt",
     "create-package": "tsx scripts/create-package",
-    "lint": "yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies && yarn readme-content:check",
+    "lint": "yarn lint:tsc && yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies && yarn readme-content:check",
     "lint:dependencies": "depcheck && yarn dedupe --check",
     "lint:dependencies:fix": "depcheck && yarn dedupe",
     "lint:eslint": "yarn eslint",
     "lint:fix": "yarn lint:eslint --fix --prune-suppressions && echo && yarn lint:misc --write && yarn constraints --fix && yarn lint:dependencies:fix && yarn readme-content:update",
     "lint:misc": "oxfmt --ignore-path .gitignore",
     "lint:misc:check": "yarn lint:misc --check",
+    "lint:tsc": "tsc --project tsconfig.json && yarn workspaces foreach --all exec tsc --project tsconfig.json --noEmit",
     "prepack": "./scripts/prepack.sh",
     "readme-content:check": "tsx scripts/update-readme-content.ts --check",
     "readme-content:update": "tsx scripts/update-readme-content.ts",
@@ -83,8 +84,9 @@
     "yargs": "^17.7.2"
   },
   "resolutions": {
-    "@metamask/snaps-execution-environments": "11.2.0",
-    "@metamask/snaps-sdk": "11.2.0",
+    "@metamask/snaps-execution-environments": "11.3.0",
+    "@metamask/snaps-sdk": "12.0.1",
+    "@metamask/snaps-utils": "12.6.0",
     "@solana/addresses": "2.1.0",
     "@solana/kit": "2.1.0",
     "@stellar/stellar-sdk/axios@npm:1.15.0": "1.18.1",

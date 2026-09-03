@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
@@ -20,7 +20,7 @@ import {
   MAX_TRANSACTIONS_PAGE_SIZE,
   STELLAR_DECIMAL_PLACES,
 } from '../../constants';
-import type { AnyErrorConstructor, Serializable } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import {
   isSameStr,
   parseClassicAssetCodeIssuer,
@@ -302,7 +302,7 @@ export class NetworkService {
       const settled = await batchesAllSettled(
         accountAddresses,
         batchSize,
-        async (accountId) => this.loadOnChainAccount(accountId, scope), // Assume the onChainAccount scope is the same as the transaction scope
+        async (accountId: string) => this.loadOnChainAccount(accountId, scope), // Assume the onChainAccount scope is the same as the transaction scope
       );
 
       const onChainAccounts: (OnChainAccount | null)[] = [];

@@ -8,15 +8,17 @@ import { KnownCaip2ChainId } from './network';
 
 /** Stellar Asset namespace */
 /** Please see https://namespaces.chainagnostic.org/stellar/caip19#asset-namespaces */
-export enum AssetType {
-  Native = 'slip44',
-  Token = 'asset',
-  Sep41 = 'sep41',
-}
+export const AssetType = {
+  Native: 'slip44',
+  Token: 'asset',
+  Sep41: 'sep41',
+} as const;
+
+export type AssetType = (typeof AssetType)[keyof typeof AssetType];
 
 /** Known CAIP-19 IDs */
 export const KnownCaip19Slip44IdStruct =
-  definePattern<`${KnownCaip2ChainId}/${AssetType.Native}:${typeof STELLAR_COIN_TYPE}`>(
+  definePattern<`${KnownCaip2ChainId}/${typeof AssetType.Native}:${typeof STELLAR_COIN_TYPE}`>(
     'KnownCaip19Slip44Id',
     /^stellar:(?:pubnet|testnet)\/slip44:148$/u,
   );
@@ -35,13 +37,13 @@ export const KnownCaip19Slip44IdMap: Record<
  * @see https://namespaces.chainagnostic.org/stellar/caip19#asset-namespaces
  */
 export const KnownCaip19ClassicAssetStruct =
-  definePattern<`${KnownCaip2ChainId}/${AssetType.Token}:${string}-${string}`>(
+  definePattern<`${KnownCaip2ChainId}/${typeof AssetType.Token}:${string}-${string}`>(
     'KnownCaip19ClassicAsset',
     /^stellar:(?:pubnet|testnet)\/asset:[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/u,
   );
 
 export const KnownCaip19Sep41AssetStruct =
-  definePattern<`${KnownCaip2ChainId}/${AssetType.Sep41}:${string}`>(
+  definePattern<`${KnownCaip2ChainId}/${typeof AssetType.Sep41}:${string}`>(
     'KnownCaip19Sep41Asset',
     /^stellar:(?:pubnet|testnet)\/sep41:C[A-Z2-7]{55}$/u,
   );

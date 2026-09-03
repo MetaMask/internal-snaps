@@ -25,6 +25,7 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import type { Logger } from '@metamask/snap-networks-utils';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -82,7 +83,6 @@ import {
   ListAccountAssetsStruct,
   ListAccountTransactionsStruct,
   NetworkStruct,
-  UuidStruct,
 } from '../../validation/structs';
 import { validateRequest, validateResponse } from '../../validation/validators';
 import { SolanaKeyringRequestStruct } from './structs';
