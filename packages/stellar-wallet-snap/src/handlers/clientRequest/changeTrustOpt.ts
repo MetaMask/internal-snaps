@@ -104,11 +104,6 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
   /**
    * Handles trustline opt-in/opt-out requests.
    *
-   * Pre-submit validation failures (missing trustline, non-zero opt-out
-   * balance, reserve, fee) are shown in the change-trust confirmation first,
-   * then rethrown. Failures after the user confirms rethrow without a second
-   * dialog.
-   *
    * @param resolvedAccount - The resolved and activated account.
    * @param request - JSON-RPC request containing `scope`, `assetId`, `action`, and optional `limit`.
    * @returns A `ChangeTrustOptJsonRpcResponse`:

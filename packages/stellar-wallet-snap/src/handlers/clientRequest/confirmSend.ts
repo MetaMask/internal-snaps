@@ -105,12 +105,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   /**
    * Builds a validated send transaction, shows confirmation, then signs and submits.
    *
-   * Pre-submit validation failures (balance, memo, trustline, create-account,
-   * expired transaction, non-native send to an unfunded destination) are shown
-   * in the send confirmation dialog first, then returned as structured error
-   * codes. Failures after the user confirms return those same codes without a
-   * second dialog.
-   *
    * @param resolved - Keyring account, live on-chain snapshot, and wallet.
    * @param request - JSON-RPC request with send params (`scope` is derived from `assetId`).
    * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` for validation failures.
