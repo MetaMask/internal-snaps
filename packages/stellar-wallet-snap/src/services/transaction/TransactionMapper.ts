@@ -10,6 +10,7 @@ import type {
 } from '../../api';
 import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
 import {
+  getAssetReference,
   isSlip44Id,
   parseClassicAssetCodeIssuer,
   removeTrailingZeros,
@@ -518,7 +519,11 @@ export class TransactionMapper {
     const transfers = parseContractEventsFromResultMeta({
       resultMetaXdr,
       parseEvent: (event) =>
-        parseTransferContractEventSafe(event, keyringAccount.address),
+        parseTransferContractEventSafe(
+          event,
+          keyringAccount.address,
+          transaction.scope,
+        ),
     });
 
     // Same as classic receive: surface the first credited asset when several match.
@@ -527,13 +532,10 @@ export class TransactionMapper {
       return undefined;
     }
 
-    const receiveAsset = this.#mapContractTransferForNativeOrClassicAsset(
-      parsed,
-      transaction.scope,
+    const asset = this.#caipAssetToKeyringAssetRow(
+      parsed.assetId,
+      toDisplayBalance(parsed.amount, STELLAR_DECIMAL_PLACES),
     );
-    if (!receiveAsset) {
-      return undefined;
-    }
 
     return this.#keyringTransactionBuilder.createTransaction({
       type: KeyringTransactionType.Unknown,
@@ -543,53 +545,17 @@ export class TransactionMapper {
         from: [
           {
             address: parsed.fromAddress,
-            asset: receiveAsset,
+            asset,
           },
         ],
         to: [
           {
             address: keyringAccount.address,
-            asset: receiveAsset,
+            asset,
           },
         ],
       },
     });
-  }
-
-  /**
-   * Resolves a SAC transfer event token topic to a keyring asset row.
-   *
-   * Only `"native"` and classic `"CODE:ISSUER"` topics are supported.
-   *
-   * @param parsed - Parsed SAC transfer from result meta.
-   * @param scope - CAIP-2 chain id.
-   * @returns Keyring asset row, or `undefined` when the token is not SAC native/classic.
-   */
-  #mapContractTransferForNativeOrClassicAsset(
-    parsed: ParsedContractReceiveTransfer,
-    scope: KnownCaip2ChainId,
-  ): KeyringTransactionAsset | undefined {
-    const { token, amount } = parsed;
-
-    // SAC topics use `'native'` or classic `'CODE:ISSUER'` — same shape as operation asset refs.
-    const classicOrNativeAssetId = parseOperationAssetReferenceSafe(
-      scope,
-      token,
-    );
-
-    if (!classicOrNativeAssetId) {
-      return undefined;
-    }
-
-    const unit = isSlip44Id(classicOrNativeAssetId)
-      ? NATIVE_ASSET_SYMBOL
-      : parseClassicAssetCodeIssuer(token).assetCode;
-
-    return this.#toKeyringAssetRow(
-      unit,
-      classicOrNativeAssetId,
-      toDisplayBalance(amount, STELLAR_DECIMAL_PLACES),
-    );
   }
 
   #getCreateTime(transaction: Transaction): number {
@@ -598,6 +564,20 @@ export class TransactionMapper {
       : undefined;
 
     return this.#keyringTransactionBuilder.getCreateTime(createdAtSeconds);
+  }
+
+  #caipAssetToKeyringAssetRow(
+    assetId: KnownCaip19AssetIdOrSlip44Id,
+    amount: string,
+  ): KeyringTransactionAsset {
+    const isSlip44 = isSlip44Id(assetId);
+    return this.#toKeyringAssetRow(
+      isSlip44
+        ? NATIVE_ASSET_SYMBOL
+        : parseClassicAssetCodeIssuer(getAssetReference(assetId)).assetCode,
+      assetId,
+      amount,
+    );
   }
 
   #assetToKeyringAssetRow(
