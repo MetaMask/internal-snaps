@@ -55,21 +55,48 @@ import type {
   SolanaSignTransactionResponse,
 } from './structs';
 
+/**
+ * One message-signing request for the internal Solana batch signing path.
+ */
 export type SolanaSignMessageBatchRequest = {
+  /**
+   * Account whose key should sign the message.
+   */
   account: SolanaKeyringAccount;
+  /**
+   * Base64-encoded message to sign.
+   */
   message: string;
 };
 
+/**
+ * Result for one message in the internal Solana batch signing path.
+ */
 export type SolanaSignMessageBatchResult =
   | SolanaSignMessageResponse
   | { error: string };
 
 const DEFAULT_SOLANA_DERIVATION_PATH_REGEX = /^m\/44'\/501'\/([0-9]+)'\/0'$/u;
 
+/**
+ * Converts an unknown thrown value into a JSON-serializable error message.
+ *
+ * @param error - The thrown value.
+ * @returns A string error message.
+ */
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Extracts the account index from the default Solana BIP-44 derivation path.
+ *
+ * Batch signing derives children from the coin-type node (`m/44'/501'`), so it
+ * only supports the snap's default `m/44'/501'/index'/0'` path shape.
+ *
+ * @param account - The Solana account whose derivation path should be parsed.
+ * @returns The hardened BIP-44 account index.
+ */
 function getDefaultSolanaAccountIndex(account: SolanaKeyringAccount): number {
   const match = DEFAULT_SOLANA_DERIVATION_PATH_REGEX.exec(
     account.derivationPath,
@@ -392,6 +419,17 @@ export class WalletService {
     return this.#signMessageWithPrivateKey(account, message, privateKeyBytes);
   }
 
+  /**
+   * Signs multiple base64-encoded messages using Solana accounts.
+   *
+   * Requests are grouped by entropy source so the coin-type node is fetched
+   * once per source and account keys are derived locally. Results are returned
+   * in input order, with per-item errors for invalid derivation paths or
+   * signing failures.
+   *
+   * @param requests - Message signing requests.
+   * @returns One signing result per request, in input order.
+   */
   async signMessages(
     requests: SolanaSignMessageBatchRequest[],
   ): Promise<SolanaSignMessageBatchResult[]> {
@@ -456,6 +494,17 @@ export class WalletService {
     return results;
   }
 
+  /**
+   * Signs a base64-encoded message with an already-derived private key.
+   *
+   * This keeps the single-message and batch-message code paths using the same
+   * message encoding and signature response validation.
+   *
+   * @param account - Account whose address should own the signature.
+   * @param message - Base64-encoded message to sign.
+   * @param privateKeyBytes - Private key bytes for the account.
+   * @returns The wallet-standard signed message response.
+   */
   async #signMessageWithPrivateKey(
     account: SolanaKeyringAccount,
     message: string,

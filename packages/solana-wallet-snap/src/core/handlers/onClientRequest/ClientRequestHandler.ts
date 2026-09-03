@@ -51,6 +51,12 @@ import type {
   SignProofOfOwnershipResponse,
 } from './validation';
 
+/**
+ * Converts an unknown thrown value into a JSON-serializable error message.
+ *
+ * @param error - The thrown value.
+ * @returns A string error message.
+ */
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -616,9 +622,15 @@ export class ClientRequestHandler {
     return result;
   }
 
+  /**
+   * Converts a wallet-standard base58 ed25519 signature into the strict hex
+   * format expected by the identity auth proof-of-ownership API.
+   *
+   * @param base58Signature - The base58-encoded signature returned by Solana
+   * wallet signing.
+   * @returns The same signature encoded as 0x-prefixed hex.
+   */
   #toProofOfOwnershipSignature(base58Signature: string): `0x${string}` {
-    // Transcode the base58 signature to 0x-prefixed hex for the identity
-    // auth API; the dApp `signMessage` flow keeps its wallet-standard base58.
     return bytesToHex(
       Uint8Array.from(getBase58Codec().encode(base58Signature)),
     );

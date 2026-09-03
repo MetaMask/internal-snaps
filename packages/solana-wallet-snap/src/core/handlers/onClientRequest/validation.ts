@@ -523,7 +523,7 @@ export type SignProofOfOwnershipResponse = Infer<
 >;
 
 /**
- * signProofOfOwnershipBatch request/response validation.
+ * Validates one proof-of-ownership batch request item.
  *
  * Batch items intentionally validate messages as plain strings so invalid
  * proof messages can be reported per item instead of failing the whole batch.
@@ -533,10 +533,16 @@ export const SignProofOfOwnershipBatchRequestItemStruct = object({
   message: string(),
 });
 
+/**
+ * Validates the params object for `signProofOfOwnershipBatch`.
+ */
 export const SignProofOfOwnershipBatchRequestParamsStruct = object({
   items: array(SignProofOfOwnershipBatchRequestItemStruct),
 });
 
+/**
+ * Validates a `signProofOfOwnershipBatch` JSON-RPC request.
+ */
 export const SignProofOfOwnershipBatchRequestStruct = object({
   jsonrpc: JsonRpcVersionStruct,
   id: JsonRpcIdStruct,
@@ -544,6 +550,9 @@ export const SignProofOfOwnershipBatchRequestStruct = object({
   params: SignProofOfOwnershipBatchRequestParamsStruct,
 });
 
+/**
+ * Validates a successful proof-of-ownership batch item response.
+ */
 export const SignProofOfOwnershipBatchSuccessStruct = object({
   accountId: string(),
   /**
@@ -552,20 +561,32 @@ export const SignProofOfOwnershipBatchSuccessStruct = object({
   signature: StrictHexStruct,
 });
 
+/**
+ * Validates a failed proof-of-ownership batch item response.
+ */
 export const SignProofOfOwnershipBatchErrorStruct = object({
   accountId: string(),
   error: string(),
 });
 
+/**
+ * Validates a proof-of-ownership batch item result.
+ */
 export const SignProofOfOwnershipBatchItemResponseStruct = union([
   SignProofOfOwnershipBatchSuccessStruct,
   SignProofOfOwnershipBatchErrorStruct,
 ]);
 
+/**
+ * Validates a `signProofOfOwnershipBatch` response.
+ */
 export const SignProofOfOwnershipBatchResponseStruct = object({
   results: array(SignProofOfOwnershipBatchItemResponseStruct),
 });
 
+/**
+ * Response returned by `signProofOfOwnershipBatch`.
+ */
 export type SignProofOfOwnershipBatchResponse = Infer<
   typeof SignProofOfOwnershipBatchResponseStruct
 >;
