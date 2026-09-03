@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#XXX](https://github.com/MetaMask/internal-snaps/pull/XXX))
+- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#265](https://github.com/MetaMask/internal-snaps/pull/265))
 
 ### Changed
 
