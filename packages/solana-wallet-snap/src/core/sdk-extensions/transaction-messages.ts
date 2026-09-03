@@ -11,22 +11,22 @@ import {
 } from '@solana-program/compute-budget';
 import type {
   Address,
-  BaseTransactionMessage,
-  CompilableTransactionMessage,
-  IInstruction,
-  ITransactionMessageWithFeePayer,
+  Instruction,
   Rpc,
   SimulateTransactionApi,
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
   TransactionMessageWithBlockhashLifetime,
 } from '@solana/kit';
 import {
-  getComputeUnitEstimateForTransactionMessageFactory,
+  estimateResourceLimitsFactory,
   isSolanaError,
   isTransactionMessageWithBlockhashLifetime,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
   SOLANA_ERROR__TRANSACTION__FAILED_WHEN_SIMULATING_TO_ESTIMATE_COMPUTE_LIMIT,
+  SOLANA_ERROR__TRANSACTION__FAILED_WHEN_SIMULATING_TO_ESTIMATE_RESOURCE_LIMITS,
 } from '@solana/kit';
 import { cloneDeep } from 'lodash';
 
@@ -37,12 +37,12 @@ import { cloneDeep } from 'lodash';
  * @returns `true` if the transaction message has a fee payer, `false` otherwise.
  */
 export const isTransactionMessageWithFeePayer = <
-  TTransactionMessage extends BaseTransactionMessage &
-    Partial<ITransactionMessageWithFeePayer>,
+  TTransactionMessage extends TransactionMessage &
+    Partial<TransactionMessageWithFeePayer>,
 >(
   transactionMessage: TTransactionMessage,
-): transactionMessage is TTransactionMessage &
-  ITransactionMessageWithFeePayer => Boolean(transactionMessage.feePayer);
+): transactionMessage is TTransactionMessage & TransactionMessageWithFeePayer =>
+  Boolean(transactionMessage.feePayer);
 
 /**
  * Set the fee payer for the transaction message if it is missing.
@@ -53,15 +53,18 @@ export const isTransactionMessageWithFeePayer = <
  */
 export const setTransactionMessageFeePayerIfMissing = <
   TFeePayerAddress extends string,
-  TTransactionMessage extends BaseTransactionMessage &
-    Partial<ITransactionMessageWithFeePayer>,
+  TTransactionMessage extends TransactionMessage &
+    Partial<TransactionMessageWithFeePayer>,
 >(
   feePayer: Address<TFeePayerAddress>,
   transactionMessage: TTransactionMessage,
-) =>
+): TTransactionMessage & TransactionMessageWithFeePayer =>
   isTransactionMessageWithFeePayer(transactionMessage)
     ? transactionMessage
-    : setTransactionMessageFeePayer(feePayer, transactionMessage);
+    : (setTransactionMessageFeePayer(
+        feePayer,
+        transactionMessage,
+      ) as TTransactionMessage & TransactionMessageWithFeePayer);
 
 /**
  * Set the lifetime constraint for the transaction message if it is missing.
@@ -72,8 +75,8 @@ export const setTransactionMessageFeePayerIfMissing = <
  */
 export const setTransactionMessageLifetimeUsingBlockhashIfMissing = <
   TTransaction extends
-    | BaseTransactionMessage
-    | (BaseTransactionMessage & TransactionMessageWithBlockhashLifetime),
+    | TransactionMessage
+    | (TransactionMessage & TransactionMessageWithBlockhashLifetime),
 >(
   blockhashLifetimeConstraint: TransactionMessageWithBlockhashLifetime['lifetimeConstraint'],
   transaction: TTransaction,
@@ -91,7 +94,7 @@ export const setTransactionMessageLifetimeUsingBlockhashIfMissing = <
  * @param instruction - The instruction to check.
  * @returns A predicate function that checks if an instruction is a compute unit price instruction.
  */
-export const isComputeUnitPriceInstruction = (instruction: IInstruction) =>
+export const isComputeUnitPriceInstruction = (instruction: Instruction) =>
   instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS &&
   identifyComputeBudgetInstruction({
     data: new Uint8Array(), // Provide a default value for instruction.data it can be undefined
@@ -105,7 +108,7 @@ export const isComputeUnitPriceInstruction = (instruction: IInstruction) =>
  * @returns `true` if the transaction message has a compute unit price instruction, `false` otherwise.
  */
 export const isTransactionMessageWithComputeUnitPriceInstruction = <
-  TTransaction extends BaseTransactionMessage,
+  TTransaction extends TransactionMessage,
 >(
   transaction: TTransaction,
 ): boolean =>
@@ -121,7 +124,7 @@ export const isTransactionMessageWithComputeUnitPriceInstruction = <
  * @returns The transaction message with the compute unit price instruction added.
  */
 export const setComputeUnitPriceInstructionIfMissing = <
-  TTransaction extends BaseTransactionMessage,
+  TTransaction extends TransactionMessage,
 >(
   transaction: TTransaction,
   input: SetComputeUnitPriceInput,
@@ -135,7 +138,7 @@ export const setComputeUnitPriceInstructionIfMissing = <
   return prependTransactionMessageInstructions(
     [getSetComputeUnitPriceInstruction(input, config)],
     transaction,
-  );
+  ) as TTransaction;
 };
 
 /**
@@ -144,7 +147,7 @@ export const setComputeUnitPriceInstructionIfMissing = <
  * @param instruction - The instruction to check.
  * @returns A predicate function that checks if an instruction is a compute unit limit instruction.
  */
-export const isComputeUnitLimitInstruction = (instruction: IInstruction) =>
+export const isComputeUnitLimitInstruction = (instruction: Instruction) =>
   instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS &&
   identifyComputeBudgetInstruction({
     data: new Uint8Array(), // Provide a default value for instruction.data it can be undefined
@@ -158,7 +161,7 @@ export const isComputeUnitLimitInstruction = (instruction: IInstruction) =>
  * @returns `true` if the transaction message has a compute unit limit instruction, `false` otherwise.
  */
 export const isTransactionMessageWithComputeUnitLimitInstruction = <
-  TTransaction extends BaseTransactionMessage,
+  TTransaction extends TransactionMessage,
 >(
   transaction: TTransaction,
 ): boolean =>
@@ -174,7 +177,7 @@ export const isTransactionMessageWithComputeUnitLimitInstruction = <
  * @returns The transaction message with the compute unit limit instruction added.
  */
 export const setComputeUnitLimitInstructionIfMissing = <
-  TTransaction extends BaseTransactionMessage,
+  TTransaction extends TransactionMessage,
 >(
   transaction: TTransaction,
   input: SetComputeUnitLimitInput,
@@ -188,13 +191,11 @@ export const setComputeUnitLimitInstructionIfMissing = <
   return prependTransactionMessageInstructions(
     [getSetComputeUnitLimitInstruction({ units: input.units }, config)],
     transaction,
-  );
+  ) as TTransaction;
 };
 
 export type ComputeUnitEstimateForTransactionMessageConfig = Omit<
-  Parameters<
-    ReturnType<typeof getComputeUnitEstimateForTransactionMessageFactory>
-  >[1],
+  Parameters<ReturnType<typeof estimateResourceLimitsFactory>>[1],
   'rpc' | 'transactionMessage'
 >;
 
@@ -223,23 +224,25 @@ export type EstimateAndOverrideComputeUnitLimitConfig = {
  * @param config.getSetComputeUnitLimitInstructionConfig - Optional config for the set compute unit limit instruction.
  * @returns The transaction message with the compute unit limit instruction added.
  */
-export const estimateAndOverrideComputeUnitLimit = async (
-  transactionMessage: CompilableTransactionMessage,
+export const estimateAndOverrideComputeUnitLimit = async <
+  TTransactionMessage extends TransactionMessage &
+    TransactionMessageWithFeePayer,
+>(
+  transactionMessage: TTransactionMessage,
   rpc: Rpc<SimulateTransactionApi>,
   config?: {
     getComputeUnitEstimateConfig?: ComputeUnitEstimateForTransactionMessageConfig;
     getSetComputeUnitLimitInstructionConfig?: SetComputeUnitLimitInstructionConfig;
   },
-): Promise<CompilableTransactionMessage> => {
+): Promise<TTransactionMessage> => {
   try {
     const instructions = transactionMessage.instructions.filter(Boolean);
 
-    const getComputeUnitEstimate =
-      getComputeUnitEstimateForTransactionMessageFactory({
-        rpc,
-      });
+    const getComputeUnitEstimate = estimateResourceLimitsFactory({
+      rpc,
+    });
 
-    const units = await getComputeUnitEstimate(
+    const estimate = await getComputeUnitEstimate(
       transactionMessage,
       config?.getComputeUnitEstimateConfig,
     ).catch((error) => {
@@ -248,9 +251,17 @@ export const estimateAndOverrideComputeUnitLimit = async (
         isSolanaError(
           error,
           SOLANA_ERROR__TRANSACTION__FAILED_WHEN_SIMULATING_TO_ESTIMATE_COMPUTE_LIMIT,
+        ) ||
+        isSolanaError(
+          error,
+          SOLANA_ERROR__TRANSACTION__FAILED_WHEN_SIMULATING_TO_ESTIMATE_RESOURCE_LIMITS,
         )
       ) {
-        return error.context.unitsConsumed;
+        if (error.context.unitsConsumed !== null) {
+          return {
+            computeUnitLimit: Number(error.context.unitsConsumed),
+          };
+        }
       }
 
       // Otherwise it's an unexpected error. Rethrow.
@@ -265,11 +276,11 @@ export const estimateAndOverrideComputeUnitLimit = async (
           (instruction) => !isComputeUnitLimitInstruction(instruction),
         ),
         getSetComputeUnitLimitInstruction(
-          { units },
+          { units: estimate.computeUnitLimit },
           config?.getSetComputeUnitLimitInstructionConfig,
         ),
       ],
-    } as CompilableTransactionMessage;
+    } as TTransactionMessage;
   } catch (error) {
     // If the estimate fails, return the original transaction message unchanged.
     return transactionMessage;

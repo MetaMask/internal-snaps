@@ -11,7 +11,7 @@ export const onNameLookupHandler: OnNameLookupHandler = async (request) => {
 
   const { chainId, domain, address } = request;
 
-  // regex to match valid .sol domains (at least one character before .sol)
+  // regex to match valid .sns domains (at least one character before .sns)
   const validDomainRegex = new RegExp(
     `^.+\\${nameResolutionService.tld}$`,
     'u',

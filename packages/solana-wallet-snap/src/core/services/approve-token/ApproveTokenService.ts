@@ -15,8 +15,9 @@ import {
 } from '@solana-program/token-2022';
 import type {
   Address,
-  CompilableTransactionMessage,
-  IInstruction,
+  Instruction,
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
 } from '@solana/kit';
 import {
   appendTransactionMessageInstructions,
@@ -84,7 +85,7 @@ export class ApproveTokenService {
    */
   async buildApprovalTransactionMessage(
     params: ApproveTokenParams,
-  ): Promise<CompilableTransactionMessage> {
+  ): Promise<TransactionMessage & TransactionMessageWithFeePayer> {
     this.#logger.log('Building token approval transaction', {
       mint: params.mint,
       delegate: params.delegate,
@@ -140,7 +141,7 @@ export class ApproveTokenService {
 
     const isToken2022 = tokenProgram === TOKEN_2022_PROGRAM_ADDRESS;
 
-    const instructions: IInstruction[] = [];
+    const instructions: Instruction[] = [];
 
     // Only create the ATA if it doesn't already exist.
     // Uses `Create` (not `CreateIdempotent`) because the card partner
@@ -178,7 +179,7 @@ export class ApproveTokenService {
 
     // Build the transaction message with instructions in order:
     // SetComputeUnitPrice, Create (if needed), Approve, SetComputeUnitLimit
-    const allInstructions: IInstruction[] = [
+    const allInstructions: Instruction[] = [
       getSetComputeUnitPriceInstruction({
         microLamports: this.#computeUnitPriceMicroLamportsPerComputeUnit,
       }),

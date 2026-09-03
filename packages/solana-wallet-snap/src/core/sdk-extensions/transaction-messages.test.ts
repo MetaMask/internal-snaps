@@ -2,7 +2,7 @@ import type { Rpc, SimulateTransactionApi } from '@solana/kit';
 import {
   address,
   blockhash,
-  getComputeUnitEstimateForTransactionMessageFactory,
+  estimateResourceLimitsFactory,
   SolanaError,
 } from '@solana/kit';
 
@@ -23,9 +23,11 @@ import {
 
 jest.mock('@solana/kit', () => ({
   ...jest.requireActual('@solana/kit'),
-  getComputeUnitEstimateForTransactionMessageFactory: jest
+  estimateResourceLimitsFactory: jest
     .fn()
-    .mockReturnValue(jest.fn().mockResolvedValue(500)), // 500 compute units
+    .mockReturnValue(
+      jest.fn().mockResolvedValue({ computeUnitLimit: 500 }),
+    ), // 500 compute units
 }));
 
 describe('transaction-messages', () => {
@@ -429,14 +431,14 @@ describe('transaction-messages', () => {
 
     it('returns the units consumed from the error if the transaction simulation failed', async () => {
       jest
-        .mocked(getComputeUnitEstimateForTransactionMessageFactory)
+        .mocked(estimateResourceLimitsFactory)
         .mockReturnValue(
           jest.fn().mockRejectedValue(
             // This code is the specific error code for failed transaction simulation when estimating the compute unit limit.
             // It ensures that the error includes the units consumed.
             new SolanaError(5663019, {
-              unitsConsumed: 150,
-            }),
+              unitsConsumed: 150n,
+            } as never),
           ),
         );
 
@@ -451,9 +453,28 @@ describe('transaction-messages', () => {
       });
     });
 
+    it('returns the original transaction message if simulation fails without units consumed', async () => {
+      jest
+        .mocked(estimateResourceLimitsFactory)
+        .mockReturnValue(
+          jest.fn().mockRejectedValue(
+            new SolanaError(5663019, {
+              unitsConsumed: null,
+            } as never),
+          ),
+        );
+
+      const result = await estimateAndOverrideComputeUnitLimit(
+        transactionMessageWithNoComputeUnitLimit,
+        rpc,
+      );
+
+      expect(result).toStrictEqual(transactionMessageWithNoComputeUnitLimit);
+    });
+
     it('returns the original transaction message if the compute unit limit cannot be estimated', async () => {
       jest
-        .mocked(getComputeUnitEstimateForTransactionMessageFactory)
+        .mocked(estimateResourceLimitsFactory)
         .mockReturnValue(
           jest.fn().mockRejectedValue(
             // Some other error code not related to compute unit limit estimation. The error doesn't contain the units consumed.

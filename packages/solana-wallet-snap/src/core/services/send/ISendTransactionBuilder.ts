@@ -1,4 +1,8 @@
-import type { Address, CompilableTransactionMessage } from '@solana/kit';
+import type {
+  Address,
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 import type BigNumber from 'bignumber.js';
 
 import type { SolanaKeyringAccount } from '../../../entities';
@@ -19,7 +23,7 @@ export type BuildSendTransactionParams = {
 export type ISendTransactionBuilder = {
   buildTransactionMessage(
     params: BuildSendTransactionParams,
-  ): Promise<CompilableTransactionMessage>;
+  ): Promise<TransactionMessage & TransactionMessageWithFeePayer>;
   getComputeUnitLimit(): number;
   getComputeUnitPriceMicroLamportsPerComputeUnit(): bigint;
 };

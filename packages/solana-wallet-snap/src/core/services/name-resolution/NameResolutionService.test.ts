@@ -1,8 +1,5 @@
 import { expect } from '@jest/globals';
-import {
-  resolveDomain,
-  getPrimaryDomain,
-} from '@solana-name-service/sns-sdk-kit';
+import { getPrimaryDomain, resolve } from '@solana-name-service/sns-sdk-kit';
 import type { Address } from '@solana/kit';
 
 import { Network } from '../../constants/solana';
@@ -39,7 +36,7 @@ describe('NameResolutionService', () => {
     const mockNetwork = Network.Mainnet;
 
     beforeEach(() => {
-      jest.mocked(resolveDomain).mockResolvedValue(mockAddress);
+      jest.mocked(resolve).mockResolvedValue(mockAddress);
     });
 
     it('resolves a domain to an address successfully', async () => {
@@ -49,7 +46,7 @@ describe('NameResolutionService', () => {
       );
 
       expect(mockConnection.getRpc).toHaveBeenCalledWith(mockNetwork);
-      expect(resolveDomain).toHaveBeenCalledWith(mockRpc, mockDomain);
+      expect(resolve).toHaveBeenCalledWith({ rpc: mockRpc, domain: mockDomain });
       expect(result).toBe(mockAddress);
     });
 
@@ -60,11 +57,11 @@ describe('NameResolutionService', () => {
       expect(mockConnection.getRpc).toHaveBeenCalledWith(mockNetwork);
     });
 
-    it('calls resolveDomain with the correct parameters', async () => {
+    it('calls resolve with the correct parameters', async () => {
       await nameResolutionService.resolveDomain(mockNetwork, mockDomain);
 
-      expect(resolveDomain).toHaveBeenCalledTimes(1);
-      expect(resolveDomain).toHaveBeenCalledWith(mockRpc, mockDomain);
+      expect(resolve).toHaveBeenCalledTimes(1);
+      expect(resolve).toHaveBeenCalledWith({ rpc: mockRpc, domain: mockDomain });
     });
 
     it('works with different networks', async () => {
@@ -75,9 +72,9 @@ describe('NameResolutionService', () => {
       expect(mockConnection.getRpc).toHaveBeenCalledWith(devnetNetwork);
     });
 
-    it('propagates errors from resolveDomain', async () => {
+    it('propagates errors from resolve', async () => {
       const error = new Error('Domain resolution failed');
-      jest.mocked(resolveDomain).mockRejectedValue(error);
+      jest.mocked(resolve).mockRejectedValue(error);
 
       await expect(
         nameResolutionService.resolveDomain(mockNetwork, mockDomain),
@@ -89,7 +86,7 @@ describe('NameResolutionService', () => {
 
       for (const domain of domains) {
         await nameResolutionService.resolveDomain(mockNetwork, domain);
-        expect(resolveDomain).toHaveBeenCalledWith(mockRpc, domain);
+        expect(resolve).toHaveBeenCalledWith({ rpc: mockRpc, domain });
       }
     });
   });
@@ -113,8 +110,11 @@ describe('NameResolutionService', () => {
       );
 
       expect(mockConnection.getRpc).toHaveBeenCalledWith(mockNetwork);
-      expect(getPrimaryDomain).toHaveBeenCalledWith(mockRpc, mockAddress);
-      expect(result).toBe(`${mockDomain}.sol`);
+      expect(getPrimaryDomain).toHaveBeenCalledWith({
+        rpc: mockRpc,
+        walletAddress: mockAddress,
+      });
+      expect(result).toBe(`${mockDomain}.sns`);
     });
 
     it('calls getRpc with the correct network', async () => {
@@ -128,7 +128,10 @@ describe('NameResolutionService', () => {
       await nameResolutionService.resolveAddress(mockNetwork, mockAddress);
 
       expect(getPrimaryDomain).toHaveBeenCalledTimes(1);
-      expect(getPrimaryDomain).toHaveBeenCalledWith(mockRpc, mockAddress);
+      expect(getPrimaryDomain).toHaveBeenCalledWith({
+        rpc: mockRpc,
+        walletAddress: mockAddress,
+      });
     });
 
     it('works with different networks', async () => {
@@ -155,7 +158,7 @@ describe('NameResolutionService', () => {
       const mockNetwork = Network.Mainnet;
 
       // Setup mocks
-      jest.mocked(resolveDomain).mockResolvedValue(mockAddress);
+      jest.mocked(resolve).mockResolvedValue(mockAddress);
       jest.mocked(getPrimaryDomain).mockResolvedValue({
         domainAddress: mockDomain as Address,
         domainName: mockDomain,
@@ -174,7 +177,7 @@ describe('NameResolutionService', () => {
         mockNetwork,
         mockAddress,
       );
-      expect(resolvedDomain).toBe(`${mockDomain}.sol`);
+      expect(resolvedDomain).toBe(`${mockDomain}.sns`);
     });
 
     it('works with all network types', async () => {
@@ -187,7 +190,7 @@ describe('NameResolutionService', () => {
       const mockDomain = 'test';
       const mockAddress = '11111111111111111111111111111111' as Address;
 
-      jest.mocked(resolveDomain).mockResolvedValue(mockAddress);
+      jest.mocked(resolve).mockResolvedValue(mockAddress);
       jest.mocked(getPrimaryDomain).mockResolvedValue({
         domainAddress: mockDomain as Address,
         domainName: mockDomain,
@@ -207,7 +210,7 @@ describe('NameResolutionService', () => {
           network,
           mockAddress,
         );
-        expect(resolvedDomain).toBe(`${mockDomain}.sol`);
+        expect(resolvedDomain).toBe(`${mockDomain}.sns`);
       }
     });
   });

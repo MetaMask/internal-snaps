@@ -4,7 +4,7 @@ import {
 } from '@solana-program/compute-budget';
 import type {
   CompiledTransactionMessage,
-  IInstructionWithData,
+  InstructionWithData,
   Transaction as KitTransaction,
   Lamports,
 } from '@solana/kit';
@@ -185,7 +185,7 @@ export class FeeCalculator {
     }
 
     return parseSetComputeUnitLimitInstruction(
-      computeUnitLimitInstruction as IInstructionWithData<Uint8Array>,
+      computeUnitLimitInstruction as InstructionWithData<Uint8Array>,
     ).data.units;
   }
 
@@ -202,7 +202,7 @@ export class FeeCalculator {
     }
 
     return parseSetComputeUnitPriceInstruction(
-      computeUnitPriceInstruction as IInstructionWithData<Uint8Array>,
+      computeUnitPriceInstruction as InstructionWithData<Uint8Array>,
     ).data.microLamports;
   }
 

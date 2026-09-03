@@ -37,9 +37,9 @@ import { Signer } from './Signer';
 
 jest.mock('@solana/kit', () => ({
   ...jest.requireActual('@solana/kit'),
-  getComputeUnitEstimateForTransactionMessageFactory: jest
+  estimateResourceLimitsFactory: jest
     .fn()
-    .mockReturnValue(jest.fn().mockResolvedValue(200000)),
+    .mockReturnValue(jest.fn().mockResolvedValue({ computeUnitLimit: 200000 })),
   sendTransactionWithoutConfirmingFactory: jest
     .fn()
     .mockReturnValue(jest.fn().mockResolvedValueOnce(undefined)),
@@ -260,7 +260,7 @@ describe('Signer', () => {
       );
 
       const currentBlockhash = (
-        transactionMessage as TransactionMessageWithBlockhashLifetime
+        transactionMessage as unknown as TransactionMessageWithBlockhashLifetime
       ).lifetimeConstraint.blockhash;
 
       expect(mockConnection.getLatestBlockhash).toHaveBeenCalledWith(mockScope);

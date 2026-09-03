@@ -1,7 +1,7 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import type {
-  BaseTransactionMessage,
+  TransactionMessage,
   Transaction,
   TransactionWithLifetime,
 } from '@solana/kit';
@@ -156,7 +156,7 @@ export class Signer {
    * @returns The partially signed transaction.
    */
   async #prepareAndPartiallySignTransactionMessage(
-    transactionMessage: BaseTransactionMessage,
+    transactionMessage: TransactionMessage,
     account: SolanaKeyringAccount,
     scope: Network,
     refreshBlockhashBeforeSigning: boolean,
@@ -180,7 +180,7 @@ export class Signer {
       isTransactionMessageWithComputeUnitLimitInstruction(transactionMessage);
 
     /**
-     * We add a compute unit limit if it's missing, but also if we the compute unit price is missing.
+     * We add a compute unit limit if it's missing, but also if the compute unit price is missing.
      * Why? Because we will add an extra instruction for the compute unit price, which incidentally increases
      * the compute unit consumed by the transaction. So we need to re-estimate the compute unit limit and override it.
      */

@@ -263,7 +263,7 @@
   },
   "packages/solana-wallet-snap/src/core/sdk-extensions/transaction-messages.ts": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 4
+      "count": 3
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
