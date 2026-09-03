@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **BREAKING** Remove the `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` asset handler entry points, along with the now-unused `AssetsHandler` and the `endowment:assets` permission ([#263](https://github.com/MetaMask/internal-snaps/pull/263))
+- **BREAKING** Remove the deprecated `asset` cluster of handlers: `onAssetHistoricalPrice`, `onAssetsConversion`, `onAssetsLookup` and `onAssetsMarketData` ([#263](https://github.com/MetaMask/internal-snaps/pull/263))
 
 ## [3.2.0]
 

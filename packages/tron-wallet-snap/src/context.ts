@@ -62,7 +62,6 @@ const state = new State({
   defaultState: {
     keyringAccounts: {},
     assets: {},
-    tokenPrices: {},
     transactions: {},
     mapInterfaceNameToId: {},
   },
@@ -123,7 +122,6 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   priceApiClient,
   tokenApiClient,
   snapClient,
-  configProvider,
 });
 const coreAssetsAdapter = new CoreAssetsAdapter({
   getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
