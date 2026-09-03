@@ -9,6 +9,7 @@ import {
 import { string, object } from '@metamask/superstruct';
 
 import { METAMASK_ORIGIN } from '../constants';
+import { ClientRequestMethod } from '../handlers/clientRequest/api';
 import { originPermissions } from '../permissions';
 import { validateRequest, validateResponse } from './requestResponse';
 
@@ -85,6 +86,7 @@ describe('validateOrigin', () => {
     KeyringSnapRpcMethod.ResolveAccountAddress,
     KeyringSnapRpcMethod.SetSelectedAccounts,
     KeyringSnapRpcMethod.ExportAccount,
+    ClientRequestMethod.SignProofOfOwnershipBatch,
   ])('allows method %s for metamask', (method) => {
     const origin = METAMASK_ORIGIN;
 
