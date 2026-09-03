@@ -1,0 +1,19 @@
+{
+  /**
+   * Shared settings for library packages, used by `tsc` to emit declarations.
+   *
+   * Library packages extending this configuration must still define their own `outDir`,
+   * `rootDir`, and `include`, since these are resolved relative to each package.
+   */
+  "extends": "./tsconfig.packages.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "inlineSources": true,
+    "noEmit": false,
+    "sourceMap": true
+  },
+  "exclude": ["**/*.test.ts", "**/tests"]
+}

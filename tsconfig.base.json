@@ -1,6 +1,16 @@
 {
   /**
-   * This configuration is extended by all other TypeScript configurations.
+   * Configuration extended by all other TypeScript configurations, whose purpose is described here:
+   *
+   * `tsconfig.json` - Repository root configuration.
+   * `tsconfig.scripts.json` - Used for the `scripts/` directory.
+   * `tsconfig.packages.json` - Shared by all `packages/`, whether Snaps or not.
+   *
+   * `tsconfig.packages.libs.json` - INEXISTANT, it would be the same as `tsconfig.packages.json`.
+   * `tsconfig.packages.libs.build.json` - Configurations for `ts-bridge`'s emission of declarations.
+   *
+   * `tsconfig.packages.snaps.json` - Snap specific configurations.
+   * `tsconfig.packages.snaps.build.json` - INEXISTANT, `mm-snap` already handles everything.
    */
   "compilerOptions": {
     "esModuleInterop": true,

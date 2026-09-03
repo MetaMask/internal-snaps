@@ -48,7 +48,10 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 
 - `tsconfig.base.json` defines shared compiler defaults for all other config files.
 - `tsconfig.json` defines TypeScript settings for repository scripts and editor features.
-- `tsconfig.packages.json` defines shared source, editor, and type-checking settings for all packages.
+- `tsconfig.packages.json` defines shared TypeScript settings for all packages.
+- Packages are either Snaps or non-Snaps:
+  - `tsconfig.packages.snaps.json` defines shared TypeScript settings for all Snap packages.
+  - `tsconfig.packages.libs.build.json` defines shared declaration build settings for library packages, used by `ts-bridge`.
 - `tsconfig.scripts.json` defines shared TypeScript settings for directories in `scripts/`.
 - The root `lint:tsc` script checks repository scripts with `tsconfig.json`, then checks each
   workspace package configuration directly. It does not build Snap bundles with `tsc`.
