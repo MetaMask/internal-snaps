@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING** Remove the `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` asset handler entry points, along with the now-unused handler modules and the `endowment:assets` permission ([#261](https://github.com/MetaMask/internal-snaps/pull/261))
 - **BREAKING** Remove `AssetsService.fetchAssetsMarketData` and `SnapAssetsAdapter.fetchAssetsMarketData`, the `TokenPricesService` class, and `PriceApiClient.getHistoricalPrices`, all of which were only used by the removed asset handlers ([#261](https://github.com/MetaMask/internal-snaps/pull/261))
+- Remove the now-unused `PriceApiClient.getFiatExchangeRates` method and related `ExchangeRate` type, the unused `tokenPrices` unencrypted state field, the unused `fiatExchangeRates` and `historicalPrices` price API cache TTL options, and unused price API test mocks ([#261](https://github.com/MetaMask/internal-snaps/pull/261))
 
 ### Fixed
 

@@ -16,7 +16,6 @@ import { createMockConnection } from '../../__mocks__/mockConnection';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import type { SolanaConnection } from '../../connection';
-import type { TokenPricesService } from '../../token-prices/TokenPrices';
 import type { AssetsRepository } from '../AssetsRepository';
 import { SnapAssetsAdapter } from './SnapAssetsAdapter';
 
@@ -27,7 +26,6 @@ describe('SnapAssetsAdapter', () => {
   let mockAssetsRepository: AssetsRepository;
   let mockAccountsService: AccountsService;
   let mockTokenApiClient: TokenApiClient;
-  let mockTokenPricesService: TokenPricesService;
   let mockNftApiClient: NftApiClient;
   let mockCache: ICache<Serializable>;
 
@@ -42,10 +40,6 @@ describe('SnapAssetsAdapter', () => {
     mockTokenApiClient = {
       getTokensMetadata: jest.fn().mockResolvedValue({}),
     } as unknown as TokenApiClient;
-
-    mockTokenPricesService = {
-      getMultipleTokensMarketData: jest.fn().mockResolvedValue({}),
-    } as unknown as TokenPricesService;
 
     mockCache = new InMemoryCache(mockLogger);
 
@@ -72,7 +66,6 @@ describe('SnapAssetsAdapter', () => {
       assetsRepository: mockAssetsRepository,
       accountsService: mockAccountsService,
       tokenApiClient: mockTokenApiClient,
-      tokenPricesService: mockTokenPricesService,
       cache: mockCache,
       nftApiClient: mockNftApiClient,
     });

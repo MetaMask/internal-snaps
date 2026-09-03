@@ -8,7 +8,6 @@ import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants/solana';
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
-import { MOCK_EXCHANGE_RATES } from '../../test/mocks/price-api/exchange-rates';
 import { MOCK_SPOT_PRICES } from './mocks/spot-prices';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
@@ -27,9 +26,7 @@ describe('PriceApiClient', () => {
           baseUrl: 'https://some-mock-url.com',
           chunkSize: 50,
           cacheTtlsMilliseconds: {
-            fiatExchangeRates: 0,
             spotPrices: 0,
-            historicalPrices: 0,
           },
         },
       }),
@@ -43,55 +40,6 @@ describe('PriceApiClient', () => {
       mockFetch,
       mockLogger,
     );
-  });
-
-  describe('getFiatExchangeRates', () => {
-    it('fetches fiat exchange rates successfully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: jest.fn().mockResolvedValueOnce(MOCK_EXCHANGE_RATES),
-      });
-
-      const result = await client.getFiatExchangeRates();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://some-mock-url.com/v1/exchange-rates/fiat',
-      );
-      expect(result).toStrictEqual(MOCK_EXCHANGE_RATES);
-    });
-
-    it('caches the fiat exchange rates', async () => {
-      // TTL 0 expires on the next clock tick (`expiresAt < Date.now()`), so the
-      // second call can miss the cache and hit an exhausted fetch mock.
-      const cachingClient = new PriceApiClient(
-        {
-          get: jest.fn().mockReturnValue({
-            priceApi: {
-              baseUrl: 'https://some-mock-url.com',
-              chunkSize: 50,
-              cacheTtlsMilliseconds: {
-                fiatExchangeRates: 60_000,
-                spotPrices: 0,
-                historicalPrices: 0,
-              },
-            },
-          }),
-        } as unknown as ConfigProvider,
-        mockCache,
-        mockFetch,
-        mockLogger,
-      );
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: jest.fn().mockResolvedValueOnce(MOCK_EXCHANGE_RATES),
-      });
-
-      await cachingClient.getFiatExchangeRates();
-      await cachingClient.getFiatExchangeRates();
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
   });
 
   describe('getMultipleSpotPrices', () => {
@@ -289,9 +237,7 @@ describe('PriceApiClient', () => {
             baseUrl: 'invalid-url',
             chunkSize: 50,
             cacheTtlsMilliseconds: {
-              fiatExchangeRates: 0,
               spotPrices: 0,
-              historicalPrices: 0,
             },
           },
         }),

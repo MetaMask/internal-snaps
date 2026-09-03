@@ -8,10 +8,9 @@ import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
-import { useCache } from '../../caching/useCache';
 import type { ConfigProvider } from '../../services/config';
 import logger from '../../utils/logger';
-import type { ExchangeRate, FiatTicker, SpotPrices, VsCurrencyParam } from './types';
+import type { SpotPrices, VsCurrencyParam } from './types';
 import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
 
 export class PriceApiClient {
@@ -26,9 +25,7 @@ export class PriceApiClient {
   readonly #cache: ICache<Serializable>;
 
   readonly cacheTtlsMilliseconds: {
-    fiatExchangeRates: number;
     spotPrices: number;
-    historicalPrices: number;
   };
 
   constructor(
@@ -49,37 +46,6 @@ export class PriceApiClient {
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
 
     this.#cache = _cache;
-  }
-
-  async getFiatExchangeRates(): Promise<Record<FiatTicker, ExchangeRate>> {
-    return useCache(
-      this.#getFiatExchangeRates_INTERNAL.bind(this),
-      this.#cache,
-      {
-        functionName: 'PriceApiClient:getFiatExchangeRates',
-        ttlMilliseconds: this.cacheTtlsMilliseconds.fiatExchangeRates,
-      },
-    )();
-  }
-
-  async #getFiatExchangeRates_INTERNAL(): Promise<
-    Record<FiatTicker, ExchangeRate>
-  > {
-    try {
-      const response = await this.#fetch(
-        `${this.#baseUrl}/v1/exchange-rates/fiat`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      this.#logger.error(error, 'Error fetching fiat exchange rates');
-      throw error;
-    }
   }
 
   /**

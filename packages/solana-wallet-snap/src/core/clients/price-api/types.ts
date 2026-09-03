@@ -13,10 +13,6 @@ import {
 } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 
-export type PriceApiClientConfig = {
-  baseUrl: string;
-};
-
 export const CryptoTickerStruct = enums([
   'btc',
   'eth',
@@ -112,13 +108,6 @@ export const TickerStruct = union([
 ]);
 
 export type Ticker = Infer<typeof TickerStruct>;
-
-export type ExchangeRate = {
-  name: string;
-  ticker: Ticker;
-  value: number;
-  currencyType: 'fiat' | 'crypto' | 'commodity';
-};
 
 /**
  * The structure of the spot price response from the Price API as described in

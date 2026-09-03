@@ -1,8 +1,4 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
-
-import type { ICache } from './core/caching/ICache';
 import { InMemoryCache } from './core/caching/InMemoryCache';
-import { StateCache } from './core/caching/StateCache';
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
@@ -39,7 +35,6 @@ import { ConfigProvider } from './core/services/config';
 import { ConfirmationHandler } from './core/services/confirmation/ConfirmationHandler';
 import { SolanaConnection } from './core/services/connection/SolanaConnection';
 import { NameResolutionService } from './core/services/name-resolution/NameResolutionService';
-import { NftService } from './core/services/nft/NftService';
 import type { IStateManager } from './core/services/state/IStateManager';
 import type { UnencryptedStateValue } from './core/services/state/State';
 import { DEFAULT_UNENCRYPTED_STATE, State } from './core/services/state/State';
@@ -67,8 +62,6 @@ export type SnapExecutionContext = {
   transactionScanService: TransactionScanService;
   analyticsService: AnalyticsService;
   confirmationHandler: ConfirmationHandler;
-  cache: ICache<Serializable>;
-  nftService: NftService;
   clientRequestHandler: ClientRequestHandler;
   webSocketConnectionService: WebSocketConnectionService;
   subscriptionService: SubscriptionService;
@@ -88,7 +81,6 @@ const state = new State(eventEmitter, {
   defaultState: DEFAULT_UNENCRYPTED_STATE,
 });
 
-const stateCache = new StateCache(state, logger);
 const inMemoryCache = new InMemoryCache(noOpLogger);
 
 const analyticsService = new AnalyticsService(logger);
@@ -233,8 +225,6 @@ const keyring = new SolanaKeyring({
   keyringAccountMonitor,
 });
 
-const nftService = new NftService(connection, logger);
-
 const sendService = new SendService(
   connection,
   keyring,
@@ -266,7 +256,6 @@ const snapContext: SnapExecutionContext = {
   keyring,
   priceApiClient,
   state,
-  cache: stateCache,
   /* Services */
   assetsService,
   signer,
@@ -277,7 +266,6 @@ const snapContext: SnapExecutionContext = {
   transactionScanService,
   analyticsService,
   confirmationHandler,
-  nftService,
   clientRequestHandler,
   webSocketConnectionService,
   subscriptionService,
@@ -289,30 +277,16 @@ const snapContext: SnapExecutionContext = {
 };
 
 export {
-  accountsService,
   accountsSynchronizer,
   analyticsService,
-  assetsService,
   clientRequestHandler,
-  configProvider,
-  confirmationHandler,
   connection,
   eventEmitter,
   keyring,
   nameResolutionService,
-  nftService,
   priceApiClient,
-  sendSolBuilder,
-  sendSplTokenBuilder,
-  signer,
   state,
-  subscriptionRepository,
-  subscriptionService,
-  tokenApiClient,
-  tokenHelper,
   transactionScanService,
-  transactionsService,
-  walletService,
   webSocketConnectionService,
 };
 
