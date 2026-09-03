@@ -34,11 +34,10 @@ const config: SnapConfig = {
     port: 8080,
   },
   environment,
-  polyfills: {
-    buffer: true,
-  },
+  polyfills: true,
   preinstalled: {
     removable: false,
+    hidden: true,
     hideSnapBranding: true,
   },
 };
