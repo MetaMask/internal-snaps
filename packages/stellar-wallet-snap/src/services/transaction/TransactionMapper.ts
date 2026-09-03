@@ -502,8 +502,12 @@ export class TransactionMapper {
     transaction: Transaction,
     keyringAccount: StellarKeyringAccount,
   ): KeyringTransaction | undefined {
-    // A failed transaction does not contain the result_meta_xdr for us to extract the event data.
-    if (transaction.status === TransactionStatus.Failed) {
+    if (
+      // A failed transaction does not contain the result_meta_xdr for us to extract the event data
+      transaction.status === TransactionStatus.Failed ||
+      // A transaction is not from the source account, so it is not a receive transaction.
+      transaction.isSourceAccount(keyringAccount.address)
+    ) {
       return undefined;
     }
 
