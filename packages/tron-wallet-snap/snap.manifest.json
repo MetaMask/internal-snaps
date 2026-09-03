@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "ywXNBsBG0fniejuwfBWRFL2c2zEFyAJWiqiIhzNKG3Q=",
+    "shasum": "/8DB4dcdqQHoD+raJRPRe0ztQnTaOI8Lp8E2Yg6WCEM=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -15,8 +15,7 @@
         "packageName": "@metamask/tron-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
-    },
-    "locales": ["locales/en.json"]
+    }
   },
   "initialConnections": {
     "https://portfolio.metamask.io": {}
