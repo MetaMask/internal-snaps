@@ -19,6 +19,11 @@ import { StellarSnapException } from '../../utils/errors';
 export class KeyringException extends StellarSnapException {}
 
 /**
+ * Thrown when private-key export fails. Messages must not include the secret.
+ */
+export class ExportAccountException extends KeyringException {}
+
+/**
  * SEP-43 error codes.
  *
  * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0043.md

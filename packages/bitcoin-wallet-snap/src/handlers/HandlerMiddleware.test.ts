@@ -1,9 +1,14 @@
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
-import { BaseError, ExternalServiceError, UserActionError } from '../entities';
+import { BaseError, ExternalServiceError } from '../entities';
 import type { Logger, SnapClient, Translator } from '../entities';
-import { HandlerMiddleware, shouldTrackError } from './HandlerMiddleware';
+import { trackError } from '../utils/errors';
+import { HandlerMiddleware } from './HandlerMiddleware';
+
+jest.mock('../utils/errors', () => ({
+  trackError: jest.fn(),
+}));
 
 describe('HandlerMiddleware', () => {
   const mockLogger = mock<Logger>();
@@ -13,6 +18,7 @@ describe('HandlerMiddleware', () => {
   const mockTranslator = mock<Translator>({
     load: jest.fn(),
   });
+  const mockTrackError = jest.mocked(trackError);
 
   const middleware = new HandlerMiddleware(
     mockLogger,
@@ -22,31 +28,11 @@ describe('HandlerMiddleware', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTrackError.mockResolvedValue(undefined);
     mockSnapClient.getPreferences.mockResolvedValue({
       locale: 'en',
     } as GetPreferencesResult);
     mockTranslator.load.mockResolvedValue({});
-  });
-
-  describe('shouldTrackError', () => {
-    it('returns false for canceled confirmation errors', () => {
-      expect(
-        shouldTrackError(
-          new UserActionError('User canceled the confirmation'),
-          mockLogger,
-        ),
-      ).toBe(false);
-    });
-
-    it('returns true for other errors', () => {
-      expect(shouldTrackError(new Error('boom'), mockLogger)).toBe(true);
-      expect(
-        shouldTrackError(
-          new UserActionError('Another user action'),
-          mockLogger,
-        ),
-      ).toBe(true);
-    });
   });
 
   describe('handle', () => {
@@ -66,6 +52,7 @@ describe('HandlerMiddleware', () => {
       expect(mockSnapClient.getPreferences).toHaveBeenCalled();
       expect(mockTranslator.load).toHaveBeenCalledWith('en');
       expect(mockLogger.error).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
     });
 
     it('tracks an unexpected Error before rethrowing it as a SnapError', async () => {
@@ -73,16 +60,16 @@ describe('HandlerMiddleware', () => {
       const mockFn = jest.fn().mockRejectedValue(error);
 
       await expect(middleware.handle(mockFn)).rejects.toThrow('tracked boom');
-      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
     });
 
-    it('continues to throw a SnapError when emitTrackingError fails', async () => {
+    it('continues to throw a SnapError when trackError is invoked', async () => {
       const error = new Error('boom after tracking failure');
       const mockFn = jest.fn().mockRejectedValue(error);
 
       await expect(middleware.handle(mockFn)).rejects.toThrow(error);
 
-      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
       expect(mockSnapClient.getPreferences).toHaveBeenCalled();
     });
 
@@ -91,6 +78,7 @@ describe('HandlerMiddleware', () => {
 
       await expect(middleware.handle(mockFn)).rejects.toThrow('string failure');
       expect(mockLogger.error).toHaveBeenCalledWith('string failure');
+      expect(mockTrackError).toHaveBeenCalledWith('string failure');
     });
 
     it('wraps a thrown plain object by stringifying it', async () => {
@@ -101,6 +89,7 @@ describe('HandlerMiddleware', () => {
         '[object Object]',
       );
       expect(mockLogger.error).toHaveBeenCalledWith(thrown);
+      expect(mockTrackError).toHaveBeenCalledWith(thrown);
     });
 
     it('uses the message property if it exists on a thrown plain object', async () => {
@@ -111,6 +100,7 @@ describe('HandlerMiddleware', () => {
         'InsufficientFunds',
       );
       expect(mockLogger.error).toHaveBeenCalledWith(thrown);
+      expect(mockTrackError).toHaveBeenCalledWith(thrown);
     });
 
     it('handles error successfully if instance of BaseError', async () => {
@@ -124,7 +114,7 @@ describe('HandlerMiddleware', () => {
       expect(mockSnapClient.getPreferences).toHaveBeenCalled();
       expect(mockTranslator.load).toHaveBeenCalledWith('en');
       expect(mockLogger.error).toHaveBeenCalledWith(error, error.data);
-      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
     });
 
     it('includes the concrete external service failure in the returned error message', async () => {
@@ -139,7 +129,7 @@ describe('HandlerMiddleware', () => {
       await expect(middleware.handle(mockFn)).rejects.toThrow(
         'Connection error: Failed to synchronize account',
       );
-      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
     });
   });
 });

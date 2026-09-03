@@ -10,6 +10,14 @@ export const SUPPORTED_SCOPES =
   snapManifest.initialPermissions['endowment:keyring'].capabilities.scopes;
 
 /**
+ * Private-key export encoding supported by this snap.
+ *
+ * Always `base32` (Stellar `S…` strkey). Not read from the snap manifest:
+ * this snap does not support any other encoding.
+ */
+export const PRIVATE_KEY_EXPORT_ENCODING = 'base32' as const;
+
+/**
  * The base reserve for the Stellar network.
  *
  * @see https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/accounts

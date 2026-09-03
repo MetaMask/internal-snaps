@@ -18,6 +18,7 @@ const metamaskMethods = [
   KeyringSnapRpcMethod.GetAccountAssets,
   KeyringSnapRpcMethod.ResolveAccountAddress,
   KeyringSnapRpcMethod.SetSelectedAccounts,
+  KeyringSnapRpcMethod.ExportAccount,
   /**
    * Keyring API v1 method names, kept because consumers still call them.
    * Dropping them makes the client fail with an access restriction error on

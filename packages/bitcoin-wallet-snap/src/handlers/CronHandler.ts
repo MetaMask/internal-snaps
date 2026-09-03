@@ -1,5 +1,5 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
-import { InFlightCoalescer } from '@metamask/snap-networks-utils/dedupe';
+import { InFlightCoalescer } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, object, string } from 'superstruct';
 

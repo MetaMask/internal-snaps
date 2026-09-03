@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add a `UuidStruct` Superstruct for validating UUID v4 strings. ([#243](https://github.com/MetaMask/internal-snaps/pull/243))
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
+- Add shared snap error utilities to the main package entry point ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
+  - `createWithCatchAndThrowSnapError` for handler-boundary error catching, logging, and Snap RPC normalization
+  - `normalizeError` for converting caught values into Snap RPC errors, with optional custom normalizers via `createWithCatchAndThrowSnapError`'s `normalizeErrorFn` option
+  - `isSnapRpcError` type guard and `SnapRpcError` union type
+- Add shared Sentry error tracking utilities for network snaps ([#246](https://github.com/MetaMask/internal-snaps/pull/246))
+  - `createTrackError` for reporting errors to MetaMask via `snap_trackError`
+  - `createSnapErrorHandling` to wire `createTrackError` and `createWithCatchAndThrowSnapError`
 - Add `InFlightCoalescer`, exported from a new `./dedupe` entry point, which coalesces concurrent async operations by key so callers share one in-flight run ([#149](https://github.com/MetaMask/internal-snaps/pull/149))
 - Add shared async batching utilities. ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
 - Add origin permission helpers ([#193](https://github.com/MetaMask/internal-snaps/pull/193))

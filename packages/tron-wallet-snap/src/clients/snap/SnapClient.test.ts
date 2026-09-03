@@ -1,7 +1,13 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import { mockLogger } from '../../utils/mockLogger';
 import { SnapClient } from './SnapClient';
+
+jest.mock('../../utils/logger', () => ({
+  __esModule: true,
+  default: jest.requireActual('../../utils/mockLogger').mockLogger,
+}));
 
 // Mock the global snap object
 const mockSnapRequest = jest.fn();
@@ -24,7 +30,7 @@ async function withSnapClient(
   }) => void | Promise<void>,
 ) {
   mockSnapRequest.mockReset();
-  const snapClient = new SnapClient({ logger: mockLogger });
+  const snapClient = new SnapClient();
   await testFn({ snapClient, mockSnapRequest, mockLogger });
 }
 
@@ -117,6 +123,24 @@ describe('SnapClient', () => {
   });
 
   describe('trackError', () => {
+    it('does not call snap_trackError for user rejections', async () => {
+      await withSnapClient(
+        async ({
+          snapClient,
+          mockSnapRequest: mockRequest,
+          mockLogger: logger,
+        }) => {
+          const result = await snapClient.trackError(
+            new UserRejectedRequestError(),
+          );
+
+          expect(result).toBeUndefined();
+          expect(mockRequest).not.toHaveBeenCalled();
+          expect(logger.error).not.toHaveBeenCalled();
+        },
+      );
+    });
+
     it('returns the Sentry event ID and forwards the serialized error', async () => {
       await withSnapClient(
         async ({
@@ -142,12 +166,12 @@ describe('SnapClient', () => {
               }),
             },
           });
-          expect(logger.warn).not.toHaveBeenCalled();
+          expect(logger.error).not.toHaveBeenCalled();
         },
       );
     });
 
-    it('swallows RPC failures and logs a warning', async () => {
+    it('swallows RPC failures and logs an error', async () => {
       await withSnapClient(
         async ({
           snapClient,
@@ -160,11 +184,10 @@ describe('SnapClient', () => {
           const result = await snapClient.trackError(new Error('x'));
 
           expect(result).toBeUndefined();
-          expect(logger.warn).toHaveBeenCalledTimes(1);
-          expect(logger.warn).toHaveBeenCalledWith(
-            expect.any(String),
-            expect.objectContaining({ rpcError }),
-            expect.stringContaining('Failed to track error'),
+          expect(logger.error).toHaveBeenCalledTimes(1);
+          expect(logger.error).toHaveBeenCalledWith(
+            { error: rpcError },
+            'Failed to track error',
           );
         },
       );

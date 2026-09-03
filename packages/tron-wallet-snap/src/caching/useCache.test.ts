@@ -11,7 +11,7 @@ const cacheOptions: CacheOptions = {
 
 type WithUseCacheCallback = (payload: {
   actualExecutionSpy: jest.Mock<Promise<string>, Serializable[]>;
-  cache: ICache<Serializable>;
+  cache: MockCache;
   testFunction: () => Promise<string>;
   cachedTestFunction: () => Promise<string>;
   cachedTestFunctionWithArgs: (arg1: string, arg2: number) => Promise<string>;
@@ -20,6 +20,11 @@ type WithUseCacheCallback = (payload: {
     age: number;
   }) => Promise<string>;
 }) => void | Promise<void>;
+
+type MockCache = ICache<Serializable> & {
+  get: jest.Mock<Promise<Serializable | undefined>, [string]>;
+  set: jest.Mock<Promise<void>, [string, Serializable, (number | undefined)?]>;
+};
 
 /**
  * Wraps tests for `useCache` by creating fresh cached functions backed by a
@@ -38,7 +43,7 @@ async function withUseCache(testFn: WithUseCacheCallback): Promise<void> {
   const cache = {
     get: jest.fn().mockResolvedValue(undefined),
     set: jest.fn().mockResolvedValue(undefined),
-  } as unknown as ICache<Serializable>;
+  } as unknown as MockCache;
 
   // Define original functions
   const testFunction = async (): Promise<string> => actualExecutionSpy();

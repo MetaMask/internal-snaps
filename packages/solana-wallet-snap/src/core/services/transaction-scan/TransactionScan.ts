@@ -215,7 +215,7 @@ export class TransactionScanService {
               symbol:
                 'symbol' in asset.asset ? asset.asset.symbol : asset.asset_type,
               name: 'name' in asset.asset ? asset.asset.name : asset.asset_type,
-              logo: 'logo' in asset.asset ? asset.asset.logo : null,
+              logo: ('logo' in asset.asset ? asset.asset.logo : null) ?? null,
               value: asset.in?.value ?? asset.out?.value ?? null,
               price: asset.in?.usd_price ?? asset.out?.usd_price ?? null,
             }),
@@ -230,7 +230,9 @@ export class TransactionScanService {
             type:
               'type' in result.error_details ? result.error_details.type : null,
             code:
-              'code' in result.error_details ? result.error_details.code : null,
+              ('code' in result.error_details
+                ? result.error_details.code
+                : null) ?? null,
           }
         : null,
     };

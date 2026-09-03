@@ -1,3 +1,4 @@
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -21,7 +22,6 @@ import {
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,
   KnownCaip2ChainIdStruct,
-  UuidStruct,
   XdrStruct,
 } from '../../api';
 import {

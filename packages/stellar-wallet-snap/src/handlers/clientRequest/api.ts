@@ -1,4 +1,5 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
+import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   enums,
@@ -16,6 +17,7 @@ import {
   integer,
   min,
   coerce,
+  pattern,
 } from '@metamask/superstruct';
 import type { JsonRpcRequest } from '@metamask/utils';
 import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
@@ -26,7 +28,6 @@ import {
   KnownCaip19AssetIdOrSlip44IdStruct,
   KnownCaip19ClassicAssetStruct,
   StellarTransactionHashStruct,
-  UuidStruct,
   NonZeroValidStellarAmountStruct,
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,
@@ -36,6 +37,7 @@ import {
   SwapTransactionXdrStruct,
 } from '../../api';
 import { isSep41Id } from '../../utils';
+import { parseProofOfOwnershipMessage } from './utils';
 
 /**
  * Enum for the client request method.
@@ -48,6 +50,11 @@ export const ClientRequestMethod = {
   // Standard multichain workflow for bridge
   SignAndSendTransaction: 'signAndSendTransaction',
   ComputeFee: 'computeFee',
+  /**
+   * Silent proof-of-ownership signing for `@metamask/profile-metrics-controller`.
+   * SIP-31 client-only.
+   */
+  SignProofOfOwnership: 'signProofOfOwnership',
   /** -------------------------------- Stellar Specific -------------------------------- */
   ChangeTrustOpt: 'changeTrustOpt',
 } as const;
@@ -384,6 +391,72 @@ export const ComputeFeeJsonRpcResponseStruct = array(
 );
 
 /**
+ * Validates that a plaintext message follows the proof-of-ownership format:
+ * `'metamask:proof-of-ownership:{nonce}:{address}'`.
+ */
+export const ProofOfOwnershipMessageStruct = refine(
+  string(),
+  'ProofOfOwnershipMessage',
+  (value: string) => {
+    try {
+      parseProofOfOwnershipMessage(value);
+      return true;
+    } catch (error) {
+      return error instanceof Error
+        ? error.message
+        : 'Invalid proof-of-ownership message';
+    }
+  },
+);
+
+/**
+ * Validation struct for the signProofOfOwnership JSON-RPC request.
+ * Coerces `nonce` and `address` from `message` (clients send only accountId + message).
+ */
+export const SignProofOfOwnershipJsonRpcRequestStruct = coerce(
+  assign(
+    JsonRpcRequestStruct,
+    object({
+      method: literal(ClientRequestMethod.SignProofOfOwnership),
+      params: object({
+        accountId: UuidStruct,
+        message: ProofOfOwnershipMessageStruct,
+        nonce: nonempty(string()),
+        address: StellarAddressStruct,
+      }),
+    }),
+  ),
+  assign(
+    JsonRpcRequestStruct,
+    object({
+      method: literal(ClientRequestMethod.SignProofOfOwnership),
+      params: object({
+        accountId: UuidStruct,
+        message: ProofOfOwnershipMessageStruct,
+      }),
+    }),
+  ),
+  (request) => ({
+    ...request,
+    params: {
+      ...request.params,
+      ...parseProofOfOwnershipMessage(request.params.message),
+    },
+  }),
+);
+
+/**
+ * Validation struct for the signProofOfOwnership JSON-RPC response.
+ *
+ * Signature is the SEP-0053 Stellar signed-message ed25519 signature (64 bytes →
+ * 128 lowercase hex chars) with a leading `0x` for the identity auth API.
+ * The `0x` prefix is not part of the 64-byte signature length.
+ */
+export const SignProofOfOwnershipJsonRpcResponseStruct = object({
+  signature: pattern(string(), /^0x[0-9a-f]{128}$/u),
+});
+
+/**
  * A JSON-RPC request with an account resolve parameter.
  */
 export type JsonRpcRequestWithAccount = Infer<
@@ -473,4 +546,18 @@ export type ComputeFeeJsonRpcRequest = Infer<
  */
 export type ComputeFeeJsonRpcResponse = Infer<
   typeof ComputeFeeJsonRpcResponseStruct
+>;
+
+/**
+ * Type for the signProofOfOwnership JSON-RPC request.
+ */
+export type SignProofOfOwnershipJsonRpcRequest = Infer<
+  typeof SignProofOfOwnershipJsonRpcRequestStruct
+>;
+
+/**
+ * Type for the signProofOfOwnership JSON-RPC response.
+ */
+export type SignProofOfOwnershipJsonRpcResponse = Infer<
+  typeof SignProofOfOwnershipJsonRpcResponseStruct
 >;

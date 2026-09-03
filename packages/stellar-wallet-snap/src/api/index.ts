@@ -1,7 +1,6 @@
 export * from './network';
 export * from './asset';
 export * from './environment';
-export * from './uuid';
 export * from './address';
 export * from './json';
 export * from './integer';

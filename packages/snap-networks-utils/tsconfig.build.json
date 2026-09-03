@@ -1,10 +1,18 @@
 {
-  "extends": "../../tsconfig.packages.build.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "baseUrl": "./",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "inlineSources": true,
+    "noEmit": false,
+    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src"
   },
   "references": [],
-  "include": ["../../types", "./src"]
+  "include": ["../../types", "./src"],
+  "exclude": ["**/*.test.ts", "**/tests", "**/jest.config.ts"]
 }

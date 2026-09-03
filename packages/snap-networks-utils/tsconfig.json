@@ -5,6 +5,5 @@
     "skipLibCheck": true,
     "types": ["jest"]
   },
-  "references": [],
   "include": ["../../types", "./src"]
 }
