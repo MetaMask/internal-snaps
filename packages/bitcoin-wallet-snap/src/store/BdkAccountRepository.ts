@@ -121,7 +121,7 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
 
     return ids.flatMap((id) => {
       const account = accounts[id];
-      return account ? [this.#loadAccount(id, account)] : [];
+      return account ? [this.#loadPersistedAccount(id, account)] : [];
     });
   }
 
