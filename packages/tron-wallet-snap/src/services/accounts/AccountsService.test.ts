@@ -335,6 +335,67 @@ describe('AccountsService', () => {
     });
   });
 
+  describe('deriveTronKeypairs', () => {
+    const createAccount = (index: number): TronKeyringAccount =>
+      ({
+        id: `account-${index}`,
+        entropySource: 'test-entropy',
+        derivationPath: AccountsService.getDefaultDerivationPath(index),
+        index,
+        address: `TAccount${index}`,
+        type: TrxAccountType.Eoa,
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      }) as unknown as TronKeyringAccount;
+
+    it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          createAccount(0),
+          createAccount(1),
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+        expect(result[1]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+      }, coinJson);
+    });
+
+    it('returns an item-level error for unsupported derivation paths', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          {
+            ...createAccount(0),
+            derivationPath: "m/44'/195'/0'",
+          },
+        ]);
+
+        expect(result).toStrictEqual([
+          {
+            error: "Unsupported Tron derivation path: m/44'/195'/0'",
+          },
+        ]);
+      }, coinJson);
+    });
+  });
+
   describe('createAccounts', () => {
     it('persists new accounts with a single merge and one coin-type entropy call', async () => {
       const coinJson = await getTronTestCoinTypeJson();

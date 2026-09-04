@@ -1,4 +1,4 @@
-import { FeeType } from '@metamask/keyring-api';
+import { FeeType, TrxAccountType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -1092,7 +1092,9 @@ describe('ClientRequestHandler', () => {
     beforeEach(() => {
       mockAccountsService = {
         findById: jest.fn(),
+        findByIds: jest.fn(),
         deriveTronKeypair: jest.fn(),
+        deriveTronKeypairs: jest.fn(),
       } as unknown as jest.Mocked<AccountsService>;
 
       mockAssetsService = {} as unknown as jest.Mocked<AssetsService>;
@@ -1327,7 +1329,9 @@ describe('ClientRequestHandler', () => {
     beforeEach(() => {
       mockAccountsService = {
         findById: jest.fn(),
+        findByIds: jest.fn(),
         deriveTronKeypair: jest.fn(),
+        deriveTronKeypairs: jest.fn(),
       } as unknown as jest.Mocked<AccountsService>;
 
       mockTronWeb = {
@@ -1452,6 +1456,186 @@ describe('ClientRequestHandler', () => {
           buildRequest(buildProofMessage(otherAddress)),
         ),
       ).rejects.toThrow('does not match signing account address');
+    });
+
+    describe('signProofOfOwnershipBatch', () => {
+      const TEST_ACCOUNT_ID_2 = '123e4567-e89b-42d3-a456-426614174001';
+      const TEST_ADDRESS_2 = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+
+      const buildBatchRequest = (
+        items: { accountId: string; message: string }[],
+      ): JsonRpcRequest => ({
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: ClientRequestMethod.SignProofOfOwnershipBatch,
+        params: { items },
+      });
+
+      const account1: TronKeyringAccount = {
+        id: TEST_ACCOUNT_ID,
+        address: TEST_ADDRESS,
+        entropySource: 'test-entropy',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+        type: TrxAccountType.Eoa,
+        scopes: [Network.Mainnet],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      };
+      const account2: TronKeyringAccount = {
+        id: TEST_ACCOUNT_ID_2,
+        address: TEST_ADDRESS_2,
+        entropySource: 'test-entropy',
+        derivationPath: "m/44'/195'/0'/0/1",
+        index: 1,
+        type: TrxAccountType.Eoa,
+        scopes: [Network.Mainnet],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      };
+
+      it('signs a batch and returns signatures in input order', async () => {
+        const message1 = buildProofMessage(TEST_ADDRESS);
+        const message2 = buildProofMessage(TEST_ADDRESS_2);
+        mockAccountsService.findByIds.mockResolvedValue([account2, account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-1',
+            address: TEST_ADDRESS,
+          },
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-2',
+            address: TEST_ADDRESS_2,
+          },
+        ]);
+        mockTronWeb.trx.signMessageV2
+          .mockReturnValueOnce('0xsignature1')
+          .mockReturnValueOnce('0xsignature2');
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([
+            { accountId: TEST_ACCOUNT_ID, message: message1 },
+            { accountId: TEST_ACCOUNT_ID_2, message: message2 },
+          ]),
+        );
+
+        expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
+          TEST_ACCOUNT_ID,
+          TEST_ACCOUNT_ID_2,
+        ]);
+        expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledWith([
+          account1,
+          account2,
+        ]);
+        expect(mockTronWeb.trx.signMessageV2).toHaveBeenNthCalledWith(
+          1,
+          message1,
+          'private-key-1',
+        );
+        expect(mockTronWeb.trx.signMessageV2).toHaveBeenNthCalledWith(
+          2,
+          message2,
+          'private-key-2',
+        );
+        expect(result).toStrictEqual({
+          results: [
+            { accountId: TEST_ACCOUNT_ID, signature: '0xsignature1' },
+            { accountId: TEST_ACCOUNT_ID_2, signature: '0xsignature2' },
+          ],
+        });
+      });
+
+      it('returns item-level errors for missing accounts and address mismatches', async () => {
+        const missingAccountId = '123e4567-e89b-42d3-a456-426614174099';
+        const validMessage = buildProofMessage(TEST_ADDRESS);
+        const mismatchedMessage = buildProofMessage(TEST_ADDRESS_2);
+        mockAccountsService.findByIds.mockResolvedValue([account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-1',
+            address: TEST_ADDRESS,
+          },
+        ]);
+        mockTronWeb.trx.signMessageV2.mockReturnValue('0xsignature1');
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([
+            { accountId: TEST_ACCOUNT_ID, message: validMessage },
+            { accountId: missingAccountId, message: validMessage },
+            { accountId: TEST_ACCOUNT_ID, message: mismatchedMessage },
+          ]),
+        );
+
+        expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledTimes(1);
+        expect(result).toStrictEqual({
+          results: [
+            { accountId: TEST_ACCOUNT_ID, signature: '0xsignature1' },
+            {
+              accountId: missingAccountId,
+              error: `Account not found: ${missingAccountId}`,
+            },
+            {
+              accountId: TEST_ACCOUNT_ID,
+              error: `Address in proof-of-ownership message (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
+            },
+          ],
+        });
+      });
+
+      it('returns item-level errors from batch key derivation', async () => {
+        const message = buildProofMessage(TEST_ADDRESS);
+        mockAccountsService.findByIds.mockResolvedValue([account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          { error: 'Unable to derive private key' },
+        ]);
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+        );
+
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: TEST_ACCOUNT_ID,
+              error: 'Unable to derive private key',
+            },
+          ],
+        });
+      });
+
+      it('returns an item-level error when the derived address does not match the account', async () => {
+        const message = buildProofMessage(TEST_ADDRESS);
+        mockAccountsService.findByIds.mockResolvedValue([account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-1',
+            address: TEST_ADDRESS_2,
+          },
+        ]);
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+        );
+
+        expect(mockTronWebFactory.createClient).not.toHaveBeenCalled();
+        expect(mockTronWeb.trx.signMessageV2).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: TEST_ACCOUNT_ID,
+              error: `Derived address (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
+            },
+          ],
+        });
+      });
     });
   });
 });

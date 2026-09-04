@@ -1,5 +1,13 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
+  ProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchRequestItemStruct,
+  ProofOfOwnershipBatchRequestParamsStruct,
+  ProofOfOwnershipBatchResponseStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
+import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
 import { literal } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -12,6 +20,7 @@ import {
   optional,
   refine,
   string,
+  union,
 } from '@metamask/superstruct';
 import {
   CaipAssetTypeStruct,
@@ -349,8 +358,6 @@ export const SignRewardsMessageRequestStruct = object({
   params: SignRewardsMessageRequestParamsStruct,
 });
 
-export const PROOF_OF_OWNERSHIP_MESSAGE_PREFIX = 'metamask:proof-of-ownership:';
-
 /**
  * Parses a plaintext proof-of-ownership message.
  * Expected format: 'metamask:proof-of-ownership:{nonce}:{address}'
@@ -359,38 +366,17 @@ export const PROOF_OF_OWNERSHIP_MESSAGE_PREFIX = 'metamask:proof-of-ownership:';
  * @returns The parsed nonce and address.
  * @throws Error if the message format is invalid.
  */
-export function parseProofOfOwnershipMessage(message: string): {
-  nonce: string;
-  address: string;
-} {
-  if (!message.startsWith(PROOF_OF_OWNERSHIP_MESSAGE_PREFIX)) {
-    throw new Error(
-      `Message must start with "${PROOF_OF_OWNERSHIP_MESSAGE_PREFIX}"`,
-    );
-  }
-
-  const remainder = message.slice(PROOF_OF_OWNERSHIP_MESSAGE_PREFIX.length);
-  const separatorIdx = remainder.lastIndexOf(':');
-  if (separatorIdx === -1) {
-    throw new Error(
-      'Message must follow the format "metamask:proof-of-ownership:{nonce}:{address}"',
-    );
-  }
-
-  const nonce = remainder.slice(0, separatorIdx);
-  const address = remainder.slice(separatorIdx + 1);
-
-  if (nonce === '') {
-    throw new Error(
-      'Proof-of-ownership message must contain a non-empty nonce',
-    );
-  }
+export function parseProofOfOwnershipMessage(
+  message: string,
+): ProofOfOwnershipMessage {
+  const proofMessage = parseSharedProofOfOwnershipMessage(message);
+  const { address } = proofMessage;
 
   if (!is(address, TronAddressStruct)) {
     throw new Error('Invalid Tron address in proof-of-ownership message');
   }
 
-  return { nonce, address };
+  return proofMessage;
 }
 
 /**
@@ -426,3 +412,63 @@ export const SignProofOfOwnershipRequestStruct = object({
   method: literal(ClientRequestMethod.SignProofOfOwnership),
   params: SignProofOfOwnershipRequestParamsStruct,
 });
+
+/**
+ * Validates one proof-of-ownership batch request item.
+ *
+ * Batch items intentionally validate messages as plain strings so invalid
+ * proof messages can be reported per item instead of failing the whole batch.
+ */
+export const SignProofOfOwnershipBatchRequestItemStruct =
+  ProofOfOwnershipBatchRequestItemStruct;
+
+/**
+ * Validates the params object for `signProofOfOwnershipBatch`.
+ */
+export const SignProofOfOwnershipBatchRequestParamsStruct =
+  ProofOfOwnershipBatchRequestParamsStruct;
+
+/**
+ * Validates a `signProofOfOwnershipBatch` JSON-RPC request.
+ */
+export const SignProofOfOwnershipBatchRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignProofOfOwnershipBatch),
+  params: SignProofOfOwnershipBatchRequestParamsStruct,
+});
+
+/**
+ * Validates a successful proof-of-ownership batch item response.
+ */
+export const SignProofOfOwnershipBatchSuccessStruct = object({
+  accountId: string(),
+  signature: string(),
+});
+
+/**
+ * Validates a failed proof-of-ownership batch item response.
+ */
+export const SignProofOfOwnershipBatchErrorStruct =
+  ProofOfOwnershipBatchErrorStruct;
+
+/**
+ * Validates a proof-of-ownership batch item result.
+ */
+export const SignProofOfOwnershipBatchItemResponseStruct = union([
+  SignProofOfOwnershipBatchSuccessStruct,
+  SignProofOfOwnershipBatchErrorStruct,
+]);
+
+/**
+ * Validates a `signProofOfOwnershipBatch` response.
+ */
+export const SignProofOfOwnershipBatchResponseStruct =
+  ProofOfOwnershipBatchResponseStruct;
+
+/**
+ * Response returned by `signProofOfOwnershipBatch`.
+ */
+export type SignProofOfOwnershipBatchResponse = Infer<
+  typeof SignProofOfOwnershipBatchResponseStruct
+>;

@@ -6,6 +6,7 @@ import {
   DEFAULT_PROD_ORIGINS,
 } from '@metamask/snap-networks-utils';
 
+import { ClientRequestMethod } from './handlers/clientRequest/types';
 import { TestDappRpcRequestMethod } from './handlers/rpc/types';
 
 // eslint-disable-next-line no-restricted-globals
@@ -51,6 +52,8 @@ const metamaskMethods = [
   KeyringRpcMethod.DiscoverAccounts,
   KeyringRpcMethod.ListAccountTransactions,
   KeyringRpcMethod.ListAccountAssets,
+  // Client methods
+  ClientRequestMethod.SignProofOfOwnershipBatch,
 ];
 
 export const originPermissions = createOriginPermissions({
