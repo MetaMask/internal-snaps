@@ -7,10 +7,8 @@ import {
   Container,
   Footer,
   Heading,
-  Icon,
   Section,
   Text as SnapText,
-  Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 
 import type { ReadableAuthEntry } from '../../../../handlers/keyring/signAuthEntry';
@@ -20,12 +18,13 @@ import { i18n } from '../../../../utils';
 import type { ConfirmationBaseProps } from '../../api';
 import { Authorizations } from '../../components/Authorizations';
 import { NetworkRow } from '../../components/Network';
+import { OriginRow } from '../../components/OriginRow';
 import { getAccountName } from '../../utils';
 import { ConfirmSignAuthEntryFormNames } from './events';
 
 export type ConfirmSignAuthEntryProps = Pick<
   ConfirmationBaseProps,
-  'scope' | 'locale' | 'networkImage' | 'origin'
+  'scope' | 'locale' | 'networkImage' | 'origin' | 'isSelfReportedOrigin'
 > & {
   readableAuthEntry: ReadableAuthEntry;
   account: StellarKeyringAccount;
@@ -38,6 +37,7 @@ export const ConfirmSignAuthEntry = ({
   locale,
   networkImage,
   origin,
+  isSelfReportedOrigin,
 }: ConfirmSignAuthEntryProps): ComponentOrElement => {
   const translate = i18n(locale);
   const { address } = account;
@@ -61,19 +61,11 @@ export const ConfirmSignAuthEntry = ({
         </Banner>
 
         <Section>
-          {origin ? (
-            <Box alignment="space-between" direction="horizontal">
-              <Box direction="horizontal" alignment="start">
-                <SnapText fontWeight="medium" color="alternative">
-                  {translate('confirmation.origin')}
-                </SnapText>
-                <Tooltip content={translate('confirmation.origin.tooltip')}>
-                  <Icon name="question" color="muted" />
-                </Tooltip>
-              </Box>
-              <SnapText>{origin}</SnapText>
-            </Box>
-          ) : null}
+          <OriginRow
+            origin={origin}
+            isSelfReported={isSelfReportedOrigin}
+            locale={locale}
+          />
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
               {translate('confirmation.account')}

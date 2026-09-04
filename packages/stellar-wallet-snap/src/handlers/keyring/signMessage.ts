@@ -93,6 +93,7 @@ export class SignMessageHandler extends BaseSep43KeyringHandler<
           message,
         },
         origin: request.origin,
+        originMetadata: request.originMetadata,
         interfaceKey: ConfirmationInterfaceKey.SignMessage,
       })) === true
     );

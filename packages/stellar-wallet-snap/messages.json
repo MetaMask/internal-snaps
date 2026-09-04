@@ -20,6 +20,12 @@
   "confirmation.origin.tooltip": {
     "message": "This is the site asking for your confirmation."
   },
+  "confirmation.origin.unverified": {
+    "message": "Not verified"
+  },
+  "confirmation.origin.unverified.tooltip": {
+    "message": "This site is reported by the app that sent the request. MetaMask can't verify it."
+  },
   "confirmation.from": {
     "message": "From"
   },

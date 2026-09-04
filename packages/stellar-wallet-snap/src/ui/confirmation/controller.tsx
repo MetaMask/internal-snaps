@@ -1,3 +1,5 @@
+import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 
 import type { KnownCaip2ChainId } from '../../api';
@@ -26,11 +28,7 @@ import {
 import { xlmIcon } from '../images';
 import { ConfirmationInterfaceKey, FetchStatus } from './api';
 import type { ContextWithPrices } from './api';
-import {
-  formatFeeData,
-  formatOrigin,
-  getPreferencesWithFallback,
-} from './utils';
+import { formatFeeData, getPreferencesWithFallback } from './utils';
 import { renderConfirmationView } from './views/render';
 import type { ConfirmationViewProps } from './views/render';
 
@@ -61,6 +59,8 @@ type RenderConfirmationDialogCommon<Props extends ConfirmationViewProps> = {
   scope: KnownCaip2ChainId;
   renderContext: Props;
   origin?: string;
+  /** Metadata for origins the client could not verify (WalletConnect, SDK). */
+  originMetadata?: SelfReportedOriginMetadata | null;
   renderOptions?: ConfirmationRenderOptions;
   securityScanRequest?: Omit<SecurityScanRequest, 'origin' | 'scope'>;
   transactionValidationRequest?: TransactionValidationRequest;
@@ -126,8 +126,18 @@ export class ConfirmationUXController {
       scope,
       renderContext,
       origin = METAMASK_ORIGIN,
+      originMetadata,
       fee,
     } = params;
+
+    // `origin` is only displayable when it is verifiable or self-reported; a
+    // WalletConnect channel id has nothing to show. A self-reported origin is
+    // display-only: it never reaches the security scan below, which keeps
+    // receiving the raw origin (non-URLs are reported as in-app).
+    const { displayOrigin, isSelfReported } = resolveOrigin(
+      origin,
+      originMetadata,
+    );
     const renderOptions = {
       ...this.#defaultRenderOptions,
       ...params.renderOptions,
@@ -204,7 +214,8 @@ export class ConfirmationUXController {
       preferences,
       locale: preferences.locale as Locale,
       networkImage: xlmIcon,
-      origin: formatOrigin(origin),
+      origin: displayOrigin ?? '',
+      isSelfReportedOrigin: isSelfReported,
       currency: preferences.currency,
       scope,
       feeData: fee ? formatFeeData(scope, fee) : {},

@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show the dapp URL reported in `originMetadata` in the "Request from" row of the confirmations, marked "Not verified", and keep hiding the row when there is nothing verifiable or self-reported to show. The self-reported URL is display-only and never reaches the security alerts API, which keeps reporting non-URL origins as in-app
+- Stop labelling the literal `wallet-connect` origin as "WalletConnect"; the clients now pass a per-session channel id instead
 - Display transaction error message in ChangeTrustOpt and ConfirmSend confirmation dialogs ([#220](https://github.com/MetaMask/internal-snaps/pull/220))
 - Skip destination validation in `onAmountInput` ([#220](https://github.com/MetaMask/internal-snaps/pull/220))
 - `createValidatedSendTransaction` now throws `InvalidAssetForCreateAccountException` instead of `AccountNotActivatedException` when sending a non-native asset to an unfunded destination ([#185](https://github.com/MetaMask/internal-snaps/pull/185))

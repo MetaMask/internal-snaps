@@ -121,6 +121,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
       (await this.#confirmationUIController.renderConfirmationDialog({
         scope: request.scope,
         origin: request.origin,
+        originMetadata: request.originMetadata,
         interfaceKey: ConfirmationInterfaceKey.SignTransaction,
         fee: readableTransaction.feeStroops,
         renderContext: {

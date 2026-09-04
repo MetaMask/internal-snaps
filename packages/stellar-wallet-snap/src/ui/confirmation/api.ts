@@ -141,6 +141,12 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   scope: KnownCaip2ChainId;
   networkImage: string | null;
   origin: string;
+  /**
+   * True when `origin` was reported by the requester over a transport that
+   * cannot prove it (WalletConnect, SDK), so the UI must frame it as
+   * unverified. See `resolveOrigin` in `@metamask/snap-networks-utils`.
+   */
+  isSelfReportedOrigin?: boolean;
   feeData?: FeeData;
   // Locale key for the validation banner subtitle. When omitted, the banner
   // falls back to `confirmation.txnError.generic`.

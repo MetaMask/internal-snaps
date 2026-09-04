@@ -4,11 +4,9 @@ import {
   Box,
   Container,
   Heading,
-  Icon,
   Link,
   Section,
   Text as SnapText,
-  Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 
 import type { StellarKeyringAccount } from '../../../../services/account';
@@ -27,6 +25,7 @@ import {
   FeeRow,
 } from '../../components';
 import { NetworkRow } from '../../components/Network';
+import { OriginRow } from '../../components/OriginRow';
 import {
   getAccountExplorerUrl,
   getAccountName,
@@ -51,6 +50,7 @@ export const ConfirmSendTransaction = ({
   feeData,
   tokenPrices,
   origin,
+  isSelfReportedOrigin,
   preferences,
   tokenPricesFetchStatus = FetchStatus.Initial,
   scan,
@@ -92,19 +92,11 @@ export const ConfirmSendTransaction = ({
         />
 
         <Section>
-          {origin ? (
-            <Box alignment="space-between" direction="horizontal">
-              <Box direction="horizontal" alignment="start">
-                <SnapText fontWeight="medium" color="alternative">
-                  {t('confirmation.origin')}
-                </SnapText>
-                <Tooltip content={t('confirmation.origin.tooltip')}>
-                  <Icon name="question" color="muted" />
-                </Tooltip>
-              </Box>
-              <SnapText>{origin}</SnapText>
-            </Box>
-          ) : null}
+          <OriginRow
+            origin={origin}
+            isSelfReported={isSelfReportedOrigin}
+            locale={locale}
+          />
           {/* From */}
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
