@@ -122,7 +122,6 @@ describe('AssetsRepository', () => {
   ): UnencryptedStateValue => ({
     keyringAccounts: {},
     assets,
-    tokenPrices: {},
     transactions: {},
     mapInterfaceNameToId: {},
   });
