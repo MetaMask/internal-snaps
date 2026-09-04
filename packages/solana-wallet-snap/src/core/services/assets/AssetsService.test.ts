@@ -23,7 +23,6 @@ import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../__mocks
 import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
-import type { TokenPricesService } from '../token-prices/TokenPrices';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';
@@ -40,7 +39,6 @@ describe('AssetsService', () => {
   let mockAssetsRepository: AssetsRepository;
   let mockAccountsService: AccountsService;
   let mockTokenApiClient: TokenApiClient;
-  let mockTokenPricesService: TokenPricesService;
   let mockNftApiClient: NftApiClient;
   let mockCache: ICache<Serializable>;
 
@@ -57,14 +55,6 @@ describe('AssetsService', () => {
         .fn()
         .mockResolvedValue(SOLANA_MOCK_TOKEN_METADATA),
     } as unknown as TokenApiClient;
-
-    mockTokenPricesService = {
-      getMultipleTokenConversions: jest.fn().mockResolvedValue({}),
-      getMultipleTokensMarketData: jest.fn().mockResolvedValue({}),
-      getHistoricalPrice: jest
-        .fn()
-        .mockResolvedValue({ intervals: {}, updateTime: 0, expirationTime: 0 }),
-    } as unknown as TokenPricesService;
 
     mockCache = new InMemoryCache(mockLogger);
 
@@ -96,7 +86,6 @@ describe('AssetsService', () => {
       assetsRepository: mockAssetsRepository,
       accountsService: mockAccountsService,
       tokenApiClient: mockTokenApiClient,
-      tokenPricesService: mockTokenPricesService,
       cache: mockCache,
       nftApiClient: mockNftApiClient,
     });
@@ -192,29 +181,6 @@ describe('AssetsService', () => {
         tokenAssetTypes,
       );
       expect(metadata).toStrictEqual(SOLANA_MOCK_TOKEN_METADATA);
-    });
-  });
-
-  describe('fetchAssetsMarketData', () => {
-    it('delegates to the token prices service', async () => {
-      const assets = [
-        {
-          asset: MOCK_ASSET_ENTITY_0.assetType,
-          unit: MOCK_ASSET_ENTITY_0.assetType,
-        },
-      ];
-      const expected = { [MOCK_ASSET_ENTITY_0.assetType]: {} };
-
-      jest
-        .spyOn(mockTokenPricesService, 'getMultipleTokensMarketData')
-        .mockResolvedValueOnce(expected as never);
-
-      const result = await assetsService.fetchAssetsMarketData(assets);
-
-      expect(
-        mockTokenPricesService.getMultipleTokensMarketData,
-      ).toHaveBeenCalledWith(assets);
-      expect(result).toStrictEqual(expected);
     });
   });
 

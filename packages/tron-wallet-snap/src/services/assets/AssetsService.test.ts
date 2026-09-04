@@ -11,7 +11,6 @@ import {
   RemoteFeatureFlagsProvider,
 } from '@metamask/snap-networks-utils';
 
-import { MOCK_EXCHANGE_RATES } from '../../clients/price-api/mocks/exchange-rates';
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -24,7 +23,6 @@ import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import type { CoreMessengerCaller } from '../../types/core-messenger';
 import { mockLogger } from '../../utils/mockLogger';
-import type { ConfigProvider } from '../config';
 import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
@@ -38,32 +36,6 @@ type MockState = {
   setKey: jest.Mock;
   setKeyWith: jest.Mock;
 };
-
-jest.mock('../../context', () => ({
-  configProvider: {
-    get(): {
-      priceApi: {
-        cacheTtlsMilliseconds: {
-          fiatExchangeRates: number;
-          spotPrices: number;
-          historicalPrices: number;
-        };
-      };
-      activeNetworks: never[];
-    } {
-      return {
-        priceApi: {
-          cacheTtlsMilliseconds: {
-            fiatExchangeRates: 3600000,
-            spotPrices: 3600000,
-            historicalPrices: 3600000,
-          },
-        },
-        activeNetworks: [],
-      };
-    },
-  },
-}));
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),
@@ -258,10 +230,7 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
     Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
   >;
   mockPriceApiClient: jest.Mocked<
-    Pick<
-      PriceApiClient,
-      'getFiatExchangeRates' | 'getHistoricalPrices' | 'getMultipleSpotPrices'
-    >
+    Pick<PriceApiClient, 'getMultipleSpotPrices'>
   >;
   mockTokenApiClient: jest.Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
   mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
@@ -319,13 +288,8 @@ async function withAssetsService<ReturnValue>(
   };
 
   const mockPriceApiClient: jest.Mocked<
-    Pick<
-      PriceApiClient,
-      'getFiatExchangeRates' | 'getHistoricalPrices' | 'getMultipleSpotPrices'
-    >
+    Pick<PriceApiClient, 'getMultipleSpotPrices'>
   > = {
-    getFiatExchangeRates: jest.fn(),
-    getHistoricalPrices: jest.fn(),
     getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
   };
 
@@ -369,19 +333,6 @@ async function withAssetsService<ReturnValue>(
     messenger: mockCoreMessenger as never,
   });
 
-  const mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>> = {
-    get: jest.fn().mockReturnValue({
-      priceApi: {
-        cacheTtlsMilliseconds: {
-          fiatExchangeRates: 3600000,
-          spotPrices: 3600000,
-          historicalPrices: 3600000,
-        },
-      },
-      activeNetworks: [],
-    }),
-  };
-
   const snapAdapter = new SnapAssetsAdapter({
     logger: mockLogger,
     assetsRepository: mockAssetsRepository as never,
@@ -391,7 +342,6 @@ async function withAssetsService<ReturnValue>(
     priceApiClient: mockPriceApiClient as never,
     tokenApiClient: mockTokenApiClient as never,
     snapClient: mockSnapClient as never,
-    configProvider: mockConfigProvider as never,
   });
   const coreAdapter = new CoreAssetsAdapter({
     getAccountAssetByID:
@@ -450,8 +400,9 @@ describe('AssetsService', () => {
               trc20Balances,
             );
 
-            const trc20AssetId =
-              `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
+            const trc20AssetId = `${String(
+              Network.Mainnet,
+            )}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
               createSpotPrices({
                 [trc20AssetId]: { id: trc20AssetId, price: 1.0 },
@@ -577,8 +528,9 @@ describe('AssetsService', () => {
               trc20Balances,
             );
 
-            const trc20AssetId =
-              `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
+            const trc20AssetId = `${String(
+              Network.Mainnet,
+            )}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
               createSpotPrices({
                 [trc20AssetId]: { id: trc20AssetId, price: 1.0 },
@@ -1465,25 +1417,6 @@ describe('AssetsService', () => {
           },
         );
       });
-    });
-  });
-
-  describe('getHistoricalPrice', () => {
-    it('tracks historical price errors', async () => {
-      await withAssetsService(
-        async ({ assetsService, mockSnapClient, mockPriceApiClient }) => {
-          const error = new Error('Price error');
-
-          mockPriceApiClient.getHistoricalPrices.mockRejectedValue(error);
-
-          await assetsService.getHistoricalPrice(
-            KnownCaip19Id.TrxMainnet,
-            'tron:728126428/slip44:usd',
-          );
-
-          expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
-        },
-      );
     });
   });
 
@@ -2841,50 +2774,6 @@ describe('AssetsService', () => {
     });
   });
 
-  describe('getAssetsMetadata', () => {
-    it('resolves metadata for native, protocol, and token asset types', async () => {
-      await withAssetsService(async ({ assetsService, mockTokenApiClient }) => {
-        const trc20 =
-          `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as TokenCaipAssetType;
-        const trc10 = `${Network.Mainnet}/trc10:1002000` as TokenCaipAssetType;
-
-        mockTokenApiClient.getTokensMetadata.mockResolvedValue({
-          [trc20]: {
-            fungible: { symbol: 'USDT', name: 'Tether', decimals: 6 },
-          },
-          [trc10]: {
-            fungible: { symbol: 'T', name: 'Token', decimals: 0 },
-          },
-        } as never);
-
-        const assetTypes = [
-          KnownCaip19Id.TrxMainnet,
-          KnownCaip19Id.TrxStakedForBandwidthMainnet,
-          KnownCaip19Id.TrxStakedForEnergyMainnet,
-          KnownCaip19Id.TrxReadyForWithdrawalMainnet,
-          KnownCaip19Id.TrxInLockPeriodMainnet,
-          KnownCaip19Id.TrxStakingRewardsMainnet,
-          KnownCaip19Id.EnergyMainnet,
-          KnownCaip19Id.MaximumEnergyMainnet,
-          KnownCaip19Id.BandwidthMainnet,
-          KnownCaip19Id.MaximumBandwidthMainnet,
-          trc10,
-          trc20,
-        ];
-
-        const metadata = await assetsService.getAssetsMetadata(assetTypes);
-
-        expect(metadata[KnownCaip19Id.TrxMainnet]?.symbol).toBe('TRX');
-        expect(metadata[KnownCaip19Id.EnergyMainnet]?.symbol).toBe('ENERGY');
-        expect(metadata[trc20]?.fungible?.symbol).toBe('USDT');
-        expect(mockTokenApiClient.getTokensMetadata).toHaveBeenCalledWith([
-          trc10,
-          trc20,
-        ]);
-      });
-    });
-  });
-
   describe('assets migration', () => {
     const accountId = mockAccount.id;
     const fungibleAssetId = KnownCaip19Id.TrxMainnet;
@@ -3142,9 +3031,9 @@ describe('AssetsService', () => {
   });
 
   describe('facade delegation', () => {
-    it('delegates static helpers and empty batch reads to SnapAssetsAdapter', async () => {
+    it('delegates empty batch reads to SnapAssetsAdapter', async () => {
       await withAssetsService(
-        async ({ assetsService, mockAssetsRepository, mockPriceApiClient }) => {
+        async ({ assetsService, mockAssetsRepository }) => {
           const asset: AssetEntity = {
             iconUrl: '',
             assetType: KnownCaip19Id.TrxMainnet,
@@ -3159,33 +3048,10 @@ describe('AssetsService', () => {
           mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
             asset,
           ]);
-          mockPriceApiClient.getFiatExchangeRates.mockResolvedValue(
-            MOCK_EXCHANGE_RATES,
-          );
-          mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
-            createSpotPrices({
-              [KnownCaip19Id.TrxMainnet]: {
-                id: KnownCaip19Id.TrxMainnet,
-                price: 1,
-              },
-            }),
-          );
 
-          expect(AssetsService.isFiat('eip155:1/erc20:0x0')).toBe(false);
-          expect(AssetsService.isFiat('swift:0/iso4217:usd')).toBe(true);
-          expect(AssetsService.hasChanged(asset, [])).toBe(true);
-          expect(AssetsService.hasChanged(asset, [asset])).toBe(false);
           expect(
             await assetsService.getAccountAssetsByIDs(mockAccount.id, []),
           ).toStrictEqual([]);
-          expect(
-            await assetsService.getMultipleTokensMarketData([
-              {
-                asset: KnownCaip19Id.TrxMainnet,
-                unit: 'swift:0/iso4217:usd',
-              },
-            ]),
-          ).toBeDefined();
         },
       );
     });

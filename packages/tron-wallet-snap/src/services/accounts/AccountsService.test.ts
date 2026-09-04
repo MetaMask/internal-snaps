@@ -59,9 +59,7 @@ const MOCK_CONFIG: Config = {
     baseUrl: '',
     chunkSize: 0,
     cacheTtlsMilliseconds: {
-      fiatExchangeRates: 0,
       spotPrices: 0,
-      historicalPrices: 0,
     },
   },
   tokenApi: { baseUrl: '', chunkSize: 0 },

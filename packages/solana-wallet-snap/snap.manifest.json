@@ -15,8 +15,7 @@
         "packageName": "@metamask/solana-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
-    },
-    "locales": ["locales/en.json"]
+    }
   },
   "initialConnections": {
     "https://portfolio.metamask.io": {}
@@ -72,12 +71,6 @@
           ]
         }
       }
-    },
-    "endowment:assets": {
-      "scopes": [
-        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-        "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
-      ]
     },
     "endowment:name-lookup": {
       "chains": [

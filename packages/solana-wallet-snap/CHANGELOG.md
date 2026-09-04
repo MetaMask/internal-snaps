@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 
+### Removed
+
+- **BREAKING** Remove the `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` asset handler entry points, along with the now-unused handler modules and the `endowment:assets` permission ([#261](https://github.com/MetaMask/internal-snaps/pull/261))
+- **BREAKING** Remove `AssetsService.fetchAssetsMarketData` and `SnapAssetsAdapter.fetchAssetsMarketData`, the `TokenPricesService` class, and `PriceApiClient.getHistoricalPrices`, all of which were only used by the removed asset handlers ([#261](https://github.com/MetaMask/internal-snaps/pull/261))
+- Remove the now-unused `PriceApiClient.getFiatExchangeRates` method and related `ExchangeRate` type, the unused `tokenPrices` unencrypted state field, the unused `fiatExchangeRates` and `historicalPrices` price API cache TTL options, and unused price API test mocks ([#261](https://github.com/MetaMask/internal-snaps/pull/261))
+
 ### Fixed
 
 - **BREAKING:** Preserve dapp-origin `signTransaction` and `signAndSendTransaction` payloads by signing the decoded transaction directly ([#156](https://github.com/MetaMask/internal-snaps/pull/156))

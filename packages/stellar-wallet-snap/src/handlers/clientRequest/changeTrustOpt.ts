@@ -11,15 +11,18 @@ import type {
 import type { AccountNotActivatedException } from '../../services/network';
 import type { OnChainAccount } from '../../services/on-chain-account';
 import {
-  TrustlineNotFoundException,
   KeyringTransactionType,
-  RemoveTrustlineWithNonZeroBalanceException,
+  TransactionValidationException,
+  TrustlineNotFoundException,
 } from '../../services/transaction';
 import type {
   Transaction,
   TransactionService,
 } from '../../services/transaction';
-import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
+import {
+  ConfirmationInterfaceKey,
+  FetchStatus,
+} from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import {
@@ -42,7 +45,10 @@ import {
   ChangeTrustOptJsonRpcResponseStruct,
 } from './api';
 import { BaseClientRequestHandler } from './base';
-import { assertRefreshedTransactionFeeNotHigher } from './utils';
+import {
+  assertRefreshedTransactionFeeNotHigher,
+  getTxnErrorMessageKey,
+} from './utils';
 
 export class ChangeTrustOptHandler extends BaseClientRequestHandler<
   ChangeTrustOptJsonRpcRequest,
@@ -104,6 +110,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
    * - `{ status: true, transactionId }` when the transaction is built, signed, and submitted.
    * - `{ status: true }` when preflight finds an existing classic trustline with limit greater than zero for an add request.
    * @throws {TrustlineNotFoundException} If a delete request targets a trustline that does not exist.
+   * @throws {TransactionValidationException} If pre-submit or post-confirm validation fails.
    * @throws {UserRejectedRequestError} If the user rejects the confirmation prompt.
    */
   protected async execute(
@@ -113,24 +120,37 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     const { scope, assetId, action } = request.params;
     const { account, onChainAccount } = resolvedAccount;
 
-    // Quit early if the opt-in is already redundant (throws for a missing opt-out trustline).
-    if (!this.#isChangeTrustOpNeeded(onChainAccount, request)) {
-      return {
-        status: true,
-      };
-    }
-
     // Safeguard to ensure we use the correct limit for delete
     const limitForTx =
       action === ChangeTrustOptAction.Delete ? '0' : request.params.limit;
 
     const assetMetadata = await this.#assetMetadataService.resolve(assetId);
 
-    const transaction = await this.#createTransaction({
-      request,
-      onChainAccount,
-      limit: limitForTx,
-    });
+    let transaction: Transaction;
+    try {
+      // Quit early if the opt-in is already redundant (throws for a missing opt-out trustline).
+      if (!this.#isChangeTrustOpNeeded(onChainAccount, request)) {
+        return {
+          status: true,
+        };
+      }
+
+      transaction = await this.#createTransaction({
+        request,
+        onChainAccount,
+        limit: limitForTx,
+      });
+    } catch (error: unknown) {
+      if (error instanceof TransactionValidationException) {
+        await this.#displayDialogWithErrorMessage({
+          request,
+          account,
+          assetMetadata,
+          error,
+        });
+      }
+      throw error;
+    }
 
     await trackTransactionAdded({
       origin: METAMASK_ORIGIN,
@@ -387,6 +407,47 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     );
   }
 
+  /**
+   * Shows the change-trust confirmation with the validation error and no
+   * fee/price estimates, so the user can see why the request cannot proceed.
+   *
+   * @param params - The change-trust request context and validation error.
+   * @param params.request - The original changeTrustOpt JSON-RPC request.
+   * @param params.account - The sender keyring account.
+   * @param params.assetMetadata - Metadata for the asset being opted in or out.
+   * @param params.error - The pre-submit validation error to display.
+   */
+  async #displayDialogWithErrorMessage(params: {
+    request: ChangeTrustOptJsonRpcRequest;
+    account: StellarKeyringAccount;
+    assetMetadata: StellarAssetMetadata;
+    error: TransactionValidationException;
+  }): Promise<void> {
+    const { request, account, assetMetadata, error } = params;
+    const { scope, action } = request.params;
+
+    await this.#confirmationUIController.renderConfirmationDialog({
+      origin: METAMASK_ORIGIN,
+      scope,
+      renderContext: {
+        account,
+        assetMetadata,
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: getTxnErrorMessageKey(error, account.address),
+      },
+      fee: '',
+      interfaceKey:
+        action === ChangeTrustOptAction.Delete
+          ? ConfirmationInterfaceKey.ChangeTrustlineOptOut
+          : ConfirmationInterfaceKey.ChangeTrustlineOptIn,
+      renderOptions: {
+        loadPrice: false,
+        securityScanning: false,
+        localSimulation: false,
+      },
+    });
+  }
+
   async #createTransaction(params: {
     request: ChangeTrustOptJsonRpcRequest;
     onChainAccount: OnChainAccount;
@@ -400,19 +461,11 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       limit,
     } = params;
 
-    try {
-      return this.#transactionService.createValidatedChangeTrustTransaction({
-        onChainAccount,
-        assetId,
-        scope,
-        limit,
-      });
-    } catch (error: unknown) {
-      if (error instanceof RemoveTrustlineWithNonZeroBalanceException) {
-        // TODO: Display a alert for showing user balance and error message (TBC)
-        throw error;
-      }
-      throw error;
-    }
+    return this.#transactionService.createValidatedChangeTrustTransaction({
+      onChainAccount,
+      assetId,
+      scope,
+      limit,
+    });
   }
 }

@@ -1,8 +1,4 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
-
-import type { ICache } from './core/caching/ICache';
 import { InMemoryCache } from './core/caching/InMemoryCache';
-import { StateCache } from './core/caching/StateCache';
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
@@ -39,11 +35,9 @@ import { ConfigProvider } from './core/services/config';
 import { ConfirmationHandler } from './core/services/confirmation/ConfirmationHandler';
 import { SolanaConnection } from './core/services/connection/SolanaConnection';
 import { NameResolutionService } from './core/services/name-resolution/NameResolutionService';
-import { NftService } from './core/services/nft/NftService';
 import type { IStateManager } from './core/services/state/IStateManager';
 import type { UnencryptedStateValue } from './core/services/state/State';
 import { DEFAULT_UNENCRYPTED_STATE, State } from './core/services/state/State';
-import { TokenPricesService } from './core/services/token-prices/TokenPrices';
 import { TransactionScanService } from './core/services/transaction-scan/TransactionScan';
 import { WalletService } from './core/services/wallet/WalletService';
 import logger, { noOpLogger } from './core/utils/logger';
@@ -60,7 +54,6 @@ export type SnapExecutionContext = {
   priceApiClient: PriceApiClient;
   state: IStateManager<UnencryptedStateValue>;
   assetsService: AssetsService;
-  tokenPricesService: TokenPricesService;
   signer: Signer;
   transactionsService: TransactionsService;
   sendSolBuilder: SendSolBuilder;
@@ -69,8 +62,6 @@ export type SnapExecutionContext = {
   transactionScanService: TransactionScanService;
   analyticsService: AnalyticsService;
   confirmationHandler: ConfirmationHandler;
-  cache: ICache<Serializable>;
-  nftService: NftService;
   clientRequestHandler: ClientRequestHandler;
   webSocketConnectionService: WebSocketConnectionService;
   subscriptionService: SubscriptionService;
@@ -90,7 +81,6 @@ const state = new State(eventEmitter, {
   defaultState: DEFAULT_UNENCRYPTED_STATE,
 });
 
-const stateCache = new StateCache(state, logger);
 const inMemoryCache = new InMemoryCache(noOpLogger);
 
 const analyticsService = new AnalyticsService(logger);
@@ -138,11 +128,6 @@ const priceApiClient = new PriceApiClient(configProvider, inMemoryCache);
 const tokenApiClient = new TokenApiClient(configProvider);
 const nftApiClient = new NftApiClient(configProvider, inMemoryCache);
 
-const tokenPricesService = new TokenPricesService({
-  configProvider,
-  priceApiClient,
-  logger,
-});
 const nameResolutionService = new NameResolutionService(connection, logger);
 
 const assetsRepository = new AssetsRepository(state);
@@ -157,7 +142,6 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   assetsRepository,
   accountsService,
   tokenApiClient,
-  tokenPricesService,
   cache: inMemoryCache,
   nftApiClient,
 });
@@ -241,8 +225,6 @@ const keyring = new SolanaKeyring({
   keyringAccountMonitor,
 });
 
-const nftService = new NftService(connection, logger);
-
 const sendService = new SendService(
   connection,
   keyring,
@@ -274,10 +256,8 @@ const snapContext: SnapExecutionContext = {
   keyring,
   priceApiClient,
   state,
-  cache: stateCache,
   /* Services */
   assetsService,
-  tokenPricesService,
   signer,
   transactionsService,
   sendSolBuilder,
@@ -286,7 +266,6 @@ const snapContext: SnapExecutionContext = {
   transactionScanService,
   analyticsService,
   confirmationHandler,
-  nftService,
   clientRequestHandler,
   webSocketConnectionService,
   subscriptionService,
@@ -298,31 +277,16 @@ const snapContext: SnapExecutionContext = {
 };
 
 export {
-  accountsService,
   accountsSynchronizer,
   analyticsService,
-  assetsService,
   clientRequestHandler,
-  configProvider,
-  confirmationHandler,
   connection,
   eventEmitter,
   keyring,
   nameResolutionService,
-  nftService,
   priceApiClient,
-  sendSolBuilder,
-  sendSplTokenBuilder,
-  signer,
   state,
-  subscriptionRepository,
-  subscriptionService,
-  tokenApiClient,
-  tokenHelper,
-  tokenPricesService,
   transactionScanService,
-  transactionsService,
-  walletService,
   webSocketConnectionService,
 };
 

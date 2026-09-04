@@ -10,12 +10,11 @@ import type {
   AssetMetadataService,
   StellarAssetMetadata,
 } from '../../services/asset-metadata';
-import { AccountNotActivatedException } from '../../services/network';
 import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
-  TransactionValidationException,
   KeyringTransactionType,
+  TransactionValidationException,
 } from '../../services/transaction';
 import type {
   Transaction,
@@ -24,7 +23,10 @@ import type {
 import { AssetChangeDirection } from '../../services/transaction-scan';
 import type { TransactionScanEstimatedChanges } from '../../services/transaction-scan';
 import type { ContextWithPrices } from '../../ui/confirmation/api';
-import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
+import {
+  ConfirmationInterfaceKey,
+  FetchStatus,
+} from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import {
   hasDecimals,
@@ -50,7 +52,10 @@ import {
   MultiChainSendErrorCodes,
 } from './api';
 import { BaseClientRequestHandler } from './base';
-import { assertRefreshedTransactionFeeNotHigher } from './utils';
+import {
+  assertRefreshedTransactionFeeNotHigher,
+  getTxnErrorMessageKey,
+} from './utils';
 
 /**
  * Confirms and submits a send transaction for Unified Non-EVM Send.
@@ -127,14 +132,28 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         };
       }
 
-      const transaction =
-        await this.#transactionService.createValidatedSendTransaction({
-          onChainAccount,
-          scope,
-          assetId,
-          amount: amountInSmallestUnit,
-          destination: toAddress,
-        });
+      let transaction: Transaction;
+      try {
+        transaction =
+          await this.#transactionService.createValidatedSendTransaction({
+            onChainAccount,
+            scope,
+            assetId,
+            amount: amountInSmallestUnit,
+            destination: toAddress,
+          });
+      } catch (error: unknown) {
+        if (error instanceof TransactionValidationException) {
+          await this.#displayDialogWithErrorMessage({
+            request,
+            account: stellarKeyringAccount,
+            assetMetadata,
+            scope,
+            error,
+          });
+        }
+        throw error;
+      }
 
       await trackTransactionAdded({
         origin: METAMASK_ORIGIN,
@@ -229,10 +248,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           ],
         };
       }
-      if (
-        error instanceof TransactionValidationException ||
-        error instanceof AccountNotActivatedException
-      ) {
+      if (error instanceof TransactionValidationException) {
         return {
           valid: false,
           errors: [{ code: MultiChainSendErrorCodes.Invalid }],
@@ -353,6 +369,59 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   }
 
   /**
+   * Shows the send confirmation with the validation error and no fee/price
+   * estimates, so the user can see why the send cannot proceed.
+   *
+   * @param params - The send request context and validation error.
+   * @param params.request - The original confirmSend JSON-RPC request.
+   * @param params.account - The sender keyring account.
+   * @param params.assetMetadata - Metadata for the asset being sent.
+   * @param params.scope - CAIP-2 chain of the send.
+   * @param params.error - The pre-submit validation error to display.
+   */
+  async #displayDialogWithErrorMessage(params: {
+    request: ConfirmSendJsonRpcRequest;
+    account: StellarKeyringAccount;
+    assetMetadata: StellarAssetMetadata;
+    scope: KnownCaip2ChainId;
+    error: TransactionValidationException;
+  }): Promise<void> {
+    const { request, account, assetMetadata, scope, error } = params;
+    const { toAddress, amount, assetId } = request.params;
+    const estimatedChanges = this.#buildEstimatedChanges({
+      amount,
+      assetMetadata,
+    });
+
+    await this.#confirmationUIController.renderConfirmationDialog({
+      scope,
+      origin: METAMASK_ORIGIN,
+      renderContext: {
+        account,
+        toAddress,
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: getTxnErrorMessageKey(error, account.address),
+      },
+      fee: '',
+      interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+      renderOptions: {
+        loadPrice: false,
+        securityScanning: false,
+        localSimulation: false,
+      },
+      initialScan: {
+        status: 'ERROR',
+        estimatedChanges,
+        validation: null,
+        error: null,
+      },
+      tokenPrices: {
+        [assetId]: null,
+      } as ContextWithPrices['tokenPrices'],
+    });
+  }
+
+  /**
    * Builds the estimated balance changes for the send confirmation: a single
    * outgoing row for the known send asset and amount. The network fee is
    * surfaced separately, so it is excluded here.
@@ -383,24 +452,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           logo,
         },
       ],
-    };
-  }
-
-  /**
-   * Override the base handler to return invalid when the account is not activated.
-   * Instead of showing the account not activated alert, it returns an invalid response.
-   *
-   * @param _error - The error to handle.
-   * @param _request - The JSON-RPC request (unused for this handler).
-   * @returns The invalid response when the account is not activated.
-   */
-  protected override async handleAccountNotActivatedError(
-    _error: AccountNotActivatedException,
-    _request: ConfirmSendJsonRpcRequest,
-  ): Promise<ConfirmSendJsonRpcResponse> {
-    return {
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
     };
   }
 }

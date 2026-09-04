@@ -4,12 +4,15 @@ import type {
   Arguments,
 } from 'yargs';
 
+import type { PackageType } from './constants';
+import { PackageTypeChoices, PackageTypes } from './constants';
 import type { PackageData } from './utils';
 import { finalizeAndWriteData, readMonorepoFiles } from './utils';
 
 export type CreatePackageOptions = {
   name: string;
   description: string;
+  type: PackageType;
 };
 
 export type CommandModule = YargsCommandModule<object, CreatePackageOptions> & {
@@ -40,10 +43,23 @@ const defaultCommand: CommandModule = {
           type: 'string',
           requiresArg: true,
         },
+
+        type: {
+          alias: 't',
+          describe:
+            'The type of package to create, either "snap" or "library". "lib" is a shorthand for "library". Defaults to "snap".',
+          type: 'string',
+          requiresArg: true,
+          default: PackageTypes.Snap,
+        },
       })
       .example(
-        '$0 --name fabulous-package --description "A fabulous package."',
-        'Create a new package with the given name and description.',
+        '$0 --name fabulous-snap --description "A fabulous snap."',
+        'Create a new Snap package with the given name and description. Snaps are the default package type.',
+      )
+      .example(
+        '$0 -t lib -n fabulous-package -d "A fabulous package."',
+        'Create a new library package using shorthand options.',
       )
       .check((args) => {
         if (!args.name || typeof args.name !== 'string') {
@@ -53,8 +69,23 @@ const defaultCommand: CommandModule = {
           throw new Error('Missing required argument: "description"');
         }
 
+        if (!PackageTypeChoices.includes(args.type as PackageType | 'lib')) {
+          throw new Error(
+            `Invalid package type: "${args.type}". Valid types are: ${[
+              ...PackageTypeChoices,
+            ]
+              .map((type) => `"${type}"`)
+              .join(', ')}.`,
+          );
+        }
+
         if (!args.name.startsWith('@metamask/')) {
           args.name = `@metamask/${args.name}`;
+        }
+
+        // Normalize the "lib" shorthand to "library".
+        if (args.type === 'lib') {
+          args.type = PackageTypes.Library;
         }
 
         return true;
@@ -85,6 +116,7 @@ export async function createPackageHandler(
   const packageData: PackageData = {
     name: args.name,
     description: args.description,
+    type: args.type,
     directoryName: args.name.slice('@metamask/'.length),
     nodeVersions: monorepoFileData.nodeVersions,
     currentYear: new Date().getFullYear().toString(),

@@ -16,27 +16,31 @@ function getMockArgv(...args: string[]): string[] {
 }
 
 /**
- * Returns the parsed `yargs.Arguments` object for a given package name and
- * description.
+ * Returns the parsed `yargs.Arguments` object for a given package name,
+ * description, and type.
  *
  * @param name - The package name.
  * @param description - The package description.
+ * @param type - The package type.
  * @returns The parsed argv object.
  */
 function getParsedArgv(
   name: string,
   description: string,
+  type: string,
 ): {
   _: [];
   $0: 'create-package';
   name: `@metamask/${string}`;
   description: string;
+  type: string;
 } {
   return {
     _: [],
     $0: 'create-package',
     name: `@metamask/${name}`,
     description,
+    type,
   };
 }
 
@@ -67,9 +71,9 @@ describe('create-package/cli', () => {
     const defaultCommand = commandMap.$0;
     jest.spyOn(defaultCommand, 'handler').mockImplementation();
 
-    await expect(cli(getMockArgv('--name', '  '), commands)).rejects.toThrow(
-      'exit: 1',
-    );
+    await expect(
+      cli(getMockArgv('--name', '  ', '--type', 'snap'), commands),
+    ).rejects.toThrow('exit: 1');
 
     expect(console.error).toHaveBeenCalledWith(
       'The argument "name" was processed to an empty string. Please provide a value with non-whitespace characters.',
@@ -82,24 +86,20 @@ describe('create-package/cli', () => {
       jest.spyOn(defaultCommand, 'handler');
 
       jest.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
-        tsConfig: {},
-        tsConfigBuild: {},
         nodeVersions: '>=18.0.0',
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
+      });
       jest.spyOn(utils, 'finalizeAndWriteData').mockResolvedValue();
 
       expect(
         await cli(
-          getMockArgv('--name', 'foo', '--description', 'bar'),
+          getMockArgv('--name', 'foo', '--description', 'bar', '--type', 'lib'),
           commands,
         ),
       ).toBeUndefined();
 
       expect(defaultCommand.handler).toHaveBeenCalledTimes(1);
       expect(defaultCommand.handler).toHaveBeenCalledWith(
-        expect.objectContaining(getParsedArgv('foo', 'bar')),
+        expect.objectContaining(getParsedArgv('foo', 'bar', 'library')),
       );
     });
 
@@ -108,24 +108,44 @@ describe('create-package/cli', () => {
       jest.spyOn(defaultCommand, 'handler');
 
       jest.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
-        tsConfig: {},
-        tsConfigBuild: {},
         nodeVersions: '>=18.0.0',
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
+      });
       jest.spyOn(utils, 'finalizeAndWriteData').mockResolvedValue();
 
       expect(
         await cli(
-          getMockArgv('--name', '@metamask/foo', '--description', 'bar'),
+          getMockArgv(
+            '--name',
+            '@metamask/foo',
+            '--description',
+            'bar',
+            '--type',
+            'snap',
+          ),
           commands,
         ),
       ).toBeUndefined();
 
       expect(defaultCommand.handler).toHaveBeenCalledTimes(1);
       expect(defaultCommand.handler).toHaveBeenCalledWith(
-        expect.objectContaining(getParsedArgv('foo', 'bar')),
+        expect.objectContaining(getParsedArgv('foo', 'bar', 'snap')),
+      );
+    });
+
+    it('should normalize the "lib" shorthand to "library"', async () => {
+      const defaultCommand = commandMap.$0;
+      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+
+      expect(
+        await cli(
+          getMockArgv('--name', 'foo', '--description', 'bar', '--type', 'lib'),
+          commands,
+        ),
+      ).toBeUndefined();
+
+      expect(defaultCommand.handler).toHaveBeenCalledTimes(1);
+      expect(defaultCommand.handler).toHaveBeenCalledWith(
+        expect.objectContaining(getParsedArgv('foo', 'bar', 'library')),
       );
     });
 
@@ -135,14 +155,21 @@ describe('create-package/cli', () => {
 
       expect(
         await cli(
-          getMockArgv('--name', 'foo', '--description', 'bar'),
+          getMockArgv(
+            '--name',
+            'foo',
+            '--description',
+            'bar',
+            '--type',
+            'library',
+          ),
           commands,
         ),
       ).toBeUndefined();
 
       expect(defaultCommand.handler).toHaveBeenCalledTimes(1);
       expect(defaultCommand.handler).toHaveBeenCalledWith(
-        expect.objectContaining(getParsedArgv('foo', 'bar')),
+        expect.objectContaining(getParsedArgv('foo', 'bar', 'library')),
       );
     });
 
@@ -151,7 +178,7 @@ describe('create-package/cli', () => {
       jest.spyOn(defaultCommand, 'handler').mockImplementation();
 
       await expect(
-        cli(getMockArgv('--description', 'bar'), commands),
+        cli(getMockArgv('--description', 'bar', '--type', 'snap'), commands),
       ).rejects.toThrow('exit: 1');
 
       expect(console.error).toHaveBeenCalledWith(
@@ -163,12 +190,45 @@ describe('create-package/cli', () => {
       const defaultCommand = commandMap.$0;
       jest.spyOn(defaultCommand, 'handler').mockImplementation();
 
-      await expect(cli(getMockArgv('--name', 'foo'), commands)).rejects.toThrow(
-        'exit: 1',
-      );
+      await expect(
+        cli(getMockArgv('--name', 'foo', '--type', 'snap'), commands),
+      ).rejects.toThrow('exit: 1');
 
       expect(console.error).toHaveBeenCalledWith(
         'Missing required argument: "description"',
+      );
+    });
+
+    it('should default the package type to "snap"', async () => {
+      const defaultCommand = commandMap.$0;
+      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+
+      expect(
+        await cli(
+          getMockArgv('--name', 'foo', '--description', 'bar'),
+          commands,
+        ),
+      ).toBeUndefined();
+
+      expect(defaultCommand.handler).toHaveBeenCalledTimes(1);
+      expect(defaultCommand.handler).toHaveBeenCalledWith(
+        expect.objectContaining(getParsedArgv('foo', 'bar', 'snap')),
+      );
+    });
+
+    it('should error if the package type is invalid', async () => {
+      const defaultCommand = commandMap.$0;
+      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+
+      await expect(
+        cli(
+          getMockArgv('--name', 'foo', '--description', 'bar', '--type', 'foo'),
+          commands,
+        ),
+      ).rejects.toThrow('exit: 1');
+
+      expect(console.error).toHaveBeenCalledWith(
+        'Invalid package type: "foo". Valid types are: "snap", "library", "lib".',
       );
     });
   });

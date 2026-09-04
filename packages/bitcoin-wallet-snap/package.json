@@ -28,8 +28,7 @@
   },
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
-    "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
-    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build": "mm-snap build --preinstalled && yarn build:locale",
     "build:clean": "yarn clean && yarn build:locale && yarn build",
     "build:locale": "node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'",
     "build:locale:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'\"",

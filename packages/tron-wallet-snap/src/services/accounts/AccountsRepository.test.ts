@@ -17,7 +17,6 @@ function createEmptyState(
   return new InMemoryState<UnencryptedStateValue>({
     keyringAccounts,
     assets: {},
-    tokenPrices: {},
     transactions: {},
     mapInterfaceNameToId: {},
   });
