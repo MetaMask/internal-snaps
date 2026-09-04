@@ -60,6 +60,7 @@ import {
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
+import * as errorsUtils from '../../utils/errors';
 import { logger } from '../../utils/logger';
 import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
