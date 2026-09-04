@@ -250,7 +250,8 @@ jobs:
         shell: bash
       - name: Upload coverage artifact
         if: matrix.node-version == '22.x'
-        uses: actions/upload-artifact@v7
+        # This is actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-${{ matrix.package-directory }}
           path: packages/${{ matrix.package-directory }}/coverage/lcov.info
