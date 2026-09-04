@@ -1,3 +1,4 @@
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { add0x } from '@metamask/utils';
 
@@ -17,22 +18,30 @@ import {
 import type { IClientRequestHandler } from './base';
 import { parseProofOfOwnershipMessage } from './utils';
 
+/**
+ * Validated proof-of-ownership signing request with its original input index.
+ */
 type SigningRequest = {
+  /**
+   * Original batch item index, used to preserve response ordering.
+   */
   index: number;
+
+  /**
+   * Account ID from the original request item.
+   */
   accountId: string;
+
+  /**
+   * Resolved Stellar account used for address validation and wallet lookup.
+   */
   account: StellarKeyringAccount;
+
+  /**
+   * Plaintext proof-of-ownership message to sign.
+   */
   message: string;
 };
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Handles silent batch signing of proof-of-ownership messages.
@@ -123,7 +132,7 @@ export class SignProofOfOwnershipBatchHandler
       } catch (error) {
         results[index] = {
           accountId,
-          error: getErrorMessage(error),
+          error: normalizeError(error).message,
         };
       }
     });
@@ -181,7 +190,7 @@ export class SignProofOfOwnershipBatchHandler
               } catch (error) {
                 results[index] = {
                   accountId,
-                  error: getErrorMessage(error),
+                  error: normalizeError(error).message,
                 };
               }
             }
@@ -189,7 +198,7 @@ export class SignProofOfOwnershipBatchHandler
             for (const { accountId, index } of entropySourceRequests) {
               results[index] = {
                 accountId,
-                error: getErrorMessage(error),
+                error: normalizeError(error).message,
               };
             }
           }
