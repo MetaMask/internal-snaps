@@ -35,6 +35,26 @@ export type {
 export { serialize, deserialize } from './utils/serialization/serialization';
 export type { Serializable } from './utils/serialization/types';
 export {
+  parseProofOfOwnershipMessage,
+  ProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchItemResponseStruct,
+  ProofOfOwnershipBatchRequestItemStruct,
+  ProofOfOwnershipBatchRequestParamsStruct,
+  ProofOfOwnershipBatchResponseStruct,
+  ProofOfOwnershipBatchSuccessStruct,
+  ProofOfOwnershipMessageStruct,
+  PROOF_OF_OWNERSHIP_MESSAGE_PREFIX,
+} from './utils/proofOfOwnership/proofOfOwnership';
+export type {
+  ProofOfOwnershipBatchError,
+  ProofOfOwnershipBatchItemResponse,
+  ProofOfOwnershipBatchRequestItem,
+  ProofOfOwnershipBatchRequestParams,
+  ProofOfOwnershipBatchResponse,
+  ProofOfOwnershipBatchSuccess,
+  ProofOfOwnershipMessage,
+} from './utils/proofOfOwnership/proofOfOwnership';
+export {
   createOriginPermissions,
   DEFAULT_PROD_ORIGINS,
   DEFAULT_DEV_ORIGINS,

@@ -393,14 +393,6 @@ export const addressTypeToPurpose: Record<AddressType, Purpose> = {
   p2tr: Purpose.Taproot,
 };
 
-export const purposeToAddressType: Record<Purpose, AddressType> = {
-  [Purpose.Legacy]: 'p2pkh',
-  [Purpose.Segwit]: 'p2sh',
-  [Purpose.Multisig]: 'p2wsh',
-  [Purpose.NativeSegwit]: 'p2wpkh',
-  [Purpose.Taproot]: 'p2tr',
-};
-
 export const networkToCoinType: Record<Network, Slip44> = {
   bitcoin: Slip44.Bitcoin,
   testnet: Slip44.Testnet,
