@@ -17,7 +17,6 @@ import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
 import { TrongridApiClient } from './clients/trongrid/TrongridApiClient';
 import { TronWebFactory } from './clients/tronweb/TronWebFactory';
-import { AssetsHandler } from './handlers/assets/assets';
 import { ClientRequestHandler } from './handlers/clientRequest/clientRequest';
 import { CronHandler } from './handlers/cronjob/cronjob';
 import { KeyringHandler } from './handlers/keyring/keyring';
@@ -54,7 +53,7 @@ import logger, { noOpLogger } from './utils/logger';
  * 1. Core services (ConfigProvider, State, Connection)
  * 2. Repositories (AssetsRepository, TransactionsRepository, AccountsRepository)
  * 3. Business services (AssetsService, TransactionsService, AccountsService)
- * 4. Handlers (AssetsHandler, CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
+ * 4. Handlers (CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
  */
 export const configProvider = new ConfigProvider();
 
@@ -63,7 +62,6 @@ const state = new State({
   defaultState: {
     keyringAccounts: {},
     assets: {},
-    tokenPrices: {},
     transactions: {},
     mapInterfaceNameToId: {},
   },
@@ -124,7 +122,6 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   priceApiClient,
   tokenApiClient,
   snapClient,
-  configProvider,
 });
 const coreAssetsAdapter = new CoreAssetsAdapter({
   getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
@@ -216,10 +213,6 @@ const confirmationHandler = new ConfirmationHandler({
 /**
  * Handlers
  */
-const assetsHandler = new AssetsHandler({
-  logger,
-  assetsService,
-});
 const clientRequestHandler = new ClientRequestHandler({
   logger,
   snapClient,
@@ -290,7 +283,6 @@ export type SnapExecutionContext = {
   /**
    * Handlers
    */
-  assetsHandler: AssetsHandler;
   cronHandler: CronHandler;
   clientRequestHandler: ClientRequestHandler;
   keyringHandler: KeyringHandler;
@@ -325,7 +317,6 @@ const snapContext: SnapExecutionContext = {
   /**
    * Handlers
    */
-  assetsHandler,
   clientRequestHandler,
   cronHandler,
   keyringHandler,
@@ -337,7 +328,6 @@ export {
   /**
    * Handlers
    */
-  assetsHandler,
   clientRequestHandler,
   cronHandler,
   keyringHandler,

@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "f67A1dy0bXl9jvoMuZ4heLBBs+m6bwaU20/WT30COeU=",
+    "shasum": "5XRlmv4jiAX3IKwm1vWkTlTRvieyZ4yBBgbQvDbXMQc=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -15,8 +15,7 @@
         "packageName": "@metamask/solana-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
-    },
-    "locales": ["locales/en.json"]
+    }
   },
   "initialConnections": {
     "https://portfolio.metamask.io": {}
@@ -72,12 +71,6 @@
           ]
         }
       }
-    },
-    "endowment:assets": {
-      "scopes": [
-        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-        "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
-      ]
     },
     "endowment:name-lookup": {
       "chains": [

@@ -36,6 +36,7 @@ import type {
   SecurityScanRequest,
   TransactionScanResult,
 } from '../../services/transaction-scan';
+import type { LocalizedMessage } from '../../utils';
 
 export type FeeData = {
   assetId: KnownCaip19AssetIdOrSlip44Id;
@@ -141,6 +142,9 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   networkImage: string | null;
   origin: string;
   feeData?: FeeData;
+  // Locale key for the validation banner subtitle. When omitted, the banner
+  // falls back to `confirmation.txnError.generic`.
+  errorMessage?: LocalizedMessage;
   // Identifies the active view so shared event handlers (e.g. the malicious
   // acknowledgement screen) can re-render the correct confirmation.
   interfaceKey?: ConfirmationInterfaceKey;

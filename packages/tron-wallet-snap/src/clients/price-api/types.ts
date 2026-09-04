@@ -1,17 +1,13 @@
 import type { Infer } from '@metamask/superstruct';
 import {
-  array,
   boolean,
   enums,
   min,
   nullable,
   number,
-  object,
   optional,
-  pattern,
   record,
   string,
-  tuple,
   type as typeStruct,
   union,
 } from '@metamask/superstruct';
@@ -118,33 +114,6 @@ export const TickerStruct = union([
 export type Ticker = Infer<typeof TickerStruct>;
 
 /**
- * Struct for validating exchange rate data from the API.
- * Includes bounds validation to prevent malicious data injection.
- */
-export const ExchangeRateStruct = object({
-  name: string(),
-  ticker: TickerStruct,
-  value: min(number(), 0),
-  currencyType: enums(['fiat', 'crypto', 'commodity']),
-});
-
-export type ExchangeRate = Infer<typeof ExchangeRateStruct>;
-
-/**
- * Struct for validating the fiat exchange rates response.
- * Maps ticker symbols to their exchange rate data.
- * Despite the endpoint name, the response includes all exchange rates (crypto, fiat, commodity).
- */
-export const FiatExchangeRatesResponseStruct = record(
-  TickerStruct,
-  ExchangeRateStruct,
-);
-
-export type FiatExchangeRatesResponse = Infer<
-  typeof FiatExchangeRatesResponseStruct
->;
-
-/**
  * The structure of the spot price response from the Price API as described in
  * [this file](https://github.com/consensys-vertical-apps/va-mmcx-price-api/blob/main/src/types/price.ts#L46-L71).
  *
@@ -218,32 +187,3 @@ export type SpotPrices = Infer<typeof SpotPricesStruct>;
 // We create aliases here for clarity.
 export const VsCurrencyParamStruct = TickerStruct;
 export type VsCurrencyParam = Infer<typeof VsCurrencyParamStruct>;
-
-export const GetHistoricalPricesParamsStruct = object({
-  assetType: CaipAssetTypeStruct,
-  timePeriod: optional(pattern(string(), /^[1-9][0-9]*[dmy]$/u)), // Supports days, months, years
-  from: optional(min(number(), 0)),
-  to: optional(min(number(), 0)),
-  vsCurrency: optional(VsCurrencyParamStruct),
-});
-
-export type GetHistoricalPricesParams = Infer<
-  typeof GetHistoricalPricesParamsStruct
->;
-
-export const GetHistoricalPricesResponseStruct = object({
-  prices: array(tuple([number(), number()])),
-  marketCaps: array(tuple([number(), number()])),
-  totalVolumes: array(tuple([number(), number()])),
-});
-
-export type GetHistoricalPricesResponse = Infer<
-  typeof GetHistoricalPricesResponseStruct
->;
-
-export const GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT: GetHistoricalPricesResponse =
-  {
-    prices: [],
-    marketCaps: [],
-    totalVolumes: [],
-  };
