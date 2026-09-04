@@ -38,6 +38,7 @@ describe('normalizeCompiledTransactionMessage', () => {
           ]),
         },
       ],
+      version: 0,
     } as unknown as CompiledTransactionMessage;
 
     const result = normalizeCompiledTransactionMessage(

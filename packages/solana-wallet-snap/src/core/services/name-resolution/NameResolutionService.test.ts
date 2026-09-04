@@ -46,7 +46,10 @@ describe('NameResolutionService', () => {
       );
 
       expect(mockConnection.getRpc).toHaveBeenCalledWith(mockNetwork);
-      expect(resolve).toHaveBeenCalledWith({ rpc: mockRpc, domain: mockDomain });
+      expect(resolve).toHaveBeenCalledWith({
+        rpc: mockRpc,
+        domain: mockDomain,
+      });
       expect(result).toBe(mockAddress);
     });
 
@@ -61,7 +64,10 @@ describe('NameResolutionService', () => {
       await nameResolutionService.resolveDomain(mockNetwork, mockDomain);
 
       expect(resolve).toHaveBeenCalledTimes(1);
-      expect(resolve).toHaveBeenCalledWith({ rpc: mockRpc, domain: mockDomain });
+      expect(resolve).toHaveBeenCalledWith({
+        rpc: mockRpc,
+        domain: mockDomain,
+      });
     });
 
     it('works with different networks', async () => {
