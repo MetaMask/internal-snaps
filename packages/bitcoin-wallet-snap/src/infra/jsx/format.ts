@@ -1,5 +1,6 @@
 import type { Network } from '@metamask/bitcoindevkit';
 import { Amount, BdkErrorCode } from '@metamask/bitcoindevkit';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import type { CaipAccountId } from '@metamask/snaps-sdk';
 
 import type { CurrencyRate, CurrencyUnit, Messages } from '../../entities';
@@ -69,30 +70,23 @@ export const errorCodeToLabel = (code: number): string => {
 };
 
 /**
- * Known origins mapped to their human-readable labels. Keys are lowercased so
- * lookups can be performed case-insensitively against the raw origin.
+ * Formats a request origin for display.
+ *
+ * Returns an empty string when the origin is not displayable: remote
+ * transports (WalletConnect, SDK) pass an opaque connection id, which is
+ * meaningless to the user, so the caller hides the origin row instead of
+ * showing it.
+ *
+ * ponytail: the self-reported URL that rides along such requests in
+ * `originMetadata` is not plumbed into the confirmations yet (Bitcoin has no
+ * remote-transport support to exercise it). Pass it to `resolveOrigin` and
+ * render its `isSelfReported` flag when that support lands.
+ *
+ * @param origin - The origin of the request, as received by the snap.
+ * @returns The hostname, a label for known origins, or an empty string.
  */
-const KNOWN_ORIGIN_LABELS: Record<string, string> = {
-  metamask: 'MetaMask',
-  'wallet-connect': 'WalletConnect',
-};
-
-export const displayOrigin = (origin: string): string => {
-  const knownLabel = KNOWN_ORIGIN_LABELS[origin.toLowerCase()];
-  if (knownLabel) {
-    return knownLabel;
-  }
-
-  try {
-    const url = new URL(origin);
-    return url.protocol === 'http:' || url.protocol === 'https:'
-      ? url.hostname
-      : '';
-  } catch {
-    console.log('[format] - displayOrigin - failed to parse origin', origin);
-    return '';
-  }
-};
+export const displayOrigin = (origin: string): string =>
+  resolveOrigin(origin).displayOrigin ?? '';
 
 export const displayCaip10 = (
   network: Network,

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Never display an opaque request origin: the PSBT-signing and send confirmations now show a hostname (or `MetaMask`) and hide the row otherwise, instead of printing the raw origin, which for remote transports is a connection id
+- Stop labelling the literal `wallet-connect` origin as "WalletConnect"; the clients now pass a per-session channel id instead
 - **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
