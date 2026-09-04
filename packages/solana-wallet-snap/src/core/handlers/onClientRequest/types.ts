@@ -10,6 +10,11 @@ export const ClientRequestMethod = {
   SignCardMessage: 'signCardMessage',
   ApproveCardAmount: 'approveCardAmount',
   SignProofOfOwnership: 'signProofOfOwnership',
+  /**
+   * Silently signs multiple proof-of-ownership messages for MetaMask identity
+   * authentication.
+   */
+  SignProofOfOwnershipBatch: 'signProofOfOwnershipBatch',
 } as const;
 
 export type ClientRequestMethod =

@@ -29,6 +29,16 @@ export class AccountsService {
     return this.#accountsRepository.findById(id);
   }
 
+  /**
+   * Finds multiple Solana keyring accounts.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts.
+   */
+  async findByIds(ids: string[]): Promise<SolanaKeyringAccount[]> {
+    return this.#accountsRepository.findByIds(ids);
+  }
+
   async findByAddress(address: string): Promise<SolanaKeyringAccount | null> {
     return this.#accountsRepository.findByAddress(address);
   }

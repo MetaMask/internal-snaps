@@ -22,6 +22,21 @@ export class AccountsRepository {
     return (await this.#state.getKey(`keyringAccounts.${id}`)) ?? null;
   }
 
+  /**
+   * Finds multiple Solana keyring accounts with a single full account-state
+   * read.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts. Result ordering follows stored account
+   * ordering, not input ordering.
+   */
+  async findByIds(ids: string[]): Promise<SolanaKeyringAccount[]> {
+    const idSet = new Set(ids);
+    const accounts = await this.getAll();
+
+    return accounts.filter((account) => idSet.has(account.id));
+  }
+
   async findByAddress(address: string): Promise<SolanaKeyringAccount | null> {
     const accounts = await this.getAll();
 

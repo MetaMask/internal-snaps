@@ -1,4 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -37,6 +38,8 @@ import {
   SignAndSendTransactionResponseStruct,
   SignAndSendTransactionWithoutConfirmationRequestStruct,
   SignCardMessageRequestStruct,
+  SignProofOfOwnershipBatchRequestStruct,
+  SignProofOfOwnershipBatchResponseStruct,
   SignProofOfOwnershipRequestStruct,
   SignProofOfOwnershipResponseStruct,
   SignRewardsMessageRequestStruct,
@@ -45,6 +48,7 @@ import {
 import type {
   ComputeFeeResponse,
   SignAndSendTransactionResponse,
+  SignProofOfOwnershipBatchResponse,
   SignProofOfOwnershipResponse,
 } from './validation';
 
@@ -110,6 +114,8 @@ export class ClientRequestHandler {
         return this.#handleApproveCardAmount(request);
       case ClientRequestMethod.SignProofOfOwnership:
         return this.#handleSignProofOfOwnership(request);
+      case ClientRequestMethod.SignProofOfOwnershipBatch:
+        return this.#handleSignProofOfOwnershipBatch(request);
       default:
         throw new MethodNotFoundError() as Error;
     }
@@ -490,16 +496,134 @@ export class ClientRequestHandler {
     const { signature: base58Signature } =
       await this.#walletService.signMessage(account, base64Message);
 
-    // Transcode the base58 signature to 0x-prefixed hex for the identity
-    // auth API; the dApp `signMessage` flow keeps its wallet-standard base58.
-    const signature = bytesToHex(
-      Uint8Array.from(getBase58Codec().encode(base58Signature)),
-    );
+    const signature = this.#toProofOfOwnershipSignature(base58Signature);
 
     const result: SignProofOfOwnershipResponse = { signature };
 
     assert(result, SignProofOfOwnershipResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Handles silent batch signing of proof-of-ownership messages.
+   *
+   * Valid items are signed together so the wallet service can group key
+   * derivation by entropy source. Invalid items return per-item errors instead
+   * of failing the whole batch.
+   *
+   * @param request - The JSON-RPC request containing the batch items.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleSignProofOfOwnershipBatch(
+    request: JsonRpcRequest,
+  ): Promise<Json> {
+    assert(request, SignProofOfOwnershipBatchRequestStruct);
+
+    const {
+      params: { items },
+    } = request;
+    const uniqueAccountIds = [
+      ...new Set(items.map(({ accountId }) => accountId)),
+    ];
+    const accounts = await this.#accountsService.findByIds(uniqueAccountIds);
+    const accountsById = new Map(
+      accounts.map((account) => [account.id, account]),
+    );
+    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
+      items.length,
+    );
+    const signingRequests: {
+      index: number;
+      accountId: string;
+      account: (typeof accounts)[number];
+      message: string;
+    }[] = [];
+
+    items.forEach(({ accountId, message }, index) => {
+      const account = accountsById.get(accountId);
+      if (!account) {
+        results[index] = {
+          accountId,
+          error: `Account not found: ${accountId}`,
+        };
+        return;
+      }
+
+      try {
+        const { address: messageAddress } =
+          parseProofOfOwnershipMessage(message);
+
+        if (messageAddress !== account.address) {
+          results[index] = {
+            accountId,
+            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${account.address})`,
+          };
+          return;
+        }
+
+        const base64Message = pipe(
+          message,
+          getUtf8Codec().encode,
+          getBase64Codec().decode,
+        );
+        signingRequests.push({
+          index,
+          accountId,
+          account,
+          message: base64Message,
+        });
+      } catch (error) {
+        results[index] = {
+          accountId,
+          error: normalizeError(error).message,
+        };
+      }
+    });
+
+    const signedMessages = await this.#walletService.signMessages(
+      signingRequests.map(({ account, message }) => ({ account, message })),
+    );
+
+    signedMessages.forEach((signedMessage, signingRequestIndex) => {
+      const { index, accountId } = signingRequests[
+        signingRequestIndex
+      ] as (typeof signingRequests)[number];
+
+      const { error } = signedMessage as { error?: string };
+      if (error !== undefined) {
+        results[index] = {
+          accountId,
+          error,
+        };
+        return;
+      }
+
+      const { signature } = signedMessage as { signature: string };
+      results[index] = {
+        accountId,
+        signature: this.#toProofOfOwnershipSignature(signature),
+      };
+    });
+
+    const result: SignProofOfOwnershipBatchResponse = { results };
+
+    assert(result, SignProofOfOwnershipBatchResponseStruct);
+
+    return result;
+  }
+
+  /**
+   * Converts a wallet-standard base58 ed25519 signature into the strict hex
+   * format expected by the identity auth proof-of-ownership API.
+   *
+   * @param base58Signature - The base58-encoded signature returned by Solana
+   * wallet signing.
+   * @returns The same signature encoded as 0x-prefixed hex.
+   */
+  #toProofOfOwnershipSignature(base58Signature: string): `0x${string}` {
+    return bytesToHex(
+      Uint8Array.from(getBase58Codec().encode(base58Signature)),
+    );
   }
 }
