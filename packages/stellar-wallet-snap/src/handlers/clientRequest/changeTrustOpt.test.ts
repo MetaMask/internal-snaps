@@ -35,13 +35,17 @@ import {
   createMockTransactionService,
 } from '../../services/transaction/__mocks__/transaction.fixtures';
 import {
+  RemoveTrustlineWithNonZeroBalanceException,
   TransactionValidationException,
   TrustlineNotFoundException,
 } from '../../services/transaction/exceptions';
 import { KeyringTransactionType } from '../../services/transaction/KeyringTransactionBuilder';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
-import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
+import {
+  ConfirmationInterfaceKey,
+  FetchStatus,
+} from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
@@ -349,7 +353,7 @@ describe('ChangeTrustOptHandler', () => {
     const result = await handler.handle(addRequest);
 
     expect(result).toStrictEqual({ status: true });
-    expect(resolve).not.toHaveBeenCalled();
+    expect(resolve).toHaveBeenCalledWith(assetId);
     expect(createValidatedChangeTrustTransaction).not.toHaveBeenCalled();
     expect(renderConfirmationDialog).not.toHaveBeenCalled();
     expect(signTransactionSpy).not.toHaveBeenCalled();
@@ -410,9 +414,11 @@ describe('ChangeTrustOptHandler', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('throws TrustlineNotFoundException for opt-out when trustline does not exist', async () => {
+  it('shows the opt-out confirmation then throws when the trustline does not exist', async () => {
     const {
       handler,
+      account,
+      assetMetadata,
       resolve,
       createValidatedChangeTrustTransaction,
       renderConfirmationDialog,
@@ -424,11 +430,103 @@ describe('ChangeTrustOptHandler', () => {
       TrustlineNotFoundException,
     );
 
-    expect(resolve).not.toHaveBeenCalled();
+    expect(resolve).toHaveBeenCalledWith(assetId);
+    expect(renderConfirmationDialog).toHaveBeenCalledWith({
+      origin: METAMASK_ORIGIN,
+      scope,
+      interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
+      fee: '',
+      renderContext: {
+        account,
+        assetMetadata,
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: 'confirmation.txnError.trustlineNotFoundOnAccount',
+      },
+      renderOptions: {
+        loadPrice: false,
+        securityScanning: false,
+        localSimulation: false,
+      },
+    });
     expect(createValidatedChangeTrustTransaction).not.toHaveBeenCalled();
-    expect(renderConfirmationDialog).not.toHaveBeenCalled();
     expect(sendTransaction).not.toHaveBeenCalled();
     expect(savePendingKeyringTransaction).not.toHaveBeenCalled();
+  });
+
+  it('shows the opt-out confirmation then throws when the trustline balance is non-zero', async () => {
+    const {
+      handler,
+      account,
+      assetMetadata,
+      createValidatedChangeTrustTransaction,
+      renderConfirmationDialog,
+      sendTransaction,
+    } = setup({ withTrustline: true });
+    createValidatedChangeTrustTransaction.mockRejectedValueOnce(
+      new RemoveTrustlineWithNonZeroBalanceException('balance'),
+    );
+
+    await expect(handler.handle(deleteRequest)).rejects.toThrow(
+      RemoveTrustlineWithNonZeroBalanceException,
+    );
+
+    expect(renderConfirmationDialog).toHaveBeenCalledWith({
+      origin: METAMASK_ORIGIN,
+      scope,
+      interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
+      fee: '',
+      renderContext: {
+        account,
+        assetMetadata,
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: 'confirmation.txnError.trustlineNonZeroBalance',
+      },
+      renderOptions: {
+        loadPrice: false,
+        securityScanning: false,
+        localSimulation: false,
+      },
+    });
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('shows the opt-in confirmation then throws when pre-submit validation fails', async () => {
+    const {
+      handler,
+      account,
+      assetMetadata,
+      createValidatedChangeTrustTransaction,
+      renderConfirmationDialog,
+      signTransactionSpy,
+      sendTransaction,
+    } = setup();
+    createValidatedChangeTrustTransaction.mockRejectedValueOnce(
+      new TransactionValidationException('x'),
+    );
+
+    await expect(handler.handle(addRequest)).rejects.toThrow(
+      TransactionValidationException,
+    );
+
+    expect(renderConfirmationDialog).toHaveBeenCalledWith({
+      origin: METAMASK_ORIGIN,
+      scope,
+      interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptIn,
+      fee: '',
+      renderContext: {
+        account,
+        assetMetadata,
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: 'confirmation.txnError.generic',
+      },
+      renderOptions: {
+        loadPrice: false,
+        securityScanning: false,
+        localSimulation: false,
+      },
+    });
+    expect(signTransactionSpy).not.toHaveBeenCalled();
+    expect(sendTransaction).not.toHaveBeenCalled();
   });
 
   it('handles changeTrust opt-out and enforces delete limit to 0', async () => {
