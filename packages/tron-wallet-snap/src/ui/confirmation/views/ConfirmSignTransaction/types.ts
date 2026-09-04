@@ -1,3 +1,5 @@
+import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
+
 import type { SpotPrices } from '../../../../clients/price-api/types';
 import type { Network } from '../../../../constants';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
@@ -15,6 +17,7 @@ export type ConfirmSignTransactionContext = {
     type: string;
   };
   origin: string;
+  originMetadata: SelfReportedOriginMetadata | null;
   preferences: Preferences;
   networkImage: string;
   scan: TransactionScanResult | null;

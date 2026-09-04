@@ -197,6 +197,7 @@ function buildMockSignTransactionInterfaceContext(
   overrides: Partial<ConfirmSignTransactionContext> = {},
 ): ConfirmSignTransactionContext {
   return {
+    originMetadata: null,
     scope: Network.Mainnet,
     account: {
       id: 'account-1',

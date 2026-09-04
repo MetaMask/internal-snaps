@@ -6,7 +6,6 @@ import type { Network } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
-import { formatOrigin } from '../../../../utils/formatOrigin';
 import { FALLBACK_LANGUAGE } from '../../../../utils/i18n';
 import { SignMessageRequestStruct } from '../../../../validation/structs';
 import { ConfirmSignMessage } from './ConfirmSignMessage';
@@ -30,6 +29,7 @@ export async function render(
     },
     scope,
     origin,
+    originMetadata,
   } = request;
 
   // Decode the base64 message to get the raw message
@@ -48,7 +48,8 @@ export async function render(
       scope={scope as Network}
       locale={locale}
       networkImage={TRX_IMAGE_SVG}
-      origin={formatOrigin(origin)}
+      origin={origin}
+      originMetadata={originMetadata ?? null}
     />,
     {},
   );

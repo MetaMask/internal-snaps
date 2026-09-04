@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show the dapp URL reported in `originMetadata` in the "Request from" row of the sign-transaction and sign-message confirmations, marked "Not verified", and hide the row when there is nothing verifiable or self-reported to show (previously a WalletConnect channel id was displayed verbatim as the requesting site)
+- Stop sending unverifiable origins to the security alerts API: a WalletConnect channel id or a self-reported dapp URL can flip a Blockaid verdict, so such requests are now reported as wallet-initiated
 - **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))

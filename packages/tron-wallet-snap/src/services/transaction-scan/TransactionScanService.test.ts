@@ -45,6 +45,48 @@ describe('TransactionScanService', () => {
       timestamp: Date.now(),
     });
 
+  describe('origin forwarding', () => {
+    const scanWithOrigin = async (
+      origin: string,
+    ): Promise<jest.Mocked<SecurityAlertsApiClient>['scanTransaction']> => {
+      const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
+        simulation: { status: 'Success', account_summary: {} },
+        validation: { status: 'Success', result_type: 'Benign' },
+      } as SecurityAlertSimulationValidationResponse);
+
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        createMockSnapClient() as unknown as SnapClient,
+        mockLogger,
+      );
+
+      await service.scanTransaction({
+        accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin,
+        scope: Network.Mainnet,
+        options: ['simulation'],
+      });
+
+      return mockSecurityAlertsApiClient.scanTransaction;
+    };
+
+    it.each([
+      ['a WalletConnect channel id', '4f3a1b2c-0000-4000-8000-000000000000'],
+      ['the MetaMask origin', 'MetaMask'],
+    ])('does not forward %s to the scan', async (_, origin) => {
+      expect(await scanWithOrigin(origin)).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'https://metamask.io' }),
+      );
+    });
+
+    it('forwards a verifiable origin to the scan', async () => {
+      expect(await scanWithOrigin('https://tronscan.org')).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'https://tronscan.org' }),
+      );
+    });
+  });
+
   describe('estimated changes decimal precision', () => {
     it('computes display value from raw_value and decimals', async () => {
       const mockApiResponse: SecurityAlertSimulationValidationResponse = {
