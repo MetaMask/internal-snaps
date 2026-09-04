@@ -29,11 +29,23 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: coverage-*
-          path: packages
-          merge-multiple: true
+          path: .coverage-artifacts
 
-      - name: Display coverage artifacts
-        run: ls packages/*/coverage/lcov.info
+      - name: Arrange coverage for SonarCloud
+        # Single-file artifact uploads do not preserve the source directory,
+        # and each artifact downloads into .coverage-artifacts/coverage-<dir>/.
+        # Move each lcov back to packages/<dir>/coverage/lcov.info to match
+        # sonar.javascript.lcov.reportPaths.
+        run: |
+          for dir in .coverage-artifacts/coverage-*/; do
+            pkg="${dir##*/coverage-}"
+            pkg="${pkg%/}"
+            if [ -f "${dir}lcov.info" ]; then
+              mkdir -p "packages/${pkg}/coverage"
+              mv "${dir}lcov.info" "packages/${pkg}/coverage/lcov.info"
+            fi
+          done
+          ls packages/*/coverage/lcov.info
         shell: bash
 
       - name: SonarCloud scan
