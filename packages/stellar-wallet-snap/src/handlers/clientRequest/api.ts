@@ -1,5 +1,10 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  ProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchRequestItemStruct,
+  ProofOfOwnershipBatchRequestParamsStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   enums,
@@ -467,10 +472,8 @@ export const SignProofOfOwnershipJsonRpcResponseStruct = object({
  * Messages are validated inside the handler so invalid proof messages can be
  * returned as per-item errors instead of rejecting the whole batch.
  */
-export const SignProofOfOwnershipBatchJsonRpcRequestItemStruct = object({
-  accountId: UuidStruct,
-  message: string(),
-});
+export const SignProofOfOwnershipBatchJsonRpcRequestItemStruct =
+  ProofOfOwnershipBatchRequestItemStruct;
 
 /**
  * Validation struct for the signProofOfOwnershipBatch JSON-RPC request.
@@ -479,9 +482,7 @@ export const SignProofOfOwnershipBatchJsonRpcRequestStruct = assign(
   JsonRpcRequestStruct,
   object({
     method: literal(ClientRequestMethod.SignProofOfOwnershipBatch),
-    params: object({
-      items: array(SignProofOfOwnershipBatchJsonRpcRequestItemStruct),
-    }),
+    params: ProofOfOwnershipBatchRequestParamsStruct,
   }),
 );
 
@@ -496,10 +497,8 @@ export const SignProofOfOwnershipBatchSuccessStruct = object({
 /**
  * Validation struct for one failed signProofOfOwnershipBatch result.
  */
-export const SignProofOfOwnershipBatchErrorStruct = object({
-  accountId: UuidStruct,
-  error: nonempty(string()),
-});
+export const SignProofOfOwnershipBatchErrorStruct =
+  ProofOfOwnershipBatchErrorStruct;
 
 /**
  * Validation struct for one signProofOfOwnershipBatch result.
