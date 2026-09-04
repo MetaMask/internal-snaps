@@ -8,23 +8,10 @@ import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
 import type { ICache } from '../../caching/ICache';
-import { useCache } from '../../caching/useCache';
 import type { ConfigProvider } from '../../services/config';
 import logger from '../../utils/logger';
-import type {
-  ExchangeRate,
-  FiatTicker,
-  GetHistoricalPricesParams,
-  GetHistoricalPricesResponse,
-  SpotPrices,
-  VsCurrencyParam,
-} from './types';
-import {
-  GetHistoricalPricesParamsStruct,
-  GetHistoricalPricesResponseStruct,
-  SpotPricesStruct,
-  VsCurrencyParamStruct,
-} from './types';
+import type { SpotPrices, VsCurrencyParam } from './types';
+import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
 
 export class PriceApiClient {
   readonly #fetch: typeof globalThis.fetch;
@@ -38,9 +25,7 @@ export class PriceApiClient {
   readonly #cache: ICache<Serializable>;
 
   readonly cacheTtlsMilliseconds: {
-    fiatExchangeRates: number;
     spotPrices: number;
-    historicalPrices: number;
   };
 
   constructor(
@@ -61,37 +46,6 @@ export class PriceApiClient {
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
 
     this.#cache = _cache;
-  }
-
-  async getFiatExchangeRates(): Promise<Record<FiatTicker, ExchangeRate>> {
-    return useCache(
-      this.#getFiatExchangeRates_INTERNAL.bind(this),
-      this.#cache,
-      {
-        functionName: 'PriceApiClient:getFiatExchangeRates',
-        ttlMilliseconds: this.cacheTtlsMilliseconds.fiatExchangeRates,
-      },
-    )();
-  }
-
-  async #getFiatExchangeRates_INTERNAL(): Promise<
-    Record<FiatTicker, ExchangeRate>
-  > {
-    try {
-      const response = await this.#fetch(
-        `${this.#baseUrl}/v1/exchange-rates/fiat`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      this.#logger.error(error, 'Error fetching fiat exchange rates');
-      throw error;
-    }
   }
 
   /**
@@ -264,69 +218,5 @@ export class PriceApiClient {
     vsCurrency: VsCurrencyParam | string = 'usd',
   ): Promise<SpotPrices> {
     return this.#getMultipleSpotPrices_CACHE(tokenCaip19Types, vsCurrency);
-  }
-
-  /**
-   * Business logic for `getHistoricalPrices`.
-   *
-   * @param params - The parameters for the request.
-   * @param params.assetType - The asset type of the token.
-   * @param params.timePeriod - The time period for the historical prices.
-   * @param params.from - The start date for the historical prices.
-   * @param params.to - The end date for the historical prices.
-   * @param params.vsCurrency - The currency to convert the prices to.
-   * @returns The historical prices for the token.
-   */
-  async #getHistoricalPrices_INTERNAL(
-    params: GetHistoricalPricesParams,
-  ): Promise<GetHistoricalPricesResponse> {
-    assert(params, GetHistoricalPricesParamsStruct);
-
-    const url = buildUrl({
-      baseUrl: this.#baseUrl,
-      path: '/v3/historical-prices/{assetType}',
-      pathParams: {
-        assetType: params.assetType,
-      },
-      encodePathParams: false,
-      queryParams: {
-        ...(params.timePeriod && { timePeriod: params.timePeriod }),
-        ...(params.from && { from: params.from.toString() }),
-        ...(params.to && { to: params.to.toString() }),
-        ...(params.vsCurrency && { vsCurrency: params.vsCurrency }),
-      },
-    });
-
-    const response = await this.#fetch(url);
-    const historicalPrices = await response.json();
-    assert(historicalPrices, GetHistoricalPricesResponseStruct);
-
-    return historicalPrices;
-  }
-
-  /**
-   * Get historical prices for a token by calling the Price API.
-   * It caches the results for 1 hour.
-   *
-   * @see https://price.uat-api.cx.metamask.io/docs#/Historical%20Prices/PriceController_getHistoricalPricesByCaipAssetId
-   * @param params - The parameters for the request.
-   * @param params.assetType - The asset type of the token.
-   * @param params.timePeriod - The time period for the historical prices.
-   * @param params.from - The start date for the historical prices.
-   * @param params.to - The end date for the historical prices.
-   * @param params.vsCurrency - The currency to convert the prices to.
-   * @returns The historical prices for the token.
-   */
-  async getHistoricalPrices(
-    params: GetHistoricalPricesParams,
-  ): Promise<GetHistoricalPricesResponse> {
-    return useCache(
-      this.#getHistoricalPrices_INTERNAL.bind(this),
-      this.#cache,
-      {
-        functionName: 'PriceApiClient:getHistoricalPrices',
-        ttlMilliseconds: this.cacheTtlsMilliseconds.historicalPrices,
-      },
-    )(params);
   }
 }
