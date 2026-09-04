@@ -51,6 +51,7 @@ export class TransactionsService {
     const transactionData = await this.#connection
       .getRpc(scope)
       .getTransaction(asSignature(signature), {
+        encoding: 'json',
         maxSupportedTransactionVersion: 0,
       })
       .send();
@@ -60,7 +61,7 @@ export class TransactionsService {
     }
 
     return this.#transactionMapper.mapRpcTransaction(
-      transactionData,
+      transactionData as SolanaTransaction,
       account,
       scope,
     );
@@ -182,11 +183,12 @@ export class TransactionsService {
         const transaction = await this.#connection
           .getRpc(asset.network)
           .getTransaction(asSignature(signatureResponse.signature), {
+            encoding: 'json',
             maxSupportedTransactionVersion: 0,
           })
           .send();
         return {
-          transaction,
+          transaction: transaction as SolanaTransaction | null,
           asset,
         };
       } catch (error) {

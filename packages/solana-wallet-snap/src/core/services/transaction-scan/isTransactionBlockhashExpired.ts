@@ -1,6 +1,6 @@
 import { isTransactionMessageWithBlockhashLifetime } from '@solana/kit';
 import type {
-  CompilableTransactionMessage,
+  TransactionMessage,
   Rpc,
   SolanaRpcApi,
   Transaction,
@@ -14,8 +14,8 @@ import { trackError } from '../../utils/errors';
 import logger from '../../utils/logger';
 
 const isCompilableTransactionMessage = (
-  transactionOrMessage: Transaction | CompilableTransactionMessage,
-): transactionOrMessage is CompilableTransactionMessage =>
+  transactionOrMessage: Transaction | TransactionMessage,
+): transactionOrMessage is TransactionMessage =>
   Object.hasOwn(transactionOrMessage, 'instructions');
 
 /**

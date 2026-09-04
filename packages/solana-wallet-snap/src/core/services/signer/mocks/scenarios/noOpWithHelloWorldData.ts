@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { CompilableTransactionMessage } from '@solana/kit';
+import type {
+  TransactionMessage,
+  TransactionMessageWithBlockhashLifetime,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 import { address, blockhash } from '@solana/kit';
 
 import { Network } from '../../../../constants/solana';
@@ -16,7 +20,9 @@ const signer = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 const fromAccountPrivateKeyBytes =
   MOCK_SOLANA_KEYRING_ACCOUNTS_PRIVATE_KEY_BYTES[signer.id]!;
 
-const transactionMessage: CompilableTransactionMessage = {
+const transactionMessage: TransactionMessage &
+  TransactionMessageWithFeePayer &
+  TransactionMessageWithBlockhashLifetime = {
   feePayer: {
     address: address(signer.address),
   },
