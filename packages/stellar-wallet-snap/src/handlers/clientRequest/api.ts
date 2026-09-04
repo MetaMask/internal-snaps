@@ -1,5 +1,10 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  ProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchRequestItemStruct,
+  ProofOfOwnershipBatchRequestParamsStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   enums,
@@ -55,6 +60,11 @@ export const ClientRequestMethod = {
    * SIP-31 client-only.
    */
   SignProofOfOwnership: 'signProofOfOwnership',
+  /**
+   * Silent batch proof-of-ownership signing for
+   * `@metamask/profile-metrics-controller`. SIP-31 client-only.
+   */
+  SignProofOfOwnershipBatch: 'signProofOfOwnershipBatch',
   /** -------------------------------- Stellar Specific -------------------------------- */
   ChangeTrustOpt: 'changeTrustOpt',
 } as const;
@@ -457,6 +467,55 @@ export const SignProofOfOwnershipJsonRpcResponseStruct = object({
 });
 
 /**
+ * Validation struct for one signProofOfOwnershipBatch request item.
+ *
+ * Messages are validated inside the handler so invalid proof messages can be
+ * returned as per-item errors instead of rejecting the whole batch.
+ */
+export const SignProofOfOwnershipBatchJsonRpcRequestItemStruct =
+  ProofOfOwnershipBatchRequestItemStruct;
+
+/**
+ * Validation struct for the signProofOfOwnershipBatch JSON-RPC request.
+ */
+export const SignProofOfOwnershipBatchJsonRpcRequestStruct = assign(
+  JsonRpcRequestStruct,
+  object({
+    method: literal(ClientRequestMethod.SignProofOfOwnershipBatch),
+    params: ProofOfOwnershipBatchRequestParamsStruct,
+  }),
+);
+
+/**
+ * Validation struct for one successful signProofOfOwnershipBatch result.
+ */
+export const SignProofOfOwnershipBatchSuccessStruct = object({
+  accountId: UuidStruct,
+  signature: pattern(string(), /^0x[0-9a-f]{128}$/u),
+});
+
+/**
+ * Validation struct for one failed signProofOfOwnershipBatch result.
+ */
+export const SignProofOfOwnershipBatchErrorStruct =
+  ProofOfOwnershipBatchErrorStruct;
+
+/**
+ * Validation struct for one signProofOfOwnershipBatch result.
+ */
+export const SignProofOfOwnershipBatchItemResponseStruct = union([
+  SignProofOfOwnershipBatchSuccessStruct,
+  SignProofOfOwnershipBatchErrorStruct,
+]);
+
+/**
+ * Validation struct for the signProofOfOwnershipBatch JSON-RPC response.
+ */
+export const SignProofOfOwnershipBatchJsonRpcResponseStruct = object({
+  results: array(SignProofOfOwnershipBatchItemResponseStruct),
+});
+
+/**
  * A JSON-RPC request with an account resolve parameter.
  */
 export type JsonRpcRequestWithAccount = Infer<
@@ -560,4 +619,18 @@ export type SignProofOfOwnershipJsonRpcRequest = Infer<
  */
 export type SignProofOfOwnershipJsonRpcResponse = Infer<
   typeof SignProofOfOwnershipJsonRpcResponseStruct
+>;
+
+/**
+ * Type for the signProofOfOwnershipBatch JSON-RPC request.
+ */
+export type SignProofOfOwnershipBatchJsonRpcRequest = Infer<
+  typeof SignProofOfOwnershipBatchJsonRpcRequestStruct
+>;
+
+/**
+ * Type for the signProofOfOwnershipBatch JSON-RPC response.
+ */
+export type SignProofOfOwnershipBatchJsonRpcResponse = Infer<
+  typeof SignProofOfOwnershipBatchJsonRpcResponseStruct
 >;
