@@ -1,84 +1,115 @@
+import type { Infer } from '@metamask/superstruct';
+import { array, nonempty, object, string, union } from '@metamask/superstruct';
+
+import { UuidStruct } from '../uuidStruct/uuidStruct';
+
 /**
  * Prefix for proof-of-ownership messages signed by network snaps.
  */
 export const PROOF_OF_OWNERSHIP_MESSAGE_PREFIX = 'metamask:proof-of-ownership:';
 
 /**
+ * Validates parsed proof-of-ownership message fields.
+ */
+export const ProofOfOwnershipMessageStruct = object({
+  nonce: nonempty(string()),
+  address: nonempty(string()),
+});
+
+/**
  * Parsed proof-of-ownership message fields.
  */
-export type ProofOfOwnershipMessage = {
-  /**
-   * Opaque server-provided nonce. It may contain `:` characters.
-   */
-  nonce: string;
+export type ProofOfOwnershipMessage = Infer<
+  typeof ProofOfOwnershipMessageStruct
+>;
 
-  /**
-   * Chain-specific account address embedded in the proof message.
-   */
-  address: string;
-};
+/**
+ * Validates one proof-of-ownership batch request item.
+ */
+export const ProofOfOwnershipBatchRequestItemStruct = object({
+  accountId: UuidStruct,
+  message: string(),
+});
 
 /**
  * One proof-of-ownership batch request item.
  */
-export type ProofOfOwnershipBatchRequestItem = {
-  /**
-   * Snap account ID to sign with.
-   */
-  accountId: string;
+export type ProofOfOwnershipBatchRequestItem = Infer<
+  typeof ProofOfOwnershipBatchRequestItemStruct
+>;
 
-  /**
-   * Plaintext proof-of-ownership message to sign.
-   */
-  message: string;
-};
+/**
+ * Validates proof-of-ownership batch request params.
+ */
+export const ProofOfOwnershipBatchRequestParamsStruct = object({
+  items: array(ProofOfOwnershipBatchRequestItemStruct),
+});
+
+/**
+ * Proof-of-ownership batch request params.
+ */
+export type ProofOfOwnershipBatchRequestParams = Infer<
+  typeof ProofOfOwnershipBatchRequestParamsStruct
+>;
+
+/**
+ * Validates one successful proof-of-ownership batch result.
+ */
+export const ProofOfOwnershipBatchSuccessStruct = object({
+  accountId: UuidStruct,
+  signature: string(),
+});
 
 /**
  * One successful proof-of-ownership batch result.
  */
-export type ProofOfOwnershipBatchSuccess = {
-  /**
-   * Snap account ID from the corresponding request item.
-   */
-  accountId: string;
+export type ProofOfOwnershipBatchSuccess = Infer<
+  typeof ProofOfOwnershipBatchSuccessStruct
+>;
 
-  /**
-   * Chain-specific proof-of-ownership signature.
-   */
-  signature: string;
-};
+/**
+ * Validates one failed proof-of-ownership batch result.
+ */
+export const ProofOfOwnershipBatchErrorStruct = object({
+  accountId: UuidStruct,
+  error: nonempty(string()),
+});
 
 /**
  * One failed proof-of-ownership batch result.
  */
-export type ProofOfOwnershipBatchError = {
-  /**
-   * Snap account ID from the corresponding request item.
-   */
-  accountId: string;
+export type ProofOfOwnershipBatchError = Infer<
+  typeof ProofOfOwnershipBatchErrorStruct
+>;
 
-  /**
-   * Error message for this request item.
-   */
-  error: string;
-};
+/**
+ * Validates one proof-of-ownership batch result.
+ */
+export const ProofOfOwnershipBatchItemResponseStruct = union([
+  ProofOfOwnershipBatchSuccessStruct,
+  ProofOfOwnershipBatchErrorStruct,
+]);
 
 /**
  * One proof-of-ownership batch result.
  */
-export type ProofOfOwnershipBatchItemResponse =
-  | ProofOfOwnershipBatchSuccess
-  | ProofOfOwnershipBatchError;
+export type ProofOfOwnershipBatchItemResponse = Infer<
+  typeof ProofOfOwnershipBatchItemResponseStruct
+>;
+
+/**
+ * Validates a proof-of-ownership batch response.
+ */
+export const ProofOfOwnershipBatchResponseStruct = object({
+  results: array(ProofOfOwnershipBatchItemResponseStruct),
+});
 
 /**
  * Proof-of-ownership batch response shape.
  */
-export type ProofOfOwnershipBatchResponse = {
-  /**
-   * One result per request item, in input order.
-   */
-  results: ProofOfOwnershipBatchItemResponse[];
-};
+export type ProofOfOwnershipBatchResponse = Infer<
+  typeof ProofOfOwnershipBatchResponseStruct
+>;
 
 /**
  * Parses a plaintext proof-of-ownership message in the format
