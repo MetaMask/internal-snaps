@@ -35,6 +35,16 @@ const config = {
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
   },
+  moduleNameMapper: {
+    // `@metamask/snap-networks-utils` is ESM-only, which Jest's CommonJS
+    // runtime cannot require, so map it to the uncompiled source instead.
+    // The source uses Node16-style `.js` specifiers and `lodash-es`, which
+    // must be mapped as well.
+    '^@metamask/snap-networks-utils$':
+      '<rootDir>/../snap-networks-utils/src/index.ts',
+    '^lodash-es$': 'lodash',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
   resetMocks: true,
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
 };
