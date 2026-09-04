@@ -30,6 +30,7 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
     type: '',
   },
   origin: '',
+  originMetadata: null,
   networkImage: TRX_IMAGE_SVG,
   scan: null,
   scanFetchStatus: FetchStatus.Initial,
@@ -74,6 +75,7 @@ export async function render(
     },
     scope,
     origin,
+    originMetadata,
   } = request;
 
   // Build initial context
@@ -82,7 +84,8 @@ export async function render(
     scope: scope as Network,
     account,
     transaction,
-    origin: origin ?? 'Unknown',
+    origin,
+    originMetadata: originMetadata ?? null,
     scanFetchStatus: FetchStatus.Loading, // Start as Loading (first fetch) not Fetching
     tokenPricesFetchStatus: FetchStatus.Initial,
     feesFetchStatus: FetchStatus.Initial,

@@ -1,7 +1,8 @@
-import type {
+import {
   AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
+  resolveOrigin,
 } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -23,7 +24,6 @@ import type {
 } from './types';
 import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
 
-const METAMASK_ORIGIN = 'metamask';
 const METAMASK_ORIGIN_URL = 'https://metamask.io';
 
 export class TransactionScanService {
@@ -110,7 +110,12 @@ export class TransactionScanService {
       const result = await this.#securityAlertsApiClient.scanTransaction({
         accountAddress,
         transactionRawData,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
+        // Only a verifiable origin may reach the scan: the URL is a core
+        // heuristic and can flip a verdict, so an unverifiable one (a
+        // WalletConnect channel id, or a URL self-reported by the requester)
+        // would let a dapp influence the check meant to catch it. Those are
+        // reported as wallet-initiated instead.
+        origin: resolveOrigin(origin).verifiedOrigin ?? METAMASK_ORIGIN_URL,
         options,
       });
 
@@ -146,7 +151,7 @@ export class TransactionScanService {
 
         const hasSecurityAlert = Boolean(
           scan.validation?.type &&
-          scan.validation.type !== SecurityAlertResponse.Benign,
+            scan.validation.type !== SecurityAlertResponse.Benign,
         );
 
         // Track scan completed

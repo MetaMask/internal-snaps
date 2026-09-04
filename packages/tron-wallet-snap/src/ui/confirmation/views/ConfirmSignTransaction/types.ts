@@ -1,4 +1,7 @@
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  SelfReportedOriginMetadata,
+} from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../clients/price-api/types';
 import type { Network } from '../../../../constants';
@@ -16,6 +19,7 @@ export type ConfirmSignTransactionContext = {
     type: string;
   };
   origin: string;
+  originMetadata: SelfReportedOriginMetadata | null;
   preferences: Preferences;
   networkImage: string;
   scan: TransactionScanResult | null;
