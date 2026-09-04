@@ -1,3 +1,4 @@
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -22,6 +23,7 @@ import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
+import { OriginRow } from '../../components/OriginRow';
 import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import type { ConfirmTransactionRequestContext } from './types';
@@ -112,17 +114,11 @@ export const ConfirmTransactionRequest = ({
         {/* Additional Details */}
         <Section>
           {/* Request from */}
-          <Box alignment="space-between" direction="horizontal">
-            <Box alignment="space-between" direction="horizontal" center>
-              <SnapText fontWeight="medium" color="alternative">
-                {translate('confirmation.origin')}
-              </SnapText>
-              <Tooltip content={translate('confirmation.origin.tooltip')}>
-                <Icon name="question" color="muted" />
-              </Tooltip>
-            </Box>
-            <SnapText>{origin}</SnapText>
-          </Box>
+          <OriginRow
+            displayOrigin={resolveOrigin(origin).displayOrigin}
+            isSelfReported={false}
+            locale={preferences.locale}
+          />
           <Box>{null}</Box>
           {/* From */}
           <Box alignment="space-between" direction="horizontal">

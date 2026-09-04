@@ -462,7 +462,7 @@ describe('ConfirmationHandler', () => {
       });
     });
 
-    it('passes formatted origin and transactionRawData to render', async () => {
+    it('passes the raw origin and transactionRawData to render', async () => {
       await withConfirmationHandler(
         async ({ handler, mockSnapClient, mockState }) => {
           mockRenderConfirmTransactionRequest.mockResolvedValue(true);
@@ -476,7 +476,9 @@ describe('ConfirmationHandler', () => {
             mockSnapClient,
             mockState,
             expect.objectContaining({
-              origin: 'example.com',
+              // The raw origin is kept: the view resolves what to display and
+              // the security scan only accepts a verifiable URL.
+              origin: 'https://example.com',
               transactionRawData: mockTransactionRawData,
             }),
           );

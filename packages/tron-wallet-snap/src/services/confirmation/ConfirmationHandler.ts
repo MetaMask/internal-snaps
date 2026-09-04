@@ -21,7 +21,6 @@ import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/v
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import { formatOrigin } from '../../utils/formatOrigin';
 import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
@@ -185,7 +184,7 @@ export class ConfirmationHandler {
         amount,
         fees,
         asset,
-        origin: formatOrigin(origin),
+        origin,
         accountType,
         transactionRawData,
       },
@@ -273,6 +272,7 @@ export class ConfirmationHandler {
       account,
       transaction: { rawDataHex: '', type: '' },
       origin: 'MetaMask',
+      originMetadata: null,
       preferences,
       networkImage: TRX_IMAGE_SVG,
       scan: null,
