@@ -1270,7 +1270,7 @@ export class ClientRequestHandler {
     );
 
     derivedKeypairs.forEach((derivedKeypair, signingRequestIndex) => {
-      const { index, accountId, message } = signingRequests[
+      const { index, accountId, account, message } = signingRequests[
         signingRequestIndex
       ] as (typeof signingRequests)[number];
       const { error } = derivedKeypair as { error?: string };
@@ -1281,7 +1281,19 @@ export class ClientRequestHandler {
       }
 
       try {
-        const { privateKeyHex } = derivedKeypair as { privateKeyHex: string };
+        const { address, privateKeyHex } = derivedKeypair as {
+          address: string;
+          privateKeyHex: string;
+        };
+
+        if (address !== account.address) {
+          results[index] = {
+            accountId,
+            error: `Derived address (${address}) does not match signing account address (${account.address})`,
+          };
+          return;
+        }
+
         const tronWeb = this.#tronWebFactory.createClient(
           Network.Mainnet,
           privateKeyHex,

@@ -1608,6 +1608,34 @@ describe('ClientRequestHandler', () => {
           ],
         });
       });
+
+      it('returns an item-level error when the derived address does not match the account', async () => {
+        const message = buildProofMessage(TEST_ADDRESS);
+        mockAccountsService.findByIds.mockResolvedValue([account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-1',
+            address: TEST_ADDRESS_2,
+          },
+        ]);
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+        );
+
+        expect(mockTronWebFactory.createClient).not.toHaveBeenCalled();
+        expect(mockTronWeb.trx.signMessageV2).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: TEST_ACCOUNT_ID,
+              error: `Derived address (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
+            },
+          ],
+        });
+      });
     });
   });
 });
