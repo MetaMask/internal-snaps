@@ -30,6 +30,7 @@ export async function render(
     request: { params },
     scope,
     origin,
+    originMetadata,
   } = request;
 
   const [preferences, accountDomain] = await Promise.all([
@@ -46,6 +47,7 @@ export async function render(
       preferences={preferences}
       networkImage={SOL_IMAGE_SVG}
       origin={origin}
+      originMetadata={originMetadata ?? null}
     />,
     {},
   );

@@ -1,4 +1,5 @@
 import type { SolMethod } from '@metamask/keyring-api';
+import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import type { Network } from '../../../../core/constants/solana';
@@ -25,6 +26,7 @@ export type ConfirmTransactionRequestContext = {
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
   origin: string;
+  originMetadata: SelfReportedOriginMetadata | null;
   advanced: {
     shown: boolean;
     instructions: InstructionParseResult[];

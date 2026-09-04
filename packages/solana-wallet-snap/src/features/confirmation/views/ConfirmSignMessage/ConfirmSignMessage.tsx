@@ -1,3 +1,5 @@
+import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import {
   Address,
   Box,
@@ -5,11 +7,9 @@ import {
   Container,
   Footer,
   Heading,
-  Icon,
   Image,
   Section,
   Text,
-  Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 
@@ -20,8 +20,8 @@ import { SOL_IMAGE_SVG } from '../../../../core/test/mocks/solana-image-svg';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
 import type { Locale } from '../../../../core/utils/i18n';
 import { i18n } from '../../../../core/utils/i18n';
-import { parseOrigin } from '../../../../core/utils/parseOrigin';
 import type { SolanaKeyringAccount } from '../../../../entities';
+import { OriginRow } from '../../components/OriginRow/OriginRow';
 import { ConfirmSignMessageFormNames } from './events';
 
 export type ConfirmSignMessageProps = {
@@ -32,6 +32,7 @@ export type ConfirmSignMessageProps = {
   locale: Locale;
   networkImage: string | null;
   origin: string;
+  originMetadata: SelfReportedOriginMetadata | null;
 };
 
 export const ConfirmSignMessage: SnapComponent<ConfirmSignMessageProps> = ({
@@ -42,10 +43,14 @@ export const ConfirmSignMessage: SnapComponent<ConfirmSignMessageProps> = ({
   locale,
   networkImage,
   origin,
+  originMetadata,
 }) => {
   const translate = i18n(locale);
   const { address } = account;
-  const originHostname = origin ? parseOrigin(origin) : null;
+  const { displayOrigin, isSelfReported } = resolveOrigin(
+    origin,
+    originMetadata,
+  );
   const addressCaip10 = addressToCaip10(scope, address);
 
   return (
@@ -70,19 +75,11 @@ export const ConfirmSignMessage: SnapComponent<ConfirmSignMessageProps> = ({
         </Section>
 
         <Section>
-          {originHostname ? (
-            <Box alignment="space-between" direction="horizontal">
-              <Box alignment="space-between" direction="horizontal" center>
-                <Text fontWeight="medium" color="alternative">
-                  {translate('confirmation.origin')}
-                </Text>
-                <Tooltip content={translate('confirmation.origin.tooltip')}>
-                  <Icon name="question" color="muted" />
-                </Tooltip>
-              </Box>
-              <Text>{originHostname}</Text>
-            </Box>
-          ) : null}
+          <OriginRow
+            displayOrigin={displayOrigin}
+            isSelfReported={isSelfReported}
+            locale={locale}
+          />
           <Box alignment="space-between" direction="horizontal">
             <Text fontWeight="medium" color="alternative">
               {translate('confirmation.account')}

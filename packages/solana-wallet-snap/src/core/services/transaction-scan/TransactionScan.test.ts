@@ -62,6 +62,49 @@ describe('TransactionScan', () => {
       });
     });
 
+    it.each([
+      ['a WalletConnect channel id', '4f3a1b2c-0000-4000-8000-000000000000'],
+      ['the MetaMask origin', 'metamask'],
+    ])('does not forward %s to the scan', async (_, origin) => {
+      const scanTransactions = jest
+        .spyOn(mockSecurityAlertsApiClient, 'scanTransactions')
+        .mockResolvedValue({
+          status: 'SUCCESS',
+        } as SecurityAlertSimulationValidationResponse);
+
+      await transactionScanService.scanTransaction({
+        method: 'method',
+        accountAddress: 'accountAddress',
+        transaction: 'transaction',
+        scope: Network.Mainnet,
+        origin,
+      });
+
+      expect(scanTransactions).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'https://metamask.io' }),
+      );
+    });
+
+    it('forwards a verifiable origin to the scan', async () => {
+      const scanTransactions = jest
+        .spyOn(mockSecurityAlertsApiClient, 'scanTransactions')
+        .mockResolvedValue({
+          status: 'SUCCESS',
+        } as SecurityAlertSimulationValidationResponse);
+
+      await transactionScanService.scanTransaction({
+        method: 'method',
+        accountAddress: 'accountAddress',
+        transaction: 'transaction',
+        scope: Network.Mainnet,
+        origin: 'https://portfolio.metamask.io',
+      });
+
+      expect(scanTransactions).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'https://portfolio.metamask.io' }),
+      );
+    });
+
     it('returns null if the scan fails', async () => {
       const error = new Error('Scan failed');
       jest

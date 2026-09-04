@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Accept non-URL request origins instead of throwing while rendering confirmations, so requests relayed over WalletConnect (whose origin is a per-session channel id) can be confirmed
+- Show the dapp URL reported in `originMetadata` in the "Request from" row of the transaction, sign-message, and sign-in confirmations, marked "Not verified", and hide the row entirely when there is nothing verifiable or self-reported to show (previously an unverifiable origin was displayed as if verified, or threw)
+- Stop sending unverifiable origins to the security alerts API: a WalletConnect channel id or a self-reported dapp URL can flip a Blockaid verdict, so such requests are now reported as wallet-initiated
+- Only run the sign-in (SIWS) domain check against a verifiable origin, instead of comparing the requested domain to a self-reported one
 - Migrate `trackError` and `withCatchAndThrowSnapError` to `@metamask/snap-networks-utils` `createSnapErrorHandling`, and add `getSnapProvider` for Snap RPC access
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssets`, and routing Keyring and Send through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))
