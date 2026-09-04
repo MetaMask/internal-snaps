@@ -51,8 +51,8 @@ export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
   conversionRates: {},
 });
 
-export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler =
-  async () => null;
+export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async () =>
+  null;
 
 export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
   marketData: {},
