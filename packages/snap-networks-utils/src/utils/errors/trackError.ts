@@ -6,8 +6,8 @@ import type {
   CreateWithCatchAndThrowSnapErrorOptions,
   LogErrorFn,
   TrackErrorFn,
-} from './errors';
-import { createWithCatchAndThrowSnapError } from './errors';
+} from './errors.js';
+import { createWithCatchAndThrowSnapError } from './errors.js';
 
 /**
  * Converts a caught value into an {@link Error} before Sentry serialization.

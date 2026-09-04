@@ -1,7 +1,7 @@
 import type { Infer } from '@metamask/superstruct';
 import { array, nonempty, object, string, union } from '@metamask/superstruct';
 
-import { UuidStruct } from '../uuidStruct/uuidStruct';
+import { UuidStruct } from '../uuidStruct/uuidStruct.js';
 
 /**
  * Prefix for proof-of-ownership messages signed by network snaps.

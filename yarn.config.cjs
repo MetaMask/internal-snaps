@@ -161,21 +161,21 @@ module.exports = defineConfig({
           }
 
           // All non-root packages must have a "build" script. All packages that
-          // do not exclusively deploy documentation sites must use `ts-bridge`.
+          // do not exclusively deploy documentation sites must use `tsc`.
           if (DOCSITE_PACKAGES.includes(workspace.ident)) {
             expectWorkspaceField(workspace, 'scripts.build');
           } else {
             expectWorkspaceField(
               workspace,
               'scripts.build',
-              'ts-bridge --project tsconfig.build.json --verbose --clean --no-references',
+              'tsc --build --verbose tsconfig.build.json',
             );
 
-            // All non-root packages must have the same "build:all" script.
+            // All non-root packages must have the same "build:clean" script.
             expectWorkspaceField(
               workspace,
-              'scripts.build:all',
-              'ts-bridge --project tsconfig.build.json --verbose --clean',
+              'scripts.build:clean',
+              'tsc --build --clean tsconfig.build.json && rimraf ./dist',
             );
           }
 
@@ -286,8 +286,9 @@ module.exports = defineConfig({
         expectWorkspaceField(workspace, 'packageManager', 'yarn@4.17.1');
       }
 
-      // All packages must specify a minimum Node.js version of 20.
-      expectWorkspaceField(workspace, 'engines.node', '>=20');
+      // All packages must specify Node.js ^22.14.0 or ^24 as their minimum
+      // supported version.
+      expectWorkspaceField(workspace, 'engines.node', '^22.14.0 || ^24');
 
       // All non-root public packages should be published to the NPM registry;
       // all non-root private packages should not.
@@ -597,37 +598,13 @@ async function expectWorkspaceLicense(workspace) {
  * @param {Workspace} workspace - The workspace to check.
  */
 function expectCorrectWorkspaceExports(workspace) {
-  // All non-root packages must provide the location of the ESM-compatible
-  // JavaScript entrypoint and its matching type declaration file.
-  expectWorkspaceField(
-    workspace,
-    'exports["."].import.types',
-    './dist/index.d.mts',
-  );
-  expectWorkspaceField(
-    workspace,
-    'exports["."].import.default',
-    './dist/index.mjs',
-  );
+  // All non-root packages must be ESM-only: they must provide the location of
+  // the JavaScript entrypoint and its matching type declaration file.
+  expectWorkspaceField(workspace, 'exports["."].types', './dist/index.d.ts');
+  expectWorkspaceField(workspace, 'exports["."].default', './dist/index.js');
 
-  // All non-root package must provide the location of the CommonJS-compatible
-  // entrypoint and its matching type declaration file.
-  expectWorkspaceField(
-    workspace,
-    'exports["."].require.types',
-    './dist/index.d.cts',
-  );
-  expectWorkspaceField(
-    workspace,
-    'exports["."].require.default',
-    './dist/index.cjs',
-  );
-  expectWorkspaceField(workspace, 'main', './dist/index.cjs');
-  expectWorkspaceField(workspace, 'types', './dist/index.d.cts');
-
-  // Types should not be set in the export object directly, but rather in the
-  // `import` and `require` subfields.
-  expectWorkspaceField(workspace, 'exports["."].types', null);
+  // All non-root packages must declare that they are ES modules.
+  expectWorkspaceField(workspace, 'type', 'module');
 
   // All non-root packages must export a `package.json` file.
   expectWorkspaceField(

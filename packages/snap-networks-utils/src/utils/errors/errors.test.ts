@@ -18,10 +18,10 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 
-import { mockLogger } from '../logger/__mocks__/Logger';
-import { createWithCatchAndThrowSnapError, normalizeError } from './errors';
-import type { CreateWithCatchAndThrowSnapErrorOptions } from './errors';
-import { isSnapRpcError } from './snapRpcError';
+import { mockLogger } from '../logger/__mocks__/Logger.js';
+import { createWithCatchAndThrowSnapError, normalizeError } from './errors.js';
+import type { CreateWithCatchAndThrowSnapErrorOptions } from './errors.js';
+import { isSnapRpcError } from './snapRpcError.js';
 
 type SetupTestResult = {
   trackError: jest.Mock;

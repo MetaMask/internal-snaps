@@ -1,4 +1,4 @@
-import type { Logger } from '../Logger';
+import type { Logger } from '../Logger.js';
 
 export const mockLogger = {
   log: jest.fn(),

@@ -1,7 +1,7 @@
 /* eslint-disable jest/require-to-throw-message */
 import { assert, is } from '@metamask/superstruct';
 
-import { UrlStruct } from './urlStruct';
+import { UrlStruct } from './urlStruct.js';
 
 describe('UrlStruct', () => {
   it('validates valid URLs', () => {

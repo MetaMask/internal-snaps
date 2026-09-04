@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 
-import { deserialize, serialize } from './serialization';
+import { deserialize, serialize } from './serialization.js';
 
 describe('serialize', () => {
   it('serializes primitive values', () => {

@@ -1,8 +1,8 @@
 import { SnapError, getErrorMessage } from '@metamask/snaps-sdk';
 
-import type { Logger } from '../logger/Logger';
-import { isSnapRpcError } from './snapRpcError';
-import type { SnapRpcError } from './snapRpcError';
+import type { Logger } from '../logger/Logger.js';
+import { isSnapRpcError } from './snapRpcError.js';
+import type { SnapRpcError } from './snapRpcError.js';
 
 /**
  * Sends an error to the snap's tracking transport (e.g. `snap_trackError`).

@@ -1,9 +1,9 @@
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 
-import { mockLogger } from '../logger/__mocks__/Logger';
-import type { TrackErrorFn } from './errors';
-import { createSnapErrorHandling, createTrackError } from './trackError';
-import type { TrackErrorCapableProvider } from './trackError';
+import { mockLogger } from '../logger/__mocks__/Logger.js';
+import type { TrackErrorFn } from './errors.js';
+import { createSnapErrorHandling, createTrackError } from './trackError.js';
+import type { TrackErrorCapableProvider } from './trackError.js';
 
 const setupTrackErrorTest = (): {
   request: jest.Mock;

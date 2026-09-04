@@ -1,6 +1,6 @@
 import { UnauthorizedError } from '@metamask/snaps-sdk';
 
-import { validateOrigin } from './validateOrigin';
+import { validateOrigin } from './validateOrigin.js';
 
 describe('validateOrigin', () => {
   const originPermissions = new Map<string, Set<string>>([

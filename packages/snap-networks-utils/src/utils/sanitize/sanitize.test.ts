@@ -1,4 +1,4 @@
-import { sanitizeControlCharacters, sanitizeUri } from './sanitize';
+import { sanitizeControlCharacters, sanitizeUri } from './sanitize.js';
 
 describe('sanitize', () => {
   describe('sanitizeControlCharacters', () => {

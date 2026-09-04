@@ -1,7 +1,7 @@
 /* eslint-disable jest/require-to-throw-message */
 import { assert, is } from '@metamask/superstruct';
 
-import { UuidStruct } from './uuidStruct';
+import { UuidStruct } from './uuidStruct.js';
 
 describe('UuidStruct', () => {
   it('accepts UUID v4 strings', () => {

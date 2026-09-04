@@ -1,4 +1,4 @@
-import { InFlightCoalescer } from './InFlightCoalescer';
+import { InFlightCoalescer } from './InFlightCoalescer.js';
 
 describe('InFlightCoalescer', () => {
   it('returns the result of the wrapped function', async () => {

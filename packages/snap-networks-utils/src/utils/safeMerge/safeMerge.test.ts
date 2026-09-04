@@ -1,4 +1,4 @@
-import { safeMerge } from './safeMerge';
+import { safeMerge } from './safeMerge.js';
 
 describe('safeMerge', () => {
   it('merges two objects and keeps existing values when overrider has undefined', () => {

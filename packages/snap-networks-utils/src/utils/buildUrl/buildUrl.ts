@@ -1,7 +1,10 @@
 import { assert } from '@metamask/superstruct';
 
-import { sanitizeControlCharacters, sanitizeUri } from '../sanitize/sanitize';
-import { UrlStruct } from '../urlStruct/urlStruct';
+import {
+  sanitizeControlCharacters,
+  sanitizeUri,
+} from '../sanitize/sanitize.js';
+import { UrlStruct } from '../urlStruct/urlStruct.js';
 
 export type BuildUrlParams = {
   baseUrl: string;

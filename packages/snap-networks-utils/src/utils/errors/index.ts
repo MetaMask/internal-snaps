@@ -1,6 +1,6 @@
-export { createSnapErrorHandling, createTrackError } from './trackError';
-export { createWithCatchAndThrowSnapError, normalizeError } from './errors';
-export { isSnapRpcError } from './snapRpcError';
+export { createSnapErrorHandling, createTrackError } from './trackError.js';
+export { createWithCatchAndThrowSnapError, normalizeError } from './errors.js';
+export { isSnapRpcError } from './snapRpcError.js';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,
@@ -8,11 +8,11 @@ export type {
   ShouldTrackErrorFn,
   SnapTrackErrorRequest,
   TrackErrorCapableProvider,
-} from './trackError';
+} from './trackError.js';
 export type {
   CreateWithCatchAndThrowSnapErrorOptions,
   LogErrorFn,
   NormalizeErrorFn,
   TrackErrorFn,
-} from './errors';
-export type { SnapRpcError } from './snapRpcError';
+} from './errors.js';
+export type { SnapRpcError } from './snapRpcError.js';

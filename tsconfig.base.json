@@ -6,19 +6,18 @@
    * `tsconfig.scripts.json` - Used for the `scripts/` directory.
    * `tsconfig.packages.json` - Shared by all `packages/`, whether Snaps or not.
    *
-   * `tsconfig.packages.libs.json` - INEXISTANT, it would be the same as `tsconfig.packages.json`.
-   * `tsconfig.packages.libs.build.json` - Configurations for `ts-bridge`'s emission of declarations.
+   * `tsconfig.packages.libs.build.json` - Configuration used by `tsc` to build library packages.
    *
-   * `tsconfig.packages.snaps.json` - Snap specific configurations.
-   * `tsconfig.packages.snaps.build.json` - INEXISTANT, `mm-snap` already handles everything.
+   * `tsconfig.packages.snaps.json` - Snap specific configurations. Snap packages have no build
+   * configuration, as `mm-snap` already handles everything.
    */
   "compilerOptions": {
     "esModuleInterop": true,
     "isolatedModules": true,
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ES2022", "DOM"],
     "module": "Node16",
     "moduleResolution": "Node16",
     "strict": true,
-    "target": "ES2020"
+    "target": "ES2022"
   }
 }
