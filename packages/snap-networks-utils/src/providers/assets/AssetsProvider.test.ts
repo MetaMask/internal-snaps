@@ -1,8 +1,8 @@
 import type { AccountId, Caip19AssetId } from '@metamask/assets-controller';
 import type { CaipChainId } from '@metamask/utils';
 
-import type { AssetsProviderMessenger } from './AssetsProvider';
-import { AssetsProvider } from './AssetsProvider';
+import type { AssetsProviderMessenger } from './AssetsProvider.js';
+import { AssetsProvider } from './AssetsProvider.js';
 
 const ACCOUNT_ID: AccountId = '550e8400-e29b-41d4-a716-446655440000';
 const ASSET_ID: Caip19AssetId = 'tron:728126428/slip44:195';

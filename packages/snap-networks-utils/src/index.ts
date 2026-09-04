@@ -2,38 +2,38 @@ export {
   ASSETS_PROVIDER_NAME,
   AssetsProvider,
   type AssetsProviderMessenger,
-} from './providers/assets/AssetsProvider';
+} from './providers/assets/AssetsProvider.js';
 export {
   REMOTE_FEATURE_FLAGS_PROVIDER_NAME,
   RemoteFeatureFlagsProvider,
   type RemoteFeatureFlagsProviderMessenger,
-} from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
-export { safeMerge } from './utils/safeMerge/safeMerge';
-export { buildUrl } from './utils/buildUrl/buildUrl';
-export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
+} from './providers/remote-feature-flags/RemoteFeatureFlagsProvider.js';
+export { safeMerge } from './utils/safeMerge/safeMerge.js';
+export { buildUrl } from './utils/buildUrl/buildUrl.js';
+export type { BuildUrlParams } from './utils/buildUrl/buildUrl.js';
 export {
   sanitizeControlCharacters,
   sanitizeUri,
-} from './utils/sanitize/sanitize';
-export { UrlStruct } from './utils/urlStruct/urlStruct';
-export { UuidStruct } from './utils/uuidStruct/uuidStruct';
+} from './utils/sanitize/sanitize.js';
+export { UrlStruct } from './utils/urlStruct/urlStruct.js';
+export { UuidStruct } from './utils/uuidStruct/uuidStruct.js';
 export {
   batchesAll,
   batchesAllSettled,
   batchesAllSettledWithChunks,
   batchesAllWithChunks,
   chunks,
-} from './utils/async/async';
-export { Logger, LogLevel } from './utils/logger/Logger';
+} from './utils/async/async.js';
+export { Logger, LogLevel } from './utils/logger/Logger.js';
 export type {
   LoggerOptions,
   LoggerMethod,
   LogMethod,
   LogMethodDecorator,
   LoggerDecorators,
-} from './utils/logger/Logger';
-export { serialize, deserialize } from './utils/serialization/serialization';
-export type { Serializable } from './utils/serialization/types';
+} from './utils/logger/Logger.js';
+export { serialize, deserialize } from './utils/serialization/serialization.js';
+export type { Serializable } from './utils/serialization/types.js';
 export {
   parseProofOfOwnershipMessage,
   ProofOfOwnershipBatchErrorStruct,
@@ -59,17 +59,19 @@ export {
   DEFAULT_PROD_ORIGINS,
   DEFAULT_DEV_ORIGINS,
   DEFAULT_METAMASK_ORIGIN,
-} from './utils/originPermissions/createOriginPermissions';
-export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions';
-export { validateOrigin } from './utils/originPermissions/validateOrigin';
+} from './utils/originPermissions/createOriginPermissions.js';
+export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions.js';
+export { validateOrigin } from './utils/originPermissions/validateOrigin.js';
 export {
   createSnapErrorHandling,
   createTrackError,
   createWithCatchAndThrowSnapError,
   isSnapRpcError,
   normalizeError,
-} from './utils/errors';
-export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+  // Directory imports require the explicit `/index.js` under Node16 ESM resolution.
+  // eslint-disable-next-line import-x/no-useless-path-segments
+} from './utils/errors/index.js';
+export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer.js';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,
@@ -82,4 +84,6 @@ export type {
   SnapTrackErrorRequest,
   TrackErrorCapableProvider,
   TrackErrorFn,
-} from './utils/errors';
+  // Directory imports require the explicit `/index.js` under Node16 ESM resolution.
+  // eslint-disable-next-line import-x/no-useless-path-segments
+} from './utils/errors/index.js';

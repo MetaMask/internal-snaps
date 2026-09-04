@@ -90,6 +90,12 @@ module.exports = {
       // so in that case use their published versions
       '<rootDir>/../../node_modules/@metamask/$1',
     ],
+    // Source code uses `lodash-es` (ESM-only), but tests are compiled to
+    // CommonJS, where `lodash` is used instead.
+    '^lodash-es$': 'lodash',
+    // Sources use explicit `.js` extensions (required for Node16 ESM
+    // resolution), which Jest must map back to the `.ts` files.
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader

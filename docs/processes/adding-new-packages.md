@@ -8,7 +8,7 @@ Manually creating a new monorepo package can be a tedious, even frustrating proc
 1. Create a new package using `yarn create-package`.
    - You can specify the kind of package you want with the `--type` option. It defaults to `snap`:
      - `--type snap` creates a new Snap, whose bundle is built with `mm-snap`.
-     - `--type library` (or the `--type lib` shorthand) creates a new non-Snap package, whose declarations are built with `ts-bridge`.
+     - `--type library` (or the `--type lib` shorthand) creates a new non-Snap package, which is built as ESM-only with `tsc`.
    - Use the `--help` flag for usage information.
    - Once this is done, you can find a package with your chosen name in `/packages`.
 2. Make sure your license is correct.

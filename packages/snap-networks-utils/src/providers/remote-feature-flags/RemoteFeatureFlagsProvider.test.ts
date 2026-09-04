@@ -1,7 +1,7 @@
 import type { RemoteFeatureFlagControllerState } from '@metamask/remote-feature-flag-controller';
 
-import type { RemoteFeatureFlagsProviderMessenger } from './RemoteFeatureFlagsProvider';
-import { RemoteFeatureFlagsProvider } from './RemoteFeatureFlagsProvider';
+import type { RemoteFeatureFlagsProviderMessenger } from './RemoteFeatureFlagsProvider.js';
+import { RemoteFeatureFlagsProvider } from './RemoteFeatureFlagsProvider.js';
 
 const FLAG_KEY_A = 'flag-a';
 const FLAG_KEY_B = 'flag-b';

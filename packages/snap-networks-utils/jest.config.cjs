@@ -14,6 +14,21 @@ module.exports = merge(baseConfig, {
   // The display name when running multiple projects
   displayName,
 
+  // This package is an ES module (`"type": "module"`), but tests are run in
+  // CommonJS mode, so force `ts-jest` to compile to CommonJS regardless of
+  // the package type.
+  transform: {
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          module: 'CommonJS',
+          moduleResolution: 'node10',
+        },
+      },
+    ],
+  },
+
   coveragePathIgnorePatterns: [
     ...(baseConfig.coveragePathIgnorePatterns ?? []),
     '.*/__mocks__/',

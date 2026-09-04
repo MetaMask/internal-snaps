@@ -1,8 +1,8 @@
 import type { Json } from '@metamask/snaps-sdk';
 import { BigNumber } from 'bignumber.js';
-import { cloneDeepWith } from 'lodash';
+import { cloneDeepWith } from 'lodash-es';
 
-import type { Serializable } from './types';
+import type { Serializable } from './types.js';
 
 /**
  * Serializes the passed value to a JSON object so it can be stored in JSON-serializable storage like the snap state and interface context.

@@ -2,7 +2,7 @@ import {
   createOriginPermissions,
   DEFAULT_DEV_ORIGINS,
   DEFAULT_PROD_ORIGINS,
-} from './createOriginPermissions';
+} from './createOriginPermissions.js';
 
 describe('createOriginPermissions', () => {
   const dappMethods = ['keyring_getAccounts', 'computeFee'];

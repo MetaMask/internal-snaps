@@ -1,4 +1,4 @@
-import { buildUrl } from './buildUrl';
+import { buildUrl } from './buildUrl.js';
 
 describe('buildUrl', () => {
   it('builds and sanitizes URLs, including path and query parameters', () => {

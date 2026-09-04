@@ -1,4 +1,4 @@
-import { Logger, LogLevel } from './Logger';
+import { Logger, LogLevel } from './Logger.js';
 
 const loggerMethodConfigurations = [
   { method: 'log', consoleMethod: 'info', filteredAt: LogLevel.WARN },

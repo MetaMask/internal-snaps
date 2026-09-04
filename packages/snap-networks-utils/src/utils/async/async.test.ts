@@ -4,7 +4,7 @@ import {
   batchesAllSettledWithChunks,
   batchesAllWithChunks,
   chunks,
-} from './async';
+} from './async.js';
 
 describe('batchesAll', () => {
   it('throws when batchSize is less than 1', async () => {
