@@ -535,7 +535,6 @@ describe('KeyringAccountMonitor', () => {
           keyringAccountId: account.id,
           network: Network.Mainnet,
           mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          pubkey: '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg',
           symbol: 'USDC',
           decimals: 6,
           rawAmount: '123456789',

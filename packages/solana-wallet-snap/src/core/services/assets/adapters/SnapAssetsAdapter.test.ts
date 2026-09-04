@@ -6,13 +6,16 @@ import { InMemoryCache } from '../../../caching/InMemoryCache';
 import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from '../../../clients/nft-api/mocks/mockNftsListResponseMapped';
 import type { NftApiClient } from '../../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../../clients/token-api-client/TokenApiClient';
+import { Network } from '../../../constants/solana';
 import {
   MOCK_ASSET_ENTITY_0,
   MOCK_ASSET_ENTITY_1,
   MOCK_ASSET_ENTITY_2,
 } from '../../../test/mocks/asset-entities';
+import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
 import { mockLogger } from '../../__mocks__/logger';
 import { createMockConnection } from '../../__mocks__/mockConnection';
+import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../../__mocks__/mockSolanaRpcResponses';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import type { SolanaConnection } from '../../connection';
@@ -113,6 +116,60 @@ describe('SnapAssetsAdapter', () => {
       const assetsLookup = [MOCK_ASSET_ENTITY_0];
 
       expect(SnapAssetsAdapter.hasChanged(asset, assetsLookup)).toBe(false);
+    });
+  });
+
+  describe('fetch', () => {
+    it('aggregates token accounts for the same mint', async () => {
+      jest
+        .spyOn(mockConfigProvider, 'getActiveNetworks')
+        .mockImplementation()
+        .mockResolvedValue([Network.Mainnet]);
+      jest
+        .spyOn(mockTokenApiClient, 'getTokensMetadata')
+        .mockImplementation()
+        .mockResolvedValue({});
+
+      const [firstTokenAccount] =
+        MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE.result.value;
+      if (!firstTokenAccount) {
+        throw new Error('Missing token account fixture');
+      }
+      const secondTokenAccount = cloneDeep(firstTokenAccount);
+      secondTokenAccount.pubkey =
+        '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
+      secondTokenAccount.account.data.parsed.info.tokenAmount.amount =
+        '1000000';
+      secondTokenAccount.account.data.parsed.info.tokenAmount.uiAmountString =
+        '1';
+
+      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getBalance: jest.fn().mockReturnValue({
+          send: jest.fn().mockResolvedValue({ value: 1000000000 }),
+        }),
+        getTokenAccountsByOwner: jest
+          .fn()
+          .mockReturnValueOnce({
+            send: jest.fn().mockResolvedValue({
+              value: [firstTokenAccount, secondTokenAccount],
+            }),
+          })
+          .mockReturnValue({
+            send: jest.fn().mockResolvedValue({ value: [] }),
+          }),
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+
+      expect(
+        await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0),
+      ).toStrictEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+            rawAmount: '124456789',
+            uiAmount: '124.456789',
+          }),
+        ]),
+      );
     });
   });
 });
