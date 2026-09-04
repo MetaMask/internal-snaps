@@ -1,8 +1,14 @@
 import { BtcScope } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
+import type {
+  ProofOfOwnershipBatchRequestItem,
+  ProofOfOwnershipBatchResponse,
+} from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { Verifier } from 'bip322-js';
 import {
   assert,
+  array,
   enums,
   object,
   optional,
@@ -88,6 +94,26 @@ export const SignProofOfOwnershipRequest = object({
   message: string(),
 });
 
+/**
+ * Validates one proof-of-ownership batch request item.
+ *
+ * Batch items intentionally validate messages as plain strings so invalid
+ * proof messages can be reported per item instead of failing the whole batch.
+ */
+export const SignProofOfOwnershipBatchRequestItem = object({
+  accountId: string(),
+  message: string(),
+});
+
+/**
+ * Validates `signProofOfOwnershipBatch` request params.
+ */
+export const SignProofOfOwnershipBatchRequest = object({
+  items: array(SignProofOfOwnershipBatchRequestItem),
+});
+
+export type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
+
 export class RpcHandler {
   readonly #logger: Logger;
 
@@ -155,6 +181,10 @@ export class RpcHandler {
       case RpcMethod.SignProofOfOwnership: {
         assert(params, SignProofOfOwnershipRequest);
         return this.#signProofOfOwnership(params.accountId, params.message);
+      }
+      case RpcMethod.SignProofOfOwnershipBatch: {
+        assert(params, SignProofOfOwnershipBatchRequest);
+        return this.#signProofOfOwnershipBatch(params.items);
       }
 
       default:
@@ -453,5 +483,117 @@ export class RpcHandler {
     );
 
     return { signature };
+  }
+
+  /**
+   * Handles batch signing of proof-of-ownership messages.
+   *
+   * Valid items are signed together so key derivation can be grouped by parent
+   * path. Invalid items return per-item errors instead of failing the whole
+   * batch.
+   *
+   * @param items - Batch request items.
+   * @returns One result per item, in input order.
+   */
+  async #signProofOfOwnershipBatch(
+    items: ProofOfOwnershipBatchRequestItem[],
+  ): Promise<SignProofOfOwnershipBatchResponse> {
+    const uniqueAccountIds = [
+      ...new Set(items.map(({ accountId }) => accountId)),
+    ];
+    const allAccounts = await this.#accountUseCases.getByIds(uniqueAccountIds);
+    const accountsById = new Map(
+      allAccounts.map((account) => [account.id, account]),
+    );
+    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
+      items.length,
+    );
+    const signingRequests: {
+      index: number;
+      accountId: string;
+      account: (typeof allAccounts)[number];
+      message: string;
+    }[] = [];
+
+    items.forEach(({ accountId, message }, index) => {
+      const account = accountsById.get(accountId);
+      if (!account) {
+        results[index] = {
+          accountId,
+          error: `Account not found: ${accountId}`,
+        };
+        return;
+      }
+
+      try {
+        const { address: messageAddress } =
+          parseProofOfOwnershipMessage(message);
+
+        const canonicalMessageAddress =
+          canonicalizeBitcoinAddress(messageAddress);
+        const canonicalAccountAddress = canonicalizeBitcoinAddress(
+          account.publicAddress.toString(),
+        );
+
+        const addressValidation = validateAddress(
+          canonicalMessageAddress,
+          account.network,
+          this.#logger,
+        );
+        if (!addressValidation.valid) {
+          results[index] = {
+            accountId,
+            error: `Invalid Bitcoin address in proof-of-ownership message for network ${account.network}`,
+          };
+          return;
+        }
+
+        if (canonicalMessageAddress !== canonicalAccountAddress) {
+          results[index] = {
+            accountId,
+            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${canonicalAccountAddress})`,
+          };
+          return;
+        }
+
+        signingRequests.push({
+          index,
+          accountId,
+          account,
+          message,
+        });
+      } catch (error) {
+        results[index] = {
+          accountId,
+          error: normalizeError(error).message,
+        };
+      }
+    });
+
+    if (signingRequests.length === 0) {
+      return { results };
+    }
+
+    const signedMessages =
+      await this.#accountUseCases.signProofOfOwnershipMessages(
+        signingRequests.map(({ account, message }) => ({ account, message })),
+      );
+
+    signedMessages.forEach((signedMessage, signingRequestIndex) => {
+      const { index, accountId } = signingRequests[
+        signingRequestIndex
+      ] as (typeof signingRequests)[number];
+      const { error } = signedMessage as { error?: string };
+
+      if (error !== undefined) {
+        results[index] = { accountId, error };
+        return;
+      }
+
+      const { signature } = signedMessage as { signature: string };
+      results[index] = { accountId, signature };
+    });
+
+    return { results };
   }
 }

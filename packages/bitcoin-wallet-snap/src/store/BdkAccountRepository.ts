@@ -107,6 +107,24 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     );
   }
 
+  async getByIds(ids: string[]): Promise<BitcoinAccount[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const accounts = (await this.#snapClient.getState('accounts')) as
+      | SnapState['accounts']
+      | null;
+    if (!accounts) {
+      return [];
+    }
+
+    return ids.flatMap((id) => {
+      const account = accounts[id];
+      return account ? [this.#loadPersistedAccount(id, account)] : [];
+    });
+  }
+
   async getByDerivationPath(
     derivationPath: string[],
   ): Promise<BitcoinAccount | null> {

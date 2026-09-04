@@ -266,6 +266,14 @@ export type BitcoinAccountRepository = {
   getAll(): Promise<BitcoinAccount[]>;
 
   /**
+   * Get accounts by their ids.
+   *
+   * @param ids - Account IDs.
+   * @returns the accounts that exist, in requested order
+   */
+  getByIds(ids: string[]): Promise<BitcoinAccount[]>;
+
+  /**
    * Get an account by its derivation path.
    *
    * @param derivationPath - derivation path.

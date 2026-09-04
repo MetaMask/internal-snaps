@@ -7,7 +7,10 @@ import type {
   Txid,
   WalletTx,
 } from '@metamask/bitcoindevkit';
+import type { BIP32Node } from '@metamask/key-tree';
+import { SLIP10Node } from '@metamask/key-tree';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import { Signer } from 'bip322-js';
 import { encode } from 'wif';
 
@@ -49,6 +52,27 @@ export type CreateAccountParams = DiscoverAccountParams & {
 };
 
 /**
+ * One proof-of-ownership message signing request.
+ */
+export type SignProofOfOwnershipMessageBatchRequest = {
+  /**
+   * Account whose address should own the BIP-322 signature.
+   */
+  account: BitcoinAccount;
+  /**
+   * Plaintext proof-of-ownership message to sign.
+   */
+  message: string;
+};
+
+/**
+ * Result for one proof-of-ownership batch signing request.
+ */
+export type SignProofOfOwnershipMessageBatchResult =
+  | { signature: string }
+  | { error: string };
+
+/**
  * @param req - Account creation or discovery request.
  * @returns The BIP-44 account derivation path.
  */
@@ -67,6 +91,48 @@ function getAccountDerivationPath(req: DiscoverAccountParams): string[] {
  */
 function getDerivationPathKey(derivationPath: string[]): string {
   return derivationPath.join('/');
+}
+
+/**
+ * Converts split derivation path segments into key-tree BIP-32 path nodes.
+ *
+ * @param segments - Split derivation path segments below a parent node.
+ * @returns BIP-32 path nodes accepted by key-tree.
+ */
+function toBip32Path(segments: string[]): BIP32Node[] {
+  return segments.map((segment) => `bip32:${segment}` as BIP32Node);
+}
+
+/**
+ * Returns the parent derivation path used for grouped proof signing.
+ *
+ * @param account - The account whose account-level derivation path is used.
+ * @returns The parent path one level above the account index.
+ */
+function getProofSigningParentPath(account: BitcoinAccount): string[] {
+  if (account.derivationPath.length === 0) {
+    throw new Error('Missing account derivation path');
+  }
+
+  return account.derivationPath.slice(0, -1);
+}
+
+/**
+ * Returns the child path from the grouped parent node to the receive address at
+ * index 0, which is the account public address used for BIP-322 signing.
+ *
+ * @param account - The account whose address-0 signing path should be built.
+ * @returns The child path from parent node to receive address 0.
+ */
+function getProofSigningChildPath(account: BitcoinAccount): string[] {
+  const accountIndexSegment =
+    account.derivationPath[account.derivationPath.length - 1];
+
+  if (!accountIndexSegment) {
+    throw new Error('Missing account derivation path');
+  }
+
+  return [accountIndexSegment, '0', '0'];
 }
 
 /**
@@ -137,6 +203,24 @@ export class AccountUseCases {
     const accounts = await this.#repository.getAll();
 
     this.#logger.debug('Accounts listed successfully');
+    return accounts;
+  }
+
+  /**
+   * Gets accounts by id using one account-map read.
+   *
+   * @param ids - Account IDs.
+   * @returns Existing accounts in requested order.
+   */
+  async getByIds(ids: string[]): Promise<BitcoinAccount[]> {
+    this.#logger.debug('Fetching accounts: %o', ids);
+
+    const accounts = await this.#repository.getByIds(ids);
+
+    this.#logger.debug(
+      'Accounts found: %o',
+      accounts.map(({ id }) => id),
+    );
     return accounts;
   }
 
@@ -673,6 +757,128 @@ export class AccountUseCases {
         'Failed to sign message',
         {
           id,
+          message,
+        },
+        error,
+      );
+    }
+  }
+
+  /**
+   * Signs multiple proof-of-ownership messages without user confirmation.
+   *
+   * Requests are grouped by the account-level parent path so the private parent
+   * node is fetched once per distinct parent and address-0 keys are derived
+   * locally. Results are returned in input order, with per-item errors for
+   * accounts that cannot sign or fail derivation/signing.
+   *
+   * @param requests - Proof-of-ownership message signing requests.
+   * @returns One signing result per request, in input order.
+   */
+  async signProofOfOwnershipMessages(
+    requests: SignProofOfOwnershipMessageBatchRequest[],
+  ): Promise<SignProofOfOwnershipMessageBatchResult[]> {
+    const results: SignProofOfOwnershipMessageBatchResult[] = new Array(
+      requests.length,
+    );
+    const requestsByParentPath = new Map<
+      string,
+      {
+        index: number;
+        request: SignProofOfOwnershipMessageBatchRequest;
+        parentPath: string[];
+      }[]
+    >();
+
+    requests.forEach((request, index) => {
+      try {
+        this.#checkCapability(request.account, AccountCapability.SignMessage);
+
+        const parentPath = getProofSigningParentPath(request.account);
+        const parentKey = getDerivationPathKey(parentPath);
+        const parentRequests = requestsByParentPath.get(parentKey) ?? [];
+        parentRequests.push({ index, request, parentPath });
+        requestsByParentPath.set(parentKey, parentRequests);
+      } catch (error) {
+        results[index] = { error: normalizeError(error).message };
+      }
+    });
+
+    await Promise.all(
+      [...requestsByParentPath.values()].map(async (parentRequests) => {
+        const { parentPath } =
+          parentRequests[0] as (typeof parentRequests)[number];
+
+        try {
+          const parentJson =
+            await this.#snapClient.getPrivateEntropy(parentPath);
+          const parentNode = await SLIP10Node.fromJSON(parentJson);
+
+          for (const { index, request } of parentRequests) {
+            try {
+              const entropy = await parentNode.derive(
+                toBip32Path(getProofSigningChildPath(request.account)),
+              );
+
+              if (!entropy.privateKey) {
+                throw new AssertionError('Failed to get private entropy', {
+                  id: request.account.id,
+                });
+              }
+
+              results[index] = {
+                signature: this.#signProofOfOwnershipMessage(
+                  request.account,
+                  request.message,
+                  entropy.privateKey,
+                ),
+              };
+            } catch (error) {
+              results[index] = { error: normalizeError(error).message };
+            }
+          }
+        } catch (error) {
+          for (const { index } of parentRequests) {
+            results[index] = { error: normalizeError(error).message };
+          }
+        }
+      }),
+    );
+
+    return results;
+  }
+
+  /**
+   * Signs one proof-of-ownership message using private key entropy.
+   *
+   * @param account - Account whose public address should own the signature.
+   * @param message - Plaintext proof-of-ownership message.
+   * @param privateKey - 0x-prefixed private key hex string.
+   * @returns The BIP-322 signature.
+   */
+  #signProofOfOwnershipMessage(
+    account: BitcoinAccount,
+    message: string,
+    privateKey: string,
+  ): string {
+    try {
+      const wifPrivateKey = encode({
+        version: account.network === 'bitcoin' ? 128 : 239,
+        // eslint-disable-next-line no-restricted-globals
+        privateKey: Buffer.from(privateKey.slice(2), 'hex'),
+        compressed: true,
+      });
+
+      return Signer.sign(
+        wifPrivateKey,
+        account.publicAddress.toString(),
+        message,
+      );
+    } catch (error) {
+      throw new WalletError(
+        'Failed to sign message',
+        {
+          id: account.id,
           message,
         },
         error,

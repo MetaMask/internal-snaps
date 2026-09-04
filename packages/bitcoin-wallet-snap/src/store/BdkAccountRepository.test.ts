@@ -179,6 +179,96 @@ describe('BdkAccountRepository', () => {
     });
   });
 
+  describe('getByIds', () => {
+    it('returns empty array if no account IDs are provided', async () => {
+      const result = await repo.getByIds([]);
+
+      expect(mockSnapClient.getState).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
+    });
+
+    it('returns requested accounts in requested order', async () => {
+      const id1 = 'some-id-1';
+      const id2 = 'some-id-2';
+      const state = {
+        [id1]: { ...mockAccountState, id: id1 },
+        [id2]: { ...mockAccountState, id: id2 },
+      };
+      const mockAccount1 = { ...mockAccount, id: id1 };
+      const mockAccount2 = { ...mockAccount, id: id2 };
+
+      mockSnapClient.getState.mockResolvedValue(state);
+      (BdkAccountAdapter.load as jest.Mock)
+        .mockReturnValueOnce(mockAccount2)
+        .mockReturnValueOnce(mockAccount1);
+
+      const result = await repo.getByIds([id2, 'missing-id', id1]);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(BdkAccountAdapter.load).toHaveBeenCalledTimes(2);
+      expect(result).toStrictEqual([mockAccount2, mockAccount1]);
+    });
+
+    it('uses cached account metadata without loading BDK wallets', async () => {
+      const id1 = 'some-id-1';
+      const id2 = 'some-id-2';
+      const accountState1: AccountState = {
+        ...mockAccountState,
+        metadata: {
+          address: 'bc1qcached1...',
+          addressType: 'p2wpkh',
+          network: 'bitcoin',
+          publicDescriptor: 'cached-public-descriptor-1',
+        },
+      };
+      const accountState2: AccountState = {
+        ...mockAccountState,
+        metadata: {
+          address: 'bc1qcached2...',
+          addressType: 'p2wpkh',
+          network: 'bitcoin',
+          publicDescriptor: 'cached-public-descriptor-2',
+        },
+      };
+      mockSnapClient.getState.mockResolvedValue({
+        [id1]: accountState1,
+        [id2]: accountState2,
+      });
+      (BdkAccountAdapter.load as jest.Mock).mockClear();
+      (ChangeSet.from_json as jest.Mock).mockClear();
+
+      const result = await repo.getByIds([id2, 'missing-id', id1]);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(result).toHaveLength(2);
+      expect(result[0]?.id).toBe(id2);
+      expect(result[0]?.publicAddress.toString()).toBe('bc1qaddress...');
+      expect(result[0]?.publicDescriptor).toBe('cached-public-descriptor-2');
+      expect(result[1]?.id).toBe(id1);
+      expect(result[1]?.publicAddress.toString()).toBe('bc1qaddress...');
+      expect(result[1]?.publicDescriptor).toBe('cached-public-descriptor-1');
+      expect(jest.mocked(Address.from_string)).toHaveBeenCalledWith(
+        'bc1qcached2...',
+        'bitcoin',
+      );
+      expect(jest.mocked(Address.from_string)).toHaveBeenCalledWith(
+        'bc1qcached1...',
+        'bitcoin',
+      );
+      expect(ChangeSet.from_json).not.toHaveBeenCalled();
+      expect(BdkAccountAdapter.load).not.toHaveBeenCalled();
+    });
+
+    it('returns empty array if no accounts are found', async () => {
+      mockSnapClient.getState.mockResolvedValue(null);
+
+      const result = await repo.getByIds(['some-id']);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(result).toStrictEqual([]);
+    });
+  });
+
   describe('getByDerivationPath', () => {
     it('returns null if account not found', async () => {
       mockSnapClient.getState.mockResolvedValue(null);
