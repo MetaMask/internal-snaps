@@ -1,12 +1,5 @@
-import type { HistoricalPriceValue } from '@metamask/snaps-sdk';
-
 import { ExternalServiceError } from '../entities';
-import type {
-  AssetRatesClient,
-  PriceApiConfig,
-  SpotPrice,
-  TimePeriod,
-} from '../entities';
+import type { AssetRatesClient, PriceApiConfig, SpotPrice } from '../entities';
 
 type SpotPricesResponse = {
   price: number;
@@ -22,10 +15,6 @@ type SpotPricesResponse = {
   pricePercentChange30d: number;
   pricePercentChange200d: number;
   pricePercentChange1y: number;
-};
-
-type HistoricalPricesResponse = {
-  prices: [number, number | null][];
 };
 
 export class PriceApiClientAdapter implements AssetRatesClient {
@@ -79,46 +68,6 @@ export class PriceApiClientAdapter implements AssetRatesClient {
       throw new ExternalServiceError(
         `Network failure while fetching spot prices`,
         {
-          vsCurrency,
-          baseCurrency,
-        },
-        error,
-      );
-    }
-  }
-
-  async historicalPrices(
-    timePeriod: TimePeriod,
-    vsCurrency = 'usd',
-    baseCurrency = 'bitcoin',
-  ): Promise<HistoricalPriceValue[]> {
-    const url = `${
-      this.#endpoint
-    }/v1/historical-prices/${baseCurrency}?timePeriod=${timePeriod.slice(
-      1,
-    )}&vsCurrency=${vsCurrency}`;
-
-    try {
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new ExternalServiceError(`Failed to fetch historical rates`, {
-          timePeriod,
-          vsCurrency,
-          baseCurrency,
-          response: response.statusText,
-        });
-      }
-
-      const prices: HistoricalPricesResponse = await response.json();
-      return prices.prices
-        .filter(([, price]) => price !== null) // keep only non-null prices
-        .map(([ts, price]) => [ts, (price as number).toString()]);
-    } catch (error) {
-      throw new ExternalServiceError(
-        `Network failure while fetching historical prices`,
-        {
-          timePeriod,
           vsCurrency,
           baseCurrency,
         },

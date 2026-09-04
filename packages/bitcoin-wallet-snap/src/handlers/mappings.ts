@@ -9,15 +9,10 @@ import type {
 } from '@metamask/bitcoindevkit';
 import { Address } from '@metamask/bitcoindevkit';
 import type {
-  DiscoveredAccount,
   KeyringAccount,
   Transaction as KeyringTransaction,
 } from '@metamask/keyring-api';
-import {
-  DiscoveredAccountType,
-  FeeType,
-  TransactionStatus,
-} from '@metamask/keyring-api';
+import { FeeType, TransactionStatus } from '@metamask/keyring-api';
 
 import { canAccountTxidBeMalleated, networkToCurrencyUnit } from '../entities';
 import type { BitcoinAccount } from '../entities';
@@ -269,22 +264,6 @@ export function mapPsbtToTransaction(
     from: [],
     fees: [mapToTransactionFees(account.calculateFee(tx), account.network)],
     canBeMalleable: canAccountTxidBeMalleated(account.addressType),
-  };
-}
-
-/**
- * Maps a Bitcoin Account to a Discovered Account.
- *
- * @param account - The Bitcoin account.
- * @returns The Discovered account.
- */
-export function mapToDiscoveredAccount(
-  account: BitcoinAccount,
-): DiscoveredAccount {
-  return {
-    type: DiscoveredAccountType.Bip44,
-    scopes: [networkToScope[account.network]],
-    derivationPath: `m/${account.derivationPath.slice(1).join('/')}`,
   };
 }
 
