@@ -97,6 +97,30 @@ jobs:
       STELLAR_RPC_URL_TESTNET: ${{ secrets.STELLAR_RPC_URL_TESTNET }}
       STELLAR_HORIZON_URL_TESTNET: ${{ secrets.STELLAR_HORIZON_URL_TESTNET }}
 
+  sonarcloud:
+    name: SonarCloud
+    needs: lint-build-test
+    # Run on same-repo PRs and pushes to main. Skip merge queue commits (the PR
+    # was already scanned) and forks (no SONAR_TOKEN available). Not part of
+    # all-jobs-complete yet so a SonarCloud outage cannot block merges.
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.lint-build-test.result == 'success' &&
+        !github.event.repository.fork &&
+        (
+          (github.event_name == 'push' && github.ref_name == 'main') ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        )
+      }}
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    uses: ./.github/workflows/sonarcloud.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   check-release:
     name: Check release
     needs: check-workflows
