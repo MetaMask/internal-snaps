@@ -1,4 +1,8 @@
 import { BtcScope } from '@metamask/keyring-api';
+import type {
+  ProofOfOwnershipBatchRequestItem,
+  ProofOfOwnershipBatchResponse,
+} from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { Verifier } from 'bip322-js';
 import {
@@ -107,15 +111,7 @@ export const SignProofOfOwnershipBatchRequest = object({
   items: array(SignProofOfOwnershipBatchRequestItem),
 });
 
-export type SignProofOfOwnershipBatchResponse = {
-  results: (
-    | { accountId: string; signature: string }
-    | {
-        accountId: string;
-        error: string;
-      }
-  )[];
-};
+export type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
 
 /**
  * Converts an unknown thrown value into a JSON-serializable error message.
@@ -509,7 +505,7 @@ export class RpcHandler {
    * @returns One result per item, in input order.
    */
   async #signProofOfOwnershipBatch(
-    items: { accountId: string; message: string }[],
+    items: ProofOfOwnershipBatchRequestItem[],
   ): Promise<SignProofOfOwnershipBatchResponse> {
     const uniqueAccountIds = [
       ...new Set(items.map(({ accountId }) => accountId)),
