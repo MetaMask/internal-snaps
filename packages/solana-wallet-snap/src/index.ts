@@ -4,6 +4,10 @@ import { validateOrigin } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type {
   Json,
+  OnAssetHistoricalPriceHandler,
+  OnAssetsConversionHandler,
+  OnAssetsLookupHandler,
+  OnAssetsMarketDataHandler,
   OnActiveHandler,
   OnClientRequestHandler,
   OnCronjobHandler,
@@ -255,3 +259,18 @@ export const onNameLookup: OnNameLookupHandler = async (request) => {
   );
   return result ?? null;
 };
+
+export const onAssetsLookup: OnAssetsLookupHandler = async () => ({
+  assets: {},
+});
+
+export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
+  conversionRates: {},
+});
+
+export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler =
+  async () => null;
+
+export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
+  marketData: {},
+});

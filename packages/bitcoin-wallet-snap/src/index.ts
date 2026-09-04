@@ -1,5 +1,9 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import type {
+  OnAssetHistoricalPriceHandler,
+  OnAssetsConversionHandler,
+  OnAssetsLookupHandler,
+  OnAssetsMarketDataHandler,
   OnCronjobHandler,
   OnKeyringRequestHandler,
   OnUserInputHandler,
@@ -113,3 +117,18 @@ export const onUserInput: OnUserInputHandler = async ({ id, event, context }) =>
 
 export const onActive: OnActiveHandler = async () =>
   middleware.handle(async () => cronHandler.synchronizeAccounts());
+
+export const onAssetsLookup: OnAssetsLookupHandler = async () => ({
+  assets: {},
+});
+
+export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
+  conversionRates: {},
+});
+
+export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler =
+  async () => null;
+
+export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
+  marketData: {},
+});
