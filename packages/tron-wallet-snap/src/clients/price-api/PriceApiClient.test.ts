@@ -8,8 +8,6 @@ import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { mockLogger } from '../../utils/mockLogger';
-import { MOCK_EXCHANGE_RATES } from './mocks/exchange-rates';
-import { MOCK_HISTORICAL_PRICES } from './mocks/historical-prices';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
 
@@ -27,9 +25,7 @@ describe('PriceApiClient', () => {
           baseUrl: 'https://some-mock-url.com',
           chunkSize: 50,
           cacheTtlsMilliseconds: {
-            fiatExchangeRates: 0,
             spotPrices: 0,
-            historicalPrices: 0,
           },
         },
       }),
@@ -43,50 +39,6 @@ describe('PriceApiClient', () => {
       mockFetch,
       mockLogger,
     );
-  });
-
-  describe('getFiatExchangeRates', () => {
-    it('fetches fiat exchange rates successfully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: jest.fn().mockResolvedValueOnce(MOCK_EXCHANGE_RATES),
-      });
-
-      const result = await client.getFiatExchangeRates();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://some-mock-url.com/v1/exchange-rates/fiat',
-      );
-      expect(result).toStrictEqual(MOCK_EXCHANGE_RATES);
-    });
-
-    it('logs and throws when response is not ok', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-
-      await expect(client.getFiatExchangeRates()).rejects.toThrow(
-        'HTTP error! status: 500',
-      );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        'Error fetching fiat exchange rates',
-      );
-    });
-
-    it('logs and throws when fetch fails', async () => {
-      const mockError = new Error('Network error');
-      mockFetch.mockRejectedValueOnce(mockError);
-
-      await expect(client.getFiatExchangeRates()).rejects.toThrow(
-        'Network error',
-      );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        mockError,
-        'Error fetching fiat exchange rates',
-      );
-    });
   });
 
   describe('getMultipleSpotPrices', () => {
@@ -346,9 +298,7 @@ describe('PriceApiClient', () => {
             baseUrl: 'invalid-url',
             chunkSize: 50,
             cacheTtlsMilliseconds: {
-              fiatExchangeRates: 0,
               spotPrices: 0,
-              historicalPrices: 0,
             },
           },
         }),
@@ -413,61 +363,6 @@ describe('PriceApiClient', () => {
           'usd\x00\x1F' as VsCurrencyParam,
         ),
       ).rejects.toThrow(/Expected/u);
-    });
-  });
-
-  describe('getHistoricalPrices', () => {
-    describe('when the data is not cached', () => {
-      it('fetches historical prices successfully', async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockResolvedValueOnce(MOCK_HISTORICAL_PRICES),
-        });
-
-        const cacheSetSpy = jest.spyOn(mockCache, 'set');
-
-        const result = await client.getHistoricalPrices({
-          assetType: KnownCaip19Id.TrxMainnet,
-          timePeriod: '5d',
-          from: 123,
-          to: 456,
-          vsCurrency: 'usd',
-        });
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/historical-prices/tron:728126428/slip44:195?timePeriod=5d&from=123&to=456&vsCurrency=usd',
-        );
-        expect(cacheSetSpy).toHaveBeenCalledWith(
-          'PriceApiClient:getHistoricalPrices:{"assetType":"tron:728126428/slip44:195","timePeriod":"5d","from":123,"to":456,"vsCurrency":"usd"}',
-          MOCK_HISTORICAL_PRICES,
-          0,
-        );
-        expect(result).toStrictEqual(MOCK_HISTORICAL_PRICES);
-      });
-    });
-
-    describe('when the data is cached', () => {
-      it('returns the cached data', async () => {
-        jest
-          .spyOn(mockCache, 'get')
-          .mockResolvedValueOnce(MOCK_HISTORICAL_PRICES);
-
-        const cacheGetSpy = jest.spyOn(mockCache, 'get');
-        const cacheSetSpy = jest.spyOn(mockCache, 'set');
-
-        const result = await client.getHistoricalPrices({
-          assetType: KnownCaip19Id.TrxMainnet,
-          timePeriod: '5d',
-          from: 123,
-          to: 456,
-          vsCurrency: 'usd',
-        });
-
-        expect(cacheGetSpy).toHaveBeenCalled();
-        expect(mockFetch).not.toHaveBeenCalled();
-        expect(result).toStrictEqual(MOCK_HISTORICAL_PRICES);
-        expect(cacheSetSpy).not.toHaveBeenCalled();
-      });
     });
   });
 });

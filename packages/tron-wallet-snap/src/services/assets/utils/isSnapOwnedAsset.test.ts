@@ -1,10 +1,7 @@
 import type { CaipAssetType } from '@metamask/utils';
 
-import { KnownCaip19Id, Network, SNAP_OWNED_ASSETS } from '../../../constants';
-import {
-  getSnapOwnedAssetIdsForScope,
-  isSnapOwnedAsset,
-} from './isSnapOwnedAsset';
+import { KnownCaip19Id, SNAP_OWNED_ASSETS } from '../../../constants';
+import { isSnapOwnedAsset } from './isSnapOwnedAsset';
 
 describe('isSnapOwnedAsset', () => {
   it.each(SNAP_OWNED_ASSETS)(
@@ -36,19 +33,4 @@ describe('isSnapOwnedAsset', () => {
       ),
     ).toBe(false);
   });
-});
-
-describe('getSnapOwnedAssetIdsForScope', () => {
-  it.each([Network.Mainnet, Network.Nile, Network.Shasta] as const)(
-    'returns only snap-owned assets for %s',
-    (scope) => {
-      const assetIds = getSnapOwnedAssetIdsForScope(scope);
-
-      expect(assetIds).toHaveLength(9);
-      expect(assetIds.every((assetId) => isSnapOwnedAsset(assetId))).toBe(true);
-      expect(assetIds.every((assetId) => assetId.startsWith(`${scope}/`))).toBe(
-        true,
-      );
-    },
-  );
 });

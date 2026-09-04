@@ -1,5 +1,4 @@
 /* eslint-disable jsdoc/require-returns */
-import type { FungibleAssetMarketData } from '@metamask/snaps-sdk';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
 import type { AssetEntity, SolanaKeyringAccount } from '../../../entities';
@@ -32,17 +31,6 @@ export class AssetsService {
 
   async fetch(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
     return this.#snapAdapter.fetch(account);
-  }
-
-  async fetchAssetsMarketData(
-    assets: {
-      asset: CaipAssetType;
-      unit: CaipAssetType;
-    }[],
-  ): Promise<
-    Record<CaipAssetType, Record<CaipAssetType, FungibleAssetMarketData>>
-  > {
-    return this.#snapAdapter.fetchAssetsMarketData(assets);
   }
 
   async save(asset: AssetEntity): Promise<void> {

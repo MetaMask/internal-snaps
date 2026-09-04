@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "/8DB4dcdqQHoD+raJRPRe0ztQnTaOI8Lp8E2Yg6WCEM=",
+    "shasum": "P5tbNf6ZPq2tMKAaTnr8oVM+C+rBRVYrf8ACLshI01c=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -59,9 +59,6 @@
           }
         }
       ]
-    },
-    "endowment:assets": {
-      "scopes": ["tron:728126428"]
     },
     "endowment:messenger": {
       "actions": [
