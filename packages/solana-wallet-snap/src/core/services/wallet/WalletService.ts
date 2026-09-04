@@ -1,5 +1,6 @@
 import { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
@@ -77,16 +78,6 @@ export type SolanaSignMessageBatchResult =
   | { error: string };
 
 const DEFAULT_SOLANA_DERIVATION_PATH_REGEX = /^m\/44'\/501'\/([0-9]+)'\/0'$/u;
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Extracts the account index from the default Solana BIP-44 derivation path.
@@ -479,12 +470,12 @@ export class WalletService {
                   privateKeyBytes,
                 );
               } catch (error) {
-                results[index] = { error: getErrorMessage(error) };
+                results[index] = { error: normalizeError(error).message };
               }
             }
           } catch (error) {
             for (const { index } of sourceRequests) {
-              results[index] = { error: getErrorMessage(error) };
+              results[index] = { error: normalizeError(error).message };
             }
           }
         },

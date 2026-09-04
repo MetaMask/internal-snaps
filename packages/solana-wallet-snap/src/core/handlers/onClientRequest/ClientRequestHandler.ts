@@ -1,4 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -50,16 +51,6 @@ import type {
   SignProofOfOwnershipBatchResponse,
   SignProofOfOwnershipResponse,
 } from './validation';
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export class ClientRequestHandler {
   readonly #accountsService: AccountsService;
@@ -585,7 +576,7 @@ export class ClientRequestHandler {
       } catch (error) {
         results[index] = {
           accountId,
-          error: getErrorMessage(error),
+          error: normalizeError(error).message,
         };
       }
     });
