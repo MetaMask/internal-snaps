@@ -28,8 +28,7 @@
   },
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
-    "build": "mm-snap build && yarn locale:build && yarn build-preinstalled-snap",
-    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build": "mm-snap build --preinstalled && yarn locale:build",
     "build:clean": "yarn clean && yarn build",
     "changelog:update": "../../scripts/update-changelog.sh @metamask/solana-wallet-snap",
     "changelog:validate": "../../scripts/validate-changelog.sh @metamask/solana-wallet-snap",

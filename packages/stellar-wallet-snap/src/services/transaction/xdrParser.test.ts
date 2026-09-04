@@ -14,6 +14,7 @@ import {
   swapTransactionPathReceiveResponse,
   swapTransactionWithFeeCollectResponse,
   swapTransactionWithoutFeeCollectResponse,
+  contractSwapReceiveNativeTransactionResponse,
 } from './__mocks__/horizon-transaction-responses.fixtures';
 import { buildMockInvokeHostFunctionTransaction } from './__mocks__/transaction.fixtures';
 import type { MockInvokeHostFunctionArgNativeToScValOptions } from './__mocks__/transaction.fixtures';
@@ -21,12 +22,14 @@ import { XdrParseException } from './exceptions';
 import {
   isSep41TransferInvoke,
   nativeToReadableJson,
+  parseContractEventsFromResultMeta,
   parseSep41TransferInvoke,
   parseSuccessfulTransactionResult,
   parseScValToReadableJson,
   getAddress,
   getFunctionName,
   TransactionResultType,
+  parseTransferContractEventSafe,
   xdrAssetToCaip19,
 } from './xdrParser';
 
@@ -395,6 +398,52 @@ describe('transaction-xdr-decoder', () => {
       expect(nativeToReadableJson({ nested: 7n })).toBe(
         JSON.stringify({ nested: '7' }),
       );
+    });
+  });
+
+  describe('parseContractEventsFromResultMeta', () => {
+    it('accumulates native SAC transfers credited to the wallet', () => {
+      const results = parseContractEventsFromResultMeta({
+        resultMetaXdr:
+          contractSwapReceiveNativeTransactionResponse.result_meta_xdr,
+        parseEvent: (event) =>
+          parseTransferContractEventSafe(event, accountAddress, scope),
+      });
+
+      expect(results).toStrictEqual([
+        {
+          fromAddress:
+            'CCLWL5NYSV2WJQ3VBU44AMDHEVKEPA45N2QP2LL62O3JVKPGWWAQUVAG',
+          toAddress: accountAddress,
+          assetId: getSlip44AssetId(scope),
+          amount: new BigNumber('591762381'),
+        },
+      ]);
+    });
+
+    it('returns an empty array when the wallet is not the transfer recipient', () => {
+      expect(
+        parseContractEventsFromResultMeta({
+          resultMetaXdr:
+            contractSwapReceiveNativeTransactionResponse.result_meta_xdr,
+          parseEvent: (event) =>
+            parseTransferContractEventSafe(
+              event,
+              'GBX2CFNBNJOLHK3RQXG5RKUMM4WCZ3SRUFZBL6CT76J6CACW7AEZ3SHN',
+              scope,
+            ),
+        }),
+      ).toStrictEqual([]);
+    });
+
+    it('returns an empty array for invalid meta xdr', () => {
+      expect(
+        parseContractEventsFromResultMeta({
+          resultMetaXdr: 'not-valid-xdr',
+          parseEvent: (event) =>
+            parseTransferContractEventSafe(event, accountAddress, scope),
+        }),
+      ).toStrictEqual([]);
     });
   });
 });

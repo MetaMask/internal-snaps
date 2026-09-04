@@ -10,6 +10,7 @@ type ConfirmationAlertsProps = {
   scan: ConfirmationBaseProps['scan'];
   scanFetchStatus: FetchStatus;
   transactionsFetchStatus: FetchStatus;
+  errorMessage?: ConfirmationBaseProps['errorMessage'];
 };
 
 /**
@@ -24,6 +25,7 @@ type ConfirmationAlertsProps = {
  * @param props.scan - Latest transaction scan result.
  * @param props.scanFetchStatus - Latest transaction scan fetch status.
  * @param props.transactionsFetchStatus - Latest transaction re-validation fetch status.
+ * @param props.errorMessage - Optional locale key for the validation banner subtitle.
  * @returns The banner to render, or `null` when none applies.
  */
 export const ConfirmationAlerts = ({
@@ -31,6 +33,7 @@ export const ConfirmationAlerts = ({
   scan,
   scanFetchStatus,
   transactionsFetchStatus,
+  errorMessage,
 }: ConfirmationAlertsProps): ComponentOrElement | null => {
   switch (resolveConfirmationBanner({ preferences, transactionsFetchStatus })) {
     case ConfirmationBanner.TransactionValidation:
@@ -38,6 +41,7 @@ export const ConfirmationAlerts = ({
         <TransactionValidationAlert
           preferences={preferences}
           transactionsFetchStatus={transactionsFetchStatus}
+          errorMessage={errorMessage}
         />
       );
     case ConfirmationBanner.TransactionScan:

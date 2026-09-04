@@ -58,6 +58,7 @@ export const ConfirmSignChangeTrustOptOut = ({
   scan,
   scanFetchStatus = FetchStatus.Initial,
   transactionsFetchStatus = FetchStatus.Initial,
+  errorMessage,
 }: ConfirmSignChangeTrustOptOutProps): ComponentOrElement => {
   const t = i18n(locale);
   const { address } = account;
@@ -74,6 +75,7 @@ export const ConfirmSignChangeTrustOptOut = ({
           scan={scan}
           scanFetchStatus={scanFetchStatus}
           transactionsFetchStatus={transactionsFetchStatus}
+          errorMessage={errorMessage}
         />
         <Box alignment="center" center>
           <Box>{null}</Box>
@@ -137,12 +139,14 @@ export const ConfirmSignChangeTrustOptOut = ({
           />
           <Box>{null}</Box>
           {/* Fee Breakdown */}
-          <FeeRow
-            fee={feeData}
-            price={tokenPrices?.[feeData.assetId] ?? null}
-            preferences={preferences}
-            tokenPricesFetchStatus={tokenPricesFetchStatus}
-          />
+          {Object.keys(feeData).length === 0 ? null : (
+            <FeeRow
+              fee={feeData}
+              price={tokenPrices?.[feeData.assetId] ?? null}
+              preferences={preferences}
+              tokenPricesFetchStatus={tokenPricesFetchStatus}
+            />
+          )}
         </Section>
       </Box>
       <ConfirmationFooter

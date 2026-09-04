@@ -11,9 +11,7 @@ const config: SnapConfig = {
   server: {
     port: 8080,
   },
-  polyfills: {
-    buffer: true,
-  },
+  polyfills: true,
 };
 
 export default config;

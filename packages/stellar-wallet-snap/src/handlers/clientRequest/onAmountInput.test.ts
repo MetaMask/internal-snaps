@@ -223,7 +223,7 @@ describe('OnAmountInputHandler', () => {
     );
   });
 
-  it('passes explicit destination when params.to is set', async () => {
+  it('uses the sender as destination even when params.to is set', async () => {
     const { handler, onChainAccount, createValidatedSendTransaction } = setup();
 
     await handler.handle(baseRequest({ to: destinationAddress }));
@@ -233,7 +233,7 @@ describe('OnAmountInputHandler', () => {
       scope,
       assetId,
       amount: new BigNumber('10000000'),
-      destination: destinationAddress,
+      destination: onChainAccount.accountId,
       useCache: true,
     });
   });

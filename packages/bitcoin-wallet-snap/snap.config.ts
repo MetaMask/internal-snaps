@@ -29,6 +29,11 @@ const config: SnapConfig = {
   },
   polyfills: true,
   experimental: { wasm: true },
+  preinstalled: {
+    removable: false,
+    hidden: true,
+    hideSnapBranding: true,
+  },
 };
 
 export default config;

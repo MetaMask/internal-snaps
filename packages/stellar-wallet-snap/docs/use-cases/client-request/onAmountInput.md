@@ -16,7 +16,7 @@ Preflight-validates a send amount while the user types (balance and fee checks o
 - `accountId` — keyring account UUID
 - `assetId` — CAIP-19 classic / SEP-41 / slip44 asset (`scope` is derived from `assetId`)
 - `value` — positive amount string (human-readable units)
-- `to` — optional Stellar destination; omitted → self-transfer validation
+- `to` — optional Stellar destination; ignored for preflight (always a self-transfer so destination errors surface in `confirmSend`)
 
 **Response**
 
@@ -42,7 +42,7 @@ Unactivated accounts return `{ valid: false, errors: [{ code: "Invalid" }] }` (n
 1. **Route** — `onClientRequest` dispatches to `OnAmountInputHandler`.
 2. **Resolve** — `AccountResolver` loads keyring account, wallet, and on-chain account from snap state.
 3. **Convert** — Resolve asset metadata; convert `value` to smallest units; reject if sub-unit decimals remain.
-4. **Preflight** — `TransactionService.createValidatedSendTransaction` with cached network reads (destination defaults to sender).
+4. **Preflight** — `TransactionService.createValidatedSendTransaction` with cached network reads (destination is always the sender).
 5. **Return** — Structured validation result; expected balance/fee failures are returned as error codes (not thrown).
 
 ## Note: cache usage
