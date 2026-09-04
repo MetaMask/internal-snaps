@@ -1,6 +1,5 @@
 import type { Infer } from '@metamask/superstruct';
 import {
-  array,
   boolean,
   enums,
   min,
@@ -8,17 +7,11 @@ import {
   number,
   object,
   optional,
-  pattern,
   record,
   string,
-  tuple,
   union,
 } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
-
-export type PriceApiClientConfig = {
-  baseUrl: string;
-};
 
 export const CryptoTickerStruct = enums([
   'btc',
@@ -116,13 +109,6 @@ export const TickerStruct = union([
 
 export type Ticker = Infer<typeof TickerStruct>;
 
-export type ExchangeRate = {
-  name: string;
-  ticker: Ticker;
-  value: number;
-  currencyType: 'fiat' | 'crypto' | 'commodity';
-};
-
 /**
  * The structure of the spot price response from the Price API as described in
  * [this file](https://github.com/consensys-vertical-apps/va-mmcx-price-api/blob/main/src/types/price.ts#L46-L71).
@@ -197,32 +183,3 @@ export type SpotPrices = Infer<typeof SpotPricesStruct>;
 // We create aliases here for clarity.
 export const VsCurrencyParamStruct = TickerStruct;
 export type VsCurrencyParam = Infer<typeof VsCurrencyParamStruct>;
-
-export const GetHistoricalPricesParamsStruct = object({
-  assetType: CaipAssetTypeStruct,
-  timePeriod: optional(pattern(string(), /^[1-9][0-9]*[dmy]$/u)), // Supports days, months, years
-  from: optional(min(number(), 0)),
-  to: optional(min(number(), 0)),
-  vsCurrency: optional(VsCurrencyParamStruct),
-});
-
-export type GetHistoricalPricesParams = Infer<
-  typeof GetHistoricalPricesParamsStruct
->;
-
-export const GetHistoricalPricesResponseStruct = object({
-  prices: array(tuple([number(), number()])),
-  marketCaps: array(tuple([number(), number()])),
-  totalVolumes: array(tuple([number(), number()])),
-});
-
-export type GetHistoricalPricesResponse = Infer<
-  typeof GetHistoricalPricesResponseStruct
->;
-
-export const GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT: GetHistoricalPricesResponse =
-  {
-    prices: [],
-    marketCaps: [],
-    totalVolumes: [],
-  };

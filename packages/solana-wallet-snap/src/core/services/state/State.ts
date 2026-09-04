@@ -19,7 +19,6 @@ import type {
   Subscription,
 } from '../../../entities';
 import type { EventEmitter } from '../../../infrastructure';
-import type { SpotPrices } from '../../clients/price-api/types';
 import type { IStateManager } from './IStateManager';
 
 export type AccountId = string;
@@ -32,7 +31,6 @@ export type UnencryptedStateValue = {
   // to keep track of the transactions per account. The field transactions above only stores non-spam transactions, which break the refreshAccounts cronjob logic.
   signatures: Record<Address, Signature[]>;
   assetEntities: Record<AccountId, AssetEntity[]>;
-  tokenPrices: SpotPrices;
   subscriptions: Record<string, Subscription>;
   webSocketConnections: {
     closeWebSocketConnectionsBackgroundEventId: string | null;
@@ -45,7 +43,6 @@ export const DEFAULT_UNENCRYPTED_STATE: UnencryptedStateValue = {
   transactions: {},
   signatures: {},
   assetEntities: {},
-  tokenPrices: {},
   subscriptions: {},
   webSocketConnections: {
     closeWebSocketConnectionsBackgroundEventId: null,

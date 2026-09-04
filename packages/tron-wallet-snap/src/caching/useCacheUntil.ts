@@ -44,9 +44,9 @@ const defaultGenerateCacheKey = (functionName: string, args: any[]): string =>
  * Wraps an async function with caching behavior where expiry is determined
  * by the function result itself (dynamic TTL).
  *
- * Unlike `useCache` which uses a fixed TTL, this utility allows the wrapped
- * function to specify when its result expires. This is useful for caching
- * data that has known invalidation points (e.g., blockchain maintenance periods).
+ * This utility allows the wrapped function to be cached until a specific time.
+ * This is useful for caching data that has known invalidation points
+ * (e.g., blockchain maintenance periods).
  *
  * @template TArgs - Tuple type representing the arguments of the function.
  * @template TResult - The return type of the function, must be Serializable.

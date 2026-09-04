@@ -15,8 +15,7 @@
         "packageName": "@metamask/stellar-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
-    },
-    "locales": ["locales/en.json"]
+    }
   },
   "initialConnections": {
     "https://portfolio.metamask.io": {}

@@ -23,7 +23,9 @@ Confirms and submits a send for Unified Non-EVM Send (live on-chain data at buil
 - `{ valid: true, errors: [], transactionId }` — confirmed, signed, and submitted
 - `{ valid: false, errors: [{ code }] }` — `Invalid` · `InsufficientBalance` · `InsufficientBalanceToCoverFee`
 
-User rejection of the confirmation dialog throws `UserRejectedRequestError`. Unactivated accounts return `{ valid: false, errors: [{ code: "Invalid" }] }` (no activation prompt).
+Pre-submit validation failures (balance, memo, trustline, create-account, expired transaction, non-native send to an unfunded destination) are shown in the send confirmation dialog first (no fee or price estimates). After the dialog closes, the handler returns the error codes above. Failures after the user confirms return those same codes without a second dialog.
+
+User rejection of a valid confirmation dialog throws `UserRejectedRequestError`. Unactivated sender accounts show the account activation prompt and rethrow `AccountNotActivatedException`.
 
 ## Participants
 
@@ -48,10 +50,11 @@ User rejection of the confirmation dialog throws `UserRejectedRequestError`. Una
 1. **Route** — `onClientRequest` dispatches to `ConfirmSendHandler`.
 2. **Resolve** — `AccountResolver` loads keyring account, wallet, and activated on-chain account from the **live network**.
 3. **Build** — Resolve asset metadata; convert amount; `TransactionService.createValidatedSendTransaction`.
-4. **Confirm** — `ConfirmationUXController` shows send UI (fee, estimated changes, security scan, local re-validation cron while open).
-5. **Refresh** — After confirm, account is resolved again from the live network; fee must not exceed what the user approved.
-6. **Sign & send** — `Wallet.signTransaction` → `TransactionService.sendTransaction`.
-7. **Post-submit** — Persist pending keyring tx (`Send`) and schedule `TrackTransactionHandler` for sender + destination.
+4. **Pre-submit validation errors** — Balance, memo, trustline, and create-account failures are shown in the send confirmation (no fee or price estimates). After the dialog closes, the handler returns `{ valid: false, errors: [{ code }] }`.
+5. **Confirm** — `ConfirmationUXController` shows send UI (fee, estimated changes, security scan, local re-validation cron while open).
+6. **Refresh** — After confirm, account is resolved again from the live network; fee must not exceed what the user approved. Validation failures here return error codes without a second dialog.
+7. **Sign & send** — `Wallet.signTransaction` → `TransactionService.sendTransaction`.
+8. **Post-submit** — Persist pending keyring tx (`Send`) and schedule `TrackTransactionHandler` for sender + destination.
 
 ## Sequence (happy path)
 

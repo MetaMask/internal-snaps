@@ -42,6 +42,11 @@ const config: SnapConfig = {
     TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA ?? '',
   },
   polyfills: true,
+  preinstalled: {
+    removable: false,
+    hidden: true,
+    hideSnapBranding: true,
+  },
 };
 
 export default config;

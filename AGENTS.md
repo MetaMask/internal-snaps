@@ -80,7 +80,6 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 
 #### Other files
 
-- `babel.config.js` configures Babel, which is used for tests within `scripts/create-package`.
 - `release.config.js` configures the `@metamask/create-release-branch` tool.
 
 ## Processes
