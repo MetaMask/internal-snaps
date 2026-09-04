@@ -7,10 +7,7 @@ import type {
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { Logger, Serializable } from '@metamask/snap-networks-utils';
-import type {
-  FungibleAssetMarketData,
-  FungibleAssetMetadata,
-} from '@metamask/snaps-sdk';
+import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
@@ -46,7 +43,6 @@ import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import type { SolanaConnection } from '../../connection';
-import type { TokenPricesService } from '../../token-prices/TokenPrices';
 import type { AssetsRepository } from '../AssetsRepository';
 import type { AssetMetadata, NonFungibleAssetMetadata } from '../types';
 
@@ -73,8 +69,6 @@ export class SnapAssetsAdapter {
 
   readonly #tokenApiClient: TokenApiClient;
 
-  readonly #tokenPricesService: TokenPricesService;
-
   readonly #cache: ICache<Serializable>;
 
   readonly #nftApiClient: NftApiClient;
@@ -90,7 +84,6 @@ export class SnapAssetsAdapter {
     assetsRepository,
     accountsService,
     tokenApiClient,
-    tokenPricesService,
     cache,
     nftApiClient,
   }: {
@@ -100,7 +93,6 @@ export class SnapAssetsAdapter {
     assetsRepository: AssetsRepository;
     accountsService: AccountsService;
     tokenApiClient: TokenApiClient;
-    tokenPricesService: TokenPricesService;
     cache: ICache<Serializable>;
     nftApiClient: NftApiClient;
   }) {
@@ -110,7 +102,6 @@ export class SnapAssetsAdapter {
     this.#assetsRepository = assetsRepository;
     this.#accountsService = accountsService;
     this.#tokenApiClient = tokenApiClient;
-    this.#tokenPricesService = tokenPricesService;
     this.#cache = cache;
     this.#nftApiClient = nftApiClient;
   }
@@ -428,21 +419,6 @@ export class SnapAssetsAdapter {
     );
 
     return results;
-  }
-
-  async fetchAssetsMarketData(
-    assets: {
-      asset: CaipAssetType;
-      unit: CaipAssetType;
-    }[],
-  ): Promise<
-    Record<CaipAssetType, Record<CaipAssetType, FungibleAssetMarketData>>
-  > {
-    this.#logger.info('Fetching market data for assets', assets);
-
-    const marketData =
-      await this.#tokenPricesService.getMultipleTokensMarketData(assets);
-    return marketData;
   }
 
   async #fetchNftAssets(
