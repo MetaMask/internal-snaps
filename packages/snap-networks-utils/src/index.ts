@@ -44,7 +44,7 @@ export {
   ProofOfOwnershipBatchSuccessStruct,
   ProofOfOwnershipMessageStruct,
   PROOF_OF_OWNERSHIP_MESSAGE_PREFIX,
-} from './utils/proofOfOwnership/proofOfOwnership';
+} from './utils/proofOfOwnership/proofOfOwnership.js';
 export type {
   ProofOfOwnershipBatchError,
   ProofOfOwnershipBatchItemResponse,
@@ -53,7 +53,7 @@ export type {
   ProofOfOwnershipBatchResponse,
   ProofOfOwnershipBatchSuccess,
   ProofOfOwnershipMessage,
-} from './utils/proofOfOwnership/proofOfOwnership';
+} from './utils/proofOfOwnership/proofOfOwnership.js';
 export {
   createOriginPermissions,
   DEFAULT_PROD_ORIGINS,

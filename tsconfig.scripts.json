@@ -10,7 +10,7 @@
     "baseUrl": "./",
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["ES2020"],
+    "lib": ["ES2022"],
     "noEmit": true,
     "noErrorTruncation": true,
     "noUncheckedIndexedAccess": true

@@ -7,7 +7,7 @@ import {
   ProofOfOwnershipMessageStruct,
   parseProofOfOwnershipMessage,
   PROOF_OF_OWNERSHIP_MESSAGE_PREFIX,
-} from './proofOfOwnership';
+} from './proofOfOwnership.js';
 
 const accountId = '11111111-1111-4111-8111-111111111111';
 
