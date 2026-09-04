@@ -1,4 +1,5 @@
 import { BtcScope } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type {
   ProofOfOwnershipBatchRequestItem,
   ProofOfOwnershipBatchResponse,
@@ -112,16 +113,6 @@ export const SignProofOfOwnershipBatchRequest = object({
 });
 
 export type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export class RpcHandler {
   readonly #logger: Logger;
@@ -574,7 +565,7 @@ export class RpcHandler {
       } catch (error) {
         results[index] = {
           accountId,
-          error: getErrorMessage(error),
+          error: normalizeError(error).message,
         };
       }
     });

@@ -10,6 +10,7 @@ import type {
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import { Signer } from 'bip322-js';
 import { encode } from 'wif';
 
@@ -90,16 +91,6 @@ function getAccountDerivationPath(req: DiscoverAccountParams): string[] {
  */
 function getDerivationPathKey(derivationPath: string[]): string {
   return derivationPath.join('/');
-}
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -809,7 +800,7 @@ export class AccountUseCases {
         parentRequests.push({ index, request, parentPath });
         requestsByParentPath.set(parentKey, parentRequests);
       } catch (error) {
-        results[index] = { error: getErrorMessage(error) };
+        results[index] = { error: normalizeError(error).message };
       }
     });
 
@@ -843,12 +834,12 @@ export class AccountUseCases {
                 ),
               };
             } catch (error) {
-              results[index] = { error: getErrorMessage(error) };
+              results[index] = { error: normalizeError(error).message };
             }
           }
         } catch (error) {
           for (const { index } of parentRequests) {
-            results[index] = { error: getErrorMessage(error) };
+            results[index] = { error: normalizeError(error).message };
           }
         }
       }),
