@@ -1,5 +1,12 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
+  ProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchRequestItemStruct,
+  ProofOfOwnershipBatchRequestParamsStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
+import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
 import { literal } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -433,8 +440,6 @@ export const ComputeFeeResponseStruct = array(
 
 export type ComputeFeeResponse = Infer<typeof ComputeFeeResponseStruct>;
 
-export const PROOF_OF_OWNERSHIP_MESSAGE_PREFIX = 'metamask:proof-of-ownership:';
-
 /**
  * Utility function to parse a proof-of-ownership message, of format `'metamask:proof-of-ownership:{nonce}:{address}'`.
  * Returns the parsed components or throws an error if invalid.
@@ -443,38 +448,17 @@ export const PROOF_OF_OWNERSHIP_MESSAGE_PREFIX = 'metamask:proof-of-ownership:';
  * @returns Object containing the parsed nonce and address.
  * @throws Error if the message format is invalid
  */
-export function parseProofOfOwnershipMessage(message: string): {
-  nonce: string;
-  address: string;
-} {
-  if (!message.startsWith(PROOF_OF_OWNERSHIP_MESSAGE_PREFIX)) {
-    throw new Error(
-      `Message must start with "${PROOF_OF_OWNERSHIP_MESSAGE_PREFIX}"`,
-    );
-  }
-
-  const remainder = message.slice(PROOF_OF_OWNERSHIP_MESSAGE_PREFIX.length);
-  const separatorIdx = remainder.lastIndexOf(':');
-  if (separatorIdx === -1) {
-    throw new Error(
-      'Message must follow the format "metamask:proof-of-ownership:{nonce}:{address}"',
-    );
-  }
-
-  const nonce = remainder.slice(0, separatorIdx);
-  const address = remainder.slice(separatorIdx + 1);
-
-  if (nonce === '') {
-    throw new Error(
-      'Proof-of-ownership message must contain a non-empty nonce',
-    );
-  }
+export function parseProofOfOwnershipMessage(
+  message: string,
+): ProofOfOwnershipMessage {
+  const proofMessage = parseSharedProofOfOwnershipMessage(message);
+  const { address } = proofMessage;
 
   if (!is(address, SolanaAddressStruct)) {
     throw new Error('Invalid Solana address in proof-of-ownership message');
   }
 
-  return { nonce, address };
+  return proofMessage;
 }
 
 /**
@@ -530,17 +514,14 @@ export type SignProofOfOwnershipResponse = Infer<
  * Batch items intentionally validate messages as plain strings so invalid
  * proof messages can be reported per item instead of failing the whole batch.
  */
-export const SignProofOfOwnershipBatchRequestItemStruct = object({
-  accountId: string(),
-  message: string(),
-});
+export const SignProofOfOwnershipBatchRequestItemStruct =
+  ProofOfOwnershipBatchRequestItemStruct;
 
 /**
  * Validates the params object for `signProofOfOwnershipBatch`.
  */
-export const SignProofOfOwnershipBatchRequestParamsStruct = object({
-  items: array(SignProofOfOwnershipBatchRequestItemStruct),
-});
+export const SignProofOfOwnershipBatchRequestParamsStruct =
+  ProofOfOwnershipBatchRequestParamsStruct;
 
 /**
  * Validates a `signProofOfOwnershipBatch` JSON-RPC request.
@@ -566,10 +547,8 @@ export const SignProofOfOwnershipBatchSuccessStruct = object({
 /**
  * Validates a failed proof-of-ownership batch item response.
  */
-export const SignProofOfOwnershipBatchErrorStruct = object({
-  accountId: string(),
-  error: string(),
-});
+export const SignProofOfOwnershipBatchErrorStruct =
+  ProofOfOwnershipBatchErrorStruct;
 
 /**
  * Validates a proof-of-ownership batch item result.
