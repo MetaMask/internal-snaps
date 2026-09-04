@@ -29,7 +29,7 @@ Package in this monorepo are represented by subdirectories in `packages/`. Each 
 - `LICENSE` — Each package has a license that describes how engineers can use it in projects.
 - Configuration files — See below.
 
-Note that the package template in `scripts/create-package/package-template` also uses this same structure.
+Note that the package template in `scripts/create-package/library-template` also uses this same structure.
 
 ### Configuration files
 
@@ -48,19 +48,22 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 
 - `tsconfig.base.json` defines shared compiler defaults for all other config files.
 - `tsconfig.json` defines TypeScript settings for repository scripts and editor features.
-- `tsconfig.packages.json` defines shared source, editor, and type-checking settings for all packages.
+- `tsconfig.packages.json` defines shared TypeScript settings for all packages.
+- Packages are either Snaps or non-Snaps:
+  - `tsconfig.packages.snaps.json` defines shared TypeScript settings for all Snap packages.
+  - `tsconfig.packages.libs.build.json` defines shared declaration build settings for library packages, used by `ts-bridge`.
 - `tsconfig.scripts.json` defines shared TypeScript settings for directories in `scripts/`.
 - The root `lint:tsc` script checks repository scripts with `tsconfig.json`, then checks each
   workspace package configuration directly. It does not build Snap bundles with `tsc`.
-- `packages/**/tsconfig.json` (and `scripts/create-package/package-template/tsconfig.json`) defines TypeScript settings for each package that are meant to be used by code editors and type checking.
-- Library packages and the package template also have `tsconfig.build.json` files for `ts-bridge` declaration builds. Snap packages do not have build configs because `mm-snap` builds their bundles.
+- `packages/**/tsconfig.json` (and `scripts/create-package/library-template/tsconfig.json`) defines TypeScript settings for each package that are meant to be used by code editors and type checking.
+- Library packages and the library template also have `tsconfig.build.json` files for `ts-bridge` declaration builds. Snap packages do not have build configs because `mm-snap` builds their bundles.
 - `scripts/create-package/tsconfig.json` customizes TypeScript settings for the `create-package` tool.
 
 #### Jest
 
 - `jest.config.packages.js` defines shared Jest settings for all directories in `packages/`.
 - `jest.config.scripts.js` defines shared Jest settings for all directories in `scripts/`.
-- `packages/**/jest.config.js` (and `scripts/create-package/package-template/jest.config.js`) customizes Jest settings for each package.
+- `packages/**/jest.config.js` (and `scripts/create-package/library-template/jest.config.js`) customizes Jest settings for each package.
 
 #### ESLint
 
@@ -73,7 +76,7 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 
 #### TypeDoc
 
-- `packages/**/typedoc.json` (and `scripts/create-package/package-template/typedoc.js`) defines TypeDoc settings for each package.
+- `packages/**/typedoc.json` (and `scripts/create-package/library-template/typedoc.json`) defines TypeDoc settings for each package.
 
 #### Other files
 
@@ -166,7 +169,7 @@ Each consumer-facing change to a package should be accompanied by one or more en
 
 ## Adding new packages
 
-Use `yarn create-package --name <name> --description <description>` to add a new package to the monorepo.
+Use `yarn create-package --type <snap|library> --name <name> --description <description>` to add a new package to the monorepo. The `--type` option defaults to `snap`: use `snap` to scaffold a new Snap, or `library` (shorthand: `lib`) to scaffold a new non-Snap package.
 
 ## Code guidelines
 
@@ -222,12 +225,12 @@ Use the `sample-gas-prices-service/` directory in the `sample-controllers` packa
 
 ## Cursor Cloud specific instructions
 
-This repo is a Yarn 4 monorepo of MetaMask Snaps. The two products live in `packages/`: `@metamask/bitcoin-wallet-snap` and `@metamask/sample-snap`. Dependencies are already installed by the startup update script (`corepack enable` + `yarn install`), so no install step is needed at session start. Yarn is pinned via `packageManager` (`yarn@4.17.1`) and provisioned by corepack; use `yarn ...`, not the classic global yarn.
+This repo is a Yarn 4 monorepo of MetaMask Snaps. The products live in `packages/`, including `@metamask/bitcoin-wallet-snap`. Dependencies are already installed by the startup update script (`corepack enable` + `yarn install`), so no install step is needed at session start. Yarn is pinned via `packageManager` (`yarn@4.17.1`) and provisioned by corepack; use `yarn ...`, not the classic global yarn.
 
 Standard commands are documented above (see "Running tests", "Linting and formatting", "Building packages"). Non-obvious caveats for running things here:
 
 - **Build before testing.** A Snap's Jest suite (`@metamask/snaps-jest`) expects the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first.
 - **`yarn lint` deletes `dist/`.** `lint:eslint` runs `build:only-clean` (`rimraf -g 'packages/*/dist'`) before linting. After running `yarn lint`, re-run `yarn build` before serving a snap or running snap tests.
 - **Running a snap:** `yarn workspace <pkg> run serve` serves the pre-built bundle at `http://localhost:8080` (`/snap.manifest.json` and `/dist/bundle.js`); `yarn workspace <pkg> run start` (`mm-snap watch`) rebuilds on change. Both snaps use port 8080, so only run one at a time.
-- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Use the `snaps-jest` test suites (they install the snap and invoke its JSON-RPC methods, e.g. sample-snap's `hello`) to exercise core functionality without a browser.
+- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Use the `snaps-jest` test suites (they install the snap and invoke its JSON-RPC methods, e.g. the generated snap's `hello`) to exercise core functionality without a browser.
 - **`.env` is optional** for `bitcoin-wallet-snap`; `snap.config.ts` reads it via dotenv but all values have sane defaults (see `.env.example`), so the snap builds and serves without one.

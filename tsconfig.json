@@ -1,6 +1,6 @@
 {
   /**
-   * Repository-level configuration used by the `lint` script and editors such as VSCode.
+   * Repository-level configuration used by the `lint` script and editors.
    */
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
@@ -15,6 +15,5 @@
     "skipLibCheck": true
   },
   "files": [],
-  "include": ["./docs", "./tests", "./scripts"],
-  "exclude": ["**/node_modules"]
+  "include": ["./docs", "./tests", "./scripts"]
 }

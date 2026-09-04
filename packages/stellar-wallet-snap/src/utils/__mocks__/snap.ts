@@ -35,5 +35,4 @@ export const {
   trackTransactionFinalized,
   trackSecurityAlertDetected,
   trackSecurityScanCompleted,
-  trackError,
 } = actual;

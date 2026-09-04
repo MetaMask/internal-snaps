@@ -1,13 +1,13 @@
 {
-  "name": "@metamask/sample-snap",
+  "name": "PACKAGE_NAME",
   "version": "0.0.0",
-  "private": true,
-  "description": "The 'Hello, world!' of MetaMask Snaps, now written in TypeScript",
+  "private": false,
+  "description": "PACKAGE_DESCRIPTION",
   "keywords": [
     "Ethereum",
     "MetaMask"
   ],
-  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/sample-snap#readme",
+  "homepage": "https://github.com/MetaMask/internal-snaps/tree/main/packages/PACKAGE_DIRECTORY_NAME#readme",
   "bugs": {
     "url": "https://github.com/MetaMask/internal-snaps/issues"
   },
@@ -27,8 +27,8 @@
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build",
     "build:clean": "yarn clean && yarn build",
-    "changelog:update": "../../scripts/update-changelog.sh @metamask/sample-snap",
-    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/sample-snap",
+    "changelog:update": "../../scripts/update-changelog.sh PACKAGE_NAME",
+    "changelog:validate": "../../scripts/validate-changelog.sh PACKAGE_NAME",
     "clean": "rimraf dist",
     "prepublishOnly": "mm-snap manifest",
     "serve": "mm-snap serve",
@@ -45,14 +45,13 @@
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.1",
     "@metamask/snaps-sdk": "^12.0.1",
-    "@types/react": "18.2.4",
-    "@types/react-dom": "18.2.4",
     "eslint": "^9.39.1",
     "jest": "30.0.3",
     "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.1",
     "typescript": "~5.8.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": "NODE_VERSIONS"
   }
 }

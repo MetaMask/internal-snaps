@@ -1,0 +1,20 @@
+{
+  /**
+   * Shared settings for Snap packages, i.e. packages whose bundles are built by `mm-snap`
+   * rather than by `tsc` or `ts-bridge`.
+   *
+   * Snap packages must still set `baseUrl` to their own directory, so that the `paths` option
+   * resolves correctly.
+   */
+  "extends": "./tsconfig.packages.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@metamask/snaps-sdk",
+    "lib": ["ES2023", "DOM"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "target": "ES2023"
+  }
+}

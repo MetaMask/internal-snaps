@@ -671,7 +671,7 @@ describe('ConfirmSendHandler', () => {
     );
     createValidatedSendTransaction.mockRejectedValueOnce(xdrParseError);
     const trackErrorSpy = jest
-      .spyOn(snapUtils, 'trackError')
+      .spyOn(errorsUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
@@ -686,7 +686,7 @@ describe('ConfirmSendHandler', () => {
     const unexpectedError = new Error('unexpected');
     createValidatedSendTransaction.mockRejectedValueOnce(unexpectedError);
     const trackErrorSpy = jest
-      .spyOn(snapUtils, 'trackError')
+      .spyOn(errorsUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
@@ -702,7 +702,7 @@ describe('ConfirmSendHandler', () => {
       new TransactionValidationException('x'),
     );
     const trackErrorSpy = jest
-      .spyOn(snapUtils, 'trackError')
+      .spyOn(errorsUtils, 'trackError')
       .mockResolvedValue(undefined);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({

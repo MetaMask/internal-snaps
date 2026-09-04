@@ -2701,7 +2701,6 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.48.0"
     "@typescript-eslint/parser": "npm:^8.48.0"
     "@yarnpkg/types": "npm:^4.0.0"
-    comment-json: "npm:^4.5.1"
     depcheck: "npm:^1.4.7"
     eslint: "npm:^9.39.1"
     eslint-config-prettier: "npm:^9.1.0"
@@ -2720,7 +2719,6 @@ __metadata:
     lodash: "npm:^4.17.21"
     nock: "npm:^13.3.1"
     oxfmt: "npm:^0.45.0"
-    prettier: "npm:^3.3.3"
     prettier-2: "npm:prettier@^2.8.8"
     rimraf: "npm:^6.0.1"
     semver: "npm:^7.6.3"
@@ -3286,24 +3284,6 @@ __metadata:
   checksum: 10/8ef7579f9317eb5c94ecf3e6abb8d13b119af274b678805eac76abe4c0667bfdf539f385e552bb973e96333b71b77aa7c787cb3fce9cd5fb4b00f1dbbabf880d
   languageName: node
   linkType: hard
-
-"@metamask/sample-snap@workspace:packages/sample-snap":
-  version: 0.0.0-use.local
-  resolution: "@metamask/sample-snap@workspace:packages/sample-snap"
-  dependencies:
-    "@jest/globals": "npm:^29.5.0"
-    "@metamask/auto-changelog": "npm:^6.1.1"
-    "@metamask/snaps-cli": "npm:^8.4.1"
-    "@metamask/snaps-jest": "npm:^10.2.1"
-    "@metamask/snaps-sdk": "npm:^12.0.1"
-    "@types/react": "npm:18.2.4"
-    "@types/react-dom": "npm:18.2.4"
-    eslint: "npm:^9.39.1"
-    jest: "npm:30.0.3"
-    rimraf: "npm:^6.0.1"
-    typescript: "npm:~5.8.3"
-  languageName: unknown
-  linkType: soft
 
 "@metamask/scure-bip39@npm:^2.1.1":
   version: 2.1.1
@@ -6611,13 +6591,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"array-timsort@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "array-timsort@npm:1.0.3"
-  checksum: 10/f417f073b3733baec3a80decdf5d45bf763f04676ef3610b0e71f9b1d88c6e4c38154c05b28b31529d308bfd0e043d08059fcd9df966245a1276af15b5584936
-  languageName: node
-  linkType: hard
-
 "array-union@npm:^2.1.0":
   version: 2.1.0
   resolution: "array-union@npm:2.1.0"
@@ -7802,16 +7775,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"comment-json@npm:^4.5.1":
-  version: 4.6.2
-  resolution: "comment-json@npm:4.6.2"
-  dependencies:
-    array-timsort: "npm:^1.0.3"
-    esprima: "npm:^4.0.1"
-  checksum: 10/2f6e79b7ae81a919a0dd5fc2fac84e9ebdaa501a5f3ffe5b9f2fd5dbe94d686d8ee9a6bddf5bae364bce104dbb1c599a9d4184aeb211aaf4a283b8900438d242
-  languageName: node
-  linkType: hard
-
 "comment-parser@npm:1.4.1":
   version: 1.4.1
   resolution: "comment-parser@npm:1.4.1"
@@ -8960,7 +8923,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esprima@npm:^4.0.0, esprima@npm:^4.0.1":
+"esprima@npm:^4.0.0":
   version: 4.0.1
   resolution: "esprima@npm:4.0.1"
   bin:
