@@ -1,9 +1,10 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 
 import type { SolanaKeyringAccount } from '../../../entities';
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
-import { METAMASK_ORIGIN, METAMASK_ORIGIN_URL } from '../../constants/solana';
+import { METAMASK_ORIGIN_URL } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
@@ -63,7 +64,12 @@ export class TransactionScanService {
         accountAddress,
         transactions: [transaction],
         scope,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
+        // Only a verifiable origin may reach the scan: the URL is a core
+        // heuristic and can flip a verdict, so an unverifiable one (a
+        // WalletConnect channel id, or a URL self-reported by the requester)
+        // would let a dapp influence the check meant to catch it. Those are
+        // reported as wallet-initiated instead.
+        origin: resolveOrigin(origin).verifiedOrigin ?? METAMASK_ORIGIN_URL,
         options,
       });
 

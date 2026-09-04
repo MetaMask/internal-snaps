@@ -40,6 +40,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetching',
   origin: '',
+  originMetadata: null,
   preferences: {
     locale: 'en',
     currency: 'usd',

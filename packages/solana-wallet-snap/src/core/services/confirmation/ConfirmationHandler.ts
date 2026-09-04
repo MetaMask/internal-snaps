@@ -105,6 +105,7 @@ export class ConfirmationHandler {
       scope,
       method,
       origin: request.origin,
+      originMetadata: request.originMetadata ?? null,
       transaction: base64EncodedTransaction,
       account,
     });

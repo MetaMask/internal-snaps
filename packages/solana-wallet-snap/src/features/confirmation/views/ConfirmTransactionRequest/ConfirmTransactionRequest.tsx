@@ -71,6 +71,7 @@ export const ConfirmTransactionRequest = ({
           preferences={context.preferences}
           networkImage={context.networkImage}
           origin={context.origin}
+          originMetadata={context.originMetadata}
         />
         <Advanced
           instructions={context.advanced.instructions}

@@ -1,3 +1,5 @@
+import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import {
   Address,
   Box,
@@ -19,10 +21,10 @@ import { SOL_IMAGE_SVG } from '../../../../core/test/mocks/solana-image-svg';
 import type { Preferences } from '../../../../core/types/snap';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
 import { i18n } from '../../../../core/utils/i18n';
-import { parseOrigin } from '../../../../core/utils/parseOrigin';
 import type { SolanaKeyringAccount } from '../../../../entities';
 import { BasicNullableField } from '../../components/BasicNullableField/BasicNullableField';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
+import { OriginRow } from '../../components/OriginRow/OriginRow';
 import { ConfirmSignInFormNames } from './events';
 
 export type ConfirmSignInProps = {
@@ -41,6 +43,7 @@ export type ConfirmSignInProps = {
     resources: string[];
   }>;
   origin: string;
+  originMetadata: SelfReportedOriginMetadata | null;
   account: SolanaKeyringAccount;
   accountDomain: string | null;
   scope: Network;
@@ -51,6 +54,7 @@ export type ConfirmSignInProps = {
 export const ConfirmSignIn: SnapComponent<ConfirmSignInProps> = ({
   params,
   origin,
+  originMetadata,
   account,
   accountDomain,
   scope,
@@ -58,7 +62,10 @@ export const ConfirmSignIn: SnapComponent<ConfirmSignInProps> = ({
   networkImage,
 }) => {
   const translate = i18n(preferences.locale);
-  const originHostname = origin ? parseOrigin(origin) : null;
+  const { displayOrigin, isSelfReported, verifiedOrigin } = resolveOrigin(
+    origin,
+    originMetadata,
+  );
 
   const {
     domain,
@@ -81,7 +88,10 @@ export const ConfirmSignIn: SnapComponent<ConfirmSignInProps> = ({
   const signInAddressCaip10 = address ? addressToCaip10(scope, address) : null;
 
   const isBadAccount = signInAddressCaip10 !== accountAddressCaip10;
-  const isBadDomain = domain !== originHostname;
+  // Only a verifiable origin may drive the SIWS domain check. A self-reported
+  // origin is supplied by the requester, so comparing against it would let the
+  // requester decide whether its own domain looks legitimate.
+  const isBadDomain = verifiedOrigin !== null && domain !== displayOrigin;
 
   return (
     <Container>
@@ -104,14 +114,11 @@ export const ConfirmSignIn: SnapComponent<ConfirmSignInProps> = ({
         ) : null}
 
         <Section>
-          {originHostname ? (
-            <Row
-              label={translate('confirmation.origin')}
-              tooltip={translate('confirmation.origin.tooltip')}
-            >
-              <Text>{originHostname}</Text>
-            </Row>
-          ) : null}
+          <OriginRow
+            displayOrigin={displayOrigin}
+            isSelfReported={isSelfReported}
+            locale={preferences.locale}
+          />
           <Row
             variant={isBadDomain ? 'critical' : 'default'}
             label={translate('confirmation.signIn.domain')}

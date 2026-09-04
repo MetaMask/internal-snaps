@@ -76,6 +76,7 @@ describe('render', () => {
         locale={'en'}
         networkImage={SOL_IMAGE_SVG}
         origin={TEST_ORIGIN}
+        originMetadata={null}
       />,
     );
   });

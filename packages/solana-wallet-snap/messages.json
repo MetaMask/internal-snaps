@@ -64,6 +64,8 @@
   "confirmation.feeError": "Unable to estimate fee",
   "confirmation.origin": "Request from",
   "confirmation.origin.tooltip": "This is the site asking for your confirmation.",
+  "confirmation.origin.unverified": "Not verified",
+  "confirmation.origin.unverified.tooltip": "This site is reported by the app that sent the request. MetaMask can't verify it.",
   "confirmation.simulationErrorTitle": "This transaction was reverted during simulation.",
   "confirmation.simulationErrorSubtitle": "{reason}",
   "confirmation.validationErrorTitle": "This is a deceptive request",

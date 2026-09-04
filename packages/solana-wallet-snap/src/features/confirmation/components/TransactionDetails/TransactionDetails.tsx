@@ -1,3 +1,5 @@
+import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
   Address,
@@ -18,8 +20,8 @@ import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
 import { formatCrypto } from '../../../../core/utils/formatCrypto';
 import { formatFiat } from '../../../../core/utils/formatFiat';
 import { i18n } from '../../../../core/utils/i18n';
-import { parseOrigin } from '../../../../core/utils/parseOrigin';
 import { tokenToFiat } from '../../../../core/utils/tokenToFiat';
+import { OriginRow } from '../OriginRow/OriginRow';
 
 type TransactionDetailsProps = {
   accountAddress: string | null;
@@ -33,10 +35,12 @@ type TransactionDetailsProps = {
   preferences: Preferences;
   networkImage: string | null;
   origin: string;
+  originMetadata: SelfReportedOriginMetadata | null;
 };
 
 export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
   origin,
+  originMetadata,
   accountAddress,
   accountDomain,
   destinationAddress,
@@ -50,9 +54,12 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
 }) => {
   const { currency, locale } = preferences;
   const translate = i18n(locale);
-  const isMetaMaskOrigin = origin === METAMASK_ORIGIN;
-  const originHostname =
-    origin && !isMetaMaskOrigin ? parseOrigin(origin) : null;
+  const { displayOrigin, isSelfReported } = resolveOrigin(
+    origin,
+    originMetadata,
+  );
+  // Wallet-initiated transactions have no origin row to show.
+  const originToDisplay = origin === METAMASK_ORIGIN ? null : displayOrigin;
 
   const pricesFetching = fetchingPricesStatus === 'fetching';
   const pricesError = fetchingPricesStatus === 'error';
@@ -64,19 +71,13 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
 
   return (
     <Section>
-      {originHostname ? (
+      {originToDisplay ? (
         <Box>
-          <Box alignment="space-between" direction="horizontal">
-            <Box alignment="space-between" direction="horizontal" center>
-              <Text fontWeight="medium" color="alternative">
-                {translate('confirmation.origin')}
-              </Text>
-              <Tooltip content={translate('confirmation.origin.tooltip')}>
-                <Icon name="question" color="muted" />
-              </Tooltip>
-            </Box>
-            <Text>{originHostname}</Text>
-          </Box>
+          <OriginRow
+            displayOrigin={originToDisplay}
+            isSelfReported={isSelfReported}
+            locale={locale}
+          />
           <Box>{null}</Box>
         </Box>
       ) : null}

@@ -33,6 +33,7 @@ export async function render(
     },
     scope,
     origin,
+    originMetadata,
   } = request;
 
   const messageBytes = getBase64Codec().encode(messageBase64);
@@ -54,6 +55,7 @@ export async function render(
       locale={locale}
       networkImage={SOL_IMAGE_SVG}
       origin={origin}
+      originMetadata={originMetadata ?? null}
     />,
     {},
   );
