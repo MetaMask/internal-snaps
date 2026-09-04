@@ -237,10 +237,12 @@ jobs:
         # SonarCloud resolves them against the repo root, so prefix them with
         # the package directory.
         if: matrix.node-version == '22.x'
+        env:
+          PACKAGE_DIRECTORY: ${{ matrix.package-directory }}
         run: |
-          lcov_file="packages/${{ matrix.package-directory }}/coverage/lcov.info"
+          lcov_file="packages/${PACKAGE_DIRECTORY}/coverage/lcov.info"
           if [ -f "$lcov_file" ]; then
-            sed -i.bak "s|^SF:|SF:packages/${{ matrix.package-directory }}/|" "$lcov_file"
+            sed -i.bak "s|^SF:|SF:packages/${PACKAGE_DIRECTORY}/|" "$lcov_file"
             rm "$lcov_file.bak"
           else
             echo "No coverage report found at $lcov_file"
