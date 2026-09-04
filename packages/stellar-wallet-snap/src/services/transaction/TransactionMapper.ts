@@ -8,7 +8,11 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../api';
+import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
 import {
+  getAssetReference,
+  isSlip44Id,
+  parseClassicAssetCodeIssuer,
   removeTrailingZeros,
   stellarAssetToCaip19,
   toDisplayBalance,
@@ -37,9 +41,11 @@ import {
 import type { SuccessfulTransactionResult } from './xdrParser';
 import {
   isSep41TransferInvoke,
+  parseContractEventsFromResultMeta,
   parseSep41TransferInvoke,
   parseSuccessfulTransactionResult,
   TransactionResultType,
+  parseTransferContractEventSafe,
 } from './xdrParser';
 
 export class TransactionMapper {
@@ -124,13 +130,15 @@ export class TransactionMapper {
     const { address } = keyringAccount;
 
     if (transaction.hasInvokeHostFunction && transaction.operationCount === 1) {
-      // Invoke host function: try SEP-41 send mapping first; fall back to unknown.
+      // Invoke host function: try SEP-41 send, then contract-receive from result meta.
       return (
         this.#mapSep41SendTransaction(
           transaction,
           keyringAccount,
           assetMetadata,
-        ) ?? this.#mapUnknownTransaction(transaction, keyringAccount)
+        ) ??
+        this.#tryMapReceiveContractTxn(transaction, keyringAccount) ??
+        this.#mapUnknownTransaction(transaction, keyringAccount)
       );
     }
 
@@ -482,12 +490,94 @@ export class TransactionMapper {
     });
   }
 
+  /**
+   * Maps an invoke-host-function credit as a receive when `result_meta_xdr`
+   * has a SAC `transfer` event credited to this wallet.
+   *
+   * @param transaction - On-chain invoke transaction.
+   * @param keyringAccount - Wallet that may have been credited.
+   * @returns Receive keyring transaction, or `undefined` when meta does not match.
+   */
+  #tryMapReceiveContractTxn(
+    transaction: Transaction,
+    keyringAccount: StellarKeyringAccount,
+  ): KeyringTransaction | undefined {
+    if (
+      // A failed transaction does not contain the result_meta_xdr for us to extract the event data
+      transaction.status === TransactionStatus.Failed ||
+      // A transaction is not from the source account, so it is not a receive transaction.
+      transaction.isSourceAccount(keyringAccount.address)
+    ) {
+      return undefined;
+    }
+
+    const resultMetaXdr = transaction.rawData?.result_meta_xdr;
+    if (!resultMetaXdr) {
+      return undefined;
+    }
+
+    const transfers = parseContractEventsFromResultMeta({
+      resultMetaXdr,
+      parseEvent: (event) =>
+        parseTransferContractEventSafe(
+          event,
+          keyringAccount.address,
+          transaction.scope,
+        ),
+    });
+
+    // Same as classic receive: surface the first credited asset when several match.
+    const [parsed] = transfers;
+    if (!parsed) {
+      return undefined;
+    }
+
+    const asset = this.#caipAssetToKeyringAssetRow(
+      parsed.assetId,
+      toDisplayBalance(parsed.amount, STELLAR_DECIMAL_PLACES),
+    );
+
+    return this.#keyringTransactionBuilder.createTransaction({
+      type: KeyringTransactionType.Unknown,
+      request: {
+        ...this.#commonOnChainFields(transaction, keyringAccount),
+        transactionType: TransactionType.Receive,
+        from: [
+          {
+            address: parsed.fromAddress,
+            asset,
+          },
+        ],
+        to: [
+          {
+            address: keyringAccount.address,
+            asset,
+          },
+        ],
+      },
+    });
+  }
+
   #getCreateTime(transaction: Transaction): number {
     const createdAtSeconds = transaction.rawData?.created_at
       ? Math.floor(new Date(transaction.rawData.created_at).getTime() / 1000)
       : undefined;
 
     return this.#keyringTransactionBuilder.getCreateTime(createdAtSeconds);
+  }
+
+  #caipAssetToKeyringAssetRow(
+    assetId: KnownCaip19AssetIdOrSlip44Id,
+    amount: string,
+  ): KeyringTransactionAsset {
+    const isSlip44 = isSlip44Id(assetId);
+    return this.#toKeyringAssetRow(
+      isSlip44
+        ? NATIVE_ASSET_SYMBOL
+        : parseClassicAssetCodeIssuer(getAssetReference(assetId)).assetCode,
+      assetId,
+      amount,
+    );
   }
 
   #assetToKeyringAssetRow(
