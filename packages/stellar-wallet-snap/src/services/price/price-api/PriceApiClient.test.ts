@@ -5,7 +5,6 @@ import {
   HttpResponseException,
   InvalidHttpResponseException,
 } from '../../../utils/errors';
-import { GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT } from '../api';
 import { PriceApiClient } from './PriceApiClient';
 
 jest.mock('../../../utils/logger');
@@ -45,65 +44,8 @@ describe('PriceApiClient', () => {
 
   const createClient = () => new PriceApiClient({ baseUrl }, mockFetch);
 
-  describe('getFiatExchangeRates', () => {
-    it('requests fiat exchange rates endpoint and returns parsed body', async () => {
-      const body = {
-        usd: {
-          name: 'US Dollar',
-          ticker: 'usd' as const,
-          value: 1,
-          currencyType: 'fiat' as const,
-        },
-      };
-      mockFetch.mockResolvedValueOnce(jsonResponse(body));
-
-      const client = createClient();
-      expect(await client.getFiatExchangeRates()).toStrictEqual(body);
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch.mock.calls[0]?.[0]).toBe(
-        buildUrl({
-          baseUrl,
-          path: '/v1/exchange-rates/fiat',
-        }),
-      );
-    });
-
-    it('throws HttpResponseException when response is not ok', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({}, { ok: false, status: 502 }),
-      );
-
-      const client = createClient();
-      await expect(client.getFiatExchangeRates()).rejects.toThrow(
-        HttpResponseException,
-      );
-    });
-
-    it('throws InvalidHttpResponseException when response body fails validation', async () => {
-      mockFetch.mockResolvedValueOnce(jsonResponse({ invalid: true }));
-
-      const client = createClient();
-      await expect(client.getFiatExchangeRates()).rejects.toThrow(
-        InvalidHttpResponseException,
-      );
-    });
-
-    it('throws HttpException when fetch rejects', async () => {
-      const networkError = Object.assign(new Error('network down'), {
-        cause: { code: 'ECONNREFUSED' },
-      });
-      mockFetch.mockRejectedValueOnce(networkError);
-
-      const client = createClient();
-      await expect(client.getFiatExchangeRates()).rejects.toThrow(
-        HttpException,
-      );
-    });
-  });
-
   describe('getSpotPrices', () => {
-    it('requests spot prices with default vsCurrency and includeMarketData', async () => {
+    it('requests spot prices with default vsCurrency', async () => {
       const spotBody = {
         [stellarClassicUsdc]: minimalSpotPrice('usdc', 1),
       };
@@ -122,7 +64,6 @@ describe('PriceApiClient', () => {
           queryParams: {
             vsCurrency: 'usd',
             assetIds: stellarClassicUsdc,
-            includeMarketData: 'true',
           },
         }),
       );
@@ -144,7 +85,6 @@ describe('PriceApiClient', () => {
           queryParams: {
             vsCurrency: 'eur',
             assetIds: stellarClassicUsdc,
-            includeMarketData: 'true',
           },
         }),
       );
@@ -170,7 +110,6 @@ describe('PriceApiClient', () => {
           queryParams: {
             vsCurrency: 'usd',
             assetIds: `${stellarClassicUsdc},${stellarSep41}`,
-            includeMarketData: 'true',
           },
         }),
       );
@@ -222,93 +161,6 @@ describe('PriceApiClient', () => {
       await expect(client.getSpotPrices([stellarClassicUsdc])).rejects.toThrow(
         HttpException,
       );
-    });
-  });
-
-  describe('getHistoricalPrices', () => {
-    it('requests historical prices with path and query params', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse(GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT),
-      );
-
-      const client = createClient();
-      expect(
-        await client.getHistoricalPrices({
-          assetType: stellarClassicUsdc,
-          timePeriod: '7d',
-          from: 1,
-          to: 2,
-          vsCurrency: 'usd',
-        }),
-      ).toStrictEqual(GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT);
-
-      expect(mockFetch.mock.calls[0]?.[0]).toBe(
-        buildUrl({
-          baseUrl,
-          path: '/v3/historical-prices/{assetType}',
-          pathParams: { assetType: stellarClassicUsdc },
-          queryParams: {
-            timePeriod: '7d',
-            from: '1',
-            to: '2',
-            vsCurrency: 'usd',
-          },
-          encodePathParams: false,
-        }),
-      );
-    });
-
-    it('includes from and to in query when both are zero', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse(GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT),
-      );
-
-      const client = createClient();
-      expect(
-        await client.getHistoricalPrices({
-          assetType: stellarClassicUsdc,
-          from: 0,
-          to: 0,
-        }),
-      ).toStrictEqual(GET_HISTORICAL_PRICES_RESPONSE_NULL_OBJECT);
-
-      expect(mockFetch.mock.calls[0]?.[0]).toBe(
-        buildUrl({
-          baseUrl,
-          path: '/v3/historical-prices/{assetType}',
-          pathParams: { assetType: stellarClassicUsdc },
-          queryParams: {
-            from: '0',
-            to: '0',
-          },
-          encodePathParams: false,
-        }),
-      );
-    });
-
-    it('throws HttpResponseException when response is not ok', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({}, { ok: false, status: 502 }),
-      );
-
-      const client = createClient();
-      await expect(
-        client.getHistoricalPrices({
-          assetType: stellarClassicUsdc,
-          timePeriod: '7d',
-        }),
-      ).rejects.toThrow(HttpResponseException);
-    });
-
-    it('throws InvalidHttpResponseException when response body fails validation', async () => {
-      mockFetch.mockResolvedValueOnce(jsonResponse({ invalid: true }));
-
-      const client = createClient();
-      await expect(
-        client.getHistoricalPrices({
-          assetType: stellarClassicUsdc,
-        }),
-      ).rejects.toThrow(InvalidHttpResponseException);
     });
   });
 });
