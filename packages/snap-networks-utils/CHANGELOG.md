@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add shared proof-of-ownership message parsing utilities, batch request/response structs, and batch request/response types. ([#268](https://github.com/MetaMask/internal-snaps/pull/268))
 - Add a `UuidStruct` Superstruct for validating UUID v4 strings. ([#243](https://github.com/MetaMask/internal-snaps/pull/243))
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
 - Add shared snap error utilities to the main package entry point ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
