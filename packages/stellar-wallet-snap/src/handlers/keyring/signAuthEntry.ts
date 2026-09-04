@@ -110,6 +110,7 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
           readableAuthEntry,
         },
         origin: request.origin,
+        originMetadata: request.originMetadata,
         interfaceKey: ConfirmationInterfaceKey.SignAuthEntry,
       })) === true
     );

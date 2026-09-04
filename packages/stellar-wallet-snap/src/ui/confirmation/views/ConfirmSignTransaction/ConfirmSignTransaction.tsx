@@ -4,10 +4,8 @@ import {
   Box,
   Container,
   Heading,
-  Icon,
   Section,
   Text as SnapText,
-  Tooltip,
   Divider,
   Copyable,
 } from '@metamask/snaps-sdk/jsx';
@@ -33,6 +31,7 @@ import { FeeRow } from '../../components/Fee';
 import { InvocationSummary } from '../../components/InvocationSummary';
 import { JsonParamsSummary } from '../../components/JsonParamsSummary';
 import { NetworkRow } from '../../components/Network';
+import { OriginRow } from '../../components/OriginRow';
 import { TransactionAlert } from '../../components/TransactionAlert';
 import {
   getAccountName,
@@ -202,6 +201,7 @@ export const ConfirmSignTransaction = ({
   locale,
   networkImage,
   origin,
+  isSelfReportedOrigin,
   preferences,
   feeData,
   tokenPrices,
@@ -246,19 +246,11 @@ export const ConfirmSignTransaction = ({
         ) : null}
 
         <Section>
-          {origin ? (
-            <Box alignment="space-between" direction="horizontal">
-              <Box direction="horizontal" alignment="start">
-                <SnapText fontWeight="medium" color="alternative">
-                  {t('confirmation.origin')}
-                </SnapText>
-                <Tooltip content={t('confirmation.origin.tooltip')}>
-                  <Icon name="question" color="muted" />
-                </Tooltip>
-              </Box>
-              <SnapText>{origin}</SnapText>
-            </Box>
-          ) : null}
+          <OriginRow
+            origin={origin}
+            isSelfReported={isSelfReportedOrigin}
+            locale={locale}
+          />
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
               {t('confirmation.account')}
