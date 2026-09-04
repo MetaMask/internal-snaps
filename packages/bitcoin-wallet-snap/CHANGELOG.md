@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Process the entire requested account range as a single batch instead of chunks of 100, so the existing-accounts lookup and state I/O happen once per request ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
 - Split the chain `stopGap` configuration into `{ discovery: 5, scan: 20 }` so account discovery keeps the cheap probe while full account scans use the BIP44 gap limit ([#224](https://github.com/MetaMask/internal-snaps/pull/224))
 
+### Removed
+
+- **BREAKING** Remove the `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` asset handler entry points, along with the now-unused `AssetsHandler`, `AssetsUseCases`, `InMemoryCache`, `ICache`, and the `endowment:assets` permission ([#260](https://github.com/MetaMask/internal-snaps/pull/260))
+
 ### Fixed
 
 - Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
