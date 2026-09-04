@@ -114,6 +114,9 @@ jobs:
         )
       }}
     uses: ./.github/workflows/sonarcloud.yml
+    # The reusable workflow grants its own job-level permissions; the caller
+    # needs none, so deny all here to satisfy the blanket no-default perms policy.
+    permissions: {}
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
