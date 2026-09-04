@@ -60,6 +60,9 @@
         }
       ]
     },
+    "endowment:assets": {
+      "scopes": ["tron:728126428"]
+    },
     "endowment:messenger": {
       "actions": [
         "RemoteFeatureFlagController:getState",

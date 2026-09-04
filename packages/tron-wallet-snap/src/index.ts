@@ -1,4 +1,8 @@
 import type {
+  OnAssetHistoricalPriceHandler,
+  OnAssetsConversionHandler,
+  OnAssetsLookupHandler,
+  OnAssetsMarketDataHandler,
   OnClientRequestHandler,
   OnCronjobHandler,
   OnKeyringRequestHandler,
@@ -38,3 +42,18 @@ export const onRpcRequest: OnRpcRequestHandler = async ({ origin, request }) =>
 
 export const onUserInput: OnUserInputHandler = async (params) =>
   withCatchAndThrowSnapError(async () => userInputHandler.handle(params));
+
+export const onAssetsLookup: OnAssetsLookupHandler = async () => ({
+  assets: {},
+});
+
+export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
+  conversionRates: {},
+});
+
+export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async () =>
+  null;
+
+export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
+  marketData: {},
+});
