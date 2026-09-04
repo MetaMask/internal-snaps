@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "eLUwFyKvzK6j3RV0am3G59i2B74yVEf2bU+wnMMcWeE=",
+    "shasum": "0NhnLQaV7sW0XW5aSbSQMtx4aImB3rToaZugqGZUc9w=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -15,8 +15,7 @@
         "packageName": "@metamask/stellar-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
-    },
-    "locales": ["locales/en.json"]
+    }
   },
   "initialConnections": {
     "https://portfolio.metamask.io": {}

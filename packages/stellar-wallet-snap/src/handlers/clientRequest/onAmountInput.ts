@@ -63,7 +63,7 @@ export class OnAmountInputHandler extends BaseClientRequestHandler<
    * repeated amount checks stay responsive.
    *
    * @param resolved - Keyring account, persisted on-chain snapshot, and wallet.
-   * @param request - JSON-RPC request with `assetId`, `value` (positive amount string), and optional `to` (`scope` is derived from `assetId`).
+   * @param request - JSON-RPC request with `assetId` and `value` (positive amount string). Optional `to` is ignored; destination validation happens in `confirmSend` (`scope` is derived from `assetId`).
    * @returns Validation result with `valid` and optional error codes.
    */
   protected async execute(
@@ -72,7 +72,7 @@ export class OnAmountInputHandler extends BaseClientRequestHandler<
   ): Promise<OnAmountInputJsonRpcResponse> {
     try {
       const { onChainAccount } = resolved;
-      const { assetId, value, to, scope } = request.params;
+      const { assetId, value, scope } = request.params;
       const { units } = await this.#assetMetadataService.resolve(assetId);
       const { decimals } = units[0];
 
@@ -93,8 +93,9 @@ export class OnAmountInputHandler extends BaseClientRequestHandler<
         scope,
         assetId,
         amount: amountInSmallestUnit,
-        // If no destination is provided, validate a self-transfer to the sender.
-        destination: to ?? onChainAccount.accountId,
+        // Always use self account as destination to bypass the error from the destination validation.
+        // We validate the destination in the send transaction handler.
+        destination: onChainAccount.accountId,
         // Use cached network reads so repeated amount checks stay fast.
         useCache: true,
       });

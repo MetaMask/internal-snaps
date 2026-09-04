@@ -28,10 +28,9 @@
   },
   "scripts": {
     "allow-scripts": "yarn workspace root allow-scripts",
-    "build": "mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
+    "build": "mm-snap build --preinstalled && yarn build:locale",
     "build:dev": "ENVIRONMENT=local node scripts/update-manifest-local.js && mm-snap build && yarn build:locale",
-    "build:prod": "ENVIRONMENT=production node scripts/update-manifest-local.js && mm-snap build && yarn build:locale && yarn build-preinstalled-snap",
-    "build-preinstalled-snap": "node scripts/build-preinstalled-snap.js",
+    "build:prod": "ENVIRONMENT=production node scripts/update-manifest-local.js && yarn build:locale && mm-snap build --preinstalled",
     "build:locale": "node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'",
     "build:locale:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'\"",
     "changelog:update": "../../scripts/update-changelog.sh @metamask/tron-wallet-snap",

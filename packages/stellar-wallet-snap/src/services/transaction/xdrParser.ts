@@ -11,6 +11,7 @@ import { BigNumber } from 'bignumber.js';
 
 import { StellarAddressOrContractStruct } from '../../api';
 import type {
+  KnownCaip19AssetIdOrSlip44Id,
   KnownCaip19ClassicAssetId,
   KnownCaip19Sep41AssetId,
   KnownCaip19Slip44Id,
@@ -25,6 +26,7 @@ import {
 } from '../../utils';
 import { bufferToUint8Array } from '../../utils/buffer';
 import { XdrParseException } from './exceptions';
+import { parseOperationAssetReferenceSafe } from './utils';
 
 export const TransactionResultType = {
   PathPaymentStrictSendSuccess: 'pathPaymentStrictSendSuccess',
@@ -82,6 +84,30 @@ export type ParsedSep41TransferInvoke = {
   toAccountId: string;
   amount: BigNumber;
 };
+
+/**
+ * SAC `transfer` contract event credited to a wallet, parsed from `result_meta_xdr`.
+ *
+ * Expects topics `["transfer", from, to, token]` with `data` = amount in
+ * smallest units. Only `"native"` and classic `"CODE:ISSUER"` topics are
+ * supported (SEP-41 3-topic events are not).
+ */
+export type ParsedContractReceiveTransfer = {
+  fromAddress: string;
+  toAddress: string;
+  /** CAIP-19 classic or slip44 id resolved from the fourth SAC topic. */
+  assetId: KnownCaip19AssetIdOrSlip44Id;
+  /** Transfer amount in smallest units (stroops for native/classic). */
+  amount: BigNumber;
+};
+
+/**
+ * Caller-supplied parser for a single contract event from transaction meta.
+ * Return a value to keep it, or `null` to skip.
+ */
+export type ContractEventParser<Result> = (
+  event: xdr.ContractEvent,
+) => Result | null;
 
 /**
  * Parses a successful Stellar transaction result XDR into operation-level outcomes.
@@ -528,6 +554,141 @@ export function extractAssetDataFromContractData(
         { cause: error },
       ),
     );
+  }
+}
+
+/**
+ * Best-effort walk of contract events in Horizon `result_meta_xdr`.
+ *
+ * The caller supplies {@link ContractEventParser} for the event shape they care
+ * about (e.g. {@link parseTransferContractEventSafe}). Matching results are
+ * accumulated in order; the caller decides how to reduce the array.
+ *
+ * @param params - Meta XDR and event parser.
+ * @param params.resultMetaXdr - Base64 `TransactionMeta` from Horizon.
+ * @param params.parseEvent - Returns a value to keep, or `null` to skip.
+ * @returns Parsed values in event order; empty when meta is missing/invalid or nothing matches.
+ */
+export function parseContractEventsFromResultMeta<Result>(params: {
+  resultMetaXdr: string;
+  parseEvent: ContractEventParser<Result>;
+}): Result[] {
+  try {
+    const { resultMetaXdr, parseEvent } = params;
+    const meta = xdr.TransactionMeta.fromXDR(
+      bufferToUint8Array(resultMetaXdr, 'base64'),
+    );
+
+    const results: Result[] = [];
+
+    let events: xdr.ContractEvent[] = [];
+
+    // Handle both V3 and V4 transaction meta formats
+    switch (meta.switch()) {
+      case 3: {
+        const sorobanMeta = meta.v3().sorobanMeta();
+        events = sorobanMeta ? [...sorobanMeta.events()] : [];
+        break;
+      }
+      case 4: {
+        events = meta
+          .v4()
+          .operations()
+          .flatMap((op) => [...op.events()]);
+        break;
+      }
+      default:
+        break;
+    }
+
+    for (const event of events) {
+      const parsed = parseEvent(event);
+      if (parsed !== null) {
+        results.push(parsed);
+      }
+    }
+    return results;
+  } catch {
+    // Best effort: corrupt or unexpected meta must not fail mapping.
+    return [];
+  }
+}
+
+/**
+ * Parses a SAC `transfer` contract event credited to `accountAddress`.
+ *
+ * Expects topics `["transfer", from, to, token]` (4 topics). Resolves `token`
+ * (`"native"` or classic `"CODE:ISSUER"`) to a CAIP-19 / slip44 id. SEP-41
+ * wasm tokens emit 3-topic events and are skipped.
+ *
+ * Suitable as a {@link ContractEventParser} via
+ * `(event) => parseTransferContractEventSafe(event, accountAddress, scope)`.
+ *
+ * @param event - Contract event from transaction meta.
+ * @param accountAddress - Expected recipient address.
+ * @param scope - CAIP-2 chain used to encode the asset id.
+ * @returns Parsed transfer, or `null` when topics/data do not match or the
+ * token topic is not native/classic.
+ */
+export function parseTransferContractEventSafe(
+  event: xdr.ContractEvent,
+  accountAddress: string,
+  scope: KnownCaip2ChainId,
+): ParsedContractReceiveTransfer | null {
+  try {
+    const body = event.body();
+    if (body.switch() !== 0) {
+      return null;
+    }
+
+    const v0 = body.v0();
+    const topics = v0.topics().map((topic) => scValToNative(topic));
+    if (topics.length !== 4) {
+      return null;
+    }
+
+    const [eventName, fromAddress, toAddress, token] = topics;
+    if (
+      eventName !== 'transfer' ||
+      typeof fromAddress !== 'string' ||
+      typeof toAddress !== 'string' ||
+      typeof token !== 'string' ||
+      toAddress !== accountAddress
+    ) {
+      return null;
+    }
+
+    // We only support transfers from and to Stellar addresses or contract addresses
+    // Muxed is blocked for now
+    if (
+      !StellarAddressOrContractStruct.is(fromAddress) ||
+      !StellarAddressOrContractStruct.is(toAddress)
+    ) {
+      return null;
+    }
+
+    const transferAmount = scValToNative(v0.data());
+    if (
+      typeof transferAmount !== 'bigint' &&
+      typeof transferAmount !== 'number' &&
+      typeof transferAmount !== 'string'
+    ) {
+      return null;
+    }
+
+    const assetId = parseOperationAssetReferenceSafe(scope, token);
+    if (!assetId) {
+      return null;
+    }
+
+    return {
+      fromAddress,
+      toAddress,
+      assetId,
+      amount: parseScValToNative(transferAmount),
+    };
+  } catch {
+    return null;
   }
 }
 

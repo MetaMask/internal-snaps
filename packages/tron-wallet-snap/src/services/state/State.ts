@@ -10,7 +10,6 @@ import type { MutexInterface } from 'async-mutex';
 import { Mutex } from 'async-mutex';
 import { unset } from 'lodash';
 
-import type { SpotPrices } from '../../clients/price-api/types';
 import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { IStateManager } from './IStateManager';
@@ -20,7 +19,6 @@ export type AccountId = string;
 export type UnencryptedStateValue = {
   keyringAccounts: Record<string, TronKeyringAccount>;
   assets: Record<AccountId, AssetEntity[]>;
-  tokenPrices: SpotPrices;
   transactions: Record<AccountId, Transaction[]>;
   mapInterfaceNameToId: Record<string, string>;
 };
@@ -28,7 +26,6 @@ export type UnencryptedStateValue = {
 export const DEFAULT_UNENCRYPTED_STATE: UnencryptedStateValue = {
   keyringAccounts: {},
   assets: {},
-  tokenPrices: {},
   transactions: {},
   mapInterfaceNameToId: {},
 };

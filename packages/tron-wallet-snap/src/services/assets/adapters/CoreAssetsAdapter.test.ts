@@ -11,7 +11,6 @@ import {
 } from '../../../clients/trongrid/errors';
 import { KnownCaip19Id, Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
-import { getSnapOwnedAssetIdsForScope } from '../utils/isSnapOwnedAsset';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
@@ -356,9 +355,20 @@ describe('CoreAssetsAdapter', () => {
         );
 
         const assetTypes = assets.map((asset) => asset.assetType);
+        const expectedAssetTypes = [
+          KnownCaip19Id.TrxStakedForBandwidthMainnet,
+          KnownCaip19Id.TrxStakedForEnergyMainnet,
+          KnownCaip19Id.TrxReadyForWithdrawalMainnet,
+          KnownCaip19Id.TrxStakingRewardsMainnet,
+          KnownCaip19Id.TrxInLockPeriodMainnet,
+          KnownCaip19Id.BandwidthMainnet,
+          KnownCaip19Id.MaximumBandwidthMainnet,
+          KnownCaip19Id.EnergyMainnet,
+          KnownCaip19Id.MaximumEnergyMainnet,
+        ];
         expect(assetTypes).toHaveLength(9);
         expect([...assetTypes].sort()).toStrictEqual(
-          [...getSnapOwnedAssetIdsForScope(Network.Mainnet)].sort(),
+          [...expectedAssetTypes].sort(),
         );
         expect(assetTypes).not.toContain(KnownCaip19Id.TrxMainnet);
         expect(assets.every((asset) => asset.rawAmount === '0')).toBe(true);

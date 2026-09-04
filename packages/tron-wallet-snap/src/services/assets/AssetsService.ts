@@ -6,13 +6,6 @@ import {
 } from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
-import type {
-  AssetConversion,
-  AssetMetadata,
-  FungibleAssetMarketData,
-  HistoricalPriceIntervals,
-} from '@metamask/snaps-sdk';
-import type { CaipAssetType } from '@metamask/utils';
 
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
@@ -32,8 +25,6 @@ export class AssetsService {
 
   readonly #remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
 
-  readonly cacheTtlsMilliseconds: SnapAssetsAdapter['cacheTtlsMilliseconds'];
-
   constructor({
     snapAdapter,
     coreAdapter,
@@ -46,7 +37,6 @@ export class AssetsService {
     this.#snapAdapter = snapAdapter;
     this.#coreAdapter = coreAdapter;
     this.#remoteFeatureFlagsProvider = remoteFeatureFlagsProvider;
-    this.cacheTtlsMilliseconds = this.#snapAdapter.cacheTtlsMilliseconds;
   }
 
   async #shouldReturnAssetsFromCore(): Promise<boolean> {
@@ -57,14 +47,6 @@ export class AssetsService {
       parseSnapsAssetsMigrationStage(flagValue) !==
       SnapsAssetsMigrationStage.Off;
     return result;
-  }
-
-  static isFiat(caipAssetId: CaipAssetType): boolean {
-    return SnapAssetsAdapter.isFiat(caipAssetId);
-  }
-
-  static hasChanged(asset: AssetEntity, assetsLookup: AssetEntity[]): boolean {
-    return SnapAssetsAdapter.hasChanged(asset, assetsLookup);
   }
 
   async getAccountAssetsByIDs(
@@ -117,12 +99,6 @@ export class AssetsService {
     return this.#snapAdapter.fetchAssetsAndBalancesForAccount(scope, account);
   }
 
-  async getAssetsMetadata(
-    assetTypes: CaipAssetType[],
-  ): Promise<Record<CaipAssetType, AssetMetadata | null>> {
-    return this.#snapAdapter.getAssetsMetadata(assetTypes);
-  }
-
   async saveMany(assets: AssetEntity[]): Promise<void> {
     if (await this.#shouldReturnAssetsFromCore()) {
       return this.#coreAdapter.saveMany(assets);
@@ -131,45 +107,11 @@ export class AssetsService {
     return this.#snapAdapter.saveMany(assets);
   }
 
-  async getAll(): Promise<AssetEntity[]> {
-    return this.#snapAdapter.getAll();
-  }
-
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
     if (await this.#shouldReturnAssetsFromCore()) {
       return this.#coreAdapter.getAccountAssets(accountId);
     }
 
     return this.#snapAdapter.getAccountAssets(accountId);
-  }
-
-  async getMultipleTokenConversions(
-    conversions: { from: CaipAssetType; to: CaipAssetType }[],
-  ): Promise<
-    Record<CaipAssetType, Record<CaipAssetType, AssetConversion | null>>
-  > {
-    return this.#snapAdapter.getMultipleTokenConversions(conversions);
-  }
-
-  async getMultipleTokensMarketData(
-    assets: {
-      asset: CaipAssetType;
-      unit: CaipAssetType;
-    }[],
-  ): Promise<
-    Record<CaipAssetType, Record<CaipAssetType, FungibleAssetMarketData>>
-  > {
-    return this.#snapAdapter.getMultipleTokensMarketData(assets);
-  }
-
-  async getHistoricalPrice(
-    from: CaipAssetType,
-    to: CaipAssetType,
-  ): Promise<{
-    intervals: HistoricalPriceIntervals;
-    updateTime: number;
-    expirationTime?: number;
-  }> {
-    return this.#snapAdapter.getHistoricalPrice(from, to);
   }
 }

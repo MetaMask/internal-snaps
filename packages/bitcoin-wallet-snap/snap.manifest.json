@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "N40X9yuzuO3nWtRwrVRhAMQC1+XOcB3Ay3sxYrg2YFA=",
+    "shasum": "OTDuRBGySZDr4ORVHDw93PFlyEWUOUA9wtUXm4HgHiY=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -15,19 +15,7 @@
         "packageName": "@metamask/bitcoin-wallet-snap",
         "registry": "https://registry.npmjs.org/"
       }
-    },
-    "locales": [
-      "locales/de.json",
-      "locales/en.json",
-      "locales/es.json",
-      "locales/fr.json",
-      "locales/ja.json",
-      "locales/ru.json",
-      "locales/tl.json",
-      "locales/tr.json",
-      "locales/vi.json",
-      "locales/zh_CN.json"
-    ]
+    }
   },
   "initialPermissions": {
     "endowment:webassembly": {},
