@@ -9,7 +9,6 @@ export type SnapConfig = {
   fallbackFeeRate: number;
   ratesRefreshInterval: string;
   priceApi: PriceApiConfig;
-  conversionsExpirationInterval: number;
   defaultAddressType: AddressType;
 };
 

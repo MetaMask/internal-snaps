@@ -60,6 +60,5 @@ export const Config: SnapConfig = {
   priceApi: {
     url: fromEnv('PRICE_API_URL', 'https://price.api.cx.metamask.io'),
   },
-  conversionsExpirationInterval: 60,
   defaultAddressType: fromEnv('DEFAULT_ADDRESS_TYPE', 'p2wpkh') as AddressType,
 };
