@@ -11,7 +11,10 @@ import {
 } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
-import { InFlightCoalescer } from '@metamask/snap-networks-utils';
+import {
+  InFlightCoalescer,
+  normalizeError,
+} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
@@ -90,16 +93,6 @@ export type DerivedTronKeypairBatchResult =
   | { error: string };
 
 const DEFAULT_TRON_DERIVATION_PATH_REGEX = /^m\/44'\/195'\/0'\/0\/([0-9]+)$/u;
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Extracts the address index from the default TRON BIP-44 derivation path.
@@ -296,12 +289,12 @@ export class AccountsService {
                 const addressIndex = getDefaultTronAddressIndex(account);
                 results[index] = await keypairDeriver(addressIndex);
               } catch (error) {
-                results[index] = { error: getErrorMessage(error) };
+                results[index] = { error: normalizeError(error).message };
               }
             }
           } catch (error) {
             for (const { index } of sourceAccounts) {
-              results[index] = { error: getErrorMessage(error) };
+              results[index] = { error: normalizeError(error).message };
             }
           }
         },

@@ -1,4 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
@@ -74,16 +75,6 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   fee_limit?: number;
 };
-
-/**
- * Converts an unknown thrown value into a JSON-serializable error message.
- *
- * @param error - The thrown value.
- * @returns A string error message.
- */
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export class ClientRequestHandler {
   readonly #logger: Logger;
@@ -1260,7 +1251,7 @@ export class ClientRequestHandler {
       } catch (parseError) {
         results[index] = {
           accountId,
-          error: getErrorMessage(parseError),
+          error: normalizeError(parseError).message,
         };
       }
     });
@@ -1304,7 +1295,7 @@ export class ClientRequestHandler {
       } catch (signError) {
         results[index] = {
           accountId,
-          error: getErrorMessage(signError),
+          error: normalizeError(signError).message,
         };
       }
     });
