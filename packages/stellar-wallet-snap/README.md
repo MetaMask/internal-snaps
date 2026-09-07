@@ -29,7 +29,6 @@ High-level layout of `packages/snap` (nested implementation folders like `servic
 | `docs/misc/synchronization/`     | Background sync flow and component details                                     |
 | `src/api/`                       | Shared types and Superstruct validators (CAIP, XDR, amounts, …)                |
 | `src/handlers/`                  | Snap RPC / lifecycle entry handlers; orchestrates use cases                    |
-| `src/handlers/asset/`            | `onAssets*` lookups, conversion, market data, historical price                 |
 | `src/handlers/clientRequest/`    | SIP-31 client methods (send, trustline, fees, …)                               |
 | `src/handlers/cronjob/`          | Background sync, transaction tracking, confirmation refresh                    |
 | `src/handlers/keyring/`          | Keyring API (accounts, sign tx / message / auth entry)                         |
