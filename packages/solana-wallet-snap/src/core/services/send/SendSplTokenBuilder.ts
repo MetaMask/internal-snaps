@@ -24,11 +24,11 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 import type {
+  Address,
   Instruction,
   TransactionMessage,
   TransactionMessageWithFeePayer,
 } from '@solana/kit';
-import type { Address } from '@solana/kit';
 
 import type { TokenHelper } from '..';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
