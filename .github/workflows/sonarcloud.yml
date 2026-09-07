@@ -23,29 +23,33 @@ jobs:
           is-high-risk-environment: false
           # SonarCloud needs the full history for new-code and blame data
           fetch-depth: 0
+          node-version: 24.x
 
-      - name: Download coverage artifacts
-        # This is actions/download-artifact@v7
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          pattern: coverage-*
-          path: .coverage-artifacts
+      # This workflow runs in parallel with (not after) the test matrix, so it
+      # generates its own coverage instead of consuming coverage artifacts.
+      - name: Build packages
+        run: yarn build
 
-      - name: Arrange coverage for SonarCloud
-        # Single-file artifact uploads do not preserve the source directory,
-        # and each artifact downloads into .coverage-artifacts/coverage-<dir>/.
-        # Move each lcov back to packages/<dir>/coverage/lcov.info to match
-        # sonar.javascript.lcov.reportPaths.
+      - name: Run tests with coverage
+        # Jest is configured with `collectCoverage: true` and an lcov reporter,
+        # so this writes packages/<package>/coverage/lcov.info for every
+        # workspace package.
+        run: yarn workspaces foreach --all --no-private --parallel --interlaced run test
+
+      - name: Rewrite coverage paths for SonarCloud
+        # Jest writes "SF:" paths relative to the package, but SonarCloud
+        # resolves them against the repo root, so prefix them with the
+        # package directory.
         run: |
-          for dir in .coverage-artifacts/coverage-*/; do
-            pkg="${dir##*/coverage-}"
-            pkg="${pkg%/}"
-            if [ -f "${dir}lcov.info" ]; then
-              mkdir -p "packages/${pkg}/coverage"
-              mv "${dir}lcov.info" "packages/${pkg}/coverage/lcov.info"
+          for lcov_file in packages/*/coverage/lcov.info; do
+            if [ -f "$lcov_file" ]; then
+              package_directory="$(basename "$(dirname "$(dirname "$lcov_file")")")"
+              sed -i.bak "s|^SF:|SF:packages/${package_directory}/|" "$lcov_file"
+              rm "${lcov_file}.bak"
+            else
+              echo "No coverage report found at $lcov_file"
             fi
           done
-          ls packages/*/coverage/lcov.info
         shell: bash
 
       - name: SonarCloud scan

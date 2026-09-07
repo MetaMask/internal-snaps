@@ -99,14 +99,14 @@ jobs:
 
   sonarcloud:
     name: SonarCloud
-    needs: lint-build-test
-    # Run on same-repo PRs and pushes to main. Skip merge queue commits (the PR
-    # was already scanned) and forks (no SONAR_TOKEN available). Not part of
-    # all-jobs-complete yet so a SonarCloud outage cannot block merges.
+    needs: check-workflows
+    # Runs in parallel with lint-build-test (it generates its own coverage
+    # rather than consuming the test jobs' artifacts). Skip merge queue commits
+    # (the PR was already scanned) and forks (no SONAR_TOKEN available). Not
+    # part of all-jobs-complete yet so a SonarCloud outage cannot block merges.
     if: >-
       ${{
         !cancelled() &&
-        needs.lint-build-test.result == 'success' &&
         !github.event.repository.fork &&
         (
           (github.event_name == 'push' && github.ref_name == 'main') ||

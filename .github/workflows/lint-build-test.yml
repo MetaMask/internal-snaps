@@ -89,24 +89,21 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        node-version: [24.x]
     outputs:
       child-workspace-package-names: ${{ steps.workspace-package-names.outputs.child-workspace-package-names }}
-      child-workspace-package-directories: ${{ steps.workspace-package-names.outputs.child-workspace-package-directories }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
         with:
           is-high-risk-environment: false
           cache-node-modules: true
-          force-setup: true
           node-version: ${{ matrix.node-version }}
       - name: Fetch workspace package names
         id: workspace-package-names
         run: |
           workspaces="$(yarn workspaces list --no-private --json)"
           echo "child-workspace-package-names=$(echo "$workspaces" | jq --slurp --raw-output 'map(.name) | @json')" >> "$GITHUB_OUTPUT"
-          echo "child-workspace-package-directories=$(echo "$workspaces" | jq --slurp --raw-output 'map(.location | sub("^packages/"; "")) | @json')" >> "$GITHUB_OUTPUT"
         shell: bash
 
   lint:
@@ -119,10 +116,6 @@ jobs:
         script:
           - lint:tsc
           - lint:eslint
-          - lint:misc:check
-          - constraints
-          - lint:dependencies
-          - readme-content:check
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
@@ -136,21 +129,40 @@ jobs:
       - name: Require clean working directory
         uses: ./.github/actions/require-clean-working-directory
 
-  validate-changelog:
-    name: Validate changelog
+  lint-misc:
+    name: Lint (misc)
     runs-on: ubuntu-latest
     needs: prepare
-    strategy:
-      matrix:
-        node-version: [24.x]
-        package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
         with:
           is-high-risk-environment: false
-          node-version: ${{ matrix.node-version }}
-      - run: yarn workspace ${{ matrix.package-name }} changelog:validate
+          node-version: 24.x
+      # These checks are cheap individually but expensive when each pays for
+      # its own checkout and install, so they share a job.
+      - name: Run miscellaneous checks
+        run: |
+          yarn lint:misc:check
+          yarn constraints
+          yarn lint:dependencies
+          yarn readme-content:check
+      - name: Require clean working directory
+        uses: ./.github/actions/require-clean-working-directory
+
+  validate-changelog:
+    name: Validate changelog
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Checkout and setup environment
+        uses: MetaMask/action-checkout-and-setup@v3
+        with:
+          is-high-risk-environment: false
+          node-version: 24.x
+      # The root script validates every workspace package in one go, which is
+      # cheaper than one job (and one checkout) per package.
+      - run: yarn changelog:validate
       - name: Require clean working directory
         uses: ./.github/actions/require-clean-working-directory
 
@@ -211,14 +223,13 @@ jobs:
         uses: ./.github/actions/require-clean-working-directory
 
   test:
-    name: Test
+    name: Test (${{ matrix.node-version }}, ${{ matrix.package-name }})
     runs-on: ubuntu-latest
     needs: [prepare, build]
     strategy:
       matrix:
         node-version: [22.x, 24.x]
         package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
-        package-directory: ${{ fromJson(needs.prepare.outputs.child-workspace-package-directories) }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
@@ -231,31 +242,5 @@ jobs:
           name: package-dist-${{ github.sha }}
           path: packages
       - run: yarn workspace ${{ matrix.package-name }} run test
-      - name: Prepare coverage for SonarCloud
-        # Only one Node version uploads coverage so lcov files are not merged
-        # across runs. Jest writes "SF:" paths relative to the package, but
-        # SonarCloud resolves them against the repo root, so prefix them with
-        # the package directory.
-        if: matrix.node-version == '22.x'
-        env:
-          PACKAGE_DIRECTORY: ${{ matrix.package-directory }}
-        run: |
-          lcov_file="packages/${PACKAGE_DIRECTORY}/coverage/lcov.info"
-          if [ -f "$lcov_file" ]; then
-            sed -i.bak "s|^SF:|SF:packages/${PACKAGE_DIRECTORY}/|" "$lcov_file"
-            rm "$lcov_file.bak"
-          else
-            echo "No coverage report found at $lcov_file"
-          fi
-        shell: bash
-      - name: Upload coverage artifact
-        if: matrix.node-version == '22.x'
-        # This is actions/upload-artifact@v7
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: coverage-${{ matrix.package-directory }}
-          path: packages/${{ matrix.package-directory }}/coverage/lcov.info
-          if-no-files-found: ignore
-          retention-days: 1
       - name: Require clean working directory
         uses: ./.github/actions/require-clean-working-directory
