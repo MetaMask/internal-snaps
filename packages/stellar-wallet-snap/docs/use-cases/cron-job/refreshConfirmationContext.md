@@ -36,16 +36,14 @@ Fetches / updates token spot prices shown on the confirmation (fee asset, send a
 
 ### Security scan
 
-Runs (or refreshes) the remote security scan on the current transaction envelope in context. Uses the **latest** envelope when the transaction refresher has already patched it this cycle.
+Runs (or refreshes) the remote security scan on `securityScanRequest` in context. Uses the **rebuilt** envelope when the transaction refresher already patched it this cycle. Skips when `securityScanRequest` is missing or `null` (`shouldFetch` is `!securityScanRequest`) — including after a failed transaction re-validation.
 
 ### Transaction rebuild
 
-Runs **first** when enabled:
+Runs **first** when enabled. Rebuilds from the original request against a live on-chain account (fresh fee, sequence, time bounds, destination activation). Confirm-time send / change-trust rebuilds again before signing; this cycle does not patch the stored confirmation `transaction` XDR.
 
-1. Resolve live on-chain account.
-2. Rebuild the pending send / change-trust envelope (fresh fee, sequence, time bounds).
-3. Re-validate locally; update fee / validation status in context.
-4. Write the rebuilt XDR into the security-scan request so the scan refresher does not scan a stale snapshot.
+- **Success** — write the rebuilt XDR into `securityScanRequest` so scan does not use a stale snapshot.
+- **Failure** — set `transactionsFetchStatus` to error, set mapped `errorMessage` for the confirmation banner, and set `securityScanRequest` to `null` so scan is skipped.
 
 ## Step-by-step (one cycle)
 
@@ -72,7 +70,7 @@ sequenceDiagram
   else still open
     opt Transaction in refresherKeys
       Cron->>TxR: rebuild + validate (live)
-      TxR-->>Cron: patch (xdr, fee, status)
+      TxR-->>Cron: patch (scan xdr, or error banner + null scan request)
     end
     par
       Cron->>Price: refresh spot prices
