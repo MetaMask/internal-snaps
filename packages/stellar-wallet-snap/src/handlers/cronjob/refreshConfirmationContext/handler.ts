@@ -182,20 +182,16 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
    * sequence, fresh time bound) and always writes the rebuilt envelope into the
    * security-scan request. Its patch is merged into the context the remaining
    * refreshers see, so the scan refresher scans the renewed envelope rather than
-   * a stale snapshot. Remaining refreshers then run in parallel.
+   * a stale snapshot. The remaining refreshers then run in parallel.
    *
-   * If the transaction refresher returns `halt`, the scan refresher is omitted
-   * from that remaining run (prices and other remaining refreshers still run).
-   * `activeRefreshers` itself is left unchanged so context-shape validation
-   * still covers every requested key. After re-render, the handler does not
-   * reschedule.
+   * If the transaction refresher returns `halt`, the scan refresher will be omitted.
    *
    * Each refresher is isolated so one rejection does not prevent the others from
    * completing.
    *
    * @param ctx - Confirmation interface context passed to each refresher.
    * @param activeRefreshers - Refreshers selected by `refresherKeys`.
-   * @returns One result per refresher that ran; rejected refreshers become `null`.
+   * @returns One result per active refresher; rejected refreshers become `null`.
    */
   async #runRefreshers(
     ctx: ConfirmationDataContext,
