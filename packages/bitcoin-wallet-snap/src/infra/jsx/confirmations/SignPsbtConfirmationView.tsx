@@ -18,6 +18,7 @@ import {
   displayCaip10,
   displayExchangeAmount,
   displayNetwork,
+  displayOrigin,
   translate,
 } from '../format';
 
@@ -144,7 +145,7 @@ export const SignPsbtConfirmationView: SnapComponent<
             <SnapText fontWeight="medium" color="alternative">
               {t('confirmation.requestOrigin')}
             </SnapText>
-            <SnapText>{origin ?? 'MetaMask'}</SnapText>
+            <SnapText>{displayOrigin(origin ?? 'metamask')}</SnapText>
           </Box>
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
