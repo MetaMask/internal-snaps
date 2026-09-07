@@ -62,6 +62,11 @@ export {
 } from './utils/originPermissions/createOriginPermissions';
 export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions';
 export { validateOrigin } from './utils/originPermissions/validateOrigin';
+export { resolveOrigin } from './utils/origin/resolveOrigin';
+export type {
+  ResolvedOrigin,
+  SelfReportedOriginMetadata,
+} from './utils/origin/resolveOrigin';
 export {
   createSnapErrorHandling,
   createTrackError,

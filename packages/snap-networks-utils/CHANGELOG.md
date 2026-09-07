@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `resolveOrigin`, which resolves a request origin (plus the `originMetadata` that rides along requests relayed over WalletConnect or the SDK) into what a snap may display and what may feed security logic
+  - Returns `displayOrigin` (hostname, `MetaMask`, or `null` when there is nothing meaningful to show, e.g. a WalletConnect channel id), `isSelfReported` (the hostname came from the requester and cannot be verified, so it must be framed as unverified), and `verifiedOrigin` (the only value allowed to reach transaction scans and SIWS-style domain checks)
+  - Exported alongside the `ResolvedOrigin` and `SelfReportedOriginMetadata` types
 - Add shared proof-of-ownership message parsing utilities, batch request/response structs, and batch request/response types. ([#268](https://github.com/MetaMask/internal-snaps/pull/268))
 - Add a `UuidStruct` Superstruct for validating UUID v4 strings. ([#243](https://github.com/MetaMask/internal-snaps/pull/243))
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
