@@ -28,7 +28,7 @@ export type ConfirmationContextRefreshResult = {
   /** Vote to schedule another refresh cycle. */
   reschedule: boolean;
   /**
-   * When true, the handler does not reschedule after this cycle. 
+   * When true, the handler does not reschedule after this cycle.
    * But other refreshers may still run (e.g. prices).
    */
   halt?: boolean;
