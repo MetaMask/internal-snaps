@@ -26,7 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Show the mapped transaction error banner when confirmation re-validation fails, and skip the security scan for that failed transaction ([#282](https://github.com/MetaMask/internal-snaps/pull/282))
+- Stop the confirmation refresh cron when transaction re-validation fails ([#282](https://github.com/MetaMask/internal-snaps/pull/282))
+  - Show the mapped transaction error banner
+  - Skip the security scan for the invalid transaction
+  - Do not reschedule further refresh cycles
 - Fill contract-based receive transactions in history instead of marking them as unknown ([#255](https://github.com/MetaMask/internal-snaps/pull/255))
 
 ## [0.1.0]
