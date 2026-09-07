@@ -1,7 +1,11 @@
 import type {
+  AddressInfo,
   ChangeSet,
   DescriptorPair,
+  KeychainKind,
   Network,
+  ScriptBuf,
+  SpkIndexed,
 } from '@metamask/bitcoindevkit';
 import { Wallet } from '@metamask/bitcoindevkit';
 import { mock } from 'jest-mock-extended';
@@ -185,6 +189,68 @@ describe('BdkAccountAdapter', () => {
 
         expect(result).toBeInstanceOf(BdkAccountAdapter);
       });
+    });
+  });
+
+  describe('revealToScript', () => {
+    const mockScript = mock<ScriptBuf>();
+
+    const indexed = (keychain: KeychainKind, index: number): SpkIndexed =>
+      mock<SpkIndexed>({ 0: keychain, 1: index });
+
+    const adapter = (): BdkAccountAdapter =>
+      BdkAccountAdapter.create(
+        mockId,
+        mockDerivationPath,
+        mockDescriptors,
+        mockNetwork,
+      );
+
+    it('returns false and reveals nothing when the script is not ours', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(undefined);
+
+      expect(adapter().revealToScript(mockScript)).toBe(false);
+      expect(mockWallet.reveal_addresses_to).not.toHaveBeenCalled();
+    });
+
+    it('returns false and reveals nothing when the index is already revealed', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(indexed('internal', 4));
+      mockWallet.derivation_index.mockReturnValue(4);
+
+      expect(adapter().revealToScript(mockScript)).toBe(false);
+      expect(mockWallet.reveal_addresses_to).not.toHaveBeenCalled();
+    });
+
+    it('reveals up to the index when the script lies beyond the revealed set', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(indexed('internal', 7));
+      mockWallet.derivation_index.mockReturnValue(4);
+      mockWallet.reveal_addresses_to.mockReturnValue([mock<AddressInfo>()]);
+
+      expect(adapter().revealToScript(mockScript)).toBe(true);
+      expect(mockWallet.reveal_addresses_to).toHaveBeenCalledWith(
+        'internal',
+        7,
+      );
+    });
+
+    it('reveals when the keychain has no revealed index yet', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(indexed('external', 0));
+      mockWallet.derivation_index.mockReturnValue(undefined);
+      mockWallet.reveal_addresses_to.mockReturnValue([mock<AddressInfo>()]);
+
+      expect(adapter().revealToScript(mockScript)).toBe(true);
+      expect(mockWallet.reveal_addresses_to).toHaveBeenCalledWith(
+        'external',
+        0,
+      );
+    });
+
+    it('returns false when the reveal produces no new addresses', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(indexed('external', 7));
+      mockWallet.derivation_index.mockReturnValue(4);
+      mockWallet.reveal_addresses_to.mockReturnValue([]);
+
+      expect(adapter().revealToScript(mockScript)).toBe(false);
     });
   });
 });
