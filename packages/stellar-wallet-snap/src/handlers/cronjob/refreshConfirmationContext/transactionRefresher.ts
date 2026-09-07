@@ -173,7 +173,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
             transaction: rebuiltTransactionXdr,
           },
         },
-        reschedule: false,
+        reschedule: true,
       };
     } catch (error: unknown) {
       this.#logger.error(
@@ -184,10 +184,11 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
         result: {
           transactionsFetchStatus: FetchStatus.Error,
           errorMessage: getTxnErrorMessageKey(error, accountAddress),
-          // Skip the security scan request to avoid wasting time on a failed transaction.
-          securityScanRequest: null,
+          // Clear the scan loading state in the confirmation UI + skip the security scan request.
+          scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
+        halt: true,
       };
     }
   }

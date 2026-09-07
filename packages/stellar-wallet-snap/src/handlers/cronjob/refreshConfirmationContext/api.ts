@@ -25,7 +25,13 @@ export type ConfirmationDataContext = Record<string, Json> & ContextWithPrices;
 /** Outcome of one refresher cycle. `null` means no work was needed. */
 export type ConfirmationContextRefreshResult = {
   result: Record<string, Json>;
+  /** Vote to schedule another refresh cycle. */
   reschedule: boolean;
+  /**
+   * When true, the handler does not reschedule after this cycle. 
+   * But other refreshers may still run (e.g. prices).
+   */
+  halt?: boolean;
 } | null;
 
 /**

@@ -175,7 +175,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -255,9 +255,10 @@ describe('ConfirmationTransactionRefresher', () => {
         result: {
           transactionsFetchStatus: FetchStatus.Error,
           errorMessage,
-          securityScanRequest: null,
+          scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
+        halt: true,
       });
     },
   );
@@ -289,7 +290,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -330,7 +331,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -357,7 +358,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -397,7 +398,7 @@ describe('ConfirmationTransactionRefresher', () => {
             transaction: transactionXdr,
           },
         },
-        reschedule: false,
+        reschedule: true,
       });
     } finally {
       jest.useRealTimers();
