@@ -6,7 +6,6 @@ import {
 } from '@metamask/snap-networks-utils';
 
 import { METAMASK_ORIGIN } from './constants';
-import { ClientRequestMethod } from './handlers/clientRequest/api';
 
 const metamaskMethods = [
   KeyringSnapRpcMethod.GetAccounts,
@@ -28,7 +27,6 @@ const metamaskMethods = [
    */
   KeyringRpcMethod.ListAccountAssets,
   KeyringRpcMethod.ListAccountTransactions,
-  ClientRequestMethod.SignProofOfOwnershipBatch,
 ];
 
 /**
