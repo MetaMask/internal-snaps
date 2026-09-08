@@ -2,7 +2,6 @@ import { buildUrl } from '@metamask/snap-networks-utils';
 
 import { AssetType, KnownCaip2ChainId } from '../../api';
 import type { KnownCaip19AssetId } from '../../api';
-import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../constants';
 import { getSlip44AssetId, logger } from '../../utils';
 import type { NetworkService } from '../network';
 import type { StellarAssetMetadata } from './api';
@@ -165,85 +164,6 @@ describe('AssetMetadataService', () => {
     expect(getByAssetIds).toHaveBeenCalledWith([classicId]);
     expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
     expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('fills keyring metadata map from snap state only (read-only)', async () => {
-    const classicId = MAINNET_CLASSIC_USDC;
-    const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-    const cached = createCachedRow(classicId, KnownCaip2ChainId.Mainnet);
-    const { service, saveMany, getClassicAssetData } = createService({
-      repo: {
-        getByAssetIds: jest.fn().mockResolvedValue([cached]),
-      },
-    });
-
-    const map = await service.getAssetsMetadataByAssetIds([classicId, slipId]);
-
-    expect(map[classicId]).toMatchObject({
-      fungible: true,
-      symbol: cached.symbol,
-      name: cached.name,
-      iconUrl: expect.any(String),
-      units: expect.any(Array),
-    });
-    expect(map[slipId]).toMatchObject({
-      fungible: true,
-      iconUrl: expect.any(String),
-      units: expect.any(Array),
-      symbol: expect.any(String),
-      name: expect.any(String),
-    });
-    expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
-    expect(getClassicAssetData).not.toHaveBeenCalled();
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('returns null for missing assets without fetching or persisting', async () => {
-    const classicId = MAINNET_CLASSIC_USDC;
-    const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-    const { service, saveMany, getByAssetIds, getClassicAssetData } =
-      createService({});
-
-    const map = await service.getAssetsMetadataByAssetIds([classicId, slipId]);
-
-    expect(map[classicId]).toBeNull();
-    expect(map[slipId]).toMatchObject({
-      symbol: NATIVE_ASSET_SYMBOL,
-      name: NATIVE_ASSET_NAME,
-    });
-    expect(getByAssetIds).toHaveBeenCalledWith([classicId]);
-    expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
-    expect(getClassicAssetData).not.toHaveBeenCalled();
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('deduplicates duplicate asset ids when reading from state', async () => {
-    const classicId = MAINNET_CLASSIC_USDC;
-    const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-    const cached = createCachedRow(classicId, KnownCaip2ChainId.Mainnet);
-    const { service, getByAssetIds } = createService({
-      repo: {
-        getByAssetIds: jest.fn().mockResolvedValue([cached]),
-      },
-    });
-
-    const result = await service.getAssetsMetadataByAssetIds([
-      classicId,
-      classicId,
-      slipId,
-      slipId,
-    ]);
-
-    expect(getByAssetIds).toHaveBeenCalledWith([classicId]);
-    expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
-    expect(result[classicId]).toMatchObject({
-      symbol: cached.symbol,
-      name: cached.name,
-    });
-    expect(result[slipId]).toMatchObject({
-      symbol: NATIVE_ASSET_SYMBOL,
-      name: NATIVE_ASSET_NAME,
-    });
   });
 
   it('delegates getPersistedSep41AssetsMetadata to repository', async () => {

@@ -3,8 +3,6 @@ import { BigNumber } from 'bignumber.js';
 import {
   toDisplayBalance,
   formatFiat,
-  getFiatTicker,
-  isFiat,
   normalizeAmount,
   tokenToFiat,
   toSmallestUnit,
@@ -109,40 +107,5 @@ describe('tokenToFiat', () => {
 
   it('handles fractional token amounts', () => {
     expect(tokenToFiat('0.5', '4')).toBe('2');
-  });
-});
-
-describe('isFiat', () => {
-  it('returns true for swift ISO4217 ids', () => {
-    expect(isFiat('swift:0/iso4217:USD')).toBe(true);
-  });
-
-  it('returns false for chain-prefixed fiat ids', () => {
-    expect(isFiat('eip155:1/swift:0/iso4217:USD')).toBe(false);
-  });
-
-  it('returns false for stellar asset ids', () => {
-    expect(
-      isFiat(
-        'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
-      ),
-    ).toBe(false);
-  });
-
-  it('returns false when ISO4217 segment is not exactly three letters', () => {
-    expect(isFiat('swift:0/iso4217:US')).toBe(false);
-    expect(isFiat('swift:0/iso4217:USDC')).toBe(false);
-  });
-});
-
-describe('getFiatTicker', () => {
-  it('throws when asset id is not fiat', () => {
-    expect(() => getFiatTicker('stellar:pubnet/slip44:148')).toThrow(
-      'Passed assetId is not a fiat asset',
-    );
-  });
-
-  it('returns lowercase asset reference from parser', () => {
-    expect(getFiatTicker('swift:0/iso4217:EUR')).toBe('eur');
   });
 });

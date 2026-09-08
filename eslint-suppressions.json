@@ -1222,15 +1222,10 @@
       "count": 1
     },
     "no-restricted-globals": {
-      "count": 27
+      "count": 25
     }
   },
   "packages/stellar-wallet-snap/src/handlers/accountResolver.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    }
-  },
-  "packages/stellar-wallet-snap/src/handlers/asset/assets.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
     }
@@ -1428,12 +1423,7 @@
   },
   "packages/stellar-wallet-snap/src/services/price/PriceService.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 4
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/price/__mocks__/price.fixtures.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
+      "count": 2
     }
   },
   "packages/stellar-wallet-snap/src/services/price/price-api/PriceApiClient.test.ts": {

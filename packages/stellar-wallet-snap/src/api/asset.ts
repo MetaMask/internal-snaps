@@ -1,6 +1,5 @@
 import type { Infer } from '@metamask/superstruct';
 import { union } from '@metamask/superstruct';
-import type { CaipAssetType } from '@metamask/utils';
 import { definePattern } from '@metamask/utils';
 
 import { STELLAR_COIN_TYPE } from '../constants';
@@ -48,25 +47,12 @@ export const KnownCaip19Sep41AssetStruct =
     /^stellar:(?:pubnet|testnet)\/sep41:C[A-Z2-7]{55}$/u,
   );
 
-/**
- * Fiat asset id in SWIFT / ISO 4217 form only: `swift:0/iso4217:{code}` (3-letter code).
- *
- * @see https://github.com/MetaMask/core/blob/main/packages/assets-controllers/src/MultichainAssetsRatesController/constant.ts#L44
- */
-export const FiatCaipAssetStruct = definePattern<CaipAssetType>(
-  'FiatCaipAsset',
-  /^swift:0\/iso4217:[A-Za-z]{3}$/u,
-);
-
 /** Validation struct for a known Stellar CAIP-19 asset id or slip44 id. */
 export const KnownCaip19AssetIdOrSlip44IdStruct = union([
   KnownCaip19Sep41AssetStruct,
   KnownCaip19ClassicAssetStruct,
   KnownCaip19Slip44IdStruct,
 ]);
-
-/** Fiat CAIP-19 asset id (SWIFT / ISO 4217). */
-export type FiatCaipAssetId = Infer<typeof FiatCaipAssetStruct>;
 
 /** CAIP-19 Sep41 asset ID */
 export type KnownCaip19Sep41AssetId = Infer<typeof KnownCaip19Sep41AssetStruct>;

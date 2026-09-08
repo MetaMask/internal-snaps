@@ -156,6 +156,20 @@ export class BdkAccountAdapter implements BitcoinAccount {
     return this.#wallet.reveal_next_address('external');
   }
 
+  revealToScript(script: ScriptBuf): boolean {
+    const indexed = this.#wallet.derivation_of_spk(script);
+    if (!indexed) {
+      return false;
+    }
+    const keychain = indexed[0];
+    const index = indexed[1];
+    const lastRevealed = this.#wallet.derivation_index(keychain);
+    if (lastRevealed !== undefined && lastRevealed >= index) {
+      return false;
+    }
+    return this.#wallet.reveal_addresses_to(keychain, index).length > 0;
+  }
+
   startFullScan(): FullScanRequest {
     return this.#wallet.start_full_scan();
   }
