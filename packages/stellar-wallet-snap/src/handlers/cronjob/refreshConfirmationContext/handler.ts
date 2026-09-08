@@ -147,6 +147,16 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       return;
     }
 
+    // Recoverable soft-fail (e.g. RequiresMemo): pause auto-cron this cycle so we
+    // do not hammer re-validation, but do not treat as halt — UI may call
+    // scheduleBackgroundEvent after the user fixes the issue (e.g. adds a memo).
+    if (results.some((result) => result?.recoverable)) {
+      this.logger.info(
+        'Confirmation refresh recoverable; cron paused until UI reschedules',
+      );
+      return;
+    }
+
     if (results.some((result) => result?.reschedule)) {
       await RefreshConfirmationContextHandler.scheduleBackgroundEvent({
         scope,
@@ -184,7 +194,8 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
    * refreshers see, so the scan refresher scans the renewed envelope rather than
    * a stale snapshot. The remaining refreshers then run in parallel.
    *
-   * If the transaction refresher returns `halt`, the scan refresher will be omitted.
+   * If the transaction refresher returns `halt` or `recoverable`, the scan
+   * refresher will be omitted.
    *
    * Each refresher is isolated so one rejection does not prevent the others from
    * completing.
@@ -222,8 +233,8 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
         workingContext = { ...workingContext, ...transactionResult.result };
       }
 
-      // `halt` omits the scan this cycle. Other remaining refreshers still run.
-      if (transactionResult?.halt) {
+      // `halt` / `recoverable` omit the scan this cycle. Other remaining refreshers still run.
+      if (transactionResult?.halt || transactionResult?.recoverable) {
         remainingRefreshers.delete(ConfirmationContextRefresherKey.Scan);
       }
     }

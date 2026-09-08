@@ -3,6 +3,7 @@ import type { Json } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { AssetMetadataService } from '../../../services/asset-metadata';
+import { RequiresMemoException } from '../../../services/transaction';
 import type {
   Transaction,
   TransactionService,
@@ -180,15 +181,17 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
         'Error re-validating confirmation transaction:',
         error,
       );
+      const recoverable = error instanceof RequiresMemoException;
       return {
         result: {
           transactionsFetchStatus: FetchStatus.Error,
           errorMessage: getTxnErrorMessageKey(error, accountAddress),
-          // Clear the scan loading state in the confirmation UI + skip the security scan request.
+          // Clear the scan loading state in the confirmation UI. Scan is omitted
+          // via `halt` / `recoverable` — do not null `securityScanRequest`.
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        halt: true,
+        ...(recoverable ? { recoverable: true } : { halt: true }),
       };
     }
   }
