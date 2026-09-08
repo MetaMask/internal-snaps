@@ -92,7 +92,7 @@ export type DerivedTronKeypairBatchResult =
   | DerivedTronKeypair
   | { error: string };
 
-const DEFAULT_TRON_DERIVATION_PATH_REGEX = /^m\/44'\/195'\/0'\/0\/([0-9]+)$/u;
+const DEFAULT_TRON_DERIVATION_PATH_REGEX = /^m\/44'\/195'\/0'\/0\/([\d]+)$/u;
 
 /**
  * Extracts the address index from the default TRON BIP-44 derivation path.
