@@ -1,4 +1,9 @@
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
+import { useCache } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
@@ -29,8 +34,6 @@ import {
   rethrowIfInstanceElseThrow,
   batchesAllSettled,
 } from '../../utils';
-import type { ICache } from '../cache';
-import { useCache } from '../cache';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
