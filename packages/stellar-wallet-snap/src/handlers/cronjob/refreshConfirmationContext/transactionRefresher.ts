@@ -22,6 +22,7 @@ import {
   ChangeTrustOptAction,
   ClientRequestMethod,
 } from '../../clientRequest/api';
+import { getTxnErrorMessageKey } from '../../clientRequest/utils';
 import { ConfirmationContextRefresherKey } from './api';
 import type {
   ConfirmationContextRefreshResult,
@@ -98,9 +99,12 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
     ctx: ConfirmationDataContext,
   ): Promise<ConfirmationContextRefreshResult> {
     const validationCtx = ctx as TransactionValidationContext;
-    try {
-      const { request, accountId, scope } = validationCtx;
+    const { request, accountId, scope, securityScanRequest, origin } =
+      validationCtx;
+    // Use the scan request address as Default if it is present.
+    let accountAddress = securityScanRequest?.accountAddress ?? '';
 
+    try {
       // Load the sender from the network so validation uses current sequence and balances.
       const { onChainAccount } = await this.#accountResolver.resolveAccount({
         accountId,
@@ -113,11 +117,9 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           wallet: false,
         },
       });
+      accountAddress = onChainAccount.accountId;
 
-      // TODO(follow-up): this validates a rebuilt draft as a proxy for the stored
-      // envelope. It can miss divergence (payment vs createAccount on a deactivated
-      // destination, stale Soroban footprint). Seq drift is covered by the submit-time
-      // txBadSeq retry. For full fidelity, validate the stored envelope itself.
+      // Always rebuild the transaction, to make sure the transaction is up to date with the latest account state.
       let rebuiltTransaction: Transaction;
       switch (request.method) {
         case ClientRequestMethod.ConfirmSend: {
@@ -159,32 +161,34 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           throw new Error('Unsupported request method for transaction refresh');
       }
 
-      const { securityScanRequest, origin } = validationCtx;
       const rebuiltTransactionXdr = rebuiltTransaction.getRaw().toXDR();
 
-      // Always feed the rebuilt envelope to the scan refresher. The user-facing
-      // `transaction` field is intentionally left untouched; the signable envelope
-      // is rebuilt again at confirm time.
       return {
         result: {
           securityScanRequest: {
             accountAddress:
-              securityScanRequest?.accountAddress ?? onChainAccount.accountId,
+              securityScanRequest?.accountAddress ?? accountAddress,
             origin: securityScanRequest?.origin ?? origin ?? '',
             scope,
             transaction: rebuiltTransactionXdr,
           },
         },
-        reschedule: false,
+        reschedule: true,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.#logger.error(
         'Error re-validating confirmation transaction:',
         error,
       );
       return {
-        result: { transactionsFetchStatus: FetchStatus.Error },
+        result: {
+          transactionsFetchStatus: FetchStatus.Error,
+          errorMessage: getTxnErrorMessageKey(error, accountAddress),
+          // Clear the scan loading state in the confirmation UI + skip the security scan request.
+          scanFetchStatus: FetchStatus.Error,
+        },
         reschedule: false,
+        halt: true,
       };
     }
   }

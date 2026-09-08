@@ -24,8 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 
+### Removed
+
+- **BREAKING** Remove the deprecated `asset` cluster of handlers: `onAssetHistoricalPrice`, `onAssetsConversion`, `onAssetsLookup` and `onAssetsMarketData` ([#262](https://github.com/MetaMask/internal-snaps/pull/262))
+
 ### Fixed
 
+- Stop the confirmation refresh cron when transaction re-validation fails ([#282](https://github.com/MetaMask/internal-snaps/pull/282))
+  - Show the mapped transaction error banner
+  - Skip the security scan for the invalid transaction
+  - Do not reschedule further refresh cycles
 - Fill contract-based receive transactions in history instead of marking them as unknown ([#255](https://github.com/MetaMask/internal-snaps/pull/255))
 
 ## [0.1.0]

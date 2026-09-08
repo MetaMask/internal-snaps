@@ -1,5 +1,4 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
-import type { AssetMetadata } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { parseCaipAssetType } from '@metamask/utils';
 
@@ -45,7 +44,7 @@ export function getIconUrl(assetId: KnownCaip19AssetIdOrSlip44Id): string {
  * @param assetData.decimals - Smallest-unit decimal count for the primary unit.
  * @param assetData.symbol - Ticker or short symbol for display.
  * @param assetData.name - Optional long name; defaults to `symbol` when omitted.
- * @returns Keyring-shaped metadata including icon URL and units.
+ * @returns Cached metadata including icon URL and units.
  */
 export function toStellarAssetMetadata(assetData: {
   assetId: KnownCaip19AssetIdOrSlip44Id;
@@ -71,24 +70,6 @@ export function toStellarAssetMetadata(assetData: {
         decimals: assetData.decimals,
       },
     ],
-  };
-}
-
-/**
- * Maps {@link StellarAssetMetadata} to {@link AssetMetadata}.
- *
- * @param assetData - The Stellar asset metadata.
- * @returns The Keyring asset metadata.
- */
-export function toKeyringAssetMetadata(
-  assetData: StellarAssetMetadata,
-): AssetMetadata {
-  return {
-    fungible: assetData.fungible,
-    iconUrl: assetData.iconUrl,
-    units: assetData.units,
-    symbol: assetData.symbol,
-    name: assetData.name,
   };
 }
 
