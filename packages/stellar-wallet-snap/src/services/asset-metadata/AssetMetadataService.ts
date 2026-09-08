@@ -17,11 +17,7 @@ import {
   isSep41Id,
 } from '../../utils';
 import type { AssetDataResponse, NetworkService } from '../network';
-import type {
-  AssetUnit,
-  KeyringAssetMetadataByAssetId,
-  StellarAssetMetadata,
-} from './api';
+import type { AssetUnit, StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataServiceException } from './exceptions';
 import type { TokenMetadata } from './token-api/api';
@@ -30,7 +26,6 @@ import {
   getIconUrl,
   getNativeAssetMetadata,
   groupAssetsByChainId,
-  toKeyringAssetMetadata,
   toStellarAssetMetadata,
 } from './utils';
 
@@ -159,30 +154,6 @@ export class AssetMetadataService {
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
     const tokensMetadata = await this.#getAssetsByChainId(scope);
     await this.#assetMetadataRepository.saveMany(tokensMetadata);
-  }
-
-  /**
-   * Native metadata (computed) + persisted non-native rows only — no network fetch.
-   *
-   * @param assetIds - Requested asset ids.
-   * @returns Known native + snap-state metadata for the requested ids.
-   */
-  async #getPersistedOrNativeAssetsByAssetIds(
-    assetIds: KnownCaip19AssetIdOrSlip44Id[],
-  ): Promise<StellarAssetMetadata[]> {
-    const { nativeAssets: nativeAssetsByChainId, assets: assetsByChainId } =
-      groupAssetsByChainId(assetIds);
-    const result: StellarAssetMetadata[] = [];
-
-    for (const [chainId] of nativeAssetsByChainId) {
-      result.push(getNativeAssetMetadata(chainId));
-    }
-
-    const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
-    const { assets } =
-      await this.#getPersistedAssetMetadata(allNonNativeAssetIds);
-
-    return result.concat(assets);
   }
 
   async #fetchAndPersistAssetsByAssetIds(
