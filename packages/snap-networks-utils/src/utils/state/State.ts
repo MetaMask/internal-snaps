@@ -71,6 +71,7 @@ class StateLock {
         this.#releaseRegularStateUpdateMutex
       ) {
         this.#releaseRegularStateUpdateMutex();
+        this.#releaseRegularStateUpdateMutex = null;
       }
     }
   }
