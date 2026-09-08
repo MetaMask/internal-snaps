@@ -420,6 +420,12 @@ export const ProofOfOwnershipMessageStruct = refine(
 );
 
 /**
+ * Validation struct for a 64-byte value encoded as lowercase hex with a leading
+ * `0x` prefix.
+ */
+export const SixtyFourByte0xHexStruct = pattern(string(), /^0x[0-9a-f]{128}$/u);
+
+/**
  * Validation struct for the signProofOfOwnership JSON-RPC request.
  * Coerces `nonce` and `address` from `message` (clients send only accountId + message).
  */
@@ -463,7 +469,7 @@ export const SignProofOfOwnershipJsonRpcRequestStruct = coerce(
  * The `0x` prefix is not part of the 64-byte signature length.
  */
 export const SignProofOfOwnershipJsonRpcResponseStruct = object({
-  signature: pattern(string(), /^0x[0-9a-f]{128}$/u),
+  signature: SixtyFourByte0xHexStruct,
 });
 
 /**
@@ -491,7 +497,7 @@ export const SignProofOfOwnershipBatchJsonRpcRequestStruct = assign(
  */
 export const SignProofOfOwnershipBatchSuccessStruct = object({
   accountId: UuidStruct,
-  signature: pattern(string(), /^0x[0-9a-f]{128}$/u),
+  signature: SixtyFourByte0xHexStruct,
 });
 
 /**
