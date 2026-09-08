@@ -17,11 +17,7 @@ import {
   isSep41Id,
 } from '../../utils';
 import type { AssetDataResponse, NetworkService } from '../network';
-import type {
-  AssetUnit,
-  KeyringAssetMetadataByAssetId,
-  StellarAssetMetadata,
-} from './api';
+import type { AssetUnit, StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataServiceException } from './exceptions';
 import type { TokenMetadata } from './token-api/api';
@@ -30,7 +26,6 @@ import {
   getIconUrl,
   getNativeAssetMetadata,
   groupAssetsByChainId,
-  toKeyringAssetMetadata,
   toStellarAssetMetadata,
 } from './utils';
 
