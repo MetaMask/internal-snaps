@@ -23,26 +23,25 @@ export type Utf8String = Infer<typeof Utf8StringStruct>;
  * When omitted on confirmSend, the builder infers `id` for all-digit uint64
  * values, else `text`.
  */
-export const StellarMemoTypes = {
+export const StellarMemoType = {
   Text: 'text',
   Id: 'id',
   Hash: 'hash',
   Return: 'return',
 } as const;
 
-/** Union of {@link StellarMemoTypes} values — single source of truth with the const. */
-export type StellarMemoType =
-  (typeof StellarMemoTypes)[keyof typeof StellarMemoTypes];
-
 /**
- * Wire-layer validation for {@link StellarMemoType} — derived from {@link StellarMemoTypes}.
+ * Wire-layer validation — values taken from {@link StellarMemoType}.
  */
 export const StellarMemoTypeStruct = enums([
-  StellarMemoTypes.Text,
-  StellarMemoTypes.Id,
-  StellarMemoTypes.Hash,
-  StellarMemoTypes.Return,
+  StellarMemoType.Text,
+  StellarMemoType.Id,
+  StellarMemoType.Hash,
+  StellarMemoType.Return,
 ]);
+
+/** Union of memo type strings — derived from {@link StellarMemoTypeStruct}. */
+export type StellarMemoType = Infer<typeof StellarMemoTypeStruct>;
 
 /**
  * Wire-layer memo value for confirmSend: loose length gate only (≤ 64 chars)

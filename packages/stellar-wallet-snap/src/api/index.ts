@@ -7,8 +7,8 @@ export * from './integer';
 export * from './xdr';
 export * from './transactionHash';
 export {
-  StellarMemoTypes,
+  StellarMemoType,
   StellarMemoTypeStruct,
   StellarMemoValueStruct,
 } from './string';
-export type { StellarMemoType, StellarMemoValue } from './string';
+export type { StellarMemoValue } from './string';
