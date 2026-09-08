@@ -144,19 +144,6 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/core/caching/useCache.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 4
-    }
-  },
-  "packages/solana-wallet-snap/src/core/caching/useCache.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 3
-    }
-  },
   "packages/solana-wallet-snap/src/core/clients/nft-api/NftApiClient.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 5
@@ -339,10 +326,7 @@
   },
   "packages/solana-wallet-snap/src/core/services/connection/SolanaConnection.ts": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/services/connection/transport/createToggleInfuraBigtableLookupsTransports.ts": {

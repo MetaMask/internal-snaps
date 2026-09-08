@@ -1,13 +1,16 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { SolMethod } from '@metamask/keyring-api';
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  Logger,
+  Serializable,
+  ICache,
+} from '@metamask/snap-networks-utils';
+import { useCache } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { address as asAddress, compileTransaction } from '@solana/kit';
 import { BigNumber } from 'bignumber.js';
 
-import type { ICache } from '../../caching/ICache';
-import { useCache } from '../../caching/useCache';
 import type { Network } from '../../constants/solana';
 import { METAMASK_ORIGIN, Networks } from '../../constants/solana';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
@@ -83,7 +86,7 @@ export class SendService {
         ttlMilliseconds:
           this.#cacheTtlsMilliseconds.minimumBalanceForRentExemption,
         generateCacheKey: (functionName, args) => {
-          const [_scope] = args;
+          const [_scope] = args as [Network];
           return `${functionName}:${_scope}`;
         },
       },
