@@ -1,9 +1,8 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
 import {
   parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
-  ProofOfOwnershipBatchErrorStruct,
-  ProofOfOwnershipBatchRequestItemStruct,
-  ProofOfOwnershipBatchRequestParamsStruct,
+  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct,
   UuidStruct,
 } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
@@ -43,6 +42,30 @@ import {
   SolanaAddressStruct,
 } from '../../validation/structs';
 import { ClientRequestMethod } from './types';
+
+/**
+ * Validates one proof-of-ownership batch request item.
+ *
+ * Batch items intentionally validate messages as plain strings so invalid
+ * proof messages can be reported per item instead of failing the whole batch.
+ */
+export {
+  ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchRequestItemStruct,
+} from '@metamask/snap-networks-utils';
+
+/**
+ * Validates the params object for `signProofOfOwnershipBatch`.
+ */
+export {
+  ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct,
+} from '@metamask/snap-networks-utils';
+
+/**
+ * Validates a failed proof-of-ownership batch item response.
+ */
+export {
+  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
+} from '@metamask/snap-networks-utils';
 
 /**
  * signAndSendTransactionWithoutConfirmation request/response validation.
@@ -509,21 +532,6 @@ export type SignProofOfOwnershipResponse = Infer<
 >;
 
 /**
- * Validates one proof-of-ownership batch request item.
- *
- * Batch items intentionally validate messages as plain strings so invalid
- * proof messages can be reported per item instead of failing the whole batch.
- */
-export const SignProofOfOwnershipBatchRequestItemStruct =
-  ProofOfOwnershipBatchRequestItemStruct;
-
-/**
- * Validates the params object for `signProofOfOwnershipBatch`.
- */
-export const SignProofOfOwnershipBatchRequestParamsStruct =
-  ProofOfOwnershipBatchRequestParamsStruct;
-
-/**
  * Validates a `signProofOfOwnershipBatch` JSON-RPC request.
  */
 export const SignProofOfOwnershipBatchRequestStruct = object({
@@ -543,12 +551,6 @@ export const SignProofOfOwnershipBatchSuccessStruct = object({
    */
   signature: StrictHexStruct,
 });
-
-/**
- * Validates a failed proof-of-ownership batch item response.
- */
-export const SignProofOfOwnershipBatchErrorStruct =
-  ProofOfOwnershipBatchErrorStruct;
 
 /**
  * Validates a proof-of-ownership batch item result.

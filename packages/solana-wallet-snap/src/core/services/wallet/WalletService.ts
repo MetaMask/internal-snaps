@@ -77,7 +77,7 @@ export type SolanaSignMessageBatchResult =
   | SolanaSignMessageResponse
   | { error: string };
 
-const DEFAULT_SOLANA_DERIVATION_PATH_REGEX = /^m\/44'\/501'\/([0-9]+)'\/0'$/u;
+const DEFAULT_SOLANA_DERIVATION_PATH_REGEX = /^m\/44'\/501'\/([\d]+)'\/0'$/u;
 
 /**
  * Extracts the account index from the default Solana BIP-44 derivation path.
@@ -424,7 +424,7 @@ export class WalletService {
   async signMessages(
     requests: SolanaSignMessageBatchRequest[],
   ): Promise<SolanaSignMessageBatchResult[]> {
-    this.#logger.log('Signing message batch', { count: requests.length });
+    this.#logger.log(`Signing message batch for ${requests.length} requests`);
 
     const results: SolanaSignMessageBatchResult[] = new Array(requests.length);
     const requestsByEntropySource = new Map<
