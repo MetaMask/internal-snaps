@@ -258,6 +258,8 @@ export class SnapClientAdapter implements SnapClient {
             return 'Snap transaction reorged';
           case TrackingSnapEvent.TransactionReceived:
             return 'Snap transaction received';
+          case TrackingSnapEvent.ScanDiscoveredMissedTransactions:
+            return 'Snap scan discovered missed transaction';
           default:
             throw new AssertionError(`Unhandled tracking event type`, {
               eventType,

@@ -1,11 +1,14 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import { InFlightCoalescer } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
-import { array, assert, boolean, object, optional, string } from 'superstruct';
+import { array, assert, is, object, string } from 'superstruct';
 
-import { InexistentMethodError, SynchronizationError } from '../entities';
+import {
+  InexistentMethodError,
+  SynchronizationError,
+  TrackingSnapEvent,
+} from '../entities';
 import type { BitcoinAccount, SnapClient, SyncResult } from '../entities';
-import { TrackingSnapEvent } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export const CronMethod = {
@@ -27,7 +30,10 @@ export const SyncSelectedAccountsRequest = object({
 
 export const FullScanAccountRequest = object({
   accountId: string(),
-  trackMissed: optional(boolean()),
+});
+
+const RescanState = object({
+  pending: array(string()),
 });
 
 export class CronHandler {
@@ -75,7 +81,7 @@ export class CronHandler {
       }
       case CronMethod.FullScanAccount: {
         assert(params, FullScanAccountRequest);
-        return this.fullScanAccount(params.accountId, params.trackMissed);
+        return this.fullScanAccount(params.accountId);
       }
       default:
         throw new InexistentMethodError(`Method not found: ${method}`);
@@ -89,16 +95,16 @@ export class CronHandler {
     // that coalesced callers share the run's outcome, including a
     // `SynchronizationError` from partial failures.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
-      if ((await this.#snapClient.getState('rescanV1')) !== true) {
-        const allAccounts = await this.#accountsUseCases.list();
-        for (const account of allAccounts) {
-          await this.#snapClient.scheduleBackgroundEvent({
-            duration: 'PT5S',
-            method: CronMethod.FullScanAccount,
-            params: { accountId: account.id, trackMissed: true },
-          });
-        }
-        await this.#snapClient.setState('rescanV1', true);
+      try {
+        await this.#repairNextAccount();
+      } catch (error) {
+        await this.#snapClient.emitTrackingError(
+          new SynchronizationError(
+            'Account repair scan failed',
+            undefined,
+            error,
+          ),
+        );
       }
 
       const selectedAccounts: Set<string> = new Set(
@@ -232,31 +238,57 @@ export class CronHandler {
     }
   }
 
-  async fullScanAccount(
-    accountId: string,
-    trackMissed?: boolean,
-  ): Promise<void> {
+  async fullScanAccount(accountId: string): Promise<void> {
     const account = await this.#accountsUseCases.get(accountId);
+    const result = await this.#accountsUseCases.fullScan(account);
+    await this.#emitSyncEvents([result]);
+  }
 
-    const before = trackMissed
-      ? new Set(account.listTransactions().map((tx) => tx.txid.toString()))
-      : undefined;
+  /**
+   * Repair one previously-unwatched account per sync run. Advances the
+   * pending list only after the scan succeeds, so a scan that never runs
+   * (client locked/inactive) or fails leaves the account pending for the
+   * next sync run instead of being marked done prematurely.
+   */
+  async #repairNextAccount(): Promise<void> {
+    const stored = await this.#snapClient.getState('rescanV1');
+    if (is(stored, RescanState) && stored.pending.length === 0) {
+      return;
+    }
 
+    const accounts = await this.#accountsUseCases.list();
+    const liveIds = new Set(accounts.map((account) => account.id));
+
+    const pending = is(stored, RescanState)
+      ? stored.pending.filter((id) => liveIds.has(id))
+      : accounts.map((account) => account.id);
+
+    if (!is(stored, RescanState) || pending.length !== stored.pending.length) {
+      await this.#snapClient.setState('rescanV1', { pending });
+    }
+
+    const account = accounts.find(({ id }) => id === pending[0]);
+    if (!account) {
+      return;
+    }
+
+    const before = new Set(
+      account.listTransactions().map((tx) => tx.txid.toString()),
+    );
     const result = await this.#accountsUseCases.fullScan(account);
 
-    if (before) {
-      for (const tx of account.listTransactions()) {
-        if (!before.has(tx.txid.toString())) {
-          await this.#snapClient.emitTrackingEvent(
-            TrackingSnapEvent.ScanDiscoveredMissedTransactions,
-            account,
-            tx,
-            'cron',
-          );
-        }
+    for (const tx of account.listTransactions()) {
+      if (!before.has(tx.txid.toString())) {
+        await this.#snapClient.emitTrackingEvent(
+          TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+          account,
+          tx,
+          'cron',
+        );
       }
     }
 
     await this.#emitSyncEvents([result]);
+    await this.#snapClient.setState('rescanV1', { pending: pending.slice(1) });
   }
 }

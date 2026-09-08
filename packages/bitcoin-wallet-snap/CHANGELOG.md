@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add back the `endowment:assets` permission for the Bitcoin scopes to the snap manifest, with no-op `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` entry points required to keep the permission ([#274](https://github.com/MetaMask/internal-snaps/pull/274))
-- Run a one-time full scan of every existing account after the update, so funds on previously unwatched addresses are found ([#226](https://github.com/MetaMask/internal-snaps/pull/226))
-- Emit a `Scan Discovered Missed Transactions` tracking event when the repair scan finds transactions that routine sync did not know about ([#226](https://github.com/MetaMask/internal-snaps/pull/226))
+- Repair every account that existed before the update with one full scan, one account per sync run, advancing only after each scan succeeds, so funds on previously unwatched addresses are found even if a scan is interrupted ([#226](https://github.com/MetaMask/internal-snaps/pull/226))
+- Emit a `Scan Discovered Missed Transactions` tracking event when a repair scan finds transactions that routine sync did not know about ([#226](https://github.com/MetaMask/internal-snaps/pull/226))
 
 ### Changed
 

@@ -92,6 +92,46 @@ describe('SnapClientAdapter', () => {
         trackingError,
       );
     });
+
+    it('emits a snap_trackEvent request for ScanDiscoveredMissedTransactions', async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const tx = mock<WalletTx>({
+        txid: { toString: () => 'txid-123' },
+      });
+      mockRequest.mockResolvedValue(undefined);
+
+      expect(
+        await snapClient.emitTrackingEvent(
+          TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+          account,
+          tx,
+          'metamask',
+        ),
+      ).toBeUndefined();
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event: TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+            properties: {
+              origin: 'metamask',
+              message: 'Snap scan discovered missed transaction',
+              chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
+              account_type: 'bip122:p2wpkh',
+              tx_id: 'txid-123',
+            },
+          },
+        },
+      });
+
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
   });
 
   describe('emitTrackingError', () => {

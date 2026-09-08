@@ -32,9 +32,9 @@ describe('CronHandler', () => {
       clientVersion: '1.0.0',
       platformVersion: '1.0.0',
     });
-    // Default the one-time rescan to already-done so existing tests don't
-    // trigger background-event scheduling.
-    mockSnapClient.getState.mockResolvedValue(true);
+    // Default the repair rescan to nothing pending so existing tests don't
+    // trigger a repair scan.
+    mockSnapClient.getState.mockResolvedValue({ pending: [] });
   });
 
   describe('synchronizeAccounts', () => {
@@ -152,7 +152,12 @@ describe('CronHandler', () => {
       ).toHaveBeenCalledWith([mockAccounts[0]]);
     });
 
-    describe('one-time rescan repair', () => {
+    describe('repair rescan', () => {
+      const buildTx = (txid: string): WalletTx =>
+        mock<WalletTx>({
+          txid: mock<WalletTx['txid']>({ toString: () => txid }),
+        });
+
       beforeEach(() => {
         (getSelectedAccounts as jest.Mock).mockResolvedValue([
           'account-1',
@@ -163,49 +168,149 @@ describe('CronHandler', () => {
           account: mockAccount1,
           transactionsToNotify: [],
         });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount1,
+          transactionsToNotify: [],
+        });
+        mockAccount1.listTransactions.mockReturnValue([]);
+        mockAccount2.listTransactions.mockReturnValue([]);
       });
 
-      it('schedules one full scan per existing account and marks the repair done when not yet run', async () => {
+      it('on first run, persists the full pending list, scans only the first account, and emits for missed transactions', async () => {
         mockSnapClient.getState.mockResolvedValue(null);
+        const txBefore = buildTx('txid-existing');
+        const txNew = buildTx('txid-new');
+        mockAccount1.listTransactions
+          .mockReturnValueOnce([txBefore])
+          .mockReturnValueOnce([txBefore, txNew]);
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount1,
+          transactionsToNotify: [],
+        });
 
         await handler.route(request);
 
         expect(mockSnapClient.getState).toHaveBeenCalledWith('rescanV1');
-        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledTimes(
-          mockAccounts.length,
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
+        expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
+        expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
+          'Scan Discovered Missed Transactions',
+          mockAccount1,
+          txNew,
+          'cron',
         );
-        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-          duration: 'PT5S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: 'account-1', trackMissed: true },
+        expect(
+          mockSnapClient.emitAccountBalancesUpdatedEvent,
+        ).toHaveBeenCalledWith([mockAccount1]);
+        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', {
+          pending: ['account-1', 'account-2'],
         });
-        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-          duration: 'PT5S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: 'account-2', trackMissed: true },
+        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', {
+          pending: ['account-2'],
         });
-        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', true);
 
-        // Scheduling happens before the state is marked done.
-        const scheduleOrder =
-          mockSnapClient.scheduleBackgroundEvent.mock.invocationCallOrder[0];
-        const setStateOrder =
-          mockSnapClient.setState.mock.invocationCallOrder[0];
-        expect(scheduleOrder).toBeLessThan(setStateOrder as number);
+        // The initial full list is persisted before the first scan, and the
+        // shortened list is persisted only after the scan succeeds.
+        expect(mockSnapClient.setState).toHaveBeenCalledTimes(2);
+        const [initialPersistOrder, shortenedPersistOrder] =
+          mockSnapClient.setState.mock.invocationCallOrder;
+        const scanOrder =
+          mockAccountUseCases.fullScan.mock.invocationCallOrder[0];
+        expect(initialPersistOrder).toBeLessThan(scanOrder as number);
+        expect(scanOrder).toBeLessThan(shortenedPersistOrder as number);
 
         // The normal sync flow still runs afterwards.
         expect(mockAccountUseCases.synchronize).toHaveBeenCalled();
       });
 
-      it('does not schedule or update state when the repair already ran', async () => {
-        mockSnapClient.getState.mockResolvedValue(true);
+      it('on a subsequent run, scans only the next pending account', async () => {
+        mockSnapClient.getState.mockResolvedValue({ pending: ['account-2'] });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
 
         await handler.route(request);
 
-        expect(mockSnapClient.getState).toHaveBeenCalledWith('rescanV1');
-        expect(mockSnapClient.scheduleBackgroundEvent).not.toHaveBeenCalled();
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', {
+          pending: [],
+        });
+      });
+
+      it('prunes deleted accounts from the pending list before scanning', async () => {
+        mockSnapClient.getState.mockResolvedValue({
+          pending: ['gone', 'account-2'],
+        });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+
+        await handler.route(request);
+
+        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', {
+          pending: ['account-2'],
+        });
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+
+        // The pruned list is persisted before the scan runs.
+        const pruneOrder = mockSnapClient.setState.mock.invocationCallOrder[0];
+        const scanOrder =
+          mockAccountUseCases.fullScan.mock.invocationCallOrder[0];
+        expect(pruneOrder).toBeLessThan(scanOrder as number);
+      });
+
+      it('does nothing when nothing is pending, short-circuiting before list()', async () => {
+        mockSnapClient.getState.mockResolvedValue({ pending: [] });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
         expect(mockSnapClient.setState).not.toHaveBeenCalled();
+        // The regular sync flow is the only caller of `list()` here — the
+        // repair path short-circuits on the empty pending list before
+        // reaching it.
+        expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+      });
+
+      it('reports a scan failure without shortening the pending list, and still runs the regular sync', async () => {
+        mockSnapClient.getState.mockResolvedValue({
+          pending: ['account-1', 'account-2'],
+        });
+        const scanError = new Error('scan failed');
+        mockAccountUseCases.fullScan.mockRejectedValue(scanError);
+
+        await handler.route(request);
+
+        expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'SynchronizationError',
+            message: 'Account repair scan failed',
+            cause: scanError,
+          }),
+        );
+        expect(mockSnapClient.setState).not.toHaveBeenCalledWith('rescanV1', {
+          pending: ['account-2'],
+        });
         expect(mockAccountUseCases.synchronize).toHaveBeenCalled();
+      });
+
+      it('treats malformed stored state as unset and reinitializes pending from the account list', async () => {
+        mockSnapClient.getState.mockResolvedValue(true);
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount1,
+          transactionsToNotify: [],
+        });
+
+        await handler.route(request);
+
+        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', {
+          pending: ['account-1', 'account-2'],
+        });
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
       });
     });
   });
@@ -482,71 +587,6 @@ describe('CronHandler', () => {
       mockAccountUseCases.fullScan.mockRejectedValue(error);
 
       await expect(handler.route(request)).rejects.toThrow(error);
-    });
-
-    describe('trackMissed', () => {
-      const buildTx = (txid: string): WalletTx =>
-        mock<WalletTx>({
-          txid: mock<WalletTx['txid']>({ toString: () => txid }),
-        });
-
-      const trackMissedRequest = {
-        method: CronMethod.FullScanAccount,
-        params: { accountId: 'account-1', trackMissed: true },
-      } as unknown as JsonRpcRequest;
-
-      it('passes trackMissed through from the route params', async () => {
-        mockAccountUseCases.get.mockResolvedValue(mockAccount);
-        mockAccountUseCases.fullScan.mockResolvedValue({
-          account: mockAccount,
-          transactionsToNotify: [],
-        });
-        mockAccount.listTransactions.mockReturnValue([]);
-
-        await handler.route(trackMissedRequest);
-
-        expect(mockAccountUseCases.get).toHaveBeenCalledWith('account-1');
-        // Called once for the before-scan set and once for the after-scan set,
-        // proving trackMissed was honored.
-        expect(mockAccount.listTransactions).toHaveBeenCalledTimes(2);
-      });
-
-      it('emits a tracking event only for transactions discovered by the scan', async () => {
-        const txBefore = buildTx('txid-existing');
-        const txNew = buildTx('txid-new');
-
-        mockAccountUseCases.get.mockResolvedValue(mockAccount);
-        mockAccountUseCases.fullScan.mockResolvedValue({
-          account: mockAccount,
-          transactionsToNotify: [],
-        });
-        mockAccount.listTransactions
-          .mockReturnValueOnce([txBefore])
-          .mockReturnValueOnce([txBefore, txNew]);
-
-        await handler.route(trackMissedRequest);
-
-        expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
-        expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
-          'Scan Discovered Missed Transactions',
-          mockAccount,
-          txNew,
-          'cron',
-        );
-      });
-
-      it('never emits the tracking event when trackMissed is false or undefined', async () => {
-        mockAccountUseCases.get.mockResolvedValue(mockAccount);
-        mockAccountUseCases.fullScan.mockResolvedValue({
-          account: mockAccount,
-          transactionsToNotify: [],
-        });
-        mockAccount.listTransactions.mockReturnValue([buildTx('txid-new')]);
-
-        await handler.route(request);
-
-        expect(mockSnapClient.emitTrackingEvent).not.toHaveBeenCalled();
-      });
     });
   });
 });
