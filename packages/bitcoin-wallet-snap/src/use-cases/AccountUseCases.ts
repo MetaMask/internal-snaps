@@ -125,8 +125,7 @@ function getProofSigningParentPath(account: BitcoinAccount): string[] {
  * @returns The child path from parent node to receive address 0.
  */
 function getProofSigningChildPath(account: BitcoinAccount): string[] {
-  const accountIndexSegment =
-    account.derivationPath[account.derivationPath.length - 1];
+  const accountIndexSegment = account.derivationPath.at(-1);
 
   if (!accountIndexSegment) {
     throw new Error('Missing account derivation path');
