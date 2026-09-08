@@ -371,8 +371,7 @@ describe('ConfirmSendHandler', () => {
   });
 
   it('forwards memo and memoType into createValidatedSendTransaction', async () => {
-    const { handler, onChainAccount, createValidatedSendTransaction } =
-      setup();
+    const { handler, onChainAccount, createValidatedSendTransaction } = setup();
 
     await handler.handle(
       baseRequest({ memo: 'deposit-ref', memoType: 'text' }),
