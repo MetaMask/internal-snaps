@@ -112,19 +112,51 @@ export class State<
     this.#config = config;
   }
 
-  async #unsafeGet(): Promise<TStateValue> {
-    const state = await getSnapRequest()({
+  /**
+   * Reads and deserializes the value at `key`, or the whole state blob when `key` is omitted.
+   *
+   * @param key - The JSON-path key to read. Omit to read the whole blob.
+   * @returns The deserialized value, or `undefined` when the key is absent.
+   */
+  async #read<TValue extends Serializable>(
+    key?: string,
+  ): Promise<TValue | undefined> {
+    const value = await getSnapRequest()({
       method: 'snap_getState',
       params: {
+        ...(key === undefined ? {} : { key }),
         encrypted: this.#config.encrypted,
       },
     });
 
-    const stateDeserialized = deserialize(state ?? {}) as TStateValue;
+    return value === null || value === undefined
+      ? undefined
+      : (deserialize(value) as TValue);
+  }
+
+  /**
+   * Serializes `value` and writes it to `key`.
+   *
+   * @param key - The JSON-path key to write.
+   * @param value - The value to store.
+   */
+  async #write(key: string, value: Serializable): Promise<void> {
+    await getSnapRequest()({
+      method: 'snap_setState',
+      params: {
+        key,
+        value: serialize(value),
+        encrypted: this.#config.encrypted,
+      },
+    });
+  }
+
+  async #unsafeGet(): Promise<TStateValue> {
+    const state = (await this.#read<TStateValue>()) ?? ({} as TStateValue);
 
     // Clone the defaults so updaters that mutate the returned state (e.g. `deleteKey`
     // via lodash `unset`) never leak into the shared `defaultState` object.
-    return safeMerge(cloneDeep(this.#config.defaultState), stateDeserialized);
+    return safeMerge(cloneDeep(this.#config.defaultState), state);
   }
 
   async get(): Promise<TStateValue> {
@@ -134,61 +166,24 @@ export class State<
   async getKey<TResponse extends Serializable>(
     key: string,
   ): Promise<TResponse | undefined> {
-    return this.#lock.wrapRegularStateOperation(async () => {
-      const value = await getSnapRequest()({
-        method: 'snap_getState',
-        params: {
-          key,
-          encrypted: this.#config.encrypted,
-        },
-      });
-
-      if (value === null) {
-        return undefined;
-      }
-
-      return deserialize(value) as TResponse;
-    });
+    return this.#lock.wrapRegularStateOperation(async () =>
+      this.#read<TResponse>(key),
+    );
   }
 
   async setKey(key: string, value: Serializable): Promise<void> {
-    await this.#lock.wrapRegularStateWriteOperation(async () => {
-      await getSnapRequest()({
-        method: 'snap_setState',
-        params: {
-          key,
-          value: serialize(value),
-          encrypted: this.#config.encrypted,
-        },
-      });
-    });
+    await this.#lock.wrapRegularStateWriteOperation(async () =>
+      this.#write(key, value),
+    );
   }
 
   async setKeyWith<TValue extends Serializable>(
     key: string,
     updater: (currentValue: TValue | undefined) => TValue,
   ): Promise<void> {
-    await this.#lock.wrapRegularStateWriteOperation(async () => {
-      const rawValue = await getSnapRequest()({
-        method: 'snap_getState',
-        params: {
-          key,
-          encrypted: this.#config.encrypted,
-        },
-      });
-
-      const oldValue =
-        rawValue === null ? undefined : (deserialize(rawValue) as TValue);
-
-      await getSnapRequest()({
-        method: 'snap_setState',
-        params: {
-          key,
-          value: serialize(updater(oldValue)),
-          encrypted: this.#config.encrypted,
-        },
-      });
-    });
+    await this.#lock.wrapRegularStateWriteOperation(async () =>
+      this.#write(key, updater(await this.#read<TValue>(key))),
+    );
   }
 
   async update(
@@ -211,10 +206,7 @@ export class State<
   }
 
   async deleteKey(key: string): Promise<void> {
-    await this.update((state) => {
-      unset(state, key);
-      return state;
-    });
+    await this.deleteKeys([key]);
   }
 
   async deleteKeys(keys: string[]): Promise<void> {
