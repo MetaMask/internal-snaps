@@ -799,6 +799,54 @@ describe('ConfirmSendJsonRpcRequestStruct', () => {
     expect(result.params.scope).toBe('stellar:testnet');
   });
 
+  it('accepts optional memo and memoType on confirmSend', () => {
+    const result = create(
+      {
+        ...baseWireRequest,
+        params: {
+          ...baseWireRequest.params,
+          memo: 'deposit-ref',
+          memoType: 'text',
+        },
+      },
+      ConfirmSendJsonRpcRequestStruct,
+    );
+
+    expect(result.params.memo).toBe('deposit-ref');
+    expect(result.params.memoType).toBe('text');
+  });
+
+  it('rejects confirmSend when memo exceeds the wire length gate', () => {
+    expect(() =>
+      assert(
+        {
+          ...baseWireRequest,
+          params: {
+            ...baseWireRequest.params,
+            memo: 'a'.repeat(65),
+          },
+        },
+        ConfirmSendJsonRpcRequestStruct,
+      ),
+    ).toThrow(StructError);
+  });
+
+  it('rejects confirmSend when memoType is invalid', () => {
+    expect(() =>
+      assert(
+        {
+          ...baseWireRequest,
+          params: {
+            ...baseWireRequest.params,
+            memo: '1',
+            memoType: 'none',
+          },
+        },
+        ConfirmSendJsonRpcRequestStruct,
+      ),
+    ).toThrow(StructError);
+  });
+
   it.each([
     {
       ...baseWireRequest,

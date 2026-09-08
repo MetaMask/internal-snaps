@@ -370,6 +370,25 @@ describe('ConfirmSendHandler', () => {
     });
   });
 
+  it('forwards memo and memoType into createValidatedSendTransaction', async () => {
+    const { handler, onChainAccount, createValidatedSendTransaction } =
+      setup();
+
+    await handler.handle(
+      baseRequest({ memo: 'deposit-ref', memoType: 'text' }),
+    );
+
+    expect(createValidatedSendTransaction).toHaveBeenCalledWith({
+      onChainAccount,
+      scope,
+      assetId,
+      amount: new BigNumber('10000000'),
+      destination: destinationAddress,
+      memo: 'deposit-ref',
+      memoType: 'text',
+    });
+  });
+
   it('throws UserRejectedRequestError when confirmation is rejected', async () => {
     const {
       handler,

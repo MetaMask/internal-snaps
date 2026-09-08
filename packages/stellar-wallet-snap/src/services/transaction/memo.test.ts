@@ -79,4 +79,22 @@ describe('resolveStellarMemo', () => {
       resolveStellarMemo({ value: 'not-an-id', type: StellarMemoType.Id }),
     ).toThrow('Memo id must be a non-negative decimal integer');
   });
+
+  it('throws when explicit id is out of uint64 range', () => {
+    expect(() =>
+      resolveStellarMemo({
+        value: '18446744073709551616',
+        type: StellarMemoType.Id,
+      }),
+    ).toThrow('Memo id is out of uint64 range');
+  });
+
+  it('throws when return hex is invalid', () => {
+    expect(() =>
+      resolveStellarMemo({
+        value: 'g'.repeat(64),
+        type: StellarMemoType.Return,
+      }),
+    ).toThrow('Memo return must be a 64-character hex string');
+  });
 });

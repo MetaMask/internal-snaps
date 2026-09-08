@@ -277,6 +277,25 @@ describe('TransactionBuilder', () => {
       );
     });
 
+    it('throws TransactionBuilderException when the memo is invalid', () => {
+      const testDestination = getTestWallet();
+
+      expect(() =>
+        transactionBuilder.transfer({
+          onChainAccount: testOnChainAccount,
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          amount: new BigNumber(100),
+          destination: {
+            address: testDestination.address,
+            isActivated: true,
+          },
+          baseFee: new BigNumber(100),
+          memo: 'é'.repeat(15),
+        }),
+      ).toThrow(TransactionBuilderException);
+    });
+
     it('builds a create account transaction', () => {
       const testDestination = getTestWallet();
       const transaction = transactionBuilder.transfer({
