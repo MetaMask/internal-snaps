@@ -163,10 +163,6 @@ const ConfigStruct = object({
       // 1 hour
       spotPrices: parseIntegerStruct(1000, 60 * 60 * 1000 * 1),
       // 1 hour
-      fiatExchangeRates: parseIntegerStruct(1000, 60 * 60 * 1000 * 1),
-      // 1 hour
-      historicalPrices: parseIntegerStruct(1000, 60 * 60 * 1000 * 1),
-      // 1 hour
       baseFee: parseIntegerStruct(1000, 60 * 60 * 1000 * 1),
       // 10 minutes (Horizon account payload; aligns with on-chain account cache usage)
       loadOnChainAccount: parseIntegerStruct(1000, 10 * 60 * 1000 * 1),
@@ -258,10 +254,6 @@ export const AppConfig = create(
     cache: {
       ttlMilliseconds: {
         spotPrices: process.env.STELLAR_SPOT_PRICES_TTL_MILLISECONDS,
-        fiatExchangeRates:
-          process.env.STELLAR_FIAT_EXCHANGE_RATES_TTL_MILLISECONDS,
-        historicalPrices:
-          process.env.STELLAR_HISTORICAL_PRICES_TTL_MILLISECONDS,
         baseFee: process.env.STELLAR_BASE_FEE_TTL_MILLISECONDS,
         loadOnChainAccount:
           process.env.STELLAR_LOAD_ON_CHAIN_ACCOUNT_TTL_MILLISECONDS,

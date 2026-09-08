@@ -59,7 +59,7 @@ export function assertRefreshedTransactionFeeNotHigher(params: {
  * @returns The localized message key for the banner subtitle.
  */
 export function getTxnErrorMessageKey(
-  error: TransactionValidationException,
+  error: unknown,
   senderAddress: string,
 ): LocalizedMessage {
   if (error instanceof InsufficientBalanceException) {
