@@ -1,8 +1,6 @@
 import type { Infer } from '@metamask/superstruct';
 import { enums, refine, string } from '@metamask/superstruct';
 
-import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../constants';
-
 /**
  * Validation struct for a UTF-8 string.
  */
@@ -28,32 +26,10 @@ export const StellarMemoTypeStruct = enums(['text', 'id', 'hash', 'return']);
 export type StellarMemoTypeParam = Infer<typeof StellarMemoTypeStruct>;
 
 /**
- * Validation struct for an optional Stellar text memo (≤ 28 UTF-8 bytes).
- * Empty / whitespace-only values are allowed at the wire layer and treated as
- * absent when building the transaction.
- */
-export const StellarTextMemoStruct = refine(
-  string(),
-  'stellar-text-memo',
-  (value) => {
-    const trimmed = value.trim();
-    if (trimmed.length === 0) {
-      return true;
-    }
-    if (
-      new TextEncoder().encode(trimmed).length > STELLAR_TEXT_MEMO_MAX_BYTES
-    ) {
-      return `Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`;
-    }
-    return true;
-  },
-);
-
-export type StellarTextMemo = Infer<typeof StellarTextMemoStruct>;
-
-/**
- * Wire-layer memo value for confirmSend: allows text (≤ 28 bytes), memo id
- * digits, or 64-char hex for hash/return. Strict type checks run at build time.
+ * Wire-layer memo value for confirmSend: loose length gate only (≤ 64 chars)
+ * so text, memo id digits, and hash/return hex can all pass. Empty /
+ * whitespace-only values are allowed and treated as absent when building.
+ * Strict type and text-byte checks run in `resolveStellarMemo` at build time.
  */
 export const StellarMemoValueStruct = refine(
   string(),
