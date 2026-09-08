@@ -6,11 +6,7 @@ import { logger, noOpLogger } from '../../../utils/logger';
 import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
 import { State } from '../../state';
-import type {
-  AssetMetadataByAssetId,
-  KeyringAssetMetadataByAssetId,
-  StellarAssetMetadata,
-} from '../api';
+import type { AssetMetadataByAssetId, StellarAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
 import { AssetMetadataService } from '../AssetMetadataService';
 
@@ -75,46 +71,6 @@ export const getMockSep41Assets = (): StellarAssetMetadata[] => {
   }
   return [usdcSep41, usdtSep41];
 };
-
-export const generateMockKeyringAssetMetadata =
-  (): KeyringAssetMetadataByAssetId => {
-    return {
-      [NATIVE]: {
-        name: NATIVE_ASSET_NAME,
-        symbol: NATIVE_ASSET_SYMBOL,
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [
-          {
-            name: NATIVE_ASSET_NAME,
-            symbol: NATIVE_ASSET_SYMBOL,
-            decimals: 7,
-          },
-        ],
-      },
-      [USDC_CLASSIC]: {
-        name: 'USDC',
-        symbol: 'USDC',
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [{ name: 'USDC', symbol: 'USDC', decimals: 7 }],
-      },
-      [USDC_SEP41]: {
-        name: 'USDC',
-        symbol: 'USDC',
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [{ name: 'USDC', symbol: 'USDC', decimals: 7 }],
-      },
-      [USDT_SEP41]: {
-        name: 'USDT',
-        symbol: 'USDT',
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [{ name: 'USDT', symbol: 'USDT', decimals: 7 }],
-      },
-    } as KeyringAssetMetadataByAssetId;
-  };
 
 export const createMockAssetMetadataService = () => {
   const service = new AssetMetadataService({

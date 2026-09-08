@@ -156,30 +156,6 @@ export class AssetMetadataService {
     await this.#assetMetadataRepository.saveMany(tokensMetadata);
   }
 
-  /**
-   * Native metadata (computed) + persisted non-native rows only — no network fetch.
-   *
-   * @param assetIds - Requested asset ids.
-   * @returns Known native + snap-state metadata for the requested ids.
-   */
-  async #getPersistedOrNativeAssetsByAssetIds(
-    assetIds: KnownCaip19AssetIdOrSlip44Id[],
-  ): Promise<StellarAssetMetadata[]> {
-    const { nativeAssets: nativeAssetsByChainId, assets: assetsByChainId } =
-      groupAssetsByChainId(assetIds);
-    const result: StellarAssetMetadata[] = [];
-
-    for (const [chainId] of nativeAssetsByChainId) {
-      result.push(getNativeAssetMetadata(chainId));
-    }
-
-    const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
-    const { assets } =
-      await this.#getPersistedAssetMetadata(allNonNativeAssetIds);
-
-    return result.concat(assets);
-  }
-
   async #fetchAndPersistAssetsByAssetIds(
     assetIds: KnownCaip19AssetIdOrSlip44Id[],
   ): Promise<StellarAssetMetadata[]> {
