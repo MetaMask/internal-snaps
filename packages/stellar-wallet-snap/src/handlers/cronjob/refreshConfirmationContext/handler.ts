@@ -140,19 +140,12 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       updatedContext,
     });
 
-    if (results.some((result) => result?.halt)) {
+    // `halt` (hard fail) and `recoverable` (soft fail, e.g. RequiresMemo) both
+    // pause auto-cron. UI may call scheduleBackgroundEvent again after a
+    // recoverable fix (e.g. user adds a memo).
+    if (results.some((result) => result?.halt || result?.recoverable)) {
       this.logger.info(
-        'Confirmation refresh halted; cron will not be rescheduled',
-      );
-      return;
-    }
-
-    // Recoverable soft-fail (e.g. RequiresMemo): pause auto-cron this cycle so we
-    // do not hammer re-validation, but do not treat as halt — UI may call
-    // scheduleBackgroundEvent after the user fixes the issue (e.g. adds a memo).
-    if (results.some((result) => result?.recoverable)) {
-      this.logger.info(
-        'Confirmation refresh recoverable; cron paused until UI reschedules',
+        'Confirmation refresh halted or recoverable; cron will not be rescheduled',
       );
       return;
     }
