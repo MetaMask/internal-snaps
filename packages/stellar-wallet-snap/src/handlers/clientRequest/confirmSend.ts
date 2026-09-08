@@ -116,9 +116,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   ): Promise<ConfirmSendJsonRpcResponse> {
     try {
       const { onChainAccount, account: stellarKeyringAccount } = resolved;
-      const { amount, toAddress, assetId, scope } = request.params;
-      const memo = request.params.memo?.trim() ?? undefined;
-      const { memoType } = request.params;
+      const { amount, toAddress, assetId, scope, memo, memoType } =
+        request.params;
       const assetMetadata = await this.#assetMetadataService.resolve(assetId);
       const { decimals, symbol } = assetMetadata.units[0];
 
@@ -289,9 +288,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     transaction: Transaction;
   }> {
     const { request, confirmedTransaction, amount } = params;
-    const { assetId, toAddress, scope } = request.params;
-    const memo = request.params.memo?.trim() ?? undefined;
-    const { memoType } = request.params;
+    const { assetId, toAddress, scope, memo, memoType } = request.params;
     // Resolve again after the user confirms so sequence, balances, and fees are fresh before signing.
     // sendTransaction still handles txBadSeq races that happen after this refresh.
     const { wallet, onChainAccount } = await this.resolveAccount(request);
