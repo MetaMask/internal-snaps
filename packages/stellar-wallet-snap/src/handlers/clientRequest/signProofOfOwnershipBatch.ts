@@ -2,9 +2,11 @@ import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { add0x } from '@metamask/utils';
 
-import type { AccountService } from '../../services/account';
+import type {
+  AccountService,
+  StellarKeyringAccount,
+} from '../../services/account';
 import { assertSameAddress } from '../../services/account';
-import type { StellarKeyringAccount } from '../../services/account';
 import type { WalletService } from '../../services/wallet';
 import { BaseHandler } from '../base';
 import type {

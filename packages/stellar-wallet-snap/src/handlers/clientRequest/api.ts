@@ -1,7 +1,6 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
 import {
-  ProofOfOwnershipBatchErrorStruct,
-  ProofOfOwnershipBatchRequestItemStruct,
+  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
   ProofOfOwnershipBatchRequestParamsStruct,
   UuidStruct,
 } from '@metamask/snap-networks-utils';
@@ -43,6 +42,23 @@ import {
 } from '../../api';
 import { isSep41Id } from '../../utils';
 import { parseProofOfOwnershipMessage } from './utils';
+
+/**
+ * Validation struct for one signProofOfOwnershipBatch request item.
+ *
+ * Messages are validated inside the handler so invalid proof messages can be
+ * returned as per-item errors instead of rejecting the whole batch.
+ */
+export {
+  ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchJsonRpcRequestItemStruct,
+} from '@metamask/snap-networks-utils';
+
+/**
+ * Validation struct for one failed signProofOfOwnershipBatch result.
+ */
+export {
+  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
+} from '@metamask/snap-networks-utils';
 
 /**
  * Enum for the client request method.
@@ -473,15 +489,6 @@ export const SignProofOfOwnershipJsonRpcResponseStruct = object({
 });
 
 /**
- * Validation struct for one signProofOfOwnershipBatch request item.
- *
- * Messages are validated inside the handler so invalid proof messages can be
- * returned as per-item errors instead of rejecting the whole batch.
- */
-export const SignProofOfOwnershipBatchJsonRpcRequestItemStruct =
-  ProofOfOwnershipBatchRequestItemStruct;
-
-/**
  * Validation struct for the signProofOfOwnershipBatch JSON-RPC request.
  */
 export const SignProofOfOwnershipBatchJsonRpcRequestStruct = assign(
@@ -499,12 +506,6 @@ export const SignProofOfOwnershipBatchSuccessStruct = object({
   accountId: UuidStruct,
   signature: SixtyFourByte0xHexStruct,
 });
-
-/**
- * Validation struct for one failed signProofOfOwnershipBatch result.
- */
-export const SignProofOfOwnershipBatchErrorStruct =
-  ProofOfOwnershipBatchErrorStruct;
 
 /**
  * Validation struct for one signProofOfOwnershipBatch result.
