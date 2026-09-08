@@ -70,6 +70,26 @@ export {
   normalizeError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export { InMemoryCache } from './utils/cache/InMemoryCache';
+export { StateCache } from './utils/cache/StateCache';
+export { useCache } from './utils/cache/useCache';
+export { useCacheUntil } from './utils/cache/useCacheUntil';
+export type { CacheOptions } from './utils/cache/useCache';
+export type {
+  CacheUntilOptions,
+  ResultWithExpiry,
+} from './utils/cache/useCacheUntil';
+export type {
+  ICache,
+  CacheEntry,
+  TimestampMilliseconds,
+} from './utils/cache/types';
+export type {
+  CacheStateManager,
+  CacheStore,
+  CachePrefix,
+  StateValue,
+} from './utils/cache/StateCache';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,
