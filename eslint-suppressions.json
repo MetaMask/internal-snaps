@@ -1354,26 +1354,6 @@
       "count": 2
     }
   },
-  "packages/stellar-wallet-snap/src/services/cache/StateCache.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/StateCache.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/useCache.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 4
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/useCacheUntil.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
-    }
-  },
   "packages/stellar-wallet-snap/src/services/network/NetworkService.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 4

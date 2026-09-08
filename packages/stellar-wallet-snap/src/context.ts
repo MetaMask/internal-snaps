@@ -1,3 +1,4 @@
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { assert, object } from '@metamask/superstruct';
 
 import { AppConfig } from './config';
@@ -38,7 +39,6 @@ import {
   AssetMetadataRepository,
   AssetMetadataService,
 } from './services/asset-metadata';
-import { InMemoryCache } from './services/cache';
 import { NetworkService } from './services/network';
 import {
   OnChainAccountRepository,

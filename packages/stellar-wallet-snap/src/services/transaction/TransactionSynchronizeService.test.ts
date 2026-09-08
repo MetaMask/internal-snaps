@@ -10,13 +10,13 @@ import { Keypair, Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
 import { toCaip19Sep41AssetId } from '../../utils';
+import { createMemoryCache } from '../../utils/__mocks__/cache.fixtures';
 import { logger } from '../../utils/logger';
 import { getSnapProvider } from '../../utils/snap';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
 import type { AccountService } from '../account/AccountService';
 import type { StellarAssetMetadata } from '../asset-metadata/api';
 import { toStellarAssetMetadata } from '../asset-metadata/utils';
-import { createMemoryCache } from '../cache/__mocks__/cache.fixtures';
 import { NetworkService, TransactionNotFoundException } from '../network';
 import {
   createMockAccountWithBalances,
