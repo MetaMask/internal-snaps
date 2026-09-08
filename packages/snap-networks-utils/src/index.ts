@@ -62,6 +62,10 @@ export {
 } from './utils/originPermissions/createOriginPermissions';
 export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions';
 export { validateOrigin } from './utils/originPermissions/validateOrigin';
+export { State } from './utils/state/State';
+export type { StateConfig } from './utils/state/State';
+export { InMemoryState } from './utils/state/InMemoryState';
+export type { IStateManager } from './utils/state/IStateManager';
 export {
   createSnapErrorHandling,
   createTrackError,
