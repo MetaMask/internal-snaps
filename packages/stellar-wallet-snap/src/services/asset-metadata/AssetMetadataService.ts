@@ -92,38 +92,6 @@ export class AssetMetadataService {
   }
 
   /**
-   * Returns keyring-format metadata for the given asset IDs from snap state only.
-   *
-   * Read-only — does not fetch missing assets or persist. Intended for
-   * keyring balance reads so they do not contend with catalog sync. Missing
-   * ids are `null` until filled by `synchronize` / `resolve`.
-   *
-   * @param assetIds - The asset IDs to look up.
-   * @returns A Promise that resolves to all assets metadata for the given asset IDs.
-   */
-  async getAssetsMetadataByAssetIds(
-    assetIds: KnownCaip19AssetIdOrSlip44Id[],
-  ): Promise<KeyringAssetMetadataByAssetId> {
-    this.#logger.debug('Reading assets metadata by asset ids (read-only)', {
-      assetIds,
-    });
-
-    const metadataByAssetId = {} as KeyringAssetMetadataByAssetId;
-
-    const list = await this.#getPersistedOrNativeAssetsByAssetIds(assetIds);
-
-    for (const assetId of assetIds) {
-      metadataByAssetId[assetId] = null;
-    }
-
-    for (const asset of list) {
-      metadataByAssetId[asset.assetId] = toKeyringAssetMetadata(asset);
-    }
-
-    return metadataByAssetId;
-  }
-
-  /**
    * Returns all persisted SEP-41 assets for the given chain ID.
    *
    * @param scope - The chain ID to look up.

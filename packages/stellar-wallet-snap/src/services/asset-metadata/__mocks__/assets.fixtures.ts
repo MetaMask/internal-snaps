@@ -141,15 +141,9 @@ export const createMockAssetMetadataService = () => {
     'getByAssetIds',
   );
 
-  const getAssetsMetadataByAssetIdsSpy = jest.spyOn(
-    AssetMetadataService.prototype,
-    'getAssetsMetadataByAssetIds',
-  );
-
   return {
     service,
     assetMetadataRepositorySaveManySpy,
     assetMetadataRepositoryGetByAssetIdsSpy,
-    getAssetsMetadataByAssetIdsSpy,
   };
 };
