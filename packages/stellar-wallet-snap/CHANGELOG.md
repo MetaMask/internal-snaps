@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **BREAKING** Remove the deprecated `asset` cluster of handlers: `onAssetHistoricalPrice`, `onAssetsConversion`, `onAssetsLookup` and `onAssetsMarketData` ([#262](https://github.com/MetaMask/internal-snaps/pull/262))
+- Remove unused `AssetMetadataService.getAssetsMetadataByAssetIds` ([#286](https://github.com/MetaMask/internal-snaps/pull/286))
 
 ### Fixed
 
