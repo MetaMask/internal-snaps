@@ -1,25 +1,29 @@
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
-  boolean,
   enums,
   min,
   nullable,
   number,
   object,
-  optional,
-  pattern,
   record,
   string,
-  tuple,
   type,
   union,
 } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 
-export type PriceApiClientConfig = {
-  baseUrl: string;
-};
+/**
+ * The structure of the spot price response from the MetaMask Price API, limited
+ * to the fields this Snap consumes. The API may return additional fields; they
+ * are ignored.
+ */
+export const SpotPriceStruct = type({
+  id: string(),
+  price: min(number(), 0),
+});
+
+export type SpotPrice = Infer<typeof SpotPriceStruct>;
 
 export const CryptoTickerStruct = enums([
   'btc',
@@ -118,91 +122,11 @@ export const TickerStruct = union([
 export type Ticker = Infer<typeof TickerStruct>;
 
 /**
- * Struct for validating exchange rate data from the API.
- * Includes bounds validation to prevent malicious data injection.
- */
-export const ExchangeRateStruct = type({
-  name: string(),
-  ticker: TickerStruct,
-  value: min(number(), 0),
-  currencyType: enums(['fiat', 'crypto', 'commodity']),
-});
-
-export type ExchangeRate = Infer<typeof ExchangeRateStruct>;
-
-/**
- * Struct for validating the fiat exchange rates response.
- * Maps ticker symbols to their exchange rate data.
- * Despite the endpoint name, the response includes all exchange rates (crypto, fiat, commodity).
- */
-export const FiatExchangeRatesResponseStruct = record(
-  TickerStruct,
-  ExchangeRateStruct,
-);
-
-export type FiatExchangeRatesResponse = Infer<
-  typeof FiatExchangeRatesResponseStruct
->;
-
-/**
- * The structure of the spot price response from the Price API as described in
- * [this file](https://github.com/consensys-vertical-apps/va-mmcx-price-api/blob/main/src/types/price.ts#L46-L71).
- *
- * For safety, most fields are marked optional and nullable even though it goes against the type in the Price API source code.
- */
-export const SpotPriceStruct = type({
-  id: string(),
-  price: min(number(), 0),
-  marketCap: optional(nullable(min(number(), 0))),
-  allTimeHigh: optional(nullable(min(number(), 0))),
-  allTimeLow: optional(nullable(min(number(), 0))),
-  totalVolume: optional(nullable(min(number(), 0))),
-  high1d: optional(nullable(min(number(), 0))),
-  low1d: optional(nullable(min(number(), 0))),
-  circulatingSupply: optional(nullable(min(number(), 0))),
-  // Fully diluted market cap can be negative from the Price API.
-  dilutedMarketCap: optional(nullable(number())),
-  marketCapPercentChange1d: optional(nullable(number())),
-  priceChange1d: optional(nullable(number())),
-  pricePercentChange1h: optional(nullable(number())),
-  pricePercentChange1d: optional(nullable(number())),
-  pricePercentChange7d: optional(nullable(number())),
-  pricePercentChange14d: optional(nullable(number())),
-  pricePercentChange30d: optional(nullable(number())),
-  pricePercentChange200d: optional(nullable(number())),
-  pricePercentChange1y: optional(nullable(number())),
-  bondingCurveProgressPercent: optional(nullable(number())),
-  liquidity: optional(nullable(number())),
-  totalSupply: optional(nullable(number())),
-  holderCount: optional(nullable(number())),
-  isMutable: optional(nullable(boolean())),
-});
-
-export type SpotPrice = Infer<typeof SpotPriceStruct>;
-
-/**
  * @example
  * {
  *   "bip122:000000000019d6689c085ae165831e93/slip44:0": {
  *     "id": "bitcoin",
- *     "price": 84302,
- *     "marketCap": 1670808919774,
- *     "allTimeHigh": 108786,
- *     "allTimeLow": 67.81,
- *     "totalVolume": 25784747348,
- *     "high1d": 84370,
- *     "low1d": 81426,
- *     "circulatingSupply": 19844840,
- *     "dilutedMarketCap": 1670808919774,
- *     "marketCapPercentChange1d": 3.2788,
- *     "priceChange1d": 2876.1,
- *     "pricePercentChange1h": 0.1991278666784771,
- *     "pricePercentChange1d": 3.5321815522315307,
- *     "pricePercentChange7d": -3.4056070943823666,
- *     "pricePercentChange14d": 1.663812725054475,
- *     "pricePercentChange30d": -1.8166338283570667,
- *     "pricePercentChange200d": 45.12491105880435,
- *     "pricePercentChange1y": 21.403818710804778
+ *     "price": 84302
  *   },
  *   "eip155:1/slip44:60": { ... },
  *   "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1/slip44:501": null
@@ -224,27 +148,3 @@ export const GetSpotPricesParamsStruct = object({
   assetIds: array(CaipAssetTypeStruct),
   vsCurrency: VsCurrencyParamStruct,
 });
-
-export type GetSpotPricesParams = Infer<typeof GetSpotPricesParamsStruct>;
-
-export const GetHistoricalPricesParamsStruct = object({
-  assetType: CaipAssetTypeStruct,
-  timePeriod: optional(pattern(string(), /^[1-9][0-9]*[dmy]$/u)), // Supports days, months, years
-  from: optional(min(number(), 0)),
-  to: optional(min(number(), 0)),
-  vsCurrency: optional(VsCurrencyParamStruct),
-});
-
-export type GetHistoricalPricesParams = Infer<
-  typeof GetHistoricalPricesParamsStruct
->;
-
-export const GetHistoricalPricesResponseStruct = type({
-  prices: array(tuple([number(), number()])),
-  marketCaps: array(tuple([number(), number()])),
-  totalVolumes: array(tuple([number(), number()])),
-});
-
-export type GetHistoricalPricesResponse = Infer<
-  typeof GetHistoricalPricesResponseStruct
->;

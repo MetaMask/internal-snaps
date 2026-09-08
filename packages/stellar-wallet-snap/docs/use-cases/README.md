@@ -38,12 +38,6 @@ Account management is summarized in one place; SEP-43 signing methods have their
 | Sign message                             | `signMessage`     | [signMessage.md](./keyring/signMessage.md)         |
 | Sign Soroban auth entry                  | `signAuthEntry`   | [signAuthEntry.md](./keyring/signAuthEntry.md)     |
 
-## Assets (`endowment:assets`)
-
-| Use case                            | Entry method    | Doc                             |
-| ----------------------------------- | --------------- | ------------------------------- |
-| Assets overview (lookup, prices, …) | `AssetsHandler` | [assets.md](./assets/assets.md) |
-
 ## User input (`onUserInput`)
 
 | Use case                     | Entry method       | Doc                                       |

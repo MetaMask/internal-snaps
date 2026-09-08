@@ -3,6 +3,21 @@ import { Networks } from '@stellar/stellar-sdk';
 import { KnownCaip2ChainId } from '../../../api';
 import type { AssetMetadataService } from '../../../services/asset-metadata';
 import type { TransactionService } from '../../../services/transaction';
+import {
+  InsufficientBalanceException,
+  InsufficientBalanceToCoverBaseReserveException,
+  InsufficientBalanceToCoverFeeException,
+  InvalidAmountForCreateAccountException,
+  InvalidAssetForCreateAccountException,
+  RemoveTrustlineWithNonZeroBalanceException,
+  RequiresMemoException,
+  TransactionExpireException,
+  TransactionValidationException,
+  TrustlineExceedLimitException,
+  TrustlineNotAuthorizedException,
+  TrustlineNotFoundException,
+  UpdateTrustlineException,
+} from '../../../services/transaction';
 import type { MockClassicOperation } from '../../../services/transaction/__mocks__/transaction.fixtures';
 import { buildMockClassicTransaction } from '../../../services/transaction/__mocks__/transaction.fixtures';
 import { FetchStatus } from '../../../ui/confirmation/api';
@@ -160,23 +175,93 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
-  it('marks the transaction invalid when re-validation throws', async () => {
-    const { refresher, transactionService } = setup();
-    transactionService.createValidatedSendTransaction.mockRejectedValueOnce(
-      new Error('insufficient balance'),
-    );
+  it.each([
+    {
+      error: new InsufficientBalanceException('1', '2'),
+      errorMessage: 'confirmation.txnError.insufficientBalance',
+    },
+    {
+      error: new InsufficientBalanceToCoverFeeException('1', '2'),
+      errorMessage: 'confirmation.txnError.insufficientBalanceToCoverFee',
+    },
+    {
+      error: new InsufficientBalanceToCoverBaseReserveException('1', '2'),
+      errorMessage:
+        'confirmation.txnError.insufficientBalanceToCoverBaseReserve',
+    },
+    {
+      error: new RequiresMemoException(toAddress),
+      errorMessage: 'confirmation.txnError.requiresMemo',
+    },
+    {
+      error: new InvalidAmountForCreateAccountException('0.5'),
+      errorMessage: 'confirmation.txnError.invalidCreateAccountAmount',
+    },
+    {
+      error: new InvalidAssetForCreateAccountException(classicAssetId),
+      errorMessage: 'confirmation.txnError.invalidCreateAccountAsset',
+    },
+    {
+      error: new TrustlineNotAuthorizedException(classicAssetId, accountId),
+      errorMessage: 'confirmation.txnError.trustlineNotAuthorized',
+    },
+    {
+      error: new TrustlineNotFoundException(classicAssetId, accountId),
+      errorMessage: 'confirmation.txnError.trustlineNotFoundOnAccount',
+    },
+    {
+      error: new TrustlineNotFoundException(classicAssetId, toAddress),
+      errorMessage: 'confirmation.txnError.trustlineNotFound',
+    },
+    {
+      error: new TrustlineExceedLimitException(classicAssetId),
+      errorMessage: 'confirmation.txnError.trustlineExceedLimit',
+    },
+    {
+      error: new RemoveTrustlineWithNonZeroBalanceException('nonzero'),
+      errorMessage: 'confirmation.txnError.trustlineNonZeroBalance',
+    },
+    {
+      error: new UpdateTrustlineException('limit'),
+      errorMessage: 'confirmation.txnError.updateTrustlineLimit',
+    },
+    {
+      error: new TransactionExpireException(1),
+      errorMessage: 'confirmation.txnError.expired',
+    },
+    {
+      error: new TransactionValidationException('unknown'),
+      errorMessage: 'confirmation.txnError.generic',
+    },
+    {
+      error: new Error('unknown'),
+      errorMessage: 'confirmation.txnError.generic',
+    },
+  ])(
+    'marks the transaction invalid when re-validation throws ($errorMessage)',
+    async ({ error, errorMessage }) => {
+      const { refresher, transactionService } = setup();
+      transactionService.createValidatedSendTransaction.mockRejectedValueOnce(
+        error,
+      );
 
-    const result = await refresher.refresh(createTransactionContext());
+      const result = await refresher.refresh(createTransactionContext());
 
-    expect(result).toStrictEqual({
-      result: { transactionsFetchStatus: FetchStatus.Error },
-      reschedule: false,
-    });
-  });
+      expect(result).toStrictEqual({
+        result: {
+          transactionsFetchStatus: FetchStatus.Error,
+          errorMessage,
+          scanFetchStatus: FetchStatus.Error,
+        },
+        reschedule: false,
+        halt: true,
+      });
+    },
+  );
 
   it('re-validates a change-trust opt-in transaction', async () => {
     const { refresher, transactionService } = setup();
@@ -205,7 +290,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -246,7 +331,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -273,7 +358,7 @@ describe('ConfirmationTransactionRefresher', () => {
           transaction: transactionXdr,
         },
       },
-      reschedule: false,
+      reschedule: true,
     });
   });
 
@@ -313,7 +398,7 @@ describe('ConfirmationTransactionRefresher', () => {
             transaction: transactionXdr,
           },
         },
-        reschedule: false,
+        reschedule: true,
       });
     } finally {
       jest.useRealTimers();

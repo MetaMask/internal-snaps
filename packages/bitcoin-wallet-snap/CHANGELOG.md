@@ -32,7 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
 - Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
+- Reveal and persist the wallet's own output scripts when signing a PSBT, so change from partner-supplied templates is always covered by routine sync ([#225](https://github.com/MetaMask/internal-snaps/pull/225))
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
+- Keep the template output order when filling a PSBT ([#157](https://github.com/MetaMask/internal-snaps/pull/157))
+  - A template output belonging to the wallet is now only used as the drain output when it is the last output. Previously any such output was moved to the end of the transaction, silently reordering templates that place change before another output.
+  - Filling a PSBT now fails with a `ValidationError` when the built transaction does not reproduce every template output, at its original index, with its original value. The drain output is exempt from the value check, since it absorbs the remaining balance by design. Only a single appended output is tolerated, and it has to belong to the wallet. Previously only the output count was compared, so a divergent transaction could be signed and broadcast.
 
 ## [2.0.1]
 
