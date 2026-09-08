@@ -1,24 +1,20 @@
 import { Memo } from '@stellar/stellar-sdk';
 
+import type { StellarMemoType } from '../../api/string';
+import { StellarMemoTypes } from '../../api/string';
 import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../../constants';
 
+export type { StellarMemoType } from '../../api/string';
+export { StellarMemoTypes } from '../../api/string';
+
 /**
- * Stellar memo kinds supported when attaching a memo to a send transaction.
+ * Builds / resolves Stellar memos for send transactions.
  *
  * When federation (SEP-2) or muxed destinations are available, pass the
  * destination's `memo_type` as {@link StellarMemoType}. Until then, numeric
  * values are inferred as `id` (exchange-style); everything else falls back to
  * `text`.
  */
-export const StellarMemoType = {
-  Text: 'text',
-  Id: 'id',
-  Hash: 'hash',
-  Return: 'return',
-} as const;
-
-export type StellarMemoType =
-  (typeof StellarMemoType)[keyof typeof StellarMemoType];
 
 const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_HASH_HEX_LENGTH = 64;
@@ -36,13 +32,13 @@ export function inferStellarMemoType(value: string): StellarMemoType {
     try {
       const asId = BigInt(value);
       if (asId >= 0n && asId <= STELLAR_MEMO_ID_MAX) {
-        return StellarMemoType.Id;
+        return StellarMemoTypes.Id;
       }
     } catch {
       // Fall through to text.
     }
   }
-  return StellarMemoType.Text;
+  return StellarMemoTypes.Text;
 }
 
 /**
@@ -70,16 +66,16 @@ export function resolveStellarMemo(params: {
   const type = params.type ?? inferStellarMemoType(trimmed);
 
   switch (type) {
-    case StellarMemoType.Id:
+    case StellarMemoTypes.Id:
       assertMemoId(trimmed);
       return Memo.id(trimmed);
-    case StellarMemoType.Hash:
-      assertMemoHashOrReturn(trimmed, StellarMemoType.Hash);
+    case StellarMemoTypes.Hash:
+      assertMemoHashOrReturn(trimmed, StellarMemoTypes.Hash);
       return Memo.hash(trimmed);
-    case StellarMemoType.Return:
-      assertMemoHashOrReturn(trimmed, StellarMemoType.Return);
+    case StellarMemoTypes.Return:
+      assertMemoHashOrReturn(trimmed, StellarMemoTypes.Return);
       return Memo.return(trimmed);
-    case StellarMemoType.Text:
+    case StellarMemoTypes.Text:
     default:
       assertMemoText(trimmed);
       return Memo.text(trimmed);

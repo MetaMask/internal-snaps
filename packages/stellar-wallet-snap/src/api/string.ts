@@ -18,12 +18,31 @@ export const Utf8StringStruct = refine(string(), 'utf8', (value) => {
 export type Utf8String = Infer<typeof Utf8StringStruct>;
 
 /**
- * Optional explicit Stellar memo type (SEP-2 `memo_type` when known).
- * When omitted, the builder infers `id` for all-digit uint64 values, else `text`.
+ * Stellar memo kinds (SEP-2 `memo_type` values).
+ *
+ * When omitted on confirmSend, the builder infers `id` for all-digit uint64
+ * values, else `text`.
  */
-export const StellarMemoTypeStruct = enums(['text', 'id', 'hash', 'return']);
+export const StellarMemoTypes = {
+  Text: 'text',
+  Id: 'id',
+  Hash: 'hash',
+  Return: 'return',
+} as const;
 
-export type StellarMemoTypeParam = Infer<typeof StellarMemoTypeStruct>;
+/** Union of {@link StellarMemoTypes} values — single source of truth with the const. */
+export type StellarMemoType =
+  (typeof StellarMemoTypes)[keyof typeof StellarMemoTypes];
+
+/**
+ * Wire-layer validation for {@link StellarMemoType} — derived from {@link StellarMemoTypes}.
+ */
+export const StellarMemoTypeStruct = enums([
+  StellarMemoTypes.Text,
+  StellarMemoTypes.Id,
+  StellarMemoTypes.Hash,
+  StellarMemoTypes.Return,
+]);
 
 /**
  * Wire-layer memo value for confirmSend: loose length gate only (≤ 64 chars)

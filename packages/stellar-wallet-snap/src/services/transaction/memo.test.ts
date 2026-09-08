@@ -3,17 +3,17 @@ import { Memo } from '@stellar/stellar-sdk';
 import {
   inferStellarMemoType,
   resolveStellarMemo,
-  StellarMemoType,
+  StellarMemoTypes,
 } from './memo';
 
 describe('inferStellarMemoType', () => {
   it.each([
-    { value: '12345', expected: StellarMemoType.Id },
-    { value: '0', expected: StellarMemoType.Id },
-    { value: '18446744073709551615', expected: StellarMemoType.Id },
-    { value: 'deposit-ref', expected: StellarMemoType.Text },
-    { value: '12abc', expected: StellarMemoType.Text },
-    { value: '18446744073709551616', expected: StellarMemoType.Text },
+    { value: '12345', expected: StellarMemoTypes.Id },
+    { value: '0', expected: StellarMemoTypes.Id },
+    { value: '18446744073709551615', expected: StellarMemoTypes.Id },
+    { value: 'deposit-ref', expected: StellarMemoTypes.Text },
+    { value: '12abc', expected: StellarMemoTypes.Text },
+    { value: '18446744073709551616', expected: StellarMemoTypes.Text },
   ])('infers $expected for $value', ({ value, expected }) => {
     expect(inferStellarMemoType(value)).toBe(expected);
   });
@@ -39,7 +39,7 @@ describe('resolveStellarMemo', () => {
   it('honors an explicit text type for numeric values', () => {
     const memo = resolveStellarMemo({
       value: '12345',
-      type: StellarMemoType.Text,
+      type: StellarMemoTypes.Text,
     });
     expect(memo).toStrictEqual(Memo.text('12345'));
   });
@@ -47,19 +47,19 @@ describe('resolveStellarMemo', () => {
   it('honors an explicit id type', () => {
     const memo = resolveStellarMemo({
       value: '42',
-      type: StellarMemoType.Id,
+      type: StellarMemoTypes.Id,
     });
     expect(memo).toStrictEqual(Memo.id('42'));
   });
 
   it('builds hash and return memos from 64-char hex', () => {
-    const hex = 'a'.repeat(64);
+    const hashHex = 'a'.repeat(64);
     expect(
-      resolveStellarMemo({ value: hex, type: StellarMemoType.Hash }),
-    ).toStrictEqual(Memo.hash(hex));
+      resolveStellarMemo({ value: hashHex, type: StellarMemoTypes.Hash }),
+    ).toStrictEqual(Memo.hash(hashHex));
     expect(
-      resolveStellarMemo({ value: hex, type: StellarMemoType.Return }),
-    ).toStrictEqual(Memo.return(hex));
+      resolveStellarMemo({ value: hashHex, type: StellarMemoTypes.Return }),
+    ).toStrictEqual(Memo.return(hashHex));
   });
 
   it('throws when text memo exceeds 28 UTF-8 bytes', () => {
@@ -70,13 +70,13 @@ describe('resolveStellarMemo', () => {
 
   it('throws when hash hex is invalid', () => {
     expect(() =>
-      resolveStellarMemo({ value: 'abc', type: StellarMemoType.Hash }),
+      resolveStellarMemo({ value: 'abc', type: StellarMemoTypes.Hash }),
     ).toThrow('Memo hash must be a 64-character hex string');
   });
 
   it('throws when explicit id is not decimal', () => {
     expect(() =>
-      resolveStellarMemo({ value: 'not-an-id', type: StellarMemoType.Id }),
+      resolveStellarMemo({ value: 'not-an-id', type: StellarMemoTypes.Id }),
     ).toThrow('Memo id must be a non-negative decimal integer');
   });
 });
