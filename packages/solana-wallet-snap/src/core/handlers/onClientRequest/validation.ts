@@ -49,23 +49,17 @@ import { ClientRequestMethod } from './types';
  * Batch items intentionally validate messages as plain strings so invalid
  * proof messages can be reported per item instead of failing the whole batch.
  */
-export {
-  ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchRequestItemStruct,
-} from '@metamask/snap-networks-utils';
+export { ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchRequestItemStruct } from '@metamask/snap-networks-utils';
 
 /**
  * Validates the params object for `signProofOfOwnershipBatch`.
  */
-export {
-  ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct,
-} from '@metamask/snap-networks-utils';
+export { ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct } from '@metamask/snap-networks-utils';
 
 /**
  * Validates a failed proof-of-ownership batch item response.
  */
-export {
-  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
-} from '@metamask/snap-networks-utils';
+export { ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct } from '@metamask/snap-networks-utils';
 
 /**
  * signAndSendTransactionWithoutConfirmation request/response validation.
