@@ -222,7 +222,12 @@ describe('ConfirmSendHandler', () => {
     overrides: Partial<
       Pick<
         ConfirmSendJsonRpcRequest['params'],
-        'fromAccountId' | 'toAddress' | 'assetId' | 'amount'
+        | 'fromAccountId'
+        | 'toAddress'
+        | 'assetId'
+        | 'amount'
+        | 'memo'
+        | 'memoType'
       >
     > = {},
   ) {
