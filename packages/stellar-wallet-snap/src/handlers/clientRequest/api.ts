@@ -49,16 +49,12 @@ import { parseProofOfOwnershipMessage } from './utils';
  * Messages are validated inside the handler so invalid proof messages can be
  * returned as per-item errors instead of rejecting the whole batch.
  */
-export {
-  ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchJsonRpcRequestItemStruct,
-} from '@metamask/snap-networks-utils';
+export { ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchJsonRpcRequestItemStruct } from '@metamask/snap-networks-utils';
 
 /**
  * Validation struct for one failed signProofOfOwnershipBatch result.
  */
-export {
-  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
-} from '@metamask/snap-networks-utils';
+export { ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct } from '@metamask/snap-networks-utils';
 
 /**
  * Enum for the client request method.
