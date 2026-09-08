@@ -117,6 +117,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     try {
       const { onChainAccount, account: stellarKeyringAccount } = resolved;
       const { amount, toAddress, assetId, scope } = request.params;
+      const memo = request.params.memo?.trim() ?? undefined;
+      const { memoType } = request.params;
       const assetMetadata = await this.#assetMetadataService.resolve(assetId);
       const { decimals, symbol } = assetMetadata.units[0];
 
@@ -141,6 +143,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
             assetId,
             amount: amountInSmallestUnit,
             destination: toAddress,
+            memo,
+            memoType,
           });
       } catch (error: unknown) {
         if (error instanceof TransactionValidationException) {
@@ -286,6 +290,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   }> {
     const { request, confirmedTransaction, amount } = params;
     const { assetId, toAddress, scope } = request.params;
+    const memo = request.params.memo?.trim() ?? undefined;
+    const { memoType } = request.params;
     // Resolve again after the user confirms so sequence, balances, and fees are fresh before signing.
     // sendTransaction still handles txBadSeq races that happen after this refresh.
     const { wallet, onChainAccount } = await this.resolveAccount(request);
@@ -297,6 +303,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         assetId,
         amount,
         destination: toAddress,
+        memo,
+        memoType,
       });
 
     // Reject if the refreshed fee is higher than what the user approved, so we

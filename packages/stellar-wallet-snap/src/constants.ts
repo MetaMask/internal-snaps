@@ -126,6 +126,13 @@ export const MEMO_REQUIRED_KEY = 'config.memo_required';
 export const ACCOUNT_REQUIRES_MEMO = 'MQ==';
 
 /**
+ * Stellar text memos are limited to 28 bytes on-chain.
+ *
+ * @see https://developers.stellar.org/docs/learn/fundamentals/transactions/operations-and-transactions#memo
+ */
+export const STELLAR_TEXT_MEMO_MAX_BYTES = 28;
+
+/**
  * Maximum native XLM threshold for an incoming
  * payment to be treated as dust spam.
  *

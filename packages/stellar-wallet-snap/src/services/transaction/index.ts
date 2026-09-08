@@ -1,5 +1,6 @@
 export * from './OperationMapper';
 export * from './exceptions';
+export * from './memo';
 export * from './Transaction';
 export * from './TransactionBuilder';
 export * from './TransactionRepository';

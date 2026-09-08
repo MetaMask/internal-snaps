@@ -212,6 +212,69 @@ describe('TransactionBuilder', () => {
       expect(transaction.network).toStrictEqual(Networks.PUBLIC);
       expect(transaction.getRaw()).toBeInstanceOf(StellarTransaction);
       expect(transaction.hasCreateAccount).toBe(false);
+      expect(transaction.getMemo()).toBeNull();
+    });
+
+    it('attaches a text memo when provided', () => {
+      const testDestination = getTestWallet();
+      const transaction = transactionBuilder.transfer({
+        onChainAccount: testOnChainAccount,
+        scope: KnownCaip2ChainId.Mainnet,
+        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+        amount: new BigNumber(100),
+        destination: {
+          address: testDestination.address,
+          isActivated: true,
+        },
+        baseFee: new BigNumber(100),
+        memo: 'deposit-ref',
+      });
+
+      expect(transaction.getMemo()).toBe('deposit-ref');
+      expect((transaction.getRaw() as StellarTransaction).memo.type).toBe(
+        'text',
+      );
+    });
+
+    it('infers memo id for numeric exchange-style memos', () => {
+      const testDestination = getTestWallet();
+      const transaction = transactionBuilder.transfer({
+        onChainAccount: testOnChainAccount,
+        scope: KnownCaip2ChainId.Mainnet,
+        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+        amount: new BigNumber(100),
+        destination: {
+          address: testDestination.address,
+          isActivated: true,
+        },
+        baseFee: new BigNumber(100),
+        memo: '123456789',
+      });
+
+      expect(transaction.getMemo()).toBe('123456789');
+      expect((transaction.getRaw() as StellarTransaction).memo.type).toBe('id');
+    });
+
+    it('honors an explicit memoType over inference', () => {
+      const testDestination = getTestWallet();
+      const transaction = transactionBuilder.transfer({
+        onChainAccount: testOnChainAccount,
+        scope: KnownCaip2ChainId.Mainnet,
+        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+        amount: new BigNumber(100),
+        destination: {
+          address: testDestination.address,
+          isActivated: true,
+        },
+        baseFee: new BigNumber(100),
+        memo: '123456789',
+        memoType: 'text',
+      });
+
+      expect(transaction.getMemo()).toBe('123456789');
+      expect((transaction.getRaw() as StellarTransaction).memo.type).toBe(
+        'text',
+      );
     });
 
     it('builds a create account transaction', () => {

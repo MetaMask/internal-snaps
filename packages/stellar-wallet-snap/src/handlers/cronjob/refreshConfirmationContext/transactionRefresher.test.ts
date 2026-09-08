@@ -165,6 +165,8 @@ describe('ConfirmationTransactionRefresher', () => {
       assetId: sendRequest.params.assetId,
       destination: toAddress,
       amount: expect.anything(),
+      memo: undefined,
+      memoType: undefined,
     });
     expect(result).toStrictEqual({
       result: {

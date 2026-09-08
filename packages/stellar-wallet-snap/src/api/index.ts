@@ -6,3 +6,4 @@ export * from './json';
 export * from './integer';
 export * from './xdr';
 export * from './transactionHash';
+export * from './string';
