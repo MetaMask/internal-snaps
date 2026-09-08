@@ -54,18 +54,18 @@ describe('resolveStellarMemo', () => {
 
   it('builds hash and return memos from 64-char hex', () => {
     const hex = 'a'.repeat(64);
-    expect(resolveStellarMemo({ value: hex, type: StellarMemoType.Hash })).toStrictEqual(
-      Memo.hash(hex),
-    );
+    expect(
+      resolveStellarMemo({ value: hex, type: StellarMemoType.Hash }),
+    ).toStrictEqual(Memo.hash(hex));
     expect(
       resolveStellarMemo({ value: hex, type: StellarMemoType.Return }),
     ).toStrictEqual(Memo.return(hex));
   });
 
   it('throws when text memo exceeds 28 UTF-8 bytes', () => {
-    expect(() =>
-      resolveStellarMemo({ value: 'é'.repeat(15) }),
-    ).toThrow('Memo must be 28 bytes or fewer');
+    expect(() => resolveStellarMemo({ value: 'é'.repeat(15) })).toThrow(
+      'Memo must be 28 bytes or fewer',
+    );
   });
 
   it('throws when hash hex is invalid', () => {
