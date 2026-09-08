@@ -66,7 +66,6 @@ const metamaskMethods = [
   // Client methods
   ClientRequestMethod.SignAndSendTransactionWithoutConfirmation,
   ClientRequestMethod.SignProofOfOwnership,
-  ClientRequestMethod.SignProofOfOwnershipBatch,
 ];
 
 export const originPermissions = createOriginPermissions({
