@@ -1,10 +1,9 @@
 import { SolMethod } from '@metamask/keyring-api';
-import type { Serializable } from '@metamask/snap-networks-utils';
+import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { lamports } from '@solana/kit';
 
 import type { AssetEntity, SolanaKeyringAccount } from '../../../entities';
-import type { ICache } from '../../caching/ICache';
-import { InMemoryCache } from '../../caching/InMemoryCache';
 import {
   KnownCaip19Id,
   METAMASK_ORIGIN,

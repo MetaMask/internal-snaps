@@ -1,4 +1,5 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
+import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import { useCache } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { fetchMint } from '@solana-program/token-2022';
@@ -12,18 +13,28 @@ import type {
   Account,
   Address,
   Blockhash,
+  Commitment,
   FetchAccountConfig,
   MaybeAccount,
   MaybeEncodedAccount,
+  Slot,
 } from '@solana/kit';
 import type { Rpc, SolanaRpcApi } from '@solana/kit';
 
-import type { ICache } from '../../caching/ICache';
-import { useCache } from '../../caching/useCache';
 import type { Network } from '../../constants/solana';
 import { NetworkStruct } from '../../validation/structs';
 import type { ConfigProvider } from '../config/ConfigProvider';
 import { createMainTransport } from './transport';
+
+/**
+ * The result of {@link fetchJsonParsedAccount}.
+ *
+ * The SDK's account types are not statically `Serializable`, so the result is
+ * asserted to be cache-safe via an intersection with `Serializable`.
+ */
+type JsonParsedAccountResult<TData extends object> =
+  | (MaybeAccount<TData, Address> & Serializable)
+  | (MaybeEncodedAccount<Address> & Serializable);
 
 /**
  * The SolanaConnection class is responsible for managing the connections to the Solana networks.
@@ -113,17 +124,33 @@ export class SolanaConnection {
       >;
     }
 
-    // Create a cached version of the function
+    // Create a cached version of the function.
+    // The cache key is built from the result-affecting, serializable parts of
+    // the config (`commitment` and `minContextSlot`). `abortSignal` only
+    // affects cancellation, so it is neither part of the key nor forwarded to
+    // the cached fetch.
     const cached = useCache<
-      [string, Network, FetchAccountConfig | undefined],
-      | (MaybeAccount<TData, Address> & Serializable)
-      | (MaybeEncodedAccount<Address> & Serializable)
-    >(internal as any, this.#cache, {
-      ttlMilliseconds: this.#cacheTtlsMilliseconds.fetchJsonParsedAccount,
-      functionName: 'SolanaConnection::fetchJsonParsedAccount',
-    });
+      [string, Network, Commitment | undefined, Slot | undefined],
+      JsonParsedAccountResult<TData>
+    >(
+      async (
+        _address,
+        _caip2Id,
+        _commitment,
+        _minContextSlot,
+      ): Promise<JsonParsedAccountResult<TData>> =>
+        fetchJsonParsedAccount(this.getRpc(_caip2Id), asAddress(_address), {
+          commitment: _commitment,
+          minContextSlot: _minContextSlot,
+        }) as Promise<JsonParsedAccountResult<TData>>,
+      this.#cache,
+      {
+        ttlMilliseconds: this.#cacheTtlsMilliseconds.fetchJsonParsedAccount,
+        functionName: 'SolanaConnection::fetchJsonParsedAccount',
+      },
+    );
 
-    return cached(address, caip2Id, config);
+    return cached(address, caip2Id, config?.commitment, config?.minContextSlot);
   }
 
   /**
@@ -146,28 +173,40 @@ export class SolanaConnection {
      *
      * This wrapper is used instead of directly caching the SDK's fetchMint function
      * to ensure that only simple arguments are used, as these arguments form the cache key.
+     *
+     * As with {@link SolanaConnection.fetchJsonParsedAccount}, the cache key is
+     * built from the result-affecting, serializable parts of the config
+     * (`commitment` and `minContextSlot`); `abortSignal` is not forwarded to
+     * the cached fetch.
      */
-
-    const fetchMintInternal = async (
-      _address: Address,
-      _caip2Id: Network,
-      _config?: FetchAccountConfig,
-    ) => {
-      const rpc = this.getRpc(caip2Id);
-      return fetchMint(rpc, asAddress(address), config);
-    };
-
-    // Create a cached version of the function
     const fetchMintCached = useCache<
-      [Address, Network, FetchAccountConfig | undefined],
+      [Address, Network, Commitment | undefined, Slot | undefined],
       Account<Mint, Address> & Serializable
-    >(fetchMintInternal as any, this.#cache, {
-      ttlMilliseconds: this.#cacheTtlsMilliseconds.fetchMint,
-      functionName: 'SolanaConnection::fetchMint',
-    });
+    >(
+      async (
+        _address,
+        _caip2Id,
+        _commitment,
+        _minContextSlot,
+      ): Promise<Account<Mint, Address> & Serializable> =>
+        fetchMint(this.getRpc(_caip2Id), _address, {
+          commitment: _commitment,
+          minContextSlot: _minContextSlot,
+        }) as Promise<Account<Mint, Address> & Serializable>,
+      this.#cache,
+      {
+        ttlMilliseconds: this.#cacheTtlsMilliseconds.fetchMint,
+        functionName: 'SolanaConnection::fetchMint',
+      },
+    );
 
     // Use the cached version of the function
-    return fetchMintCached(asAddress(address), caip2Id, config);
+    return fetchMintCached(
+      asAddress(address),
+      caip2Id,
+      config?.commitment,
+      config?.minContextSlot,
+    );
   }
 
   /**

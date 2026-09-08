@@ -1,4 +1,5 @@
-import { InMemoryCache } from './core/caching/InMemoryCache';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
+
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
