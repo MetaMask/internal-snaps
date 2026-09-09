@@ -1,8 +1,6 @@
 /* eslint-disable jest/prefer-strict-equal */
 
 import { InMemoryState } from '@metamask/snap-networks-utils';
-
-import { mockLogger } from '../utils/mockLogger';
 import { get, set, unset } from 'lodash';
 
 import { Logger, LogLevel } from '../logger/Logger';
