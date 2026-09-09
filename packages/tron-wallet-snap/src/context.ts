@@ -1,9 +1,11 @@
 import {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
+  State,
 } from '@metamask/snap-networks-utils';
 import type {
   AssetsProviderMessenger,
+  IStateManager,
   RemoteFeatureFlagsProviderMessenger,
 } from '@metamask/snap-networks-utils';
 import { getMessenger } from '@metamask/snaps-sdk';
@@ -33,8 +35,8 @@ import { ConfirmationHandler } from './services/confirmation/ConfirmationHandler
 import { FeeCalculatorService } from './services/send/FeeCalculatorService';
 import { SendService } from './services/send/SendService';
 import { StakingService } from './services/staking/StakingService';
-import type { UnencryptedStateValue } from './services/state/State';
-import { State } from './services/state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from './services/state/stateTypes';
+import type { UnencryptedStateValue } from './services/state/stateTypes';
 import { TransactionExpirationRefresherService } from './services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { TransactionScanService } from './services/transaction-scan/TransactionScanService';
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
@@ -59,12 +61,7 @@ export const configProvider = new ConfigProvider();
 
 const state = new State({
   encrypted: false,
-  defaultState: {
-    keyringAccounts: {},
-    assets: {},
-    transactions: {},
-    mapInterfaceNameToId: {},
-  },
+  defaultState: DEFAULT_UNENCRYPTED_STATE,
 });
 
 const snapClient = new SnapClient();
@@ -261,7 +258,7 @@ export type SnapExecutionContext = {
   /**
    * Services
    */
-  state: State<UnencryptedStateValue>;
+  state: IStateManager<UnencryptedStateValue>;
   priceApiClient: PriceApiClient;
   feeCalculatorService: FeeCalculatorService;
   assetsService: AssetsService;

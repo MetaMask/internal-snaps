@@ -1,6 +1,7 @@
 /* eslint-disable jest/prefer-strict-equal */
 
-import { InMemoryState } from '../services/state/InMemoryState';
+import { InMemoryState } from '@metamask/snap-networks-utils';
+
 import { mockLogger } from '../utils/mockLogger';
 import { StateCache } from './StateCache';
 
