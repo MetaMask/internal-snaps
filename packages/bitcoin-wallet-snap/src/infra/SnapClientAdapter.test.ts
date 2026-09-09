@@ -93,7 +93,7 @@ describe('SnapClientAdapter', () => {
       );
     });
 
-    it('emits a snap_trackEvent request for ScanDiscoveredMissedTransactions', async () => {
+    it('emits transaction_hash for MissedTransactionsDiscovered', async () => {
       const { snapClient, mockLogger, mockRequest } = setupTest();
 
       const account = mock<BitcoinAccount>({
@@ -107,7 +107,7 @@ describe('SnapClientAdapter', () => {
 
       expect(
         await snapClient.emitTrackingEvent(
-          TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+          TrackingSnapEvent.MissedTransactionsDiscovered,
           account,
           tx,
           'metamask',
@@ -118,13 +118,13 @@ describe('SnapClientAdapter', () => {
         method: 'snap_trackEvent',
         params: {
           event: {
-            event: TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+            event: TrackingSnapEvent.MissedTransactionsDiscovered,
             properties: {
               origin: 'metamask',
-              message: 'Snap scan discovered missed transaction',
+              message: 'Snap discovered missed transaction',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
-              tx_id: 'txid-123',
+              transaction_hash: 'txid-123',
             },
           },
         },

@@ -280,7 +280,7 @@ export class CronHandler {
     for (const tx of account.listTransactions()) {
       if (!before.has(tx.txid.toString())) {
         await this.#snapClient.emitTrackingEvent(
-          TrackingSnapEvent.ScanDiscoveredMissedTransactions,
+          TrackingSnapEvent.MissedTransactionsDiscovered,
           account,
           tx,
           'cron',

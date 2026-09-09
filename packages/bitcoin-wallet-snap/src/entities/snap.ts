@@ -62,7 +62,7 @@ export const TrackingSnapEvent = {
   TransactionReceived: 'Transaction Received',
   TransactionReorged: 'Transaction Reorged',
   TransactionSubmitted: 'Transaction Submitted',
-  ScanDiscoveredMissedTransactions: 'Scan Discovered Missed Transactions',
+  MissedTransactionsDiscovered: 'Missed Transactions Discovered',
 } as const;
 
 export type TrackingSnapEvent =

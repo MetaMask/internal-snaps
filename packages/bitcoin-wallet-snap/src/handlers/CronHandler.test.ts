@@ -195,7 +195,7 @@ describe('CronHandler', () => {
         expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
         expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
         expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
-          'Scan Discovered Missed Transactions',
+          'Missed Transactions Discovered',
           mockAccount1,
           txNew,
           'cron',
