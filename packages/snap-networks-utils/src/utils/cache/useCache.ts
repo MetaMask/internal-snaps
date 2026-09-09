@@ -54,6 +54,16 @@ const defaultGenerateCacheKey = (
 /**
  * Wraps a function with caching behavior.
  *
+ * WARNINGS:
+ * - The cache write is fire-and-forget (not awaited). This is only safe with
+ *   caches whose writes are effectively instantaneous, such as
+ *   `InMemoryCache`. Do not pair this wrapper with a mutex-guarded, persisted
+ *   cache such as `StateCache`: unawaited state writes accumulate without
+ *   backpressure, the state mutex queue grows without bound under sustained
+ *   traffic, and foreground state operations eventually hit the snap's RPC
+ *   timeout. Use `useCacheUntil` (which awaits its write) with a persisted
+ *   cache instead.
+ *
  * @template TArgs - Tuple type representing the arguments of the function.
  * @template TResult - The return type of the function, must be Serializable.
  * @param fn - The asynchronous function to wrap. Must return a Promise<Serializable>.
@@ -106,8 +116,13 @@ export const useCache = <
     // Execute the original function
     const result = await fn(...args);
 
-    // Cache the result, handle potential errors silently
-    // We don't await this, allowing it to happen in the background
+    // Cache the result, handling potential errors silently.
+    // Fire-and-forget: we don't await this, allowing it to happen in the
+    // background. This is safe only because the snaps pair this wrapper with
+    // `InMemoryCache` (writes resolve in a microtask). With a mutex-guarded
+    // persisted cache such as `StateCache`, unawaited writes would accumulate
+    // without backpressure and starve foreground state operations — see the
+    // warnings in this function's documentation.
     void cache.set(cacheKey, result, ttlMilliseconds).catch((error) => {
       logger.error(`Cache set error for key "${cacheKey}":`, error);
     });
