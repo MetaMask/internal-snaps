@@ -51,7 +51,7 @@ export class TransactionsService {
     const transactionData = await this.#connection
       .getRpc(scope)
       .getTransaction(asSignature(signature), {
-        maxSupportedTransactionVersion: 0,
+        maxSupportedTransactionVersion: 1,
       })
       .send();
 
@@ -182,7 +182,7 @@ export class TransactionsService {
         const transaction = await this.#connection
           .getRpc(asset.network)
           .getTransaction(asSignature(signatureResponse.signature), {
-            maxSupportedTransactionVersion: 0,
+            maxSupportedTransactionVersion: 1,
           })
           .send();
         return {
