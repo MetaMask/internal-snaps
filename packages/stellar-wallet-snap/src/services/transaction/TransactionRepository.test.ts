@@ -3,19 +3,14 @@ import { InMemoryState } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
+import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
 import { generateMockTransactions } from './__mocks__/transaction.fixtures';
 import type { StellarKeyringTransaction } from './api';
-import type { TransactionStateValue } from './TransactionRepository';
 import { TransactionRepository } from './TransactionRepository';
 
 describe('TransactionRepository', () => {
   const scope = KnownCaip2ChainId.Mainnet;
   const accountId = 'account-1';
-
-  const defaultState: TransactionStateValue = {
-    transactions: {},
-    lastScanTokens: {},
-  };
 
   const recentTimestampSeconds = () => Math.floor(Date.now() / 1000);
 
@@ -26,7 +21,9 @@ describe('TransactionRepository', () => {
     );
 
   const createRepository = () =>
-    new TransactionRepository(new InMemoryState(structuredClone(defaultState)));
+    new TransactionRepository(
+      new InMemoryState(structuredClone(DEFAULT_UNENCRYPTED_STATE)),
+    );
 
   it('removes confirmed incoming transactions from snap state', async () => {
     const repository = createRepository();
