@@ -2,7 +2,8 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
-import { Logger } from '@metamask/snap-networks-utils';
+import { InMemoryState, Logger } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';
@@ -18,10 +19,8 @@ import type {
   TransactionsService,
 } from '../../services';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
-import { InMemoryState } from '../../services/state/InMemoryState';
-import type { IStateManager } from '../../services/state/IStateManager';
-import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/State';
-import type { UnencryptedStateValue } from '../../services/state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/stateTypes';
+import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import { MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST } from '../../services/wallet/mocks';
 import type { WalletService } from '../../services/wallet/WalletService';
 import {
