@@ -1,50 +1,9 @@
 /* eslint-disable jest/prefer-strict-equal */
 
-import { InMemoryState } from '@metamask/snap-networks-utils';
-import { get, set, unset } from 'lodash';
-
 import { Logger, LogLevel } from '../logger/Logger';
-import type { Serializable } from '../serialization/types';
-import type { CacheStateManager } from './StateCache';
-import type { StateValue } from './StateCache';
+import { InMemoryState } from '../state/InMemoryState';
+import type { CacheStateManager, StateValue } from './StateCache';
 import { StateCache } from './StateCache';
-
-/**
- * A simple implementation of a state manager that relies on an in-memory state,
- * used for testing purposes.
- */
-class InMemoryState implements CacheStateManager<StateValue> {
-  #state: StateValue;
-
-  constructor(initialState: StateValue) {
-    this.#state = initialState;
-  }
-
-  async get(): Promise<StateValue> {
-    return this.#state;
-  }
-
-  async getKey<TKey extends Serializable>(
-    key: string,
-  ): Promise<TKey | undefined> {
-    return get(this.#state, key) as TKey | undefined;
-  }
-
-  async setKey(key: string, value: Serializable): Promise<void> {
-    set(this.#state, key, value); // Use lodash to set the value using a json path
-  }
-
-  async update(
-    callback: (state: StateValue) => StateValue,
-  ): Promise<StateValue> {
-    return (this.#state = callback(this.#state));
-  }
-
-  async deleteKey(key: string): Promise<void> {
-    // Using lodash's unset to leverage the json path capabilities
-    unset(this.#state, key);
-  }
-}
 
 describe('StateCache', () => {
   let logger: Logger;
