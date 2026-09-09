@@ -1,15 +1,12 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
-import { getSnapProvider } from '../../utils/snap';
-import { State } from '../state/State';
 import { generateMockTransactions } from './__mocks__/transaction.fixtures';
 import type { StellarKeyringTransaction } from './api';
 import type { TransactionStateValue } from './TransactionRepository';
 import { TransactionRepository } from './TransactionRepository';
-
-jest.mock('../../utils/snap');
 
 describe('TransactionRepository', () => {
   const scope = KnownCaip2ChainId.Mainnet;
@@ -28,38 +25,8 @@ describe('TransactionRepository', () => {
         1000,
     );
 
-  let mockState: TransactionStateValue;
-
   const createRepository = () =>
-    new TransactionRepository(
-      new State({
-        encrypted: false,
-        defaultState,
-      }),
-    );
-
-  beforeEach(() => {
-    mockState = structuredClone(defaultState);
-    const snapProvider = getSnapProvider() as { request: jest.Mock };
-    snapProvider.request.mockImplementation(async ({ method, params }) => {
-      if (method === 'snap_getState') {
-        if (params.key) {
-          return mockState[params.key as keyof TransactionStateValue];
-        }
-        return mockState;
-      }
-
-      if (method === 'snap_manageState' && params.operation === 'update') {
-        mockState = params.newState as TransactionStateValue;
-      }
-
-      return null;
-    });
-  });
-
-  afterEach(() => {
-    (getSnapProvider() as { request: jest.Mock }).request.mockReset();
-  });
+    new TransactionRepository(new InMemoryState(structuredClone(defaultState)));
 
   it('removes confirmed incoming transactions from snap state', async () => {
     const repository = createRepository();
