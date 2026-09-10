@@ -384,7 +384,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
     await this.#state.deleteKeys([
       `keyringAccounts.${accountId}`,
       `transactions.${accountId}`,
-      `assets.${accountId}`,
+      `assetEntities.${accountId}`,
     ]);
   }
 

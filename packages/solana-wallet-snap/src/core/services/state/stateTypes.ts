@@ -7,16 +7,14 @@ import type {
   Subscription,
 } from '../../../entities';
 
-export type AccountId = string;
-
 export type UnencryptedStateValue = {
   keyringAccounts: Record<string, SolanaKeyringAccount>;
   mapInterfaceNameToId: Record<string, string>;
-  transactions: Record<AccountId, Transaction[]>;
+  transactions: Record<string, Transaction[]>;
   // we need to store the exhaustive list of signatures (including spam)
   // to keep track of the transactions per account. The field transactions above only stores non-spam transactions, which break the refreshAccounts cronjob logic.
   signatures: Record<Address, Signature[]>;
-  assetEntities: Record<AccountId, AssetEntity[]>;
+  assetEntities: Record<string, AssetEntity[]>;
   subscriptions: Record<string, Subscription>;
   webSocketConnections: {
     closeWebSocketConnectionsBackgroundEventId: string | null;

@@ -300,18 +300,26 @@ describe('SolanaKeyring', () => {
 
   describe('deleteAccount', () => {
     it('deletes an account', async () => {
-      const accountBeforeDeletion = await keyring.getAccount(
-        MOCK_SOLANA_KEYRING_ACCOUNT_1.id,
-      );
+      const accountId = MOCK_SOLANA_KEYRING_ACCOUNT_1.id;
+      await mockState.setKey(`transactions.${accountId}`, []);
+      await mockState.setKey(`assetEntities.${accountId}`, [
+        MOCK_ASSET_ENTITY_1,
+      ]);
+
+      const accountBeforeDeletion = await keyring.getAccount(accountId);
       expect(accountBeforeDeletion).toBeDefined();
 
-      await keyring.deleteAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id);
+      await keyring.deleteAccount(accountId);
 
-      await expect(
-        keyring.getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id),
-      ).rejects.toThrow(
-        `Account "${MOCK_SOLANA_KEYRING_ACCOUNT_1.id}" not found`,
+      await expect(keyring.getAccount(accountId)).rejects.toThrow(
+        `Account "${accountId}" not found`,
       );
+      expect(
+        await mockState.getKey(`transactions.${accountId}`),
+      ).toBeUndefined();
+      expect(
+        await mockState.getKey(`assetEntities.${accountId}`),
+      ).toBeUndefined();
     });
 
     it('throws an error if account provided is not a uuid', async () => {
