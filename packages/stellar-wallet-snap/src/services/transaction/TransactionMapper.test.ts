@@ -521,7 +521,7 @@ describe('TransactionMapper', () => {
     {
       testCase: 'fee bump transaction',
       response: feeBumpTransaction,
-      // expected to be filtered out if the account is the one who pay the fee but not the source eaccount.
+      // expected to be filtered out if the account is the one who pay the fee but not the source account.
       sourceAccountAddress: feeBumpTransaction.fee_account,
     },
   ])(
