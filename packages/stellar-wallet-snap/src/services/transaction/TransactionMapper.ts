@@ -181,7 +181,7 @@ export class TransactionMapper {
     // Skip transactions that are not from the explicit source account.
     // e.g.
     // - fee bump transactions for other accounts.
-    // - calm balance transactions by other accounts.
+    // - claim-balance transactions by other accounts.
     if (!transaction.isExplicitSourceAccount(address)) {
       return undefined;
     }

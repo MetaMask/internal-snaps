@@ -37,7 +37,7 @@ import {
   sep41SendTransactionResponse,
   contractSwapReceiveNativeTransactionResponse,
   contractSwapReceiveUSDCTransactionResponse,
-  calmBalanceTransaction,
+  claimBalanceTransaction,
   sponsorSendTransaction,
   feeBumpTransaction,
 } from './__mocks__/horizon-transaction-responses.fixtures';
@@ -512,8 +512,8 @@ describe('TransactionMapper', () => {
 
   it.each([
     {
-      testCase: 'calm balance transaction',
-      response: calmBalanceTransaction,
+      testCase: 'claim-balance transaction',
+      response: claimBalanceTransaction,
       // expected to be filtered out if the txn is source from other account and it is not send / swap / create account.
       sourceAccountAddress:
         'GC2QOFF3GVS5V5C7DJR4PXI453TQVTZ6TUBZ22GX3RLAZL7XRWANGT4V',

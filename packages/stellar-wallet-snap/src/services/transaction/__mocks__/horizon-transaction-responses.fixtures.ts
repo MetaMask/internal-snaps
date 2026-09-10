@@ -977,7 +977,7 @@ export const sponsorSendTransaction = {
   ],
 } as unknown as Horizon.ServerApi.TransactionRecord;
 
-export const calmBalanceTransaction = {
+export const claimBalanceTransaction = {
   _links: {
     self: {
       href: 'https://horizon.stellar.org/transactions/903109a831a0ca505ee3077d0e88321abcf202b5b23db08339aa0dd036f9ddab',
