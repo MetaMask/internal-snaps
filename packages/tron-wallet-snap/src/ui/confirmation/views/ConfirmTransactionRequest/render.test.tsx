@@ -1,3 +1,4 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { Types as TronwebTypes } from 'tronweb';
 
 import {
@@ -8,10 +9,7 @@ import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
-import type {
-  State,
-  UnencryptedStateValue,
-} from '../../../../services/state/State';
+import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
 import type { TransactionScanService } from '../../../../services/transaction-scan/TransactionScanService';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
@@ -231,7 +229,7 @@ async function withRender(
   ) =>
     render(
       mockSnapClient as unknown as SnapClient,
-      mockState as unknown as State<UnencryptedStateValue>,
+      mockState as unknown as IStateManager<UnencryptedStateValue>,
       { ...defaultIncomingContext, ...contextOverrides },
     );
 
