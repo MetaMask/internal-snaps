@@ -198,10 +198,10 @@ export class AccountsRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await Promise.all([
-      this.#state.deleteKey(`${this.#storageKey}.${id}`),
-      this.#state.deleteKey(`assets.${id}`),
-      this.#state.deleteKey(`transactions.${id}`),
+    await this.#state.deleteKeys([
+      `${this.#storageKey}.${id}`,
+      `assets.${id}`,
+      `transactions.${id}`,
     ]);
   }
 }
