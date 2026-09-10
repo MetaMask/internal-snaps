@@ -3,12 +3,10 @@ import type { Transaction } from '@metamask/keyring-api';
 import type { AssetEntity } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 
-export type AccountId = string;
-
 export type UnencryptedStateValue = {
   keyringAccounts: Record<string, TronKeyringAccount>;
-  assets: Record<AccountId, AssetEntity[]>;
-  transactions: Record<AccountId, Transaction[]>;
+  assets: Record<string, AssetEntity[]>;
+  transactions: Record<string, Transaction[]>;
   mapInterfaceNameToId: Record<string, string>;
 };
 
