@@ -156,7 +156,11 @@ import {
 } from '@solana-program/token-2022';
 import { getBase58Codec } from '@solana/kit';
 import type { Rpc, SolanaRpcApi } from '@solana/kit';
-import type { Instruction } from '@solana/kit';
+import type {
+  Instruction,
+  InstructionWithData,
+  ReadonlyUint8Array,
+} from '@solana/kit';
 
 import {
   fromBytesToCompilableTransactionMessage,
@@ -646,7 +650,7 @@ export const extractInstructionsFromUnknownBase64String = async (
 export const toIInstruction = (
   instruction: SolanaInstruction,
   transactionData: SolanaTransaction,
-): Instruction => {
+): InstructionWithData<ReadonlyUint8Array> => {
   // Filter to only keep the account indexes available in the `accountKeys`
   const isInAccountKeys = (accountIndex: number) =>
     accountIndex < transactionData.transaction.message.accountKeys.length;
@@ -667,12 +671,10 @@ export const toIInstruction = (
     throw new Error('Program address not found');
   }
 
-  // Build the IInstruction object
-  const iInstruction = {
+  // Build the InstructionWithData<ReadonlyUint8Array> object
+  return {
     accounts,
     data: getBase58Codec().encode(instruction.data),
     programAddress,
-  } as unknown as Instruction;
-
-  return iInstruction;
+  };
 };

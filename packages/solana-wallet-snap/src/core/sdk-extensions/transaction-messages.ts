@@ -280,7 +280,7 @@ export const estimateAndOverrideComputeUnitLimit = async <
           config?.getSetComputeUnitLimitInstructionConfig,
         ),
       ],
-    } as TTransactionMessage;
+    };
   } catch (error) {
     // If the estimate fails, return the original transaction message unchanged.
     return transactionMessage;

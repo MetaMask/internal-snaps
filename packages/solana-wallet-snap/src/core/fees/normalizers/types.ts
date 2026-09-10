@@ -1,6 +1,7 @@
 import type {
   CompiledTransactionMessage,
-  Instruction,
+  InstructionWithData,
+  ReadonlyUint8Array,
   Transaction as KitTransaction,
 } from '@solana/kit';
 
@@ -14,5 +15,5 @@ export type NormalizableInput =
 
 export type NormalizedInput = {
   ed25519Signatures: readonly any[];
-  instructions: readonly Instruction[];
+  instructions: readonly InstructionWithData<ReadonlyUint8Array>[];
 };

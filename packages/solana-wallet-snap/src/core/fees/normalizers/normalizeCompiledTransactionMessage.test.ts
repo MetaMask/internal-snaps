@@ -80,4 +80,23 @@ describe('normalizeCompiledTransactionMessage', () => {
       ],
     });
   });
+
+  it('throws an error if the program address index is out of bounds', () => {
+    const mockCompiledTransactionMessage: CompiledTransactionMessage = {
+      staticAccounts: [address('3i5JeuZuUxeKtVysUnwQNGerJP2bSMX9fTFfS4Nxe3Br')],
+      instructions: [
+        {
+          programAddressIndex: 1,
+          data: new Uint8Array([0, 139, 203, 23, 160, 77, 48, 130, 0]),
+        },
+      ],
+      version: 0,
+    } as unknown as CompiledTransactionMessage;
+
+    expect(() =>
+      normalizeCompiledTransactionMessage(mockCompiledTransactionMessage),
+    ).toThrow(
+      'Transaction message contains an instruction with an invalid program address index.',
+    );
+  });
 });

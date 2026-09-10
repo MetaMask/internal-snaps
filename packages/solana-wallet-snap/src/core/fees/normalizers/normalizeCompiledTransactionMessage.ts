@@ -25,12 +25,21 @@ export const normalizeCompiledTransactionMessage = (
 
   return {
     ed25519Signatures: ['signature'], // The compiled transaction message doesn't have ed25519 signatures yet. Best guess is that there will be exactly one, so we fake it.
-    instructions: compiledTransactionMessage.instructions.map((item) => ({
-      accounts: [], // We don't need them
-      data: item.data ?? new Uint8Array(),
-      programAddress:
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        compiledTransactionMessage.staticAccounts[item.programAddressIndex]!,
-    })),
+    instructions: compiledTransactionMessage.instructions.map((item) => {
+      const programAddress =
+        compiledTransactionMessage.staticAccounts[item.programAddressIndex];
+
+      if (programAddress === undefined) {
+        throw new Error(
+          'Transaction message contains an instruction with an invalid program address index.',
+        );
+      }
+
+      return {
+        accounts: [], // We don't need them
+        data: item.data ?? new Uint8Array(),
+        programAddress,
+      };
+    }),
   };
 };
