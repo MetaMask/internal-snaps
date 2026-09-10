@@ -1,6 +1,8 @@
 import {
   AssetsProvider,
+  InMemoryCache,
   RemoteFeatureFlagsProvider,
+  StateCache,
 } from '@metamask/snap-networks-utils';
 import type {
   AssetsProviderMessenger,
@@ -8,8 +10,6 @@ import type {
 } from '@metamask/snap-networks-utils';
 import { getMessenger } from '@metamask/snaps-sdk';
 
-import { InMemoryCache } from './caching/InMemoryCache';
-import { StateCache } from './caching/StateCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './clients/security-alerts-api/SecurityAlertsApiClient';
 import { SnapClient } from './clients/snap/SnapClient';
