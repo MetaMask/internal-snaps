@@ -98,9 +98,11 @@ describe('AccountsRepository', () => {
       createEmptyState({ [account.id]: account }),
     );
 
-    await expect(
-      repository.findByIds(['123E4567-E89B-42D3-A456-426614174000']),
-    ).resolves.toStrictEqual([account]);
+    const accounts = await repository.findByIds([
+      '123E4567-E89B-42D3-A456-426614174000',
+    ]);
+
+    expect(accounts).toStrictEqual([account]);
   });
 
   it('persists a new account through create', async () => {

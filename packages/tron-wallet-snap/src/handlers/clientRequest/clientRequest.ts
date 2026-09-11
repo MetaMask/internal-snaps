@@ -100,7 +100,7 @@ type SigningRequest = {
 function isDerivedTronKeypair(
   result: DerivedTronKeypairBatchResult,
 ): result is DerivedTronKeypair {
-  return 'privateKeyHex' in result;
+  return Object.hasOwn(result, 'privateKeyHex');
 }
 
 export class ClientRequestHandler {
