@@ -15,6 +15,7 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
+import { isTransactionDeadlinePassedError } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
@@ -46,12 +47,13 @@ export const ConfirmTransactionRequest = ({
   const translate = i18n(preferences.locale);
 
   /**
-   * Only disable confirm button upon first load (FetchStatus.Loading)
-   * as opposed to subsequent loads (FetchStatus.Fetching)
+   * Only disable Confirm on the first load (FetchStatus.Loading) or when
+   * TAPOS/deadline expiry means the transaction will not broadcast. Generic
+   * simulation failures are warnings, not hard blocks.
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
-    scan?.simulationStatus === SimulationStatus.Failed;
+    isTransactionDeadlinePassedError(scan?.error ?? null);
 
   let estimatedChangesSection: ComponentOrElement | null = null;
   if (preferences.simulateOnChainActions) {

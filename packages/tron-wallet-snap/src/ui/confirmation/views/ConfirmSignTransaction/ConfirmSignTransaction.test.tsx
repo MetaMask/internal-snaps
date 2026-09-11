@@ -202,18 +202,36 @@ describe('ConfirmSignTransaction', () => {
     ).toBe(true);
   });
 
-  it('disables the confirm button for other failed simulations', () => {
-    expect(
-      isConfirmDisabled(
-        buildContext({
-          scan: buildScanResult({
-            status: 'ERROR',
-            simulationStatus: SimulationStatus.Failed,
-            error: otherError,
-          }),
-        }),
-      ),
-    ).toBe(true);
+  it('keeps Confirm enabled for failed simulations that are not expiry', () => {
+    const context = buildContext({
+      scan: buildScanResult({
+        status: 'ERROR',
+        simulationStatus: SimulationStatus.Failed,
+        error: otherError,
+      }),
+    });
+
+    expect(isConfirmDisabled(context)).toBe(false);
+    expect(renderTexts(context)).toContain(SIMULATION_ERROR_TITLE);
+  });
+
+  it('keeps Confirm enabled and shows skipped copy for unsupported call types', () => {
+    const context = buildContext({
+      transaction: {
+        rawDataHex: '0a02beef',
+        type: 'TriggerSmartContract',
+      },
+      scan: buildScanResult({
+        simulationStatus: SimulationStatus.Skipped,
+        error: null,
+      }),
+    });
+
+    expect(isConfirmDisabled(context)).toBe(false);
+    expect(renderTexts(context)).toContain(
+      'Unsupported contract for simulation',
+    );
+    expect(renderTexts(context)).not.toContain(SIMULATION_ERROR_TITLE);
   });
 
   it('renders the expiry banner with the friendly message even when security alerts are off', () => {

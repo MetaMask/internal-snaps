@@ -1,4 +1,5 @@
 import { Network } from '../../../../constants';
+import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { FetchStatus } from '../../../../types/snap';
@@ -146,11 +147,16 @@ describe('ConfirmTransactionRequest', () => {
     expect(serialized).toContain('"disabled":true');
   });
 
-  it('disables confirm button when scan status is ERROR', () => {
+  it('keeps confirm enabled when simulation fails without expiry', () => {
     const errorScanResult: TransactionScanResult = {
       ...mockScanResult,
       status: 'ERROR',
       simulationStatus: SimulationStatus.Failed,
+      error: {
+        type: 'Revert',
+        code: null,
+        message: 'Reverted: insufficient balance',
+      },
     };
 
     const context: ConfirmTransactionRequestContext = {
@@ -162,7 +168,30 @@ describe('ConfirmTransactionRequest', () => {
     const result = ConfirmTransactionRequest({ context });
     const serialized = JSON.stringify(result);
 
-    // The confirm button should have disabled=true
+    expect(serialized).not.toContain('"disabled":true');
+  });
+
+  it('disables confirm when the transaction TAPOS window has expired', () => {
+    const expiredScanResult: TransactionScanResult = {
+      ...mockScanResult,
+      status: 'ERROR',
+      simulationStatus: SimulationStatus.Failed,
+      error: {
+        type: TRANSACTION_TAPOS_EXPIRED,
+        code: null,
+        message: null,
+      },
+    };
+
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      scan: expiredScanResult,
+      scanFetchStatus: FetchStatus.Fetched,
+    };
+
+    const result = ConfirmTransactionRequest({ context });
+    const serialized = JSON.stringify(result);
+
     expect(serialized).toContain('"disabled":true');
   });
 

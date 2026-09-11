@@ -826,7 +826,7 @@ describe('CronHandler', () => {
           );
 
           // The local TAPOS-expiry check still surfaces the expired result,
-          // which disables the confirm button once resolved (Failed simulation).
+          // which disables Confirm (deadline/TAPOS is still a hard block).
           const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
           const finalContext =
             finalUpdateCall?.[2] as ConfirmSignTransactionContext;

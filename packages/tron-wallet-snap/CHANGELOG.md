@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING** Remove the deprecated `asset` cluster of handlers: `onAssetHistoricalPrice`, `onAssetsConversion`, `onAssetsLookup` and `onAssetsMarketData` ([#263](https://github.com/MetaMask/internal-snaps/pull/263))
 
+### Fixed
+
+- Allow Confirm on JustLend-style `TriggerSmartContract` scans when the Security Alerts simulator returns `Unsupported call type` (energy rental / TRX staking), treating them as skipped estimates instead of a hard-block revert
+
 ## [3.2.0]
 
 ### Added
