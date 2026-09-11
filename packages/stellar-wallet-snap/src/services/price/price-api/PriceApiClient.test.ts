@@ -64,6 +64,7 @@ describe('PriceApiClient', () => {
           queryParams: {
             vsCurrency: 'usd',
             assetIds: stellarClassicUsdc,
+            includeMarketData: 'true',
           },
         }),
       );
@@ -85,6 +86,7 @@ describe('PriceApiClient', () => {
           queryParams: {
             vsCurrency: 'eur',
             assetIds: stellarClassicUsdc,
+            includeMarketData: 'true',
           },
         }),
       );
@@ -110,6 +112,7 @@ describe('PriceApiClient', () => {
           queryParams: {
             vsCurrency: 'usd',
             assetIds: `${stellarClassicUsdc},${stellarSep41}`,
+            includeMarketData: 'true',
           },
         }),
       );

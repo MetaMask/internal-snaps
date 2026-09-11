@@ -55,6 +55,7 @@ export class PriceApiClient {
         queryParams: {
           vsCurrency,
           assetIds: assetIds.join(','),
+          includeMarketData: 'true',
         },
       });
 
