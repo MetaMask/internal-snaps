@@ -155,23 +155,24 @@ export class SignProofOfOwnershipBatchHandler
     signingRequests: SigningRequest[],
     results: SignProofOfOwnershipBatchJsonRpcResponse['results'],
   ): Promise<void> {
-    const requestsByEntropySource = new Map<string, SigningRequest[]>();
+    const requestsByEntropySource = new Map<
+      string,
+      { entropySource: string; requests: SigningRequest[] }
+    >();
     for (const signingRequest of signingRequests) {
-      const entropyRequests =
-        requestsByEntropySource.get(signingRequest.account.entropySource) ?? [];
-      entropyRequests.push(signingRequest);
-      requestsByEntropySource.set(
-        signingRequest.account.entropySource,
-        entropyRequests,
-      );
+      const { entropySource } = signingRequest.account;
+      let entropyRequests = requestsByEntropySource.get(entropySource);
+      if (entropyRequests === undefined) {
+        entropyRequests = { entropySource, requests: [] };
+        requestsByEntropySource.set(entropySource, entropyRequests);
+      }
+
+      entropyRequests.requests.push(signingRequest);
     }
 
     await Promise.all(
       [...requestsByEntropySource.values()].map(
-        async (entropySourceRequests) => {
-          const firstRequest = entropySourceRequests[0] as SigningRequest;
-          const { entropySource } = firstRequest.account;
-
+        async ({ entropySource, requests: entropySourceRequests }) => {
           try {
             const walletResolver =
               await this.#walletService.getWalletResolver(entropySource);
