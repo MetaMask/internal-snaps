@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `ExtendedKeyringAccount`, `KeyringAccountExtension`, and `asStrictKeyringAccount` for snap keyring accounts that persist `entropySource`, `derivationPath`, and `index`.
+- Add `ExtendedKeyringAccount`, `KeyringAccountExtension`, and `asStrictKeyringAccount` for snap keyring accounts that persist `entropySource`, `derivationPath`, and `index`. ([#300](https://github.com/MetaMask/internal-snaps/pull/300))
 - Add shared snap state helpers `IStateManager`, `State`, and `InMemoryState` (Tron-style write mutex plus blob/path locking). ([#288](https://github.com/MetaMask/internal-snaps/pull/288))
 - Add shared caching utilities for network snaps ([#287](https://github.com/MetaMask/internal-snaps/pull/287))
   - `ICache`, `CacheEntry`, and `TimestampMilliseconds` for describing a generic cache
