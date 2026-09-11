@@ -1317,6 +1317,35 @@ describe('RpcHandler', () => {
         });
       });
 
+      it('matches account IDs case-insensitively while preserving the requested account ID in the response', async () => {
+        const uppercaseAccountId = validAccountId.toUpperCase();
+        const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
+        mockAccountsUseCases.getByIds.mockResolvedValue([mockBitcoinAccount]);
+        mockAccountsUseCases.signProofOfOwnershipMessages.mockResolvedValue([
+          { signature: 'mock-bip322-signature' },
+        ]);
+
+        const result = await handler.route(
+          origin,
+          buildBatchRequest([{ accountId: uppercaseAccountId, message }]),
+        );
+
+        expect(mockAccountsUseCases.getByIds).toHaveBeenCalledWith([
+          uppercaseAccountId,
+        ]);
+        expect(
+          mockAccountsUseCases.signProofOfOwnershipMessages,
+        ).toHaveBeenCalledWith([{ account: mockBitcoinAccount, message }]);
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: uppercaseAccountId,
+              signature: 'mock-bip322-signature',
+            },
+          ],
+        });
+      });
+
       it('returns item-level errors for missing accounts and address mismatches', async () => {
         const missingAccountId = '6b3df9d2-07fc-4e08-baf9-769254ab3fc8';
         const validMessage = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;

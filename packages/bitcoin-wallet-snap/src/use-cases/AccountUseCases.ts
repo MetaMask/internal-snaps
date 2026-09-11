@@ -740,37 +740,18 @@ export class AccountUseCases {
       });
     }
 
-    try {
-      // Private key is returned in "0x..." format, transform into WIF:
-      const wifPrivateKey = encode({
-        version: account.network === 'bitcoin' ? 128 : 239, // 128 for mainnet, 239 for testnets
-        // eslint-disable-next-line no-restricted-globals
-        privateKey: Buffer.from(entropy.privateKey.slice(2), 'hex'),
-        compressed: true,
-      });
-      const signature = Signer.sign(
-        wifPrivateKey,
-        account.publicAddress.toString(),
-        message,
-      );
+    const signature = this.#signMessageWithPrivateKey(
+      account,
+      message,
+      entropy.privateKey,
+    );
 
-      this.#logger.info(
-        'Message signed successfully: %s. Message: %s, Signature: %s.',
-        id,
-        message,
-        signature,
-      );
-      return signature;
-    } catch (error) {
-      throw new WalletError(
-        'Failed to sign message',
-        {
-          id,
-          message,
-        },
-        error,
-      );
-    }
+    this.#logger.info(
+      'Message signed successfully: %s. Signature: %s.',
+      id,
+      signature,
+    );
+    return signature;
   }
 
   /**
@@ -793,10 +774,12 @@ export class AccountUseCases {
     const requestsByParentPath = new Map<
       string,
       {
-        index: number;
-        request: SignProofOfOwnershipMessageBatchRequest;
         parentPath: string[];
-      }[]
+        requests: {
+          index: number;
+          request: SignProofOfOwnershipMessageBatchRequest;
+        }[];
+      }
     >();
 
     requests.forEach((request, index) => {
@@ -805,19 +788,20 @@ export class AccountUseCases {
 
         const parentPath = getProofSigningParentPath(request.account);
         const parentKey = getDerivationPathKey(parentPath);
-        const parentRequests = requestsByParentPath.get(parentKey) ?? [];
-        parentRequests.push({ index, request, parentPath });
-        requestsByParentPath.set(parentKey, parentRequests);
+        const parentRequestGroup = requestsByParentPath.get(parentKey) ?? {
+          parentPath,
+          requests: [],
+        };
+        parentRequestGroup.requests.push({ index, request });
+        requestsByParentPath.set(parentKey, parentRequestGroup);
       } catch (error) {
         results[index] = { error: normalizeError(error).message };
       }
     });
 
     await Promise.all(
-      [...requestsByParentPath.values()].map(async (parentRequests) => {
-        const { parentPath } =
-          parentRequests[0] as (typeof parentRequests)[number];
-
+      [...requestsByParentPath.values()].map(async (parentRequestGroup) => {
+        const { parentPath, requests: parentRequests } = parentRequestGroup;
         try {
           const parentJson =
             await this.#snapClient.getPrivateEntropy(parentPath);
@@ -825,21 +809,16 @@ export class AccountUseCases {
 
           for (const { index, request } of parentRequests) {
             try {
-              const entropy = await parentNode.derive(
-                toBip32Path(getProofSigningChildPath(request.account)),
+              const privateKey = await this.#deriveProofSigningPrivateKey(
+                parentNode,
+                request.account,
               );
 
-              if (!entropy.privateKey) {
-                throw new AssertionError('Failed to get private entropy', {
-                  id: request.account.id,
-                });
-              }
-
               results[index] = {
-                signature: this.#signProofOfOwnershipMessage(
+                signature: this.#signMessageWithPrivateKey(
                   request.account,
                   request.message,
-                  entropy.privateKey,
+                  privateKey,
                 ),
               };
             } catch (error) {
@@ -858,14 +837,45 @@ export class AccountUseCases {
   }
 
   /**
-   * Signs one proof-of-ownership message using private key entropy.
+   * Derives private key entropy for one proof-signing account from its parent
+   * node.
+   *
+   * @param parentNode - Parent node for the account's derivation path.
+   * @param account - Account to derive private key entropy for.
+   * @returns The account private key as a 0x-prefixed hex string.
+   */
+  async #deriveProofSigningPrivateKey(
+    parentNode: SLIP10Node,
+    account: BitcoinAccount,
+  ): Promise<string> {
+    try {
+      const entropy = await parentNode.derive(
+        toBip32Path(getProofSigningChildPath(account)),
+      );
+
+      if (!entropy.privateKey) {
+        throw new AssertionError('Failed to get private entropy', {
+          id: account.id,
+        });
+      }
+
+      return entropy.privateKey;
+    } catch {
+      throw new WalletError('Unable to derive private key', {
+        id: account.id,
+      });
+    }
+  }
+
+  /**
+   * Signs one message using private key entropy.
    *
    * @param account - Account whose public address should own the signature.
-   * @param message - Plaintext proof-of-ownership message.
+   * @param message - Plaintext message.
    * @param privateKey - 0x-prefixed private key hex string.
    * @returns The BIP-322 signature.
    */
-  #signProofOfOwnershipMessage(
+  #signMessageWithPrivateKey(
     account: BitcoinAccount,
     message: string,
     privateKey: string,
@@ -888,7 +898,6 @@ export class AccountUseCases {
         'Failed to sign message',
         {
           id: account.id,
-          message,
         },
         error,
       );

@@ -2101,6 +2101,7 @@ describe('AccountUseCases', () => {
 
   describe('signMessage', () => {
     const mockAccount = mock<BitcoinAccount>({
+      id: 'account-id',
       publicAddress: mock<Address>({
         toString: () => 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
       }),
@@ -2160,6 +2161,25 @@ describe('AccountUseCases', () => {
       await expect(
         useCases.signMessage('account-id', mockMessage, mockOrigin),
       ).rejects.toThrow('Failed to sign message');
+    });
+
+    it('does not include the signed message in WalletError metadata', async () => {
+      mockSnapClient.getPrivateEntropy.mockResolvedValue({
+        privateKey: '0x1234567890abcdef', // wrong private key returned
+      } as JsonSLIP10Node);
+
+      try {
+        await useCases.signMessage('account-id', mockMessage, mockOrigin);
+        throw new Error('Expected signMessage to throw');
+      } catch (error) {
+        expect(error).toMatchObject({
+          message: 'Failed to sign message',
+          data: { id: 'account-id' },
+        });
+        expect((error as { data?: Record<string, unknown> }).data).not.toHaveProperty(
+          'message',
+        );
+      }
     });
 
     it('throws AssertionError if entropy has no privateKey', async () => {
@@ -2277,6 +2297,20 @@ describe('AccountUseCases', () => {
       expect(result).toStrictEqual([
         { error: 'Account missing given capability' },
       ]);
+    });
+
+    it('does not expose derivation error details in batch signing results', async () => {
+      const sensitiveError = 'derived private key bytes: secret';
+      jest.spyOn(RealSlip10Node, 'fromJSON').mockResolvedValueOnce({
+        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+      } as never);
+
+      const result = await useCases.signProofOfOwnershipMessages([
+        { account: createAccount(0), message: mockMessage },
+      ]);
+
+      expect(result).toStrictEqual([{ error: 'Unable to derive private key' }]);
+      expect(JSON.stringify(result)).not.toContain(sensitiveError);
     });
   });
 });

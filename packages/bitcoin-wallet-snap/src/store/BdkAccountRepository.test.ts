@@ -209,6 +209,23 @@ describe('BdkAccountRepository', () => {
       expect(result).toStrictEqual([mockAccount2, mockAccount1]);
     });
 
+    it('matches account IDs case-insensitively', async () => {
+      const id = '724ac464-6572-4d9c-a8e2-4075c8846d65';
+      const state = {
+        [id]: { ...mockAccountState, id },
+      };
+      const loadedAccount = { ...mockAccount, id };
+
+      mockSnapClient.getState.mockResolvedValue(state);
+      (BdkAccountAdapter.load as jest.Mock).mockReturnValueOnce(loadedAccount);
+
+      const result = await repo.getByIds([id.toUpperCase()]);
+
+      expect(mockSnapClient.getState).toHaveBeenCalledWith('accounts');
+      expect(BdkAccountAdapter.load).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual([loadedAccount]);
+    });
+
     it('uses cached account metadata without loading BDK wallets', async () => {
       const id1 = 'some-id-1';
       const id2 = 'some-id-2';

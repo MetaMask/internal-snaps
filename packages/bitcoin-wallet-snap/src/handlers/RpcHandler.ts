@@ -24,7 +24,12 @@ import {
   ValidationError,
 } from '../entities';
 import type { CodifiedError, Logger } from '../entities';
-import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
+import type {
+  AccountUseCases,
+  SendFlowUseCases,
+  SignProofOfOwnershipMessageBatchRequest,
+  SignProofOfOwnershipMessageBatchResult,
+} from '../use-cases';
 import { scopeToNetwork } from './caip';
 import type { TransactionFee } from './mappings';
 import { mapPsbtToTransaction, mapToTransactionFees } from './mappings';
@@ -113,6 +118,21 @@ export const SignProofOfOwnershipBatchRequest = object({
 });
 
 export type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
+
+/**
+ * Checks whether a batch proof-signing result is an item-level error.
+ *
+ * @param signedMessage - The result returned by batch proof signing.
+ * @returns Whether the result is an error response.
+ */
+function isSignProofOfOwnershipMessageBatchError(
+  signedMessage: SignProofOfOwnershipMessageBatchResult,
+): signedMessage is Extract<
+  SignProofOfOwnershipMessageBatchResult,
+  { error: string }
+> {
+  return Object.hasOwn(signedMessage, 'error');
+}
 
 export class RpcHandler {
   readonly #logger: Logger;
@@ -453,6 +473,16 @@ export class RpcHandler {
       account.publicAddress.toString(),
     );
 
+    if (canonicalMessageAddress !== canonicalAccountAddress) {
+      throw new ValidationError(
+        `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${canonicalAccountAddress})`,
+        {
+          messageAddress,
+          accountAddress: canonicalAccountAddress,
+        },
+      );
+    }
+
     const addressValidation = validateAddress(
       canonicalMessageAddress,
       account.network,
@@ -462,16 +492,6 @@ export class RpcHandler {
       throw new ValidationError(
         `Invalid Bitcoin address in proof-of-ownership message for network ${account.network}`,
         { messageAddress, network: account.network },
-      );
-    }
-
-    if (canonicalMessageAddress !== canonicalAccountAddress) {
-      throw new ValidationError(
-        `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${canonicalAccountAddress})`,
-        {
-          messageAddress,
-          accountAddress: canonicalAccountAddress,
-        },
       );
     }
 
@@ -503,20 +523,19 @@ export class RpcHandler {
     ];
     const allAccounts = await this.#accountUseCases.getByIds(uniqueAccountIds);
     const accountsById = new Map(
-      allAccounts.map((account) => [account.id, account]),
+      allAccounts.map((account) => [account.id.toLowerCase(), account]),
     );
     const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
       items.length,
     );
-    const signingRequests: {
+    const signingRequestMetadata: {
       index: number;
       accountId: string;
-      account: (typeof allAccounts)[number];
-      message: string;
     }[] = [];
+    const signingRequests: SignProofOfOwnershipMessageBatchRequest[] = [];
 
     items.forEach(({ accountId, message }, index) => {
-      const account = accountsById.get(accountId);
+      const account = accountsById.get(accountId.toLowerCase());
       if (!account) {
         results[index] = {
           accountId,
@@ -535,6 +554,14 @@ export class RpcHandler {
           account.publicAddress.toString(),
         );
 
+        if (canonicalMessageAddress !== canonicalAccountAddress) {
+          results[index] = {
+            accountId,
+            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${canonicalAccountAddress})`,
+          };
+          return;
+        }
+
         const addressValidation = validateAddress(
           canonicalMessageAddress,
           account.network,
@@ -548,17 +575,11 @@ export class RpcHandler {
           return;
         }
 
-        if (canonicalMessageAddress !== canonicalAccountAddress) {
-          results[index] = {
-            accountId,
-            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${canonicalAccountAddress})`,
-          };
-          return;
-        }
-
-        signingRequests.push({
+        signingRequestMetadata.push({
           index,
           accountId,
+        });
+        signingRequests.push({
           account,
           message,
         });
@@ -575,23 +596,19 @@ export class RpcHandler {
     }
 
     const signedMessages =
-      await this.#accountUseCases.signProofOfOwnershipMessages(
-        signingRequests.map(({ account, message }) => ({ account, message })),
-      );
+      await this.#accountUseCases.signProofOfOwnershipMessages(signingRequests);
 
     signedMessages.forEach((signedMessage, signingRequestIndex) => {
-      const { index, accountId } = signingRequests[
+      const { index, accountId } = signingRequestMetadata[
         signingRequestIndex
-      ] as (typeof signingRequests)[number];
-      const { error } = signedMessage as { error?: string };
+      ] as (typeof signingRequestMetadata)[number];
 
-      if (error !== undefined) {
-        results[index] = { accountId, error };
+      if (isSignProofOfOwnershipMessageBatchError(signedMessage)) {
+        results[index] = { accountId, error: signedMessage.error };
         return;
       }
 
-      const { signature } = signedMessage as { signature: string };
-      results[index] = { accountId, signature };
+      results[index] = { accountId, signature: signedMessage.signature };
     });
 
     return { results };
