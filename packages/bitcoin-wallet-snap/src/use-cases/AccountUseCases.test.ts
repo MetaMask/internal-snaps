@@ -2168,18 +2168,20 @@ describe('AccountUseCases', () => {
         privateKey: '0x1234567890abcdef', // wrong private key returned
       } as JsonSLIP10Node);
 
+      let thrownError: unknown;
       try {
         await useCases.signMessage('account-id', mockMessage, mockOrigin);
-        throw new Error('Expected signMessage to throw');
       } catch (error) {
-        expect(error).toMatchObject({
-          message: 'Failed to sign message',
-          data: { id: 'account-id' },
-        });
-        expect(
-          (error as { data?: Record<string, unknown> }).data,
-        ).not.toHaveProperty('message');
+        thrownError = error;
       }
+
+      expect(thrownError).toMatchObject({
+        message: 'Failed to sign message',
+        data: { id: 'account-id' },
+      });
+      expect(
+        (thrownError as { data?: Record<string, unknown> }).data,
+      ).not.toHaveProperty('message');
     });
 
     it('throws AssertionError if entropy has no privateKey', async () => {
