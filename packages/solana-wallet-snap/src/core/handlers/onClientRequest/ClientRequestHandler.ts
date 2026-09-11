@@ -1,4 +1,5 @@
 import { FeeType } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -19,7 +20,11 @@ import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import type { AccountsService, ApproveTokenService } from '../../services';
 import type { SendService } from '../../services/send/SendService';
 import type { OnAddressInputRequest } from '../../services/send/types';
-import type { WalletService } from '../../services/wallet/WalletService';
+import type {
+  SolanaSignMessageBatchRequest,
+  SolanaSignMessageBatchResult,
+  WalletService,
+} from '../../services/wallet/WalletService';
 import { lamportsToSol } from '../../utils/conversion';
 import { ClientRequestMethod } from './types';
 import {
@@ -37,6 +42,8 @@ import {
   SignAndSendTransactionResponseStruct,
   SignAndSendTransactionWithoutConfirmationRequestStruct,
   SignCardMessageRequestStruct,
+  SignProofOfOwnershipBatchRequestStruct,
+  SignProofOfOwnershipBatchResponseStruct,
   SignProofOfOwnershipRequestStruct,
   SignProofOfOwnershipResponseStruct,
   SignRewardsMessageRequestStruct,
@@ -45,8 +52,21 @@ import {
 import type {
   ComputeFeeResponse,
   SignAndSendTransactionResponse,
+  SignProofOfOwnershipBatchResponse,
   SignProofOfOwnershipResponse,
 } from './validation';
+
+/**
+ * Checks whether a batch message-signing result is an item-level error.
+ *
+ * @param signedMessage - The result returned by wallet batch signing.
+ * @returns Whether the result is an error response.
+ */
+function isSignMessageBatchError(
+  signedMessage: SolanaSignMessageBatchResult,
+): signedMessage is Extract<SolanaSignMessageBatchResult, { error: string }> {
+  return Object.hasOwn(signedMessage, 'error');
+}
 
 export class ClientRequestHandler {
   readonly #accountsService: AccountsService;
@@ -110,6 +130,8 @@ export class ClientRequestHandler {
         return this.#handleApproveCardAmount(request);
       case ClientRequestMethod.SignProofOfOwnership:
         return this.#handleSignProofOfOwnership(request);
+      case ClientRequestMethod.SignProofOfOwnershipBatch:
+        return this.#handleSignProofOfOwnershipBatch(request);
       default:
         throw new MethodNotFoundError() as Error;
     }
@@ -490,16 +512,137 @@ export class ClientRequestHandler {
     const { signature: base58Signature } =
       await this.#walletService.signMessage(account, base64Message);
 
-    // Transcode the base58 signature to 0x-prefixed hex for the identity
-    // auth API; the dApp `signMessage` flow keeps its wallet-standard base58.
-    const signature = bytesToHex(
-      Uint8Array.from(getBase58Codec().encode(base58Signature)),
-    );
+    const signature = this.#toProofOfOwnershipSignature(base58Signature);
 
     const result: SignProofOfOwnershipResponse = { signature };
 
     assert(result, SignProofOfOwnershipResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Handles silent batch signing of proof-of-ownership messages.
+   *
+   * Valid items are signed together so the wallet service can group key
+   * derivation by entropy source. Invalid items return per-item errors instead
+   * of failing the whole batch.
+   *
+   * @param request - The JSON-RPC request containing the batch items.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleSignProofOfOwnershipBatch(
+    request: JsonRpcRequest,
+  ): Promise<Json> {
+    assert(request, SignProofOfOwnershipBatchRequestStruct);
+
+    const {
+      params: { items },
+    } = request;
+    const uniqueAccountIds = [
+      ...new Set(items.map(({ accountId }) => accountId)),
+    ];
+    const accounts = await this.#accountsService.findByIds(uniqueAccountIds);
+    const accountsById = new Map(
+      accounts.map((account) => [account.id.toLowerCase(), account]),
+    );
+    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
+      items.length,
+    );
+    const signingRequestsMetadata: {
+      index: number;
+      accountId: string;
+    }[] = [];
+
+    const signingRequests: SolanaSignMessageBatchRequest[] = [];
+
+    items.forEach(({ accountId, message }, index) => {
+      const account = accountsById.get(accountId.toLowerCase());
+      if (!account) {
+        results[index] = {
+          accountId,
+          error: `Account not found: ${accountId}`,
+        };
+        return;
+      }
+
+      try {
+        const { address: messageAddress } =
+          parseProofOfOwnershipMessage(message);
+
+        if (messageAddress !== account.address) {
+          results[index] = {
+            accountId,
+            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${account.address})`,
+          };
+          return;
+        }
+
+        const base64Message = pipe(
+          message,
+          getUtf8Codec().encode,
+          getBase64Codec().decode,
+        );
+
+        signingRequestsMetadata.push({
+          index,
+          accountId,
+        });
+
+        signingRequests.push({
+          account,
+          message: base64Message,
+        });
+      } catch (error) {
+        results[index] = {
+          accountId,
+          error: normalizeError(error).message,
+        };
+      }
+    });
+
+    const signedMessages =
+      await this.#walletService.signMessages(signingRequests);
+
+    signedMessages.forEach((signedMessage, signingRequestIndex) => {
+      // Strip `| undefined` away, both `signingRequests` and `signedMessages` have
+      // the same size, thus, this is safe to not consider `undefined` here.
+      const { index, accountId } = signingRequestsMetadata[
+        signingRequestIndex
+      ] as (typeof signingRequestsMetadata)[number];
+
+      if (isSignMessageBatchError(signedMessage)) {
+        results[index] = {
+          accountId,
+          error: signedMessage.error,
+        };
+        return;
+      }
+
+      results[index] = {
+        accountId,
+        signature: this.#toProofOfOwnershipSignature(signedMessage.signature),
+      };
+    });
+
+    const result: SignProofOfOwnershipBatchResponse = { results };
+
+    assert(result, SignProofOfOwnershipBatchResponseStruct);
+
+    return result;
+  }
+
+  /**
+   * Converts a wallet-standard base58 ed25519 signature into the strict hex
+   * format expected by the identity auth proof-of-ownership API.
+   *
+   * @param base58Signature - The base58-encoded signature returned by Solana
+   * wallet signing.
+   * @returns The same signature encoded as 0x-prefixed hex.
+   */
+  #toProofOfOwnershipSignature(base58Signature: string): `0x${string}` {
+    return bytesToHex(
+      Uint8Array.from(getBase58Codec().encode(base58Signature)),
+    );
   }
 }

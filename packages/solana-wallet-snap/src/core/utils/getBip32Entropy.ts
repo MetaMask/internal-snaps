@@ -1,3 +1,4 @@
+import { SLIP10Node } from '@metamask/key-tree';
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
 
@@ -29,4 +30,22 @@ export async function getBip32Entropy({
   });
 
   return node;
+}
+
+/**
+ * Retrieves the Solana coin-type node (`m/44'/501'`) for an entropy source.
+ *
+ * @param entropySource - The entropy source to use for key derivation.
+ * @returns A Promise that resolves to the Solana coin-type `SLIP10Node`.
+ */
+export async function getSolanaCoinTypeNode(
+  entropySource?: EntropySourceId | undefined,
+): Promise<SLIP10Node> {
+  const coinTypeNodeJson = await getBip32Entropy({
+    entropySource,
+    path: ['m', "44'", "501'"],
+    curve: 'ed25519',
+  });
+
+  return await SLIP10Node.fromJSON(coinTypeNodeJson);
 }

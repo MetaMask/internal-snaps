@@ -1,4 +1,3 @@
-import { SLIP10Node } from '@metamask/key-tree';
 import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
@@ -65,8 +64,7 @@ import {
   deriveSolanaKeypairFromCoinTypeNode,
 } from '../../utils/deriveSolanaKeypair';
 import { trackError } from '../../utils/errors';
-import { getBip32Entropy } from '../../utils/getBip32Entropy';
-import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
+import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import {
   endTrace,
   listEntropySources,
@@ -308,12 +306,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
       }
 
       // Get coin-type node once (optimization: 1 snap API call for N accounts)
-      const coinTypeNodeJson = await getBip32Entropy({
-        entropySource,
-        path: ['m', "44'", "501'"],
-        curve: 'ed25519',
-      });
-      const coinTypeNode = await SLIP10Node.fromJSON(coinTypeNodeJson);
+      const coinTypeNode = await getSolanaCoinTypeNode(entropySource);
 
       // Create new accounts in memory, then flush all to state in one call
       let createdCount = 0;

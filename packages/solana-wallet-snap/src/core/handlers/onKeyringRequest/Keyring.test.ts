@@ -35,17 +35,14 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_0_PRIVATE_KEY_BYTES,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
-  MOCK_SOLANA_KEYRING_ACCOUNT_2,
   MOCK_SOLANA_KEYRING_ACCOUNT_3,
-  MOCK_SOLANA_KEYRING_ACCOUNT_4,
-  MOCK_SOLANA_KEYRING_ACCOUNT_5,
   MOCK_SOLANA_KEYRING_ACCOUNTS,
-  MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0,
-  MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
-import { getBip32EntropyMock } from '../../test/mocks/utils/getBip32Entropy';
+import {
+  getBip32EntropyMock,
+  getSolanaCoinTypeNodeMock,
+} from '../../test/mocks/utils/getBip32Entropy';
 import { trackError } from '../../utils/errors';
-import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { SolanaKeyring } from './Keyring';
 
@@ -56,6 +53,7 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 
 jest.mock('../../utils/getBip32Entropy', () => ({
   getBip32Entropy: getBip32EntropyMock,
+  getSolanaCoinTypeNode: getSolanaCoinTypeNodeMock,
 }));
 
 jest.mock('../../utils/errors', () => ({

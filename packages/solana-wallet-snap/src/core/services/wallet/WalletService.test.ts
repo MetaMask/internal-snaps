@@ -8,8 +8,12 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_3,
   MOCK_SOLANA_KEYRING_ACCOUNT_4,
   MOCK_SOLANA_KEYRING_ACCOUNTS,
+  MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0,
 } from '../../test/mocks/solana-keyring-accounts';
-import { getBip32EntropyMock } from '../../test/mocks/utils/getBip32Entropy';
+import {
+  getBip32EntropyMock,
+  getSolanaCoinTypeNodeMock,
+} from '../../test/mocks/utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
@@ -30,6 +34,7 @@ import { WalletService } from './WalletService';
 
 jest.mock('../../utils/getBip32Entropy', () => ({
   getBip32Entropy: getBip32EntropyMock,
+  getSolanaCoinTypeNode: getSolanaCoinTypeNodeMock,
 }));
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
@@ -80,6 +85,9 @@ describe('WalletService', () => {
     (globalThis as any).snap = {
       request: jest.fn(),
     };
+
+    getBip32EntropyMock.mockClear();
+    getSolanaCoinTypeNodeMock.mockClear();
   });
 
   describe('resolveAccountAddress', () => {
@@ -471,4 +479,84 @@ describe('WalletService', () => {
       });
     },
   );
+
+  describe('signMessages', () => {
+    const utf8ToBase64 = (utf8: string): string =>
+      Buffer.from(utf8, 'utf8').toString('base64');
+
+    it('signs messages with one entropy fetch for accounts sharing an entropy source', async () => {
+      const message0 = utf8ToBase64('proof message 0');
+      const message1 = utf8ToBase64('proof message 1');
+
+      const results = await service.signMessages([
+        { account: MOCK_SOLANA_KEYRING_ACCOUNT_0, message: message0 },
+        { account: MOCK_SOLANA_KEYRING_ACCOUNT_1, message: message1 },
+      ]);
+
+      expect(getBip32EntropyMock).toHaveBeenCalledTimes(1);
+      expect(getBip32EntropyMock).toHaveBeenCalledWith({
+        entropySource: MOCK_SOLANA_KEYRING_ACCOUNT_0.entropySource,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({
+        signedMessage: message0,
+        signatureType: 'ed25519',
+      });
+      expect(results[1]).toMatchObject({
+        signedMessage: message1,
+        signatureType: 'ed25519',
+      });
+    });
+
+    it('fetches entropy once per entropy source', async () => {
+      await service.signMessages([
+        { account: MOCK_SOLANA_KEYRING_ACCOUNT_0, message: utf8ToBase64('a') },
+        {
+          account: MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0,
+          message: utf8ToBase64('b'),
+        },
+      ]);
+
+      expect(getBip32EntropyMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses account.index for batch derivation', async () => {
+      const message = utf8ToBase64('proof message');
+
+      const result = await service.signMessages([
+        {
+          account: {
+            ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
+            derivationPath: "m/44'/501'/0'",
+          },
+          message,
+        },
+      ]);
+
+      expect(result[0]).toMatchObject({
+        signedMessage: message,
+        signatureType: 'ed25519',
+      });
+    });
+
+    it('does not expose derivation error details in batch signing results', async () => {
+      const sensitiveError = 'derived private key bytes: secret';
+      getSolanaCoinTypeNodeMock.mockResolvedValueOnce({
+        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+      } as never);
+
+      const result = await service.signMessages([
+        { account: MOCK_SOLANA_KEYRING_ACCOUNT_0, message: utf8ToBase64('a') },
+      ]);
+
+      expect(result).toStrictEqual([
+        {
+          error: 'Unable to derive private key',
+        },
+      ]);
+      expect(JSON.stringify(result)).not.toContain(sensitiveError);
+    });
+  });
 });
