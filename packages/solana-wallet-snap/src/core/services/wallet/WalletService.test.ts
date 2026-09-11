@@ -522,22 +522,23 @@ describe('WalletService', () => {
       expect(getBip32EntropyMock).toHaveBeenCalledTimes(2);
     });
 
-    it('returns an item-level error for unsupported derivation paths', async () => {
+    it('uses account.index for batch derivation', async () => {
+      const message = utf8ToBase64('proof message');
+
       const result = await service.signMessages([
         {
           account: {
             ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
             derivationPath: "m/44'/501'/0'",
           },
-          message: utf8ToBase64('a'),
+          message,
         },
       ]);
 
-      expect(result).toStrictEqual([
-        {
-          error: 'Unable to derive private key',
-        },
-      ]);
+      expect(result[0]).toMatchObject({
+        signedMessage: message,
+        signatureType: 'ed25519',
+      });
     });
 
     it('does not expose derivation error details in batch signing results', async () => {

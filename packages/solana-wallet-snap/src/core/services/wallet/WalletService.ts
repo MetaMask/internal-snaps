@@ -78,38 +78,6 @@ export type SolanaSignMessageBatchResult =
   | SolanaSignMessageResponse
   | { error: string };
 
-const DEFAULT_SOLANA_DERIVATION_PATH_REGEX = /^m\/44'\/501'\/(\d+)'\/0'$/u;
-
-/**
- * Extracts the account index from the default Solana BIP-44 derivation path.
- *
- * Batch signing derives children from the coin-type node (`m/44'/501'`), so it
- * only supports the snap's default `m/44'/501'/index'/0'` path shape.
- *
- * @param account - The Solana account whose derivation path should be parsed.
- * @returns The hardened BIP-44 account index.
- */
-function getDefaultSolanaAccountIndex(account: SolanaKeyringAccount): number {
-  const match = DEFAULT_SOLANA_DERIVATION_PATH_REGEX.exec(
-    account.derivationPath,
-  );
-
-  if (!match?.[1]) {
-    throw new Error(
-      `Unsupported Solana derivation path: ${account.derivationPath}`,
-    );
-  }
-
-  const accountIndex = Number(match[1]);
-  if (!Number.isSafeInteger(accountIndex) || accountIndex !== account.index) {
-    throw new Error(
-      `Solana derivation path index (${accountIndex}) does not match account index (${account.index})`,
-    );
-  }
-
-  return accountIndex;
-}
-
 export class WalletService {
   readonly #connection: SolanaConnection;
 
@@ -549,10 +517,9 @@ export class WalletService {
     account: SolanaKeyringAccount;
   }): Promise<Uint8Array> {
     try {
-      const accountIndex = getDefaultSolanaAccountIndex(account);
       const { privateKeyBytes } = await deriveSolanaKeypairFromCoinTypeNode({
         coinTypeNode,
-        accountIndex,
+        accountIndex: account.index,
       });
 
       return privateKeyBytes;
