@@ -9,7 +9,7 @@ import {
   transactionScanService,
 } from '../../../../snapContext';
 import { METAMASK_ORIGIN } from '../../../constants/solana';
-import type { UnencryptedStateValue } from '../../../services/state/State';
+import type { UnencryptedStateValue } from '../../../services/state/stateTypes';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
