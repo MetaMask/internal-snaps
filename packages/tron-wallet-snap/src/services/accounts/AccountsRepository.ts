@@ -146,9 +146,9 @@ export class AccountsRepository {
    * ordering, not input ordering.
    */
   async findByIds(ids: string[]): Promise<TronKeyringAccount[]> {
-    const idSet = new Set(ids);
+    const idSet = new Set(ids.map((id) => id.toLowerCase()));
     const accounts = await this.getAll();
-    return accounts.filter((account) => idSet.has(account.id));
+    return accounts.filter((account) => idSet.has(account.id.toLowerCase()));
   }
 
   async findByAddress(address: string): Promise<TronKeyringAccount | null> {

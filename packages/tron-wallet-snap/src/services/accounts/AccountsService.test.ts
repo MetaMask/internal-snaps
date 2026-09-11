@@ -376,10 +376,10 @@ describe('AccountsService', () => {
       }, coinJson);
     });
 
-    it('returns an item-level error for unsupported derivation paths', async () => {
+    it('derives using the account index instead of parsing the derivation path', async () => {
       const coinJson = await getTronTestCoinTypeJson();
 
-      await withAccountsService(async ({ accountsService }) => {
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
         const result = await accountsService.deriveTronKeypairs([
           {
             ...createAccount(0),
@@ -387,11 +387,15 @@ describe('AccountsService', () => {
           },
         ]);
 
-        expect(result).toStrictEqual([
-          {
-            error: "Unsupported Tron derivation path: m/44'/195'/0'",
-          },
-        ]);
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result[0]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
       }, coinJson);
     });
   });

@@ -27,7 +27,12 @@ import {
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
-import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
+import type {
+  AccountsService,
+  DerivedTronKeypair,
+  DerivedTronKeypairBatchResult,
+} from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
   NativeCaipAssetType,
@@ -75,6 +80,28 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   fee_limit?: number;
 };
+
+/**
+ * Validated proof-of-ownership signing request with its original input index.
+ */
+type SigningRequest = {
+  index: number;
+  accountId: string;
+  account: TronKeyringAccount;
+  message: string;
+};
+
+/**
+ * Checks whether a batch derivation result contains derived key material.
+ *
+ * @param result - The derivation result to check.
+ * @returns Whether the result contains a derived TRON keypair.
+ */
+function isDerivedTronKeypair(
+  result: DerivedTronKeypairBatchResult,
+): result is DerivedTronKeypair {
+  return 'privateKeyHex' in result;
+}
 
 export class ClientRequestHandler {
   readonly #logger: Logger;
@@ -1208,20 +1235,16 @@ export class ClientRequestHandler {
     ];
     const accounts = await this.#accountsService.findByIds(uniqueAccountIds);
     const accountsById = new Map(
-      accounts.map((account) => [account.id, account]),
+      accounts.map((account) => [account.id.toLowerCase(), account]),
     );
     const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
       items.length,
     );
-    const signingRequests: {
-      index: number;
-      accountId: string;
-      account: (typeof accounts)[number];
-      message: string;
-    }[] = [];
+    const signingRequests: SigningRequest[] = [];
+    const accountsToDerive: TronKeyringAccount[] = [];
 
     items.forEach(({ accountId, message }, index) => {
-      const account = accountsById.get(accountId);
+      const account = accountsById.get(accountId.toLowerCase());
       if (!account) {
         results[index] = {
           accountId,
@@ -1248,6 +1271,7 @@ export class ClientRequestHandler {
           account,
           message,
         });
+        accountsToDerive.push(account);
       } catch (parseError) {
         results[index] = {
           accountId,
@@ -1256,49 +1280,50 @@ export class ClientRequestHandler {
       }
     });
 
-    const derivedKeypairs = await this.#accountsService.deriveTronKeypairs(
-      signingRequests.map(({ account }) => account),
-    );
+    const derivedKeypairs =
+      await this.#accountsService.deriveTronKeypairs(accountsToDerive);
 
-    derivedKeypairs.forEach((derivedKeypair, signingRequestIndex) => {
-      const { index, accountId, account, message } = signingRequests[
-        signingRequestIndex
-      ] as (typeof signingRequests)[number];
-      const { error } = derivedKeypair as { error?: string };
+    signingRequests.forEach(
+      ({ index, accountId, account, message }, signingRequestIndex) => {
+        const derivedKeypair = derivedKeypairs[signingRequestIndex];
 
-      if (error !== undefined) {
-        results[index] = { accountId, error };
-        return;
-      }
-
-      try {
-        const { address, privateKeyHex } = derivedKeypair as {
-          address: string;
-          privateKeyHex: string;
-        };
-
-        if (address !== account.address) {
+        if (
+          derivedKeypair === undefined ||
+          !isDerivedTronKeypair(derivedKeypair)
+        ) {
           results[index] = {
             accountId,
-            error: `Derived address (${address}) does not match signing account address (${account.address})`,
+            error: derivedKeypair?.error ?? 'Unable to derive private key',
           };
           return;
         }
 
-        const tronWeb = this.#tronWebFactory.createClient(
-          Network.Mainnet,
-          privateKeyHex,
-        );
-        const signature = tronWeb.trx.signMessageV2(message, privateKeyHex);
+        try {
+          const { address, privateKeyHex } = derivedKeypair;
 
-        results[index] = { accountId, signature };
-      } catch (signError) {
-        results[index] = {
-          accountId,
-          error: normalizeError(signError).message,
-        };
-      }
-    });
+          if (address !== account.address) {
+            results[index] = {
+              accountId,
+              error: `Derived address (${address}) does not match signing account address (${account.address})`,
+            };
+            return;
+          }
+
+          const tronWeb = this.#tronWebFactory.createClient(
+            Network.Mainnet,
+            privateKeyHex,
+          );
+          const signature = tronWeb.trx.signMessageV2(message, privateKeyHex);
+
+          results[index] = { accountId, signature };
+        } catch {
+          results[index] = {
+            accountId,
+            error: 'Failed to sign message',
+          };
+        }
+      },
+    );
 
     const result: SignProofOfOwnershipBatchResponse = { results };
 

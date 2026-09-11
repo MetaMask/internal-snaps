@@ -1549,6 +1549,37 @@ describe('ClientRequestHandler', () => {
         });
       });
 
+      it('matches requested account IDs case-insensitively', async () => {
+        const message = buildProofMessage(TEST_ADDRESS);
+        const requestedAccountId = TEST_ACCOUNT_ID.toUpperCase();
+        mockAccountsService.findByIds.mockResolvedValue([account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-1',
+            address: TEST_ADDRESS,
+          },
+        ]);
+        mockTronWeb.trx.signMessageV2.mockReturnValue('0xsignature1');
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([{ accountId: requestedAccountId, message }]),
+        );
+
+        expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
+          requestedAccountId,
+        ]);
+        expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledWith([
+          account1,
+        ]);
+        expect(result).toStrictEqual({
+          results: [
+            { accountId: requestedAccountId, signature: '0xsignature1' },
+          ],
+        });
+      });
+
       it('returns item-level errors for missing accounts and address mismatches', async () => {
         const missingAccountId = '123e4567-e89b-42d3-a456-426614174099';
         const validMessage = buildProofMessage(TEST_ADDRESS);
@@ -1604,6 +1635,35 @@ describe('ClientRequestHandler', () => {
             {
               accountId: TEST_ACCOUNT_ID,
               error: 'Unable to derive private key',
+            },
+          ],
+        });
+      });
+
+      it('returns a generic item-level error when signing throws', async () => {
+        const message = buildProofMessage(TEST_ADDRESS);
+        mockAccountsService.findByIds.mockResolvedValue([account1]);
+        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+          {
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+            privateKeyHex: 'private-key-1',
+            address: TEST_ADDRESS,
+          },
+        ]);
+        mockTronWeb.trx.signMessageV2.mockImplementation(() => {
+          throw new Error(`Private key leaked: ${TEST_PRIVATE_KEY}`);
+        });
+
+        const result = await clientRequestHandler.handle(
+          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+        );
+
+        expect(result).toStrictEqual({
+          results: [
+            {
+              accountId: TEST_ACCOUNT_ID,
+              error: 'Failed to sign message',
             },
           ],
         });

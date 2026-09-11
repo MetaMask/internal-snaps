@@ -11,10 +11,7 @@ import {
 } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
-import {
-  InFlightCoalescer,
-  normalizeError,
-} from '@metamask/snap-networks-utils';
+import { InFlightCoalescer } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
@@ -91,36 +88,6 @@ export type DerivedTronKeypair = {
 export type DerivedTronKeypairBatchResult =
   | DerivedTronKeypair
   | { error: string };
-
-const DEFAULT_TRON_DERIVATION_PATH_REGEX = /^m\/44'\/195'\/0'\/0\/(\d+)$/u;
-
-/**
- * Extracts the address index from the default TRON BIP-44 derivation path.
- *
- * Batch derivation starts at the coin-type node (`m/44'/195'`), so it only
- * supports the snap's default `m/44'/195'/0'/0/index` path shape.
- *
- * @param account - The TRON account whose derivation path should be parsed.
- * @returns The BIP-44 address index.
- */
-function getDefaultTronAddressIndex(account: TronKeyringAccount): number {
-  const match = DEFAULT_TRON_DERIVATION_PATH_REGEX.exec(account.derivationPath);
-
-  if (!match?.[1]) {
-    throw new Error(
-      `Unsupported Tron derivation path: ${account.derivationPath}`,
-    );
-  }
-
-  const addressIndex = Number(match[1]);
-  if (!Number.isSafeInteger(addressIndex) || addressIndex !== account.index) {
-    throw new Error(
-      `Tron derivation path index (${addressIndex}) does not match account index (${account.index})`,
-    );
-  }
-
-  return addressIndex;
-}
 
 /**
  * Validates account creation ranges before any expensive state or entropy work.
@@ -286,15 +253,14 @@ export class AccountsService {
 
             for (const { index, account } of sourceAccounts) {
               try {
-                const addressIndex = getDefaultTronAddressIndex(account);
-                results[index] = await keypairDeriver(addressIndex);
-              } catch (error) {
-                results[index] = { error: normalizeError(error).message };
+                results[index] = await keypairDeriver(account.index);
+              } catch {
+                results[index] = { error: 'Unable to derive private key' };
               }
             }
-          } catch (error) {
+          } catch {
             for (const { index } of sourceAccounts) {
-              results[index] = { error: normalizeError(error).message };
+              results[index] = { error: 'Unable to derive private key' };
             }
           }
         },
