@@ -549,14 +549,12 @@ export class ClientRequestHandler {
     const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
       items.length,
     );
-    const signingRequests: {
+    const signingRequestsMetadata: {
       index: number;
       accountId: string;
-      account: (typeof accounts)[number];
-      message: string;
     }[] = [];
 
-    const batchRequests: SolanaSignMessageBatchRequest[] = [];
+    const signingRequests: SolanaSignMessageBatchRequest[] = [];
 
     items.forEach(({ accountId, message }, index) => {
       const account = accountsById.get(accountId.toLowerCase());
@@ -586,14 +584,12 @@ export class ClientRequestHandler {
           getBase64Codec().decode,
         );
 
-        signingRequests.push({
+        signingRequestsMetadata.push({
           index,
           accountId,
-          account,
-          message: base64Message,
         });
 
-        batchRequests.push({
+        signingRequests.push({
           account,
           message: base64Message,
         });
@@ -606,14 +602,14 @@ export class ClientRequestHandler {
     });
 
     const signedMessages =
-      await this.#walletService.signMessages(batchRequests);
+      await this.#walletService.signMessages(signingRequests);
 
     signedMessages.forEach((signedMessage, signingRequestIndex) => {
       // Strip `| undefined` away, both `signingRequests` and `signedMessages` have
       // the same size, thus, this is safe to not consider `undefined` here.
-      const { index, accountId } = signingRequests[
+      const { index, accountId } = signingRequestsMetadata[
         signingRequestIndex
-      ] as (typeof signingRequests)[number];
+      ] as (typeof signingRequestsMetadata)[number];
 
       if (isSignMessageBatchError(signedMessage)) {
         results[index] = {
