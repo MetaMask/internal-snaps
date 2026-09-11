@@ -221,9 +221,6 @@
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 6
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.ts": {
@@ -231,7 +228,7 @@
       "count": 10
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 3
+      "count": 2
     },
     "@typescript-eslint/only-throw-error": {
       "count": 1
