@@ -129,12 +129,7 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     return ids.flatMap((id) => {
       const storedAccount = accountsByLowercaseId.get(id.toLowerCase());
       return storedAccount?.account
-        ? [
-            this.#loadPersistedAccount(
-              storedAccount.id,
-              storedAccount.account,
-            ),
-          ]
+        ? [this.#loadPersistedAccount(storedAccount.id, storedAccount.account)]
         : [];
     });
   }

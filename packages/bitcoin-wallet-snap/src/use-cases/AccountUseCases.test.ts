@@ -2176,9 +2176,9 @@ describe('AccountUseCases', () => {
           message: 'Failed to sign message',
           data: { id: 'account-id' },
         });
-        expect((error as { data?: Record<string, unknown> }).data).not.toHaveProperty(
-          'message',
-        );
+        expect(
+          (error as { data?: Record<string, unknown> }).data,
+        ).not.toHaveProperty('message');
       }
     });
 
