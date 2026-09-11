@@ -1,7 +1,8 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
+
 import type { Subscription } from '../../../entities';
 import { Network } from '../../constants/solana';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import { SubscriptionRepository } from './SubscriptionRepository';
 
 const createMockSubscription = (id: string): Subscription => ({

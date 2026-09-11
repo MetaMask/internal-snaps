@@ -1,7 +1,7 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import type { KnownCaip2ChainId } from '../../api';
-import type { IStateManager } from '../state/IStateManager';
 import type {
   OnChainAccountSnapshotsByKeyringId,
   OnChainAccountState,

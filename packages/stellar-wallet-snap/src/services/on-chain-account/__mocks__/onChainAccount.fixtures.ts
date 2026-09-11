@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import { InMemoryState } from '@metamask/snap-networks-utils';
 import type { Horizon } from '@stellar/stellar-sdk';
 import { Account } from '@stellar/stellar-sdk';
 
@@ -8,7 +9,6 @@ import { AccountService } from '../../account/AccountService';
 import { AccountsRepository } from '../../account/AccountsRepository';
 import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
-import { State } from '../../state/State';
 import { WalletService } from '../../wallet';
 import { OnChainAccount } from '../OnChainAccount';
 import { OnChainAccountRepository } from '../OnChainAccountRepository';
@@ -158,12 +158,9 @@ export const createMockAccountWithBalances = (
  */
 export function mockOnChainAccountService() {
   const walletService = new WalletService();
-  const state = new State({
-    encrypted: false,
-    defaultState: {
-      keyringAccounts: {},
-      onChainAccounts: {},
-    },
+  const state = new InMemoryState({
+    keyringAccounts: {},
+    onChainAccounts: {},
   });
   const accountService = new AccountService({
     logger,
