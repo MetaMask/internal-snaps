@@ -1,4 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
@@ -26,7 +27,12 @@ import {
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
-import type { AccountsService } from '../../services/accounts/AccountsService';
+import type { TronKeyringAccount } from '../../entities/keyring-account';
+import type {
+  AccountsService,
+  DerivedTronKeypair,
+  DerivedTronKeypairBatchResult,
+} from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
   NativeCaipAssetType,
@@ -63,14 +69,39 @@ import {
   parseProofOfOwnershipMessage,
   parseRewardsMessage,
   SignAndSendTransactionRequestStruct,
+  SignProofOfOwnershipBatchRequestStruct,
+  SignProofOfOwnershipBatchResponseStruct,
   SignProofOfOwnershipRequestStruct,
   SignRewardsMessageRequestStruct,
 } from './validation';
+import type { SignProofOfOwnershipBatchResponse } from './validation';
 
 type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   fee_limit?: number;
 };
+
+/**
+ * Validated proof-of-ownership signing request with its original input index.
+ */
+type SigningRequest = {
+  index: number;
+  accountId: string;
+  account: TronKeyringAccount;
+  message: string;
+};
+
+/**
+ * Checks whether a batch derivation result contains derived key material.
+ *
+ * @param result - The derivation result to check.
+ * @returns Whether the result contains a derived TRON keypair.
+ */
+function isDerivedTronKeypair(
+  result: DerivedTronKeypairBatchResult,
+): result is DerivedTronKeypair {
+  return Object.hasOwn(result, 'privateKeyHex');
+}
 
 export class ClientRequestHandler {
   readonly #logger: Logger;
@@ -193,6 +224,8 @@ export class ClientRequestHandler {
        */
       case ClientRequestMethod.SignProofOfOwnership:
         return this.#handleSignProofOfOwnership(request);
+      case ClientRequestMethod.SignProofOfOwnershipBatch:
+        return this.#handleSignProofOfOwnershipBatch(request);
       default:
         throw new MethodNotFoundError() as Error;
     }
@@ -1173,6 +1206,134 @@ export class ClientRequestHandler {
     const signature = tronWeb.trx.signMessageV2(message, privateKeyHex);
 
     return { signature };
+  }
+
+  /**
+   * Handles silent batch signing of proof-of-ownership messages.
+   *
+   * Valid items are signed together so key derivation can be grouped by entropy
+   * source. Invalid items return per-item errors instead of failing the whole
+   * batch.
+   *
+   * @param request - The JSON-RPC request containing the batch items.
+   * @returns The response to the JSON-RPC request.
+   */
+  async #handleSignProofOfOwnershipBatch(
+    request: JsonRpcRequest,
+  ): Promise<Json> {
+    assertOrThrow(
+      request,
+      SignProofOfOwnershipBatchRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const {
+      params: { items },
+    } = request;
+    const uniqueAccountIds = [
+      ...new Set(items.map(({ accountId }) => accountId)),
+    ];
+    const accounts = await this.#accountsService.findByIds(uniqueAccountIds);
+    const accountsById = new Map(
+      accounts.map((account) => [account.id.toLowerCase(), account]),
+    );
+    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
+      items.length,
+    );
+    const signingRequests: SigningRequest[] = [];
+    const accountsToDerive: TronKeyringAccount[] = [];
+
+    items.forEach(({ accountId, message }, index) => {
+      const account = accountsById.get(accountId.toLowerCase());
+      if (!account) {
+        results[index] = {
+          accountId,
+          error: `Account not found: ${accountId}`,
+        };
+        return;
+      }
+
+      try {
+        const { address: messageAddress } =
+          parseProofOfOwnershipMessage(message);
+
+        if (messageAddress !== account.address) {
+          results[index] = {
+            accountId,
+            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${account.address})`,
+          };
+          return;
+        }
+
+        signingRequests.push({
+          index,
+          accountId,
+          account,
+          message,
+        });
+        accountsToDerive.push(account);
+      } catch (parseError) {
+        results[index] = {
+          accountId,
+          error: normalizeError(parseError).message,
+        };
+      }
+    });
+
+    const derivedKeypairs =
+      await this.#accountsService.deriveTronKeypairs(accountsToDerive);
+
+    signingRequests.forEach(
+      ({ index, accountId, account, message }, signingRequestIndex) => {
+        const derivedKeypair = derivedKeypairs[signingRequestIndex];
+
+        if (
+          derivedKeypair === undefined ||
+          !isDerivedTronKeypair(derivedKeypair)
+        ) {
+          results[index] = {
+            accountId,
+            error: derivedKeypair?.error ?? 'Unable to derive private key',
+          };
+          return;
+        }
+
+        try {
+          const { address, privateKeyHex } = derivedKeypair;
+
+          if (address !== account.address) {
+            results[index] = {
+              accountId,
+              error: `Derived address (${address}) does not match signing account address (${account.address})`,
+            };
+            return;
+          }
+
+          const tronWeb = this.#tronWebFactory.createClient(
+            Network.Mainnet,
+            privateKeyHex,
+          );
+          const signature = tronWeb.trx.signMessageV2(message, privateKeyHex);
+
+          results[index] = { accountId, signature };
+        } catch {
+          results[index] = {
+            accountId,
+            error: 'Failed to sign message',
+          };
+        }
+      },
+    );
+
+    const result: SignProofOfOwnershipBatchResponse = { results };
+
+    assertOrThrow(
+      result,
+      SignProofOfOwnershipBatchResponseStruct,
+      new InvalidParamsError(),
+    );
+
+    return result;
   }
 
   /**

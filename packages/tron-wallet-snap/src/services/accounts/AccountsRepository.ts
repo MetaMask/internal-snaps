@@ -138,9 +138,17 @@ export class AccountsRepository {
     return accounts.find((account) => account.id === id) ?? null;
   }
 
+  /**
+   * Finds multiple Tron keyring accounts with a single full account-state read.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts. Result ordering follows stored account
+   * ordering, not input ordering.
+   */
   async findByIds(ids: string[]): Promise<TronKeyringAccount[]> {
+    const idSet = new Set(ids.map((id) => id.toLowerCase()));
     const accounts = await this.getAll();
-    return accounts.filter((account) => ids.includes(account.id));
+    return accounts.filter((account) => idSet.has(account.id.toLowerCase()));
   }
 
   async findByAddress(address: string): Promise<TronKeyringAccount | null> {
