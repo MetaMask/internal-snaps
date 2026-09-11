@@ -1,15 +1,15 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
+import { InMemoryState } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
-import { InMemoryState } from '../state/InMemoryState';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
-import { DEFAULT_UNENCRYPTED_STATE } from '../state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import { TransactionsRepository } from './TransactionsRepository';
 
 describe('TransactionsRepository', () => {

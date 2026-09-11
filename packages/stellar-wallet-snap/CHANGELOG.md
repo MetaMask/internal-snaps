@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Skip unrecognized activity that is not from this wallet's inner source account, such as fee-bumps and claim-balance transactions for other accounts ([#298](https://github.com/MetaMask/internal-snaps/pull/298))
 - Stop the confirmation refresh cron when transaction re-validation fails ([#282](https://github.com/MetaMask/internal-snaps/pull/282))
   - Show the mapped transaction error banner
   - Skip the security scan for the invalid transaction
