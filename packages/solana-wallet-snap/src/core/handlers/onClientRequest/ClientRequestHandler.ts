@@ -586,6 +586,8 @@ export class ClientRequestHandler {
     );
 
     signedMessages.forEach((signedMessage, signingRequestIndex) => {
+      // Strip `| undefined` away, both `signingRequests` and `signedMessages` have
+      // the same size, thus, this is safe to not consider `undefined` here.
       const { index, accountId } = signingRequests[
         signingRequestIndex
       ] as (typeof signingRequests)[number];
