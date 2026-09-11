@@ -21,6 +21,8 @@ import {
   ConfirmSendJsonRpcResponseStruct,
   SignAndSendTransactionJsonRpcRequestStruct,
   SignAndSendTransactionJsonRpcResponseStruct,
+  SignProofOfOwnershipBatchJsonRpcRequestStruct,
+  SignProofOfOwnershipBatchJsonRpcResponseStruct,
   SignProofOfOwnershipJsonRpcRequestStruct,
   SignProofOfOwnershipJsonRpcResponseStruct,
 } from './api';
@@ -1069,6 +1071,93 @@ describe('SignProofOfOwnershipJsonRpcResponseStruct', () => {
   ])('rejects an invalid signProofOfOwnership response', (response) => {
     expect(() =>
       assert(response, SignProofOfOwnershipJsonRpcResponseStruct),
+    ).toThrow(StructError);
+  });
+});
+
+describe('SignProofOfOwnershipBatchJsonRpcRequestStruct', () => {
+  const nonce = 'a1b2c3d4e5f6789012345678';
+
+  it('accepts a valid signProofOfOwnershipBatch request', () => {
+    expect(() =>
+      assert(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: ClientRequestMethod.SignProofOfOwnershipBatch,
+          params: {
+            items: [
+              {
+                accountId,
+                message: `metamask:proof-of-ownership:${nonce}:${stellarAddress}`,
+              },
+            ],
+          },
+        },
+        SignProofOfOwnershipBatchJsonRpcRequestStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {
+      method: ClientRequestMethod.SignProofOfOwnership,
+      params: { items: [] },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnershipBatch,
+      params: {},
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnershipBatch,
+      params: { items: [{ accountId }] },
+    },
+    {
+      method: ClientRequestMethod.SignProofOfOwnershipBatch,
+      params: { items: [{ accountId: 'not-a-uuid', message: 'message' }] },
+    },
+  ])(
+    'rejects an invalid signProofOfOwnershipBatch request',
+    ({ method, params }) => {
+      expect(() =>
+        assert(
+          { jsonrpc: '2.0', id: 1, method, params },
+          SignProofOfOwnershipBatchJsonRpcRequestStruct,
+        ),
+      ).toThrow(StructError);
+    },
+  );
+});
+
+describe('SignProofOfOwnershipBatchJsonRpcResponseStruct', () => {
+  it('accepts per-item success and error results', () => {
+    expect(() =>
+      assert(
+        {
+          results: [
+            {
+              accountId,
+              signature: `0x${'ab'.repeat(64)}`,
+            },
+            {
+              accountId: '22222222-2222-4222-8222-222222222222',
+              error: 'Account not found',
+            },
+          ],
+        },
+        SignProofOfOwnershipBatchJsonRpcResponseStruct,
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {},
+    { results: [{ accountId, signature: 'not-a-signature' }] },
+    { results: [{ accountId, error: 123 }] },
+    { results: [{ accountId: 'not-a-uuid', error: 'bad id' }] },
+  ])('rejects an invalid signProofOfOwnershipBatch response', (response) => {
+    expect(() =>
+      assert(response, SignProofOfOwnershipBatchJsonRpcResponseStruct),
     ).toThrow(StructError);
   });
 });
