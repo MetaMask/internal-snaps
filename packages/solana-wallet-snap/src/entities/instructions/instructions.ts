@@ -155,8 +155,9 @@ import {
   TOKEN_2022_PROGRAM_ADDRESS,
 } from '@solana-program/token-2022';
 import { getBase58Codec } from '@solana/kit';
-import type { Rpc, SolanaRpcApi } from '@solana/kit';
 import type {
+  Rpc,
+  SolanaRpcApi,
   Instruction,
   InstructionWithData,
   ReadonlyUint8Array,
