@@ -1,8 +1,8 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import type { AssetEntity } from '../../entities/assets';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class AssetsRepository {
   readonly #state: IStateManager<UnencryptedStateValue>;
