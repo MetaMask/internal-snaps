@@ -35,6 +35,8 @@ import {
   ValidAmountStruct,
   ValidStellarAmountStruct,
   SwapTransactionXdrStruct,
+  StellarMemoTypeStruct,
+  StellarMemoValueStruct,
 } from '../../api';
 import { isSep41Id } from '../../utils';
 import { parseProofOfOwnershipMessage } from './utils';
@@ -294,6 +296,12 @@ const ConfirmSendParamsStruct = object({
     KnownCaip19Slip44IdStruct,
   ]),
   amount: nonempty(string()),
+  memo: optional(StellarMemoValueStruct),
+  /**
+   * Optional SEP-2 / client memo type hint. When omitted, numeric values are
+   * treated as memo id; otherwise text (see resolveStellarMemo).
+   */
+  memoType: optional(StellarMemoTypeStruct),
 });
 
 /**

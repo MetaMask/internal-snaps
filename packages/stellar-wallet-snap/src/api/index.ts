@@ -6,3 +6,9 @@ export * from './json';
 export * from './integer';
 export * from './xdr';
 export * from './transactionHash';
+export {
+  StellarMemoType,
+  StellarMemoTypeStruct,
+  StellarMemoValueStruct,
+} from './string';
+export type { StellarMemoValue } from './string';

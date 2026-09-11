@@ -17,6 +17,8 @@ Confirms and submits a send for Unified Non-EVM Send (live on-chain data at buil
 - `toAddress` — Stellar destination
 - `assetId` — CAIP-19 classic / SEP-41 / slip44 (`scope` derived from `assetId`)
 - `amount` — human-readable amount string
+- `memo` — optional memo string (wire: ≤ 64 chars so text, id digits, or hash/return hex fit). Empty/whitespace is treated as absent. Text memos are limited to **28 UTF-8 bytes at build** (`resolveStellarMemo`); id/hash/return are validated by type there too.
+- `memoType` — optional `text` | `id` | `hash` | `return` (SEP-2 / client hint). When omitted, all-digit uint64 values are treated as memo **id**; otherwise **text**. Federation/muxed destination resolution is a follow-up.
 
 **Response**
 
@@ -71,7 +73,7 @@ sequenceDiagram
   participant Wallet
   participant Track as TrackTransactionHandler
 
-  Client->>Handler: confirmSend { fromAccountId, toAddress, assetId, amount }
+  Client->>Handler: confirmSend { fromAccountId, toAddress, assetId, amount, memo? }
   Handler->>Resolver: resolve activated account (live on-chain)
   Resolver-->>Handler: account, wallet, onChainAccount
   Handler->>Meta: resolve(assetId)

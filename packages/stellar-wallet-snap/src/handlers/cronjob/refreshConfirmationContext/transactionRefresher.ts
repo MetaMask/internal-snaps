@@ -139,6 +139,8 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
               assetId: request.params.assetId,
               destination: request.params.toAddress,
               amount,
+              memo: request.params.memo,
+              memoType: request.params.memoType,
             });
           break;
         }
