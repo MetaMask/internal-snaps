@@ -1,5 +1,5 @@
 import type {
-  CompilableTransactionMessage,
+  TransactionMessage,
   Nonce,
   Rpc,
   SolanaRpcApi,
@@ -50,7 +50,7 @@ describe('isTransactionBlockhashExpired', () => {
   const getRpc = (): Rpc<SolanaRpcApi> =>
     ({ isBlockhashValid: jest.fn() }) as unknown as Rpc<SolanaRpcApi>;
 
-  const getMessageWithBlockhashLifetime = (): CompilableTransactionMessage =>
+  const getMessageWithBlockhashLifetime = (): TransactionMessage =>
     pipe(
       createTransactionMessage({ version: 0 }),
       (message) => setTransactionMessageFeePayer(feePayer, message),
@@ -61,7 +61,7 @@ describe('isTransactionBlockhashExpired', () => {
         ),
     );
 
-  const getMessageWithDurableNonceLifetime = (): CompilableTransactionMessage =>
+  const getMessageWithDurableNonceLifetime = (): TransactionMessage =>
     pipe(
       createTransactionMessage({ version: 0 }),
       (message) => setTransactionMessageFeePayer(feePayer, message),

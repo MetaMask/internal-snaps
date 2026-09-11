@@ -1,18 +1,16 @@
 import type { Infer } from '@metamask/superstruct';
 import type {
-  CompilableTransactionMessage,
+  TransactionMessage,
   GetMultipleAccountsApi,
   Rpc,
   Transaction,
   TransactionMessageBytes,
 } from '@solana/kit';
 import {
-  compileTransactionMessage,
   decompileTransactionMessageFetchingLookupTables,
   getBase64Decoder,
   getBase64Encoder,
   getCompiledTransactionMessageDecoder,
-  getCompiledTransactionMessageEncoder,
   getTransactionDecoder,
   getTransactionEncoder,
   pipe,
@@ -20,25 +18,6 @@ import {
 
 import { PromiseAny } from '../utils/PromiseAny';
 import type { Base64Struct } from '../validation/structs';
-
-/**
- * Encodes a compilable transaction message to a base64 string.
- *
- * @param compilableTransactionMessage - The compilable transaction message to convert.
- * @returns The base64 encoded string.
- */
-export const fromCompilableTransactionMessageToBase64String = async (
-  compilableTransactionMessage: CompilableTransactionMessage,
-): Promise<Infer<typeof Base64Struct>> =>
-  pipe(
-    compilableTransactionMessage,
-    // Compile it.
-    compileTransactionMessage,
-    // Convert the compiled message into a byte array.
-    getCompiledTransactionMessageEncoder().encode,
-    // Encode that byte array as a base64 string.
-    getBase64Decoder().decode,
-  );
 
 export type DecompileTransactionMessageFetchingLookupTablesConfig = Parameters<
   typeof decompileTransactionMessageFetchingLookupTables
@@ -58,7 +37,7 @@ export const fromBase64StringToCompilableTransactionMessage = async (
   base64String: Infer<typeof Base64Struct>,
   rpc: Rpc<GetMultipleAccountsApi>,
   config?: DecompileTransactionMessageFetchingLookupTablesConfig,
-): Promise<CompilableTransactionMessage> =>
+): Promise<TransactionMessage> =>
   pipe(
     base64String,
     getBase64Encoder().encode,
@@ -85,7 +64,7 @@ export const fromBytesToCompilableTransactionMessage = async (
   messageBytes: TransactionMessageBytes,
   rpc: Rpc<GetMultipleAccountsApi>,
   config?: DecompileTransactionMessageFetchingLookupTablesConfig,
-): Promise<CompilableTransactionMessage> =>
+): Promise<TransactionMessage> =>
   pipe(
     messageBytes,
     getCompiledTransactionMessageDecoder().decode,
@@ -165,8 +144,8 @@ export const fromUnknownBase64StringToTransactionOrTransactionMessage = async (
   base64String: Infer<typeof Base64Struct>,
   rpc: Rpc<GetMultipleAccountsApi>,
   config?: DecompileTransactionMessageFetchingLookupTablesConfig,
-): Promise<Transaction | CompilableTransactionMessage> =>
-  PromiseAny<Transaction | CompilableTransactionMessage>([
+): Promise<Transaction | TransactionMessage> =>
+  PromiseAny<Transaction | TransactionMessage>([
     fromBase64StringToTransaction(base64String),
     fromBase64StringToCompilableTransactionMessage(base64String, rpc, config),
   ]);

@@ -129,10 +129,10 @@ describe('ApproveTokenService', () => {
 
       expect(instructions).toHaveLength(4);
       // First: SetComputeUnitPrice
-      expect(instructions[0].programAddress).toBe(
+      expect(instructions[0]?.programAddress).toBe(
         COMPUTE_BUDGET_PROGRAM_ADDRESS,
       );
-      expect(instructions[0].data?.[0]).toBe(
+      expect(instructions[0]?.data?.[0]).toBe(
         SET_COMPUTE_UNIT_PRICE_DISCRIMINANT,
       );
       // Second: Create ATA (token program)

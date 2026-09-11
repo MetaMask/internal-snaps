@@ -4,7 +4,10 @@ import {
   getSetComputeUnitPriceInstruction,
 } from '@solana-program/compute-budget';
 import { getTransferSolInstruction } from '@solana-program/system';
-import type { CompilableTransactionMessage } from '@solana/kit';
+import type {
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 import {
   address,
   appendTransactionMessageInstruction,
@@ -49,7 +52,7 @@ export class SendSolBuilder implements ISendTransactionBuilder {
    */
   async buildTransactionMessage(
     params: BuildSendTransactionParams,
-  ): Promise<CompilableTransactionMessage> {
+  ): Promise<TransactionMessage & TransactionMessageWithFeePayer> {
     try {
       const { from, to, amount, network } = params;
       const fromAddress = address(from.address);

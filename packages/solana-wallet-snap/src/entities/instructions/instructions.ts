@@ -155,8 +155,13 @@ import {
   TOKEN_2022_PROGRAM_ADDRESS,
 } from '@solana-program/token-2022';
 import { getBase58Codec } from '@solana/kit';
-import type { Rpc, SolanaRpcApi } from '@solana/kit';
-import type { IInstruction } from '@solana/kit';
+import type {
+  Rpc,
+  SolanaRpcApi,
+  Instruction,
+  InstructionWithData,
+  ReadonlyUint8Array,
+} from '@solana/kit';
 
 import {
   fromBytesToCompilableTransactionMessage,
@@ -220,7 +225,7 @@ type ParsedInstruction = {
   >;
 };
 
-type EncodedInstruction = Omit<IInstruction, 'data' | 'accounts'> & {
+type EncodedInstruction = Omit<Instruction, 'data' | 'accounts'> & {
   dataBase58: string;
 };
 
@@ -244,13 +249,13 @@ export type InstructionParseResult =
 
 type ParsingConfig<TInstructionType extends string> = {
   /** The function that, given an instruction, returns its type (e.g. "InitializeMint") */
-  identifier: (instruction: IInstruction) => TInstructionType;
+  identifier: (instruction: Instruction) => TInstructionType;
   /** The enum that holds every instruction type for a given program */
   instructionEnum: Record<number, string>;
   /** Maps every instruction type (e.g. "InitializeMint") to the function that parses it */
   typeToParserMap: Record<
     TInstructionType,
-    (instruction: IInstruction) => ParsedInstruction
+    (instruction: Instruction) => ParsedInstruction
   >;
 };
 
@@ -555,7 +560,7 @@ const programAddressToParsingConfig: Record<
  * @returns The result of the instruction parsing.
  */
 export const parseInstruction = (
-  instruction: IInstruction,
+  instruction: Instruction,
 ): InstructionParseResult => {
   const { programAddress } = instruction;
 
@@ -637,16 +642,16 @@ export const extractInstructionsFromUnknownBase64String = async (
 };
 
 /**
- * Converts a SolanaInstruction to an IInstruction that we can parse with `parseInstruction`
+ * Converts a SolanaInstruction to an Instruction that we can parse with `parseInstruction`
  *
  * @param instruction - The Solana instruction to convert.
  * @param transactionData - The full transaction data.
- * @returns The IInstruction.
+ * @returns The Instruction.
  */
 export const toIInstruction = (
   instruction: SolanaInstruction,
   transactionData: SolanaTransaction,
-): IInstruction => {
+): InstructionWithData<ReadonlyUint8Array> => {
   // Filter to only keep the account indexes available in the `accountKeys`
   const isInAccountKeys = (accountIndex: number) =>
     accountIndex < transactionData.transaction.message.accountKeys.length;
@@ -667,12 +672,10 @@ export const toIInstruction = (
     throw new Error('Program address not found');
   }
 
-  // Build the IInstruction object
-  const iInstruction = {
+  // Build the InstructionWithData<ReadonlyUint8Array> object
+  return {
     accounts,
     data: getBase58Codec().encode(instruction.data),
     programAddress,
-  } as unknown as IInstruction;
-
-  return iInstruction;
+  };
 };

@@ -5,15 +5,16 @@ import { nameResolutionService } from '../../../snapContext';
 import { SolanaNameLookupRequestStruct } from './structs';
 
 const SOLANA_NAME_SERVICE_PROTOCOL = 'Solana Name Service';
+const SOLANA_NAME_SERVICE_TLDS = ['.sns', '.sol'];
 
 export const onNameLookupHandler: OnNameLookupHandler = async (request) => {
   assert(request, SolanaNameLookupRequestStruct);
 
   const { chainId, domain, address } = request;
 
-  // regex to match valid .sol domains (at least one character before .sol)
+  // regex to match valid SNS domains (at least one character before the TLD)
   const validDomainRegex = new RegExp(
-    `^.+\\${nameResolutionService.tld}$`,
+    `^.+(${SOLANA_NAME_SERVICE_TLDS.map((tld) => `\\${tld}`).join('|')})$`,
     'u',
   );
 

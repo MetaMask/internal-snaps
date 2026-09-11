@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { address, blockhash } from '@solana/kit';
-import type { CompilableTransactionMessage } from '@solana/kit';
+import type {
+  TransactionMessage,
+  TransactionMessageWithBlockhashLifetime,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 
 import { Network } from '../../../constants/solana';
 import {
@@ -18,7 +22,9 @@ const fromAccountPrivateKeyBytes =
 const transactionRequestBase64Encoded =
   'AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIABgymr6yEAmkOIXpp3AcyvWL/QB2KoDZDEZAXeMYvfP7cvZmwAo+dnq8yhuKR7QpXgj+5yPFMzVwViEudWE9Z+N90DiUHiMuOTEfv/7RvoyR8p3lT/6Mq87vOJ1wZbQZg8PAPZvgVNXGQR4l/GibNBPjRJtllQ2kqGDcrpjCUaFKkdTAkgVB1V0ZN+ftspt1cSBk+wVMQVrs4JNQFQwBgW9GZhOywRahqdvSkj2/cQCplpD9GCV8x5MAdCkD4ANfRnpsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUpYSftyo7vpH9xbDmpX9jxaHLRbIGem7Qys02OVyKECxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWFz0a9nDKqpPdiAVLKedeH/FiXhKfcaZRxRu5EmDTJBAAMHAAkDOSkAAAAAAAAHAAUCfpAAAAoMAQAFAwoCCwkICQYEI6hgt6NcCiigQEIPAAAAAACXWkUAAAAAABSa0mgAAAAAAgAAAA==';
 
-const transactionMessage: CompilableTransactionMessage = {
+const transactionMessage: TransactionMessage &
+  TransactionMessageWithFeePayer &
+  TransactionMessageWithBlockhashLifetime = {
   instructions: [
     {
       programAddress: address('ComputeBudget111111111111111111111111111111'),

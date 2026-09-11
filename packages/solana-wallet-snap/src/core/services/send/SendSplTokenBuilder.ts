@@ -23,8 +23,12 @@ import {
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
-import type { CompilableTransactionMessage, IInstruction } from '@solana/kit';
-import type { Address } from '@solana/kit';
+import type {
+  Address,
+  Instruction,
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 
 import type { TokenHelper } from '..';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
@@ -71,7 +75,7 @@ export class SendSplTokenBuilder implements ISendTransactionBuilder {
 
   async buildTransactionMessage(
     params: BuildSendTransactionParams,
-  ): Promise<CompilableTransactionMessage> {
+  ): Promise<TransactionMessage & TransactionMessageWithFeePayer> {
     this.#logger.log('Build transfer SPL token transaction message');
 
     const {
@@ -130,7 +134,7 @@ export class SendSplTokenBuilder implements ISendTransactionBuilder {
         tokenProgram,
       });
 
-    const instructions: IInstruction[] = [];
+    const instructions: Instruction[] = [];
 
     // Use the Token-2022 instructions if the token is a Token-2022 token
     const isToken2022 = tokenProgram === TOKEN_2022_PROGRAM_ADDRESS;
