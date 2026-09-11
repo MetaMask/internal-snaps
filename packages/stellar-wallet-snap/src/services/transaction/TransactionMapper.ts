@@ -178,6 +178,14 @@ export class TransactionMapper {
       return this.#mapReceiveTransaction(transaction, keyringAccount);
     }
 
+    // Skip transactions that are not from the explicit source account.
+    // e.g.
+    // - fee bump transactions for other accounts.
+    // - claim-balance transactions by other accounts.
+    if (!transaction.isExplicitSourceAccount(address)) {
+      return undefined;
+    }
+
     // TODO: add bridge send transaction
     // Unrecognized shape; surface as unknown activity.
     return this.#mapUnknownTransaction(transaction, keyringAccount);
@@ -505,7 +513,7 @@ export class TransactionMapper {
     if (
       // A failed transaction does not contain the result_meta_xdr for us to extract the event data
       transaction.status === TransactionStatus.Failed ||
-      // A transaction is not from the source account, so it is not a receive transaction.
+      // If this wallet is the source (or fee source), this is not an incoming receive transaction.
       transaction.isSourceAccount(keyringAccount.address)
     ) {
       return undefined;

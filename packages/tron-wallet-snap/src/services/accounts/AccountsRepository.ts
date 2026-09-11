@@ -1,8 +1,8 @@
 import type { EntropySourceId } from '@metamask/keyring-api';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 /**
  * Range of inclusive account indices to create.
@@ -198,10 +198,10 @@ export class AccountsRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await Promise.all([
-      this.#state.deleteKey(`${this.#storageKey}.${id}`),
-      this.#state.deleteKey(`assets.${id}`),
-      this.#state.deleteKey(`transactions.${id}`),
+    await this.#state.deleteKeys([
+      `${this.#storageKey}.${id}`,
+      `assets.${id}`,
+      `transactions.${id}`,
     ]);
   }
 }

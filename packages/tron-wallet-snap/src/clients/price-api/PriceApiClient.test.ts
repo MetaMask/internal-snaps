@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { CaipAssetType } from '@metamask/keyring-api';
-import type { Serializable } from '@metamask/snap-networks-utils';
+import type { ICache, Serializable } from '@metamask/snap-networks-utils';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
-import type { ICache } from '../../caching/ICache';
-import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { mockLogger } from '../../utils/mockLogger';

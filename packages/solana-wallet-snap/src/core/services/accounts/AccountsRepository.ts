@@ -1,6 +1,7 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
+
 import type { SolanaKeyringAccount } from '../../../entities';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class AccountsRepository {
   readonly #state: IStateManager<UnencryptedStateValue>;

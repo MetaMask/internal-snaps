@@ -258,6 +258,8 @@ export class SnapClientAdapter implements SnapClient {
             return 'Snap transaction reorged';
           case TrackingSnapEvent.TransactionReceived:
             return 'Snap transaction received';
+          case TrackingSnapEvent.MissedTransactionsDiscovered:
+            return 'Snap discovered missed transaction';
           default:
             throw new AssertionError(`Unhandled tracking event type`, {
               eventType,
@@ -265,6 +267,11 @@ export class SnapClientAdapter implements SnapClient {
             });
         }
       };
+
+      const transactionKey =
+        eventType === TrackingSnapEvent.MissedTransactionsDiscovered
+          ? 'transaction_hash'
+          : 'tx_id';
 
       await snap.request({
         method: 'snap_trackEvent',
@@ -276,7 +283,7 @@ export class SnapClientAdapter implements SnapClient {
               message: createMessage(),
               chain_id_caip: networkToScope[account.network],
               account_type: addressTypeToCaip[account.addressType],
-              tx_id: tx.txid.toString(),
+              [transactionKey]: tx.txid.toString(),
             },
           },
         },

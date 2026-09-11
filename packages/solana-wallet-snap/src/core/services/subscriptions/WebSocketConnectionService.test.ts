@@ -1,3 +1,6 @@
+import { InMemoryState } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
+
 import type { WebSocketConnection } from '../../../entities';
 import { EventEmitter } from '../../../infrastructure';
 import { Network } from '../../constants/solana';
@@ -6,10 +9,8 @@ import { mockLogger } from '../__mocks__/logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
 import type { NetworkConfig } from '../config/ConfigProvider';
-import { InMemoryState } from '../state/InMemoryState';
-import type { IStateManager } from '../state/IStateManager';
-import { DEFAULT_UNENCRYPTED_STATE } from '../state/State';
-import type { UnencryptedStateValue } from '../state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
 import { WebSocketConnectionService } from './WebSocketConnectionService';
 
