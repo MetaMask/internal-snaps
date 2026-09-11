@@ -20,7 +20,10 @@ import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import type { AccountsService, ApproveTokenService } from '../../services';
 import type { SendService } from '../../services/send/SendService';
 import type { OnAddressInputRequest } from '../../services/send/types';
-import type { WalletService } from '../../services/wallet/WalletService';
+import type {
+  SolanaSignMessageBatchResult,
+  WalletService,
+} from '../../services/wallet/WalletService';
 import { lamportsToSol } from '../../utils/conversion';
 import { ClientRequestMethod } from './types';
 import {
@@ -51,6 +54,18 @@ import type {
   SignProofOfOwnershipBatchResponse,
   SignProofOfOwnershipResponse,
 } from './validation';
+
+/**
+ * Checks whether a batch message-signing result is an item-level error.
+ *
+ * @param signedMessage - The result returned by wallet batch signing.
+ * @returns Whether the result is an error response.
+ */
+function isSignMessageBatchError(
+  signedMessage: SolanaSignMessageBatchResult,
+): signedMessage is Extract<SolanaSignMessageBatchResult, { error: string }> {
+  return Object.hasOwn(signedMessage, 'error');
+}
 
 export class ClientRequestHandler {
   readonly #accountsService: AccountsService;
@@ -528,7 +543,7 @@ export class ClientRequestHandler {
     ];
     const accounts = await this.#accountsService.findByIds(uniqueAccountIds);
     const accountsById = new Map(
-      accounts.map((account) => [account.id, account]),
+      accounts.map((account) => [account.id.toLowerCase(), account]),
     );
     const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
       items.length,
@@ -541,7 +556,7 @@ export class ClientRequestHandler {
     }[] = [];
 
     items.forEach(({ accountId, message }, index) => {
-      const account = accountsById.get(accountId);
+      const account = accountsById.get(accountId.toLowerCase());
       if (!account) {
         results[index] = {
           accountId,
@@ -592,19 +607,17 @@ export class ClientRequestHandler {
         signingRequestIndex
       ] as (typeof signingRequests)[number];
 
-      const { error } = signedMessage as { error?: string };
-      if (error !== undefined) {
+      if (isSignMessageBatchError(signedMessage)) {
         results[index] = {
           accountId,
-          error,
+          error: signedMessage.error,
         };
         return;
       }
 
-      const { signature } = signedMessage as { signature: string };
       results[index] = {
         accountId,
-        signature: this.#toProofOfOwnershipSignature(signature),
+        signature: this.#toProofOfOwnershipSignature(signedMessage.signature),
       };
     });
 

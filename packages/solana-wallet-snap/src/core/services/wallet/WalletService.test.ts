@@ -10,7 +10,10 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNTS,
   MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0,
 } from '../../test/mocks/solana-keyring-accounts';
-import { getBip32EntropyMock } from '../../test/mocks/utils/getBip32Entropy';
+import {
+  getBip32EntropyMock,
+  getSolanaCoinTypeNodeMock,
+} from '../../test/mocks/utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
@@ -31,6 +34,7 @@ import { WalletService } from './WalletService';
 
 jest.mock('../../utils/getBip32Entropy', () => ({
   getBip32Entropy: getBip32EntropyMock,
+  getSolanaCoinTypeNode: getSolanaCoinTypeNodeMock,
 }));
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
@@ -83,6 +87,7 @@ describe('WalletService', () => {
     };
 
     getBip32EntropyMock.mockClear();
+    getSolanaCoinTypeNodeMock.mockClear();
   });
 
   describe('resolveAccountAddress', () => {
@@ -530,9 +535,27 @@ describe('WalletService', () => {
 
       expect(result).toStrictEqual([
         {
-          error: "Unsupported Solana derivation path: m/44'/501'/0'",
+          error: 'Unable to derive private key',
         },
       ]);
+    });
+
+    it('does not expose derivation error details in batch signing results', async () => {
+      const sensitiveError = 'derived private key bytes: secret';
+      getSolanaCoinTypeNodeMock.mockResolvedValueOnce({
+        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+      } as never);
+
+      const result = await service.signMessages([
+        { account: MOCK_SOLANA_KEYRING_ACCOUNT_0, message: utf8ToBase64('a') },
+      ]);
+
+      expect(result).toStrictEqual([
+        {
+          error: 'Unable to derive private key',
+        },
+      ]);
+      expect(JSON.stringify(result)).not.toContain(sensitiveError);
     });
   });
 });

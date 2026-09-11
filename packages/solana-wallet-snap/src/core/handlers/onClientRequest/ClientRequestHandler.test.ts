@@ -858,6 +858,38 @@ describe('ClientRequestHandler', () => {
         ],
       });
     });
+
+    it('matches account IDs case-insensitively while preserving the requested account ID in the response', async () => {
+      const message = buildProofMessage(nonce, account0.address);
+      const uppercaseAccountId = account0.id.toUpperCase();
+      mockAccountsService.findByIds.mockResolvedValue([account0]);
+      mockWalletService.signMessages.mockResolvedValue([
+        {
+          signature: base58Signature,
+          signedMessage: utf8ToBase64(message),
+          signatureType: 'ed25519',
+        },
+      ]);
+
+      const result = await handler.handle(
+        createRequest([{ accountId: uppercaseAccountId, message }]),
+      );
+
+      expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
+        uppercaseAccountId,
+      ]);
+      expect(mockWalletService.signMessages).toHaveBeenCalledWith([
+        { account: account0, message: utf8ToBase64(message) },
+      ]);
+      expect(result).toStrictEqual({
+        results: [
+          {
+            accountId: uppercaseAccountId,
+            signature: `0x${'01'.repeat(64)}`,
+          },
+        ],
+      });
+    });
   });
 
   describe('signCardMessage', () => {

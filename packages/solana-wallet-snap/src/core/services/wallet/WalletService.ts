@@ -1,4 +1,4 @@
-import { SLIP10Node } from '@metamask/key-tree';
+import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
@@ -15,6 +15,7 @@ import {
   getBase64Codec,
   getSignatureFromTransaction,
   getUtf8Codec,
+  pipe,
   sendTransactionWithoutConfirmingFactory,
   verifySignature,
 } from '@solana/kit';
@@ -29,7 +30,7 @@ import {
   deriveSolanaKeypair,
   deriveSolanaKeypairFromCoinTypeNode,
 } from '../../utils/deriveSolanaKeypair';
-import { getBip32Entropy } from '../../utils/getBip32Entropy';
+import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
@@ -446,22 +447,14 @@ export class WalletService {
       [...requestsByEntropySource.entries()].map(
         async ([entropySource, sourceRequests]) => {
           try {
-            const coinTypeNodeJson = await getBip32Entropy({
-              entropySource,
-              path: ['m', "44'", "501'"],
-              curve: 'ed25519',
-            });
-            const coinTypeNode = await SLIP10Node.fromJSON(coinTypeNodeJson);
+            const coinTypeNode = await getSolanaCoinTypeNode(entropySource);
 
             for (const { index, request } of sourceRequests) {
               try {
-                const accountIndex = getDefaultSolanaAccountIndex(
-                  request.account,
-                );
-                const { privateKeyBytes } =
-                  await deriveSolanaKeypairFromCoinTypeNode({
+                const privateKeyBytes =
+                  await this.#deriveProofSigningPrivateKey({
                     coinTypeNode,
-                    accountIndex,
+                    account: request.account,
                   });
 
                 results[index] = await this.#signMessageWithPrivateKey(
@@ -502,8 +495,11 @@ export class WalletService {
     privateKeyBytes: Uint8Array,
   ): Promise<SolanaSignMessageResponse> {
     const addressAsAddress = asAddress(account.address);
-    const messageBytes = getBase64Codec().encode(message);
-    const messageUtf8 = getUtf8Codec().decode(messageBytes);
+    const messageUtf8 = pipe(
+      message,
+      getBase64Codec().encode,
+      getUtf8Codec().decode,
+    );
     const signableMessage = createSignableMessage(messageUtf8);
 
     const signer =
@@ -532,6 +528,37 @@ export class WalletService {
     assert(result, SolanaSignMessageResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Derives private key bytes for an account in the batch proof-signing path.
+   *
+   * Derivation errors are deliberately collapsed to a generic message so error
+   * responses cannot include library context around private key material.
+   *
+   * @param params - The derivation parameters.
+   * @param params.coinTypeNode - The Solana coin-type node for the account's entropy source.
+   * @param params.account - The account to derive private key bytes for.
+   * @returns Private key bytes for the account.
+   */
+  async #deriveProofSigningPrivateKey({
+    coinTypeNode,
+    account,
+  }: {
+    coinTypeNode: SLIP10Node;
+    account: SolanaKeyringAccount;
+  }): Promise<Uint8Array> {
+    try {
+      const accountIndex = getDefaultSolanaAccountIndex(account);
+      const { privateKeyBytes } = await deriveSolanaKeypairFromCoinTypeNode({
+        coinTypeNode,
+        accountIndex,
+      });
+
+      return privateKeyBytes;
+    } catch {
+      throw new Error('Unable to derive private key');
+    }
   }
 
   /**
