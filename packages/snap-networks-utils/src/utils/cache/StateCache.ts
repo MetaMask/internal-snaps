@@ -1,9 +1,24 @@
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
-import type { IStateManager } from '../services/state/IStateManager';
-import type { ICache } from './ICache';
-import type { CacheEntry } from './types';
+import type { Logger } from '../logger/Logger';
+import type { Serializable } from '../serialization/types';
+import type { CacheEntry, ICache } from './types';
+
+/**
+ * The minimal subset of a state manager that {@link StateCache} relies on.
+ *
+ * Any implementation whose `getKey`, `setKey` and `update` methods match these signatures
+ * (such as the `IStateManager` implementations in the network snaps) satisfies this interface structurally.
+ */
+export type CacheStateManager<
+  TStateValue extends Record<string, Serializable>,
+> = {
+  getKey<TKey extends Serializable>(key: string): Promise<TKey | undefined>;
+  setKey(key: string, value: Serializable): Promise<void>;
+  update(
+    updaterFunction: (state: TStateValue) => TStateValue,
+  ): Promise<TStateValue>;
+};
 
 /**
  * The whole cache store.
@@ -25,9 +40,9 @@ export type StateValue = {
 };
 
 /**
- * A cache that wraps any implementation of the `IStateManager` interface to store the cache.
+ * A cache that wraps any implementation of a state manager to store the cache.
  *
- * It is intended to be used with the snap's `State` class, but can be used with any other implementation of the `IStateManager` interface. For instance it can be used with the `InMemoryState` class for testing purposes.
+ * It is intended to be used with the snap's `State` class, but can be used with any other implementation of the state manager interface. For instance it can be used with an in-memory state implementation for testing purposes.
  *
  * By default, it stores its data in the `__cache__default` property of the state, but you can specify any other prefix you want, provided it starts with `__cache__` to avoid collisions with other state values.
  * This is useful if you want to have multiple independent caches in the same state.
@@ -49,7 +64,8 @@ export type StateValue = {
  * @example
  * ```ts
  * const state = new State({}); // Here we use the real snap's state
- * const cache = new StateCache(state, '__cache__my-prefix');
+ * const rootLogger = new Logger({ level: LogLevel.INFO });
+ * const cache = new StateCache(state, rootLogger, '__cache__my-prefix');
  *
  * // state looks like this:
  * // {
@@ -69,19 +85,19 @@ export type StateValue = {
  * ```
  */
 export class StateCache implements ICache<Serializable | undefined> {
-  readonly #state: IStateManager<StateValue>;
+  readonly #state: CacheStateManager<StateValue>;
+
+  readonly #logger: Logger;
 
   public readonly prefix: CachePrefix;
 
-  public readonly logger: Logger;
-
   constructor(
-    state: IStateManager<StateValue>,
+    state: CacheStateManager<StateValue>,
     logger: Logger,
     prefix: CachePrefix = '__cache__default',
   ) {
     this.#state = state;
-    this.logger = logger;
+    this.#logger = logger;
     this.prefix = prefix;
   }
 
@@ -100,7 +116,7 @@ export class StateCache implements ICache<Serializable | undefined> {
     await this.#state.setKey(`${this.prefix}.${key}`, {
       value,
       expiresAt: Math.min(
-        Date.now() + (ttlMilliseconds ?? Number.MAX_SAFE_INTEGER),
+        Date.now() + ttlMilliseconds,
         Number.MAX_SAFE_INTEGER,
       ),
     });
@@ -139,13 +155,13 @@ export class StateCache implements ICache<Serializable | undefined> {
   }
 
   async keys(): Promise<string[]> {
-    const cacheStore = await this.#state.getKey(this.prefix);
+    const cacheStore = await this.#state.getKey<CacheStore>(this.prefix);
 
     return Object.keys(cacheStore ?? {});
   }
 
   async size(): Promise<number> {
-    const cacheStore = await this.#state.getKey(this.prefix);
+    const cacheStore = await this.#state.getKey<CacheStore>(this.prefix);
 
     return Object.keys(cacheStore ?? {}).length;
   }
@@ -160,7 +176,7 @@ export class StateCache implements ICache<Serializable | undefined> {
   async mget(
     keys: string[],
   ): Promise<Record<string, Serializable | undefined>> {
-    const cacheStore = await this.#state.getKey(this.prefix);
+    const cacheStore = await this.#state.getKey<CacheStore>(this.prefix);
 
     // If cache is not initialized, return empty object
     if (!cacheStore) {
@@ -173,7 +189,7 @@ export class StateCache implements ICache<Serializable | undefined> {
 
     const expiredKeys = keysAndValues.filter(
       ([_unused, cacheEntry]) =>
-        cacheEntry && cacheEntry.expiresAt <= Date.now(),
+        cacheEntry && cacheEntry.expiresAt < Date.now(),
     );
 
     await this.mdelete(expiredKeys.map(([key]) => key));
@@ -183,24 +199,24 @@ export class StateCache implements ICache<Serializable | undefined> {
     // First, handle keys that exist in the cache
     keysAndValues.forEach(([key, cacheEntry]) => {
       if (cacheEntry === undefined) {
-        this.logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
+        this.#logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
         result[key] = undefined;
         return;
       }
 
-      if (cacheEntry.expiresAt <= Date.now()) {
-        this.logger.info(`[StateCache] ⌛ Cache expired for key "${key}"`);
+      if (cacheEntry.expiresAt < Date.now()) {
+        this.#logger.info(`[StateCache] ⌛ Cache expired for key "${key}"`);
         result[key] = undefined;
       } else {
-        this.logger.info(`[StateCache] 🎉 Cache hit for key "${key}"`);
+        this.#logger.info(`[StateCache] 🎉 Cache hit for key "${key}"`);
         result[key] = cacheEntry.value;
       }
     });
 
     // Then, handle keys that don't exist in the cache
     keys.forEach((key) => {
-      if (!(key in result)) {
-        this.logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
+      if (!Object.hasOwn(result, key)) {
+        this.#logger.info(`[StateCache] ❌ Cache miss for key "${key}"`);
         result[key] = undefined;
       }
     });

@@ -1,8 +1,8 @@
 import type { Transaction } from '@metamask/keyring-api';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { chain } from 'lodash';
 
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class TransactionsRepository {
   readonly #state: IStateManager<UnencryptedStateValue>;

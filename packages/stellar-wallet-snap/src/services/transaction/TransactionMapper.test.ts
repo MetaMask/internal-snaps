@@ -37,6 +37,9 @@ import {
   sep41SendTransactionResponse,
   contractSwapReceiveNativeTransactionResponse,
   contractSwapReceiveUSDCTransactionResponse,
+  claimBalanceTransaction,
+  sponsorSendTransaction,
+  feeBumpTransaction,
 } from './__mocks__/horizon-transaction-responses.fixtures';
 import {
   buildMockClassicTransaction,
@@ -88,10 +91,10 @@ describe('TransactionMapper', () => {
     symbol: 'SolvBTC',
   });
 
-  const setup = () => {
+  const setup = (keyrinAccountAddress: string = accountAddress) => {
     const keyringAccount = generateStellarKeyringAccount(
       'account-id-1',
-      accountAddress,
+      keyrinAccountAddress,
       'test-entropy',
       0,
     );
@@ -422,6 +425,21 @@ describe('TransactionMapper', () => {
       fromAddress: 'CCLWL5NYSV2WJQ3VBU44AMDHEVKEPA45N2QP2LL62O3JVKPGWWAQUVAG',
       txnType: TransactionType.Receive,
     },
+    {
+      testCase: 'sponsor create account transaction',
+      response: sponsorSendTransaction,
+      fromAsset: nativeAsset,
+      fromAssetSymbol: NATIVE_ASSET_SYMBOL,
+      fromAmount: '0',
+      toAsset: nativeAsset,
+      toAssetSymbol: NATIVE_ASSET_SYMBOL,
+      toAmount: '0',
+      toAddress: 'GC2QOFF3GVS5V5C7DJR4PXI453TQVTZ6TUBZ22GX3RLAZL7XRWANGT4V',
+      fromAddress: 'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO',
+      txnType: TransactionType.Receive,
+      sourceAccountAddress:
+        'GC2QOFF3GVS5V5C7DJR4PXI453TQVTZ6TUBZ22GX3RLAZL7XRWANGT4V',
+    },
   ])(
     'maps a $testCase from Horizon',
     ({
@@ -436,8 +454,9 @@ describe('TransactionMapper', () => {
       fromAddress,
       toAddress,
       details,
+      sourceAccountAddress,
     }) => {
-      const { keyringAccount, transactionMapper } = setup();
+      const { keyringAccount, transactionMapper } = setup(sourceAccountAddress);
 
       const transaction = Transaction.fromHorizon({
         horizonTransaction: response,
@@ -488,6 +507,39 @@ describe('TransactionMapper', () => {
 
         ...(details ? { details } : {}),
       });
+    },
+  );
+
+  it.each([
+    {
+      testCase: 'claim-balance transaction',
+      response: claimBalanceTransaction,
+      // expected to be filtered out if the txn is source from other account and it is not send / swap / create account.
+      sourceAccountAddress:
+        'GC2QOFF3GVS5V5C7DJR4PXI453TQVTZ6TUBZ22GX3RLAZL7XRWANGT4V',
+    },
+    {
+      testCase: 'fee bump transaction',
+      response: feeBumpTransaction,
+      // expected to be filtered out if the account is the one who pay the fee but not the source account.
+      sourceAccountAddress: feeBumpTransaction.fee_account,
+    },
+  ])(
+    'filters out transaction from Horizon for $testCase',
+    ({ response, sourceAccountAddress }) => {
+      const { keyringAccount, transactionMapper } = setup(sourceAccountAddress);
+      const transaction = Transaction.fromHorizon({
+        horizonTransaction: response,
+        scope,
+      });
+
+      const keyringTransaction = transactionMapper.mapTransactionSafe({
+        transaction,
+        keyringAccount,
+        assetMetadata: {},
+      });
+
+      expect(keyringTransaction).toBeUndefined();
     },
   );
 

@@ -1,8 +1,8 @@
 import { TrxAccountType, TrxScope } from '@metamask/keyring-api';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 
 import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { InMemoryState } from '../state/InMemoryState';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import { AccountsRepository } from './AccountsRepository';
 
 /**
