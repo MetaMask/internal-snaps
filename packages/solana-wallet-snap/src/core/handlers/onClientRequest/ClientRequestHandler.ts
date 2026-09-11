@@ -21,6 +21,7 @@ import type { AccountsService, ApproveTokenService } from '../../services';
 import type { SendService } from '../../services/send/SendService';
 import type { OnAddressInputRequest } from '../../services/send/types';
 import type {
+  SolanaSignMessageBatchRequest,
   SolanaSignMessageBatchResult,
   WalletService,
 } from '../../services/wallet/WalletService';
@@ -555,6 +556,8 @@ export class ClientRequestHandler {
       message: string;
     }[] = [];
 
+    const batchRequests: SolanaSignMessageBatchRequest[] = [];
+
     items.forEach(({ accountId, message }, index) => {
       const account = accountsById.get(accountId.toLowerCase());
       if (!account) {
@@ -582,9 +585,15 @@ export class ClientRequestHandler {
           getUtf8Codec().encode,
           getBase64Codec().decode,
         );
+
         signingRequests.push({
           index,
           accountId,
+          account,
+          message: base64Message,
+        });
+
+        batchRequests.push({
           account,
           message: base64Message,
         });
@@ -596,9 +605,8 @@ export class ClientRequestHandler {
       }
     });
 
-    const signedMessages = await this.#walletService.signMessages(
-      signingRequests.map(({ account, message }) => ({ account, message })),
-    );
+    const signedMessages =
+      await this.#walletService.signMessages(batchRequests);
 
     signedMessages.forEach((signedMessage, signingRequestIndex) => {
       // Strip `| undefined` away, both `signingRequests` and `signedMessages` have
