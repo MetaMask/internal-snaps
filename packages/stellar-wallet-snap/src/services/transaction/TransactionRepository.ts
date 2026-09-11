@@ -1,10 +1,10 @@
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { groupBy } from 'lodash';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
 import type { KnownCaip2ChainId } from '../../api';
-import type { State } from '../state/State';
 import type { StellarKeyringTransaction } from './api';
 import {
   isPendingTransactionStatus,
@@ -18,13 +18,13 @@ export type TransactionStateValue = {
 };
 
 export class TransactionRepository {
-  readonly #state: State<TransactionStateValue>;
+  readonly #state: IStateManager<TransactionStateValue>;
 
   readonly #stateKey = 'transactions';
 
   readonly #lastScanTokensKey = 'lastScanTokens';
 
-  constructor(state: State<TransactionStateValue>) {
+  constructor(state: IStateManager<TransactionStateValue>) {
     this.#state = state;
   }
 
