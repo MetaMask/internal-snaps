@@ -109,7 +109,7 @@ export class TransactionBuilder {
    * @param params.amount - Amount in the token's smallest units (i128).
    * @param params.baseFee - Per-operation inclusion fee in stroops.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (federation / client hint).
+   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @returns Wrapped unsigned transaction with one `invokeHostFunction` op.
    */
   sep41Transfer(params: {
@@ -256,7 +256,7 @@ export class TransactionBuilder {
    * @param params.destination.isActivated - Whether the destination account exists and is funded on-chain.
    * @param params.baseFee - Per-operation inclusion fee in stroops.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (federation / client hint).
+   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @returns An unsigned transaction ready for signing.
    * @throws {InvalidAssetForCreateAccountException} When the destination is unfunded and the asset is not native.
    * @throws {TransactionBuilderException} If building fails.

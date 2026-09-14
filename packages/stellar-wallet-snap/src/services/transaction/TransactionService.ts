@@ -150,7 +150,7 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (federation / client hint).
+   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.useCache - Whether to use the cache.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -232,7 +232,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (federation / client hint).
+   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
    * such as amount-input validation, where the caller needs fee/balance feedback on
@@ -344,7 +344,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (federation / client hint).
+   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @returns A promise that resolves to the validated transaction.
    */
   async #createValidatedClassicAssetTransfer(params: {

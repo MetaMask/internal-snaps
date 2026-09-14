@@ -1,25 +1,31 @@
 import { Memo } from '@stellar/stellar-sdk';
 
-import { StellarMemoType } from '../../api/string';
 import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../../constants';
 
-export { StellarMemoType } from '../../api/string';
-
 /**
- * Builds / resolves Stellar memos for send transactions.
+ * Stellar memo kinds supported when attaching a memo to a send transaction.
  *
  * When federation (SEP-2) or muxed destinations are available, pass the
  * destination's `memo_type` as {@link StellarMemoType}. Until then, numeric
  * values are inferred as `id` (exchange-style); everything else falls back to
  * `text`.
  */
+export const StellarMemoType = {
+  Text: 'text',
+  Id: 'id',
+  Hash: 'hash',
+  Return: 'return',
+} as const;
+
+export type StellarMemoType =
+  (typeof StellarMemoType)[keyof typeof StellarMemoType];
 
 const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_HASH_HEX_LENGTH = 64;
 const STELLAR_MEMO_HASH_HEX_PATTERN = /^[0-9a-fA-F]+$/u;
 
 /**
- * Infers a memo type when the destination / client did not specify one.
+ * Infers a memo type when an explicit type was not provided.
  * All-digit uint64 values → `id` (common for exchanges); otherwise `text`.
  *
  * @param value - Trimmed memo string.
@@ -43,11 +49,11 @@ export function inferStellarMemoType(value: string): StellarMemoType {
  * Builds a Stellar SDK {@link Memo} from a string value and optional type hint.
  *
  * Resolution order:
- * 1. Explicit `type` when provided (federation / client hint)
+ * 1. Explicit `type` when provided (e.g. confirmation UI / SEP-2 hint)
  * 2. Otherwise {@link inferStellarMemoType} (numeric → id, else text)
  *
  * @param params - Memo value and optional type.
- * @param params.value - Raw memo string from the client or confirmation UI.
+ * @param params.value - Raw memo string.
  * @param params.type - Optional explicit type (SEP-2 `memo_type` when known).
  * @returns SDK memo, or `null` when the value is empty / whitespace-only.
  * @throws {Error} When the value is invalid for the resolved type.

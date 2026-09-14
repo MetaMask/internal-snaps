@@ -222,12 +222,7 @@ describe('ConfirmSendHandler', () => {
     overrides: Partial<
       Pick<
         ConfirmSendJsonRpcRequest['params'],
-        | 'fromAccountId'
-        | 'toAddress'
-        | 'assetId'
-        | 'amount'
-        | 'memo'
-        | 'memoType'
+        'fromAccountId' | 'toAddress' | 'assetId' | 'amount'
       >
     > = {},
   ) {
@@ -372,24 +367,6 @@ describe('ConfirmSendHandler', () => {
       txId: transactionId,
       scope,
       accountIdsOrAddresses: [account.id, destinationAddress],
-    });
-  });
-
-  it('forwards memo and memoType into createValidatedSendTransaction', async () => {
-    const { handler, onChainAccount, createValidatedSendTransaction } = setup();
-
-    await handler.handle(
-      baseRequest({ memo: 'deposit-ref', memoType: 'text' }),
-    );
-
-    expect(createValidatedSendTransaction).toHaveBeenCalledWith({
-      onChainAccount,
-      scope,
-      assetId,
-      amount: new BigNumber('10000000'),
-      destination: destinationAddress,
-      memo: 'deposit-ref',
-      memoType: 'text',
     });
   });
 
