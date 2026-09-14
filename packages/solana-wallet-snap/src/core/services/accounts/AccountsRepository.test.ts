@@ -21,5 +21,22 @@ describe('AccountsRepository', () => {
 
       expect(accounts).toStrictEqual([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
     });
+
+    it('filters accounts that are not found', async () => {
+      const state = new InMemoryState({
+        ...DEFAULT_UNENCRYPTED_STATE,
+        keyringAccounts: {
+          [MOCK_SOLANA_KEYRING_ACCOUNT_0.id]: MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        },
+      });
+      const repository = new AccountsRepository(state);
+
+      const accounts = await repository.findByIds([
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id.toUpperCase(),
+        'non-existent-id',
+      ]);
+
+      expect(accounts).toStrictEqual([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
+    });
   });
 });
