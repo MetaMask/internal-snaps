@@ -101,6 +101,33 @@
   "confirmation.memo.none": {
     "message": "None"
   },
+  "confirmation.memo.add": {
+    "message": "Add"
+  },
+  "confirmation.memo.update": {
+    "message": "Update"
+  },
+  "confirmation.memo.title": {
+    "message": "Transaction memo"
+  },
+  "confirmation.memo.description": {
+    "message": "Some accounts require a memo. Without it, your transfer may be delayed or lost."
+  },
+  "confirmation.memo.placeholder": {
+    "message": "Enter memo"
+  },
+  "confirmation.memo.save": {
+    "message": "Save"
+  },
+  "confirmation.memo.back": {
+    "message": "Back"
+  },
+  "confirmation.memo.byteHint": {
+    "message": "Up to {max} bytes"
+  },
+  "confirmation.memo.error.tooLong": {
+    "message": "Memo must be 28 bytes or fewer"
+  },
   "confirmation.asset": {
     "message": "Asset"
   },
@@ -147,7 +174,7 @@
     "message": "{reason}"
   },
   "confirmation.txnError.requiresMemo": {
-    "message": "This account requires a memo. Sends to it are not supported."
+    "message": "This account requires a memo. Add a memo to continue."
   },
   "confirmation.txnError.invalidCreateAccountAmount": {
     "message": "Update Send Amount. A new account requires 1 XLM minimum."

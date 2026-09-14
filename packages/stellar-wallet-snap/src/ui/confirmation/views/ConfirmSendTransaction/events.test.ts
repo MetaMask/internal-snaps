@@ -1,7 +1,6 @@
 import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
-import { ClientRequestMethod } from '../../../../handlers/clientRequest/api';
 import { resolveInterface } from '../../../../utils';
 import {
   ConfirmSendTransactionFormNames,
@@ -20,13 +19,13 @@ const buttonEvent = (name: string): UserInputEvent => ({
 });
 
 describe('parseConfirmSendDialogResult', () => {
-  it('maps legacy boolean true to confirmed', () => {
+  it('maps boolean true to confirmed', () => {
     expect(parseConfirmSendDialogResult(true)).toStrictEqual({
       confirmed: true,
     });
   });
 
-  it('maps legacy boolean false and null to rejected', () => {
+  it('maps boolean false and null to rejected', () => {
     expect(parseConfirmSendDialogResult(false)).toStrictEqual({
       confirmed: false,
     });
@@ -84,10 +83,6 @@ describe('ConfirmSendTransaction event handlers', () => {
       event: buttonEvent(ConfirmSendTransactionFormNames.Confirm),
       context: {
         memo: '  from-context  ',
-        request: {
-          method: ClientRequestMethod.ConfirmSend,
-          params: {},
-        },
       },
     });
 
@@ -97,22 +92,16 @@ describe('ConfirmSendTransaction event handlers', () => {
     });
   });
 
-  it('prefers context.memo over legacy request.params.memo', async () => {
+  it('resolves confirm with null memo when context.memo is missing', async () => {
     await handlers[ConfirmSendTransactionFormNames.Confirm]?.({
       id: 'interface-id',
       event: buttonEvent(ConfirmSendTransactionFormNames.Confirm),
-      context: {
-        memo: 'context-wins',
-        request: {
-          method: ClientRequestMethod.ConfirmSend,
-          params: { memo: 'legacy-params' },
-        },
-      },
+      context: {},
     });
 
     expect(resolveInterface).toHaveBeenCalledWith('interface-id', {
       confirmed: true,
-      memo: 'context-wins',
+      memo: null,
     });
   });
 });

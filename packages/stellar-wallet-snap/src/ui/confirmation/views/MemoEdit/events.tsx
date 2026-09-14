@@ -3,7 +3,6 @@ import type { Json } from '@metamask/utils';
 
 import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../../../../constants';
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
-import { ClientRequestMethod } from '../../../../handlers/clientRequest/api';
 import {
   ConfirmationContextRefresherKey,
   RefreshConfirmationContextHandler,
@@ -44,24 +43,13 @@ function memoByteLength(value: string): number {
 }
 
 /**
- * Resolves the memo currently saved on confirmation context, with a legacy
- * fallback to `request.params.memo` if somehow still present.
+ * Resolves the memo currently saved on confirmation context.
  *
  * @param context - The interface context.
  * @returns The existing memo string, or empty when none.
  */
 function existingMemoFromContext(context: Record<string, Json>): string {
-  if (typeof context.memo === 'string') {
-    return context.memo;
-  }
-  const request = context.request as ConfirmSendJsonRpcRequest | undefined;
-  if (request?.method === ClientRequestMethod.ConfirmSend) {
-    const legacyMemo = (request.params as { memo?: unknown }).memo;
-    if (typeof legacyMemo === 'string') {
-      return legacyMemo;
-    }
-  }
-  return '';
+  return typeof context.memo === 'string' ? context.memo : '';
 }
 
 /**

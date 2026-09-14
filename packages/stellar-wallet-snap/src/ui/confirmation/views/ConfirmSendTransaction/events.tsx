@@ -2,8 +2,6 @@ import type { DialogResult } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 import { isObject } from '@metamask/utils';
 
-import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
-import { ClientRequestMethod } from '../../../../handlers/clientRequest/api';
 import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
@@ -24,7 +22,7 @@ export type ConfirmSendDialogResult = {
 };
 
 /**
- * Parses the confirm-send dialog result (boolean legacy or `{ confirmed, memo }`).
+ * Parses the confirm-send dialog result (boolean or `{ confirmed, memo }`).
  *
  * @param result - Dialog result from `snap_resolveInterface`.
  * @returns Normalized confirmation + optional memo from the UI.
@@ -59,15 +57,7 @@ function memoFromContext(
   if (typeof context?.memo === 'string' && context.memo.trim()) {
     return context.memo.trim();
   }
-  // Legacy fallback: older contexts may still carry memo on RPC params.
-  const request = context?.request as ConfirmSendJsonRpcRequest | undefined;
-  if (request?.method !== ClientRequestMethod.ConfirmSend) {
-    return null;
-  }
-  const legacyMemo = (request.params as { memo?: unknown }).memo;
-  return typeof legacyMemo === 'string' && legacyMemo.trim()
-    ? legacyMemo.trim()
-    : null;
+  return null;
 }
 
 /**

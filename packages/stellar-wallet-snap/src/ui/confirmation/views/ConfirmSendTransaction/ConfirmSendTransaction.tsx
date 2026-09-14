@@ -42,12 +42,6 @@ export type ConfirmSendTransactionProps = ConfirmationBaseProps &
     account: StellarKeyringAccount;
     feeData: FeeData;
     toAddress: string;
-    // Legacy: older contexts may still carry memo on the RPC request params.
-    request?: {
-      params?: {
-        memo?: string;
-      };
-    };
   };
 
 export const ConfirmSendTransaction = ({
@@ -66,7 +60,6 @@ export const ConfirmSendTransaction = ({
   transactionsFetchStatus = FetchStatus.Initial,
   errorMessage,
   memo: contextMemo,
-  request,
 }: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
   const { address } = account;
@@ -74,14 +67,10 @@ export const ConfirmSendTransaction = ({
     scanFetchStatus,
     transactionsFetchStatus,
   });
-  const legacyRequestMemo =
-    typeof request?.params?.memo === 'string' && request.params.memo.trim()
-      ? request.params.memo.trim()
-      : undefined;
   const memo =
     typeof contextMemo === 'string' && contextMemo.trim()
       ? contextMemo.trim()
-      : legacyRequestMemo;
+      : undefined;
 
   return (
     <Container>

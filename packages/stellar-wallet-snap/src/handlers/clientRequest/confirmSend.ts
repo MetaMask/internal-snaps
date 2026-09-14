@@ -202,7 +202,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      const confirmedMemo = dialogResult.memo?.trim() || undefined;
+      const trimmedMemo = dialogResult.memo?.trim();
+      const confirmedMemo = trimmedMemo === '' ? undefined : trimmedMemo;
 
       if (requiresMemoRecovery && !confirmedMemo) {
         return {
