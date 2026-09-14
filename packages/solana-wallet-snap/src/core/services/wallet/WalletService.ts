@@ -7,7 +7,8 @@ import { assert, instance, object } from '@metamask/superstruct';
 import type { Commitment, SignatureBytes } from '@solana/kit';
 import {
   address as asAddress,
-  assertTransactionIsFullySigned,
+  assertIsFullySignedTransaction,
+  assertIsSendableTransaction,
   createKeyPairSignerFromPrivateKeyBytes,
   createSignableMessage,
   getBase58Codec,
@@ -232,7 +233,7 @@ export class WalletService {
 
     // If the transaction is fully signed, we can monitor it.
     try {
-      assertTransactionIsFullySigned(partiallySignedTransaction);
+      assertIsFullySignedTransaction(partiallySignedTransaction);
       const signature = getSignatureFromTransaction(partiallySignedTransaction);
       await this.#signatureMonitor.monitor(
         signature,
@@ -306,7 +307,7 @@ export class WalletService {
     const explorerUrl = getSolanaExplorerUrl(scope, 'tx', signature);
     this.#logger.info(`Sending transaction: ${explorerUrl}`);
 
-    assertTransactionIsFullySigned(partiallySignedTransaction);
+    assertIsSendableTransaction(partiallySignedTransaction);
 
     const sendConfig = {
       ...(options?.preflightCommitment
