@@ -20,7 +20,7 @@ import type {
 import {
   getSlip44AssetId,
   rethrowIfInstanceElseThrow,
-  toCaip19ClassicAssetId,
+  stellarAssetToCaip19,
   toCaip19Sep41AssetId,
   toDisplayBalance,
 } from '../../utils';
@@ -352,11 +352,7 @@ export function xdrAssetToCaip19(
     case 'assetTypeCreditAlphanum12': {
       try {
         const stellarAsset = Asset.fromOperation(asset);
-        const issuer = stellarAsset.getIssuer();
-        if (issuer === undefined) {
-          return undefined;
-        }
-        return toCaip19ClassicAssetId(scope, stellarAsset.getCode(), issuer);
+        return stellarAssetToCaip19(stellarAsset, scope);
       } catch {
         return undefined;
       }
