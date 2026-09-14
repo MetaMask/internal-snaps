@@ -16,6 +16,7 @@ import { ConfirmSignMessage } from './ConfirmSignMessage/ConfirmSignMessage';
 import type { ConfirmSignTransactionProps } from './ConfirmSignTransaction/ConfirmSignTransaction';
 import { ConfirmSignTransaction } from './ConfirmSignTransaction/ConfirmSignTransaction';
 import { MaliciousAcknowledgementScreen } from './MaliciousAcknowledgement/MaliciousAcknowledgementScreen';
+import { MemoEditScreen } from './MemoEdit/MemoEditScreen';
 
 /** Serializable props bag stored on the interface and merged into each view. */
 export type ConfirmationViewProps = Record<string, Json>;
@@ -25,7 +26,7 @@ export type ConfirmationViewProps = Record<string, Json>;
  *
  * Shared by {@link ConfirmationUXController} and the malicious acknowledgement
  * event handlers so both render through the same logic. When the context marks
- * the acknowledgement screen as active, it takes over regardless of the key.
+ * the acknowledgement or memo-edit screen as active, it takes over regardless of the key.
  *
  * @param interfaceKey - The confirmation flow to render.
  * @param context - The serialized interface context (view props + flags).
@@ -41,6 +42,16 @@ export function renderConfirmationView(
       <MaliciousAcknowledgementScreen
         locale={baseContext.locale}
         acknowledged={baseContext.acknowledged}
+      />
+    );
+  }
+
+  if (baseContext.memoScreen) {
+    return (
+      <MemoEditScreen
+        locale={baseContext.locale}
+        memoDraft={baseContext.memoDraft}
+        memoError={baseContext.memoError}
       />
     );
   }

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add send confirmation memo edit UI for SEP-29 RequiresMemo recovery: store memo on confirmation context (`context.memo`), resolve dialog as `{ confirmed, memo? }`, and rebuild with `skipMemoRequirementCheck` / post-confirm memo attach (no client wire `memo` / `memoType` params)
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`; explicit type wins) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
 - Add `recoverable` confirmation-refresh outcome for send-flow SEP-29 RequiresMemo (`confirmSend`): omit scan this cycle without nulling `securityScanRequest`, pause auto-cron until UI reschedules ([#291](https://github.com/MetaMask/internal-snaps/pull/291))
 - Add `signProofOfOwnership` client request for silent proof-of-ownership signing (SEP-0053) ([#186](https://github.com/MetaMask/internal-snaps/pull/186))

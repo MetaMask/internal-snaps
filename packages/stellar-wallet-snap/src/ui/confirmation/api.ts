@@ -152,4 +152,12 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   acknowledgementScreen?: boolean;
   // Whether the user has checked the "I acknowledge the risk" box on that screen.
   acknowledged?: boolean;
+  // True while the memo edit screen is shown over send confirmation.
+  memoScreen?: boolean;
+  // Saved memo for the pending send (UI-owned; not on confirmSend RPC params).
+  memo?: string;
+  // Draft memo text while editing.
+  memoDraft?: string;
+  // Locale key for memo validation errors on the edit screen.
+  memoError?: LocalizedMessage | null;
 };

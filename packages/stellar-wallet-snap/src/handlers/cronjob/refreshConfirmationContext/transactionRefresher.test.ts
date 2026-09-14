@@ -174,8 +174,28 @@ describe('ConfirmationTransactionRefresher', () => {
           scope,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
+    });
+  });
+
+  it('passes context.memo into createValidatedSendTransaction on ConfirmSend rebuild', async () => {
+    const { refresher, transactionService } = setup();
+
+    await refresher.refresh(
+      createTransactionContext({ memo: '  exchange-ref  ' }),
+    );
+
+    expect(
+      transactionService.createValidatedSendTransaction,
+    ).toHaveBeenCalledWith({
+      onChainAccount: { accountId, scope },
+      scope,
+      assetId: sendRequest.params.assetId,
+      destination: toAddress,
+      amount: expect.anything(),
+      memo: '  exchange-ref  ',
     });
   });
 
@@ -305,6 +325,7 @@ describe('ConfirmationTransactionRefresher', () => {
           scope,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -346,6 +367,7 @@ describe('ConfirmationTransactionRefresher', () => {
           ...securityScanRequest,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -373,6 +395,7 @@ describe('ConfirmationTransactionRefresher', () => {
           ...securityScanRequest,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -413,6 +436,7 @@ describe('ConfirmationTransactionRefresher', () => {
             scope,
             transaction: transactionXdr,
           },
+          transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
       });

@@ -2,6 +2,7 @@ import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
+  Button,
   Container,
   Heading,
   Icon,
@@ -33,6 +34,7 @@ import {
   requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
+import { MemoEditFormNames } from '../MemoEdit/constants';
 import { ConfirmSendTransactionFormNames } from './events';
 
 export type ConfirmSendTransactionProps = ConfirmationBaseProps &
@@ -40,6 +42,12 @@ export type ConfirmSendTransactionProps = ConfirmationBaseProps &
     account: StellarKeyringAccount;
     feeData: FeeData;
     toAddress: string;
+    // Legacy: older contexts may still carry memo on the RPC request params.
+    request?: {
+      params?: {
+        memo?: string;
+      };
+    };
   };
 
 export const ConfirmSendTransaction = ({
@@ -57,6 +65,8 @@ export const ConfirmSendTransaction = ({
   scanFetchStatus = FetchStatus.Initial,
   transactionsFetchStatus = FetchStatus.Initial,
   errorMessage,
+  memo: contextMemo,
+  request,
 }: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
   const { address } = account;
@@ -64,6 +74,14 @@ export const ConfirmSendTransaction = ({
     scanFetchStatus,
     transactionsFetchStatus,
   });
+  const legacyRequestMemo =
+    typeof request?.params?.memo === 'string' && request.params.memo.trim()
+      ? request.params.memo.trim()
+      : undefined;
+  const memo =
+    typeof contextMemo === 'string' && contextMemo.trim()
+      ? contextMemo.trim()
+      : legacyRequestMemo;
 
   return (
     <Container>
@@ -132,6 +150,20 @@ export const ConfirmSendTransaction = ({
                 avatar
               />
             </Link>
+          </Box>
+          {/* Memo */}
+          <Box alignment="space-between" direction="horizontal">
+            <SnapText fontWeight="medium" color="alternative">
+              {t('confirmation.memo')}
+            </SnapText>
+            <Box direction="horizontal" alignment="end">
+              <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
+              <Button name={MemoEditFormNames.Open}>
+                {memo
+                  ? t('confirmation.memo.update')
+                  : t('confirmation.memo.add')}
+              </Button>
+            </Box>
           </Box>
           {/* Network */}
           <NetworkRow

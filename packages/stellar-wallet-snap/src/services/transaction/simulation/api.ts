@@ -60,6 +60,11 @@ export type ApplyContext = {
 /** Extends {@link ApplyContext} with the envelope (e.g. memo checks on payment validation). */
 export type ValidateContext = ApplyContext & {
   transaction: Transaction;
+  /**
+   * When true, SEP-29 memo-required checks are skipped. Used to open a recoverable
+   * send confirmation so the user can add a memo after a RequiresMemo failure.
+   */
+  skipMemoRequirementCheck?: boolean;
 };
 
 /**

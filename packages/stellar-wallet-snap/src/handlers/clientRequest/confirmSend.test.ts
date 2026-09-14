@@ -499,11 +499,6 @@ describe('ConfirmSendHandler', () => {
         message: 'confirmation.txnError.insufficientBalanceToCoverFee',
       },
       {
-        error: new RequiresMemoException(destinationAddress),
-        code: MultiChainSendErrorCodes.Invalid,
-        message: 'confirmation.txnError.requiresMemo',
-      },
-      {
         error: new InvalidAmountForCreateAccountException('0.5'),
         code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.invalidCreateAccountAmount',
@@ -564,6 +559,15 @@ describe('ConfirmSendHandler', () => {
           renderContext: {
             account,
             toAddress: destinationAddress,
+            request: expect.objectContaining({
+              method: ClientRequestMethod.ConfirmSend,
+              params: expect.objectContaining({
+                fromAccountId: accountId,
+                toAddress: destinationAddress,
+                assetId,
+                amount: '1',
+              }),
+            }),
             transactionsFetchStatus: FetchStatus.Error,
             errorMessage: message,
           },
@@ -598,6 +602,83 @@ describe('ConfirmSendHandler', () => {
       },
     );
 
+    it('opens a recoverable send confirmation when the destination requires a memo', async () => {
+      const {
+        handler,
+        account,
+        transaction,
+        createValidatedSendTransaction,
+        renderConfirmationDialog,
+        signTransactionSpy,
+        sendTransaction,
+      } = setup();
+      createValidatedSendTransaction
+        .mockRejectedValueOnce(new RequiresMemoException(destinationAddress))
+        .mockResolvedValueOnce(transaction)
+        .mockResolvedValueOnce(transaction);
+      renderConfirmationDialog.mockResolvedValueOnce({
+        confirmed: true,
+        memo: 'exchange-ref',
+      });
+
+      expect(await handler.handle(baseRequest())).toStrictEqual({
+        valid: true,
+        errors: [],
+        transactionId,
+      });
+      expect(createValidatedSendTransaction).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          skipMemoRequirementCheck: true,
+        }),
+      );
+      expect(createValidatedSendTransaction).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          memo: 'exchange-ref',
+        }),
+      );
+      expect(renderConfirmationDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renderContext: expect.objectContaining({
+            account,
+            toAddress: destinationAddress,
+            transactionsFetchStatus: FetchStatus.Error,
+            errorMessage: 'confirmation.txnError.requiresMemo',
+          }),
+          renderOptions: {
+            loadPrice: true,
+            securityScanning: true,
+            localSimulation: true,
+          },
+        }),
+      );
+      expect(signTransactionSpy).toHaveBeenCalled();
+      expect(sendTransaction).toHaveBeenCalled();
+    });
+
+    it('returns invalid when RequiresMemo recovery confirms without a memo', async () => {
+      const {
+        handler,
+        transaction,
+        createValidatedSendTransaction,
+        renderConfirmationDialog,
+        signTransactionSpy,
+        sendTransaction,
+      } = setup();
+      createValidatedSendTransaction
+        .mockRejectedValueOnce(new RequiresMemoException(destinationAddress))
+        .mockResolvedValueOnce(transaction);
+      renderConfirmationDialog.mockResolvedValueOnce({ confirmed: true });
+
+      expect(await handler.handle(baseRequest())).toStrictEqual({
+        valid: false,
+        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
+      });
+      expect(signTransactionSpy).not.toHaveBeenCalled();
+      expect(sendTransaction).not.toHaveBeenCalled();
+    });
+
     it('returns the error code after the user dismisses the validation confirmation', async () => {
       const {
         handler,
@@ -605,15 +686,44 @@ describe('ConfirmSendHandler', () => {
         renderConfirmationDialog,
       } = setup();
       createValidatedSendTransaction.mockRejectedValueOnce(
-        new RequiresMemoException(destinationAddress),
+        new InsufficientBalanceException('0', '1'),
       );
       renderConfirmationDialog.mockResolvedValue(false);
 
       expect(await handler.handle(baseRequest())).toStrictEqual({
         valid: false,
-        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
+        errors: [{ code: MultiChainSendErrorCodes.InsufficientBalance }],
       });
     });
+  });
+
+  it('passes dialog memo into the post-confirm rebuild without mutating request params', async () => {
+    const {
+      handler,
+      onChainAccount,
+      createValidatedSendTransaction,
+      renderConfirmationDialog,
+    } = setup();
+    renderConfirmationDialog.mockResolvedValueOnce({
+      confirmed: true,
+      memo: '  deposit-ref  ',
+    });
+
+    await handler.handle(baseRequest());
+
+    expect(createValidatedSendTransaction).toHaveBeenNthCalledWith(1, {
+      onChainAccount,
+      scope,
+      assetId,
+      amount: new BigNumber('10000000'),
+      destination: destinationAddress,
+    });
+    expect(createValidatedSendTransaction).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        memo: 'deposit-ref',
+      }),
+    );
   });
 
   it('returns error codes without a second confirmation when refresh fails after approval', async () => {
