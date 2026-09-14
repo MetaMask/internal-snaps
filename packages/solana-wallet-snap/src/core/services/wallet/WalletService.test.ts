@@ -7,6 +7,7 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_2,
   MOCK_SOLANA_KEYRING_ACCOUNT_3,
   MOCK_SOLANA_KEYRING_ACCOUNT_4,
+  MOCK_SOLANA_KEYRING_ACCOUNT_5,
   MOCK_SOLANA_KEYRING_ACCOUNTS,
   MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0,
 } from '../../test/mocks/solana-keyring-accounts';
@@ -522,19 +523,34 @@ describe('WalletService', () => {
       expect(getBip32EntropyMock).toHaveBeenCalledTimes(2);
     });
 
-    it('uses account.index for batch derivation', async () => {
+    it('uses account.index instead of derivationPath for batch derivation', async () => {
       const message = utf8ToBase64('proof message');
+      const account = {
+        ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        derivationPath: MOCK_SOLANA_KEYRING_ACCOUNT_5.derivationPath,
+      };
+      const coinTypeNode = await getSolanaCoinTypeNodeMock(
+        account.entropySource,
+      );
+      const deriveMock = jest.fn(coinTypeNode.derive.bind(coinTypeNode));
+
+      getSolanaCoinTypeNodeMock.mockClear();
+      getSolanaCoinTypeNodeMock.mockResolvedValueOnce({
+        derive: deriveMock,
+      } as never);
 
       const result = await service.signMessages([
         {
-          account: {
-            ...MOCK_SOLANA_KEYRING_ACCOUNT_0,
-            derivationPath: "m/44'/501'/0'",
-          },
+          account,
           message,
         },
       ]);
 
+      expect(deriveMock).toHaveBeenCalledWith([
+        `slip10:${account.index}'`,
+        `slip10:0'`,
+      ]);
+      expect(deriveMock).not.toHaveBeenCalledWith(["slip10:5'", "slip10:0'"]);
       expect(result[0]).toMatchObject({
         signedMessage: message,
         signatureType: 'ed25519',

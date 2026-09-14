@@ -764,6 +764,8 @@ describe('ClientRequestHandler', () => {
       params: { items },
     });
 
+    const hexSignature = `0x${'01'.repeat(64)}`;
+
     it('signs a batch and returns 0x-prefixed hex signatures in input order', async () => {
       const message0 = buildProofMessage(nonce, account0.address);
       const message1 = buildProofMessage(nonce, account1.address);
@@ -798,8 +800,8 @@ describe('ClientRequestHandler', () => {
       ]);
       expect(result).toStrictEqual({
         results: [
-          { accountId: account0.id, signature: `0x${'01'.repeat(64)}` },
-          { accountId: account1.id, signature: `0x${'01'.repeat(64)}` },
+          { accountId: account0.id, signature: hexSignature },
+          { accountId: account1.id, signature: hexSignature },
         ],
       });
     });
@@ -828,7 +830,7 @@ describe('ClientRequestHandler', () => {
       expect(mockWalletService.signMessages).toHaveBeenCalledTimes(1);
       expect(result).toStrictEqual({
         results: [
-          { accountId: account0.id, signature: `0x${'01'.repeat(64)}` },
+          { accountId: account0.id, signature: hexSignature },
           {
             accountId: missingAccountId,
             error: `Account not found: ${missingAccountId}`,
@@ -885,7 +887,7 @@ describe('ClientRequestHandler', () => {
         results: [
           {
             accountId: uppercaseAccountId,
-            signature: `0x${'01'.repeat(64)}`,
+            signature: hexSignature,
           },
         ],
       });
