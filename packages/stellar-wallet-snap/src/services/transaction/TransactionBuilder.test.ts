@@ -19,12 +19,12 @@ import {
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { getTestWallet } from '../wallet/__mocks__/wallet.fixtures';
 import type { Wallet } from '../wallet/Wallet';
+import { buildMockClassicTransaction } from './__mocks__/transaction.fixtures';
 import {
   InvalidAssetForCreateAccountException,
   TransactionBuilderException,
   TransactionValidationException,
 } from './exceptions';
-import { buildMockClassicTransaction } from './__mocks__/transaction.fixtures';
 import { Transaction } from './Transaction';
 import { TransactionBuilder } from './TransactionBuilder';
 
