@@ -1,4 +1,8 @@
-import type { CompilableTransactionMessage } from '@solana/kit';
+import type {
+  TransactionMessage,
+  TransactionMessageWithBlockhashLifetime,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 
 import type { SolanaKeyringAccount } from '../../../../../entities';
 import type { Network } from '../../../../constants/solana';
@@ -9,7 +13,9 @@ export type MockExecutionScenario = {
   fromAccount: SolanaKeyringAccount;
   toAccount: SolanaKeyringAccount;
   fromAccountPrivateKeyBytes: Uint8Array;
-  transactionMessage: CompilableTransactionMessage;
+  transactionMessage: TransactionMessage &
+    TransactionMessageWithFeePayer &
+    TransactionMessageWithBlockhashLifetime;
   transactionMessageBase64Encoded: string;
   signedTransaction: any;
   signedTransactionBase64Encoded: string;

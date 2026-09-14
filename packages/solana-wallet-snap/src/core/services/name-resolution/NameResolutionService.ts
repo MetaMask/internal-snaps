@@ -1,8 +1,5 @@
 import type { Logger } from '@metamask/snap-networks-utils';
-import {
-  resolveDomain,
-  getPrimaryDomain,
-} from '@solana-name-service/sns-sdk-kit';
+import { getPrimaryDomain, resolve } from '@solana-name-service/sns-sdk-kit';
 import type { Address } from '@solana/kit';
 import { address as asAddress } from '@solana/kit';
 
@@ -14,7 +11,7 @@ export class NameResolutionService {
 
   readonly #logger: Logger;
 
-  tld = '.sol';
+  tld = '.sns';
 
   constructor(connection: SolanaConnection, logger: Logger) {
     this.#connection = connection;
@@ -23,7 +20,7 @@ export class NameResolutionService {
 
   async resolveDomain(scope: Network, domain: string): Promise<Address> {
     const connection = this.#connection.getRpc(scope);
-    return resolveDomain(connection, domain);
+    return resolve({ rpc: connection, domain });
   }
 
   async resolveAddress(
@@ -32,12 +29,12 @@ export class NameResolutionService {
   ): Promise<string | null> {
     try {
       const connection = this.#connection.getRpc(scope);
-      const primaryDomain = await getPrimaryDomain(
-        connection,
-        asAddress(address),
-      );
+      const primaryDomain = await getPrimaryDomain({
+        rpc: connection,
+        walletAddress: asAddress(address),
+      });
 
-      return `${primaryDomain.domainName}.sol`;
+      return `${primaryDomain.domainName}${this.tld}`;
     } catch (error) {
       this.#logger.error('Error resolving address', error);
       return null;
