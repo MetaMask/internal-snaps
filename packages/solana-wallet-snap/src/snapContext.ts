@@ -1,6 +1,5 @@
-import { State } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
-import { InMemoryCache } from '@metamask/snap-networks-utils';
+import { InMemoryCache, State } from '@metamask/snap-networks-utils';
 
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
