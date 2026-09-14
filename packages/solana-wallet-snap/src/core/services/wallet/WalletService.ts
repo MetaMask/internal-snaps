@@ -420,11 +420,10 @@ export class WalletService {
 
             for (const { index, request } of sourceRequests) {
               try {
-                const privateKeyBytes =
-                  await this.#deriveProofSigningPrivateKey({
-                    coinTypeNode,
-                    account: request.account,
-                  });
+                const privateKeyBytes = await this.#deriveSigningPrivateKey({
+                  coinTypeNode,
+                  account: request.account,
+                });
 
                 results[index] = await this.#signMessageWithPrivateKey(
                   request.account,
@@ -510,7 +509,7 @@ export class WalletService {
    * @param params.account - The account to derive private key bytes for.
    * @returns Private key bytes for the account.
    */
-  async #deriveProofSigningPrivateKey({
+  async #deriveSigningPrivateKey({
     coinTypeNode,
     account,
   }: {
