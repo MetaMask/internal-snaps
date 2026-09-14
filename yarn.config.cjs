@@ -201,7 +201,7 @@ module.exports = defineConfig({
         );
 
         let jestCommand = 'NODE_OPTIONS=--experimental-vm-modules jest';
-        
+
         // Stellar Wallet Snap has native ESM packages,
         // With the experimental flag, Jest will not be able to load the packages.
         if (workspace.ident === '@metamask/stellar-wallet-snap') {
