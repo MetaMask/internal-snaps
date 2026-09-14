@@ -24,6 +24,7 @@ import {
   TransactionBuilderException,
   TransactionValidationException,
 } from './exceptions';
+import { buildMockClassicTransaction } from './__mocks__/transaction.fixtures';
 import { Transaction } from './Transaction';
 import { TransactionBuilder } from './TransactionBuilder';
 
@@ -124,6 +125,60 @@ describe('TransactionBuilder', () => {
       expect(rebuiltTransaction.totalFee).toStrictEqual(new BigNumber(100));
       expect(rebuiltTransaction.operationCount).toBe(1);
       expect(rebuiltTransaction.network).toStrictEqual(Networks.PUBLIC);
+      const rebuiltRaw = rebuiltTransaction.getRaw();
+      expect(rebuiltRaw).toBeInstanceOf(StellarTransaction);
+      expect((rebuiltRaw as StellarTransaction).sequence).toBe('101');
+    });
+
+    it('keeps the original total fee when rebuilding a multi-operation transaction', () => {
+      const destinationA = getTestWallet().address;
+      const destinationB = getTestWallet().address;
+      const transaction = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              destination: destinationA,
+              asset: 'native',
+              amount: '1',
+            },
+          },
+          {
+            type: 'payment',
+            params: {
+              destination: destinationB,
+              asset: 'native',
+              amount: '2',
+            },
+          },
+        ],
+        {
+          networkPassphrase: Networks.PUBLIC,
+          source: {
+            accountId: testOnChainAccount.accountId,
+            sequence: testOnChainAccount.sequenceNumber,
+          },
+          baseFeePerOperation: '100',
+        },
+      );
+
+      expect(transaction.operationCount).toBe(2);
+      expect(transaction.totalFee).toStrictEqual(new BigNumber(200));
+
+      const seqAcc = createMockAccountWithBalances(
+        testWalletWithSigner.address,
+        '100',
+        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+      );
+      const rebuiltTransaction = transactionBuilder.rebuildTxnWithNewSeq({
+        transaction,
+        sequenceNumber: new OnChainAccount(seqAcc, KnownCaip2ChainId.Mainnet)
+          .sequenceNumber,
+      });
+
+      expect(rebuiltTransaction.operationCount).toBe(2);
+      expect(rebuiltTransaction.totalFee).toStrictEqual(transaction.totalFee);
+      expect(rebuiltTransaction.totalFee).toStrictEqual(new BigNumber(200));
       const rebuiltRaw = rebuiltTransaction.getRaw();
       expect(rebuiltRaw).toBeInstanceOf(StellarTransaction);
       expect((rebuiltRaw as StellarTransaction).sequence).toBe('101');
