@@ -19,13 +19,17 @@ export type KeyringAccountExtension = {
 export type ExtendedKeyringAccount = KeyringAccount & KeyringAccountExtension;
 
 /**
- * Converts an extended keyring account to the Keyring API shape (no extra fields).
+ * Converts an extended snap account to the Keyring API shape.
  *
- * @param account - A keyring account, possibly with snap-specific fields.
- * @returns A strict keyring account.
+ * Snaps persist `entropySource`, `derivationPath`, and `index` on the account
+ * object. The Keyring API must not receive those fields, so this copies only
+ * the six `KeyringAccount` properties.
+ *
+ * @param account - A snap keyring account with derivation fields.
+ * @returns A `KeyringAccount` with no extra properties.
  */
 export function asStrictKeyringAccount(
-  account: KeyringAccount,
+  account: ExtendedKeyringAccount,
 ): KeyringAccount {
   const { id, address, type, options, methods, scopes } = account;
   return {
