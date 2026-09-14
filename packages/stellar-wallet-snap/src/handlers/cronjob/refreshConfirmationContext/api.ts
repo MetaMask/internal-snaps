@@ -30,8 +30,18 @@ export type ConfirmationContextRefreshResult = {
   /**
    * When true, the handler does not reschedule after this cycle.
    * But other refreshers may still run (e.g. prices).
+   * Use for hard validation failures the user cannot fix in-dialog.
    */
   halt?: boolean;
+  /**
+   * Soft validation failure (e.g. SEP-29 RequiresMemo): omit the security scan
+   * this cycle and do not auto-reschedule, but keep `securityScanRequest` intact
+   * so a later UI-triggered `scheduleBackgroundEvent` (after the user fixes the
+   * issue) can rebuild and re-scan without reconstructing the scan request.
+   * Distinct from {@link ConfirmationContextRefreshResult.halt} — not a permanent
+   * hard-stop signal for unrecoverable errors.
+   */
+  recoverable?: boolean;
 } | null;
 
 /**
