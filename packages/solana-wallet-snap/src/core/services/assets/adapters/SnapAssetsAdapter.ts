@@ -11,7 +11,6 @@ import type {
   Serializable,
   ICache,
 } from '@metamask/snap-networks-utils';
-import { useCache } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
@@ -40,6 +39,7 @@ import type {
   TokenCaipAssetType,
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
+import { useCache } from '../../../utils/caching';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';

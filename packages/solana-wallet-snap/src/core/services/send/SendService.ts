@@ -5,7 +5,6 @@ import type {
   Serializable,
   ICache,
 } from '@metamask/snap-networks-utils';
-import { useCache } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import { address as asAddress, compileTransaction } from '@solana/kit';
@@ -15,6 +14,7 @@ import type { Network } from '../../constants/solana';
 import { METAMASK_ORIGIN, Networks } from '../../constants/solana';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
+import { useCache } from '../../utils/caching';
 import { solToLamports } from '../../utils/conversion';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';

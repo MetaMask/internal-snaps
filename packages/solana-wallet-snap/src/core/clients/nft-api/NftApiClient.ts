@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { UrlStruct, buildUrl, useCache } from '@metamask/snap-networks-utils';
+import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
 import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import type { ConfigProvider } from '../../services/config';
+import { useCache } from '../../utils/caching';
 import { trackError } from '../../utils/errors';
 import type {
   Balance,

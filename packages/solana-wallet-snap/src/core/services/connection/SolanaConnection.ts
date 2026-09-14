@@ -1,5 +1,4 @@
 import type { Serializable, ICache } from '@metamask/snap-networks-utils';
-import { useCache } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { fetchMint } from '@solana-program/token-2022';
@@ -22,6 +21,7 @@ import type {
 import type { Rpc, SolanaRpcApi } from '@solana/kit';
 
 import type { Network } from '../../constants/solana';
+import { useCache } from '../../utils/caching';
 import { NetworkStruct } from '../../validation/structs';
 import type { ConfigProvider } from '../config/ConfigProvider';
 import { createMainTransport } from './transport';
