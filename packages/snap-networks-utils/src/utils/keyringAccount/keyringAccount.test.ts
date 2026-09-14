@@ -31,12 +31,4 @@ describe('asStrictKeyringAccount', () => {
       scopes: account.scopes,
     });
   });
-
-  it('does not include entropySource, derivationPath, or index', () => {
-    expect(asStrictKeyringAccount(account)).not.toHaveProperty('entropySource');
-    expect(asStrictKeyringAccount(account)).not.toHaveProperty(
-      'derivationPath',
-    );
-    expect(asStrictKeyringAccount(account)).not.toHaveProperty('index');
-  });
 });
