@@ -200,32 +200,40 @@ module.exports = defineConfig({
           '../../scripts/since-latest-release.sh',
         );
 
+        let jestCommand = 'NODE_OPTIONS=--experimental-vm-modules jest';
+        
+        // Stellar Wallet Snap has native ESM packages,
+        // With the experimental flag, Jest will not be able to load the packages.
+        if (workspace.ident === '@metamask/stellar-wallet-snap') {
+          jestCommand = 'jest';
+        }
+
         // All non-root packages must have the same "test" script.
         expectWorkspaceField(
           workspace,
           'scripts.test',
-          'NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter',
+          `${jestCommand} --reporters=jest-silent-reporter`,
         );
 
         // All non-root packages must have the same "test:clean" script.
         expectWorkspaceField(
           workspace,
           'scripts.test:clean',
-          'NODE_OPTIONS=--experimental-vm-modules jest --clearCache',
+          `${jestCommand} --clearCache`,
         );
 
         // All non-root packages must have the same "test:verbose" script.
         expectWorkspaceField(
           workspace,
           'scripts.test:verbose',
-          'NODE_OPTIONS=--experimental-vm-modules jest --verbose',
+          `${jestCommand} --verbose`,
         );
 
         // All non-root packages must have the same "test:watch" script.
         expectWorkspaceField(
           workspace,
           'scripts.test:watch',
-          'NODE_OPTIONS=--experimental-vm-modules jest --watch',
+          `${jestCommand} --watch`,
         );
       }
 
