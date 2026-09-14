@@ -499,7 +499,7 @@ export class WalletService {
   }
 
   /**
-   * Derives private key bytes for an account in the batch proof-signing path.
+   * Derives private key bytes for signing.
    *
    * Derivation errors are deliberately collapsed to a generic message so error
    * responses cannot include library context around private key material.
