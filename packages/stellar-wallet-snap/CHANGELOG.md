@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING** Bump `@stellar/stellar-sdk` from `^15.0.1` to `^17.0.1` ([#302](https://github.com/MetaMask/internal-snaps/pull/302))
+  - Rebuild transactions with native `TransactionBuilder.cloneFrom` instead of cloning the envelope by hand
+  - Show distinct confirmation titles for each revoke-sponsorship operation type (account, claimable balance, data, liquidity pool, offer, signer, trustline)
+  - Skip ledger entries that are not `contractData` when mapping SEP-41 contract asset metadata
+  - Shim `EventSource` so Horizon streaming is not used in the Snap
 - Display transaction error message in ChangeTrustOpt and ConfirmSend confirmation dialogs ([#220](https://github.com/MetaMask/internal-snaps/pull/220))
 - Skip destination validation in `onAmountInput` ([#220](https://github.com/MetaMask/internal-snaps/pull/220))
 - `createValidatedSendTransaction` now throws `InvalidAssetForCreateAccountException` instead of `AccountNotActivatedException` when sending a non-native asset to an unfunded destination ([#185](https://github.com/MetaMask/internal-snaps/pull/185))
