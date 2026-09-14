@@ -52,7 +52,7 @@ export class TransactionsService {
       .getRpc(scope)
       .getTransaction(asSignature(signature), {
         encoding: 'json',
-        maxSupportedTransactionVersion: 0,
+        maxSupportedTransactionVersion: 1,
       })
       .send();
 
@@ -184,7 +184,7 @@ export class TransactionsService {
           .getRpc(asset.network)
           .getTransaction(asSignature(signatureResponse.signature), {
             encoding: 'json',
-            maxSupportedTransactionVersion: 0,
+            maxSupportedTransactionVersion: 1,
           })
           .send();
         return {
