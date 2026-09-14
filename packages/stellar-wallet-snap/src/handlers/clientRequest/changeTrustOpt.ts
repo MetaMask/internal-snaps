@@ -374,7 +374,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       confirmationInterfaceKey,
     } = params;
     const { scope } = request.params;
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
 
     return (
       (await this.#confirmationUIController.renderConfirmationDialog({

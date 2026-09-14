@@ -10,7 +10,6 @@ import { BigNumber } from 'bignumber.js';
 import type { KnownCaip19ClassicAssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { getSlip44AssetId, toSmallestUnit } from '../../utils';
-import { logger } from '../../utils/logger';
 import { baseInclusionFee } from '../network/utils';
 import {
   createMockAccountWithBalances,
@@ -28,8 +27,6 @@ import {
 import { Transaction } from './Transaction';
 import { TransactionBuilder } from './TransactionBuilder';
 
-jest.mock('../../utils/logger');
-
 describe('TransactionBuilder', () => {
   let transactionBuilder: TransactionBuilder;
   let testAsset: KnownCaip19ClassicAssetId;
@@ -37,7 +34,7 @@ describe('TransactionBuilder', () => {
   let testOnChainAccount: OnChainAccount;
 
   beforeEach(() => {
-    transactionBuilder = new TransactionBuilder({ logger });
+    transactionBuilder = new TransactionBuilder();
     testAsset = `stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`;
     testWalletWithSigner = getTestWallet();
     const acc = createMockAccountWithBalances(

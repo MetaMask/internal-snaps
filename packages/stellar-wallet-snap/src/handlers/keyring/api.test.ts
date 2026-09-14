@@ -24,7 +24,7 @@ const keyringRequestId = '11111111-1111-4111-8111-111111111111';
 const xdr = `AAAAAgAAAADjngeX0YTNoQ15A0xC83aMm/sDnXrmLF+apmXvdmkUugAAAGQAC3gAAAAAQQAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOZfkjSFZ31vI/Nx28cC6iAFWLWcPIvJhM2NVoxmfgVTAAAAAAAAAAAAmJaAAAAAAAAAAAA=`;
 // Mainnet HashIdPreimage(envelopeTypeSorobanAuthorization), `transfer` invoke
 // against a deterministic 32-byte contract id, no sub-invocations. Round-trips
-// through `xdr.HashIdPreimage.fromXDR(..., 'base64')`.
+// through `xdr.HashIdPreimage.fromXdr(..., 'base64')`.
 const authEntry = `AAAACXrDOZdUTjF10ma9AiQ5sizbFlCMARY/JuXLKj4QRal5AAAAAAdbzRUAD0JAAAAAAAAAAAECAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAAh0cmFuc2ZlcgAAAAAAAAAA`;
 // Same shape, but with the embedded `networkId` bound to testnet — used to
 // assert `HashIdPreimageXdrStruct` rejects preimages whose networkId does not

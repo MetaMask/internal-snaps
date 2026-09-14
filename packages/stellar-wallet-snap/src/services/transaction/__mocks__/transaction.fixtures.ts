@@ -28,7 +28,7 @@ import { TransactionService } from '../TransactionService';
 export const createMockTransactionService = () => {
   const { cache } = createMemoryCache();
   const networkService = new NetworkService({ logger, cache });
-  const transactionBuilder = new TransactionBuilder({ logger });
+  const transactionBuilder = new TransactionBuilder();
   const { accountService } = mockAccountService();
   const transactionService = new TransactionService({
     logger,
@@ -527,7 +527,7 @@ export function buildMockHorizonTransactionRecord(
     ]);
 
   return {
-    envelope_xdr: transaction.getRaw().toXDR(),
+    envelope_xdr: transaction.getRaw().toXdr(),
     fee_charged: options.feeCharged ?? transaction.totalFee.toFixed(0),
     paging_token: options.pagingToken ?? '1',
     source_account: options.sourceAccount ?? transaction.sourceAccount,

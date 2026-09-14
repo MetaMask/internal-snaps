@@ -80,7 +80,7 @@ describe('SignAndSendTransactionHandler', () => {
         sequence: onChainAccount.sequenceNumber,
       },
     });
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
 
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
@@ -366,7 +366,7 @@ describe('SignAndSendTransactionHandler', () => {
         },
       },
     );
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     createValidatedSwapTransaction.mockResolvedValueOnce(transaction);
 
     await handler.handle({
@@ -509,7 +509,7 @@ describe('SignAndSendTransactionHandler', () => {
         },
       },
     );
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     createValidatedSwapTransaction.mockResolvedValueOnce(transaction);
 
     await handler.handle({
@@ -701,7 +701,7 @@ describe('SignAndSendTransactionHandler', () => {
         },
       },
     );
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     createValidatedSwapTransaction.mockResolvedValueOnce(transaction);
 
     await handler.handle({

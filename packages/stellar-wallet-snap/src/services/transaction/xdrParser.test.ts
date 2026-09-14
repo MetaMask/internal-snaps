@@ -1,5 +1,5 @@
-import type { Operation, xdr } from '@stellar/stellar-sdk';
-import { Asset, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import type { Operation } from '@stellar/stellar-sdk';
+import { Asset, Networks, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -107,13 +107,13 @@ describe('transaction-xdr-decoder', () => {
 
   describe('xdrAssetToCaip19', () => {
     it('maps native asset', () => {
-      const asset = Asset.native().toXDRObject();
+      const asset = Asset.native().toXdrObject();
 
       expect(xdrAssetToCaip19(asset, scope)).toBe(getSlip44AssetId(scope));
     });
 
     it('maps alphanum4 credit asset', () => {
-      const asset = new Asset('USDC', usdcIssuer).toXDRObject();
+      const asset = new Asset('USDC', usdcIssuer).toXdrObject();
 
       expect(xdrAssetToCaip19(asset, scope)).toBe(
         toCaip19ClassicAssetId(scope, 'USDC', usdcIssuer),
@@ -121,7 +121,7 @@ describe('transaction-xdr-decoder', () => {
     });
 
     it('maps alphanum12 credit asset', () => {
-      const asset = new Asset('LONGASSETCD', usdcIssuer).toXDRObject();
+      const asset = new Asset('LONGASSETCD', usdcIssuer).toXdrObject();
 
       expect(xdrAssetToCaip19(asset, scope)).toBe(
         toCaip19ClassicAssetId(scope, 'LONGASSETCD', usdcIssuer),
@@ -129,25 +129,21 @@ describe('transaction-xdr-decoder', () => {
     });
 
     it('returns undefined for pool share asset', () => {
-      const asset = Asset.native().toXDRObject();
-      jest.spyOn(asset, 'switch').mockReturnValue({
-        name: 'assetTypePoolShare',
-      } as unknown as xdr.AssetType);
+      const asset = Asset.native().toXdrObject();
+      (asset as { type: string }).type = 'assetTypePoolShare';
 
       expect(xdrAssetToCaip19(asset, scope)).toBeUndefined();
     });
 
     it('returns undefined for unsupported asset type', () => {
-      const asset = Asset.native().toXDRObject();
-      jest.spyOn(asset, 'switch').mockReturnValue({
-        name: 'unsupportedAssetType',
-      } as unknown as xdr.AssetType);
+      const asset = Asset.native().toXdrObject();
+      (asset as { type: string }).type = 'unsupportedAssetType';
 
       expect(xdrAssetToCaip19(asset, scope)).toBeUndefined();
     });
 
     it('returns undefined for credit asset when Asset.fromOperation fails', () => {
-      const asset = new Asset('USDC', usdcIssuer).toXDRObject();
+      const asset = new Asset('USDC', usdcIssuer).toXdrObject();
       jest.spyOn(Asset, 'fromOperation').mockImplementation(() => {
         throw new Error('Invalid asset type: assetTypePoolShare');
       });
@@ -155,6 +151,24 @@ describe('transaction-xdr-decoder', () => {
       expect(xdrAssetToCaip19(asset, scope)).toBeUndefined();
     });
   });
+
+  /**
+   * Narrows an invoke-host-function op to its contract-call args.
+   * SDK 17 types `func` as a `HostFunction` union, so `invokeContract` is
+   * only available after checking `type`.
+   *
+   * @param op - Parsed invoke host function operation.
+   * @returns Invoke-contract arguments from the host function.
+   */
+  function getInvokeContractArgs(
+    op: Operation.InvokeHostFunction,
+  ): xdr.InvokeContractArgs {
+    const { func } = op;
+    if (func.type !== 'hostFunctionTypeInvokeContract') {
+      throw new Error(`expected invoke contract, got ${func.type}`);
+    }
+    return func.invokeContract;
+  }
 
   describe('parseSep41TransferInvoke', () => {
     const fromAccountId =
@@ -262,7 +276,7 @@ describe('transaction-xdr-decoder', () => {
       });
       const op = wrapped
         .transactionOperations[0] as Operation.InvokeHostFunction;
-      const scAddress = op.func.invokeContract().contractAddress();
+      const scAddress = getInvokeContractArgs(op).contractAddress;
 
       expect(getAddress(scAddress)).toBe(contractId);
     });
@@ -293,7 +307,7 @@ describe('transaction-xdr-decoder', () => {
       );
       const op = wrapped
         .transactionOperations[0] as Operation.InvokeHostFunction;
-      const [addressArg, amountArg] = op.func.invokeContract().args();
+      const [addressArg, amountArg] = getInvokeContractArgs(op).args;
 
       expect(addressArg).toBeDefined();
       expect(amountArg).toBeDefined();
@@ -318,7 +332,7 @@ describe('transaction-xdr-decoder', () => {
       );
       const op = wrapped
         .transactionOperations[0] as Operation.InvokeHostFunction;
-      const args = op.func.invokeContract().args();
+      const { args } = getInvokeContractArgs(op);
 
       expect(args).toHaveLength(4);
       expect(parseScValToReadableJson(args[0] as xdr.ScVal)).toBe(from);
@@ -342,7 +356,7 @@ describe('transaction-xdr-decoder', () => {
       );
       const op = wrapped
         .transactionOperations[0] as Operation.InvokeHostFunction;
-      const expirationArg = op.func.invokeContract().args()[3];
+      const expirationArg = getInvokeContractArgs(op).args[3];
 
       expect(expirationArg).toBeDefined();
       expect(parseScValToReadableJson(expirationArg as xdr.ScVal)).toBe(
@@ -353,12 +367,11 @@ describe('transaction-xdr-decoder', () => {
     it('decodes approve args from a real envelope XDR', () => {
       const envelopeXdr =
         'AAAAAgAAAAA/QTZAlJz4YnEydNF+YwyudlleSeXwO9fWYARCUw9ItgAAAMgDpYayAAACcwAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAGAAAAAAAAAABJbKv015UMxpIkMNjGfee2xjweJ5H/Dh7OzDvLmmlTRoAAAAHYXBwcm92ZQAAAAAEAAAAEgAAAAAAAAAAP0E2QJSc+GJxMnTRfmMMrnZZXknl8DvX1mAEQlMPSLYAAAASAAAAAAAAAAA/QTZAlJz4YnEydNF+YwyudlleSeXwO9fWYARCUw9ItgAAAAoAAAAAAAAAAAAAAAAAAAB7AAAAAwAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
-      const tx = TransactionBuilder.fromXDR(envelopeXdr, Networks.PUBLIC);
+      const tx = TransactionBuilder.fromXdr(envelopeXdr, Networks.PUBLIC);
       const op = tx.operations[0] as Operation.InvokeHostFunction;
-      const readableArgs = op.func
-        .invokeContract()
-        .args()
-        .map((arg) => parseScValToReadableJson(arg));
+      const readableArgs = getInvokeContractArgs(op).args.map((arg) =>
+        parseScValToReadableJson(arg),
+      );
 
       expect(readableArgs).toStrictEqual([
         accountAddress,
@@ -369,17 +382,14 @@ describe('transaction-xdr-decoder', () => {
     });
 
     it('returns base64 XDR when scValToNative fails', () => {
-      const scv = {
-        switch: () => {
+      const scv = xdr.ScVal.scvU32(1);
+      Object.defineProperty(scv, 'type', {
+        get(): never {
           throw new Error('native conversion failed');
         },
-        toXDR: (format: string) => {
-          expect(format).toBe('base64');
-          return 'fallback-base64-xdr';
-        },
-      } as unknown as xdr.ScVal;
+      });
 
-      expect(parseScValToReadableJson(scv)).toBe('fallback-base64-xdr');
+      expect(parseScValToReadableJson(scv)).toBe(scv.toXdr('base64'));
     });
 
     it('converts bigint, bytes, arrays, and maps for display', () => {

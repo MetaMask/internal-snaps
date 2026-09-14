@@ -1073,9 +1073,6 @@
   "packages/stellar-wallet-snap/snap.config.ts": {
     "import-x/no-nodejs-modules": {
       "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 25
     }
   },
   "packages/stellar-wallet-snap/src/handlers/accountResolver.test.ts": {
@@ -1320,11 +1317,6 @@
   "packages/stellar-wallet-snap/src/services/transaction/TransactionBuilder.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/transaction/TransactionBuilder.ts": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/services/transaction/TransactionMapper.test.ts": {
