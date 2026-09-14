@@ -278,12 +278,26 @@ export class SolanaKeyring implements KeyringSnapRpc {
       const entropySource =
         options.entropySource ?? (await this.#getDefaultEntropySource());
 
+      // Fetch coin-type entropy and list existing accounts in parallel.
+      // For Bip44Discover this also eliminates the previous double-entropy fetch:
+      // the activity-check address is derived locally from the coin-type node
+      // instead of making a separate snap_getBip32Entropy call at the full path.
+      const [coinTypeNodeJson, allAccountsList] = await Promise.all([
+        getBip32Entropy({
+          entropySource,
+          path: ['m', "44'", "501'"],
+          curve: 'ed25519',
+        }),
+        this.#listAccounts(),
+      ]);
+      const coinTypeNode = await SLIP10Node.fromJSON(coinTypeNodeJson);
+
       // For discovery, only create the account if it has on-chain activity. No
       // activity means we've reached the end of the discoverable accounts, so we
       // return nothing and the client stops discovering.
       if (
         options.type === AccountCreationType.Bip44Discover &&
-        !(await this.#hasOnChainActivity(entropySource, options.groupIndex))
+        !(await this.#hasOnChainActivity(coinTypeNode, options.groupIndex))
       ) {
         await endTrace(this.#traceNameBatch);
         return [];
@@ -291,7 +305,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
       // Map existing accounts by group index
       const allAccounts = new Map<number, SolanaKeyringAccount>();
-      for (const account of await this.#listAccounts()) {
+      for (const account of allAccountsList) {
         if (account.entropySource === entropySource) {
           allAccounts.set(account.index, account);
         }
@@ -306,14 +320,6 @@ export class SolanaKeyring implements KeyringSnapRpc {
         // inclusive, so `from` and `to` are the same.
         range = { from: options.groupIndex, to: options.groupIndex };
       }
-
-      // Get coin-type node once (optimization: 1 snap API call for N accounts)
-      const coinTypeNodeJson = await getBip32Entropy({
-        entropySource,
-        path: ['m', "44'", "501'"],
-        curve: 'ed25519',
-      });
-      const coinTypeNode = await SLIP10Node.fromJSON(coinTypeNodeJson);
 
       // Create new accounts in memory, then flush all to state in one call
       let createdCount = 0;
@@ -688,24 +694,21 @@ export class SolanaKeyring implements KeyringSnapRpc {
    * activity across the supported scopes. Drives `bip44:discover` account
    * creation in {@link createAccounts}.
    *
-   * The account is derived using the BIP-44 derivation path
-   * `m/44'/501'/${groupIndex}'/0'`, applied to the SRP referenced by the entropy
-   * source.
+   * The address is derived locally from the pre-fetched coin-type node, avoiding
+   * a second `snap_getBip32Entropy` call for the full derivation path.
    *
-   * @param entropySource - The entropy source aka Recovery Phrase.
+   * @param coinTypeNode - The SLIP-10 node at `m/44'/501'`, already fetched by the caller.
    * @param groupIndex - The group index to check for on-chain activity.
    * @returns `true` if the derived address has at least one signature on any
    * supported scope, `false` otherwise.
    */
   async #hasOnChainActivity(
-    entropySource: EntropySourceId,
+    coinTypeNode: SLIP10Node,
     groupIndex: number,
   ): Promise<boolean> {
-    const derivationPath = this.#getDefaultDerivationPath(groupIndex);
-
-    const { publicKeyBytes } = await deriveSolanaKeypair({
-      entropySource,
-      derivationPath,
+    const { publicKeyBytes } = await deriveSolanaKeypairFromCoinTypeNode({
+      coinTypeNode,
+      accountIndex: groupIndex,
     });
     const address = decoder.decode(publicKeyBytes.slice(1));
 

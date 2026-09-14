@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduce `snap_getBip32Entropy` calls in `createAccounts` from two to one for `bip44:discover` by deriving the activity-check address locally from the already-fetched coin-type node, and parallelize the entropy fetch with the existing-accounts state read for all creation paths
+- Coalesce concurrent `AccountsSynchronizer.synchronize` calls for the same account set so duplicate in-flight syncs (e.g. simultaneous connection-recovery events across mainnet and devnet) share one run instead of fanning out redundant asset and transaction fetches
 - **BREAKING** Update the Solana Name Service integration to SNS SDK v1 and the Kit 6.9-compatible Solana program clients
 - Migrate `trackError` and `withCatchAndThrowSnapError` to `@metamask/snap-networks-utils` `createSnapErrorHandling`, and add `getSnapProvider` for Snap RPC access
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
