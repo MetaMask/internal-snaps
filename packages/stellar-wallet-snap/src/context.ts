@@ -1,3 +1,4 @@
+import { State } from '@metamask/snap-networks-utils';
 import { assert, object } from '@metamask/superstruct';
 
 import { AppConfig } from './config';
@@ -45,7 +46,7 @@ import {
   OnChainAccountService,
 } from './services/on-chain-account';
 import { PriceService } from './services/price';
-import { State } from './services/state';
+import { DEFAULT_UNENCRYPTED_STATE } from './services/state/stateTypes';
 import { SynchronizeService } from './services/sync/SynchronizeService';
 import {
   TransactionBuilder,
@@ -64,13 +65,7 @@ assert(AppConfig, object());
 
 const state = new State({
   encrypted: false,
-  defaultState: {
-    keyringAccounts: {},
-    assets: {},
-    transactions: {},
-    lastScanTokens: {},
-    onChainAccounts: {},
-  },
+  defaultState: DEFAULT_UNENCRYPTED_STATE,
 });
 
 const accountsRepository = new AccountsRepository(state);

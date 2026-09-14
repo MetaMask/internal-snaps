@@ -5,6 +5,7 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 import type { Horizon } from '@stellar/stellar-sdk';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
 
@@ -24,7 +25,6 @@ import {
   horizonSource,
 } from '../on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
-import { State } from '../state/State';
 import type { ActivatedAccountPair } from '../sync/api';
 import { sep41SendTransactionResponse } from './__mocks__/horizon-transaction-responses.fixtures';
 import {
@@ -109,12 +109,9 @@ describe('TransactionSynchronizeService', () => {
     const { cache } = createMemoryCache();
     const networkService = new NetworkService({ logger, cache });
     const transactionRepository = new TransactionRepository(
-      new State({
-        encrypted: false,
-        defaultState: {
-          transactions: {},
-          lastScanTokens: {},
-        },
+      new InMemoryState({
+        transactions: {},
+        lastScanTokens: {},
       }),
     );
     const transactionMapper = new TransactionMapper({

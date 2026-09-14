@@ -1,5 +1,6 @@
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 import type { AuthFlag, Horizon } from '@stellar/stellar-sdk';
 import {
   Account,
@@ -18,7 +19,6 @@ import { getSlip44AssetId, logger } from '../../../utils';
 import { mockAccountService } from '../../account/__mocks__/account.fixtures';
 import { createMemoryCache } from '../../cache/__mocks__/cache.fixtures';
 import { NetworkService } from '../../network';
-import { State } from '../../state/State';
 import { generateStellarAddress } from '../../wallet/__mocks__/wallet.fixtures';
 import { Transaction } from '../Transaction';
 import { TransactionBuilder } from '../TransactionBuilder';
@@ -33,12 +33,9 @@ export const createMockTransactionService = () => {
   const transactionService = new TransactionService({
     logger,
     transactionRepository: new TransactionRepository(
-      new State({
-        encrypted: false,
-        defaultState: {
-          transactions: {},
-          lastScanTokens: {},
-        },
+      new InMemoryState({
+        transactions: {},
+        lastScanTokens: {},
       }),
     ),
     networkService,

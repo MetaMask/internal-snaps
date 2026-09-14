@@ -2,7 +2,8 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
-import { Logger } from '@metamask/snap-networks-utils';
+import { InMemoryState, Logger } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';
@@ -18,10 +19,8 @@ import type {
   TransactionsService,
 } from '../../services';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
-import { InMemoryState } from '../../services/state/InMemoryState';
-import type { IStateManager } from '../../services/state/IStateManager';
-import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/State';
-import type { UnencryptedStateValue } from '../../services/state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/stateTypes';
+import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import { MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST } from '../../services/wallet/mocks';
 import type { WalletService } from '../../services/wallet/WalletService';
 import {
@@ -301,18 +300,26 @@ describe('SolanaKeyring', () => {
 
   describe('deleteAccount', () => {
     it('deletes an account', async () => {
-      const accountBeforeDeletion = await keyring.getAccount(
-        MOCK_SOLANA_KEYRING_ACCOUNT_1.id,
-      );
+      const accountId = MOCK_SOLANA_KEYRING_ACCOUNT_1.id;
+      await mockState.setKey(`transactions.${accountId}`, []);
+      await mockState.setKey(`assetEntities.${accountId}`, [
+        MOCK_ASSET_ENTITY_1,
+      ]);
+
+      const accountBeforeDeletion = await keyring.getAccount(accountId);
       expect(accountBeforeDeletion).toBeDefined();
 
-      await keyring.deleteAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id);
+      await keyring.deleteAccount(accountId);
 
-      await expect(
-        keyring.getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id),
-      ).rejects.toThrow(
-        `Account "${MOCK_SOLANA_KEYRING_ACCOUNT_1.id}" not found`,
+      await expect(keyring.getAccount(accountId)).rejects.toThrow(
+        `Account "${accountId}" not found`,
       );
+      expect(
+        await mockState.getKey(`transactions.${accountId}`),
+      ).toBeUndefined();
+      expect(
+        await mockState.getKey(`assetEntities.${accountId}`),
+      ).toBeUndefined();
     });
 
     it('throws an error if account provided is not a uuid', async () => {

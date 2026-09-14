@@ -24,8 +24,8 @@ import type {
   ExportedAccount,
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
-import type { Logger } from '@metamask/snap-networks-utils';
 import { UuidStruct } from '@metamask/snap-networks-utils';
+import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -51,8 +51,7 @@ import type {
   TransactionsService,
 } from '../../services';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
-import type { IStateManager } from '../../services/state/IStateManager';
-import type { UnencryptedStateValue } from '../../services/state/State';
+import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import { SolanaWalletRequestStruct } from '../../services/wallet/structs';
 import type {
   SolanaSignAndSendTransactionResponse,
@@ -382,10 +381,10 @@ export class SolanaKeyring implements KeyringSnapRpc {
   }
 
   async #deleteAccountFromState(accountId: string): Promise<void> {
-    await Promise.all([
-      this.#state.deleteKey(`keyringAccounts.${accountId}`),
-      this.#state.deleteKey(`transactions.${accountId}`),
-      this.#state.deleteKey(`assets.${accountId}`),
+    await this.#state.deleteKeys([
+      `keyringAccounts.${accountId}`,
+      `transactions.${accountId}`,
+      `assetEntities.${accountId}`,
     ]);
   }
 
