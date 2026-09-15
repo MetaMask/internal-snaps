@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
+- chore: snap build tooling cleanup (babel config, preinstalled builds, manifest locales) ([#264](https://github.com/MetaMask/internal-snaps/pull/264))
+- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
+- feat: use shared trackError in bitcoin ([#254](https://github.com/MetaMask/internal-snaps/pull/254))
+- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
+- feat(bitcoin-wallet-snap): use shareable UuidStruct ([#248](https://github.com/MetaMask/internal-snaps/pull/248))
+- Release/9.0.0 ([#240](https://github.com/MetaMask/internal-snaps/pull/240))
+- refactor(snap-networks-utils): move util sources under `src/utils` ([#222](https://github.com/MetaMask/internal-snaps/pull/222))
+- refactor(bitcoin-wallet-snap): convert enums to `as const` objects ([#216](https://github.com/MetaMask/internal-snaps/pull/216))
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: replace bitcoin logger with shared util class ([#142](https://github.com/MetaMask/internal-snaps/pull/142))
+- chore: update lint-build ci vars, add clean working dir check to release workflow ([#146](https://github.com/MetaMask/internal-snaps/pull/146))
+- chore: ts issues fixes ([#139](https://github.com/MetaMask/internal-snaps/pull/139))
+
 ### Added
 
 - Add back the `endowment:assets` permission for the Bitcoin scopes to the snap manifest, with no-op `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` entry points required to keep the permission ([#274](https://github.com/MetaMask/internal-snaps/pull/274))
@@ -45,7 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `onKeyringRequest` responses to correctly return `Json` directly (v2 protocol) instead of v1's `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
-
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ## [2.0.0] [DEPRECATED]

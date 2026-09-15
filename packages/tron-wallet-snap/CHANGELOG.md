@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(tron-wallet-snap): use shareable state management lib ([#295](https://github.com/MetaMask/internal-snaps/pull/295))
+- chore(tron): use shared cache utils ([#293](https://github.com/MetaMask/internal-snaps/pull/293))
+- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
+- fix: restore `endowment:assets` permission to Bitcoin, Solana, and Tron snaps ([#274](https://github.com/MetaMask/internal-snaps/pull/274))
+- chore: snap build tooling cleanup (babel config, preinstalled builds, manifest locales) ([#264](https://github.com/MetaMask/internal-snaps/pull/264))
+- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
+- feat: use shared trackError in tron ([#253](https://github.com/MetaMask/internal-snaps/pull/253))
+- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
+- feat(tron-wallet-snap): use shareable UuidStruct ([#252](https://github.com/MetaMask/internal-snaps/pull/252))
+- feat: move errors helpers into shared pkg ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
+
 ### Changed
 
 - **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))

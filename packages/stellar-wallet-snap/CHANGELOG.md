@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(stellar-wallet-snap): use shareable state management lib ([#297](https://github.com/MetaMask/internal-snaps/pull/297))
+- fix(stellar-wallet-snap): price-api request missing market data ([#299](https://github.com/MetaMask/internal-snaps/pull/299))
+- chore(stellar-wallet-snap): remove dead code `getAssetsMetadataByAssetIds` ([#286](https://github.com/MetaMask/internal-snaps/pull/286))
+- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
+- ci: add SonarCloud analysis for the monorepo ([#272](https://github.com/MetaMask/internal-snaps/pull/272))
+- chore: snap build tooling cleanup (babel config, preinstalled builds, manifest locales) ([#264](https://github.com/MetaMask/internal-snaps/pull/264))
+- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
+- feat: use shared trackError in stellar ([#250](https://github.com/MetaMask/internal-snaps/pull/250))
+- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
+- feat(stellar-wallet-snap): use shareable UuidStruct ([#251](https://github.com/MetaMask/internal-snaps/pull/251))
+- feat: move errors helpers into shared pkg ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
+- Release/9.0.0 ([#240](https://github.com/MetaMask/internal-snaps/pull/240))
+- feat(stellar-wallet-snap): use shareable serialization in Stellar snap ([#235](https://github.com/MetaMask/internal-snaps/pull/235))
+- refactor(stellar-wallet-snap): convert enums to `as const` objects ([#227](https://github.com/MetaMask/internal-snaps/pull/227))
+- feat: move batch utils into shared pkg ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
+- feat(stellar-wallet-snap): use shareable permissions helpers in Stellar snap ([#212](https://github.com/MetaMask/internal-snaps/pull/212))
+- feat: move buildUrl into shared util pkg ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
+- feat: move sanitize utils into shared pkg ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
+- feat(stellar-wallet-snap): use shared safeMerge in Stellar snap ([#192](https://github.com/MetaMask/internal-snaps/pull/192))
+- feat(stellar-wallet-snap): use shared urlstruct ([#190](https://github.com/MetaMask/internal-snaps/pull/190))
+
 ### Added
 
 - Add `signProofOfOwnership` client request for silent proof-of-ownership signing (SEP-0053) ([#186](https://github.com/MetaMask/internal-snaps/pull/186))
