@@ -12,6 +12,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { isTransactionWellFormed } from '../../validation/transaction';
+import { isUnsupportedSimulationError } from './isUnsupportedSimulationError';
 import type {
   TransactionScanAssetChange,
   TransactionScanError,
@@ -107,7 +108,7 @@ export class TransactionScanService {
         options,
       });
 
-      const scan = this.#mapScan(result);
+      const scan = this.#mapScan(result, options);
 
       if (!scan?.status) {
         this.#logger.warn(
@@ -226,50 +227,53 @@ export class TransactionScanService {
    * Maps the raw API response to our internal scan result format.
    *
    * @param result - The raw API response.
+   * @param options - Scan options that were requested (simulation, validation).
    * @returns The mapped scan result.
    */
   #mapScan(
     result: SecurityAlertSimulationValidationResponse,
+    options: string[],
   ): TransactionScanResult | null {
     if (!result) {
       return null;
     }
 
-    const status = this.#resolveStatus(result);
+    const includeSimulation = options.includes('simulation');
+    const simulation = includeSimulation ? result.simulation : undefined;
+    const unsupportedCallType = isUnsupportedSimulationError(simulation?.error);
+    const validationFailed = result.validation?.status === 'Error';
+    const simulationFailed =
+      includeSimulation &&
+      simulation?.status === 'Error' &&
+      !unsupportedCallType;
+
+    const status: TransactionScanResult['status'] =
+      validationFailed || simulationFailed ? 'ERROR' : 'SUCCESS';
+
+    let simulationStatus: SimulationStatus;
+    if (!includeSimulation || unsupportedCallType) {
+      simulationStatus = SimulationStatus.Skipped;
+    } else if (simulationFailed) {
+      simulationStatus = SimulationStatus.Failed;
+    } else {
+      simulationStatus = SimulationStatus.Completed;
+    }
 
     return {
       status,
       estimatedChanges: {
-        assets: this.#mapAssetDiffs(
-          result.simulation?.account_summary?.assets_diffs,
-        ),
+        assets: this.#mapAssetDiffs(simulation?.account_summary?.assets_diffs),
       },
       validation: {
         type: result.validation?.result_type ?? null,
         reason: result.validation?.reason ?? null,
       },
-      error: this.#mapSimulationError(result.simulation),
-      simulationStatus:
-        status === 'ERROR'
-          ? SimulationStatus.Failed
-          : SimulationStatus.Completed,
+      error:
+        unsupportedCallType || !includeSimulation
+          ? null
+          : this.#mapSimulationError(result.simulation),
+      simulationStatus,
     };
-  }
-
-  /**
-   * Resolves the scan status from API simulation and validation statuses.
-   * Returns ERROR only if either status is explicitly 'Error'.
-   *
-   * @param result - The raw API response.
-   * @returns The resolved scan status.
-   */
-  #resolveStatus(
-    result: SecurityAlertSimulationValidationResponse,
-  ): TransactionScanResult['status'] {
-    return result.simulation?.status === 'Error' ||
-      result.validation?.status === 'Error'
-      ? 'ERROR'
-      : 'SUCCESS';
   }
 
   /**

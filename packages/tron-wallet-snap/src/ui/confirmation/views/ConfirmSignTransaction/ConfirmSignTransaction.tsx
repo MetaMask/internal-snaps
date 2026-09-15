@@ -15,6 +15,7 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
+import { isTransactionDeadlinePassedError } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
@@ -47,15 +48,15 @@ export const ConfirmSignTransaction = ({
   } = context;
 
   /**
-   * Only disable the confirm button on the first load (FetchStatus.Loading),
-   * not during subsequent cron re-scans (FetchStatus.Fetching), and whenever
-   * the simulation has failed — including the expired/TAPOS-expired case, so
-   * the user is blocked from confirming a transaction that won't broadcast.
+   * Only disable Confirm on the first load (FetchStatus.Loading), when the
+   * account cannot cover the transfer plus fees, or when TAPOS/deadline expiry
+   * means the transaction will not broadcast. Generic simulation failures
+   * (including unsupported Tron system ops) are warnings, not hard blocks.
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
-    scan?.simulationStatus === SimulationStatus.Failed ||
-    isInsufficientBalance;
+    isInsufficientBalance ||
+    isTransactionDeadlinePassedError(scan?.error ?? null);
 
   const addressCaip10 = account ? `${scope}:${account.address}` : null;
 
