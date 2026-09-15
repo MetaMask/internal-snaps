@@ -298,7 +298,7 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Checks whether the given account is activated on any of the given scopes.
    *
-   * @param account - The derived account to check.
+   * @param address - The address of the account to check.
    * @param scopes - The scopes to check for on-chain activity.
    * @returns Whether the account is activated on at least one scope.
    */

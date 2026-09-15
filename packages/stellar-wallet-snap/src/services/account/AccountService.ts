@@ -124,6 +124,7 @@ export class AccountService {
    * @param options.entropySource - [Optional] The entropy source to use for derivation.
    * @param options.fromIndex - [Required] The starting derivation index (inclusive).
    * @param options.toIndex - [Required] The ending derivation index (inclusive).
+   * @param options.walletResolver - [Optional] A function to resolve the wallet address for a given index.
    * @returns A Promise that resolves to accounts in index order for the full requested range.
    * Existing accounts are reused and only missing accounts are created and persisted.
    */
