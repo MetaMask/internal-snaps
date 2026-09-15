@@ -71,7 +71,7 @@ describe('AccountsSynchronizer', () => {
       let resolveFetch!: () => void;
       mockAssetsService.fetch.mockReturnValueOnce(
         new Promise((resolve) => {
-          resolveFetch = () => resolve([]);
+          resolveFetch = (): void => resolve([]);
         }),
       );
 
@@ -103,12 +103,12 @@ describe('AccountsSynchronizer', () => {
       mockAssetsService.fetch
         .mockReturnValueOnce(
           new Promise((resolve) => {
-            resolveFetch1 = () => resolve([]);
+            resolveFetch1 = (): void => resolve([]);
           }),
         )
         .mockReturnValueOnce(
           new Promise((resolve) => {
-            resolveFetch2 = () => resolve([]);
+            resolveFetch2 = (): void => resolve([]);
           }),
         );
 
