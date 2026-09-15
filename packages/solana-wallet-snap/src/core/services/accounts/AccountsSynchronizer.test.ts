@@ -11,9 +11,7 @@ import { AccountsSynchronizer } from './AccountsSynchronizer';
 describe('AccountsSynchronizer', () => {
   let synchronizer: AccountsSynchronizer;
   let mockAccountsService: jest.Mocked<Pick<AccountsService, 'getAll'>>;
-  let mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetch' | 'saveMany'>
-  >;
+  let mockAssetsService: jest.Mocked<Pick<AssetsService, 'fetch' | 'saveMany'>>;
   let mockTransactionsService: jest.Mocked<
     Pick<TransactionsService, 'fetchAssetsTransactions' | 'saveMany'>
   >;
