@@ -1,36 +1,23 @@
 /* eslint-disable no-restricted-globals */
-import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
-import type { Infer } from '@metamask/superstruct';
 import {
-  array,
-  coerce,
-  create,
-  enums,
-  object,
-  string,
-} from '@metamask/superstruct';
+  BaseConfigProvider,
+  UrlStruct,
+  commaSeparatedListOf,
+  LogLevelStruct,
+  parseEnv,
+} from '@metamask/snap-networks-utils';
+import type { Infer } from '@metamask/superstruct';
+import { enums, object, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 
 import { Network, Networks } from '../../constants';
 
-const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<Env['ENVIRONMENT'], Network[]> = {
-  production: [Network.Mainnet],
-  local: [Network.Mainnet],
-  test: [Network.Mainnet],
-};
-
-const CommaSeparatedListOfUrlsStruct = coerce(
-  array(UrlStruct),
-  string(),
-  (value: string) => value.split(','),
-);
-
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
-  LOG_LEVEL: enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
-  RPC_URL_LIST_MAINNET: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,
+  LOG_LEVEL: LogLevelStruct,
+  RPC_URL_LIST_MAINNET: commaSeparatedListOf(UrlStruct),
+  RPC_URL_LIST_NILE_TESTNET: commaSeparatedListOf(UrlStruct),
+  RPC_URL_LIST_SHASTA_TESTNET: commaSeparatedListOf(UrlStruct),
   EXPLORER_MAINNET_BASE_URL: UrlStruct,
   EXPLORER_NILE_BASE_URL: UrlStruct,
   EXPLORER_SHASTA_BASE_URL: UrlStruct,
@@ -50,6 +37,12 @@ const EnvStruct = object({
 
 type Env = Infer<typeof EnvStruct>;
 
+const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<Env['ENVIRONMENT'], Network[]> = {
+  production: [Network.Mainnet],
+  local: [Network.Mainnet],
+  test: [Network.Mainnet],
+};
+
 export type NetworkConfig = (typeof Networks)[Network] & {
   rpcUrls: string[];
   explorerBaseUrl: string;
@@ -57,7 +50,7 @@ export type NetworkConfig = (typeof Networks)[Network] & {
 
 export type Config = {
   environment: string;
-  logLevel: LogLevel;
+  logLevel: Env['LOG_LEVEL'];
   networks: NetworkConfig[];
   activeNetworks: Network[];
   priceApi: {
@@ -99,21 +92,13 @@ export type Config = {
  * A utility class that provides the configuration of the snap.
  *
  * @example
- * const configProvider = new ConfigProvider();
  * const { networks } = configProvider.get();
  * @example
  * // You can use utility methods for more advanced manipulations.
- * const network = configProvider.getNetworkBy('caip2Id', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
+ * const network = configProvider.getNetworkBy('caip2Id', 'tron:0x2b6653dc');
  */
-export class ConfigProvider {
-  readonly #config: Config;
-
-  constructor() {
-    const environment = this.#parseEnvironment();
-    this.#config = this.#buildConfig(environment);
-  }
-
-  #parseEnvironment(): Env {
+export class ConfigProvider extends BaseConfigProvider<Env, Config> {
+  protected parseEnvironment(): Env {
     const rawEnvironment = {
       ENVIRONMENT: process.env.ENVIRONMENT,
       LOG_LEVEL: process.env.LOG_LEVEL,
@@ -132,21 +117,21 @@ export class ConfigProvider {
       SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL,
       NFT_API_BASE_URL: process.env.NFT_API_BASE_URL,
       LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
-      // // TronGrid API
+      // TronGrid API
       TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET,
       TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE,
       TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA,
-      // // Tron HTTP API URLs
+      // Tron HTTP API URLs
       TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET,
       TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE,
       TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA,
     };
 
     // Validate and parse them before returning
-    return create(rawEnvironment, EnvStruct);
+    return parseEnv(rawEnvironment, EnvStruct);
   }
 
-  #buildConfig(environment: Env): Config {
+  protected buildConfig(environment: Env): Config {
     return {
       environment: environment.ENVIRONMENT,
       logLevel: environment.LOG_LEVEL,
@@ -224,10 +209,6 @@ export class ConfigProvider {
     };
   }
 
-  public get(): Config {
-    return this.#config;
-  }
-
   public getNetworkBy(key: keyof NetworkConfig, value: string): NetworkConfig {
     const network = this.get().networks.find((item) => item[key] === value);
     if (!network) {
@@ -236,3 +217,10 @@ export class ConfigProvider {
     return network;
   }
 }
+
+/**
+ * The configuration provider of the snap.
+ * The environment is parsed and the config built exactly once, when this
+ * module is imported.
+ */
+export const configProvider = new ConfigProvider();
