@@ -43,6 +43,7 @@ import {
   getSolanaCoinTypeNodeMock,
 } from '../../test/mocks/utils/getBip32Entropy';
 import { trackError } from '../../utils/errors';
+import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { SolanaKeyring } from './Keyring';
 

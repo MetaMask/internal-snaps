@@ -6,6 +6,7 @@ import {
   SolMethod,
   SolScope,
 } from '@metamask/keyring-api';
+import { SLIP10Node } from '@metamask/key-tree';
 import type {
   CreateAccountOptions,
   EntropySourceId,
@@ -64,7 +65,7 @@ import {
   deriveSolanaKeypairFromCoinTypeNode,
 } from '../../utils/deriveSolanaKeypair';
 import { trackError } from '../../utils/errors';
-import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
+import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import {
   endTrace,
   listEntropySources,
