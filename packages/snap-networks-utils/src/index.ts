@@ -22,6 +22,15 @@ export type {
   ExtendedKeyringAccount,
   KeyringAccountExtension,
 } from './utils/keyringAccount/keyringAccount';
+export { parseEnv } from './utils/config/parseEnv';
+export { BaseConfigProvider } from './utils/config/BaseConfigProvider';
+export {
+  commaSeparatedListOf,
+  emptyToUndefined,
+  parseIntegerStruct,
+  parseFloatStruct,
+} from './utils/config/envStructs';
+export { LogLevelStruct } from './utils/config/logLevelStruct';
 export {
   batchesAll,
   batchesAllSettled,
