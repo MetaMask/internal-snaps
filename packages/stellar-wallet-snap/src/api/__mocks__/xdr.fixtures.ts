@@ -15,6 +15,10 @@ export type BuildAuthEntryPreimageXdrOptions = {
  * Omit `boundAddress` for v1; pass a G-address for CAP-71 v2.
  *
  * @param options - Preimage field overrides.
+ * @param options.networkPassphrase - Network passphrase.
+ * @param options.args - Function arguments.
+ * @param options.subInvocations - Sub-invocations.
+ * @param options.boundAddress - Bound address.
  * @returns Base64 XDR.
  */
 export function buildAuthEntryPreimageXdr({

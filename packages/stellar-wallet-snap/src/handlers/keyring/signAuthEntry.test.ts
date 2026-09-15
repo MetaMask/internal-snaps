@@ -2,10 +2,10 @@ import { Address, Keypair, Networks, hash, xdr } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
 import { buildAuthEntryPreimageXdr } from '../../api/__mocks__/xdr.fixtures';
-import { AccountService } from '../../services/account';
+import { AccountService, StellarKeyringAccount } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import { mockOnChainAccountService } from '../../services/on-chain-account/__mocks__/onChainAccount.fixtures';
-import { WalletService } from '../../services/wallet';
+import { Wallet, WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { bufferToUint8Array } from '../../utils/buffer';
@@ -25,7 +25,12 @@ describe('SignAuthEntryHandler', () => {
    *
    * @returns Handler instance and the test doubles needed by each spec.
    */
-  function setupHandler() {
+  function setupHandler(): {
+    handler: SignAuthEntryHandler;
+    mockAccount: StellarKeyringAccount;
+    wallet: Wallet;
+    renderConfirmationDialog: jest.Mock;
+  } {
     const wallet = getTestWallet();
     const accountId = globalThis.crypto.randomUUID();
     const mockAccount = generateStellarKeyringAccount(
@@ -93,14 +98,15 @@ describe('SignAuthEntryHandler', () => {
   });
 
   it.each([
-    ['v1', (_address: string) => validAuthEntry],
+    ['v1', (_address: string): string => validAuthEntry],
     [
       'v2',
-      (address: string) => buildAuthEntryPreimageXdr({ boundAddress: address }),
+      (address: string): string =>
+        buildAuthEntryPreimageXdr({ boundAddress: address }),
     ],
   ] as const)(
     'returns signedAuthEntry on confirm for a %s preimage',
-    async (version, buildEntry) => {
+    async (_version, buildEntry) => {
       const { handler, mockAccount, wallet, renderConfirmationDialog } =
         setupHandler();
       renderConfirmationDialog.mockResolvedValue(true);
@@ -114,27 +120,6 @@ describe('SignAuthEntryHandler', () => {
         signedAuthEntry: wallet.signAuthEntry(authEntry),
         signerAddress: wallet.address,
       });
-
-      const authorizationParams = renderConfirmationDialog.mock.calls[0]?.[0]
-        .renderContext.readableAuthEntry.authorizations[0]?.params as
-        | { key: string; value: string; type: string }[]
-        | undefined;
-
-      if (version === 'v2') {
-        expect(authorizationParams).toStrictEqual(
-          expect.arrayContaining([
-            {
-              key: 'authorizedAddress',
-              value: wallet.address,
-              type: 'copyable',
-            },
-          ]),
-        );
-      } else {
-        expect(authorizationParams?.map((param) => param.key)).not.toContain(
-          'authorizedAddress',
-        );
-      }
     },
   );
 

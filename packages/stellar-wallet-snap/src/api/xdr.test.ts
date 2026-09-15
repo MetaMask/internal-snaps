@@ -130,8 +130,8 @@ describe('SwapTransactionXdrStruct', () => {
         amount: '1',
       }),
     ]),
-  ])('accepts a valid swap transaction XDR', (xdr) => {
-    expect(() => assert(xdr, SwapTransactionXdrStruct)).not.toThrow();
+  ])('accepts a valid swap transaction XDR', (xdrString) => {
+    expect(() => assert(xdrString, SwapTransactionXdrStruct)).not.toThrow();
   });
 
   it.each([
@@ -154,8 +154,10 @@ describe('SwapTransactionXdrStruct', () => {
         amount: '1',
       }),
     ]),
-  ])('rejects an invalid swap transaction XDR', (xdr) => {
-    expect(() => assert(xdr, SwapTransactionXdrStruct)).toThrow(StructError);
+  ])('rejects an invalid swap transaction XDR', (xdrString) => {
+    expect(() => assert(xdrString, SwapTransactionXdrStruct)).toThrow(
+      StructError,
+    );
   });
 });
 
