@@ -63,7 +63,7 @@ export class SecurityAlertsApiClient {
   constructor(configProvider: ConfigProvider, logger: Logger) {
     this.#fetch = fetch;
     this.#logger = logger.withPrefix('[🔒 SecurityAlertsApiClient]');
-    this.#baseUrl = configProvider.get().securityAlertsApi.baseUrl;
+    this.#baseUrl = configProvider.config.securityAlertsApi.baseUrl;
   }
 
   /**

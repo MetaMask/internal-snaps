@@ -5,6 +5,21 @@ import { resolve } from 'path';
 
 dotenv();
 
+/**
+ * API base URLs, using the local gateway in the test environment — matching
+ * the environment-conditional URLs the provider used before the shared
+ * `BaseConfigProvider` was adopted. This is build tooling: the resolved
+ * values are inlined into the bundle, so the snap itself has a single code
+ * path.
+ *
+ * @param url - The raw URL from the environment.
+ * @returns The URL to inline for this build.
+ */
+const apiBaseUrl = (url: string | undefined): string =>
+  process.env.ENVIRONMENT === 'test'
+    ? (process.env.LOCAL_API_BASE_URL ?? '')
+    : (url ?? '');
+
 const config: SnapConfig = {
   input: resolve(__dirname, 'src/index.ts'),
   typescript: {
@@ -25,13 +40,13 @@ const config: SnapConfig = {
     EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL ?? '',
     EXPLORER_SHASTA_BASE_URL: process.env.EXPLORER_SHASTA_BASE_URL ?? '',
     // APIs
-    PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL ?? '',
-    TOKEN_API_BASE_URL: process.env.TOKEN_API_BASE_URL ?? '',
+    PRICE_API_BASE_URL: apiBaseUrl(process.env.PRICE_API_BASE_URL),
+    TOKEN_API_BASE_URL: apiBaseUrl(process.env.TOKEN_API_BASE_URL),
     STATIC_API_BASE_URL: process.env.STATIC_API_BASE_URL ?? '',
-    SECURITY_ALERTS_API_BASE_URL:
-      process.env.SECURITY_ALERTS_API_BASE_URL ?? '',
-    NFT_API_BASE_URL: process.env.NFT_API_BASE_URL ?? '',
-    LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL ?? '',
+    SECURITY_ALERTS_API_BASE_URL: apiBaseUrl(
+      process.env.SECURITY_ALERTS_API_BASE_URL,
+    ),
+    NFT_API_BASE_URL: apiBaseUrl(process.env.NFT_API_BASE_URL),
     // TronGrid API
     TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET ?? '',
     TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE ?? '',

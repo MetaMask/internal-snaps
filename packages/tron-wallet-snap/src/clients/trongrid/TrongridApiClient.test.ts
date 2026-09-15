@@ -3,6 +3,7 @@ import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 
 import { Network } from '../../constants';
 import { ConfigProvider } from '../../services/config';
+import { ENVIRONMENT } from '../../services/config/ConfigProvider';
 import nativeTransferWithoutTimestampMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer-without-timestamp.json';
 import nativeTransferMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer.json';
 import { mockLogger } from '../../utils/mockLogger';
@@ -19,8 +20,8 @@ type WithTrongridApiClientCallback<ReturnValue> = (payload: {
 
 type WithTrongridApiClientOptions = {
   options: {
-    trongridBaseUrls?: Record<string, string>;
-    tronHttpBaseUrls?: Record<string, string>;
+    trongridBaseUrls?: Record<Network, string>;
+    tronHttpBaseUrls?: Record<Network, string>;
   };
 };
 
@@ -46,10 +47,8 @@ async function withTrongridApiClient<ReturnValue>(
     [Network.Shasta]: 'https://api.shasta.trongrid.io',
   };
 
-  const configProvider = new ConfigProvider();
-  const baseConfig = configProvider.get();
-  jest.spyOn(configProvider, 'get').mockReturnValue({
-    ...baseConfig,
+  const configProvider = new ConfigProvider({
+    ...ENVIRONMENT,
     trongridApi: {
       baseUrls: options.trongridBaseUrls ?? defaultBaseUrls,
     },
@@ -177,19 +176,26 @@ describe('TrongridApiClient', () => {
         [Network.Shasta]: '',
       };
 
-      await withTrongridApiClient(
-        {
-          options: {
-            trongridBaseUrls: invalidBaseUrls,
-            tronHttpBaseUrls: invalidBaseUrls,
-          },
+      // The config struct rejects invalid URLs, so a client that receives
+      // them must be built from a mock provider, bypassing validation —
+      // the same way a misconfigured deployment would reach the client.
+      const configProvider = {
+        config: {
+          trongridApi: { baseUrls: invalidBaseUrls },
+          tronHttpApi: { baseUrls: invalidBaseUrls },
         },
-        async ({ client }) => {
-          await expect(
-            client.getTrc20BalancesByAddress(Network.Nile, mockAddress),
-          ).rejects.toThrow('Invalid URL format');
-        },
-      );
+      } as unknown as ConfigProvider;
+
+      const tronHttpClient = new TronHttpClient({ configProvider });
+      const client = new TrongridApiClient({
+        configProvider,
+        tronHttpClient,
+        cache: new InMemoryCache(mockLogger),
+      });
+
+      await expect(
+        client.getTrc20BalancesByAddress(Network.Nile, mockAddress),
+      ).rejects.toThrow('Invalid URL format');
     });
 
     it('throws error when HTTP request fails', async () => {

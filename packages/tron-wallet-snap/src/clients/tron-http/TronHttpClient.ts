@@ -40,7 +40,7 @@ export class TronHttpClient {
   > = new Map();
 
   constructor({ configProvider }: { configProvider: ConfigProvider }) {
-    const { baseUrls } = configProvider.get().tronHttpApi;
+    const { baseUrls } = configProvider.config.tronHttpApi;
 
     // Initialize clients for all networks
     Object.entries(baseUrls).forEach(([network, baseUrl]) => {

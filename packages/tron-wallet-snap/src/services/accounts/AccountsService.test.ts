@@ -21,7 +21,6 @@ import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
-import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
@@ -107,7 +106,7 @@ type WithAccountsServiceCallback = (payload: {
       | 'delete'
     >
   >;
-  mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>>;
+  mockConfigProvider: { config: Config };
   mockLogger: Logger;
   mockAssetsService: jest.Mocked<
     Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
@@ -233,8 +232,8 @@ async function withAccountsService(
     }),
   };
 
-  const mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>> = {
-    get: jest.fn().mockReturnValue(MOCK_CONFIG),
+  const mockConfigProvider: { config: Config } = {
+    config: MOCK_CONFIG,
   };
 
   const mockSnapClient: jest.Mocked<
@@ -982,10 +981,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet, Network.Shasta],
-          });
+          };
           mockAssetsService.fetchAssetsAndBalancesForAccount.mockResolvedValue(
             mockAssets,
           );
@@ -1011,7 +1010,7 @@ describe('AccountsService', () => {
     it('handles empty activeNetworks', async () => {
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue(MOCK_CONFIG);
+          mockConfigProvider.config = MOCK_CONFIG;
 
           const account: ExtendedKeyringAccount = {
             id: 'empty-id',
@@ -1070,10 +1069,10 @@ describe('AccountsService', () => {
           mockConfigProvider,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
           mockTransactionsService.fetchNewTransactionsForAccount.mockResolvedValue(
             mockTransactions,
           );
@@ -1112,10 +1111,10 @@ describe('AccountsService', () => {
           mockAssetsService,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await accountsService.synchronize([account]);
 
@@ -1154,10 +1153,10 @@ describe('AccountsService', () => {
           mockAssetsService,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await Promise.all([
             accountsService.synchronize([account]),
@@ -1182,10 +1181,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await accountsService.synchronize([account]);
           await accountsService.synchronize([account]);
@@ -1203,10 +1202,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await Promise.all([
             accountsService.synchronize([accountA]),
