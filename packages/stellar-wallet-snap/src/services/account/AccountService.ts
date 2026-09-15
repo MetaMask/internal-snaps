@@ -12,9 +12,8 @@ import {
   getSnapProvider,
 } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
-import type { Wallet } from '../wallet';
+import type { Wallet, WalletService } from '../wallet';
 import { getDerivationPath } from '../wallet';
-import type { WalletService } from '../wallet';
 import type { AccountsRepository } from './AccountsRepository';
 import type { StellarKeyringAccount, StellarDerivationPath } from './api';
 import { AccountNotFoundException } from './exceptions';
