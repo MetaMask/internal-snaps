@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0]
+
 ### Uncategorized
 
 - feat(stellar-wallet-snap): use shareable state management lib ([#297](https://github.com/MetaMask/internal-snaps/pull/297))
@@ -66,5 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@0.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.0.0...HEAD
+[1.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@0.1.0...@metamask/stellar-wallet-snap@1.0.0
 [0.1.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/stellar-wallet-snap@0.1.0

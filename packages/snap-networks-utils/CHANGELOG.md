@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- feat(tron-wallet-snap): use shareable state management lib ([#295](https://github.com/MetaMask/internal-snaps/pull/295))
-- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
-- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
-- feat: use shared trackError in tron ([#253](https://github.com/MetaMask/internal-snaps/pull/253))
-- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
-- refactor(snap-networks-utils): move util sources under `src/utils` ([#222](https://github.com/MetaMask/internal-snaps/pull/222))
-- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
-- chore: ts issues fixes ([#139](https://github.com/MetaMask/internal-snaps/pull/139))
-
 ### Added
 
 - Add `ExtendedKeyringAccount`, `KeyringAccountExtension`, and `asStrictKeyringAccount` for snap keyring accounts that persist `entropySource`, `derivationPath`, and `index`. ([#300](https://github.com/MetaMask/internal-snaps/pull/300))
