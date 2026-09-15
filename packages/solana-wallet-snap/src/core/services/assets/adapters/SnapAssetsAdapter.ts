@@ -6,7 +6,11 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  Logger,
+  Serializable,
+  ICache,
+} from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
@@ -25,8 +29,6 @@ import type {
   SolanaKeyringAccount,
   TokenAsset,
 } from '../../../../entities';
-import type { ICache } from '../../../caching/ICache';
-import { useCache } from '../../../caching/useCache';
 import type { NftApiClient } from '../../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../../clients/token-api-client/TokenApiClient';
 import { Network, SolanaCaip19Tokens } from '../../../constants/solana';
@@ -37,6 +39,7 @@ import type {
   TokenCaipAssetType,
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
+import { useCache } from '../../../utils/caching';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';
@@ -268,7 +271,11 @@ export class SnapAssetsAdapter {
       ttlMilliseconds:
         SnapAssetsAdapter.cacheTtlsMilliseconds.tokenAccountsByOwner,
       generateCacheKey: (functionName, args) => {
-        const [account, programId, scope] = args;
+        const [account, programId, scope] = args as [
+          SolanaKeyringAccount,
+          Address,
+          Network,
+        ];
         return `${functionName}:${account.id}:${programId}:${scope}`;
       },
     });
