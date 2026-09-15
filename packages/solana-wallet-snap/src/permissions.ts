@@ -8,10 +8,10 @@ import {
 
 import { ClientRequestMethod } from './core/handlers/onClientRequest';
 import { TestDappRpcRequestMethod } from './core/handlers/onRpcRequest/types';
-import { ConfigProvider } from './core/services/config/ConfigProvider';
+import { configProvider } from './core/services/config';
 
-const config = new ConfigProvider().get();
-const isDev = ['local', 'test'].includes(config.environment);
+const { environment } = configProvider.get();
+const isDev = ['local', 'test'].includes(environment);
 
 const dappMethods = [
   // Keyring v2 methods
