@@ -10,7 +10,6 @@ import {
   Text as SnapText,
 } from '@metamask/snaps-sdk/jsx';
 
-import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../../../../constants';
 import type { LocalizedMessage } from '../../../../utils';
 import { i18n } from '../../../../utils';
 import type { ConfirmationBaseProps } from '../../api';
@@ -23,7 +22,7 @@ export type MemoEditScreenProps = {
 };
 
 /**
- * Screen for adding or updating a Stellar text memo on send confirmation.
+ * Screen for adding or updating a Stellar memo on send confirmation.
  *
  * @param props - The screen props.
  * @param props.locale - The active locale.
@@ -55,11 +54,6 @@ export const MemoEditScreen = ({
             placeholder={translate('confirmation.memo.placeholder')}
           />
         </Field>
-        <SnapText size="sm" color="muted">
-          {translate('confirmation.memo.byteHint', {
-            max: String(STELLAR_TEXT_MEMO_MAX_BYTES),
-          })}
-        </SnapText>
       </Box>
       <Footer>
         <Button name={MemoEditFormNames.Back}>

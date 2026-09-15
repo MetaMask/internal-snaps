@@ -7,8 +7,8 @@ import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../../constants';
  *
  * When federation (SEP-2) or muxed destinations are available, pass the
  * destination's `memo_type` as {@link StellarMemoType}. Until then, numeric
- * values are inferred as `id` (exchange-style); everything else falls back to
- * `text`.
+ * (all-digit) values are inferred as `id` (exchange-style; uint64 range
+ * enforced at resolve); everything else falls back to `text`.
  */
 export const StellarMemoType = {
   Text: 'text',
@@ -26,23 +26,57 @@ const STELLAR_MEMO_HASH_HEX_PATTERN = /^[0-9a-fA-F]+$/u;
 
 /**
  * Infers a memo type when an explicit type was not provided.
- * All-digit uint64 values → `id` (common for exchanges); otherwise `text`.
+ * All-digit values → `id` (exchange-style; range checked at resolve / draft
+ * validation); otherwise `text`.
  *
  * @param value - Trimmed memo string.
  * @returns Inferred memo type.
  */
 export function inferStellarMemoType(value: string): StellarMemoType {
   if (/^\d+$/u.test(value)) {
-    try {
-      const asId = BigInt(value);
-      if (asId >= 0n && asId <= STELLAR_MEMO_ID_MAX) {
-        return StellarMemoType.Id;
-      }
-    } catch {
-      // Fall through to text.
-    }
+    return StellarMemoType.Id;
   }
   return StellarMemoType.Text;
+}
+
+/**
+ * Locale keys returned by {@link getMemoDraftValidationError}.
+ */
+export type MemoDraftValidationErrorKey =
+  | 'confirmation.memo.error.tooLong'
+  | 'confirmation.memo.error.idOutOfRange';
+
+/**
+ * Validates a memo draft the same way {@link resolveStellarMemo} will attach it
+ * when type is omitted: all-digit → memo id (uint64), else text (≤ 28 UTF-8 bytes).
+ *
+ * @param value - Raw draft from the confirmation UI (may include whitespace).
+ * @returns Locale error key, or `null` when empty/whitespace or valid.
+ */
+export function getMemoDraftValidationError(
+  value: string,
+): MemoDraftValidationErrorKey | null {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (inferStellarMemoType(trimmed) === StellarMemoType.Id) {
+    try {
+      const asId = BigInt(trimmed);
+      if (asId > STELLAR_MEMO_ID_MAX) {
+        return 'confirmation.memo.error.idOutOfRange';
+      }
+    } catch {
+      return 'confirmation.memo.error.idOutOfRange';
+    }
+    return null;
+  }
+
+  if (new TextEncoder().encode(trimmed).length > STELLAR_TEXT_MEMO_MAX_BYTES) {
+    return 'confirmation.memo.error.tooLong';
+  }
+  return null;
 }
 
 /**

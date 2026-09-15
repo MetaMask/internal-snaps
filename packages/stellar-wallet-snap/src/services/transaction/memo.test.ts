@@ -1,6 +1,7 @@
 import { Memo } from '@stellar/stellar-sdk';
 
 import {
+  getMemoDraftValidationError,
   inferStellarMemoType,
   resolveStellarMemo,
   StellarMemoType,
@@ -11,9 +12,9 @@ describe('inferStellarMemoType', () => {
     { value: '12345', expected: StellarMemoType.Id },
     { value: '0', expected: StellarMemoType.Id },
     { value: '18446744073709551615', expected: StellarMemoType.Id },
+    { value: '18446744073709551616', expected: StellarMemoType.Id },
     { value: 'deposit-ref', expected: StellarMemoType.Text },
     { value: '12abc', expected: StellarMemoType.Text },
-    { value: '18446744073709551616', expected: StellarMemoType.Text },
   ])('infers $expected for $value', ({ value, expected }) => {
     expect(inferStellarMemoType(value)).toBe(expected);
   });
@@ -89,6 +90,12 @@ describe('resolveStellarMemo', () => {
     ).toThrow('Memo id is out of uint64 range');
   });
 
+  it('throws when inferred id is out of uint64 range', () => {
+    expect(() => resolveStellarMemo({ value: '18446744073709551616' })).toThrow(
+      'Memo id is out of uint64 range',
+    );
+  });
+
   it('throws when return hex is invalid', () => {
     expect(() =>
       resolveStellarMemo({
@@ -96,5 +103,30 @@ describe('resolveStellarMemo', () => {
         type: StellarMemoType.Return,
       }),
     ).toThrow('Memo return must be a 64-character hex string');
+  });
+});
+
+describe('getMemoDraftValidationError', () => {
+  it('returns null for empty or whitespace-only values', () => {
+    expect(getMemoDraftValidationError('')).toBeNull();
+    expect(getMemoDraftValidationError('   ')).toBeNull();
+  });
+
+  it('returns null for valid text and id drafts', () => {
+    expect(getMemoDraftValidationError('deposit-ref')).toBeNull();
+    expect(getMemoDraftValidationError('42')).toBeNull();
+    expect(getMemoDraftValidationError('18446744073709551615')).toBeNull();
+  });
+
+  it('rejects text drafts over 28 UTF-8 bytes', () => {
+    expect(getMemoDraftValidationError('é'.repeat(15))).toBe(
+      'confirmation.memo.error.tooLong',
+    );
+  });
+
+  it('rejects all-digit drafts outside uint64 range', () => {
+    expect(getMemoDraftValidationError('18446744073709551616')).toBe(
+      'confirmation.memo.error.idOutOfRange',
+    );
   });
 });

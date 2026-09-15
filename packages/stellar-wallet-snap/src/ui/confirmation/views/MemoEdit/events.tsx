@@ -1,7 +1,6 @@
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
-import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../../../../constants';
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
 import {
   ConfirmationContextRefresherKey,
@@ -11,6 +10,7 @@ import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
+import { getMemoDraftValidationError } from '../../../../services/transaction';
 import { Duration, updateInterfaceIfExists } from '../../../../utils';
 import type { ConfirmationInterfaceKey } from '../../api';
 import { FetchStatus } from '../../api';
@@ -36,10 +36,6 @@ async function reRender(
     renderConfirmationView(interfaceKey, nextContext),
     nextContext,
   );
-}
-
-function memoByteLength(value: string): number {
-  return new TextEncoder().encode(value.trim()).length;
 }
 
 /**
@@ -85,10 +81,9 @@ async function onMemoInputChange(
   }
   const rawValue = (event as InputChangeEvent).value;
   const value = typeof rawValue === 'string' ? rawValue : '';
-  const tooLong = memoByteLength(value) > STELLAR_TEXT_MEMO_MAX_BYTES;
   await reRender(id, context, {
     memoDraft: value,
-    memoError: tooLong ? 'confirmation.memo.error.tooLong' : null,
+    memoError: getMemoDraftValidationError(value),
   });
 }
 
@@ -108,9 +103,10 @@ async function onSaveClick(
 
   const draft =
     typeof context.memoDraft === 'string' ? context.memoDraft.trim() : '';
-  if (memoByteLength(draft) > STELLAR_TEXT_MEMO_MAX_BYTES) {
+  const draftError = getMemoDraftValidationError(draft);
+  if (draftError) {
     await reRender(id, context, {
-      memoError: 'confirmation.memo.error.tooLong',
+      memoError: draftError,
     });
     return;
   }

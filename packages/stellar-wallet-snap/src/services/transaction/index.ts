@@ -3,6 +3,7 @@ export * from './exceptions';
 export {
   StellarMemoType,
   inferStellarMemoType,
+  getMemoDraftValidationError,
   resolveStellarMemo,
 } from './memo';
 export * from './Transaction';

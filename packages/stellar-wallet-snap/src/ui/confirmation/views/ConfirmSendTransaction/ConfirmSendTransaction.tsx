@@ -140,20 +140,6 @@ export const ConfirmSendTransaction = ({
               />
             </Link>
           </Box>
-          {/* Memo */}
-          <Box alignment="space-between" direction="horizontal">
-            <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.memo')}
-            </SnapText>
-            <Box direction="horizontal" alignment="end">
-              <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
-              <Button name={MemoEditFormNames.Open}>
-                {memo
-                  ? t('confirmation.memo.update')
-                  : t('confirmation.memo.add')}
-              </Button>
-            </Box>
-          </Box>
           {/* Network */}
           <NetworkRow
             networkImage={networkImage}
@@ -170,6 +156,22 @@ export const ConfirmSendTransaction = ({
               tokenPricesFetchStatus={tokenPricesFetchStatus}
             />
           )}
+        </Section>
+
+        <Section>
+          <Box alignment="space-between" direction="horizontal">
+            <SnapText fontWeight="medium" color="alternative">
+              {t('confirmation.memo')}
+            </SnapText>
+            <Box direction="horizontal" alignment="end">
+              <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
+              <Button name={MemoEditFormNames.Open}>
+                {memo
+                  ? t('confirmation.memo.update')
+                  : t('confirmation.memo.add')}
+              </Button>
+            </Box>
+          </Box>
         </Section>
       </Box>
       <ConfirmationFooter
