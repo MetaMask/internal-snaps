@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - Show mapped transaction validation error banners in the ChangeTrustOpt and ConfirmSend confirmation dialogs ([#220](https://github.com/MetaMask/internal-snaps/pull/220), [#185](https://github.com/MetaMask/internal-snaps/pull/185))
   - Mapped errors cover insufficient balance, expired transactions, destination memo requirements, invalid create-account amount or asset, and trustline failures (not authorized, missing on sender or destination, over destination limit, non-zero balance on remove, or new limit below current balance).
-  - Unmapped errors fallback to a generic cannot-complete message.
+  - Unmapped errors fall back to a generic cannot-complete message.
   - Skip destination validation in `onAmountInput`.
 
 ### Removed
@@ -32,7 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Skip unrecognized activity that is not from this wallet's inner source account, such as fee-bump and claim-balance transactions for other accounts ([#298](https://github.com/MetaMask/internal-snaps/pull/298))
-- Stop the confirmation refresh cron and skip the security scan when transaction re-validation fails ([#282](https://github.com/MetaMask/internal-snaps/pull/282))
+- Show the mapped transaction validation error banner when confirmation refresh re-validation fails ([#282](https://github.com/MetaMask/internal-snaps/pull/282))
+  - Stop the confirmation refresh cron.
+  - Skip the security scan.
 - Fill contract-based receive transactions in history instead of marking them as unknown ([#255](https://github.com/MetaMask/internal-snaps/pull/255))
 
 ## [0.1.0]
