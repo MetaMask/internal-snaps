@@ -309,9 +309,12 @@ describe('KeyringHandler', () => {
 
     it('creates the discovered account when it is activated on chain', async () => {
       const { batchCreateAccountSpy } = getAccountServiceSpies();
+      const mockWalletResolver = jest
+        .fn()
+        .mockResolvedValue({ address: mockAccount.address });
       jest
-        .spyOn(AccountService.prototype, 'deriveKeyringAccount')
-        .mockResolvedValue(mockAccount);
+        .spyOn(WalletService.prototype, 'getWalletResolver')
+        .mockResolvedValue(mockWalletResolver);
       jest
         .spyOn(OnChainAccountService.prototype, 'isAccountActivated')
         .mockResolvedValue(true);
@@ -327,15 +330,19 @@ describe('KeyringHandler', () => {
         entropySource: entropySourceId,
         fromIndex: 0,
         toIndex: 0,
+        walletResolver: mockWalletResolver,
       });
       expect(result).toStrictEqual([toKeyringAccount(mockAccount)]);
     });
 
     it('creates no account when discovery finds no on-chain activity', async () => {
       const { batchCreateAccountSpy } = getAccountServiceSpies();
+      const mockWalletResolver = jest
+        .fn()
+        .mockResolvedValue({ address: mockAccount.address });
       jest
-        .spyOn(AccountService.prototype, 'deriveKeyringAccount')
-        .mockResolvedValue(mockAccount);
+        .spyOn(WalletService.prototype, 'getWalletResolver')
+        .mockResolvedValue(mockWalletResolver);
       jest
         .spyOn(OnChainAccountService.prototype, 'isAccountActivated')
         .mockResolvedValue(false);
@@ -348,6 +355,45 @@ describe('KeyringHandler', () => {
 
       expect(result).toStrictEqual([]);
       expect(batchCreateAccountSpy).not.toHaveBeenCalled();
+    });
+
+    it('fetches entropy once via the coin-type path for bip44:discover regardless of on-chain activity', async () => {
+      const { batchCreateAccountSpy } = getAccountServiceSpies();
+      const getWalletResolverSpy = jest
+        .spyOn(WalletService.prototype, 'getWalletResolver')
+        .mockResolvedValue(
+          jest.fn().mockResolvedValue({ address: mockAccount.address }),
+        );
+
+      // No activity — early return path
+      jest
+        .spyOn(OnChainAccountService.prototype, 'isAccountActivated')
+        .mockResolvedValue(false);
+
+      await keyringHandler.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: entropySourceId,
+        groupIndex: 0,
+      });
+
+      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
+      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySourceId);
+
+      getWalletResolverSpy.mockClear();
+
+      // With activity — account creation path
+      jest
+        .spyOn(OnChainAccountService.prototype, 'isAccountActivated')
+        .mockResolvedValue(true);
+      batchCreateAccountSpy.mockResolvedValue([mockAccount]);
+
+      await keyringHandler.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: entropySourceId,
+        groupIndex: 0,
+      });
+
+      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
     });
 
     it('throws when create account option type is not supported', async () => {

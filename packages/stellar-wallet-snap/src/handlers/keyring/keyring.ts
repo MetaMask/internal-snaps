@@ -166,22 +166,35 @@ export class KeyringHandler implements KeyringSnapRpc {
     // activity means we've reached the end of the discoverable accounts, so we
     // return nothing and the client stops discovering.
     if (options.type === AccountCreationType.Bip44Discover) {
-      const account = await this.#accountService.deriveKeyringAccount({
-        entropySource: options.entropySource,
-        index: options.groupIndex,
-      });
+      // One entropy call at the coin-type path (m/44'/148'); the resolver is
+      // passed into batchCreate so it doesn't re-fetch.
+      const walletResolver = await this.#walletService.getWalletResolver(
+        options.entropySource,
+      );
+      const wallet = await walletResolver(options.groupIndex);
 
-      if (!(await this.#hasOnChainActivity(account, getSupportedScopes()))) {
+      if (
+        !(await this.#hasOnChainActivity(wallet.address, getSupportedScopes()))
+      ) {
         return [];
       }
+
+      const createdAccounts = await this.#accountService.batchCreate({
+        entropySource: options.entropySource,
+        fromIndex: options.groupIndex,
+        toIndex: options.groupIndex,
+        walletResolver,
+      });
+
+      return createdAccounts.map((account) => this.#toKeyringAccount(account));
     }
 
     let range;
     if (options.type === AccountCreationType.Bip44DeriveIndexRange) {
       range = options.range;
     } else {
-      // Bip44DeriveIndex | Bip44Discover — a single group index. Ranges are
-      // inclusive, so `from` and `to` are the same.
+      // Bip44DeriveIndex — a single group index. Ranges are inclusive, so
+      // `from` and `to` are the same.
       range = { from: options.groupIndex, to: options.groupIndex };
     }
 
@@ -290,13 +303,13 @@ export class KeyringHandler implements KeyringSnapRpc {
    * @returns Whether the account is activated on at least one scope.
    */
   async #hasOnChainActivity(
-    account: StellarKeyringAccount,
+    address: string,
     scopes: KnownCaip2ChainId[],
   ): Promise<boolean> {
     const activityOnScopes = await Promise.all(
       scopes.map(async (scope) =>
         this.#onChainAccountService.isAccountActivated({
-          accountAddress: account.address,
+          accountAddress: address,
           scope,
         }),
       ),
