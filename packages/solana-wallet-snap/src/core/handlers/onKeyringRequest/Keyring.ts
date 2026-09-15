@@ -1,3 +1,4 @@
+import { SLIP10Node } from '@metamask/key-tree';
 import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
@@ -6,7 +7,6 @@ import {
   SolMethod,
   SolScope,
 } from '@metamask/keyring-api';
-import { SLIP10Node } from '@metamask/key-tree';
 import type {
   CreateAccountOptions,
   EntropySourceId,
@@ -33,7 +33,7 @@ import {
   SnapError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
-import { array, assert, integer, is } from '@metamask/superstruct';
+import { array, assert, is } from '@metamask/superstruct';
 import type { CaipChainId } from '@metamask/utils';
 import type { Signature } from '@solana/kit';
 import { address as asAddress, getAddressDecoder } from '@solana/kit';
