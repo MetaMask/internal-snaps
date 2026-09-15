@@ -10,6 +10,7 @@ import {
 
 import { StellarOperationType } from '../services/transaction/api';
 import { bufferToUint8Array } from '../utils/buffer';
+import { SorobanAuthPreimageType } from './xdrTypes';
 
 /**
  * Validation struct for XDR: must be a valid base64 encoded XDR string.
@@ -146,11 +147,47 @@ export const SwapTransactionXdrStruct = refine(
 // `networkId` of any preimage we agree to sign must equal it.
 const MAINNET_NETWORK_ID = hash(bufferToUint8Array(Networks.PUBLIC, 'utf8'));
 
+export type SorobanAuthPreimageV1 = Extract<
+  xdr.HashIdPreimage,
+  { type: typeof SorobanAuthPreimageType.V1 }
+>;
+
+export type SorobanAuthPreimageV2 = Extract<
+  xdr.HashIdPreimage,
+  { type: typeof SorobanAuthPreimageType.V2 }
+>;
+
+/**
+ * Narrows a `HashIdPreimage` to the v1 Soroban authorization arm.
+ *
+ * @param preimage - Decoded `HashIdPreimage`.
+ * @returns True when `type` is `envelopeTypeSorobanAuthorization`.
+ */
+export function isSorobanAuthPreimageV1(
+  preimage: xdr.HashIdPreimage,
+): preimage is SorobanAuthPreimageV1 {
+  return preimage.type === SorobanAuthPreimageType.V1;
+}
+
+/**
+ * Narrows a `HashIdPreimage` to the CAP-71 v2 Soroban authorization arm.
+ *
+ * @param preimage - Decoded `HashIdPreimage`.
+ * @returns True when `type` is `envelopeTypeSorobanAuthorizationWithAddress`.
+ */
+export function isSorobanAuthPreimageV2(
+  preimage: xdr.HashIdPreimage,
+): preimage is SorobanAuthPreimageV2 {
+  return preimage.type === SorobanAuthPreimageType.V2;
+}
+
 /**
  * Validation struct for a SEP-43 `signAuthEntry` payload: a base64-encoded
- * `HashIdPreimage` whose discriminant is `envelopeTypeSorobanAuthorization`
- * AND whose embedded `networkId` matches Stellar mainnet. Anything else is
- * rejected at the struct level so the handler can return -3 InvalidRequest.
+ * `HashIdPreimage` whose discriminant is
+ * `envelopeTypeSorobanAuthorization` (v1) or
+ * `envelopeTypeSorobanAuthorizationWithAddress` (CAP-71 v2), AND whose
+ * embedded `networkId` matches Stellar mainnet. Anything else is rejected at
+ * the struct level so the handler can return -3 InvalidRequest.
  *
  * The `networkId` check matters because — unlike `signTransaction`, where the
  * network passphrase is supplied by the signer — `signAuthEntry` SHA-256s the
@@ -165,10 +202,14 @@ export const HashIdPreimageXdrStruct = refine(
   (value: string) => {
     try {
       const preimage = xdr.HashIdPreimage.fromXdr(value, 'base64');
-      if (preimage.type !== 'envelopeTypeSorobanAuthorization') {
+      let embeddedNetworkId;
+      if (isSorobanAuthPreimageV1(preimage)) {
+        embeddedNetworkId = preimage.sorobanAuthorization.networkId;
+      } else if (isSorobanAuthPreimageV2(preimage)) {
+        embeddedNetworkId = preimage.sorobanAuthorizationWithAddress.networkId;
+      } else {
         return 'HashIdPreimage is not a Soroban authorization preimage';
       }
-      const embeddedNetworkId = preimage.sorobanAuthorization.networkId;
       if (!new xdr.Hash(MAINNET_NETWORK_ID).equals(embeddedNetworkId)) {
         return 'HashIdPreimage networkId is not Stellar mainnet';
       }

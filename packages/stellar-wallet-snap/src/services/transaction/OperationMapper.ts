@@ -4,6 +4,7 @@ import { LiquidityPoolAsset, LiquidityPoolId, xdr } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
+import { SorobanCredentialsType } from '../../api';
 import { bufferToUint8Array } from '../../utils';
 import { StellarOperationType } from './api';
 import type { Transaction } from './Transaction';
@@ -284,10 +285,13 @@ export class AuthorizationMapper extends AbstractOperationMapper {
 
   #getAuthAddress(entry: xdr.SorobanAuthorizationEntry): string | null {
     const { credentials } = entry;
-    if (credentials.type !== 'sorobanCredentialsAddress') {
-      return null;
+    if (credentials.type === SorobanCredentialsType.Address) {
+      return getAddress(credentials.address.address);
     }
-    return getAddress(credentials.address.address);
+    if (credentials.type === SorobanCredentialsType.AddressV2) {
+      return getAddress(credentials.addressV2.address);
+    }
+    return null;
   }
 }
 
