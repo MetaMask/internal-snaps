@@ -153,6 +153,27 @@ describe('AccountService', () => {
       ).toStrictEqual(Array.from({ length: 16 }, (_, index) => index));
       expect(saveManySpy).toHaveBeenCalledTimes(1);
     });
+
+    it('skips getWalletResolver when a pre-supplied walletResolver is provided', async () => {
+      const entropySource = 'entropy-source-default';
+      const preSuppliedResolver = jest.fn(
+        async (index: number) => ({ address: `address-${index}` }) as Wallet,
+      );
+      const { getWalletResolverSpy } = getWalletServiceSpies();
+      const { getAllSpy } = getAccountsRepositorySpies();
+      getAllSpy.mockResolvedValue([]);
+
+      await accountService.batchCreate({
+        entropySource,
+        fromIndex: 0,
+        toIndex: 0,
+        walletResolver: preSuppliedResolver,
+      });
+
+      expect(getWalletResolverSpy).not.toHaveBeenCalled();
+      expect(preSuppliedResolver).toHaveBeenCalledTimes(1);
+      expect(preSuppliedResolver).toHaveBeenCalledWith(0);
+    });
   });
 
   describe('delete', () => {

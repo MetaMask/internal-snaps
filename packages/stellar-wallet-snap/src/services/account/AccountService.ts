@@ -12,8 +12,8 @@ import {
   getSnapProvider,
 } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
+import type { Wallet, WalletService } from '../wallet';
 import { getDerivationPath } from '../wallet';
-import type { WalletService } from '../wallet';
 import type { AccountsRepository } from './AccountsRepository';
 import type { StellarKeyringAccount, StellarDerivationPath } from './api';
 import { AccountNotFoundException } from './exceptions';
@@ -123,6 +123,7 @@ export class AccountService {
    * @param options.entropySource - [Optional] The entropy source to use for derivation.
    * @param options.fromIndex - [Required] The starting derivation index (inclusive).
    * @param options.toIndex - [Required] The ending derivation index (inclusive).
+   * @param options.walletResolver - [Optional] A function to resolve the wallet address for a given index.
    * @returns A Promise that resolves to accounts in index order for the full requested range.
    * Existing accounts are reused and only missing accounts are created and persisted.
    */
@@ -130,13 +131,20 @@ export class AccountService {
     entropySource?: EntropySourceId;
     fromIndex: number;
     toIndex: number;
+    walletResolver?: (index: number) => Promise<Wallet>;
   }): Promise<StellarKeyringAccount[]> {
     const { fromIndex, toIndex } = options;
-    // MetaMask client is the only caller of this method.
-    // We don't add a mutex here; the caller should ensure requests are piped in order.
-    const accounts = await this.#accountsRepository.getAll();
     const entropySource =
       options.entropySource ?? (await getDefaultEntropySource());
+
+    // Parallelise the accounts state read and entropy fetch when the resolver
+    // is not pre-supplied (discover path already provides one).
+    const [accounts, walletResolver] = options.walletResolver
+      ? [await this.#accountsRepository.getAll(), options.walletResolver]
+      : await Promise.all([
+          this.#accountsRepository.getAll(),
+          this.#walletService.getWalletResolver(entropySource),
+        ]);
 
     // 1. Index existing accounts in range by derivation index
     const existingAccountsByIndex = new Map<number, StellarKeyringAccount>();
@@ -150,11 +158,7 @@ export class AccountService {
       }
     }
 
-    // 2. Wallet resolver (single SLIP10 root — cheap repeated derivation per index)
-    const walletResolver =
-      await this.#walletService.getWalletResolver(entropySource);
-
-    // 3. Fill each index in range in derivation order; batchesAll preserves item order in its result.
+    // 2. Fill each index in range in derivation order; batchesAll preserves item order in its result.
     const rangeLength = Math.max(0, toIndex - fromIndex + 1);
     const rangeIndices = Array.from(
       { length: rangeLength },
