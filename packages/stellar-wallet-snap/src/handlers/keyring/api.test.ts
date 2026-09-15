@@ -1,6 +1,8 @@
 import { assert, create, StructError } from '@metamask/superstruct';
+import { Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
+import { buildAuthEntryPreimageXdr } from '../../api/__mocks__/xdr.fixtures';
 import type { StellarKeyringAccount } from '../../services/account';
 import { generateMockStellarKeyringAccounts } from '../../services/account/__mocks__/account.fixtures';
 import {
@@ -21,15 +23,14 @@ import {
 const mockAccounts = generateMockStellarKeyringAccounts(1, 'entropy-source-1');
 const account = mockAccounts[0] as StellarKeyringAccount;
 const keyringRequestId = '11111111-1111-4111-8111-111111111111';
-const xdr = `AAAAAgAAAADjngeX0YTNoQ15A0xC83aMm/sDnXrmLF+apmXvdmkUugAAAGQAC3gAAAAAQQAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOZfkjSFZ31vI/Nx28cC6iAFWLWcPIvJhM2NVoxmfgVTAAAAAAAAAAAAmJaAAAAAAAAAAAA=`;
-// Mainnet HashIdPreimage(envelopeTypeSorobanAuthorization), `transfer` invoke
-// against a deterministic 32-byte contract id, no sub-invocations. Round-trips
-// through `xdr.HashIdPreimage.fromXdr(..., 'base64')`.
-const authEntry = `AAAACXrDOZdUTjF10ma9AiQ5sizbFlCMARY/JuXLKj4QRal5AAAAAAdbzRUAD0JAAAAAAAAAAAECAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAAh0cmFuc2ZlcgAAAAAAAAAA`;
-// Same shape, but with the embedded `networkId` bound to testnet — used to
-// assert `HashIdPreimageXdrStruct` rejects preimages whose networkId does not
-// match Stellar mainnet.
-const testnetAuthEntry = `AAAACc7gMC1ZhE0yvcqRXIID3USzP7t+3BkFHqN6vt8o7NRyAAAAAAdbzRUAD0JAAAAAAAAAAAECAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAAh0cmFuc2ZlcgAAAAAAAAAA`;
+const transactionXdr = `AAAAAgAAAADjngeX0YTNoQ15A0xC83aMm/sDnXrmLF+apmXvdmkUugAAAGQAC3gAAAAAQQAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOZfkjSFZ31vI/Nx28cC6iAFWLWcPIvJhM2NVoxmfgVTAAAAAAAAAAAAmJaAAAAAAAAAAAA=`;
+const authEntry = buildAuthEntryPreimageXdr();
+const testnetAuthEntry = buildAuthEntryPreimageXdr({
+  networkPassphrase: Networks.TESTNET,
+});
+const v2AuthEntry = buildAuthEntryPreimageXdr({
+  boundAddress: account.address,
+});
 
 describe('MultichainMethodStruct', () => {
   it.each([
@@ -320,7 +321,7 @@ describe('SignTransactionRequestStruct', () => {
     account: account.id,
     request: {
       method: MultichainMethod.SignTransaction,
-      params: { xdr },
+      params: { xdr: transactionXdr },
     },
   };
 
@@ -337,7 +338,7 @@ describe('SignTransactionRequestStruct', () => {
           ...validSignTransactionRequest,
           request: {
             method: MultichainMethod.SignTransaction,
-            params: { xdr, opts: { address: account.address } },
+            params: { xdr: transactionXdr, opts: { address: account.address } },
           },
         },
         SignTransactionRequestStruct,
@@ -350,7 +351,7 @@ describe('SignTransactionRequestStruct', () => {
       ...validSignTransactionRequest,
       request: {
         method: MultichainMethod.SignMessage,
-        params: { xdr },
+        params: { xdr: transactionXdr },
       },
     },
     {
@@ -375,7 +376,7 @@ describe('SignTransactionResponseStruct', () => {
   it('accepts a successful signTransaction envelope', () => {
     expect(() =>
       assert(
-        { signedTxXdr: xdr, signerAddress: account.address },
+        { signedTxXdr: transactionXdr, signerAddress: account.address },
         SignTransactionResponseStruct,
       ),
     ).not.toThrow();
@@ -396,7 +397,7 @@ describe('SignTransactionResponseStruct', () => {
 
   it.each([
     { signedTxXdr: 'AAA=', signerAddress: account.address },
-    { signedTxXdr: xdr, signerAddress: 'invalid-address' },
+    { signedTxXdr: transactionXdr, signerAddress: 'invalid-address' },
   ])('rejects an invalid signTransaction response', (response) => {
     expect(() => assert(response, SignTransactionResponseStruct)).toThrow(
       StructError,
@@ -416,7 +417,15 @@ describe('SignAuthEntryRequestStruct', () => {
     },
   };
 
-  it('accepts a valid signAuthEntry keyring request', () => {
+  it.each([
+    // v1 preimage
+    validSignAuthEntryRequest,
+    // CAP-71 v2 preimage
+    {
+      ...validSignAuthEntryRequest,
+      request: { authEntry: v2AuthEntry },
+    },
+  ])('accepts a valid signAuthEntry keyring request', () => {
     expect(() =>
       assert(validSignAuthEntryRequest, SignAuthEntryRequestStruct),
     ).not.toThrow();

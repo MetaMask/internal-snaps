@@ -5,4 +5,5 @@ export * from './address';
 export * from './json';
 export * from './integer';
 export * from './xdr';
+export * from './xdrTypes';
 export * from './transactionHash';
