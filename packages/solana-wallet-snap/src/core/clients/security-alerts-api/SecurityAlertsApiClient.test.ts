@@ -11,12 +11,12 @@ describe('SecurityAlertsApiClient', () => {
 
   beforeEach(() => {
     mockConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         securityAlertsApi: {
           baseUrl: 'https://security-alerts-api-mock-url.com',
         },
-      }),
-    } as unknown as ConfigProvider;
+      },
+    } as ConfigProvider;
 
     client = new SecurityAlertsApiClient(
       mockConfigProvider,

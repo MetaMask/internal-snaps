@@ -20,7 +20,7 @@ describe('PriceApiClient', () => {
     mockFetch = jest.fn();
 
     const mockConfigProvider: ConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         priceApi: {
           baseUrl: 'https://some-mock-url.com',
           chunkSize: 50,
@@ -28,8 +28,8 @@ describe('PriceApiClient', () => {
             spotPrices: 0,
           },
         },
-      }),
-    } as unknown as ConfigProvider;
+      },
+    } as ConfigProvider;
 
     mockCache = new InMemoryCache(mockLogger);
 
@@ -231,7 +231,7 @@ describe('PriceApiClient', () => {
   describe('security', () => {
     it('rejects invalid base URLs in constructor', () => {
       const invalidConfigProvider = {
-        get: jest.fn().mockReturnValue({
+        config: {
           priceApi: {
             baseUrl: 'invalid-url',
             chunkSize: 50,
@@ -239,8 +239,8 @@ describe('PriceApiClient', () => {
               spotPrices: 0,
             },
           },
-        }),
-      } as unknown as ConfigProvider;
+        },
+      } as ConfigProvider;
 
       expect(
         () =>

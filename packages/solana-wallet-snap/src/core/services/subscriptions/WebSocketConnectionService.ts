@@ -70,7 +70,7 @@ export class WebSocketConnectionService {
       maxReconnectAttempts,
       reconnectDelayMilliseconds,
       closeConnectionsGracePeriodMilliseconds,
-    } = configProvider.get().subscriptions;
+    } = configProvider.config.subscriptions;
 
     this.#connectionRepository = connectionRepository;
     this.#analyticsService = analyticsService;
@@ -305,7 +305,7 @@ export class WebSocketConnectionService {
 
     // Here, we cannot rely on this.#connectionRepository.getById() because the connection doesn't exist anymore,
     // so we need to find the network from the event origin
-    const { networks } = this.#configProvider.get();
+    const { networks } = this.#configProvider.config;
     const network = networks.find((item) =>
       item.webSocketUrl.startsWith(origin),
     );
