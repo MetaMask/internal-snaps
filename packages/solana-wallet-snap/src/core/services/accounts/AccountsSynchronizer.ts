@@ -31,7 +31,9 @@ export class AccountsSynchronizer {
 
   async synchronize(accounts?: SolanaKeyringAccount[]): Promise<void> {
     const accountsToSync = accounts ?? (await this.#accountsService.getAll());
-    const key = [...accountsToSync.map((a) => a.id)].sort().join(',');
+    const key = [...accountsToSync.map((a) => a.id)]
+      .sort((a, b) => a.localeCompare(b))
+      .join(',');
 
     return this.#coalescer.run(key, async () => {
       this.#logger.info('Synchronizing accounts', accountsToSync);
