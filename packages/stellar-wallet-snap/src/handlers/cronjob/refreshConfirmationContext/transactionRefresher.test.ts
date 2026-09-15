@@ -194,10 +194,6 @@ describe('ConfirmationTransactionRefresher', () => {
         'confirmation.txnError.insufficientBalanceToCoverBaseReserve',
     },
     {
-      error: new RequiresMemoException(toAddress),
-      errorMessage: 'confirmation.txnError.requiresMemo',
-    },
-    {
       error: new InvalidAmountForCreateAccountException('0.5'),
       errorMessage: 'confirmation.txnError.invalidCreateAccountAmount',
     },
@@ -262,6 +258,26 @@ describe('ConfirmationTransactionRefresher', () => {
       });
     },
   );
+
+  it('marks RequiresMemo as recoverable without nulling securityScanRequest', async () => {
+    const { refresher, transactionService } = setup();
+    transactionService.createValidatedSendTransaction.mockRejectedValueOnce(
+      new RequiresMemoException(toAddress),
+    );
+
+    const result = await refresher.refresh(createTransactionContext());
+
+    expect(result).toStrictEqual({
+      result: {
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: 'confirmation.txnError.requiresMemo',
+        scanFetchStatus: FetchStatus.Error,
+      },
+      reschedule: false,
+      recoverable: true,
+    });
+    expect(result?.result.securityScanRequest).toBeUndefined();
+  });
 
   it('re-validates a change-trust opt-in transaction', async () => {
     const { refresher, transactionService } = setup();
