@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING** Bump `@solana/kit` from `^6.9.0` to `^8.3.0` and the `@solana-program/*` clients (`compute-budget` `^0.18.1`, `system` `^0.14.1`, `token` `^0.16.1`, `token-2022` `^0.17.0`) to their Kit 8-compatible versions. ([#303](https://github.com/MetaMask/internal-snaps/pull/303))
+- **BREAKING:** Bump `@solana/kit` from `^6.9.0` to `^8.3.0` and the `@solana-program/*` clients (`compute-budget` `^0.18.1`, `system` `^0.14.1`, `token` `^0.16.1`, `token-2022` `^0.17.0`) to their Kit 8-compatible versions. ([#303](https://github.com/MetaMask/internal-snaps/pull/303))
 - **BREAKING** Update the Solana Name Service integration to SNS SDK v1 and the Kit 6.9-compatible Solana program clients ([#271](https://github.com/MetaMask/internal-snaps/pull/271))
 - Migrate `trackError` and `withCatchAndThrowSnapError` to `@metamask/snap-networks-utils` `createSnapErrorHandling`, and add `getSnapProvider` for Snap RPC access
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
