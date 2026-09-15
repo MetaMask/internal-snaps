@@ -1,2 +1,2 @@
-export { ConfigProvider } from './ConfigProvider';
-export type { NetworkConfig } from './ConfigProvider';
+export { ConfigProvider, configProvider } from './ConfigProvider';
+export type { Config, NetworkConfig } from './ConfigProvider';
