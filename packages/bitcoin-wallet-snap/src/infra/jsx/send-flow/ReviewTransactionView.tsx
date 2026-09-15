@@ -14,7 +14,7 @@ import {
   Link,
 } from '@metamask/snaps-sdk/jsx';
 
-import { Config } from '../../../config';
+import { configProvider } from '../../../config';
 import type { Messages, ReviewTransactionContext } from '../../../entities';
 import {
   BlockTime,
@@ -30,6 +30,8 @@ import {
   isValidSnapLinkProtocol,
   translate,
 } from '../format';
+
+const { targetBlocksConfirmation } = configProvider.get();
 
 type ReviewTransactionViewProps = {
   context: ReviewTransactionContext;
@@ -98,7 +100,7 @@ export const ReviewTransactionView: SnapComponent<
             tooltip={t('transactionSpeedTooltip')}
           >
             <SnapText>
-              {`${Config.targetBlocksConfirmation * BlockTime[network]} ${t(
+              {`${targetBlocksConfirmation * BlockTime[network]} ${t(
                 'minutes',
               )}`}
             </SnapText>

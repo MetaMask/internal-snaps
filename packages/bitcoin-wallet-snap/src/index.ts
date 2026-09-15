@@ -11,7 +11,7 @@ import type {
   OnActiveHandler,
 } from '@metamask/snaps-sdk';
 
-import { Config } from './config';
+import { configProvider } from './config';
 import {
   KeyringHandler,
   CronHandler,
@@ -35,10 +35,12 @@ import {
 } from './use-cases';
 import logger from './utils/logger';
 
+const config = configProvider.get();
+
 // Infra layer
-const snapClient = new SnapClientAdapter(logger, Config.encrypt);
-const chainClient = new EsploraClientAdapter(Config.chain);
-const assetRatesClient = new PriceApiClientAdapter(Config.priceApi);
+const snapClient = new SnapClientAdapter(logger, config.encrypt);
+const chainClient = new EsploraClientAdapter(config.chain);
+const assetRatesClient = new PriceApiClientAdapter(config.priceApi);
 const translator = new LocalTranslatorAdapter();
 const middleware = new HandlerMiddleware(logger, snapClient, translator);
 
@@ -60,8 +62,8 @@ const accountsUseCases = new AccountUseCases(
   accountRepository,
   confirmationRepository,
   chainClient,
-  Config.fallbackFeeRate,
-  Config.targetBlocksConfirmation,
+  config.fallbackFeeRate,
+  config.targetBlocksConfirmation,
 );
 const sendFlowUseCases = new SendFlowUseCases(
   logger,
@@ -71,9 +73,9 @@ const sendFlowUseCases = new SendFlowUseCases(
   sendFlowRepository,
   chainClient,
   assetRatesClient,
-  Config.targetBlocksConfirmation,
-  Config.fallbackFeeRate,
-  Config.ratesRefreshInterval,
+  config.targetBlocksConfirmation,
+  config.fallbackFeeRate,
+  config.ratesRefreshInterval,
 );
 const confirmationUseCases = new ConfirmationUseCases(logger, snapClient);
 
@@ -85,7 +87,7 @@ const keyringRequestHandler = new KeyringRequestHandler(
 const keyringHandler = new KeyringHandler(
   keyringRequestHandler,
   accountsUseCases,
-  Config.defaultAddressType,
+  config.defaultAddressType,
   snapClient,
   logger,
 );
