@@ -19,7 +19,7 @@ export const XdrStruct = refine(
   'valid_xdr',
   (value: string) => {
     try {
-      if (!xdr.TransactionEnvelope.validateXDR(value, 'base64')) {
+      if (!xdr.TransactionEnvelope.validateXdr(value, 'base64')) {
         return 'Invalid XDR';
       }
       return true;
@@ -36,7 +36,7 @@ export const XdrStruct = refine(
  * @returns Operation type strings in envelope order.
  */
 function getTransactionOperationTypes(value: string): string[] {
-  const decoded = StellarTransactionBuilder.fromXDR(value, Networks.PUBLIC);
+  const decoded = StellarTransactionBuilder.fromXdr(value, Networks.PUBLIC);
   const operations =
     decoded instanceof FeeBumpTransaction
       ? decoded.innerTransaction.operations
@@ -164,15 +164,12 @@ export const HashIdPreimageXdrStruct = refine(
   'valid_soroban_auth_preimage',
   (value: string) => {
     try {
-      const preimage = xdr.HashIdPreimage.fromXDR(value, 'base64');
-      if (
-        preimage.switch() !==
-        xdr.EnvelopeType.envelopeTypeSorobanAuthorization()
-      ) {
+      const preimage = xdr.HashIdPreimage.fromXdr(value, 'base64');
+      if (preimage.type !== 'envelopeTypeSorobanAuthorization') {
         return 'HashIdPreimage is not a Soroban authorization preimage';
       }
-      const embeddedNetworkId = preimage.sorobanAuthorization().networkId();
-      if (!MAINNET_NETWORK_ID.equals(embeddedNetworkId)) {
+      const embeddedNetworkId = preimage.sorobanAuthorization.networkId;
+      if (!new xdr.Hash(MAINNET_NETWORK_ID).equals(embeddedNetworkId)) {
         return 'HashIdPreimage networkId is not Stellar mainnet';
       }
       return true;

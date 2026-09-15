@@ -70,7 +70,7 @@ describe('ComputeFeeHandler', () => {
         sequence: onChainAccount.sequenceNumber,
       },
     });
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
 
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();

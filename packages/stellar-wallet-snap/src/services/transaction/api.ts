@@ -49,9 +49,15 @@ export const StellarOperationType = {
   PathPaymentStrictSend: 'pathPaymentStrictSend',
   Payment: 'payment',
   RestoreFootprint: 'restoreFootprint',
-  RevokeSponsorship: 'revokeSponsorship',
   SetOptions: 'setOptions',
   SetTrustLineFlags: 'setTrustLineFlags',
+  RevokeAccountSponsorship: 'revokeAccountSponsorship',
+  RevokeClaimableBalanceSponsorship: 'revokeClaimableBalanceSponsorship',
+  RevokeDataSponsorship: 'revokeDataSponsorship',
+  RevokeLiquidityPoolSponsorship: 'revokeLiquidityPoolSponsorship',
+  RevokeOfferSponsorship: 'revokeOfferSponsorship',
+  RevokeSignerSponsorship: 'revokeSignerSponsorship',
+  RevokeTrustlineSponsorship: 'revokeTrustlineSponsorship',
 } as const;
 
 export type StellarOperationType =

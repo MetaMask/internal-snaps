@@ -10,7 +10,7 @@ import type { Horizon } from '@stellar/stellar-sdk';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
-import { toCaip19Sep41AssetId } from '../../utils';
+import { toCaip19Sep41AssetId, bufferToUint8Array } from '../../utils';
 import { logger } from '../../utils/logger';
 import { getSnapProvider } from '../../utils/snap';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
@@ -70,10 +70,10 @@ function buildOnChainPaymentTransaction(params: {
 
   return Transaction.fromHorizon({
     horizonTransaction: {
-      id: inner.hash().toString('hex'),
-      hash: inner.hash().toString('hex'),
+      id: bufferToUint8Array(inner.hash()).toString('hex'),
+      hash: bufferToUint8Array(inner.hash()).toString('hex'),
 
-      envelope_xdr: inner.toXDR(),
+      envelope_xdr: inner.toXdr(),
 
       fee_charged: inner.fee,
       successful: true,

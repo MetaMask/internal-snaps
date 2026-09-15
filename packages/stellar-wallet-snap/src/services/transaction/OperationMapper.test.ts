@@ -515,6 +515,115 @@ describe('OperationMapper', () => {
     expect(op?.params).toStrictEqual([]);
   });
 
+  it('maps revokeAccountSponsorship operation', () => {
+    const account = Keypair.random().publicKey();
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeAccountSponsorship({ account }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeAccountSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'account', value: account, type: 'address' },
+    ]);
+  });
+
+  it('maps revokeTrustlineSponsorship operation', () => {
+    const account = Keypair.random().publicKey();
+    const issuer = Keypair.random().publicKey();
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeTrustlineSponsorship({
+        account,
+        asset: new Asset('USD', issuer),
+      }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeTrustlineSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'account', value: account, type: 'address' },
+      { key: 'asset', value: `USD:${issuer}`, type: 'asset' },
+    ]);
+  });
+
+  it('maps revokeOfferSponsorship operation', () => {
+    const seller = Keypair.random().publicKey();
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeOfferSponsorship({ seller, offerId: '1234' }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeOfferSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'seller', value: seller, type: 'address' },
+      { key: 'offerId', value: '1234', type: 'text' },
+    ]);
+  });
+
+  it('maps revokeDataSponsorship operation', () => {
+    const account = Keypair.random().publicKey();
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeDataSponsorship({ account, name: 'foo' }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeDataSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'account', value: account, type: 'address' },
+      { key: 'name', value: 'foo', type: 'text' },
+    ]);
+  });
+
+  it('maps revokeClaimableBalanceSponsorship operation', () => {
+    const balanceId =
+      '00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be';
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeClaimableBalanceSponsorship({ balanceId }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeClaimableBalanceSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'balanceId', value: balanceId, type: 'text' },
+    ]);
+  });
+
+  it('maps revokeLiquidityPoolSponsorship operation', () => {
+    const liquidityPoolId =
+      'dd7b1ab831c273310ddbec6f97870aa83c2a7c2f9c0f5978c2e2f0738d5066e8';
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeLiquidityPoolSponsorship({ liquidityPoolId }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeLiquidityPoolSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'liquidityPoolId', value: liquidityPoolId, type: 'text' },
+    ]);
+  });
+
+  it('maps revokeSignerSponsorship operation', () => {
+    const account = Keypair.random().publicKey();
+    const signerKey = Keypair.random().publicKey();
+    const wrapped = buildRawOpTransaction(
+      Operation.revokeSignerSponsorship({
+        account,
+        signer: { ed25519PublicKey: signerKey },
+      }),
+    );
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.type).toBe('revokeSignerSponsorship');
+    expect(op?.params).toStrictEqual([
+      { key: 'account', value: account, type: 'address' },
+      {
+        key: 'signer',
+        value: JSON.stringify({ ed25519PublicKey: signerKey }),
+        type: 'text',
+      },
+    ]);
+  });
+
   it('maps clawback operation', () => {
     const issuer = Keypair.random().publicKey();
     const from = Keypair.random().publicKey();

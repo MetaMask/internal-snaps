@@ -1093,9 +1093,7 @@ describe('NetworkService', () => {
       sendTransactionSpy.mockResolvedValue({
         status: 'ERROR',
         errorResult: {
-          result: jest.fn().mockReturnValue({
-            switch: () => ({ name: KnownRpcError.TxBadSeq }),
-          }),
+          result: { type: KnownRpcError.TxBadSeq },
         },
       } as never);
       const mockTransaction = createMockTransaction();
@@ -1110,9 +1108,7 @@ describe('NetworkService', () => {
       sendTransactionSpy.mockResolvedValue({
         status: 'ERROR',
         errorResult: {
-          result: jest.fn().mockReturnValue({
-            switch: () => ({ name: KnownRpcError.TxBadAuth }),
-          }),
+          result: { type: KnownRpcError.TxBadAuth },
         },
       } as never);
       const mockTransaction = createMockTransaction();
@@ -1214,7 +1210,12 @@ describe('NetworkService', () => {
       ).rejects.toThrow(SimulationException);
 
       expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
-      expect(simulateTransactionSpy).toHaveBeenCalledWith(mockInvoke.getRaw());
+      expect(simulateTransactionSpy).toHaveBeenCalledWith(
+        mockInvoke.getRaw(),
+        undefined,
+        undefined,
+        false,
+      );
     });
 
     it('throws InvalidInvokeContractStructureException when the envelope has more than one invokeHostFunction operation', async () => {
@@ -1284,7 +1285,7 @@ describe('NetworkService', () => {
       });
 
       expect(simulateTxSpy).toHaveBeenCalledTimes(1);
-      expect(first.getRaw().toXDR()).toBe(second.getRaw().toXDR());
+      expect(first.getRaw().toXdr()).toBe(second.getRaw().toXdr());
       simulateTxSpy.mockRestore();
     });
 
