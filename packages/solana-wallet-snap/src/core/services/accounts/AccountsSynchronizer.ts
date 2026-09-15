@@ -44,9 +44,7 @@ export class AccountsSynchronizer {
             this.#assetsService.fetch(account),
           ),
         )
-      )
-        .map((item) => (item.status === 'fulfilled' ? item.value : []))
-        .flat();
+      ).flatMap((item) => (item.status === 'fulfilled' ? item.value : []));
 
       await this.#assetsService.saveMany(assets);
 
