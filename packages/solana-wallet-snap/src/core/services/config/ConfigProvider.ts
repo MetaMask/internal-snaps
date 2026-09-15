@@ -1,14 +1,13 @@
 /* eslint-disable no-restricted-globals */
-import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
-import type { Infer } from '@metamask/superstruct';
 import {
-  array,
-  coerce,
-  create,
-  enums,
-  object,
-  string,
-} from '@metamask/superstruct';
+  BaseConfigProvider,
+  UrlStruct,
+  commaSeparatedListOf,
+  LogLevelStruct,
+  parseEnv,
+} from '@metamask/snap-networks-utils';
+import type { Infer } from '@metamask/superstruct';
+import { enums, object, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { uniq } from 'lodash';
 
@@ -23,25 +22,13 @@ const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<string, Network[]> = {
   test: [Network.Localnet],
 };
 
-const CommaSeparatedListOfUrlsStruct = coerce(
-  array(UrlStruct),
-  string(),
-  (value: string) => value.split(','),
-);
-
-const CommaSeparatedListOfStringsStruct = coerce(
-  array(string()),
-  string(),
-  (value: string) => value.split(','),
-);
-
 const EnvStruct = object({
   ENVIRONMENT: enums(['local', 'test', 'production']),
-  LOG_LEVEL: enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
-  RPC_URL_MAINNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_DEVNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_TESTNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LOCALNET_LIST: CommaSeparatedListOfStringsStruct,
+  LOG_LEVEL: LogLevelStruct,
+  RPC_URL_MAINNET_LIST: commaSeparatedListOf(UrlStruct),
+  RPC_URL_DEVNET_LIST: commaSeparatedListOf(UrlStruct),
+  RPC_URL_TESTNET_LIST: commaSeparatedListOf(UrlStruct),
+  RPC_URL_LOCALNET_LIST: commaSeparatedListOf(string()),
   RPC_WEB_SOCKET_URL_MAINNET: UrlStruct,
   RPC_WEB_SOCKET_URL_DEVNET: UrlStruct,
   RPC_WEB_SOCKET_URL_TESTNET: UrlStruct,
@@ -64,7 +51,7 @@ export type NetworkConfig = (typeof Networks)[Network] & {
 
 export type Config = {
   environment: string;
-  logLevel: LogLevel;
+  logLevel: Env['LOG_LEVEL'];
   networks: NetworkConfig[];
   explorerBaseUrl: string;
   priceApi: {
@@ -105,24 +92,15 @@ export type Config = {
  * A utility class that provides the configuration of the snap.
  *
  * @example
- * const configProvider = new ConfigProvider();
  * const { networks } = configProvider.get();
  * @example
  * // You can use utility methods for more advanced manipulations.
  * const network = configProvider.getNetworkBy('caip2Id', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
  */
-export class ConfigProvider {
-  readonly #config: Config;
+export class ConfigProvider extends BaseConfigProvider<Env, Config> {
+  #activeNetworks: Network[] = [];
 
-  #activeNetworks: Network[];
-
-  constructor() {
-    const environment = this.#parseEnvironment();
-    this.#config = this.#buildConfig(environment);
-    this.#activeNetworks = [];
-  }
-
-  #parseEnvironment() {
+  protected parseEnvironment(): Env {
     const rawEnvironment = {
       ENVIRONMENT: process.env.ENVIRONMENT,
       LOG_LEVEL: process.env.LOG_LEVEL,
@@ -145,10 +123,10 @@ export class ConfigProvider {
     };
 
     // Validate and parse them before returning
-    return create(rawEnvironment, EnvStruct);
+    return parseEnv(rawEnvironment, EnvStruct);
   }
 
-  #buildConfig(environment: Env): Config {
+  protected buildConfig(environment: Env): Config {
     return {
       environment: environment.ENVIRONMENT,
       logLevel: environment.LOG_LEVEL,
@@ -226,10 +204,6 @@ export class ConfigProvider {
     };
   }
 
-  public get(): Config {
-    return this.#config;
-  }
-
   public getNetworkBy(key: keyof NetworkConfig, value: string): NetworkConfig {
     const network = this.get().networks.find((item) => item[key] === value);
     if (!network) {
@@ -246,7 +220,7 @@ export class ConfigProvider {
 
     const baseNetworks = uniq([
       Network.Mainnet,
-      ...(ENVIRONMENT_TO_ACTIVE_NETWORKS[this.#config.environment] ?? []),
+      ...(ENVIRONMENT_TO_ACTIVE_NETWORKS[this.get().environment] ?? []),
     ]);
 
     try {
@@ -260,8 +234,15 @@ export class ConfigProvider {
       // Set the active networks
       this.#activeNetworks = activeNetworks;
       return this.#activeNetworks;
-    } catch (error) {
+    } catch {
       return baseNetworks;
     }
   }
 }
+
+/**
+ * The configuration provider of the snap.
+ * The environment is parsed and the config built exactly once, when this
+ * module is imported.
+ */
+export const configProvider = new ConfigProvider();
