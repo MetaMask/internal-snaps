@@ -7,6 +7,7 @@ import { get, groupBy } from 'lodash';
 
 import type { AssetEntity } from '../../../entities';
 import type { SolanaKeyringAccount } from '../../../entities/keyring-account';
+import { MAX_SUPPORTED_TRANSACTION_VERSION } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import type { SolanaTransaction } from '../../types/solana';
 import { trackError } from '../../utils/errors';
@@ -52,7 +53,7 @@ export class TransactionsService {
       .getRpc(scope)
       .getTransaction(asSignature(signature), {
         encoding: 'json',
-        maxSupportedTransactionVersion: 1,
+        maxSupportedTransactionVersion: MAX_SUPPORTED_TRANSACTION_VERSION,
       })
       .send();
 
@@ -184,7 +185,7 @@ export class TransactionsService {
           .getRpc(asset.network)
           .getTransaction(asSignature(signatureResponse.signature), {
             encoding: 'json',
-            maxSupportedTransactionVersion: 1,
+            maxSupportedTransactionVersion: MAX_SUPPORTED_TRANSACTION_VERSION,
           })
           .send();
         return {
