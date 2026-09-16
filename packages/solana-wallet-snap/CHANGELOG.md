@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING:** Preserve dapp-origin `signTransaction` and `signAndSendTransaction` payloads by signing the decoded transaction directly ([#156](https://github.com/MetaMask/internal-snaps/pull/156))
 - Prevent signing dapp transactions with expired blockhashes, and refresh the blockhash for MetaMask-originated transactions before signing. ([#183](https://github.com/MetaMask/internal-snaps/pull/183))
-- Tolerate unknown fields in the Price API spot price response so that new fields added by the API no longer fail validation and break spot price lookups ([#XXX](https://github.com/MetaMask/internal-snaps/pull/XXX))
+- Tolerate unknown fields in the Price API spot price and Token API metadata responses so that new fields
+  added by the API no longer fail validation ([#XXX](https://github.com/MetaMask/internal-snaps/pull/XXX))
 
 ## [6.0.0]
 
