@@ -91,8 +91,7 @@ jobs:
       matrix:
         node-version: [22.x, 24.x]
     outputs:
-      child-workspace-package-names: ${{ steps.workspace-package-names.outputs.child-workspace-package-names }}
-      child-workspace-package-directories: ${{ steps.workspace-package-names.outputs.child-workspace-package-directories }}
+      child-workspace-packages: ${{ steps.workspace-packages.outputs.child-workspace-packages }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
@@ -101,12 +100,11 @@ jobs:
           cache-node-modules: true
           force-setup: true
           node-version: ${{ matrix.node-version }}
-      - name: Fetch workspace package names
-        id: workspace-package-names
+      - name: Fetch workspace packages
+        id: workspace-packages
         run: |
           workspaces="$(yarn workspaces list --no-private --json)"
-          echo "child-workspace-package-names=$(echo "$workspaces" | jq --slurp --raw-output 'map(.name) | @json')" >> "$GITHUB_OUTPUT"
-          echo "child-workspace-package-directories=$(echo "$workspaces" | jq --slurp --raw-output 'map(.location | sub("^packages/"; "")) | @json')" >> "$GITHUB_OUTPUT"
+          echo "child-workspace-packages=$(echo "$workspaces" | jq --slurp --raw-output 'map({name, directory: (.location | sub("^packages/"; ""))}) | @json')" >> "$GITHUB_OUTPUT"
         shell: bash
 
   lint:
@@ -143,14 +141,14 @@ jobs:
     strategy:
       matrix:
         node-version: [24.x]
-        package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
+        package: ${{ fromJson(needs.prepare.outputs.child-workspace-packages) }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
-      - run: yarn workspace ${{ matrix.package-name }} changelog:validate
+      - run: yarn workspace ${{ matrix.package.name }} changelog:validate
       - name: Require clean working directory
         uses: ./.github/actions/require-clean-working-directory
 
@@ -217,8 +215,7 @@ jobs:
     strategy:
       matrix:
         node-version: [22.x, 24.x]
-        package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
-        package-directory: ${{ fromJson(needs.prepare.outputs.child-workspace-package-directories) }}
+        package: ${{ fromJson(needs.prepare.outputs.child-workspace-packages) }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v3
@@ -230,7 +227,7 @@ jobs:
         with:
           name: package-dist-${{ github.sha }}
           path: packages
-      - run: yarn workspace ${{ matrix.package-name }} run test
+      - run: yarn workspace ${{ matrix.package.name }} run test
       - name: Prepare coverage for SonarCloud
         # Only one Node version uploads coverage so lcov files are not merged
         # across runs. Jest writes "SF:" paths relative to the package, but
@@ -238,7 +235,7 @@ jobs:
         # the package directory.
         if: matrix.node-version == '22.x'
         env:
-          PACKAGE_DIRECTORY: ${{ matrix.package-directory }}
+          PACKAGE_DIRECTORY: ${{ matrix.package.directory }}
         run: |
           lcov_file="packages/${PACKAGE_DIRECTORY}/coverage/lcov.info"
           if [ -f "$lcov_file" ]; then
@@ -253,8 +250,8 @@ jobs:
         # This is actions/upload-artifact@v7
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: coverage-${{ matrix.package-directory }}
-          path: packages/${{ matrix.package-directory }}/coverage/lcov.info
+          name: coverage-${{ matrix.package.directory }}
+          path: packages/${{ matrix.package.directory }}/coverage/lcov.info
           if-no-files-found: ignore
           retention-days: 1
       - name: Require clean working directory
