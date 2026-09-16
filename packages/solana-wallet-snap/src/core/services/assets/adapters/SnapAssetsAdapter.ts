@@ -6,7 +6,12 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
@@ -22,11 +27,8 @@ import { address as asAddress } from '@solana/kit';
 import type {
   AssetEntity,
   NativeAsset,
-  SolanaKeyringAccount,
   TokenAsset,
 } from '../../../../entities';
-import type { ICache } from '../../../caching/ICache';
-import { useCache } from '../../../caching/useCache';
 import type { NftApiClient } from '../../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../../clients/token-api-client/TokenApiClient';
 import { Network, SolanaCaip19Tokens } from '../../../constants/solana';
@@ -37,6 +39,7 @@ import type {
   TokenCaipAssetType,
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
+import { useCache } from '../../../utils/caching';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';
@@ -53,7 +56,7 @@ type TokenAccountWithMetadata = {
   token: AccountInfoWithPubkey<AccountInfoBase & TokenAccountInfoWithJsonData>;
   scope: Network;
   assetType: TokenCaipAssetType;
-  keyringAccount: SolanaKeyringAccount;
+  keyringAccount: ExtendedKeyringAccount;
 } & Serializable;
 
 export class SnapAssetsAdapter {
@@ -245,7 +248,7 @@ export class SnapAssetsAdapter {
    * @returns The token accounts augmented with the scope and the caip-19 asset type for convenience.
    */
   async #fetchTokenAccountsMultiple(
-    accounts: SolanaKeyringAccount[],
+    accounts: ExtendedKeyringAccount[],
     programIds: Address[] = [TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS],
     scopes: Network[] = [Network.Mainnet],
   ): Promise<TokenAccountWithMetadata[]> {
@@ -261,14 +264,18 @@ export class SnapAssetsAdapter {
     );
 
     const fetchTokenAccountsCached = useCache<
-      [SolanaKeyringAccount, Address, Network],
+      [ExtendedKeyringAccount, Address, Network],
       TokenAccountWithMetadata[]
     >(this.#fetchTokenAccounts.bind(this), this.#cache, {
       functionName: 'SnapAssetsAdapter:fetchTokenAccounts',
       ttlMilliseconds:
         SnapAssetsAdapter.cacheTtlsMilliseconds.tokenAccountsByOwner,
       generateCacheKey: (functionName, args) => {
-        const [account, programId, scope] = args;
+        const [account, programId, scope] = args as [
+          ExtendedKeyringAccount,
+          Address,
+          Network,
+        ];
         return `${functionName}:${account.id}:${programId}:${scope}`;
       },
     });
@@ -298,7 +305,7 @@ export class SnapAssetsAdapter {
    * @returns The token accounts augmented with the scope and the caip-19 asset type for convenience.
    */
   async #fetchTokenAccounts(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     programId: Address = TOKEN_PROGRAM_ADDRESS,
     scope: Network = Network.Mainnet,
   ): Promise<TokenAccountWithMetadata[]> {
@@ -334,7 +341,7 @@ export class SnapAssetsAdapter {
    * @param account - The account to get the balances for.
    * @returns The balances and metadata of the account for the given assets.
    */
-  async fetch(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
+  async fetch(account: ExtendedKeyringAccount): Promise<AssetEntity[]> {
     const [nativeAssets, tokenAccounts] = await Promise.all([
       this.#fetchNativeAssets(account),
       this.#fetchTokenAccountsMultiple(
@@ -390,7 +397,7 @@ export class SnapAssetsAdapter {
   }
 
   async #fetchNativeAssets(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<NativeAsset[]> {
     const nativeAssetsTypes = await this.getNativeAssetTypes();
 
@@ -422,7 +429,7 @@ export class SnapAssetsAdapter {
   }
 
   async #fetchNftAssets(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     assetIds: NftCaipAssetType[],
   ): Promise<Record<CaipAssetType, Balance>> {
     const accountAddress = asAddress(account.address);
@@ -712,7 +719,7 @@ export class SnapAssetsAdapter {
     );
   }
 
-  async findByAccount(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
+  async findByAccount(account: ExtendedKeyringAccount): Promise<AssetEntity[]> {
     const { id: keyringAccountId, address } = account;
 
     const savedAssets =

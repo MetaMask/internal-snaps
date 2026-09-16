@@ -2,12 +2,15 @@
 
 import type { CaipAssetType } from '@metamask/keyring-api';
 import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
 import { array, assert } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
-import type { ICache } from '../../caching/ICache';
 import type { ConfigProvider } from '../../services/config';
 import logger from '../../utils/logger';
 import type { SpotPrices, VsCurrencyParam } from './types';

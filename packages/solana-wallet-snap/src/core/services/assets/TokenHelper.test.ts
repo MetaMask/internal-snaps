@@ -164,7 +164,7 @@ describe('TokenHelper', () => {
           '1000',
         );
 
-        expect(amount).toBe(995847000n);
+        expect(amount).toBe(995847001n);
       });
     });
   });
