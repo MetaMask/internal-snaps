@@ -157,7 +157,7 @@ jobs:
         uses: actions/checkout@v7
       - name: Restore build artifacts
         if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v8.0.1
         with:
           name: package-dist-${{ github.sha }}
           path: packages
