@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.
 - Reveal and persist the wallet's own output scripts when signing a PSBT, so change from partner-supplied templates is always covered by routine sync ([#225](https://github.com/MetaMask/internal-snaps/pull/225))
+- Report the recipient of a Bitcoin self-send (a send to one of the account's own addresses)
+  - Send movements previously dropped every output owned by the account, which removed both the recipient and the change output of a self-send and left `to` empty. Outputs are now filtered on the internal (change) keychain, so self-send recipients are kept while change is still excluded.
 - Ensure certain errors are stringified correctly ([#179](https://github.com/MetaMask/internal-snaps/pull/179))
 - Keep the template output order when filling a PSBT ([#157](https://github.com/MetaMask/internal-snaps/pull/157))
   - A template output belonging to the wallet is now only used as the drain output when it is the last output. Previously any such output was moved to the end of the transaction, silently reordering templates that place change before another output.

@@ -191,7 +191,9 @@ export function mapToTransaction(
   // - from: empty as irrevelant because we might have hundreds of inputs in a tx. Point to explorer for details.
   if (isSend) {
     for (const txout of tx.output) {
-      if (!account.isMine(txout.script_pubkey)) {
+      // Only the change output is filtered out. Outputs to an address we own
+      // (e.g. a self-send) are real recipients, so they must be kept.
+      if (!account.isChange(txout.script_pubkey)) {
         const recipient = mapToAssetMovement(txout, network);
         if (recipient) {
           transaction.to.push(recipient);
@@ -239,7 +241,9 @@ export function mapPsbtToTransaction(
 
   const getRecipients = (txOut: TxOut[]): TransactionRecipient[] => {
     return txOut.flatMap((output) => {
-      if (account.isMine(output.script_pubkey)) {
+      // Only the change output is filtered out; outputs to an address we own
+      // (e.g. a self-send) are real recipients.
+      if (account.isChange(output.script_pubkey)) {
         return [];
       }
       const recipient = mapToAssetMovement(output, account.network);
