@@ -413,7 +413,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
    * @param params.request - The original changeTrustOpt JSON-RPC request.
    * @param params.account - The sender keyring account.
    * @param params.assetMetadata - Metadata for the asset being opted in or out.
-   * @param params.error - The pre-submit error whose message is shown in the banner. After this dialog closes, the caller throws {@link UserRejectedRequestError}.
+   * @param params.error - The pre-submit validation error to display.
    */
   async #displayDialogWithErrorMessage(params: {
     request: ChangeTrustOptJsonRpcRequest;
