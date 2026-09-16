@@ -31,6 +31,12 @@ describe('isUnsupportedSimulationError', () => {
     );
   });
 
+  it('returns false when a revert message contains the capability phrase', () => {
+    expect(
+      isUnsupportedSimulationError('Reverted: Unsupported call type'),
+    ).toBe(false);
+  });
+
   it('returns false when the error message is missing', () => {
     expect(isUnsupportedSimulationError(undefined)).toBe(false);
     expect(isUnsupportedSimulationError(null)).toBe(false);

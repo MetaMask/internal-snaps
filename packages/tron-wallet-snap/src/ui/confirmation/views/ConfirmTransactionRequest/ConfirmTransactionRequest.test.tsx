@@ -109,6 +109,32 @@ describe('ConfirmTransactionRequest', () => {
     expect(result).toBeDefined();
   });
 
+  it('renders scan errors when useSecurityAlerts is false', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      preferences: {
+        ...mockPreferences,
+        useSecurityAlerts: false,
+      },
+      scan: {
+        ...mockScanResult,
+        status: 'ERROR',
+        simulationStatus: SimulationStatus.Failed,
+        error: {
+          type: 'Revert',
+          code: null,
+          message: 'Reverted: insufficient balance',
+        },
+      },
+    };
+
+    const result = ConfirmTransactionRequest({ context });
+
+    expect(JSON.stringify(result)).toContain(
+      'confirmation.simulationErrorTitle',
+    );
+  });
+
   it('renders EstimatedChanges when simulateOnChainActions is true', () => {
     const result = ConfirmTransactionRequest({ context: baseContext });
     expect(result).toBeDefined();

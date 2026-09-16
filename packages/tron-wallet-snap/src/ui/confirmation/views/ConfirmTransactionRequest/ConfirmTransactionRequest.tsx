@@ -90,7 +90,7 @@ export const ConfirmTransactionRequest = ({
     <Container>
       <Box>
         {/* Security Alert */}
-        {preferences.useSecurityAlerts ? (
+        {preferences.useSecurityAlerts || scan?.error ? (
           <TransactionAlert
             scanFetchStatus={scanFetchStatus}
             validation={scan?.validation ?? null}

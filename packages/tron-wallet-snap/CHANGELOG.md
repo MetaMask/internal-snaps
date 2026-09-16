@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Allow Confirm on JustLend-style `TriggerSmartContract` scans when the Security Alerts simulator returns `Unsupported call type` (energy rental / TRX staking), treating them as skipped estimates instead of a hard-block revert ([#301](https://github.com/MetaMask/internal-snaps/pull/301))
+- Allow Confirm on `TriggerSmartContract` scans when the Security Alerts simulator returns `Unsupported call type` (such as JustLend energy rental / TRX staking), treating them as skipped estimates instead of a hard-block revert ([#301](https://github.com/MetaMask/internal-snaps/pull/301))
+  - Generic simulation failures are displayed as warnings rather than disabling Confirm; insufficient balances and expired transactions remain blocking.
 
 ## [3.2.0]
 

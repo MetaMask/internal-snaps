@@ -1,4 +1,4 @@
-const UNSUPPORTED_CALL_TYPE_PATTERN = /unsupported call type/iu;
+const UNSUPPORTED_CALL_TYPE_PATTERN = /^\s*unsupported call type\s*:/iu;
 
 /**
  * Detects Security Alerts simulator capability errors (unsupported Tron system
