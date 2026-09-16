@@ -1,12 +1,12 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { Address, Commitment, Signature, Slot } from '@solana/kit';
 import { address as asAddress, signature as asSignature } from '@solana/kit';
 import { get, groupBy } from 'lodash';
 
 import type { AssetEntity } from '../../../entities';
-import type { SolanaKeyringAccount } from '../../../entities/keyring-account';
 import { MAX_SUPPORTED_TRANSACTION_VERSION } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import type { SolanaTransaction } from '../../types/solana';
@@ -46,7 +46,7 @@ export class TransactionsService {
 
   async fetchBySignature(
     signature: string,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     scope: Network,
   ): Promise<Transaction | null> {
     const transactionData = await this.#connection
@@ -264,7 +264,7 @@ export class TransactionsService {
   }
 
   async findByAccounts(
-    accounts: SolanaKeyringAccount[],
+    accounts: ExtendedKeyringAccount[],
   ): Promise<Transaction[]> {
     const transactions = await Promise.all(
       accounts.map(async (account) =>
