@@ -1,4 +1,4 @@
-import type { IInstruction } from '@solana/kit';
+import type { Instruction } from '@solana/kit';
 import { getBase58Codec } from '@solana/kit';
 
 import {
@@ -52,7 +52,7 @@ describe('secp256k1-secp256r1', () => {
       const instruction = {
         programAddress: 'SomeOtherProgramAddress',
         data: new Uint8Array([0]),
-      } as unknown as IInstruction;
+      } as unknown as Instruction;
 
       const result = isSecp256k1Instruction(instruction);
 
@@ -87,7 +87,7 @@ describe('secp256k1-secp256r1', () => {
       const instruction = {
         programAddress: 'SomeOtherProgramAddress',
         data: new Uint8Array([0]),
-      } as unknown as IInstruction;
+      } as unknown as Instruction;
 
       const result = isSecp256r1Instruction(instruction);
 

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduce `snap_getBip32Entropy` calls in `createAccounts` from two to one for `bip44:discover` by deriving the activity-check address locally from the already-fetched coin-type node, and parallelize the entropy fetch with the existing-accounts state read for all creation paths ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
+- Coalesce concurrent `AccountsSynchronizer.synchronize` calls for the same account set so duplicate in-flight syncs (e.g. simultaneous connection-recovery events across mainnet and devnet) share one run instead of fanning out redundant asset and transaction fetches ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
+- **BREAKING:** Bump `@solana/kit` from `^6.9.0` to `^8.3.0` and the `@solana-program/*` clients (`compute-budget` `^0.18.1`, `system` `^0.14.1`, `token` `^0.16.1`, `token-2022` `^0.17.0`) to their Kit 8-compatible versions. ([#303](https://github.com/MetaMask/internal-snaps/pull/303))
+- **BREAKING:** Update the Solana Name Service integration to SNS SDK v1 and the Kit 6.9-compatible Solana program clients ([#271](https://github.com/MetaMask/internal-snaps/pull/271))
 - Migrate `trackError` and `withCatchAndThrowSnapError` to `@metamask/snap-networks-utils` `createSnapErrorHandling`, and add `getSnapProvider` for Snap RPC access
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssets`, and routing Keyring and Send through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))
@@ -31,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING:** Preserve dapp-origin `signTransaction` and `signAndSendTransaction` payloads by signing the decoded transaction directly ([#156](https://github.com/MetaMask/internal-snaps/pull/156))
 - Prevent signing dapp transactions with expired blockhashes, and refresh the blockhash for MetaMask-originated transactions before signing. ([#183](https://github.com/MetaMask/internal-snaps/pull/183))
+- Tolerate unknown fields in the Price API spot price and Token API metadata responses so that new fields
+  added by the API no longer fail validation ([#321](https://github.com/MetaMask/internal-snaps/pull/321))
 
 ## [6.0.0]
 

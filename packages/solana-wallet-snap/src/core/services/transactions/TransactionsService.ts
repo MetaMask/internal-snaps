@@ -1,12 +1,13 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { Address, Commitment, Signature, Slot } from '@solana/kit';
 import { address as asAddress, signature as asSignature } from '@solana/kit';
 import { get, groupBy } from 'lodash';
 
 import type { AssetEntity } from '../../../entities';
-import type { SolanaKeyringAccount } from '../../../entities/keyring-account';
+import { MAX_SUPPORTED_TRANSACTION_VERSION } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import type { SolanaTransaction } from '../../types/solana';
 import { trackError } from '../../utils/errors';
@@ -45,13 +46,14 @@ export class TransactionsService {
 
   async fetchBySignature(
     signature: string,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     scope: Network,
   ): Promise<Transaction | null> {
     const transactionData = await this.#connection
       .getRpc(scope)
       .getTransaction(asSignature(signature), {
-        maxSupportedTransactionVersion: 0,
+        encoding: 'json',
+        maxSupportedTransactionVersion: MAX_SUPPORTED_TRANSACTION_VERSION,
       })
       .send();
 
@@ -60,7 +62,7 @@ export class TransactionsService {
     }
 
     return this.#transactionMapper.mapRpcTransaction(
-      transactionData,
+      transactionData as SolanaTransaction,
       account,
       scope,
     );
@@ -182,11 +184,12 @@ export class TransactionsService {
         const transaction = await this.#connection
           .getRpc(asset.network)
           .getTransaction(asSignature(signatureResponse.signature), {
-            maxSupportedTransactionVersion: 0,
+            encoding: 'json',
+            maxSupportedTransactionVersion: MAX_SUPPORTED_TRANSACTION_VERSION,
           })
           .send();
         return {
-          transaction,
+          transaction: transaction as SolanaTransaction | null,
           asset,
         };
       } catch (error) {
@@ -261,7 +264,7 @@ export class TransactionsService {
   }
 
   async findByAccounts(
-    accounts: SolanaKeyringAccount[],
+    accounts: ExtendedKeyringAccount[],
   ): Promise<Transaction[]> {
     const transactions = await Promise.all(
       accounts.map(async (account) =>

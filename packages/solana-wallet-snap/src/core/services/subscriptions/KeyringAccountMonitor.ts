@@ -1,4 +1,7 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { assert, number, string } from '@metamask/superstruct';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
@@ -10,7 +13,6 @@ import type { SubscriptionService } from '.';
 import type {
   AccountNotification,
   ProgramNotification,
-  SolanaKeyringAccount,
   Subscription,
 } from '../../../entities';
 import type { Network } from '../../constants/solana';
@@ -162,7 +164,7 @@ export class KeyringAccountMonitor {
    * @param networks - The networks to monitor the assets for.
    */
   async #startMonitorKeyringAccounts(
-    accounts: SolanaKeyringAccount[],
+    accounts: ExtendedKeyringAccount[],
     networks: Network[],
   ): Promise<void> {
     try {
@@ -215,7 +217,7 @@ export class KeyringAccountMonitor {
    * @param subscriptions - The subscriptions to stop monitoring.
    */
   async #stopMonitorKeyringAccounts(
-    accounts: SolanaKeyringAccount[],
+    accounts: ExtendedKeyringAccount[],
     subscriptions: Subscription[],
   ): Promise<void> {
     this.#logger.log('Stopping to monitor accounts', accounts);
@@ -249,7 +251,7 @@ export class KeyringAccountMonitor {
    * @param network - The network to monitor the native asset for.
    */
   async #monitorAccountNativeAsset(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     network: Network,
   ): Promise<void> {
     this.#logger.log('Monitoring native asset balance', {
@@ -267,7 +269,7 @@ export class KeyringAccountMonitor {
   }
 
   async #monitorProgramByOwner(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     tokenProgramAddress: string,
     network: Network,
   ): Promise<void> {
@@ -431,7 +433,7 @@ export class KeyringAccountMonitor {
    * @param address - The address of the RPC account.
    */
   async #saveCausingTransaction(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     network: Network,
     address: string,
   ): Promise<void> {
