@@ -688,6 +688,42 @@ describe('SolanaKeyring', () => {
         }),
       ).rejects.toThrow('Network error');
     });
+
+    it('fetches entropy once via the coin-type path regardless of on-chain activity', async () => {
+      // No activity — early return path.
+      mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([]);
+      await keyring.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        groupIndex: 10,
+      });
+      expect(getBip32Entropy).toHaveBeenCalledTimes(1);
+      expect(getBip32Entropy).toHaveBeenCalledWith({
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
+
+      jest.clearAllMocks();
+
+      // With activity — account creation path.
+      mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([
+        signature(
+          '2qfNzGs15dt999rt1AUJ7D1oPQaukMPPmHR2u5ZmDo4cVtr1Pr2Dax4Jo7ryTpM8jxjtXLi5NHy4uyr68MVh5my6',
+        ),
+      ]);
+      await keyring.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        groupIndex: 10,
+      });
+      expect(getBip32Entropy).toHaveBeenCalledTimes(1);
+      expect(getBip32Entropy).toHaveBeenCalledWith({
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
+    });
   });
 
   describe('setSelectedAccounts', () => {
