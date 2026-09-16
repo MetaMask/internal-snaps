@@ -1,7 +1,10 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
 import type { Commitment, SignatureBytes } from '@solana/kit';
@@ -21,7 +24,6 @@ import {
   verifySignature,
 } from '@solana/kit';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import { METAMASK_ORIGIN } from '../../constants/solana';
 import type { Caip10Address, Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
@@ -119,7 +121,7 @@ export class WalletService {
    * @throws If the request is invalid.
    */
   async resolveAccountAddress(
-    keyringAccounts: SolanaKeyringAccount[],
+    keyringAccounts: ExtendedKeyringAccount[],
     scope: Network,
     request: SolanaWalletRequest,
   ): Promise<Caip10Address> {
@@ -190,7 +192,7 @@ export class WalletService {
    * @returns A Promise that resolves to the signed transaction.
    */
   async signTransaction(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     transaction: string,
     scope: Network,
     origin: string,
@@ -269,7 +271,7 @@ export class WalletService {
    * @returns A Promise that resolves to the signed transaction.
    */
   async signAndSendTransaction(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     transactionMessageBase64Encoded: string,
     scope: Network,
     origin: string,
@@ -366,7 +368,7 @@ export class WalletService {
    * @returns A Promise that resolves to the signed message.
    */
   async signMessage(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     message: string,
   ): Promise<SolanaSignMessageResponse> {
     this.#logger.log('Signing message', account, message);
@@ -458,7 +460,7 @@ export class WalletService {
    * @returns The wallet-standard signed message response.
    */
   async #signMessageWithPrivateKey(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     message: string,
     privateKeyBytes: Uint8Array,
   ): Promise<SolanaSignMessageResponse> {
@@ -514,7 +516,7 @@ export class WalletService {
     account,
   }: {
     coinTypeNode: SLIP10Node;
-    account: SolanaKeyringAccount;
+    account: ExtendedKeyringAccount;
   }): Promise<Uint8Array> {
     try {
       const { privateKeyBytes } = await deriveSolanaKeypairFromCoinTypeNode({
@@ -539,7 +541,7 @@ export class WalletService {
    * @throws If the request is invalid.
    */
   async signIn(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     params: SolanaSignInRequest['params'],
   ): Promise<SolanaSignInResponse> {
     this.#logger.log('Signing in', account, params);
@@ -574,7 +576,7 @@ export class WalletService {
    * signature is valid.
    */
   async verifySignature(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     signatureBase58: Infer<typeof Base58Struct>,
     messageBase64: Infer<typeof Base64Struct>,
   ): Promise<boolean> {

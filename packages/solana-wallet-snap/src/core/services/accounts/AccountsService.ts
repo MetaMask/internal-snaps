@@ -1,6 +1,6 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { AccountsRepository } from './AccountsRepository';
 
 export class AccountsService {
@@ -10,11 +10,11 @@ export class AccountsService {
     this.#accountsRepository = accountsRepository;
   }
 
-  async getAll(): Promise<SolanaKeyringAccount[]> {
+  async getAll(): Promise<ExtendedKeyringAccount[]> {
     return this.#accountsRepository.getAll();
   }
 
-  async getAllSelected(): Promise<SolanaKeyringAccount[]> {
+  async getAllSelected(): Promise<ExtendedKeyringAccount[]> {
     const [allAccounts, selectedAccountIds] = await Promise.all([
       this.#accountsRepository.getAll(),
       getSelectedAccounts(snap),
@@ -25,7 +25,7 @@ export class AccountsService {
     );
   }
 
-  async findById(id: string): Promise<SolanaKeyringAccount | null> {
+  async findById(id: string): Promise<ExtendedKeyringAccount | null> {
     return this.#accountsRepository.findById(id);
   }
 
@@ -35,15 +35,15 @@ export class AccountsService {
    * @param ids - Account IDs to resolve.
    * @returns The matching accounts.
    */
-  async findByIds(ids: string[]): Promise<SolanaKeyringAccount[]> {
+  async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
     return this.#accountsRepository.findByIds(ids);
   }
 
-  async findByAddress(address: string): Promise<SolanaKeyringAccount | null> {
+  async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
     return this.#accountsRepository.findByAddress(address);
   }
 
-  async save(account: SolanaKeyringAccount): Promise<void> {
+  async save(account: ExtendedKeyringAccount): Promise<void> {
     return this.#accountsRepository.save(account);
   }
 

@@ -2,7 +2,11 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
-import { InMemoryState, Logger } from '@metamask/snap-networks-utils';
+import {
+  InMemoryState,
+  Logger,
+  asStrictKeyringAccount,
+} from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -10,7 +14,6 @@ import { signature } from '@solana/kit';
 import bs58 from 'bs58';
 
 import type { AssetEntity } from '../../../entities';
-import { asStrictKeyringAccount } from '../../../entities';
 import type { Caip10Address } from '../../constants/solana';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import type {

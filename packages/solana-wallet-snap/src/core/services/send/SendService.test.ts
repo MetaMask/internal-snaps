@@ -1,9 +1,13 @@
 import { SolMethod } from '@metamask/keyring-api';
-import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  ICache,
+  Serializable,
+} from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { lamports } from '@solana/kit';
 
-import type { AssetEntity, SolanaKeyringAccount } from '../../../entities';
+import type { AssetEntity } from '../../../entities';
 import {
   KnownCaip19Id,
   METAMASK_ORIGIN,
@@ -67,7 +71,7 @@ describe('SendService', () => {
   let mockAssetsService: AssetsService;
   let mockRecipientClassifier: RecipientClassifier;
 
-  const mockAccount: SolanaKeyringAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+  const mockAccount: ExtendedKeyringAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
   beforeEach(() => {
     jest.clearAllMocks();

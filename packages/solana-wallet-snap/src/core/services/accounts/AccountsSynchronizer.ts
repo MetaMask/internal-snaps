@@ -1,7 +1,9 @@
 import { InFlightCoalescer } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionsService } from '../transactions';
 import type { AccountsService } from './AccountsService';
@@ -29,7 +31,7 @@ export class AccountsSynchronizer {
     this.#logger = logger.withPrefix('[🔄 AccountsSynchronizer]');
   }
 
-  async synchronize(accounts?: SolanaKeyringAccount[]): Promise<void> {
+  async synchronize(accounts?: ExtendedKeyringAccount[]): Promise<void> {
     const accountsToSync = accounts ?? (await this.#accountsService.getAll());
     const key = [...accountsToSync.map((a) => a.id)]
       .sort((a, b) => a.localeCompare(b))
