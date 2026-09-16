@@ -210,7 +210,7 @@
       "count": 1
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 6
+      "count": 5
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.ts": {
