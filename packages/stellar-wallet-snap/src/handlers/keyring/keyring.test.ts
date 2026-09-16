@@ -1,6 +1,6 @@
-import type { KeyringAccount } from '@metamask/keyring-api';
 import { AccountCreationType } from '@metamask/keyring-api';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import { asStrictKeyringAccount } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { create } from '@metamask/superstruct';
@@ -66,18 +66,6 @@ describe('KeyringHandler', () => {
   let mockSignMessageHandler: IKeyringRequestHandler;
   let mockSignTransactionHandler: IKeyringRequestHandler;
   let mockSignAuthEntryHandler: IKeyringRequestHandler;
-
-  const toKeyringAccount = (account: StellarKeyringAccount): KeyringAccount => {
-    const { id, address, type, options, methods, scopes } = account;
-    return {
-      id,
-      address,
-      type,
-      options,
-      methods,
-      scopes,
-    };
-  };
 
   const getAccountServiceSpies = () => ({
     listAccountsSpy: jest.spyOn(AccountService.prototype, 'listAccounts'),
@@ -187,7 +175,7 @@ describe('KeyringHandler', () => {
       const result = await keyringHandler.getAccount(mockAccountId);
 
       expect(findByIdSpy).toHaveBeenCalledWith(mockAccountId);
-      expect(result).toStrictEqual(toKeyringAccount(mockAccount));
+      expect(result).toStrictEqual(asStrictKeyringAccount(mockAccount));
     });
 
     it('propagates errors when account retrieval fails', async () => {
@@ -227,7 +215,7 @@ describe('KeyringHandler', () => {
       const result = await keyringHandler.getAccounts();
 
       expect(result).toStrictEqual(
-        expectedAccounts.map((account) => toKeyringAccount(account)),
+        expectedAccounts.map((account) => asStrictKeyringAccount(account)),
       );
     });
 
@@ -267,7 +255,7 @@ describe('KeyringHandler', () => {
         fromIndex: 2,
         toIndex: 2,
       });
-      expect(result).toStrictEqual([toKeyringAccount(mockAccount)]);
+      expect(result).toStrictEqual([asStrictKeyringAccount(mockAccount)]);
     });
 
     it('creates accounts for each index in bip44:derive-index-range', async () => {
@@ -328,7 +316,7 @@ describe('KeyringHandler', () => {
         fromIndex: 0,
         toIndex: 0,
       });
-      expect(result).toStrictEqual([toKeyringAccount(mockAccount)]);
+      expect(result).toStrictEqual([asStrictKeyringAccount(mockAccount)]);
     });
 
     it('creates no account when discovery finds no on-chain activity', async () => {
