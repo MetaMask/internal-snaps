@@ -67,7 +67,7 @@ export type SolanaSignMessageBatchRequest = {
   /**
    * Account whose key should sign the message.
    */
-  account: SolanaKeyringAccount;
+  account: ExtendedKeyringAccount;
   /**
    * Base64-encoded message to sign.
    */
