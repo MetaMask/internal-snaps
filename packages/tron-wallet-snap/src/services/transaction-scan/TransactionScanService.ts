@@ -1,4 +1,7 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -10,7 +13,6 @@ import type {
 } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -65,7 +67,7 @@ export class TransactionScanService {
     origin: string;
     scope: Network;
     options?: string[] | undefined;
-    account?: TronKeyringAccount;
+    account?: ExtendedKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     if (!isTransactionWellFormed(transactionRawData)) {
       this.#logger.warn(

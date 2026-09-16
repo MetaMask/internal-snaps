@@ -1,10 +1,10 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import {
   TronMultichainErrors,
   TronMultichainMethod,
@@ -79,7 +79,7 @@ describe('WalletService', () => {
     address: TEST_ADDRESS,
   };
 
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     address: TEST_ADDRESS,
     options: {},

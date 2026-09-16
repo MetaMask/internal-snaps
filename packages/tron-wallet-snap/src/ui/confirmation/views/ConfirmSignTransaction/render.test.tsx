@@ -1,11 +1,11 @@
 import type { FeeType, KeyringRequest } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { SnapExecutionContext } from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
-import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import type { AssetsService } from '../../../../services/assets/AssetsService';
 import type { FeeCalculatorService } from '../../../../services/send/FeeCalculatorService';
@@ -107,7 +107,7 @@ const mockComputeFeeResult: ComputeFeeResult = [
   },
 ];
 
-const mockAccount: TronKeyringAccount = {
+const mockAccount: ExtendedKeyringAccount = {
   id: '123e4567-e89b-42d3-a456-426614174000',
   address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
   options: {},
@@ -120,7 +120,7 @@ const mockAccount: TronKeyringAccount = {
   entropySource: 'entropy-source-1' as any,
   derivationPath: "m/44'/195'/0'/0/0",
   index: 0,
-} as TronKeyringAccount;
+} as ExtendedKeyringAccount;
 
 type WithSnapContextCallback<ReturnValue> = (payload: {
   snapContext: SnapExecutionContext;
