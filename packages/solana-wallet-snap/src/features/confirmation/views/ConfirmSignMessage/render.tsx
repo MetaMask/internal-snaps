@@ -1,3 +1,4 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { getBase64Codec, getUtf8Codec } from '@solana/kit';
 
@@ -10,7 +11,6 @@ import {
   getPreferences,
   showDialog,
 } from '../../../../core/utils/interface';
-import type { SolanaKeyringAccount } from '../../../../entities';
 import { nameResolutionService } from '../../../../snapContext';
 import { ConfirmSignMessage } from './ConfirmSignMessage';
 
@@ -23,7 +23,7 @@ import { ConfirmSignMessage } from './ConfirmSignMessage';
  */
 export async function render(
   request: SolanaKeyringRequest,
-  account: SolanaKeyringAccount,
+  account: ExtendedKeyringAccount,
 ) {
   assert(request.request, SolanaSignMessageRequestStruct);
 

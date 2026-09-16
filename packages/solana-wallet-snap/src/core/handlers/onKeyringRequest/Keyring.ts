@@ -24,8 +24,15 @@ import type {
   ExportedAccount,
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
-import { UuidStruct } from '@metamask/snap-networks-utils';
-import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
+import {
+  UuidStruct,
+  asStrictKeyringAccount,
+} from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -41,8 +48,6 @@ import bs58 from 'bs58';
 import { sortBy } from 'lodash';
 
 import snapManifest from '../../../../snap.manifest.json';
-import { asStrictKeyringAccount } from '../../../entities';
-import type { SolanaKeyringAccount } from '../../../entities';
 import { SolanaCaip19Tokens } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import type {
@@ -143,7 +148,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
     this.#keyringAccountMonitor = keyringAccountMonitor;
   }
 
-  async #listAccounts(): Promise<SolanaKeyringAccount[]> {
+  async #listAccounts(): Promise<ExtendedKeyringAccount[]> {
     try {
       const keyringAccounts =
         (await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
@@ -191,7 +196,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
     }
   }
 
-  async getAccountOrThrow(accountId: string): Promise<SolanaKeyringAccount> {
+  async getAccountOrThrow(accountId: string): Promise<ExtendedKeyringAccount> {
     const account = await this.#getAccount(accountId);
     if (!account) {
       throw new Error(`Account "${accountId}" not found`);
@@ -202,8 +207,8 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
   async #getAccount(
     accountId: string,
-  ): Promise<SolanaKeyringAccount | undefined> {
-    return this.#state.getKey<SolanaKeyringAccount>(
+  ): Promise<ExtendedKeyringAccount | undefined> {
+    return this.#state.getKey<ExtendedKeyringAccount>(
       `keyringAccounts.${accountId}`,
     );
   }
@@ -237,7 +242,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
     derivationPath: `m/${string}`;
     index: number;
     publicKeyBytes: Uint8Array;
-  }): SolanaKeyringAccount {
+  }): ExtendedKeyringAccount {
     const address = decoder.decode(publicKeyBytes.slice(1));
 
     return {
@@ -304,7 +309,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
       }
 
       // Map existing accounts by group index
-      const allAccounts = new Map<number, SolanaKeyringAccount>();
+      const allAccounts = new Map<number, ExtendedKeyringAccount>();
       for (const account of allAccountsList) {
         if (account.entropySource === entropySource) {
           allAccounts.set(account.index, account);
@@ -323,7 +328,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
       // Create new accounts in memory, then flush all to state in one call
       let createdCount = 0;
-      const newAccounts: Record<string, SolanaKeyringAccount> = {};
+      const newAccounts: Record<string, ExtendedKeyringAccount> = {};
       for (let groupIndex = range.from; groupIndex <= range.to; groupIndex++) {
         if (!allAccounts.has(groupIndex)) {
           const id = globalThis.crypto.randomUUID();
@@ -356,7 +361,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
       }
 
       // Single state write for all new accounts
-      await this.#state.setKeyWith<Record<string, SolanaKeyringAccount>>(
+      await this.#state.setKeyWith<Record<string, ExtendedKeyringAccount>>(
         'keyringAccounts',
         (accounts) => ({
           ...accounts,
@@ -568,7 +573,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
    * @throws If the account address is invalid or doesn't match the signing account.
    */
   #validateAccountAddress(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     request: KeyringRequest,
   ): void {
     const { address } = account;

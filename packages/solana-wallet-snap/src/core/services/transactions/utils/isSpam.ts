@@ -1,14 +1,14 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import BigNumber from 'bignumber.js';
 
-import type { SolanaKeyringAccount } from '../../../../entities';
 import { KnownCaip19Id } from '../../../constants/solana';
 
 // A function that returns true if it believes that the passed transaction is a spam, or false if it believes it's legitimate.
 type SpamDetector = (
   transaction: Transaction,
-  account: SolanaKeyringAccount,
+  account: ExtendedKeyringAccount,
 ) => boolean;
 
 /**
@@ -64,7 +64,7 @@ const isSolAmountLowerThanThreshold: SpamDetector = (
  */
 export function isSpam(
   transaction: Transaction,
-  account: SolanaKeyringAccount,
+  account: ExtendedKeyringAccount,
 ): boolean {
   const detectors: SpamDetector[] = [
     isSolAmountLowerThanThreshold,

@@ -1,3 +1,4 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type {
   Address,
   TransactionMessage,
@@ -5,11 +6,10 @@ import type {
 } from '@solana/kit';
 import type BigNumber from 'bignumber.js';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network } from '../../constants/solana';
 
 export type BuildSendTransactionParams = {
-  from: SolanaKeyringAccount;
+  from: ExtendedKeyringAccount;
   to: Address;
   /** From the user's point of view, this is the uiAmount! Need to divide this by the multiplier if any to get the raw amount */
   amount: string | number | bigint | BigNumber;

@@ -1,6 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
 import { METAMASK_ORIGIN, METAMASK_ORIGIN_URL } from '../../constants/solana';
@@ -55,7 +57,7 @@ export class TransactionScanService {
     scope: Network;
     origin: string;
     options?: string[];
-    account?: SolanaKeyringAccount;
+    account?: ExtendedKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     try {
       const result = await this.#securityAlertsApiClient.scanTransactions({
