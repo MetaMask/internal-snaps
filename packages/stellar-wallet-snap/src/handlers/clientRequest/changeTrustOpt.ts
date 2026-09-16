@@ -12,7 +12,6 @@ import type { AccountNotActivatedException } from '../../services/network';
 import type { OnChainAccount } from '../../services/on-chain-account';
 import {
   KeyringTransactionType,
-  TransactionValidationException,
   TrustlineNotFoundException,
 } from '../../services/transaction';
 import type {
