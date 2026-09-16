@@ -1,3 +1,4 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import {
   Address,
   Box,
@@ -20,7 +21,6 @@ import type { Preferences } from '../../../../core/types/snap';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
 import { i18n } from '../../../../core/utils/i18n';
 import { parseOrigin } from '../../../../core/utils/parseOrigin';
-import type { SolanaKeyringAccount } from '../../../../entities';
 import { BasicNullableField } from '../../components/BasicNullableField/BasicNullableField';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { ConfirmSignInFormNames } from './events';
@@ -41,7 +41,7 @@ export type ConfirmSignInProps = {
     resources: string[];
   }>;
   origin: string;
-  account: SolanaKeyringAccount;
+  account: ExtendedKeyringAccount;
   accountDomain: string | null;
   scope: Network;
   preferences: Preferences;

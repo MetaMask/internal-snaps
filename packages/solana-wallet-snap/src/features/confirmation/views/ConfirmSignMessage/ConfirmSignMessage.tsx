@@ -1,3 +1,4 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import {
   Address,
   Box,
@@ -21,12 +22,11 @@ import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
 import type { Locale } from '../../../../core/utils/i18n';
 import { i18n } from '../../../../core/utils/i18n';
 import { parseOrigin } from '../../../../core/utils/parseOrigin';
-import type { SolanaKeyringAccount } from '../../../../entities';
 import { ConfirmSignMessageFormNames } from './events';
 
 export type ConfirmSignMessageProps = {
   message: string;
-  account: SolanaKeyringAccount;
+  account: ExtendedKeyringAccount;
   accountDomain: string | null;
   scope: Network;
   locale: Locale;

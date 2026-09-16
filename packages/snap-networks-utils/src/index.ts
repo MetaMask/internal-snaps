@@ -17,6 +17,11 @@ export {
 } from './utils/sanitize/sanitize';
 export { UrlStruct } from './utils/urlStruct/urlStruct';
 export { UuidStruct } from './utils/uuidStruct/uuidStruct';
+export { asStrictKeyringAccount } from './utils/keyringAccount/keyringAccount';
+export type {
+  ExtendedKeyringAccount,
+  KeyringAccountExtension,
+} from './utils/keyringAccount/keyringAccount';
 export {
   batchesAll,
   batchesAllSettled,
