@@ -490,57 +490,47 @@ describe('ConfirmSendHandler', () => {
     it.each([
       {
         error: new InsufficientBalanceException('0', '1'),
-        code: MultiChainSendErrorCodes.InsufficientBalance,
         message: 'confirmation.txnError.insufficientBalance',
       },
       {
         error: new InsufficientBalanceToCoverFeeException('0', '1'),
-        code: MultiChainSendErrorCodes.InsufficientBalanceToCoverFee,
         message: 'confirmation.txnError.insufficientBalanceToCoverFee',
       },
       {
         error: new RequiresMemoException(destinationAddress),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.requiresMemo',
       },
       {
         error: new InvalidAmountForCreateAccountException('0.5'),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.invalidCreateAccountAmount',
       },
       {
         error: new InvalidAssetForCreateAccountException(assetId),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.invalidCreateAccountAsset',
       },
       {
         error: new TrustlineNotAuthorizedException(assetId, destinationAddress),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.trustlineNotAuthorized',
       },
       {
         error: new TrustlineNotFoundException(assetId, destinationAddress),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.trustlineNotFound',
       },
       {
         error: new TrustlineExceedLimitException(assetId),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.trustlineExceedLimit',
       },
       {
         error: new TransactionExpireException(0),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.expired',
       },
       {
         error: new TransactionValidationException('x'),
-        code: MultiChainSendErrorCodes.Invalid,
         message: 'confirmation.txnError.generic',
       },
     ])(
-      'shows the send confirmation with $message then returns $code',
-      async ({ error, code, message }) => {
+      'shows the send confirmation with $message then throws UserRejectedRequestError',
+      async ({ error, message }) => {
         const {
           handler,
           account,
@@ -552,10 +542,9 @@ describe('ConfirmSendHandler', () => {
         } = setup();
         createValidatedSendTransaction.mockRejectedValueOnce(error);
 
-        expect(await handler.handle(baseRequest())).toStrictEqual({
-          valid: false,
-          errors: [{ code }],
-        });
+        await expect(handler.handle(baseRequest())).rejects.toThrow(
+          UserRejectedRequestError,
+        );
         expect(renderConfirmationDialog).toHaveBeenCalledWith({
           scope,
           interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
@@ -598,7 +587,7 @@ describe('ConfirmSendHandler', () => {
       },
     );
 
-    it('returns the error code after the user dismisses the validation confirmation', async () => {
+    it('throws UserRejectedRequestError after the user dismisses the validation confirmation', async () => {
       const {
         handler,
         createValidatedSendTransaction,
@@ -609,10 +598,9 @@ describe('ConfirmSendHandler', () => {
       );
       renderConfirmationDialog.mockResolvedValue(false);
 
-      expect(await handler.handle(baseRequest())).toStrictEqual({
-        valid: false,
-        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-      });
+      await expect(handler.handle(baseRequest())).rejects.toThrow(
+        UserRejectedRequestError,
+      );
     });
   });
 
@@ -663,54 +651,6 @@ describe('ConfirmSendHandler', () => {
     );
     expect(renderAccountActivationPrompt).toHaveBeenCalledWith(wallet.address);
     expect(renderConfirmationDialog).not.toHaveBeenCalled();
-  });
-
-  it('returns invalid and tracks when createValidatedSendTransaction throws XdrParseException', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
-    const xdrParseError = new XdrParseException(
-      'Invalid transfer function arguments',
-    );
-    createValidatedSendTransaction.mockRejectedValueOnce(xdrParseError);
-    const trackErrorSpy = jest
-      .spyOn(errorsUtils, 'trackError')
-      .mockResolvedValue(undefined);
-
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
-    expect(trackErrorSpy).toHaveBeenCalledWith(xdrParseError);
-  });
-
-  it('returns invalid for unexpected errors from createValidatedSendTransaction', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
-    const unexpectedError = new Error('unexpected');
-    createValidatedSendTransaction.mockRejectedValueOnce(unexpectedError);
-    const trackErrorSpy = jest
-      .spyOn(errorsUtils, 'trackError')
-      .mockResolvedValue(undefined);
-
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
-    expect(trackErrorSpy).toHaveBeenCalledWith(unexpectedError);
-  });
-
-  it('does not track expected validation errors from createValidatedSendTransaction', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
-    createValidatedSendTransaction.mockRejectedValueOnce(
-      new TransactionValidationException('x'),
-    );
-    const trackErrorSpy = jest
-      .spyOn(errorsUtils, 'trackError')
-      .mockResolvedValue(undefined);
-
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
-    expect(trackErrorSpy).not.toHaveBeenCalled();
   });
 
   it('continues successfully when saving pending transaction fails', async () => {
