@@ -5,7 +5,6 @@ import type {
   Amount,
   Txid,
   WalletTx,
-  Address as BdkAddress,
 } from '@metamask/bitcoindevkit';
 import { Address } from '@metamask/bitcoindevkit';
 import { TransactionStatus, FeeType } from '@metamask/keyring-api';
@@ -438,7 +437,9 @@ describe('mapToTransaction', () => {
     feeSatoshis = 281,
   ): BitcoinAccount {
     const sentAmount = mock<Amount>();
-    jest.spyOn(sentAmount, 'to_btc').mockReturnValue(sentSatoshis / 100_000_000);
+    jest
+      .spyOn(sentAmount, 'to_btc')
+      .mockReturnValue(sentSatoshis / 100_000_000);
 
     const feeAmount = mock<Amount>();
     jest.spyOn(feeAmount, 'to_btc').mockReturnValue(feeSatoshis / 100_000_000);
