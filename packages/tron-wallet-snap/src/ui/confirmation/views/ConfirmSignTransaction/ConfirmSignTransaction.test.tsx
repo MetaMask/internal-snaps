@@ -202,17 +202,18 @@ describe('ConfirmSignTransaction', () => {
     ).toBe(true);
   });
 
-  it('keeps Confirm enabled for failed simulations that are not expiry', () => {
-    const context = buildContext({
-      scan: buildScanResult({
-        status: 'ERROR',
-        simulationStatus: SimulationStatus.Failed,
-        error: otherError,
-      }),
-    });
-
-    expect(isConfirmDisabled(context)).toBe(false);
-    expect(renderTexts(context)).toContain(SIMULATION_ERROR_TITLE);
+  it('disables the confirm button for other failed simulations', () => {
+    expect(
+      isConfirmDisabled(
+        buildContext({
+          scan: buildScanResult({
+            status: 'ERROR',
+            simulationStatus: SimulationStatus.Failed,
+            error: otherError,
+          }),
+        }),
+      ),
+    ).toBe(true);
   });
 
   it('keeps Confirm enabled and shows skipped copy for unsupported call types', () => {
