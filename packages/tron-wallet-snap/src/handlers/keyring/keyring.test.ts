@@ -4,6 +4,7 @@ import type {
   KeyringRequest,
 } from '@metamask/keyring-api';
 import type { ExportAccountOptions } from '@metamask/keyring-api/v2';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
@@ -11,7 +12,6 @@ import {
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
@@ -42,7 +42,7 @@ function toHex(str: string): string {
 }
 
 describe('KeyringHandler', () => {
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: '123e4567-e89b-42d3-a456-426614174000',
     address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     options: {},
@@ -417,7 +417,7 @@ describe('KeyringHandler', () => {
 
     describe('multiple accounts', () => {
       it('handles different accounts correctly', async () => {
-        const account2: TronKeyringAccount = {
+        const account2: ExtendedKeyringAccount = {
           ...mockAccount,
           id: '987e6543-e89b-42d3-a456-426614174999',
           address: 'TGehVcNhud84JDCGrNHKVz9jEAVKUpbuiv',
