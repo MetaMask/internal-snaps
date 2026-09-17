@@ -1,5 +1,5 @@
 {
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "Manage Bitcoin using MetaMask",
   "proposedName": "Bitcoin",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "lGBDrrLUZJLWhPpEbgk73vyzgwyhJRnZLPPcZsR1nrA=",
+    "shasum": "cIxYHFdB+8wci79BwCUfdMCuXBUBPmAfFMhUl+ounwA=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
