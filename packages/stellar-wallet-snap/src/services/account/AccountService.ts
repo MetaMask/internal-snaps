@@ -44,24 +44,6 @@ export class AccountService {
   }
 
   /**
-   * Builds a keyring-shaped account from entropy and index without reading or writing keyring state.
-   *
-   * @param options - Derivation inputs.
-   * @param options.entropySource - Entropy source ID (e.g. from the keyring).
-   * @param options.index - BIP-44 account index.
-   * @returns A promise that resolves to the derived {@link StellarKeyringAccount} shape (new random id).
-   */
-  async deriveKeyringAccount({
-    entropySource,
-    index,
-  }: {
-    entropySource: EntropySourceId;
-    index: number;
-  }): Promise<StellarKeyringAccount> {
-    return await this.#deriveAccount({ entropySource, index });
-  }
-
-  /**
    * Resolves a keyring account from state by ID or address and verifies the stored address matches derivation.
    *
    * @param params - The parameters for the account resolution.
@@ -131,20 +113,16 @@ export class AccountService {
     entropySource?: EntropySourceId;
     fromIndex: number;
     toIndex: number;
-    walletResolver?: (index: number) => Promise<Wallet>;
+    walletResolver: (index: number) => Promise<Wallet>;
   }): Promise<StellarKeyringAccount[]> {
     const { fromIndex, toIndex } = options;
     const entropySource =
       options.entropySource ?? (await getDefaultEntropySource());
 
-    // Parallelise the accounts state read and entropy fetch when the resolver
-    // is not pre-supplied (discover path already provides one).
-    const [accounts, walletResolver] = options.walletResolver
-      ? [await this.#accountsRepository.getAll(), options.walletResolver]
-      : await Promise.all([
-          this.#accountsRepository.getAll(),
-          this.#walletService.getWalletResolver(entropySource),
-        ]);
+    const [accounts, walletResolver] = [
+      await this.#accountsRepository.getAll(),
+      options.walletResolver,
+    ];
 
     // 1. Index existing accounts in range by derivation index
     const existingAccountsByIndex = new Map<number, StellarKeyringAccount>();

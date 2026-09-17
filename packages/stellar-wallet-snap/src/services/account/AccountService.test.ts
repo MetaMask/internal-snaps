@@ -66,6 +66,7 @@ describe('AccountService', () => {
         entropySource,
         fromIndex: 0,
         toIndex: 1,
+        walletResolver,
       });
 
       expect(saveManySpy).toHaveBeenCalledTimes(1);
@@ -113,6 +114,7 @@ describe('AccountService', () => {
         entropySource,
         fromIndex: 0,
         toIndex: 2,
+        walletResolver,
       });
 
       expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
@@ -142,6 +144,7 @@ describe('AccountService', () => {
         entropySource,
         fromIndex: 0,
         toIndex: 15,
+        walletResolver,
       });
 
       expect(result).toHaveLength(16);
@@ -152,27 +155,6 @@ describe('AccountService', () => {
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
       ).toStrictEqual(Array.from({ length: 16 }, (_, index) => index));
       expect(saveManySpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('skips getWalletResolver when a pre-supplied walletResolver is provided', async () => {
-      const entropySource = 'entropy-source-default';
-      const preSuppliedResolver = jest.fn(
-        async (index: number) => ({ address: `address-${index}` }) as Wallet,
-      );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
-      const { getAllSpy } = getAccountsRepositorySpies();
-      getAllSpy.mockResolvedValue([]);
-
-      await accountService.batchCreate({
-        entropySource,
-        fromIndex: 0,
-        toIndex: 0,
-        walletResolver: preSuppliedResolver,
-      });
-
-      expect(getWalletResolverSpy).not.toHaveBeenCalled();
-      expect(preSuppliedResolver).toHaveBeenCalledTimes(1);
-      expect(preSuppliedResolver).toHaveBeenCalledWith(0);
     });
   });
 
@@ -311,28 +293,6 @@ describe('AccountService', () => {
           scope: KnownCaip2ChainId.Mainnet,
         }),
       ).rejects.toThrow(DerivedAccountAddressMismatchException);
-    });
-  });
-
-  describe('deriveKeyringAccount', () => {
-    it('returns a keyring-shaped derived account', async () => {
-      const { deriveAddressSpy } = getWalletServiceSpies();
-      deriveAddressSpy.mockResolvedValue(mockAccount.address);
-
-      const account = await accountService.deriveKeyringAccount({
-        entropySource: mockAccount.entropySource,
-        index: mockAccount.index,
-      });
-
-      expect(account).toStrictEqual({
-        ...mockAccount,
-        id: expect.any(String),
-        methods: [
-          MultichainMethod.SignMessage,
-          MultichainMethod.SignTransaction,
-          MultichainMethod.SignAuthEntry,
-        ],
-      });
     });
   });
 });

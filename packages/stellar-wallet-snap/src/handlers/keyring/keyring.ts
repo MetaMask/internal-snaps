@@ -165,15 +165,16 @@ export class KeyringHandler implements KeyringSnapRpc {
       `${AccountCreationType.Bip44Discover}`,
     ] as const);
 
+    const walletResolver = await this.#walletService.getWalletResolver(
+      options.entropySource,
+    );
+
     // For discovery, only create the account if it has on-chain activity. No
     // activity means we've reached the end of the discoverable accounts, so we
     // return nothing and the client stops discovering.
     if (options.type === AccountCreationType.Bip44Discover) {
       // One entropy call at the coin-type path (m/44'/148'); the resolver is
       // passed into batchCreate so it doesn't re-fetch.
-      const walletResolver = await this.#walletService.getWalletResolver(
-        options.entropySource,
-      );
       const wallet = await walletResolver(options.groupIndex);
 
       if (
@@ -189,7 +190,7 @@ export class KeyringHandler implements KeyringSnapRpc {
         walletResolver,
       });
 
-      return createdAccounts.map((account) => this.#toKeyringAccount(account));
+      return createdAccounts.map(asStrictKeyringAccount);
     }
 
     let range;
@@ -205,6 +206,7 @@ export class KeyringHandler implements KeyringSnapRpc {
       entropySource: options.entropySource,
       fromIndex: range.from,
       toIndex: range.to,
+      walletResolver,
     });
 
     return createdAccounts.map(asStrictKeyringAccount);
