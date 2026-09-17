@@ -45,6 +45,19 @@ export type ConfirmationContextRefreshResult = {
 } | null;
 
 /**
+ * Whether a refresher outcome should pause auto-cron (omit further reschedule).
+ * Covers hard fail (`halt`) and soft fail (`recoverable`, e.g. RequiresMemo).
+ *
+ * @param result - One refresher cycle result.
+ * @returns True when auto-reschedule should stop.
+ */
+export function shouldPauseRefresh(
+  result: ConfirmationContextRefreshResult,
+): boolean {
+  return result?.halt === true || result?.recoverable === true;
+}
+
+/**
  * Contract for a single background data source (prices, security scan, …).
  */
 export type IConfirmationContextRefresher = {

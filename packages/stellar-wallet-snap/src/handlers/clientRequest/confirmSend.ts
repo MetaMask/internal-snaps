@@ -135,14 +135,27 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         };
       }
 
-      const { transaction, requiresMemoRecovery } =
-        await this.#buildSendTransactionForConfirm({
+      let transaction: Transaction;
+      let requiresMemoRecovery = false;
+      try {
+        ({ transaction, requiresMemoRecovery } =
+          await this.#transactionService.createDraftSendTransactionForConfirm({
+            onChainAccount,
+            scope,
+            assetId,
+            amount: amountInSmallestUnit,
+            destination: toAddress,
+          }));
+      } catch (error: unknown) {
+        await this.#displayDialogWithErrorMessage({
           request,
           account: stellarKeyringAccount,
           assetMetadata,
-          onChainAccount,
-          amount: amountInSmallestUnit,
+          scope,
+          error,
         });
+        throw ensureError(new UserRejectedRequestError());
+      }
 
       await trackTransactionAdded({
         origin: METAMASK_ORIGIN,
@@ -171,7 +184,15 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      const confirmedMemo = dialogResult.memo?.trim() || undefined
+      const confirmedMemo =
+        typeof dialogResult.memo === 'string' ? dialogResult.memo : undefined;
+
+      if (requiresMemoRecovery && !confirmedMemo) {
+        return {
+          valid: false,
+          errors: [{ code: MultiChainSendErrorCodes.Invalid }],
+        };
+      }
 
       await trackTransactionApproved({
         origin: METAMASK_ORIGIN,
@@ -267,55 +288,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         valid: false,
         errors: [{ code: MultiChainSendErrorCodes.Invalid }],
       };
-    }
-  }
-
-  /**
-   * Builds the send envelope for confirmation.
-   *
-   * Uses a single draft build (`skipMemoRequirementCheck`) and derives whether
-   * memo recovery UI is needed from destination SEP-29 state.
-   *
-   * @param params - Build inputs.
-   * @param params.request - The confirm-send JSON-RPC request.
-   * @param params.account - The sender keyring account.
-   * @param params.assetMetadata - Metadata for the asset being sent.
-   * @param params.onChainAccount - The sender on-chain account.
-   * @param params.amount - The amount to send in smallest units.
-   * @returns The transaction and whether memo recovery UI should be shown.
-   * @throws {UserRejectedRequestError} After the pre-submit error dialog is dismissed.
-   */
-  async #buildSendTransactionForConfirm(params: {
-    request: ConfirmSendJsonRpcRequest;
-    account: StellarKeyringAccount;
-    assetMetadata: StellarAssetMetadata;
-    onChainAccount: ResolvedActivatedAccount['onChainAccount'];
-    amount: BigNumber;
-  }): Promise<{
-    transaction: Transaction;
-    requiresMemoRecovery: boolean;
-  }> {
-    const { request, account, assetMetadata, onChainAccount, amount } = params;
-    const { toAddress, assetId, scope } = request.params;
-
-    try {
-      return await this.#transactionService.createValidatedSendTransaction({
-        onChainAccount,
-        scope,
-        assetId,
-        amount,
-        destination: toAddress,
-        skipMemoRequirementCheck: true,
-      });
-    } catch (error: unknown) {
-      await this.#displayDialogWithErrorMessage({
-        request,
-        account,
-        assetMetadata,
-        scope,
-        error,
-      });
-      throw ensureError(new UserRejectedRequestError());
     }
   }
 
@@ -461,9 +433,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       renderContext: {
         account,
         toAddress,
-        // Keep the original request so Add/Update memo still works on this
-        // dead-end validation dialog (no localSimulation / refresh).
-        request,
         transactionsFetchStatus: FetchStatus.Error,
         errorMessage: getTxnErrorMessageKey(error, account.address),
       },

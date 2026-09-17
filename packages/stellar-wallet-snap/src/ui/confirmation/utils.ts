@@ -411,3 +411,18 @@ export function getParam<Response extends Json>(
   const value = params.find((param) => param.key === key)?.value;
   return (value ?? null) as Response | null;
 }
+
+/**
+ * Reads a trimmed memo from confirmation interface context (UI-owned, not RPC params).
+ *
+ * @param context - The interface context.
+ * @returns Trimmed memo string, or `null` when missing/blank.
+ */
+export function memoFromContext(
+  context: Record<string, Json> | null | undefined,
+): string | null {
+  if (typeof context?.memo === 'string' && context.memo.trim()) {
+    return context.memo.trim();
+  }
+  return null;
+}

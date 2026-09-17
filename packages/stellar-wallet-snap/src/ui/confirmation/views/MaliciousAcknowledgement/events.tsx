@@ -8,7 +8,7 @@ import type {
 import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
 import { ConfirmationInterfaceKey } from '../../api';
 import type { FetchStatus } from '../../api';
-import { shouldDisableConfirmation } from '../../utils';
+import { memoFromContext, shouldDisableConfirmation } from '../../utils';
 import { renderConfirmationView } from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 
@@ -31,15 +31,6 @@ async function reRender(
     renderConfirmationView(interfaceKey, nextContext),
     nextContext,
   );
-}
-
-function confirmSendMemoFromContext(
-  context: Record<string, Json> | null | undefined,
-): string | null {
-  if (typeof context?.memo === 'string' && context.memo.trim()) {
-    return context.memo.trim();
-  }
-  return null;
 }
 
 /**
@@ -120,7 +111,7 @@ async function onProceedClick(
   ) {
     await resolveInterface(id, {
       confirmed: true,
-      memo: confirmSendMemoFromContext(context),
+      memo: memoFromContext(context),
     });
     return;
   }

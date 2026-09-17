@@ -17,7 +17,7 @@ import {
   RefreshConfirmationContextJsonRpcRequestStruct,
 } from '../api';
 import { CronjobBaseHandler } from '../base';
-import { ConfirmationContextRefresherKey } from './api';
+import { ConfirmationContextRefresherKey, shouldPauseRefresh } from './api';
 import type {
   ConfirmationContextRefreshResult,
   ConfirmationContextRefreshers,
@@ -143,11 +143,7 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
     // `halt` (hard fail) and `recoverable` (soft fail, e.g. RequiresMemo) both
     // pause auto-cron. UI may call scheduleBackgroundEvent again after a
     // recoverable fix (e.g. user adds a memo).
-    if (
-      results.some(
-        (result) => result?.halt === true || result?.recoverable === true,
-      )
-    ) {
+    if (results.some(shouldPauseRefresh)) {
       this.logger.info(
         'Confirmation refresh halted or recoverable; cron will not be rescheduled',
       );
@@ -231,10 +227,7 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       }
 
       // `halt` / `recoverable` omit the scan this cycle. Other remaining refreshers still run.
-      if (
-        transactionResult?.halt === true ||
-        transactionResult?.recoverable === true
-      ) {
+      if (shouldPauseRefresh(transactionResult)) {
         remainingRefreshers.delete(ConfirmationContextRefresherKey.Scan);
       }
     }

@@ -1,5 +1,4 @@
 import type { DialogResult } from '@metamask/snaps-sdk';
-import type { Json } from '@metamask/utils';
 import { isObject } from '@metamask/utils';
 
 import type {
@@ -7,6 +6,7 @@ import type {
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
 import { resolveInterface } from '../../../../utils';
+import { memoFromContext } from '../../utils';
 
 export const ConfirmSendTransactionFormNames = {
   Cancel: 'confirm-send-transaction-cancel',
@@ -22,7 +22,7 @@ export type ConfirmSendDialogResult = {
 };
 
 /**
- * Parses the confirm-send dialog result (boolean or `{ confirmed, memo }`).
+ * Parses the confirm-send dialog result (`{ confirmed, memo? }`, with boolean compat).
  *
  * @param result - Dialog result from `snap_resolveInterface`.
  * @returns Normalized confirmation + optional memo from the UI.
@@ -49,15 +49,6 @@ export function parseConfirmSendDialogResult(
     return { confirmed, memo: null };
   }
   return { confirmed };
-}
-
-function memoFromContext(
-  context: Record<string, Json> | null | undefined,
-): string | null {
-  if (typeof context?.memo === 'string' && context.memo.trim()) {
-    return context.memo.trim();
-  }
-  return null;
 }
 
 /**

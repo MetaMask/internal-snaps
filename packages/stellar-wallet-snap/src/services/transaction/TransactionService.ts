@@ -144,9 +144,10 @@ export class TransactionService {
   /**
    * Creates a validated send transaction.
    *
-   * When `skipMemoRequirementCheck` is true, SEP-29 is skipped so a draft
-   * envelope is available, and the result includes whether memo recovery UI is
-   * still needed (via {@link assertMemoWhenDestinationRequires}).
+   * When `skipMemoRequirementCheck` is true, SEP-29 is skipped during simulation
+   * so a draft envelope is available (e.g. recoverable RequiresMemo confirmation).
+   * Prefer {@link createDraftSendTransactionForConfirm} when the caller also needs
+   * to know whether memo recovery UI is required.
    *
    * @param params - The parameters for the transaction.
    * @param params.onChainAccount - The on-chain account.
@@ -155,34 +156,10 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks (recoverable confirmation draft).
+   * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks.
    * @param params.useCache - Whether to use the cache.
-   * @returns The validated transaction, or with `requiresMemoRecovery` when skipping SEP-29.
+   * @returns The validated transaction.
    */
-  async createValidatedSendTransaction(
-    params: {
-      onChainAccount: OnChainAccount;
-      amount: BigNumber;
-      scope: KnownCaip2ChainId;
-      assetId: KnownCaip19AssetIdOrSlip44Id;
-      destination: string;
-      memo?: string;
-      skipMemoRequirementCheck: true;
-      useCache?: boolean;
-    },
-  ): Promise<{ transaction: Transaction; requiresMemoRecovery: boolean }>;
-
-  async createValidatedSendTransaction(params: {
-    onChainAccount: OnChainAccount;
-    amount: BigNumber;
-    scope: KnownCaip2ChainId;
-    assetId: KnownCaip19AssetIdOrSlip44Id;
-    destination: string;
-    memo?: string;
-    skipMemoRequirementCheck?: false;
-    useCache?: boolean;
-  }): Promise<Transaction>;
-
   async createValidatedSendTransaction(params: {
     onChainAccount: OnChainAccount;
     amount: BigNumber;
@@ -192,9 +169,7 @@ export class TransactionService {
     memo?: string;
     skipMemoRequirementCheck?: boolean;
     useCache?: boolean;
-  }): Promise<
-    Transaction | { transaction: Transaction; requiresMemoRecovery: boolean }
-  > {
+  }): Promise<Transaction> {
     const {
       onChainAccount,
       scope,
@@ -219,7 +194,6 @@ export class TransactionService {
 
     const isSep41 = isSep41Id(assetId);
 
-    let transaction: Transaction;
     // If it is SEP-41, run SEP-41 transfer flow to build and validate the transaction
     if (isSep41) {
       // fail early: SEP-41 cannot fund a new account
@@ -227,7 +201,7 @@ export class TransactionService {
         throw new InvalidAssetForCreateAccountException(assetId);
       }
 
-      transaction = await this.#createValidatedSep41Transfer({
+      return this.#createValidatedSep41Transfer({
         onChainAccount,
         scope,
         assetId,
@@ -238,41 +212,69 @@ export class TransactionService {
         skipMemoRequirementCheck,
         useCache,
       });
-    } else {
-      // If it is classic asset, run classic asset transfer flow to build and validate the transaction
-      transaction = await this.#createValidatedClassicAssetTransfer({
-        onChainAccount,
-        scope,
-        assetId,
-        amount,
-        destination,
-        destinationAccount,
-        memo,
-        skipMemoRequirementCheck,
-      });
     }
 
-    if (!skipMemoRequirementCheck) {
-      return transaction;
-    }
+    // If it is classic asset, run classic asset transfer flow to build and validate the transaction
+    return this.#createValidatedClassicAssetTransfer({
+      onChainAccount,
+      scope,
+      assetId,
+      amount,
+      destination,
+      destinationAccount,
+      memo,
+      skipMemoRequirementCheck,
+    });
+  }
+
+  /**
+   * Builds a confirm-send draft envelope with SEP-29 skipped, then reports whether
+   * memo recovery UI is still needed (via {@link assertMemoWhenDestinationRequires}).
+   *
+   * Thin wrapper over {@link createValidatedSendTransaction}: one skip build, then a
+   * cached dest load (warmed by that build) to derive `requiresMemoRecovery`.
+   *
+   * @param params - Same inputs as {@link createValidatedSendTransaction} (without skip).
+   * @returns The draft transaction and whether the confirmation should show RequiresMemo recovery.
+   */
+  async createDraftSendTransactionForConfirm(params: {
+    onChainAccount: OnChainAccount;
+    amount: BigNumber;
+    scope: KnownCaip2ChainId;
+    assetId: KnownCaip19AssetIdOrSlip44Id;
+    destination: string;
+    memo?: string;
+    useCache?: boolean;
+  }): Promise<{ transaction: Transaction; requiresMemoRecovery: boolean }> {
+    const { onChainAccount, scope, destination } = params;
+
+    const transaction = await this.createValidatedSendTransaction({
+      ...params,
+      skipMemoRequirementCheck: true,
+    });
 
     let requiresMemoRecovery = false;
     // SEP-29 applies to inbound payments from other accounts; skip self-payments.
-    if (
-      destinationAccount !== null &&
-      destinationAccount.accountId !== onChainAccount.accountId
-    ) {
-      try {
-        assertMemoWhenDestinationRequires(
-          transaction,
-          destinationAccount.accountId,
-          destinationAccount.requiresMemo,
-        );
-      } catch (error: unknown) {
-        if (error instanceof RequiresMemoException) {
-          requiresMemoRecovery = true;
-        } else {
-          throw error;
+    // Dest was loaded during the draft build; useCache avoids a second Horizon round-trip.
+    if (onChainAccount.accountId !== destination) {
+      const destinationAccount = await this.#loadActivatedAccountOrNull(
+        destination,
+        scope,
+        true,
+      );
+      if (destinationAccount !== null) {
+        try {
+          assertMemoWhenDestinationRequires(
+            transaction,
+            destinationAccount.accountId,
+            destinationAccount.requiresMemo,
+          );
+        } catch (error: unknown) {
+          if (error instanceof RequiresMemoException) {
+            requiresMemoRecovery = true;
+          } else {
+            throw error;
+          }
         }
       }
     }

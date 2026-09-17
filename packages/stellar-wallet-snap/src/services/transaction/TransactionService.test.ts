@@ -824,7 +824,7 @@ describe('TransactionService', () => {
     });
   });
 
-  describe('createValidatedSendTransaction with skipMemoRequirementCheck', () => {
+  describe('createDraftSendTransactionForConfirm', () => {
     it('returns requiresMemoRecovery false when the destination does not require a memo', async () => {
       const { transactionService } = createMockTransactionService();
       const sourceWallet = getTestWallet();
@@ -858,14 +858,14 @@ describe('TransactionService', () => {
         .spyOn(NetworkService.prototype, 'getBaseFee')
         .mockResolvedValue(new BigNumber('100'));
 
-      const result = await transactionService.createValidatedSendTransaction({
-        onChainAccount: sourceOnChain,
-        amount: new BigNumber('1000000'),
-        scope: KnownCaip2ChainId.Mainnet,
-        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
-        destination: destWallet.address,
-        skipMemoRequirementCheck: true,
-      });
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: destWallet.address,
+        });
 
       expect(result.requiresMemoRecovery).toBe(false);
       expect(result.transaction.transactionOperations[0]?.type).toBe('payment');
@@ -905,14 +905,14 @@ describe('TransactionService', () => {
         .spyOn(NetworkService.prototype, 'getBaseFee')
         .mockResolvedValue(new BigNumber('100'));
 
-      const result = await transactionService.createValidatedSendTransaction({
-        onChainAccount: sourceOnChain,
-        amount: new BigNumber('1000000'),
-        scope: KnownCaip2ChainId.Mainnet,
-        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
-        destination: destWallet.address,
-        skipMemoRequirementCheck: true,
-      });
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: destWallet.address,
+        });
 
       expect(result.requiresMemoRecovery).toBe(true);
       expect(result.transaction.getMemo()).toBeNull();
@@ -952,15 +952,15 @@ describe('TransactionService', () => {
         .spyOn(NetworkService.prototype, 'getBaseFee')
         .mockResolvedValue(new BigNumber('100'));
 
-      const result = await transactionService.createValidatedSendTransaction({
-        onChainAccount: sourceOnChain,
-        amount: new BigNumber('1000000'),
-        scope: KnownCaip2ChainId.Mainnet,
-        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
-        destination: destWallet.address,
-        memo: 'exchange-ref',
-        skipMemoRequirementCheck: true,
-      });
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: destWallet.address,
+          memo: 'exchange-ref',
+        });
 
       expect(result.requiresMemoRecovery).toBe(false);
       expect(result.transaction.getMemo()).toBe('exchange-ref');
