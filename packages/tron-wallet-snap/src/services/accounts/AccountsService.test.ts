@@ -338,7 +338,7 @@ describe('AccountsService', () => {
   });
 
   describe('deriveTronKeypairs', () => {
-    const createAccount = (index: number): TronKeyringAccount =>
+    const createAccount = (index: number): ExtendedKeyringAccount =>
       ({
         id: `account-${index}`,
         entropySource: 'test-entropy',
@@ -349,7 +349,7 @@ describe('AccountsService', () => {
         scopes: SUPPORTED_SCOPES as unknown as Network[],
         options: {},
         methods: ['signMessage', 'signTransaction'],
-      }) as unknown as TronKeyringAccount;
+      }) as unknown as ExtendedKeyringAccount;
 
     it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
       const coinJson = await getTronTestCoinTypeJson();

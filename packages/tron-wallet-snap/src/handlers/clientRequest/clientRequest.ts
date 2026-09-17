@@ -1,6 +1,9 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -27,7 +30,6 @@ import {
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type {
   AccountsService,
   DerivedTronKeypair,
@@ -87,7 +89,7 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
 type SigningRequest = {
   index: number;
   accountId: string;
-  account: TronKeyringAccount;
+  account: ExtendedKeyringAccount;
   message: string;
 };
 
@@ -1241,7 +1243,7 @@ export class ClientRequestHandler {
       items.length,
     );
     const signingRequests: SigningRequest[] = [];
-    const accountsToDerive: TronKeyringAccount[] = [];
+    const accountsToDerive: ExtendedKeyringAccount[] = [];
 
     items.forEach(({ accountId, message }, index) => {
       const account = accountsById.get(accountId.toLowerCase());

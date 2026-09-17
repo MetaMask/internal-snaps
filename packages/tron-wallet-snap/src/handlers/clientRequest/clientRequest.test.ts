@@ -1471,7 +1471,7 @@ describe('ClientRequestHandler', () => {
         params: { items },
       });
 
-      const account1: TronKeyringAccount = {
+      const account1: ExtendedKeyringAccount = {
         id: TEST_ACCOUNT_ID,
         address: TEST_ADDRESS,
         entropySource: 'test-entropy',
@@ -1482,7 +1482,7 @@ describe('ClientRequestHandler', () => {
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
-      const account2: TronKeyringAccount = {
+      const account2: ExtendedKeyringAccount = {
         id: TEST_ACCOUNT_ID_2,
         address: TEST_ADDRESS_2,
         entropySource: 'test-entropy',
