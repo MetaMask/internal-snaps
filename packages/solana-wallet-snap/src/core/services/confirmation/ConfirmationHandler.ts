@@ -1,7 +1,7 @@
 import { SolMethod } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { assert, union } from '@metamask/superstruct';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import { render as renderConfirmSignIn } from '../../../features/confirmation/views/ConfirmSignIn/render';
 import { render as renderConfirmSignMessage } from '../../../features/confirmation/views/ConfirmSignMessage/render';
 import {
@@ -31,7 +31,7 @@ export class ConfirmationHandler {
    */
   async handleKeyringRequest(
     request: SolanaKeyringRequest,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     const {
       request: { method },
@@ -62,7 +62,7 @@ export class ConfirmationHandler {
    */
   async #handleConfirmTransactionRequest(
     request: SolanaKeyringRequest,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     assert(
       request.request,
@@ -161,7 +161,7 @@ export class ConfirmationHandler {
    */
   async #handleConfirmSignMessage(
     request: SolanaKeyringRequest,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     const isConfirmed = await renderConfirmSignMessage(request, account);
     return Boolean(isConfirmed);
@@ -176,7 +176,7 @@ export class ConfirmationHandler {
    */
   async #handleConfirmSignIn(
     request: SolanaKeyringRequest,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     const isConfirmed = await renderConfirmSignIn(request, account);
     return Boolean(isConfirmed);

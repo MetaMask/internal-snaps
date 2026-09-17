@@ -5,10 +5,10 @@ import {
   min,
   nullable,
   number,
-  object,
   optional,
   record,
   string,
+  type as typeStruct,
   union,
 } from '@metamask/superstruct';
 import { CaipAssetTypeStruct } from '@metamask/utils';
@@ -116,7 +116,7 @@ export type Ticker = Infer<typeof TickerStruct>;
  * For safety, most fields are marked optional and nullable even though it goes against the type in the Price API source code.
  */
 
-export const SpotPriceStruct = object({
+export const SpotPriceStruct = typeStruct({
   id: string(),
   price: min(number(), 0),
   marketCap: optional(nullable(min(number(), 0))),
