@@ -4603,15 +4603,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana-program/system@npm:^0.12.0":
-  version: 0.12.2
-  resolution: "@solana-program/system@npm:0.12.2"
-  peerDependencies:
-    "@solana/kit": ^6.4.0
-  checksum: 10/d4651276c46e256f3384b5f852c3effae82d6610bd4709dfff47c6dab0fb3bb70fc7a820c24f9c0a7ad7c1d6510f09b1163be8d1561d3af98ff74290adbae5d0
-  languageName: node
-  linkType: hard
-
 "@solana-program/system@npm:^0.14.0, @solana-program/system@npm:^0.14.1":
   version: 0.14.1
   resolution: "@solana-program/system@npm:0.14.1"
@@ -4637,17 +4628,6 @@ __metadata:
     "@solana/zk-sdk":
       optional: true
   checksum: 10/6c57b84541074ffb721e656f7f088125ec85dee21ec092831af4fe6f7621d5f8fdee87878a2be90f6d19dc6cf491c6bc669415e4f9bc0787ff2cdaf71c0e9f6e
-  languageName: node
-  linkType: hard
-
-"@solana-program/token@npm:^0.14.0":
-  version: 0.14.0
-  resolution: "@solana-program/token@npm:0.14.0"
-  dependencies:
-    "@solana-program/system": "npm:^0.12.0"
-  peerDependencies:
-    "@solana/kit": ^6.5.0
-  checksum: 10/0c2de0ced5ce521e9517209147d8156d0ca66717f9c3723c7adfcb0a7245e3b74e0ca7aeb537012b1a4b609e1eae78a1d6d2c1a36e50c06dc6f62df4a31adcf3
   languageName: node
   linkType: hard
 
