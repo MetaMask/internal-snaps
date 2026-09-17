@@ -111,12 +111,9 @@ export class AccountService {
     toIndex: number;
     walletResolver: (index: number) => Promise<Wallet>;
   }): Promise<StellarKeyringAccount[]> {
-    const { fromIndex, toIndex, entropySource } = options;
+    const { fromIndex, toIndex, entropySource, walletResolver } = options;
 
-    const [accounts, walletResolver] = [
-      await this.#accountsRepository.getAll(),
-      options.walletResolver,
-    ];
+    const accounts = await this.#accountsRepository.getAll();
 
     // 1. Index existing accounts in range by derivation index
     const existingAccountsByIndex = new Map<number, StellarKeyringAccount>();
