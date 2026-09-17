@@ -1,10 +1,5 @@
 export * from './OperationMapper';
 export * from './exceptions';
-export {
-  StellarMemoType,
-  inferStellarMemoType,
-  resolveStellarMemo,
-} from './memo';
 export * from './Transaction';
 export * from './TransactionBuilder';
 export * from './TransactionRepository';

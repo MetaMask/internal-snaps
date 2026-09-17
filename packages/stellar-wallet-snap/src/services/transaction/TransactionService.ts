@@ -25,7 +25,6 @@ import {
 } from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
-import type { StellarMemoType } from './memo';
 import { Transaction } from './Transaction';
 import type { TransactionBuilder } from './TransactionBuilder';
 import { TransactionMapper } from './TransactionMapper';
@@ -150,7 +149,6 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.useCache - Whether to use the cache.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -161,7 +159,6 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
-    memoType?: StellarMemoType;
     useCache?: boolean;
   }): Promise<Transaction> {
     const {
@@ -171,7 +168,6 @@ export class TransactionService {
       amount,
       destination,
       memo,
-      memoType,
       useCache = false,
     } = params;
 
@@ -203,7 +199,6 @@ export class TransactionService {
         destination,
         destinationAccount,
         memo,
-        memoType,
         useCache,
       });
     }
@@ -217,7 +212,6 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
-      memoType,
     });
   }
 
@@ -232,7 +226,6 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
    * such as amount-input validation, where the caller needs fee/balance feedback on
@@ -249,7 +242,6 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount;
     memo?: string;
-    memoType?: StellarMemoType;
     useCache: boolean;
   }): Promise<Transaction> {
     const {
@@ -260,7 +252,6 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
-      memoType,
       useCache,
     } = params;
 
@@ -274,7 +265,6 @@ export class TransactionService {
       destination,
       baseFee,
       memo,
-      memoType,
     });
 
     // Use getRawAsset so we only fetch when the asset is absent from the State.
@@ -344,7 +334,6 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @returns A promise that resolves to the validated transaction.
    */
   async #createValidatedClassicAssetTransfer(params: {
@@ -355,7 +344,6 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount | null;
     memo?: string;
-    memoType?: StellarMemoType;
   }): Promise<Transaction> {
     const {
       onChainAccount,
@@ -365,7 +353,6 @@ export class TransactionService {
       destinationAccount,
       destination,
       memo,
-      memoType,
     } = params;
 
     const isDestinationActivated = destinationAccount !== null;
@@ -388,7 +375,6 @@ export class TransactionService {
       },
       baseFee,
       memo,
-      memoType,
     });
 
     this.validateTransaction(transaction, onChainAccount, {

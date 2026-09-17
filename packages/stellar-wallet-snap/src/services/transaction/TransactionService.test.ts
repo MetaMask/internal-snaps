@@ -604,7 +604,6 @@ describe('TransactionService', () => {
         assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
         destination: destWallet.address,
         memo: 'deposit-ref',
-        memoType: 'text',
       });
 
       expect(tx.getMemo()).toBe('deposit-ref');

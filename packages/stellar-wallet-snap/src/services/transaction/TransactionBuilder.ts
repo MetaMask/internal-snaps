@@ -19,6 +19,7 @@ import type {
   KnownCaip19ClassicAssetId,
   KnownCaip19Slip44Id,
 } from '../../api';
+import { resolveStellarMemo } from '../../api';
 import { AppConfig } from '../../config';
 import {
   isSep41Id,
@@ -32,8 +33,6 @@ import {
   InvalidAssetForCreateAccountException,
   TransactionBuilderException,
 } from './exceptions';
-import type { StellarMemoType } from './memo';
-import { resolveStellarMemo } from './memo';
 import { Transaction } from './Transaction';
 import { assertAssetScopeMatch, caip19ToStellarAsset } from './utils';
 
@@ -109,7 +108,6 @@ export class TransactionBuilder {
    * @param params.amount - Amount in the token's smallest units (i128).
    * @param params.baseFee - Per-operation inclusion fee in stroops.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @returns Wrapped unsigned transaction with one `invokeHostFunction` op.
    */
   sep41Transfer(params: {
@@ -120,7 +118,6 @@ export class TransactionBuilder {
     amount: BigNumber;
     baseFee: BigNumber;
     memo?: string;
-    memoType?: StellarMemoType;
   }): Transaction {
     const {
       scope,
@@ -130,7 +127,6 @@ export class TransactionBuilder {
       amount,
       baseFee,
       memo,
-      memoType,
     } = params;
 
     assertAssetScopeMatch(assetId, scope);
@@ -159,7 +155,6 @@ export class TransactionBuilder {
         scope,
         fee: baseFee.toString(),
         memo,
-        memoType,
       });
     } catch (error: unknown) {
       throw new TransactionBuilderException(
@@ -177,18 +172,9 @@ export class TransactionBuilder {
     destination: string;
     amount: BigNumber;
     memo?: string;
-    memoType?: StellarMemoType;
   }): Transaction {
-    const {
-      amount,
-      baseFee,
-      scope,
-      asset,
-      onChainAccount,
-      destination,
-      memo,
-      memoType,
-    } = params;
+    const { amount, baseFee, scope, asset, onChainAccount, destination, memo } =
+      params;
     return this.#buildTransaction({
       onChainAccount,
       operations: [
@@ -202,7 +188,6 @@ export class TransactionBuilder {
       scope,
       fee: baseFee,
       memo,
-      memoType,
     });
   }
 
@@ -213,17 +198,9 @@ export class TransactionBuilder {
     destination: string;
     amount: BigNumber;
     memo?: string;
-    memoType?: StellarMemoType;
   }): Transaction {
-    const {
-      amount,
-      baseFee,
-      scope,
-      onChainAccount,
-      destination,
-      memo,
-      memoType,
-    } = params;
+    const { amount, baseFee, scope, onChainAccount, destination, memo } =
+      params;
 
     return this.#buildTransaction({
       onChainAccount,
@@ -237,7 +214,6 @@ export class TransactionBuilder {
       scope,
       fee: baseFee,
       memo,
-      memoType,
     });
   }
 
@@ -256,7 +232,6 @@ export class TransactionBuilder {
    * @param params.destination.isActivated - Whether the destination account exists and is funded on-chain.
    * @param params.baseFee - Per-operation inclusion fee in stroops.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @returns An unsigned transaction ready for signing.
    * @throws {InvalidAssetForCreateAccountException} When the destination is unfunded and the asset is not native.
    * @throws {TransactionBuilderException} If building fails.
@@ -272,7 +247,6 @@ export class TransactionBuilder {
     };
     baseFee: BigNumber;
     memo?: string;
-    memoType?: StellarMemoType;
   }): Transaction {
     const {
       onChainAccount,
@@ -282,7 +256,6 @@ export class TransactionBuilder {
       destination,
       baseFee,
       memo,
-      memoType,
     } = params;
     const { address: toAddress, isActivated } = destination;
 
@@ -298,7 +271,6 @@ export class TransactionBuilder {
           amount,
           baseFee,
           memo,
-          memoType,
         });
       }
 
@@ -315,7 +287,6 @@ export class TransactionBuilder {
           destination: toAddress,
           amount: normalizedAmount,
           memo,
-          memoType,
         });
       }
       // Unfunded destination → createAccount only.
@@ -330,7 +301,6 @@ export class TransactionBuilder {
         amount: normalizedAmount,
         destination: toAddress,
         memo,
-        memoType,
       });
     } catch (error: unknown) {
       if (error instanceof InvalidAssetForCreateAccountException) {
@@ -434,7 +404,6 @@ export class TransactionBuilder {
     scope,
     fee,
     memo,
-    memoType,
   }: {
     onChainAccount: OnChainAccount;
     operations: xdr.Operation[];
@@ -442,7 +411,6 @@ export class TransactionBuilder {
     scope: KnownCaip2ChainId;
     fee: string;
     memo?: string;
-    memoType?: StellarMemoType;
   }): Transaction {
     const accountInstance = new Account(
       onChainAccount.accountId,
@@ -452,7 +420,7 @@ export class TransactionBuilder {
     const networkPassphrase = caip2ChainIdToNetwork(scope);
     let resolvedMemo;
     try {
-      resolvedMemo = resolveStellarMemo({ value: memo, type: memoType });
+      resolvedMemo = resolveStellarMemo(memo);
     } catch (error: unknown) {
       throw new TransactionBuilderException(
         error instanceof Error ? error.message : 'Invalid memo',

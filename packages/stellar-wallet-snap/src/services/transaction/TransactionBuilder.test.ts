@@ -255,28 +255,6 @@ describe('TransactionBuilder', () => {
       expect((transaction.getRaw() as StellarTransaction).memo.type).toBe('id');
     });
 
-    it('honors an explicit memoType over inference', () => {
-      const testDestination = getTestWallet();
-      const transaction = transactionBuilder.transfer({
-        onChainAccount: testOnChainAccount,
-        scope: KnownCaip2ChainId.Mainnet,
-        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
-        amount: new BigNumber(100),
-        destination: {
-          address: testDestination.address,
-          isActivated: true,
-        },
-        baseFee: new BigNumber(100),
-        memo: '123456789',
-        memoType: 'text',
-      });
-
-      expect(transaction.getMemo()).toBe('123456789');
-      expect((transaction.getRaw() as StellarTransaction).memo.type).toBe(
-        'text',
-      );
-    });
-
     it('throws TransactionBuilderException when the memo is invalid', () => {
       const testDestination = getTestWallet();
 
