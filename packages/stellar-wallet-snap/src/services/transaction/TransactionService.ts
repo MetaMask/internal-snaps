@@ -22,6 +22,7 @@ import type { Wallet } from '../wallet';
 import {
   InsufficientBalanceException,
   InvalidAssetForCreateAccountException,
+  RequiresMemoException,
 } from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
@@ -36,6 +37,7 @@ import {
 import type { TransactionSimulatorOptions } from './TransactionSimulator';
 import { TransactionSynchronizeService } from './TransactionSynchronizeService';
 import {
+  assertMemoWhenDestinationRequires,
   assertTransactionScope,
   emitAccountTransactionsUpdated,
 } from './utils';
@@ -142,6 +144,10 @@ export class TransactionService {
   /**
    * Creates a validated send transaction.
    *
+   * When `skipMemoRequirementCheck` is true, SEP-29 is skipped so a draft
+   * envelope is available, and the result includes whether memo recovery UI is
+   * still needed (via {@link assertMemoWhenDestinationRequires}).
+   *
    * @param params - The parameters for the transaction.
    * @param params.onChainAccount - The on-chain account.
    * @param params.amount - The amount to send.
@@ -151,8 +157,32 @@ export class TransactionService {
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks (recoverable confirmation draft).
    * @param params.useCache - Whether to use the cache.
-   * @returns A promise that resolves to the validated transaction.
+   * @returns The validated transaction, or with `requiresMemoRecovery` when skipping SEP-29.
    */
+  async createValidatedSendTransaction(
+    params: {
+      onChainAccount: OnChainAccount;
+      amount: BigNumber;
+      scope: KnownCaip2ChainId;
+      assetId: KnownCaip19AssetIdOrSlip44Id;
+      destination: string;
+      memo?: string;
+      skipMemoRequirementCheck: true;
+      useCache?: boolean;
+    },
+  ): Promise<{ transaction: Transaction; requiresMemoRecovery: boolean }>;
+
+  async createValidatedSendTransaction(params: {
+    onChainAccount: OnChainAccount;
+    amount: BigNumber;
+    scope: KnownCaip2ChainId;
+    assetId: KnownCaip19AssetIdOrSlip44Id;
+    destination: string;
+    memo?: string;
+    skipMemoRequirementCheck?: false;
+    useCache?: boolean;
+  }): Promise<Transaction>;
+
   async createValidatedSendTransaction(params: {
     onChainAccount: OnChainAccount;
     amount: BigNumber;
@@ -162,7 +192,9 @@ export class TransactionService {
     memo?: string;
     skipMemoRequirementCheck?: boolean;
     useCache?: boolean;
-  }): Promise<Transaction> {
+  }): Promise<
+    Transaction | { transaction: Transaction; requiresMemoRecovery: boolean }
+  > {
     const {
       onChainAccount,
       scope,
@@ -187,6 +219,7 @@ export class TransactionService {
 
     const isSep41 = isSep41Id(assetId);
 
+    let transaction: Transaction;
     // If it is SEP-41, run SEP-41 transfer flow to build and validate the transaction
     if (isSep41) {
       // fail early: SEP-41 cannot fund a new account
@@ -194,7 +227,7 @@ export class TransactionService {
         throw new InvalidAssetForCreateAccountException(assetId);
       }
 
-      return this.#createValidatedSep41Transfer({
+      transaction = await this.#createValidatedSep41Transfer({
         onChainAccount,
         scope,
         assetId,
@@ -205,19 +238,46 @@ export class TransactionService {
         skipMemoRequirementCheck,
         useCache,
       });
+    } else {
+      // If it is classic asset, run classic asset transfer flow to build and validate the transaction
+      transaction = await this.#createValidatedClassicAssetTransfer({
+        onChainAccount,
+        scope,
+        assetId,
+        amount,
+        destination,
+        destinationAccount,
+        memo,
+        skipMemoRequirementCheck,
+      });
     }
 
-    // If it is classic asset, run classic asset transfer flow to build and validate the transaction
-    return this.#createValidatedClassicAssetTransfer({
-      onChainAccount,
-      scope,
-      assetId,
-      amount,
-      destination,
-      destinationAccount,
-      memo,
-      skipMemoRequirementCheck,
-    });
+    if (!skipMemoRequirementCheck) {
+      return transaction;
+    }
+
+    let requiresMemoRecovery = false;
+    // SEP-29 applies to inbound payments from other accounts; skip self-payments.
+    if (
+      destinationAccount !== null &&
+      destinationAccount.accountId !== onChainAccount.accountId
+    ) {
+      try {
+        assertMemoWhenDestinationRequires(
+          transaction,
+          destinationAccount.accountId,
+          destinationAccount.requiresMemo,
+        );
+      } catch (error: unknown) {
+        if (error instanceof RequiresMemoException) {
+          requiresMemoRecovery = true;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return { transaction, requiresMemoRecovery };
   }
 
   /**

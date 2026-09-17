@@ -14,7 +14,6 @@ import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
   KeyringTransactionType,
-  RequiresMemoException,
   TransactionValidationException,
 } from '../../services/transaction';
 import type {
@@ -172,15 +171,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      const trimmedMemo = dialogResult.memo?.trim();
-      const confirmedMemo = trimmedMemo === '' ? undefined : trimmedMemo;
-
-      if (requiresMemoRecovery && !confirmedMemo) {
-        return {
-          valid: false,
-          errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-        };
-      }
+      const confirmedMemo = dialogResult.memo?.trim() || undefined
 
       await trackTransactionApproved({
         origin: METAMASK_ORIGIN,
@@ -280,10 +271,17 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   }
 
   /**
-   * Builds the send envelope for confirmation, recovering from SEP-29 RequiresMemo
-   * with a draft tx (`skipMemoRequirementCheck`) when needed.
+   * Builds the send envelope for confirmation.
+   *
+   * Uses a single draft build (`skipMemoRequirementCheck`) and derives whether
+   * memo recovery UI is needed from destination SEP-29 state.
    *
    * @param params - Build inputs.
+   * @param params.request - The confirm-send JSON-RPC request.
+   * @param params.account - The sender keyring account.
+   * @param params.assetMetadata - Metadata for the asset being sent.
+   * @param params.onChainAccount - The sender on-chain account.
+   * @param params.amount - The amount to send in smallest units.
    * @returns The transaction and whether memo recovery UI should be shown.
    * @throws {UserRejectedRequestError} After the pre-submit error dialog is dismissed.
    */
@@ -301,49 +299,23 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     const { toAddress, assetId, scope } = request.params;
 
     try {
-      const transaction =
-        await this.#transactionService.createValidatedSendTransaction({
-          onChainAccount,
-          scope,
-          assetId,
-          amount,
-          destination: toAddress,
-        });
-      return { transaction, requiresMemoRecovery: false };
+      return await this.#transactionService.createValidatedSendTransaction({
+        onChainAccount,
+        scope,
+        assetId,
+        amount,
+        destination: toAddress,
+        skipMemoRequirementCheck: true,
+      });
     } catch (error: unknown) {
-      if (!(error instanceof RequiresMemoException)) {
-        await this.#displayDialogWithErrorMessage({
-          request,
-          account,
-          assetMetadata,
-          scope,
-          error,
-        });
-        throw ensureError(new UserRejectedRequestError());
-      }
-
-      // Draft envelope so the user can add a memo, then re-validate before signing.
-      try {
-        const transaction =
-          await this.#transactionService.createValidatedSendTransaction({
-            onChainAccount,
-            scope,
-            assetId,
-            amount,
-            destination: toAddress,
-            skipMemoRequirementCheck: true,
-          });
-        return { transaction, requiresMemoRecovery: true };
-      } catch (draftError: unknown) {
-        await this.#displayDialogWithErrorMessage({
-          request,
-          account,
-          assetMetadata,
-          scope,
-          error: draftError,
-        });
-        throw ensureError(new UserRejectedRequestError());
-      }
+      await this.#displayDialogWithErrorMessage({
+        request,
+        account,
+        assetMetadata,
+        scope,
+        error,
+      });
+      throw ensureError(new UserRejectedRequestError());
     }
   }
 
