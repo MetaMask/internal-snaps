@@ -277,8 +277,13 @@ describe('KeyringHandler', () => {
         entropySource: entropySourceId,
         fromIndex: 2,
         toIndex: 2,
-        walletResolver,
+        walletResolver: expect.any(Promise),
       });
+      const batchCreateOptions = batchCreateAccountSpy.mock.calls[0]?.[0];
+      if (!batchCreateOptions) {
+        throw new Error('Expected batchCreate to be called');
+      }
+      expect(await batchCreateOptions.walletResolver).toBe(walletResolver);
       expect(result).toStrictEqual([asStrictKeyringAccount(mockAccount)]);
     });
 
@@ -297,8 +302,13 @@ describe('KeyringHandler', () => {
         entropySource: entropySourceId,
         fromIndex: 1,
         toIndex: 3,
-        walletResolver,
+        walletResolver: expect.any(Promise),
       });
+      const batchCreateOptions = batchCreateAccountSpy.mock.calls[0]?.[0];
+      if (!batchCreateOptions) {
+        throw new Error('Expected batchCreate to be called');
+      }
+      expect(await batchCreateOptions.walletResolver).toBe(walletResolver);
       expect(result).toHaveLength(3);
       expect(result[0]?.options).toMatchObject({
         entropy: expect.objectContaining({ groupIndex: 1 }),

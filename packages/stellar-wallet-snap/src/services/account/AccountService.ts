@@ -15,6 +15,8 @@ import type { StellarKeyringAccount, StellarDerivationPath } from './api';
 import { AccountNotFoundException } from './exceptions';
 import { assertSameAddress } from './utils';
 
+type WalletResolver = (index: number) => Promise<Wallet>;
+
 /**
  * Manages Stellar keyring accounts: creation, resolution from state, derivation checks, and persistence.
  */
@@ -101,7 +103,7 @@ export class AccountService {
    * @param options.entropySource - [Required] The entropy source to use for derivation.
    * @param options.fromIndex - [Required] The starting derivation index (inclusive).
    * @param options.toIndex - [Required] The ending derivation index (inclusive).
-   * @param options.walletResolver - [Required] A function to resolve the wallet address for a given index.
+   * @param options.walletResolver - [Required] A function, or promise for a function, to resolve the wallet address for a given index.
    * @returns A Promise that resolves to accounts in index order for the full requested range.
    * Existing accounts are reused and only missing accounts are created and persisted.
    */
@@ -109,11 +111,14 @@ export class AccountService {
     entropySource: EntropySourceId;
     fromIndex: number;
     toIndex: number;
-    walletResolver: (index: number) => Promise<Wallet>;
+    walletResolver: WalletResolver | Promise<WalletResolver>;
   }): Promise<StellarKeyringAccount[]> {
-    const { fromIndex, toIndex, entropySource, walletResolver } = options;
+    const { fromIndex, toIndex, entropySource } = options;
 
-    const accounts = await this.#accountsRepository.getAll();
+    const [accounts, walletResolver] = await Promise.all([
+      this.#accountsRepository.getAll(),
+      Promise.resolve(options.walletResolver),
+    ]);
 
     // 1. Index existing accounts in range by derivation index
     const existingAccountsByIndex = new Map<number, StellarKeyringAccount>();
