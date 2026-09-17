@@ -31,14 +31,6 @@ const config: SnapConfig = {
   environment: {
     ENVIRONMENT: process.env.ENVIRONMENT ?? '',
     LOG_LEVEL: process.env.LOG_LEVEL ?? '',
-    // RPC
-    RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET ?? '',
-    RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_LIST_NILE_TESTNET ?? '',
-    RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET ?? '',
-    // Block explorer
-    EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL ?? '',
-    EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL ?? '',
-    EXPLORER_SHASTA_BASE_URL: process.env.EXPLORER_SHASTA_BASE_URL ?? '',
     // APIs
     PRICE_API_BASE_URL: apiBaseUrl(process.env.PRICE_API_BASE_URL),
     TOKEN_API_BASE_URL: apiBaseUrl(process.env.TOKEN_API_BASE_URL),
@@ -46,7 +38,6 @@ const config: SnapConfig = {
     SECURITY_ALERTS_API_BASE_URL: apiBaseUrl(
       process.env.SECURITY_ALERTS_API_BASE_URL,
     ),
-    NFT_API_BASE_URL: apiBaseUrl(process.env.NFT_API_BASE_URL),
     // TronGrid API
     TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET ?? '',
     TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE ?? '',

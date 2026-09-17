@@ -1,9 +1,15 @@
-import { InMemoryCache } from '@metamask/snap-networks-utils';
+import {
+  BaseConfigProvider,
+  InMemoryCache,
+} from '@metamask/snap-networks-utils';
 import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 
 import { Network } from '../../constants';
-import { ConfigProvider } from '../../services/config';
-import { ENVIRONMENT } from '../../services/config/ConfigProvider';
+import type { ConfigProvider } from '../../services/config';
+import {
+  ConfigStruct,
+  ENVIRONMENT,
+} from '../../services/config/ConfigProvider';
 import nativeTransferWithoutTimestampMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer-without-timestamp.json';
 import nativeTransferMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer.json';
 import { mockLogger } from '../../utils/mockLogger';
@@ -47,15 +53,18 @@ async function withTrongridApiClient<ReturnValue>(
     [Network.Shasta]: 'https://api.shasta.trongrid.io',
   };
 
-  const configProvider = new ConfigProvider({
-    ...ENVIRONMENT,
-    trongridApi: {
-      baseUrls: options.trongridBaseUrls ?? defaultBaseUrls,
+  const configProvider = new BaseConfigProvider(
+    {
+      ...ENVIRONMENT,
+      trongridApi: {
+        baseUrls: options.trongridBaseUrls ?? defaultBaseUrls,
+      },
+      tronHttpApi: {
+        baseUrls: options.tronHttpBaseUrls ?? defaultBaseUrls,
+      },
     },
-    tronHttpApi: {
-      baseUrls: options.tronHttpBaseUrls ?? defaultBaseUrls,
-    },
-  });
+    ConfigStruct,
+  );
 
   const tronHttpClient = new TronHttpClient({ configProvider });
   const cache = new InMemoryCache(mockLogger);
