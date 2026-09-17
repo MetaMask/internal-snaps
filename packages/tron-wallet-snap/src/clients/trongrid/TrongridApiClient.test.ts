@@ -1,7 +1,6 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
+import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 
-import type { ICache } from '../../caching/ICache';
-import { InMemoryCache } from '../../caching/InMemoryCache';
 import { Network } from '../../constants';
 import { ConfigProvider } from '../../services/config';
 import nativeTransferWithoutTimestampMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer-without-timestamp.json';

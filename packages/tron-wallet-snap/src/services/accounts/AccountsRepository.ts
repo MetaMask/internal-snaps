@@ -1,8 +1,10 @@
 import type { EntropySourceId } from '@metamask/keyring-api';
+import type {
+  ExtendedKeyringAccount,
+  IStateManager,
+} from '@metamask/snap-networks-utils';
 
-import type { TronKeyringAccount } from '../../entities/keyring-account';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 /**
  * Range of inclusive account indices to create.
@@ -15,7 +17,7 @@ type AccountCreationRange = {
   to: number;
 };
 
-type KeyringAccountsState = Record<string, TronKeyringAccount>;
+type KeyringAccountsState = Record<string, ExtendedKeyringAccount>;
 
 /**
  * Result of merging accounts into `keyringAccounts`.
@@ -25,8 +27,8 @@ type KeyringAccountsState = Record<string, TronKeyringAccount>;
  * conflict losers are omitted (their winners are present in `merged`).
  */
 export type KeyringAccountsMergeResult = {
-  merged: Record<string, TronKeyringAccount>;
-  added: Record<string, TronKeyringAccount>;
+  merged: Record<string, ExtendedKeyringAccount>;
+  added: Record<string, ExtendedKeyringAccount>;
 };
 
 /**
@@ -35,7 +37,7 @@ export type KeyringAccountsMergeResult = {
  * @param account - The account to key.
  * @returns A stable conflict key for the account.
  */
-function getAccountIndexKey(account: TronKeyringAccount): string {
+function getAccountIndexKey(account: ExtendedKeyringAccount): string {
   return `${account.entropySource}:${account.index}`;
 }
 
@@ -49,7 +51,7 @@ function getAccountIndexKey(account: TronKeyringAccount): string {
 function findAccountByIndexKey(
   accounts: KeyringAccountsState,
   indexKey: string,
-): TronKeyringAccount | undefined {
+): ExtendedKeyringAccount | undefined {
   return Object.values(accounts).find(
     (account) => getAccountIndexKey(account) === indexKey,
   );
@@ -102,7 +104,7 @@ export class AccountsRepository {
    *
    * @returns All accounts from the state.
    */
-  async getAll(): Promise<TronKeyringAccount[]> {
+  async getAll(): Promise<ExtendedKeyringAccount[]> {
     const accounts = await this.#state.getKey<
       UnencryptedStateValue['keyringAccounts']
     >(this.#storageKey);
@@ -120,7 +122,7 @@ export class AccountsRepository {
   async findByEntropySourceAndRange(
     entropySource: EntropySourceId,
     range: AccountCreationRange,
-  ): Promise<TronKeyringAccount[]> {
+  ): Promise<ExtendedKeyringAccount[]> {
     const accounts = await this.getAll();
 
     return accounts
@@ -133,23 +135,25 @@ export class AccountsRepository {
       .sort((first, second) => first.index - second.index);
   }
 
-  async findById(id: string): Promise<TronKeyringAccount | null> {
+  async findById(id: string): Promise<ExtendedKeyringAccount | null> {
     const accounts = await this.getAll();
     return accounts.find((account) => account.id === id) ?? null;
   }
 
-  async findByIds(ids: string[]): Promise<TronKeyringAccount[]> {
+  async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
     const accounts = await this.getAll();
     return accounts.filter((account) => ids.includes(account.id));
   }
 
-  async findByAddress(address: string): Promise<TronKeyringAccount | null> {
+  async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
     const accounts = await this.getAll();
 
     return accounts.find((account) => account.address === address) ?? null;
   }
 
-  async create(account: TronKeyringAccount): Promise<TronKeyringAccount> {
+  async create(
+    account: ExtendedKeyringAccount,
+  ): Promise<ExtendedKeyringAccount> {
     let persistedAccount = account;
 
     await this.#state.setKeyWith<KeyringAccountsState>(
@@ -182,7 +186,7 @@ export class AccountsRepository {
    * without re-reading state.
    */
   async mergeKeyringAccounts(
-    newAccounts: Record<string, TronKeyringAccount>,
+    newAccounts: Record<string, ExtendedKeyringAccount>,
   ): Promise<KeyringAccountsMergeResult> {
     let result: KeyringAccountsMergeResult = { merged: {}, added: {} };
 
@@ -198,10 +202,10 @@ export class AccountsRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await Promise.all([
-      this.#state.deleteKey(`${this.#storageKey}.${id}`),
-      this.#state.deleteKey(`assets.${id}`),
-      this.#state.deleteKey(`transactions.${id}`),
+    await this.#state.deleteKeys([
+      `${this.#storageKey}.${id}`,
+      `assets.${id}`,
+      `transactions.${id}`,
     ]);
   }
 }

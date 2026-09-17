@@ -1,4 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -6,9 +10,8 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { Network } from '../../constants';
 import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { State, UnencryptedStateValue } from '../../services/state/State';
+import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type {
   JsonTransactionRawData,
@@ -52,7 +55,7 @@ export class CronHandler {
 
   readonly #snapClient: SnapClient;
 
-  readonly #state: State<UnencryptedStateValue>;
+  readonly #state: IStateManager<UnencryptedStateValue>;
 
   readonly #priceApiClient: PriceApiClient;
 
@@ -75,7 +78,7 @@ export class CronHandler {
     logger: Logger;
     accountsService: AccountsService;
     snapClient: SnapClient;
-    state: State<UnencryptedStateValue>;
+    state: IStateManager<UnencryptedStateValue>;
     priceApiClient: PriceApiClient;
     tronHttpClient: TronHttpClient;
     transactionScanService: TransactionScanService;
@@ -369,7 +372,7 @@ export class CronHandler {
       const scanAccount = {
         type: interfaceContext.accountType,
         address: fromAddress,
-      } as TronKeyringAccount;
+      } as ExtendedKeyringAccount;
 
       let { scan } = interfaceContext;
       let { scanFetchStatus } = interfaceContext;

@@ -1,8 +1,8 @@
 import { TrxAccountType, TrxScope } from '@metamask/keyring-api';
+import { InMemoryState } from '@metamask/snap-networks-utils';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
-import type { TronKeyringAccount } from '../../entities/keyring-account';
-import { InMemoryState } from '../state/InMemoryState';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import { AccountsRepository } from './AccountsRepository';
 
 /**
@@ -12,7 +12,7 @@ import { AccountsRepository } from './AccountsRepository';
  * @returns An in-memory state seeded with the provided accounts.
  */
 function createEmptyState(
-  keyringAccounts: Record<string, TronKeyringAccount> = {},
+  keyringAccounts: Record<string, ExtendedKeyringAccount> = {},
 ): InMemoryState<UnencryptedStateValue> {
   return new InMemoryState<UnencryptedStateValue>({
     keyringAccounts,
@@ -29,8 +29,8 @@ function createEmptyState(
  * @returns A complete Tron keyring account for tests.
  */
 function createTestAccount(
-  overrides: Partial<TronKeyringAccount> = {},
-): TronKeyringAccount {
+  overrides: Partial<ExtendedKeyringAccount> = {},
+): ExtendedKeyringAccount {
   return {
     id: 'account-0',
     entropySource: 'test-entropy',

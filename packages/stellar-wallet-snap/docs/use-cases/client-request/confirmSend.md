@@ -25,11 +25,11 @@ Memo is **not** a client wire param. The confirmation UI owns memo on interface 
 - `{ valid: true, errors: [], transactionId }` — confirmed, signed, and submitted
 - `{ valid: false, errors: [{ code }] }` — `Invalid` · `InsufficientBalance` · `InsufficientBalanceToCoverFee`
 
-Pre-submit validation failures (balance, trustline, create-account, expired transaction, non-native send to an unfunded destination) are shown in the send confirmation dialog first (no fee or price estimates). After the dialog closes, the handler returns the error codes above. Failures after the user confirms return those same codes without a second dialog.
+Pre-submit validation failures (balance, trustline, create-account, expired transaction, non-native send to an unfunded destination) are shown in the send confirmation dialog first (no fee or price estimates). That dialog only supports dismiss; after it closes, the handler throws `UserRejectedRequestError`. Failures after the user confirms a valid send return the error codes above without a second dialog.
 
 **RequiresMemo (SEP-29):** when the destination requires a memo and none was provided, the snap opens a recoverable send confirmation on a draft envelope (`skipMemoRequirementCheck: true`) with a banner asking the user to add a memo. The confirm UI includes an Add/Update memo row and edit screen that stores the memo on confirmation **context** (`context.memo`), not on `request.params`. After the user confirms with a memo, the handler re-validates (including the memo requirement) via the existing post-confirm refresh path before signing. Confirming without a memo still returns `{ valid: false, errors: [{ code: Invalid }] }`. While the dialog is open, live refresh treats `RequiresMemo` as recoverable (`recoverable: true`) so saving a memo can restart validation and security scanning without nulling `securityScanRequest`.
 
-User rejection of a valid confirmation dialog throws `UserRejectedRequestError`. Unactivated sender accounts show the account activation prompt and rethrow `AccountNotActivatedException`.
+User rejection of a valid confirmation dialog also throws `UserRejectedRequestError`. Unactivated sender accounts show the account activation prompt and rethrow `AccountNotActivatedException`.
 
 ## Participants
 
@@ -54,7 +54,7 @@ User rejection of a valid confirmation dialog throws `UserRejectedRequestError`.
 1. **Route** — `onClientRequest` dispatches to `ConfirmSendHandler`.
 2. **Resolve** — `AccountResolver` loads keyring account, wallet, and activated on-chain account from the **live network**.
 3. **Build** — Resolve asset metadata; convert amount; `TransactionService.createValidatedSendTransaction`.
-4. **Pre-submit validation errors** — Balance, trustline, and create-account failures are shown in the send confirmation (no fee or price estimates). After the dialog closes, the handler returns `{ valid: false, errors: [{ code }] }`. `RequiresMemo` opens a recoverable confirmation instead (draft + banner) so the user can add a memo.
+4. **Pre-submit validation errors** — Balance, trustline, and create-account failures are shown in the send confirmation (no fee or price estimates). After the dialog is dismissed, the handler throws `UserRejectedRequestError`. `RequiresMemo` opens a recoverable confirmation instead (draft + banner) so the user can add a memo.
 5. **Confirm** — `ConfirmationUXController` shows send UI (fee, estimated changes, security scan, memo row, local re-validation cron while open). Dialog resolves with `{ confirmed, memo? }` from `context.memo`.
 6. **Refresh** — After confirm, account is resolved again from the live network; fee must not exceed what the user approved. Validation failures here return error codes without a second dialog. Dialog memo is applied on rebuild via `createValidatedSendTransaction({ memo })` (never written onto ConfirmSend RPC params).
 7. **Sign & send** — `Wallet.signTransaction` → `TransactionService.sendTransaction`.

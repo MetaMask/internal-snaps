@@ -1,4 +1,4 @@
-import type { Codec, IInstruction, ReadonlyUint8Array } from '@solana/kit';
+import type { Codec, Instruction, ReadonlyUint8Array } from '@solana/kit';
 import { address, getStructCodec, getU8Codec } from '@solana/kit';
 
 /**
@@ -47,10 +47,10 @@ export const identifySecp256Instruction = (
     | ReadonlyUint8Array,
 ) => Secp256Instruction.Verify;
 
-export const isSecp256k1Instruction = (instruction: IInstruction) =>
+export const isSecp256k1Instruction = (instruction: Instruction) =>
   instruction.programAddress === SECP256K1_PROGRAM_ADDRESS;
 
-export const isSecp256r1Instruction = (instruction: IInstruction) =>
+export const isSecp256r1Instruction = (instruction: Instruction) =>
   instruction.programAddress === SECP256R1_PROGRAM_ADDRESS;
 
 type Secp256InstructionData = {
@@ -73,7 +73,7 @@ export type ParsedSecp256Instruction = {
   instructionType: typeof Secp256Instruction.Verify;
 } & ParsedVerifySecp256Instruction;
 
-export const parseVerifySecp256Instruction = (instruction: IInstruction) => {
+export const parseVerifySecp256Instruction = (instruction: Instruction) => {
   return {
     programAddress: instruction.programAddress,
     data: getSecp256InstructionCodec().decode(

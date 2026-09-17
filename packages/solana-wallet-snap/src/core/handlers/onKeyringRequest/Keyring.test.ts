@@ -2,14 +2,18 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
-import { Logger } from '@metamask/snap-networks-utils';
+import {
+  InMemoryState,
+  Logger,
+  asStrictKeyringAccount,
+} from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';
 import bs58 from 'bs58';
 
 import type { AssetEntity } from '../../../entities';
-import { asStrictKeyringAccount } from '../../../entities';
 import type { Caip10Address } from '../../constants/solana';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import type {
@@ -18,10 +22,8 @@ import type {
   TransactionsService,
 } from '../../services';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
-import { InMemoryState } from '../../services/state/InMemoryState';
-import type { IStateManager } from '../../services/state/IStateManager';
-import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/State';
-import type { UnencryptedStateValue } from '../../services/state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/stateTypes';
+import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import { MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST } from '../../services/wallet/mocks';
 import type { WalletService } from '../../services/wallet/WalletService';
 import {
@@ -301,18 +303,26 @@ describe('SolanaKeyring', () => {
 
   describe('deleteAccount', () => {
     it('deletes an account', async () => {
-      const accountBeforeDeletion = await keyring.getAccount(
-        MOCK_SOLANA_KEYRING_ACCOUNT_1.id,
-      );
+      const accountId = MOCK_SOLANA_KEYRING_ACCOUNT_1.id;
+      await mockState.setKey(`transactions.${accountId}`, []);
+      await mockState.setKey(`assetEntities.${accountId}`, [
+        MOCK_ASSET_ENTITY_1,
+      ]);
+
+      const accountBeforeDeletion = await keyring.getAccount(accountId);
       expect(accountBeforeDeletion).toBeDefined();
 
-      await keyring.deleteAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id);
+      await keyring.deleteAccount(accountId);
 
-      await expect(
-        keyring.getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id),
-      ).rejects.toThrow(
-        `Account "${MOCK_SOLANA_KEYRING_ACCOUNT_1.id}" not found`,
+      await expect(keyring.getAccount(accountId)).rejects.toThrow(
+        `Account "${accountId}" not found`,
       );
+      expect(
+        await mockState.getKey(`transactions.${accountId}`),
+      ).toBeUndefined();
+      expect(
+        await mockState.getKey(`assetEntities.${accountId}`),
+      ).toBeUndefined();
     });
 
     it('throws an error if account provided is not a uuid', async () => {
@@ -680,6 +690,42 @@ describe('SolanaKeyring', () => {
           groupIndex: 10,
         }),
       ).rejects.toThrow('Network error');
+    });
+
+    it('fetches entropy once via the coin-type path regardless of on-chain activity', async () => {
+      // No activity — early return path.
+      mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([]);
+      await keyring.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        groupIndex: 10,
+      });
+      expect(getBip32Entropy).toHaveBeenCalledTimes(1);
+      expect(getBip32Entropy).toHaveBeenCalledWith({
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
+
+      jest.clearAllMocks();
+
+      // With activity — account creation path.
+      mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([
+        signature(
+          '2qfNzGs15dt999rt1AUJ7D1oPQaukMPPmHR2u5ZmDo4cVtr1Pr2Dax4Jo7ryTpM8jxjtXLi5NHy4uyr68MVh5my6',
+        ),
+      ]);
+      await keyring.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        groupIndex: 10,
+      });
+      expect(getBip32Entropy).toHaveBeenCalledTimes(1);
+      expect(getBip32Entropy).toHaveBeenCalledWith({
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
     });
   });
 

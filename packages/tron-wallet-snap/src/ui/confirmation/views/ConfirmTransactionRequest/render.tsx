@@ -1,3 +1,7 @@
+import type {
+  ExtendedKeyringAccount,
+  IStateManager,
+} from '@metamask/snap-networks-utils';
 import type { DialogResult, Json } from '@metamask/snaps-sdk';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -5,13 +9,9 @@ import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
-import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type { ComputeFeeResult } from '../../../../services/send/types';
-import type {
-  State,
-  UnencryptedStateValue,
-} from '../../../../services/state/State';
+import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
@@ -76,7 +76,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
  */
 export async function render(
   snapClient: SnapClient,
-  state: State<UnencryptedStateValue>,
+  state: IStateManager<UnencryptedStateValue>,
   incomingContext: {
     scope: Network;
     fromAddress: string;
@@ -144,7 +144,7 @@ export async function render(
     const scanAccount = {
       type: incomingContext.accountType,
       address: incomingContext.fromAddress,
-    } as TronKeyringAccount;
+    } as ExtendedKeyringAccount;
 
     try {
       const scan = await transactionScanService.scanTransaction({

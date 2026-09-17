@@ -1,3 +1,4 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -7,7 +8,6 @@ import {
   KnownCaip19Id,
   Network,
 } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
@@ -21,7 +21,7 @@ describe('StakingService', () => {
   let mockSnapClient: jest.Mocked<SnapClient>;
   let mockTronWeb: any;
 
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: 'test-account-id',
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
     type: 'eip155:eoa',

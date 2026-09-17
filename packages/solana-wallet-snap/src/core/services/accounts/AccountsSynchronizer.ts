@@ -1,6 +1,9 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import { InFlightCoalescer } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionsService } from '../transactions';
 import type { AccountsService } from './AccountsService';
@@ -14,6 +17,8 @@ export class AccountsSynchronizer {
 
   readonly #logger: Logger;
 
+  readonly #coalescer = new InFlightCoalescer();
+
   constructor(
     accountsService: AccountsService,
     assetsService: AssetsService,
@@ -26,28 +31,31 @@ export class AccountsSynchronizer {
     this.#logger = logger.withPrefix('[🔄 AccountsSynchronizer]');
   }
 
-  async synchronize(accounts?: SolanaKeyringAccount[]): Promise<void> {
+  async synchronize(accounts?: ExtendedKeyringAccount[]): Promise<void> {
     const accountsToSync = accounts ?? (await this.#accountsService.getAll());
+    const key = [...accountsToSync.map((a) => a.id)]
+      .sort((a, b) => a.localeCompare(b))
+      .join(',');
 
-    this.#logger.info('Synchronizing accounts', accountsToSync);
+    return this.#coalescer.run(key, async () => {
+      this.#logger.info('Synchronizing accounts', accountsToSync);
 
-    const assets = (
-      await Promise.allSettled(
-        accountsToSync.map(async (account) =>
-          this.#assetsService.fetch(account),
-        ),
-      )
-    )
-      .map((item) => (item.status === 'fulfilled' ? item.value : []))
-      .flat();
+      const assets = (
+        await Promise.allSettled(
+          accountsToSync.map(async (account) =>
+            this.#assetsService.fetch(account),
+          ),
+        )
+      ).flatMap((item) => (item.status === 'fulfilled' ? item.value : []));
 
-    await this.#assetsService.saveMany(assets);
+      await this.#assetsService.saveMany(assets);
 
-    const transactions =
-      await this.#transactionsService.fetchAssetsTransactions(assets, {
-        limit: 20,
-      });
+      const transactions =
+        await this.#transactionsService.fetchAssetsTransactions(assets, {
+          limit: 20,
+        });
 
-    await this.#transactionsService.saveMany(transactions);
+      await this.#transactionsService.saveMany(transactions);
+    });
   }
 }

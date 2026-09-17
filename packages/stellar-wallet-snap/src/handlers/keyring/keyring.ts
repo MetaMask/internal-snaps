@@ -17,7 +17,10 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { validateOrigin } from '@metamask/snap-networks-utils';
+import {
+  asStrictKeyringAccount,
+  validateOrigin,
+} from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -139,12 +142,12 @@ export class KeyringHandler implements KeyringSnapRpc {
     if (!account) {
       throw new AccountNotFoundException(accountId);
     }
-    return this.#toKeyringAccount(account);
+    return asStrictKeyringAccount(account);
   }
 
   async getAccounts(): Promise<KeyringAccount[]> {
     const accounts = await this.#accountService.listAccounts();
-    return accounts.map((account) => this.#toKeyringAccount(account));
+    return accounts.map(asStrictKeyringAccount);
   }
 
   /**
@@ -191,19 +194,7 @@ export class KeyringHandler implements KeyringSnapRpc {
       toIndex: range.to,
     });
 
-    return createdAccounts.map((account) => this.#toKeyringAccount(account));
-  }
-
-  #toKeyringAccount(account: StellarKeyringAccount): KeyringAccount {
-    const { id, address, type, options, methods, scopes } = account;
-    return {
-      id,
-      address,
-      type,
-      options,
-      methods,
-      scopes,
-    };
+    return createdAccounts.map(asStrictKeyringAccount);
   }
 
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {

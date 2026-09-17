@@ -17,6 +17,20 @@ export {
 } from './utils/sanitize/sanitize';
 export { UrlStruct } from './utils/urlStruct/urlStruct';
 export { UuidStruct } from './utils/uuidStruct/uuidStruct';
+export { asStrictKeyringAccount } from './utils/keyringAccount/keyringAccount';
+export type {
+  ExtendedKeyringAccount,
+  KeyringAccountExtension,
+} from './utils/keyringAccount/keyringAccount';
+export { parseEnv } from './utils/config/parseEnv';
+export { BaseConfigProvider } from './utils/config/BaseConfigProvider';
+export {
+  commaSeparatedListOf,
+  emptyToUndefined,
+  parseIntegerStruct,
+  parseFloatStruct,
+} from './utils/config/envStructs';
+export { LogLevelStruct } from './utils/config/logLevelStruct';
 export {
   batchesAll,
   batchesAllSettled,
@@ -62,6 +76,10 @@ export {
 } from './utils/originPermissions/createOriginPermissions';
 export type { CreateOriginPermissionsParams } from './utils/originPermissions/createOriginPermissions';
 export { validateOrigin } from './utils/originPermissions/validateOrigin';
+export { State } from './utils/state/State';
+export type { StateConfig } from './utils/state/State';
+export { InMemoryState } from './utils/state/InMemoryState';
+export type { IStateManager } from './utils/state/IStateManager';
 export {
   createSnapErrorHandling,
   createTrackError,
@@ -70,6 +88,26 @@ export {
   normalizeError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export { InMemoryCache } from './utils/cache/InMemoryCache';
+export { StateCache } from './utils/cache/StateCache';
+export { useCache } from './utils/cache/useCache';
+export { useCacheUntil } from './utils/cache/useCacheUntil';
+export type { CacheOptions } from './utils/cache/useCache';
+export type {
+  CacheUntilOptions,
+  ResultWithExpiry,
+} from './utils/cache/useCacheUntil';
+export type {
+  ICache,
+  CacheEntry,
+  TimestampMilliseconds,
+} from './utils/cache/types';
+export type {
+  CacheStateManager,
+  CacheStore,
+  CachePrefix,
+  StateValue,
+} from './utils/cache/StateCache';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,

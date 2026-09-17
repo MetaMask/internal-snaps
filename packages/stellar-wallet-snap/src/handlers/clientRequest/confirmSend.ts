@@ -111,8 +111,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
    *
    * @param resolved - Keyring account, live on-chain snapshot, and wallet.
    * @param request - JSON-RPC request with send params (`scope` is derived from `assetId`).
-   * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` for validation failures.
-   * @throws {UserRejectedRequestError} If the user rejects the confirmation prompt.
+   * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` for post-confirm validation failures or unexpected errors.
+   * @throws {UserRejectedRequestError} If the user rejects a valid confirmation, or after the pre-submit error confirmation is dismissed (that dialog only supports reject).
    */
   protected async execute(
     resolved: ResolvedActivatedAccount,
@@ -161,7 +161,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
               skipMemoRequirementCheck: true,
             });
           requiresMemoRecovery = true;
-        } else if (error instanceof TransactionValidationException) {
+        } else {
           await this.#displayDialogWithErrorMessage({
             request,
             account: stellarKeyringAccount,
@@ -169,9 +169,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
             scope,
             error,
           });
-          throw error;
-        } else {
-          throw error;
+          // The error confirmation only supports dismiss, so abort as a user rejection.
+          throw ensureError(new UserRejectedRequestError());
         }
       }
 
@@ -436,7 +435,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     account: StellarKeyringAccount;
     assetMetadata: StellarAssetMetadata;
     scope: KnownCaip2ChainId;
-    error: TransactionValidationException;
+    error: unknown;
   }): Promise<void> {
     const { request, account, assetMetadata, scope, error } = params;
     const { toAddress, amount, assetId } = request.params;

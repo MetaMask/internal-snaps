@@ -1,4 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -9,7 +13,6 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Networks, ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { TRX_IMAGE_SVG } from '../../static/tron-logo';
 import { FetchStatus } from '../../types/snap';
@@ -28,14 +31,14 @@ import { assertTransactionStructure } from '../../validation/transaction';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
-import type { State, UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class ConfirmationHandler {
   readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
-  readonly #state: State<UnencryptedStateValue>;
+  readonly #state: IStateManager<UnencryptedStateValue>;
 
   readonly #tronWebFactory: TronWebFactory;
 
@@ -52,7 +55,7 @@ export class ConfirmationHandler {
     logger,
   }: {
     snapClient: SnapClient;
-    state: State<UnencryptedStateValue>;
+    state: IStateManager<UnencryptedStateValue>;
     tronWebFactory: TronWebFactory;
     assetsService: AssetsService;
     feeCalculatorService: FeeCalculatorService;
@@ -80,7 +83,7 @@ export class ConfirmationHandler {
     account,
   }: {
     request: TronWalletKeyringRequest;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
   }): Promise<boolean> {
     this.#logger.info('Handling keyring request', {
       request,
@@ -105,7 +108,7 @@ export class ConfirmationHandler {
 
   async #handleSignMessageRequest(
     request: TronWalletKeyringRequest,
-    account: TronKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     const result = await renderConfirmSignMessage(request, account);
     return result === true;
@@ -113,7 +116,7 @@ export class ConfirmationHandler {
 
   async #handleSignTransactionRequest(
     request: TronWalletKeyringRequest,
-    account: TronKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     assert(request.request.params, SignTransactionRequestStruct);
 
@@ -227,7 +230,7 @@ export class ConfirmationHandler {
     account,
     scope,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
   }): Promise<boolean> {
     const tronWeb = this.#tronWebFactory.createClient(scope);

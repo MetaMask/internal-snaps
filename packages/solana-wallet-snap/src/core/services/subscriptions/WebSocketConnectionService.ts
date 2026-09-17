@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
 import type {
   WebSocketCloseEvent,
   WebSocketEvent,
@@ -15,8 +15,7 @@ import { trackError } from '../../utils/errors';
 import { getClientStatus } from '../../utils/interface';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
 
 /**

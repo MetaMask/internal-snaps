@@ -1,8 +1,9 @@
+import { InMemoryState } from '@metamask/snap-networks-utils';
+
 import { KnownCaip2ChainId } from '../../../api';
 import { KEYRING_ACCOUNT_TYPE } from '../../../constants';
 import { MultichainMethod } from '../../../handlers/keyring/api';
 import { logger } from '../../../utils/logger';
-import { State } from '../../state/State';
 import { WalletService, getDerivationPath } from '../../wallet';
 import { generateStellarAddress } from '../../wallet/__mocks__/wallet.fixtures';
 import { AccountService } from '../AccountService';
@@ -54,12 +55,9 @@ export const generateMockStellarKeyringAccounts = (
  */
 export const mockAccountService = () => {
   const walletService = new WalletService();
-  const state = new State({
-    encrypted: false,
-    defaultState: {
-      keyringAccounts: {},
-      onChainAccounts: {},
-    },
+  const state = new InMemoryState({
+    keyringAccounts: {},
+    onChainAccounts: {},
   });
   const accountService = new AccountService({
     logger,
