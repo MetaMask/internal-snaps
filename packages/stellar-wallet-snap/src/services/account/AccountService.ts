@@ -102,22 +102,21 @@ export class AccountService {
    * Batch creates Stellar accounts with the given options.
    *
    * @param options - The parameters for batch account creation.
-   * @param options.entropySource - [Optional] The entropy source to use for derivation.
+   * @param options.entropySource - [Required] The entropy source to use for derivation.
    * @param options.fromIndex - [Required] The starting derivation index (inclusive).
    * @param options.toIndex - [Required] The ending derivation index (inclusive).
-   * @param options.walletResolver - [Optional] A function to resolve the wallet address for a given index.
+   * @param options.walletResolver - [Required] A function to resolve the wallet address for a given index.
    * @returns A Promise that resolves to accounts in index order for the full requested range.
    * Existing accounts are reused and only missing accounts are created and persisted.
    */
   async batchCreate(options: {
-    entropySource?: EntropySourceId;
+    entropySource: EntropySourceId;
     fromIndex: number;
     toIndex: number;
     walletResolver: (index: number) => Promise<Wallet>;
   }): Promise<StellarKeyringAccount[]> {
     const { fromIndex, toIndex } = options;
-    const entropySource =
-      options.entropySource ?? (await getDefaultEntropySource());
+    const { entropySource } = options;
 
     const [accounts, walletResolver] = [
       await this.#accountsRepository.getAll(),
