@@ -508,29 +508,20 @@ function expectWorkspaceField(workspace, fieldName, expectedValue = undefined) {
 }
 
 /**
- * This function does one of two things depending on the arguments given:
- *
- * - With no regex provided, this will expect that the workspace has the given
- * field and that it is a non-null value; if the field is not present or is
- * null, this will log an error and cause the constraint to fail.
- * - With a regex provided, this will also verify that the field is a string
- * that matches the given regular expression. Unlike `expectWorkspaceField`,
- * this never auto-fixes the field, because a regex cannot produce a unique
- * replacement value.
+ * Expect that the workspace has the given field, that it is a string, and that
+ * it matches the given regular expression. If the field is missing, is not a
+ * string, or does not match, this will log an error and cause the constraint to
+ * fail.
  *
  * @param {Workspace} workspace - The workspace to check.
  * @param {string} fieldName - The field to check.
- * @param {RegExp} [regex] - The regular expression the field value must match.
+ * @param {RegExp} regex - The regular expression the field value must match.
  */
-function expectWorkspaceFieldRegex(workspace, fieldName, regex = undefined) {
+function expectWorkspaceFieldRegex(workspace, fieldName, regex) {
   const fieldValue = get(workspace.manifest, fieldName);
 
   if (fieldValue === undefined || fieldValue === null) {
     workspace.error(`Missing required field "${fieldName}".`);
-    return;
-  }
-
-  if (regex === undefined) {
     return;
   }
 
