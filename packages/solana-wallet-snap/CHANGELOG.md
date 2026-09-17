@@ -7,15 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- fix(solana): tolerate unknown fields in external API responses ([#321](https://github.com/MetaMask/internal-snaps/pull/321))
-- feat(solana-wallet-snap): use shared keyring account ([#317](https://github.com/MetaMask/internal-snaps/pull/317))
-- Release/10.0.0 ([#305](https://github.com/MetaMask/internal-snaps/pull/305))
-- chore(solana): use shared cache utils ([#292](https://github.com/MetaMask/internal-snaps/pull/292))
-- feat(solana-wallet-snap): use shareable state management lib ([#294](https://github.com/MetaMask/internal-snaps/pull/294))
-- fix(stellar-wallet-snap): price-api request missing market data ([#299](https://github.com/MetaMask/internal-snaps/pull/299))
-
 ### Added
 
 - Add back the `endowment:assets` permission for the Solana scopes to the snap manifest, with no-op `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` entry points required to keep the permission ([#274](https://github.com/MetaMask/internal-snaps/pull/274))

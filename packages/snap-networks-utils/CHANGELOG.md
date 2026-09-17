@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- fix(stellar-wallet-snap): price-api request missing market data ([#299](https://github.com/MetaMask/internal-snaps/pull/299))
-
 ### Added
 
 - Add shared configuration utilities for network snaps ([#309](https://github.com/MetaMask/internal-snaps/pull/309))
