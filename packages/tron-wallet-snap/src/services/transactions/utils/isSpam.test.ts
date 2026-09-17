@@ -4,14 +4,14 @@ import {
   TransactionType,
   TrxAccountType,
 } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../clients/price-api/types';
 import { Network, Networks } from '../../../constants';
-import type { TronKeyringAccount } from '../../../entities/keyring-account';
 import { isSpam } from './isSpam';
 
 describe('isSpam', () => {
-  const account: TronKeyringAccount = {
+  const account: ExtendedKeyringAccount = {
     id: 'account-id',
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
     type: TrxAccountType.Eoa,
