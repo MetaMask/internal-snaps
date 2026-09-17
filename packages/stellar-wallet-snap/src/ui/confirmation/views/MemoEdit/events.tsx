@@ -10,7 +10,7 @@ import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
-import { getMemoDraftValidationError } from '../../../../services/transaction';
+import { getMemoDraftValidationError } from '../../../../api';
 import { Duration, updateInterfaceIfExists } from '../../../../utils';
 import type { ConfirmationInterfaceKey } from '../../api';
 import { FetchStatus } from '../../api';

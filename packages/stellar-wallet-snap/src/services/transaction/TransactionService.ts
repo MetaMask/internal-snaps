@@ -25,7 +25,6 @@ import {
 } from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
-import type { StellarMemoType } from './memo';
 import { Transaction } from './Transaction';
 import type { TransactionBuilder } from './TransactionBuilder';
 import { TransactionMapper } from './TransactionMapper';
@@ -150,7 +149,6 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks (recoverable confirmation draft).
    * @param params.useCache - Whether to use the cache.
    * @returns A promise that resolves to the validated transaction.
@@ -162,7 +160,6 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
-    memoType?: StellarMemoType;
     skipMemoRequirementCheck?: boolean;
     useCache?: boolean;
   }): Promise<Transaction> {
@@ -173,7 +170,6 @@ export class TransactionService {
       amount,
       destination,
       memo,
-      memoType,
       skipMemoRequirementCheck = false,
       useCache = false,
     } = params;
@@ -206,7 +202,6 @@ export class TransactionService {
         destination,
         destinationAccount,
         memo,
-        memoType,
         skipMemoRequirementCheck,
         useCache,
       });
@@ -221,7 +216,6 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
-      memoType,
       skipMemoRequirementCheck,
     });
   }
@@ -237,7 +231,6 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks.
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
@@ -255,7 +248,6 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount;
     memo?: string;
-    memoType?: StellarMemoType;
     skipMemoRequirementCheck?: boolean;
     useCache: boolean;
   }): Promise<Transaction> {
@@ -267,7 +259,6 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
-      memoType,
       skipMemoRequirementCheck = false,
       useCache,
     } = params;
@@ -282,7 +273,6 @@ export class TransactionService {
       destination,
       baseFee,
       memo,
-      memoType,
     });
 
     // Use getRawAsset so we only fetch when the asset is absent from the State.
@@ -353,7 +343,6 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
-   * @param params.memoType - Optional explicit memo type (e.g. confirmation UI / SEP-2 hint).
    * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -365,7 +354,6 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount | null;
     memo?: string;
-    memoType?: StellarMemoType;
     skipMemoRequirementCheck?: boolean;
   }): Promise<Transaction> {
     const {
@@ -376,7 +364,6 @@ export class TransactionService {
       destinationAccount,
       destination,
       memo,
-      memoType,
       skipMemoRequirementCheck = false,
     } = params;
 
@@ -400,7 +387,6 @@ export class TransactionService {
       },
       baseFee,
       memo,
-      memoType,
     });
 
     this.validateTransaction(transaction, onChainAccount, {

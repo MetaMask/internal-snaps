@@ -127,9 +127,6 @@
     "confirmation.memo.error.tooLong": {
       "message": "Memo must be 28 bytes or fewer"
     },
-    "confirmation.memo.error.idOutOfRange": {
-      "message": "Memo id must be between 0 and 18446744073709551615"
-    },
     "confirmation.asset": {
       "message": "Asset"
     },
