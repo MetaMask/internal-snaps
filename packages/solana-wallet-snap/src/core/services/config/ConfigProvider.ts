@@ -1,14 +1,12 @@
 /* eslint-disable no-restricted-globals */
-import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
-import type { Infer } from '@metamask/superstruct';
 import {
-  array,
-  coerce,
-  create,
-  enums,
-  object,
-  string,
-} from '@metamask/superstruct';
+  BaseConfigProvider,
+  commaSeparatedListOf,
+  LogLevelStruct,
+  UrlStruct,
+} from '@metamask/snap-networks-utils';
+import type { Infer } from '@metamask/superstruct';
+import { array, enums, number, object, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { uniq } from 'lodash';
 
@@ -23,215 +21,160 @@ const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<string, Network[]> = {
   test: [Network.Localnet],
 };
 
-const CommaSeparatedListOfUrlsStruct = coerce(
-  array(UrlStruct),
-  string(),
-  (value: string) => value.split(','),
-);
+const NetworkStruct = enums(Object.values(Network) as [Network, ...Network[]]);
 
-const CommaSeparatedListOfStringsStruct = coerce(
-  array(string()),
-  string(),
-  (value: string) => value.split(','),
-);
-
-const EnvStruct = object({
-  ENVIRONMENT: enums(['local', 'test', 'production']),
-  LOG_LEVEL: enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
-  RPC_URL_MAINNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_DEVNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_TESTNET_LIST: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LOCALNET_LIST: CommaSeparatedListOfStringsStruct,
-  RPC_WEB_SOCKET_URL_MAINNET: UrlStruct,
-  RPC_WEB_SOCKET_URL_DEVNET: UrlStruct,
-  RPC_WEB_SOCKET_URL_TESTNET: UrlStruct,
-  RPC_WEB_SOCKET_URL_LOCALNET: UrlStruct,
-  EXPLORER_BASE_URL: UrlStruct,
-  PRICE_API_BASE_URL: UrlStruct,
-  TOKEN_API_BASE_URL: UrlStruct,
-  STATIC_API_BASE_URL: UrlStruct,
-  SECURITY_ALERTS_API_BASE_URL: UrlStruct,
-  NFT_API_BASE_URL: UrlStruct,
-  LOCAL_API_BASE_URL: string(),
+const TokenInfoStruct = object({
+  symbol: string(),
+  caip19Id: string(),
+  address: string(),
+  decimals: number(),
 });
 
-type Env = Infer<typeof EnvStruct>;
+const NetworkConfigStruct = object({
+  caip2Id: NetworkStruct,
+  cluster: string(),
+  name: string(),
+  nativeToken: TokenInfoStruct,
+  rpcUrls: commaSeparatedListOf(UrlStruct),
+  webSocketUrl: UrlStruct,
+});
 
-export type NetworkConfig = (typeof Networks)[Network] & {
-  rpcUrls: string[];
-  webSocketUrl: string;
-};
+const ConfigStruct = object({
+  environment: enums(['local', 'test', 'production']),
+  logLevel: LogLevelStruct,
+  networks: array(NetworkConfigStruct),
+  explorerBaseUrl: UrlStruct,
+  priceApi: object({
+    baseUrl: UrlStruct,
+    chunkSize: number(),
+    cacheTtlsMilliseconds: object({
+      spotPrices: number(),
+    }),
+  }),
+  tokenApi: object({
+    baseUrl: UrlStruct,
+    chunkSize: number(),
+  }),
+  staticApi: object({
+    baseUrl: UrlStruct,
+  }),
+  transactions: object({
+    storageLimit: number(),
+  }),
+  securityAlertsApi: object({
+    baseUrl: UrlStruct,
+  }),
+  nftApi: object({
+    baseUrl: UrlStruct,
+    cacheTtlsMilliseconds: object({
+      listAddressSolanaNfts: number(),
+      getNftMetadata: number(),
+    }),
+  }),
+  subscriptions: object({
+    maxReconnectAttempts: number(),
+    reconnectDelayMilliseconds: number(),
+    /**
+     * The time we wait before closing the connections when the extension becomes inactive.
+     * This is to avoid closing and opening the connections too much when the user switches back and forth between the client and a dapp for instance.
+     */
+    closeConnectionsGracePeriodMilliseconds: number(),
+  }),
+});
 
-export type Config = {
-  environment: string;
-  logLevel: LogLevel;
-  networks: NetworkConfig[];
-  explorerBaseUrl: string;
+/**
+ * The environment consumed by the snap. Each `process.env` reference is
+ * replaced with its build-time value (see `snap.config.ts`).
+ */
+const ENVIRONMENT = {
+  environment: process.env.ENVIRONMENT,
+  logLevel: process.env.LOG_LEVEL,
+  networks: [
+    {
+      ...Networks[Network.Mainnet],
+      rpcUrls: process.env.RPC_URL_MAINNET_LIST,
+      webSocketUrl: process.env.RPC_WEB_SOCKET_URL_MAINNET,
+    },
+    {
+      ...Networks[Network.Devnet],
+      rpcUrls: process.env.RPC_URL_DEVNET_LIST,
+      webSocketUrl: process.env.RPC_WEB_SOCKET_URL_DEVNET,
+    },
+    {
+      ...Networks[Network.Testnet],
+      rpcUrls: process.env.RPC_URL_TESTNET_LIST,
+      webSocketUrl: process.env.RPC_WEB_SOCKET_URL_TESTNET,
+    },
+    {
+      ...Networks[Network.Localnet],
+      rpcUrls: process.env.RPC_URL_LOCALNET_LIST,
+      webSocketUrl: process.env.RPC_WEB_SOCKET_URL_LOCALNET,
+    },
+  ],
+  explorerBaseUrl: process.env.EXPLORER_BASE_URL,
   priceApi: {
-    baseUrl: string;
-    chunkSize: number;
+    baseUrl: process.env.PRICE_API_BASE_URL,
+    chunkSize: 50,
     cacheTtlsMilliseconds: {
-      spotPrices: number;
-    };
-  };
+      spotPrices: Duration.Minute,
+    },
+  },
   tokenApi: {
-    baseUrl: string;
-    chunkSize: number;
-  };
+    baseUrl: process.env.TOKEN_API_BASE_URL,
+    chunkSize: 50,
+  },
   staticApi: {
-    baseUrl: string;
-  };
-  transactions: {
-    storageLimit: number;
-  };
+    baseUrl: process.env.STATIC_API_BASE_URL,
+  },
   securityAlertsApi: {
-    baseUrl: string;
-  };
+    baseUrl: process.env.SECURITY_ALERTS_API_BASE_URL, // Blockaid
+  },
   nftApi: {
-    baseUrl: string;
+    baseUrl: process.env.NFT_API_BASE_URL,
     cacheTtlsMilliseconds: {
-      listAddressSolanaNfts: number;
-      getNftMetadata: number;
-    };
-  };
+      listAddressSolanaNfts: Duration.Minute,
+      getNftMetadata: Duration.Minute,
+    },
+  },
+  transactions: {
+    storageLimit: 10,
+  },
   subscriptions: {
-    maxReconnectAttempts: number;
-    reconnectDelayMilliseconds: number;
-    closeConnectionsGracePeriodMilliseconds: number;
-  };
+    maxReconnectAttempts: 5,
+    reconnectDelayMilliseconds: Duration.Second,
+    closeConnectionsGracePeriodMilliseconds: Duration.Minute * 5,
+  },
 };
+
+export type NetworkConfig = Infer<typeof NetworkConfigStruct>;
+
+export type Config = Infer<typeof ConfigStruct>;
 
 /**
  * A utility class that provides the configuration of the snap.
  *
  * @example
  * const configProvider = new ConfigProvider();
- * const { networks } = configProvider.get();
+ * const { networks } = configProvider.config;
  * @example
  * // You can use utility methods for more advanced manipulations.
  * const network = configProvider.getNetworkBy('caip2Id', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
  */
-export class ConfigProvider {
-  readonly #config: Config;
-
+export class ConfigProvider extends BaseConfigProvider<typeof ConfigStruct> {
   #activeNetworks: Network[];
 
-  constructor() {
-    const environment = this.#parseEnvironment();
-    this.#config = this.#buildConfig(environment);
+  /**
+   * @param env - The environment to parse. Defaults to the module-level
+   * environment, whose `process.env` references are replaced with their
+   * build-time values (see `snap.config.ts`).
+   */
+  constructor(env = ENVIRONMENT) {
+    super(env, ConfigStruct);
     this.#activeNetworks = [];
   }
 
-  #parseEnvironment() {
-    const rawEnvironment = {
-      ENVIRONMENT: process.env.ENVIRONMENT,
-      LOG_LEVEL: process.env.LOG_LEVEL,
-      RPC_URL_MAINNET_LIST: process.env.RPC_URL_MAINNET_LIST,
-      RPC_URL_DEVNET_LIST: process.env.RPC_URL_DEVNET_LIST,
-      RPC_URL_TESTNET_LIST: process.env.RPC_URL_TESTNET_LIST,
-      RPC_URL_LOCALNET_LIST: process.env.RPC_URL_LOCALNET_LIST,
-      RPC_WEB_SOCKET_URL_MAINNET: process.env.RPC_WEB_SOCKET_URL_MAINNET,
-      RPC_WEB_SOCKET_URL_DEVNET: process.env.RPC_WEB_SOCKET_URL_DEVNET,
-      RPC_WEB_SOCKET_URL_TESTNET: process.env.RPC_WEB_SOCKET_URL_TESTNET,
-      RPC_WEB_SOCKET_URL_LOCALNET: process.env.RPC_WEB_SOCKET_URL_LOCALNET,
-      EXPLORER_BASE_URL: process.env.EXPLORER_BASE_URL,
-      PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL,
-      TOKEN_API_BASE_URL: process.env.TOKEN_API_BASE_URL,
-      STATIC_API_BASE_URL: process.env.STATIC_API_BASE_URL,
-      SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL, // Blockaid
-      LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
-      // NFT API
-      NFT_API_BASE_URL: process.env.NFT_API_BASE_URL,
-    };
-
-    // Validate and parse them before returning
-    return create(rawEnvironment, EnvStruct);
-  }
-
-  #buildConfig(environment: Env): Config {
-    return {
-      environment: environment.ENVIRONMENT,
-      logLevel: environment.LOG_LEVEL,
-      networks: [
-        {
-          ...Networks[Network.Mainnet],
-          rpcUrls: environment.RPC_URL_MAINNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_MAINNET,
-        },
-        {
-          ...Networks[Network.Devnet],
-          rpcUrls: environment.RPC_URL_DEVNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_DEVNET,
-        },
-        {
-          ...Networks[Network.Testnet],
-          rpcUrls: environment.RPC_URL_TESTNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_TESTNET,
-        },
-        {
-          ...Networks[Network.Localnet],
-          rpcUrls: environment.RPC_URL_LOCALNET_LIST,
-          webSocketUrl: environment.RPC_WEB_SOCKET_URL_LOCALNET,
-        },
-      ],
-      explorerBaseUrl: environment.EXPLORER_BASE_URL,
-      priceApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.PRICE_API_BASE_URL,
-        chunkSize: 50,
-        cacheTtlsMilliseconds: {
-          spotPrices: Duration.Minute,
-        },
-      },
-      tokenApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.TOKEN_API_BASE_URL,
-        chunkSize: 50,
-      },
-      staticApi: {
-        baseUrl: environment.STATIC_API_BASE_URL,
-      },
-      transactions: {
-        storageLimit: 10,
-      },
-      securityAlertsApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.SECURITY_ALERTS_API_BASE_URL,
-      },
-      nftApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.NFT_API_BASE_URL,
-        cacheTtlsMilliseconds: {
-          listAddressSolanaNfts: Duration.Minute,
-          getNftMetadata: Duration.Minute,
-        },
-      },
-      subscriptions: {
-        maxReconnectAttempts: 5,
-        reconnectDelayMilliseconds: Duration.Second,
-        /**
-         * The time we wait before closing the connections when the extension becomes inactive.
-         * This is to avoid closing and opening the connections too much when the user switches back and forth between the client and a dapp for instance.
-         */
-        closeConnectionsGracePeriodMilliseconds: Duration.Minute * 5,
-      },
-    };
-  }
-
-  public get(): Config {
-    return this.#config;
-  }
-
   public getNetworkBy(key: keyof NetworkConfig, value: string): NetworkConfig {
-    const network = this.get().networks.find((item) => item[key] === value);
+    const network = this.config.networks.find((item) => item[key] === value);
     if (!network) {
       throw new Error(`Network ${key} not found`);
     }
@@ -246,7 +189,7 @@ export class ConfigProvider {
 
     const baseNetworks = uniq([
       Network.Mainnet,
-      ...(ENVIRONMENT_TO_ACTIVE_NETWORKS[this.#config.environment] ?? []),
+      ...(ENVIRONMENT_TO_ACTIVE_NETWORKS[this.config.environment] ?? []),
     ]);
 
     try {
@@ -260,8 +203,10 @@ export class ConfigProvider {
       // Set the active networks
       this.#activeNetworks = activeNetworks;
       return this.#activeNetworks;
-    } catch (error) {
+    } catch {
       return baseNetworks;
     }
   }
 }
+
+export const configProvider = new ConfigProvider();

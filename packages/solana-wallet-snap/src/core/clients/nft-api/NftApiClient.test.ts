@@ -27,7 +27,7 @@ describe('NftApiClient', () => {
     mockCache = new InMemoryCache(mockLogger);
 
     mockConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         nftApi: {
           baseUrl: 'https://some-mock-url.com',
           cacheTtlsMilliseconds: {
@@ -35,7 +35,7 @@ describe('NftApiClient', () => {
             getNftMetadata: 0,
           },
         },
-      }),
+      },
     } as unknown as ConfigProvider;
 
     client = new NftApiClient(mockConfigProvider, mockCache, mockFetch);
@@ -44,7 +44,7 @@ describe('NftApiClient', () => {
   describe('constructor', () => {
     it('rejects invalid baseUrl', async () => {
       const invalidConfigProvider = {
-        get: jest.fn().mockReturnValue({
+        config: {
           nftApi: {
             baseUrl: 'invalid-url',
             cacheTtlsMilliseconds: {
@@ -52,7 +52,7 @@ describe('NftApiClient', () => {
               getNftMetadata: 0,
             },
           },
-        }),
+        },
       } as unknown as ConfigProvider;
 
       expect(
