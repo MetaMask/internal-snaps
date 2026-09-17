@@ -1,7 +1,6 @@
 import { Memo } from '@stellar/stellar-sdk';
 
-import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../constants';
-
+const STELLAR_TEXT_MEMO_MAX_BYTES = 28;
 const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_ID_PATTERN = /^\d+$/u;
 
