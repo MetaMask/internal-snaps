@@ -136,43 +136,14 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         };
       }
 
-      let transaction: Transaction;
-      let requiresMemoRecovery = false;
-      try {
-        transaction =
-          await this.#transactionService.createValidatedSendTransaction({
-            onChainAccount,
-            scope,
-            assetId,
-            amount: amountInSmallestUnit,
-            destination: toAddress,
-          });
-      } catch (error: unknown) {
-        if (error instanceof RequiresMemoException) {
-          // Open a recoverable confirmation on a draft envelope so the user can
-          // add a memo, then re-validate before signing.
-          transaction =
-            await this.#transactionService.createValidatedSendTransaction({
-              onChainAccount,
-              scope,
-              assetId,
-              amount: amountInSmallestUnit,
-              destination: toAddress,
-              skipMemoRequirementCheck: true,
-            });
-          requiresMemoRecovery = true;
-        } else {
-          await this.#displayDialogWithErrorMessage({
-            request,
-            account: stellarKeyringAccount,
-            assetMetadata,
-            scope,
-            error,
-          });
-          // The error confirmation only supports dismiss, so abort as a user rejection.
-          throw ensureError(new UserRejectedRequestError());
-        }
-      }
+      const { transaction, requiresMemoRecovery } =
+        await this.#buildSendTransactionForConfirm({
+          request,
+          account: stellarKeyringAccount,
+          assetMetadata,
+          onChainAccount,
+          amount: amountInSmallestUnit,
+        });
 
       await trackTransactionAdded({
         origin: METAMASK_ORIGIN,
@@ -305,6 +276,74 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         valid: false,
         errors: [{ code: MultiChainSendErrorCodes.Invalid }],
       };
+    }
+  }
+
+  /**
+   * Builds the send envelope for confirmation, recovering from SEP-29 RequiresMemo
+   * with a draft tx (`skipMemoRequirementCheck`) when needed.
+   *
+   * @param params - Build inputs.
+   * @returns The transaction and whether memo recovery UI should be shown.
+   * @throws {UserRejectedRequestError} After the pre-submit error dialog is dismissed.
+   */
+  async #buildSendTransactionForConfirm(params: {
+    request: ConfirmSendJsonRpcRequest;
+    account: StellarKeyringAccount;
+    assetMetadata: StellarAssetMetadata;
+    onChainAccount: ResolvedActivatedAccount['onChainAccount'];
+    amount: BigNumber;
+  }): Promise<{
+    transaction: Transaction;
+    requiresMemoRecovery: boolean;
+  }> {
+    const { request, account, assetMetadata, onChainAccount, amount } = params;
+    const { toAddress, assetId, scope } = request.params;
+
+    try {
+      const transaction =
+        await this.#transactionService.createValidatedSendTransaction({
+          onChainAccount,
+          scope,
+          assetId,
+          amount,
+          destination: toAddress,
+        });
+      return { transaction, requiresMemoRecovery: false };
+    } catch (error: unknown) {
+      if (!(error instanceof RequiresMemoException)) {
+        await this.#displayDialogWithErrorMessage({
+          request,
+          account,
+          assetMetadata,
+          scope,
+          error,
+        });
+        throw ensureError(new UserRejectedRequestError());
+      }
+
+      // Draft envelope so the user can add a memo, then re-validate before signing.
+      try {
+        const transaction =
+          await this.#transactionService.createValidatedSendTransaction({
+            onChainAccount,
+            scope,
+            assetId,
+            amount,
+            destination: toAddress,
+            skipMemoRequirementCheck: true,
+          });
+        return { transaction, requiresMemoRecovery: true };
+      } catch (draftError: unknown) {
+        await this.#displayDialogWithErrorMessage({
+          request,
+          account,
+          assetMetadata,
+          scope,
+          error: draftError,
+        });
+        throw ensureError(new UserRejectedRequestError());
+      }
     }
   }
 

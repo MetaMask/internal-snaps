@@ -667,6 +667,44 @@ describe('ConfirmSendHandler', () => {
       expect(sendTransaction).not.toHaveBeenCalled();
     });
 
+    it('shows the error confirmation when RequiresMemo draft rebuild fails', async () => {
+      const {
+        handler,
+        createValidatedSendTransaction,
+        renderConfirmationDialog,
+        signTransactionSpy,
+        sendTransaction,
+      } = setup();
+      createValidatedSendTransaction
+        .mockRejectedValueOnce(new RequiresMemoException(destinationAddress))
+        .mockRejectedValueOnce(new InsufficientBalanceException('0', '1'));
+      renderConfirmationDialog.mockResolvedValue(false);
+
+      await expect(handler.handle(baseRequest())).rejects.toThrow(
+        UserRejectedRequestError,
+      );
+      expect(createValidatedSendTransaction).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          skipMemoRequirementCheck: true,
+        }),
+      );
+      expect(renderConfirmationDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renderContext: expect.objectContaining({
+            errorMessage: 'confirmation.txnError.insufficientBalance',
+          }),
+          renderOptions: {
+            loadPrice: false,
+            securityScanning: false,
+            localSimulation: false,
+          },
+        }),
+      );
+      expect(signTransactionSpy).not.toHaveBeenCalled();
+      expect(sendTransaction).not.toHaveBeenCalled();
+    });
+
     it('throws UserRejectedRequestError after the user dismisses the validation confirmation', async () => {
       const {
         handler,
