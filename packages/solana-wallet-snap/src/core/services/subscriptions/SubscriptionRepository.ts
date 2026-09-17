@@ -1,10 +1,11 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
+
 import type {
   ConfirmedSubscription,
   PendingSubscription,
   Subscription,
 } from '../../../entities';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class SubscriptionRepository {
   readonly #state: IStateManager<UnencryptedStateValue>;

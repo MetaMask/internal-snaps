@@ -1,4 +1,7 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
@@ -15,8 +18,9 @@ import {
 } from '@solana-program/token-2022';
 import type {
   Address,
-  CompilableTransactionMessage,
-  IInstruction,
+  Instruction,
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
 } from '@solana/kit';
 import {
   appendTransactionMessageInstructions,
@@ -28,14 +32,13 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network } from '../../constants/solana';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
 import type { TokenHelper } from '../assets/TokenHelper';
 import type { SolanaConnection } from '../connection';
 
 export type ApproveTokenParams = {
-  account: SolanaKeyringAccount;
+  account: ExtendedKeyringAccount;
   mint: Address;
   delegate: Address;
   amount: string;
@@ -84,7 +87,7 @@ export class ApproveTokenService {
    */
   async buildApprovalTransactionMessage(
     params: ApproveTokenParams,
-  ): Promise<CompilableTransactionMessage> {
+  ): Promise<TransactionMessage & TransactionMessageWithFeePayer> {
     this.#logger.log('Building token approval transaction', {
       mint: params.mint,
       delegate: params.delegate,
@@ -140,7 +143,7 @@ export class ApproveTokenService {
 
     const isToken2022 = tokenProgram === TOKEN_2022_PROGRAM_ADDRESS;
 
-    const instructions: IInstruction[] = [];
+    const instructions: Instruction[] = [];
 
     // Only create the ATA if it doesn't already exist.
     // Uses `Create` (not `CreateIdempotent`) because the card partner
@@ -178,7 +181,7 @@ export class ApproveTokenService {
 
     // Build the transaction message with instructions in order:
     // SetComputeUnitPrice, Create (if needed), Approve, SetComputeUnitLimit
-    const allInstructions: IInstruction[] = [
+    const allInstructions: Instruction[] = [
       getSetComputeUnitPriceInstruction({
         microLamports: this.#computeUnitPriceMicroLamportsPerComputeUnit,
       }),

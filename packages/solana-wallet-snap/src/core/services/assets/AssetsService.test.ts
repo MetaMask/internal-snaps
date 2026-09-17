@@ -1,10 +1,9 @@
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Serializable } from '@metamask/snap-networks-utils';
+import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
-import type { ICache } from '../../caching/ICache';
-import { InMemoryCache } from '../../caching/InMemoryCache';
 import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from '../../clients/nft-api/mocks/mockNftsListResponseMapped';
 import type { NftApiClient } from '../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../clients/token-api-client/TokenApiClient';
