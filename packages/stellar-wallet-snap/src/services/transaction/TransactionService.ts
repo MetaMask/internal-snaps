@@ -148,6 +148,7 @@ export class TransactionService {
    * @param params.scope - The CAIP-2 chain ID.
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @param params.useCache - Whether to use the cache.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -157,6 +158,7 @@ export class TransactionService {
     scope: KnownCaip2ChainId;
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
+    memo?: string;
     useCache?: boolean;
   }): Promise<Transaction> {
     const {
@@ -165,6 +167,7 @@ export class TransactionService {
       assetId,
       amount,
       destination,
+      memo,
       useCache = false,
     } = params;
 
@@ -195,6 +198,7 @@ export class TransactionService {
         amount,
         destination,
         destinationAccount,
+        memo,
         useCache,
       });
     }
@@ -207,6 +211,7 @@ export class TransactionService {
       amount,
       destination,
       destinationAccount,
+      memo,
     });
   }
 
@@ -220,6 +225,7 @@ export class TransactionService {
    * @param params.amount - The amount to send.
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
    * such as amount-input validation, where the caller needs fee/balance feedback on
@@ -235,6 +241,7 @@ export class TransactionService {
     amount: BigNumber;
     destination: string;
     destinationAccount: OnChainAccount;
+    memo?: string;
     useCache: boolean;
   }): Promise<Transaction> {
     const {
@@ -244,6 +251,7 @@ export class TransactionService {
       amount,
       destination,
       destinationAccount,
+      memo,
       useCache,
     } = params;
 
@@ -256,6 +264,7 @@ export class TransactionService {
       amount,
       destination,
       baseFee,
+      memo,
     });
 
     // Use getRawAsset so we only fetch when the asset is absent from the State.
@@ -324,6 +333,7 @@ export class TransactionService {
    * @param params.amount - The amount to send.
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @returns A promise that resolves to the validated transaction.
    */
   async #createValidatedClassicAssetTransfer(params: {
@@ -333,6 +343,7 @@ export class TransactionService {
     amount: BigNumber;
     destination: string;
     destinationAccount: OnChainAccount | null;
+    memo?: string;
   }): Promise<Transaction> {
     const {
       onChainAccount,
@@ -341,6 +352,7 @@ export class TransactionService {
       amount,
       destinationAccount,
       destination,
+      memo,
     } = params;
 
     const isDestinationActivated = destinationAccount !== null;
@@ -362,6 +374,7 @@ export class TransactionService {
         isActivated: isDestinationActivated,
       },
       baseFee,
+      memo,
     });
 
     this.validateTransaction(transaction, onChainAccount, {
