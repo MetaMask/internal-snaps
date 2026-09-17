@@ -1,16 +1,55 @@
 /* eslint-disable jest/prefer-strict-equal */
+import { BigNumber } from 'bignumber.js';
 
-import BigNumber from 'bignumber.js';
-
-import { EventEmitter } from '../../../infrastructure/event-emitter/EventEmitter';
-import { mockLogger } from '../__mocks__/logger';
 import { State } from './State';
 
 const snap = {
   request: jest.fn(),
 };
 
-(globalThis as any).snap = snap;
+(globalThis as typeof globalThis & { snap: typeof snap }).snap = snap;
+
+const flushPromises = async (): Promise<void> => {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+};
+
+type DelayedStateRequest =
+  | {
+      method: 'snap_getState';
+      params: { key: string };
+    }
+  | {
+      method: 'snap_setState';
+      params: { key: string; value: Record<string, number> };
+    };
+
+/**
+ * Mocks state reads so tests can hold pending `snap_getState` calls.
+ *
+ * @param storedValues - Mutable backing store returned from mocked state reads.
+ * @param getResolvers - Resolver queue for delayed mocked state reads.
+ */
+function mockDelayedStateRequests(
+  storedValues: Record<string, Record<string, number>>,
+  getResolvers: (() => void)[],
+): void {
+  snap.request.mockImplementation(async (request: DelayedStateRequest) => {
+    if (request.method === 'snap_getState') {
+      await new Promise<void>((resolve) => {
+        getResolvers.push(resolve);
+      });
+      return storedValues[request.params.key] ?? null;
+    }
+
+    if (request.method === 'snap_setState') {
+      storedValues[request.params.key] = request.params.value;
+    }
+
+    return undefined;
+  });
+}
 
 type User = {
   name: string;
@@ -36,12 +75,9 @@ const DEFAULT_STATE: MockStateValue = {
 
 describe('State', () => {
   let state: State<MockStateValue>;
-  let eventEmitter: EventEmitter;
 
   beforeEach(() => {
-    eventEmitter = new EventEmitter(mockLogger);
-
-    state = new State<MockStateValue>(eventEmitter, {
+    state = new State<MockStateValue>({
       encrypted: false,
       defaultState: DEFAULT_STATE,
     });
@@ -51,16 +87,6 @@ describe('State', () => {
 
   afterEach(() => {
     snap.request.mockReset();
-  });
-
-  describe('constructor', () => {
-    it('runs migrateState on onStart/onUpdate/onInstall events', async () => {
-      const spy = jest.spyOn(state, 'update');
-
-      await eventEmitter.emitSync('onStart');
-
-      expect(spy).toHaveBeenCalled();
-    });
   });
 
   describe('get', () => {
@@ -78,12 +104,9 @@ describe('State', () => {
     });
 
     it('gets the default state if the snap state is empty', async () => {
-      const mockUnderlyingState = {};
-      snap.request.mockResolvedValue(mockUnderlyingState);
+      snap.request.mockResolvedValue({});
 
-      const stateValue = await state.get();
-
-      expect(stateValue).toStrictEqual(DEFAULT_STATE);
+      expect(await state.get()).toStrictEqual(DEFAULT_STATE);
     });
 
     it('preserves defaults when persisted state values are undefined', async () => {
@@ -92,9 +115,30 @@ describe('State', () => {
       expect(await state.get()).toStrictEqual(DEFAULT_STATE);
     });
 
+    it('allows concurrent path reads', async () => {
+      const getResolvers: (() => void)[] = [];
+      snap.request.mockImplementation(async () => {
+        await new Promise<void>((resolve) => {
+          getResolvers.push(resolve);
+        });
+        return {};
+      });
+
+      const first = state.get();
+      const second = state.get();
+
+      await flushPromises();
+
+      expect(getResolvers).toHaveLength(2);
+
+      getResolvers.forEach((resolve) => resolve());
+
+      await Promise.all([first, second]);
+    });
+
     describe('when getting serialized non-JSON values', () => {
       it('deserializes undefined values', async () => {
-        const mockUnderlyingState = {
+        snap.request.mockResolvedValue({
           users: [
             {
               name: 'John',
@@ -103,12 +147,9 @@ describe('State', () => {
               },
             },
           ],
-        };
-        snap.request.mockResolvedValue(mockUnderlyingState);
+        });
 
-        const stateValue = await state.get();
-
-        expect(stateValue).toEqual({
+        expect(await state.get()).toEqual({
           users: [
             {
               name: 'John',
@@ -119,7 +160,7 @@ describe('State', () => {
       });
 
       it('deserializes BigNumber values', async () => {
-        const mockUnderlyingState = {
+        snap.request.mockResolvedValue({
           users: [
             {
               name: 'John',
@@ -129,12 +170,9 @@ describe('State', () => {
               },
             },
           ],
-        };
-        snap.request.mockResolvedValue(mockUnderlyingState);
+        });
 
-        const stateValue = await state.get();
-
-        expect(stateValue).toStrictEqual({
+        expect(await state.get()).toStrictEqual({
           users: [
             {
               name: 'John',
@@ -145,7 +183,7 @@ describe('State', () => {
       });
 
       it('deserializes bigint values', async () => {
-        const mockUnderlyingState = {
+        snap.request.mockResolvedValue({
           users: [
             {
               name: 'John',
@@ -155,12 +193,9 @@ describe('State', () => {
               },
             },
           ],
-        };
-        snap.request.mockResolvedValue(mockUnderlyingState);
+        });
 
-        const stateValue = await state.get();
-
-        expect(stateValue).toStrictEqual({
+        expect(await state.get()).toStrictEqual({
           users: [
             {
               name: 'John',
@@ -174,8 +209,7 @@ describe('State', () => {
 
   describe('getKey', () => {
     it('calls the snap_getState method with the correct parameters', async () => {
-      const mockUnderlyingState = DEFAULT_STATE;
-      snap.request.mockResolvedValue(mockUnderlyingState);
+      snap.request.mockResolvedValue(DEFAULT_STATE);
 
       await state.getKey('users.1.name');
 
@@ -188,9 +222,7 @@ describe('State', () => {
     it('returns undefined if the key does not exist', async () => {
       snap.request.mockResolvedValue(null);
 
-      const value = await state.getKey('users.1.name');
-
-      expect(value).toBeUndefined();
+      expect(await state.getKey('users.1.name')).toBeUndefined();
     });
   });
 
@@ -211,7 +243,7 @@ describe('State', () => {
 
   describe('setKeyWith', () => {
     it('reads the current value, applies the updater, and writes the result', async () => {
-      snap.request.mockResolvedValueOnce({ alice: 10 }); // getState (read)
+      snap.request.mockResolvedValueOnce({ alice: 10 });
 
       await state.setKeyWith<Record<string, number>>('scores', (current) => ({
         ...current,
@@ -233,7 +265,7 @@ describe('State', () => {
     });
 
     it('passes undefined to the updater when the key does not exist', async () => {
-      snap.request.mockResolvedValueOnce(null); // getState returns null → key absent
+      snap.request.mockResolvedValueOnce(null);
 
       const updater = jest.fn().mockReturnValue({ bob: 20 });
 
@@ -241,9 +273,90 @@ describe('State', () => {
 
       expect(updater).toHaveBeenCalledWith(undefined);
     });
+
+    it('serializes concurrent read-modify-write updates', async () => {
+      const storedValues: Record<string, Record<string, number>> = {
+        scores: { alice: 10 },
+      };
+      const getResolvers: (() => void)[] = [];
+
+      mockDelayedStateRequests(storedValues, getResolvers);
+
+      const firstUpdate = state.setKeyWith<Record<string, number>>(
+        'scores',
+        (current) => ({
+          ...current,
+          bob: 20,
+        }),
+      );
+      const secondUpdate = state.setKeyWith<Record<string, number>>(
+        'scores',
+        (current) => ({
+          ...current,
+          carol: 30,
+        }),
+      );
+
+      await flushPromises();
+
+      expect(getResolvers).toHaveLength(1);
+
+      getResolvers[0]?.();
+
+      await flushPromises();
+
+      expect(getResolvers).toHaveLength(2);
+
+      getResolvers[1]?.();
+
+      await Promise.all([firstUpdate, secondUpdate]);
+
+      expect(storedValues.scores).toStrictEqual({
+        alice: 10,
+        bob: 20,
+        carol: 30,
+      });
+    });
   });
 
   describe('update', () => {
+    it('does not admit path operations while an update is waiting', async () => {
+      const getResolvers: (() => void)[] = [];
+      snap.request.mockImplementation(async (request) => {
+        if (request.method === 'snap_getState') {
+          await new Promise<void>((resolve) => {
+            getResolvers.push(resolve);
+          });
+          return {};
+        }
+
+        return null;
+      });
+
+      const firstRead = state.get();
+      await flushPromises();
+      expect(getResolvers).toHaveLength(1);
+
+      const update = state.update((currentState) => currentState);
+      const secondRead = state.get();
+      await flushPromises();
+
+      // The update owns admission while it waits for the first read to finish.
+      expect(getResolvers).toHaveLength(1);
+
+      getResolvers[0]?.();
+      await flushPromises();
+      expect(getResolvers).toHaveLength(2);
+
+      // The update's read has started, but the second read remains blocked.
+      getResolvers[1]?.();
+      await flushPromises();
+      expect(getResolvers).toHaveLength(3);
+
+      getResolvers[2]?.();
+      await Promise.all([firstRead, update, secondRead]);
+    });
+
     it('updates the state', async () => {
       await state.update((currentState) => ({
         users: [
@@ -398,26 +511,41 @@ describe('State', () => {
       await state.deleteKey('users');
 
       expect(snap.request).toHaveBeenCalledWith({
-        method: 'snap_setState',
+        method: 'snap_manageState',
         params: {
-          key: 'users',
-          value: {
-            __type: 'undefined',
-          },
+          operation: 'update',
+          newState: {},
           encrypted: false,
         },
       });
+    });
+
+    it('does not mutate the shared default state', async () => {
+      // Empty persisted state means the defaults are what the updater receives.
+      snap.request.mockResolvedValue({});
+
+      await state.deleteKey('users[0].age');
+
+      expect(DEFAULT_STATE.users[0]).toStrictEqual({ name: 'John', age: 30 });
     });
 
     it('deletes a nested key', async () => {
       await state.deleteKey('users[0].age');
 
       expect(snap.request).toHaveBeenCalledWith({
-        method: 'snap_setState',
+        method: 'snap_manageState',
         params: {
-          key: 'users[0].age',
-          value: {
-            __type: 'undefined',
+          operation: 'update',
+          newState: {
+            users: [
+              {
+                name: 'John',
+              },
+              {
+                name: 'Jane',
+                age: 25,
+              },
+            ],
           },
           encrypted: false,
         },
@@ -440,3 +568,4 @@ describe('State', () => {
     });
   });
 });
+/* eslint-enable jest/prefer-strict-equal */

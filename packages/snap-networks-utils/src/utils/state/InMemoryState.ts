@@ -1,10 +1,11 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
 import { get, set, unset } from 'lodash';
 
-import type { IStateManager } from '../state/IStateManager';
+import type { Serializable } from '../serialization/types';
+import type { IStateManager } from './IStateManager';
 
 /**
- * A simple implementation of the `IStateManager` interface that relies on an in memory state that can be used for testing purposes.
+ * A simple implementation of the `IStateManager` interface that relies on an in-memory
+ * state. Intended for tests.
  */
 export class InMemoryState<
   TStateValue extends Record<string, Serializable>,
@@ -22,25 +23,35 @@ export class InMemoryState<
   async getKey<TResponse extends Serializable>(
     key: string,
   ): Promise<TResponse | undefined> {
-    const value = get(this.#state, key);
-
-    return value as TResponse | undefined;
+    return get(this.#state, key) as TResponse | undefined;
   }
 
   async setKey(key: string, value: Serializable): Promise<void> {
-    set(this.#state, key, value); // Use lodash to set the value using a json path
+    set(this.#state, key, value);
+  }
+
+  async setKeyWith<TValue extends Serializable>(
+    key: string,
+    updater: (currentValue: TValue | undefined) => TValue,
+  ): Promise<void> {
+    const oldValue = get(this.#state, key) as TValue | undefined;
+    set(this.#state, key, updater(oldValue));
   }
 
   async update(
     callback: (state: TStateValue) => TStateValue,
   ): Promise<TStateValue> {
     this.#state = callback(this.#state);
-
     return this.#state;
   }
 
   async deleteKey(key: string): Promise<void> {
-    // Using lodash's unset to leverage the json path capabilities
     unset(this.#state, key);
+  }
+
+  async deleteKeys(keys: string[]): Promise<void> {
+    keys.forEach((key) => {
+      unset(this.#state, key);
+    });
   }
 }

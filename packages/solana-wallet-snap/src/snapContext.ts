@@ -1,4 +1,6 @@
-import { InMemoryCache } from './core/caching/InMemoryCache';
+import type { IStateManager } from '@metamask/snap-networks-utils';
+import { InMemoryCache, State } from '@metamask/snap-networks-utils';
+
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
@@ -35,9 +37,9 @@ import { ConfigProvider } from './core/services/config';
 import { ConfirmationHandler } from './core/services/confirmation/ConfirmationHandler';
 import { SolanaConnection } from './core/services/connection/SolanaConnection';
 import { NameResolutionService } from './core/services/name-resolution/NameResolutionService';
-import type { IStateManager } from './core/services/state/IStateManager';
-import type { UnencryptedStateValue } from './core/services/state/State';
-import { DEFAULT_UNENCRYPTED_STATE, State } from './core/services/state/State';
+import { registerStateMigration } from './core/services/state/registerStateMigration';
+import { DEFAULT_UNENCRYPTED_STATE } from './core/services/state/stateTypes';
+import type { UnencryptedStateValue } from './core/services/state/stateTypes';
 import { TransactionScanService } from './core/services/transaction-scan/TransactionScan';
 import { WalletService } from './core/services/wallet/WalletService';
 import logger, { noOpLogger } from './core/utils/logger';
@@ -76,10 +78,12 @@ const configProvider = new ConfigProvider();
 
 const eventEmitter = new EventEmitter(logger);
 
-const state = new State(eventEmitter, {
+const state = new State({
   encrypted: false,
   defaultState: DEFAULT_UNENCRYPTED_STATE,
 });
+
+registerStateMigration(eventEmitter, state);
 
 const inMemoryCache = new InMemoryCache(noOpLogger);
 

@@ -1,7 +1,12 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
+import { Logger, LogLevel } from '../logger/Logger';
+import { serialize } from '../serialization/serialization';
+import type { Serializable } from '../serialization/types';
+import type { ICache } from './types';
 
-import logger from '../utils/logger';
-import type { ICache } from './ICache';
+/**
+ * A logger that discards all messages, used when no logger is provided.
+ */
+const silentLogger = new Logger({ level: LogLevel.SILENT });
 
 /**
  * Result type for functions that provide their own expiry time.
@@ -23,9 +28,16 @@ export type CacheUntilOptions = {
    * Optional function to generate the cache key for the function call.
    * Defaults to a function that generates the key based on function name and JSON stringified args separated by colons.
    */
-  // TODO: Replace `any` with type
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  generateCacheKey?: (functionName: string, args: any[]) => string;
+  generateCacheKey?: (functionName: string, args: Serializable[]) => string;
+  /**
+   * Whether to refresh the cache.
+   * Defaults to false.
+   */
+  refreshCache?: boolean;
+  /**
+   * Optional logger for cache errors. Defaults to a silent logger.
+   */
+  logger?: Logger;
 };
 
 /**
@@ -35,37 +47,43 @@ export type CacheUntilOptions = {
  * @param args - The arguments of the function call.
  * @returns The cache key.
  */
-// TODO: Replace `any` with type
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const defaultGenerateCacheKey = (functionName: string, args: any[]): string =>
-  `${functionName}:${args.map((arg) => JSON.stringify(arg)).join(':')}`;
+const defaultGenerateCacheKey = (
+  functionName: string,
+  args: Serializable[],
+): string =>
+  `${functionName}:${args.map((arg) => JSON.stringify(serialize(arg))).join(':')}`;
 
 /**
  * Wraps an async function with caching behavior where expiry is determined
  * by the function result itself (dynamic TTL).
  *
- * This utility allows the wrapped function to be cached until a specific time.
- * This is useful for caching data that has known invalidation points
- * (e.g., blockchain maintenance periods).
+ * Unlike `useCache` which uses a fixed TTL, this utility allows the wrapped
+ * function to specify when its result expires. This is useful for caching
+ * data that has known invalidation points (e.g., blockchain maintenance periods).
  *
  * @template TArgs - Tuple type representing the arguments of the function.
  * @template TResult - The return type of the function, must be Serializable.
  * @param fn - The asynchronous function to wrap. Must return a Promise<ResultWithExpiry<TResult>>.
  * @param cache - The cache instance to use.
  * @param options - The caching options.
+ * @param options.refreshCache - Whether to refresh the cache.
  * @param options.functionName - The name of the function.
  * @param options.generateCacheKey - Optional function to generate the cache key.
+ * @param options.logger - Optional logger for cache errors.
  * @returns A new asynchronous function with caching behavior.
  */
 export const useCacheUntil = <
-  // TODO: Replace `any` with type
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TArgs extends any[],
+  TArgs extends Serializable[],
   TResult extends Serializable,
 >(
   fn: (...args: TArgs) => Promise<ResultWithExpiry<TResult>>,
   cache: ICache<Serializable>,
-  { functionName, generateCacheKey }: CacheUntilOptions,
+  {
+    functionName,
+    generateCacheKey,
+    refreshCache = false,
+    logger = silentLogger,
+  }: CacheUntilOptions,
 ): ((...args: TArgs) => Promise<TResult>) => {
   // Use provided key generator or default, adapting the default to use the function's name
   const _generateCacheKey = generateCacheKey ?? defaultGenerateCacheKey;
@@ -85,7 +103,7 @@ export const useCacheUntil = <
     // Snap restart, expiryMap is empty, so consult the cache to hydrate a still
     // valid entry instead of fetching it again.
     const expiresAt = expiryMap.get(cacheKey);
-    if (expiresAt === undefined || now < expiresAt) {
+    if (!refreshCache && (expiresAt === undefined || now < expiresAt)) {
       try {
         const cached = await cache.get(cacheKey);
         // Check explicitly for undefined, as null or other falsy values might be valid cache results

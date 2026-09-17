@@ -1,8 +1,8 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
-import { AssetType, KnownCaip2ChainId } from '../../api';
 import type { KnownCaip19AssetId } from '../../api';
-import type { IStateManager } from '../state/IStateManager';
+import { AssetType, KnownCaip2ChainId } from '../../api';
 import type { AssetMetadataState, StellarAssetMetadata } from './api';
 import { AssetMetadataRepository } from './AssetMetadataRepository';
 
@@ -46,11 +46,13 @@ function createMockStateManager(
       return undefined;
     },
     setKey: jest.fn(async () => Promise.resolve()),
+    setKeyWith: jest.fn(async () => Promise.resolve()),
     update: async (updater) => {
       state = updater(cloneDeep(state));
       return cloneDeep(state);
     },
     deleteKey: jest.fn(async () => Promise.resolve()),
+    deleteKeys: jest.fn(async () => Promise.resolve()),
   };
 }
 
