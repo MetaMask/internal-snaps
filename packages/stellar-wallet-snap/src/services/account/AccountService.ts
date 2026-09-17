@@ -111,8 +111,7 @@ export class AccountService {
     toIndex: number;
     walletResolver: (index: number) => Promise<Wallet>;
   }): Promise<StellarKeyringAccount[]> {
-    const { fromIndex, toIndex } = options;
-    const { entropySource } = options;
+    const { fromIndex, toIndex, entropySource } = options;
 
     const [accounts, walletResolver] = [
       await this.#accountsRepository.getAll(),
