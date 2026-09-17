@@ -1,14 +1,11 @@
 import type { Transaction } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { Address, Signature } from '@solana/kit';
 
-import type {
-  AssetEntity,
-  SolanaKeyringAccount,
-  Subscription,
-} from '../../../entities';
+import type { AssetEntity, Subscription } from '../../../entities';
 
 export type UnencryptedStateValue = {
-  keyringAccounts: Record<string, SolanaKeyringAccount>;
+  keyringAccounts: Record<string, ExtendedKeyringAccount>;
   mapInterfaceNameToId: Record<string, string>;
   transactions: Record<string, Transaction[]>;
   // we need to store the exhaustive list of signatures (including spam)

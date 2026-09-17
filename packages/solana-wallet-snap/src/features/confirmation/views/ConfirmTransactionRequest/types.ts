@@ -1,19 +1,17 @@
 import type { SolMethod } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import type { Network } from '../../../../core/constants/solana';
 import type { TransactionScanResult } from '../../../../core/services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
-import type {
-  InstructionParseResult,
-  SolanaKeyringAccount,
-} from '../../../../entities';
+import type { InstructionParseResult } from '../../../../entities';
 
 export type ConfirmTransactionRequestContext = {
   method: SolMethod;
   scope: Network;
   networkImage: string | null;
-  account: SolanaKeyringAccount | null;
+  account: ExtendedKeyringAccount | null;
   accountDomain: string | null;
   destinationAddress: string | null;
   destinationDomain: string | null;

@@ -1,8 +1,10 @@
 import type { Transaction } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network, TransactionMetadata } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import logger from '../../utils/logger';
@@ -48,7 +50,7 @@ export class AnalyticsService {
   }
 
   async trackEventTransactionAdded(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     metadata: TransactionMetadata,
   ): Promise<void> {
     await this.#trackEvent('Transaction Added', {
@@ -60,7 +62,7 @@ export class AnalyticsService {
   }
 
   async trackEventTransactionApproved(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     metadata: TransactionMetadata,
   ): Promise<void> {
     await this.#trackEvent('Transaction Approved', {
@@ -72,7 +74,7 @@ export class AnalyticsService {
   }
 
   async trackEventTransactionSubmitted(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     signature: string,
     metadata: TransactionMetadata,
   ): Promise<void> {
@@ -85,7 +87,7 @@ export class AnalyticsService {
   }
 
   async trackEventTransactionFinalized(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     transaction: Transaction,
     metadata: TransactionMetadata,
   ): Promise<void> {
@@ -100,7 +102,7 @@ export class AnalyticsService {
   }
 
   async trackEventTransactionRejected(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     metadata: TransactionMetadata,
   ): Promise<void> {
     await this.#trackEvent('Transaction Rejected', {
@@ -112,7 +114,7 @@ export class AnalyticsService {
   }
 
   async trackEventSecurityAlertDetected(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     origin: string,
     scope: Network,
     securityAlertResponse: SecurityAlertResponse,
@@ -131,7 +133,7 @@ export class AnalyticsService {
   }
 
   async trackEventSecurityScanCompleted(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     origin: string,
     scope: Network,
     scanStatus: ScanStatus,
