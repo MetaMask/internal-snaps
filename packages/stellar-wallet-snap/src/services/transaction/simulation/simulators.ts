@@ -224,7 +224,7 @@ export class PaymentOPSimulator implements OperationSimulator {
     }
 
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
-    if (sourceId !== destId) {
+    if (!ctx.skipMemoRequirementCheck && sourceId !== destId) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
         destId,
@@ -313,7 +313,7 @@ export class PathPaymentOPSimulator implements OperationSimulator {
     );
 
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
-    if (sourceId !== destId) {
+    if (!ctx.skipMemoRequirementCheck && sourceId !== destId) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
         destId,

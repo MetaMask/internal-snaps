@@ -3,6 +3,7 @@ import type { Json } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { AssetMetadataService } from '../../../services/asset-metadata';
+import { RequiresMemoException } from '../../../services/transaction';
 import type {
   Transaction,
   TransactionService,
@@ -36,6 +37,8 @@ type TransactionValidationContext = ConfirmationDataContext &
     // origin is always present on the rendered confirmation context
     // (ConfirmationBaseProps.origin), but isn't part of the validation struct.
     origin?: string;
+    // UI-owned memo saved via MemoEdit (not on confirmSend RPC params).
+    memo?: string;
   };
 
 /**
@@ -139,6 +142,9 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
               assetId: request.params.assetId,
               destination: request.params.toAddress,
               amount,
+              ...(typeof validationCtx.memo === 'string'
+                ? { memo: validationCtx.memo }
+                : {}),
             });
           break;
         }
@@ -172,6 +178,8 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
             scope,
             transaction: rebuiltTransactionXdr,
           },
+          // Clear a prior recoverable validation error (e.g. RequiresMemo after memo added).
+          transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
       };
@@ -180,15 +188,17 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
         'Error re-validating confirmation transaction:',
         error,
       );
+      const recoverable = error instanceof RequiresMemoException;
       return {
         result: {
           transactionsFetchStatus: FetchStatus.Error,
           errorMessage: getTxnErrorMessageKey(error, accountAddress),
-          // Clear the scan loading state in the confirmation UI + skip the security scan request.
+          // Clear the scan loading state in the confirmation UI. Scan is omitted
+          // via `halt` / `recoverable` — do not null `securityScanRequest`.
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        halt: true,
+        ...(recoverable ? { recoverable: true } : { halt: true }),
       };
     }
   }

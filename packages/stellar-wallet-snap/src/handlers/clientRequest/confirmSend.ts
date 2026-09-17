@@ -14,6 +14,7 @@ import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
   KeyringTransactionType,
+  RequiresMemoException,
   TransactionValidationException,
 } from '../../services/transaction';
 import type {
@@ -28,6 +29,9 @@ import {
   FetchStatus,
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import type { ConfirmSendDialogResult } from '../../ui/confirmation/views/ConfirmSendTransaction/events';
+import { parseConfirmSendDialogResult } from '../../ui/confirmation/views/ConfirmSendTransaction/events';
+import type { LocalizedMessage } from '../../utils';
 import {
   hasDecimals,
   isSlip44Id,
@@ -132,27 +136,14 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         };
       }
 
-      let transaction: Transaction;
-      try {
-        transaction =
-          await this.#transactionService.createValidatedSendTransaction({
-            onChainAccount,
-            scope,
-            assetId,
-            amount: amountInSmallestUnit,
-            destination: toAddress,
-          });
-      } catch (error: unknown) {
-        await this.#displayDialogWithErrorMessage({
+      const { transaction, requiresMemoRecovery } =
+        await this.#buildSendTransactionForConfirm({
           request,
           account: stellarKeyringAccount,
           assetMetadata,
-          scope,
-          error,
+          onChainAccount,
+          amount: amountInSmallestUnit,
         });
-        // The error confirmation only supports dismiss, so abort as a user rejection.
-        throw ensureError(new UserRejectedRequestError());
-      }
 
       await trackTransactionAdded({
         origin: METAMASK_ORIGIN,
@@ -160,22 +151,35 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         chainIdCaip: scope,
       });
 
-      if (
-        !(await this.#confirmSend({
-          request,
-          account: stellarKeyringAccount,
-          assetMetadata,
-          scope,
-          fee: transaction.totalFee,
-          transaction,
-        }))
-      ) {
+      const dialogResult = await this.#confirmSend({
+        request,
+        account: stellarKeyringAccount,
+        assetMetadata,
+        scope,
+        fee: transaction.totalFee,
+        transaction,
+        initialValidationError: requiresMemoRecovery
+          ? 'confirmation.txnError.requiresMemo'
+          : undefined,
+      });
+
+      if (!dialogResult.confirmed) {
         await trackTransactionRejected({
           origin: METAMASK_ORIGIN,
           accountType: stellarKeyringAccount.type,
           chainIdCaip: scope,
         });
         throw ensureError(new UserRejectedRequestError());
+      }
+
+      const trimmedMemo = dialogResult.memo?.trim();
+      const confirmedMemo = trimmedMemo === '' ? undefined : trimmedMemo;
+
+      if (requiresMemoRecovery && !confirmedMemo) {
+        return {
+          valid: false,
+          errors: [{ code: MultiChainSendErrorCodes.Invalid }],
+        };
       }
 
       await trackTransactionApproved({
@@ -192,6 +196,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         request,
         confirmedTransaction: transaction,
         amount: amountInSmallestUnit,
+        memo: confirmedMemo,
       });
 
       refreshedWallet.signTransaction(refreshedTransaction);
@@ -274,16 +279,85 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     }
   }
 
+  /**
+   * Builds the send envelope for confirmation, recovering from SEP-29 RequiresMemo
+   * with a draft tx (`skipMemoRequirementCheck`) when needed.
+   *
+   * @param params - Build inputs.
+   * @returns The transaction and whether memo recovery UI should be shown.
+   * @throws {UserRejectedRequestError} After the pre-submit error dialog is dismissed.
+   */
+  async #buildSendTransactionForConfirm(params: {
+    request: ConfirmSendJsonRpcRequest;
+    account: StellarKeyringAccount;
+    assetMetadata: StellarAssetMetadata;
+    onChainAccount: ResolvedActivatedAccount['onChainAccount'];
+    amount: BigNumber;
+  }): Promise<{
+    transaction: Transaction;
+    requiresMemoRecovery: boolean;
+  }> {
+    const { request, account, assetMetadata, onChainAccount, amount } = params;
+    const { toAddress, assetId, scope } = request.params;
+
+    try {
+      const transaction =
+        await this.#transactionService.createValidatedSendTransaction({
+          onChainAccount,
+          scope,
+          assetId,
+          amount,
+          destination: toAddress,
+        });
+      return { transaction, requiresMemoRecovery: false };
+    } catch (error: unknown) {
+      if (!(error instanceof RequiresMemoException)) {
+        await this.#displayDialogWithErrorMessage({
+          request,
+          account,
+          assetMetadata,
+          scope,
+          error,
+        });
+        throw ensureError(new UserRejectedRequestError());
+      }
+
+      // Draft envelope so the user can add a memo, then re-validate before signing.
+      try {
+        const transaction =
+          await this.#transactionService.createValidatedSendTransaction({
+            onChainAccount,
+            scope,
+            assetId,
+            amount,
+            destination: toAddress,
+            skipMemoRequirementCheck: true,
+          });
+        return { transaction, requiresMemoRecovery: true };
+      } catch (draftError: unknown) {
+        await this.#displayDialogWithErrorMessage({
+          request,
+          account,
+          assetMetadata,
+          scope,
+          error: draftError,
+        });
+        throw ensureError(new UserRejectedRequestError());
+      }
+    }
+  }
+
   async #refreshTransactionAfterConfirmation(params: {
     request: ConfirmSendJsonRpcRequest;
     confirmedTransaction: Transaction;
     amount: BigNumber;
+    memo?: string;
   }): Promise<{
     wallet: ResolvedActivatedAccount['wallet'];
     onChainAccount: ResolvedActivatedAccount['onChainAccount'];
     transaction: Transaction;
   }> {
-    const { request, confirmedTransaction, amount } = params;
+    const { request, confirmedTransaction, amount, memo } = params;
     const { assetId, toAddress, scope } = request.params;
     // Resolve again after the user confirms so sequence, balances, and fees are fresh before signing.
     // sendTransaction still handles txBadSeq races that happen after this refresh.
@@ -296,6 +370,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         assetId,
         amount,
         destination: toAddress,
+        memo,
       });
 
     // Reject if the refreshed fee is higher than what the user approved, so we
@@ -319,8 +394,17 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     scope: KnownCaip2ChainId;
     fee: BigNumber;
     transaction: Transaction;
-  }): Promise<boolean> {
-    const { request, account, assetMetadata, fee, scope, transaction } = params;
+    initialValidationError?: LocalizedMessage;
+  }): Promise<ConfirmSendDialogResult> {
+    const {
+      request,
+      account,
+      assetMetadata,
+      fee,
+      scope,
+      transaction,
+      initialValidationError,
+    } = params;
     const { toAddress, amount, assetId } = request.params;
     const xdr = transaction.getRaw().toXDR();
     // The send asset and amount are known from the request, so the estimated
@@ -330,13 +414,19 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       assetMetadata,
     });
 
-    return (
-      (await this.#confirmationUIController.renderConfirmationDialog({
+    const result =
+      await this.#confirmationUIController.renderConfirmationDialog({
         scope,
         origin: METAMASK_ORIGIN,
         renderContext: {
           account,
           toAddress,
+          ...(initialValidationError
+            ? {
+                transactionsFetchStatus: FetchStatus.Error,
+                errorMessage: initialValidationError,
+              }
+            : {}),
         },
         fee: fee.toString(),
         interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
@@ -363,8 +453,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         tokenPrices: {
           [assetId]: null,
         } as ContextWithPrices['tokenPrices'],
-      })) === true
-    );
+      });
+
+    return parseConfirmSendDialogResult(result);
   }
 
   /**
@@ -398,6 +489,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       renderContext: {
         account,
         toAddress,
+        // Keep the original request so Add/Update memo still works on this
+        // dead-end validation dialog (no localSimulation / refresh).
+        request,
         transactionsFetchStatus: FetchStatus.Error,
         errorMessage: getTxnErrorMessageKey(error, account.address),
       },

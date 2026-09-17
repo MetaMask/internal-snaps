@@ -502,4 +502,77 @@ describe('RefreshConfirmationContextHandler', () => {
     );
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
   });
+
+  it('skips the security scan and does not reschedule when a refresher is recoverable', async () => {
+    jest
+      .mocked(getInterfaceContextIfExists)
+      .mockResolvedValueOnce(baseContext)
+      .mockResolvedValueOnce(baseContext);
+
+    const transactionRefresher = createMockRefresher(
+      ConfirmationContextRefresherKey.Transaction,
+      {
+        refresh: jest.fn().mockResolvedValue({
+          result: {
+            transactionsFetchStatus: FetchStatus.Error,
+            scanFetchStatus: FetchStatus.Error,
+          },
+          reschedule: false,
+          recoverable: true,
+        }),
+      },
+    );
+    const pricesRefresher = createMockRefresher(
+      ConfirmationContextRefresherKey.Prices,
+      {
+        refresh: jest.fn().mockResolvedValue({
+          result: { tokenPricesFetchStatus: FetchStatus.Fetched },
+          reschedule: true,
+        }),
+      },
+    );
+    const scanRefresher = createMockRefresher(
+      ConfirmationContextRefresherKey.Scan,
+      {
+        refresh: jest.fn().mockResolvedValue({
+          result: { scanFetchStatus: FetchStatus.Fetched },
+          reschedule: true,
+        }),
+      },
+    );
+
+    const { handler, updateConfirmation } = setup([
+      transactionRefresher,
+      pricesRefresher,
+      scanRefresher,
+    ]);
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: '1',
+      method: BackgroundEventMethod.RefreshConfirmationContext,
+      params: {
+        ...confirmationContextRequestParams,
+        refresherKeys: [
+          ConfirmationContextRefresherKey.Transaction,
+          ConfirmationContextRefresherKey.Prices,
+          ConfirmationContextRefresherKey.Scan,
+        ],
+      },
+    });
+
+    expect(transactionRefresher.refresh).toHaveBeenCalledTimes(1);
+    expect(pricesRefresher.refresh).toHaveBeenCalledTimes(1);
+    expect(scanRefresher.refresh).not.toHaveBeenCalled();
+    expect(updateConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatedContext: expect.objectContaining({
+          transactionsFetchStatus: FetchStatus.Error,
+          scanFetchStatus: FetchStatus.Error,
+          tokenPricesFetchStatus: FetchStatus.Fetched,
+        }),
+      }),
+    );
+    expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
+  });
 });

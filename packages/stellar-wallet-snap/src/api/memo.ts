@@ -29,6 +29,34 @@ export function isMemoText(value: string): boolean {
 }
 
 /**
+ * Locale keys returned by {@link getMemoDraftValidationError}.
+ */
+export type MemoDraftValidationErrorKey = 'confirmation.memo.error.tooLong';
+
+/**
+ * Validates a memo draft the same way {@link resolveStellarMemo} will attach it:
+ * all-digit uint64 → memo id; otherwise text (≤ 28 UTF-8 bytes). Digits outside
+ * uint64 that still fit in 28 bytes are accepted as text.
+ *
+ * @param value - Raw draft from the confirmation UI (may include whitespace).
+ * @returns Locale error key, or `null` when empty/whitespace or valid.
+ */
+export function getMemoDraftValidationError(
+  value: string,
+): MemoDraftValidationErrorKey | null {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (isMemoId(trimmed) || isMemoText(trimmed)) {
+    return null;
+  }
+
+  return 'confirmation.memo.error.tooLong';
+}
+
+/**
  * Builds a Stellar SDK {@link Memo} from a string value.
  *
  * All-digit uint64 values → {@link Memo.id}; otherwise {@link Memo.text}.
