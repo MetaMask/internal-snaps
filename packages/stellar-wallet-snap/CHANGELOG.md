@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** Bump `@stellar/stellar-sdk` from `^15.0.1` to `^17.0.1` ([#302](https://github.com/MetaMask/internal-snaps/pull/302))
   - Show distinct confirmation titles for each revoke-sponsorship operation type (account, claimable balance, data, liquidity pool, offer, signer, trustline)
 
-
 ## [1.0.0]
 
 ### Added
