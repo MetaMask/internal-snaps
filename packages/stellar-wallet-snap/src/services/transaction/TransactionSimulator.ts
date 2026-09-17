@@ -71,6 +71,11 @@ export type TransactionSimulatorOptions = {
    * Extra accounts merged into simulation (e.g. payment destinations). Ignored when simulation path does not apply.
    */
   preloadedAccounts?: OnChainAccount[];
+  /**
+   * When true, SEP-29 memo-required checks are skipped during local simulation.
+   * Used to build a draft envelope for a recoverable RequiresMemo confirmation.
+   */
+  skipMemoRequirementCheck?: boolean;
 };
 
 export class TransactionSimulator {
@@ -116,6 +121,7 @@ export class TransactionSimulator {
       operations: ops,
       transaction,
       initialState: this.#buildInitialState(account, options),
+      skipMemoRequirementCheck: options?.skipMemoRequirementCheck === true,
     });
   }
 
@@ -123,8 +129,14 @@ export class TransactionSimulator {
     operations: SupportedOPType[];
     transaction: Transaction;
     initialState: SimulationState;
+    skipMemoRequirementCheck?: boolean;
   }): SimulationState[] {
-    const { operations, initialState, transaction } = params;
+    const {
+      operations,
+      initialState,
+      transaction,
+      skipMemoRequirementCheck = false,
+    } = params;
 
     const txSource = transaction.sourceAccount;
     const feeSource = transaction.feeSourceAccount;
@@ -163,6 +175,7 @@ export class TransactionSimulator {
           scope,
           operations,
           transaction,
+          skipMemoRequirementCheck,
         });
         this.#applyOP({ op, state, txSource, scope, opIndex });
         stack.push(state);
@@ -326,9 +339,18 @@ export class TransactionSimulator {
     scope: KnownCaip2ChainId;
     operations: readonly Operation[];
     transaction: Transaction;
+    skipMemoRequirementCheck?: boolean;
   }): void {
-    const { op, opIndex, state, txSource, scope, operations, transaction } =
-      params;
+    const {
+      op,
+      opIndex,
+      state,
+      txSource,
+      scope,
+      operations,
+      transaction,
+      skipMemoRequirementCheck = false,
+    } = params;
     const operationType = this.#getSupportedOperationType(op);
 
     this.#operationSimulator[operationType].validate(
@@ -338,6 +360,7 @@ export class TransactionSimulator {
         scope,
         opIndex,
         transaction,
+        skipMemoRequirementCheck,
       },
       op,
       operations,

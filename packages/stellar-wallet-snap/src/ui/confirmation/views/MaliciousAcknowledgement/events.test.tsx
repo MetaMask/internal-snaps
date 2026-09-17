@@ -102,8 +102,30 @@ describe('malicious acknowledgement events', () => {
       },
     });
 
-    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+      confirmed: true,
+      memo: null,
+    });
     expect(updateInterfaceIfExists).not.toHaveBeenCalled();
+  });
+
+  it('resolves ConfirmSend with memo from context.memo', async () => {
+    const name = MaliciousAcknowledgementFormNames.Proceed;
+    await handlers[name]?.({
+      id: INTERFACE_ID,
+      event: buttonEvent(name),
+      context: {
+        ...baseContext,
+        acknowledgementScreen: true,
+        acknowledged: true,
+        memo: '  ack-memo  ',
+      },
+    });
+
+    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+      confirmed: true,
+      memo: 'ack-memo',
+    });
   });
 
   it('does not resolve on "Confirm" when the risk is not acknowledged', async () => {

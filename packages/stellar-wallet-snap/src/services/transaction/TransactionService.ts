@@ -149,6 +149,7 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks (recoverable confirmation draft).
    * @param params.useCache - Whether to use the cache.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -159,6 +160,7 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
+    skipMemoRequirementCheck?: boolean;
     useCache?: boolean;
   }): Promise<Transaction> {
     const {
@@ -168,6 +170,7 @@ export class TransactionService {
       amount,
       destination,
       memo,
+      skipMemoRequirementCheck = false,
       useCache = false,
     } = params;
 
@@ -199,6 +202,7 @@ export class TransactionService {
         destination,
         destinationAccount,
         memo,
+        skipMemoRequirementCheck,
         useCache,
       });
     }
@@ -212,6 +216,7 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
+      skipMemoRequirementCheck,
     });
   }
 
@@ -226,6 +231,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks.
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
    * such as amount-input validation, where the caller needs fee/balance feedback on
@@ -242,6 +248,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount;
     memo?: string;
+    skipMemoRequirementCheck?: boolean;
     useCache: boolean;
   }): Promise<Transaction> {
     const {
@@ -252,6 +259,7 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
+      skipMemoRequirementCheck = false,
       useCache,
     } = params;
 
@@ -311,6 +319,7 @@ export class TransactionService {
     this.validateTransaction(transaction, onChainAccount, {
       expectedOPTypes: [SupportedOperations.InvokeHostFunction],
       preloadedAccounts: destinationAccount ? [destinationAccount] : undefined,
+      skipMemoRequirementCheck,
     });
 
     return transaction;
@@ -334,6 +343,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.skipMemoRequirementCheck - When true, skips SEP-29 memo-required checks.
    * @returns A promise that resolves to the validated transaction.
    */
   async #createValidatedClassicAssetTransfer(params: {
@@ -344,6 +354,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount | null;
     memo?: string;
+    skipMemoRequirementCheck?: boolean;
   }): Promise<Transaction> {
     const {
       onChainAccount,
@@ -353,6 +364,7 @@ export class TransactionService {
       destinationAccount,
       destination,
       memo,
+      skipMemoRequirementCheck = false,
     } = params;
 
     const isDestinationActivated = destinationAccount !== null;
@@ -382,6 +394,7 @@ export class TransactionService {
         ? [SupportedOperations.Payment]
         : [SupportedOperations.CreateAccount],
       preloadedAccounts: destinationAccount ? [destinationAccount] : undefined,
+      skipMemoRequirementCheck,
     });
 
     return transaction;

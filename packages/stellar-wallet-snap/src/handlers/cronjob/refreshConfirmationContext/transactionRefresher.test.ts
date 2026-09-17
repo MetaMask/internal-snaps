@@ -174,8 +174,28 @@ describe('ConfirmationTransactionRefresher', () => {
           scope,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
+    });
+  });
+
+  it('passes context.memo into createValidatedSendTransaction on ConfirmSend rebuild', async () => {
+    const { refresher, transactionService } = setup();
+
+    await refresher.refresh(
+      createTransactionContext({ memo: '  exchange-ref  ' }),
+    );
+
+    expect(
+      transactionService.createValidatedSendTransaction,
+    ).toHaveBeenCalledWith({
+      onChainAccount: { accountId, scope },
+      scope,
+      assetId: sendRequest.params.assetId,
+      destination: toAddress,
+      amount: expect.anything(),
+      memo: '  exchange-ref  ',
     });
   });
 
@@ -192,10 +212,6 @@ describe('ConfirmationTransactionRefresher', () => {
       error: new InsufficientBalanceToCoverBaseReserveException('1', '2'),
       errorMessage:
         'confirmation.txnError.insufficientBalanceToCoverBaseReserve',
-    },
-    {
-      error: new RequiresMemoException(toAddress),
-      errorMessage: 'confirmation.txnError.requiresMemo',
     },
     {
       error: new InvalidAmountForCreateAccountException('0.5'),
@@ -263,6 +279,26 @@ describe('ConfirmationTransactionRefresher', () => {
     },
   );
 
+  it('marks RequiresMemo as recoverable without nulling securityScanRequest', async () => {
+    const { refresher, transactionService } = setup();
+    transactionService.createValidatedSendTransaction.mockRejectedValueOnce(
+      new RequiresMemoException(toAddress),
+    );
+
+    const result = await refresher.refresh(createTransactionContext());
+
+    expect(result).toStrictEqual({
+      result: {
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: 'confirmation.txnError.requiresMemo',
+        scanFetchStatus: FetchStatus.Error,
+      },
+      reschedule: false,
+      recoverable: true,
+    });
+    expect(result?.result.securityScanRequest).toBeUndefined();
+  });
+
   it('re-validates a change-trust opt-in transaction', async () => {
     const { refresher, transactionService } = setup();
 
@@ -289,6 +325,7 @@ describe('ConfirmationTransactionRefresher', () => {
           scope,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -330,6 +367,7 @@ describe('ConfirmationTransactionRefresher', () => {
           ...securityScanRequest,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -357,6 +395,7 @@ describe('ConfirmationTransactionRefresher', () => {
           ...securityScanRequest,
           transaction: transactionXdr,
         },
+        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -397,6 +436,7 @@ describe('ConfirmationTransactionRefresher', () => {
             scope,
             transaction: transactionXdr,
           },
+          transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
       });
