@@ -413,7 +413,6 @@ export class KeyringAccountMonitor {
         keyringAccountId: keyringAccount.id,
         network,
         mint,
-        pubkey,
         symbol: metadata?.symbol ?? 'UNKNOWN',
         decimals,
         rawAmount: amount,
