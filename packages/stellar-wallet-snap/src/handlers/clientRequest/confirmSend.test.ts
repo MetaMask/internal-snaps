@@ -43,6 +43,7 @@ import {
   InsufficientBalanceToCoverFeeException,
   InvalidAmountForCreateAccountException,
   InvalidAssetForCreateAccountException,
+  RequiresMemoException,
   TransactionExpireException,
   TransactionValidationException,
   TrustlineExceedLimitException,
@@ -650,6 +651,7 @@ describe('ConfirmSendHandler', () => {
         handler,
         transaction,
         createDraftSendTransactionForConfirm,
+        createValidatedSendTransaction,
         renderConfirmationDialog,
         signTransactionSpy,
         sendTransaction,
@@ -658,12 +660,20 @@ describe('ConfirmSendHandler', () => {
         transaction,
         requiresMemoRecovery: true,
       });
+      createValidatedSendTransaction.mockRejectedValueOnce(
+        new RequiresMemoException(destinationAddress),
+      );
       renderConfirmationDialog.mockResolvedValueOnce({ confirmed: true });
 
       expect(await handler.handle(baseRequest())).toStrictEqual({
         valid: false,
         errors: [{ code: MultiChainSendErrorCodes.Invalid }],
       });
+      expect(createValidatedSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destination: destinationAddress,
+        }),
+      );
       expect(signTransactionSpy).not.toHaveBeenCalled();
       expect(sendTransaction).not.toHaveBeenCalled();
     });

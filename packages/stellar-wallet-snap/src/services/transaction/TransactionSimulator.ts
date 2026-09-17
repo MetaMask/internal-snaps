@@ -14,6 +14,7 @@ import {
   TransactionValidationException,
   UnsupportedOperationTypeException,
 } from './exceptions';
+import type { TransactionValidationExceptionClass } from './exceptions';
 import type {
   AccountState,
   SimulationState,
@@ -72,10 +73,10 @@ export type TransactionSimulatorOptions = {
    */
   preloadedAccounts?: OnChainAccount[];
   /**
-   * When true, SEP-29 memo-required checks are skipped during local simulation.
-   * Used to build a draft envelope for a recoverable RequiresMemo confirmation.
+   * Validation exception constructors to suppress during simulation
+   * (e.g. `[RequiresMemoException]` for recoverable RequiresMemo drafts).
    */
-  skipMemoRequirementCheck?: boolean;
+  skipExceptions?: TransactionValidationExceptionClass[];
 };
 
 export class TransactionSimulator {
@@ -121,7 +122,7 @@ export class TransactionSimulator {
       operations: ops,
       transaction,
       initialState: this.#buildInitialState(account, options),
-      skipMemoRequirementCheck: options?.skipMemoRequirementCheck === true,
+      skipExceptions: options?.skipExceptions,
     });
   }
 
@@ -129,14 +130,9 @@ export class TransactionSimulator {
     operations: SupportedOPType[];
     transaction: Transaction;
     initialState: SimulationState;
-    skipMemoRequirementCheck?: boolean;
+    skipExceptions?: TransactionValidationExceptionClass[];
   }): SimulationState[] {
-    const {
-      operations,
-      initialState,
-      transaction,
-      skipMemoRequirementCheck = false,
-    } = params;
+    const { operations, initialState, transaction, skipExceptions } = params;
 
     const txSource = transaction.sourceAccount;
     const feeSource = transaction.feeSourceAccount;
@@ -175,7 +171,7 @@ export class TransactionSimulator {
           scope,
           operations,
           transaction,
-          skipMemoRequirementCheck,
+          skipExceptions,
         });
         this.#applyOP({ op, state, txSource, scope, opIndex });
         stack.push(state);
@@ -339,7 +335,7 @@ export class TransactionSimulator {
     scope: KnownCaip2ChainId;
     operations: readonly Operation[];
     transaction: Transaction;
-    skipMemoRequirementCheck?: boolean;
+    skipExceptions?: TransactionValidationExceptionClass[];
   }): void {
     const {
       op,
@@ -349,7 +345,7 @@ export class TransactionSimulator {
       scope,
       operations,
       transaction,
-      skipMemoRequirementCheck = false,
+      skipExceptions,
     } = params;
     const operationType = this.#getSupportedOperationType(op);
 
@@ -360,7 +356,7 @@ export class TransactionSimulator {
         scope,
         opIndex,
         transaction,
-        skipMemoRequirementCheck,
+        skipExceptions,
       },
       op,
       operations,

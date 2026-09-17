@@ -187,13 +187,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       const confirmedMemo =
         typeof dialogResult.memo === 'string' ? dialogResult.memo : undefined;
 
-      if (requiresMemoRecovery && !confirmedMemo) {
-        return {
-          valid: false,
-          errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-        };
-      }
-
       await trackTransactionApproved({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,

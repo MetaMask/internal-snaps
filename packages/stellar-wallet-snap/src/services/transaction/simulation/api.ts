@@ -5,6 +5,7 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../../api';
+import type { TransactionValidationExceptionClass } from '../exceptions';
 import type { Transaction } from '../Transaction';
 
 /**
@@ -61,10 +62,10 @@ export type ApplyContext = {
 export type ValidateContext = ApplyContext & {
   transaction: Transaction;
   /**
-   * When true, SEP-29 memo-required checks are skipped. Used to open a recoverable
-   * send confirmation so the user can add a memo after a RequiresMemo failure.
+   * Validation exception constructors to suppress during simulation
+   * (e.g. `[RequiresMemoException]` for recoverable RequiresMemo drafts).
    */
-  skipMemoRequirementCheck?: boolean;
+  skipExceptions?: TransactionValidationExceptionClass[];
 };
 
 /**

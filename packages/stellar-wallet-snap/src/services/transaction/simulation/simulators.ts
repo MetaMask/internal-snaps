@@ -22,13 +22,17 @@ import {
   InvalidAmountForCreateAccountException,
   InvalidTrustlineException,
   RemoveTrustlineWithNonZeroBalanceException,
+  RequiresMemoException,
   TransactionValidationException,
   TrustlineExceedLimitException,
   TrustlineNotAuthorizedException,
   TrustlineNotFoundException,
   UpdateTrustlineException,
 } from '../exceptions';
-import { assertMemoWhenDestinationRequires } from '../utils';
+import {
+  assertMemoWhenDestinationRequires,
+  shouldSkipValidationException,
+} from '../utils';
 import { isSep41TransferInvoke, parseSep41TransferInvoke } from '../xdrParser';
 import type {
   OperationSimulator,
@@ -224,7 +228,10 @@ export class PaymentOPSimulator implements OperationSimulator {
     }
 
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
-    if (!ctx.skipMemoRequirementCheck && sourceId !== destId) {
+    if (
+      sourceId !== destId &&
+      !shouldSkipValidationException(ctx.skipExceptions, RequiresMemoException)
+    ) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
         destId,
@@ -313,7 +320,10 @@ export class PathPaymentOPSimulator implements OperationSimulator {
     );
 
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
-    if (!ctx.skipMemoRequirementCheck && sourceId !== destId) {
+    if (
+      sourceId !== destId &&
+      !shouldSkipValidationException(ctx.skipExceptions, RequiresMemoException)
+    ) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
         destId,

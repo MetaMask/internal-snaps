@@ -562,7 +562,7 @@ describe('TransactionSimulator', () => {
       ).toThrow(RequiresMemoException);
     });
 
-    it('skips SEP-29 memo checks when skipMemoRequirementCheck is true', () => {
+    it('skips SEP-29 memo checks when RequiresMemoException is in skipExceptions', () => {
       const wallet = getTestWallet();
       const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
         nativeBalance: 500,
@@ -590,7 +590,7 @@ describe('TransactionSimulator', () => {
           preloadedAccounts: [
             destOnChainAccountRequiresMemo(destinationAddress),
           ],
-          skipMemoRequirementCheck: true,
+          skipExceptions: [RequiresMemoException],
         }),
       ).toHaveLength(2);
     });
