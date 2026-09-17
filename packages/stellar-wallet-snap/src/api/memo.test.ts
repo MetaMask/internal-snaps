@@ -1,38 +1,31 @@
-import { assert, StructError } from '@metamask/superstruct';
 import { Memo } from '@stellar/stellar-sdk';
 
-import {
-  resolveStellarMemo,
-  StellarMemoIdStruct,
-  StellarTextMemoStruct,
-} from './memo';
+import { isMemoId, isMemoText, resolveStellarMemo } from './memo';
 
-describe('StellarMemoIdStruct', () => {
+describe('isMemoId', () => {
   it.each(['0', '12345', '18446744073709551615'])(
     'accepts memo id %s',
     (value) => {
-      expect(() => assert(value, StellarMemoIdStruct)).not.toThrow();
+      expect(isMemoId(value)).toBe(true);
     },
   );
 
   it.each(['', '12abc', 'deposit-ref', '18446744073709551616', '-1'])(
     'rejects memo id %j',
     (value) => {
-      expect(() => assert(value, StellarMemoIdStruct)).toThrow(StructError);
+      expect(isMemoId(value)).toBe(false);
     },
   );
 });
 
-describe('StellarTextMemoStruct', () => {
+describe('isMemoText', () => {
   it('accepts text within 28 UTF-8 bytes', () => {
-    expect(() => assert('deposit-ref', StellarTextMemoStruct)).not.toThrow();
-    expect(() => assert('é'.repeat(14), StellarTextMemoStruct)).not.toThrow();
+    expect(isMemoText('deposit-ref')).toBe(true);
+    expect(isMemoText('é'.repeat(14))).toBe(true);
   });
 
   it('rejects text over 28 UTF-8 bytes', () => {
-    expect(() => assert('é'.repeat(15), StellarTextMemoStruct)).toThrow(
-      StructError,
-    );
+    expect(isMemoText('é'.repeat(15))).toBe(false);
   });
 });
 
@@ -63,6 +56,8 @@ describe('resolveStellarMemo', () => {
   });
 
   it('throws when text memo exceeds 28 UTF-8 bytes', () => {
-    expect(() => resolveStellarMemo('é'.repeat(15))).toThrow(StructError);
+    expect(() => resolveStellarMemo('é'.repeat(15))).toThrow(
+      'Memo must be 28 bytes or fewer',
+    );
   });
 });

@@ -1,50 +1,33 @@
-import type { Infer } from '@metamask/superstruct';
-import { assert, is, refine, string } from '@metamask/superstruct';
 import { Memo } from '@stellar/stellar-sdk';
 
 import { STELLAR_TEXT_MEMO_MAX_BYTES } from '../constants';
 
 const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
+const STELLAR_MEMO_ID_PATTERN = /^\d+$/u;
 
 /**
- * Non-negative decimal uint64 memo id (exchange-style numeric memos).
+ * Whether `value` is a non-negative decimal uint64 memo id.
+ *
+ * @param value - Trimmed memo string.
+ * @returns True when the value is a valid Stellar memo id.
  */
-export const StellarMemoIdStruct = refine(
-  string(),
-  'stellar-memo-id',
-  (value) => {
-    if (!/^\d+$/u.test(value)) {
-      return 'Memo id must be a non-negative decimal integer';
-    }
-    try {
-      const asId = BigInt(value);
-      if (asId < 0n || asId > STELLAR_MEMO_ID_MAX) {
-        return 'Memo id is out of uint64 range';
-      }
-      return true;
-    } catch {
-      return 'Memo id must be a non-negative decimal integer';
-    }
-  },
-);
-
-export type StellarMemoId = Infer<typeof StellarMemoIdStruct>;
+export function isMemoId(value: string): boolean {
+  if (!STELLAR_MEMO_ID_PATTERN.test(value)) {
+    return false;
+  }
+  const asId = BigInt(value);
+  return asId >= 0n && asId <= STELLAR_MEMO_ID_MAX;
+}
 
 /**
- * Stellar text memo (≤ 28 UTF-8 bytes on-chain).
+ * Whether `value` fits in a Stellar text memo (≤ 28 UTF-8 bytes).
+ *
+ * @param value - Trimmed memo string.
+ * @returns True when the value is a valid Stellar text memo.
  */
-export const StellarTextMemoStruct = refine(
-  string(),
-  'stellar-text-memo',
-  (value) => {
-    if (new TextEncoder().encode(value).length > STELLAR_TEXT_MEMO_MAX_BYTES) {
-      return `Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`;
-    }
-    return true;
-  },
-);
-
-export type StellarTextMemo = Infer<typeof StellarTextMemoStruct>;
+export function isMemoText(value: string): boolean {
+  return new TextEncoder().encode(value).length <= STELLAR_TEXT_MEMO_MAX_BYTES;
+}
 
 /**
  * Builds a Stellar SDK {@link Memo} from a string value.
@@ -54,7 +37,7 @@ export type StellarTextMemo = Infer<typeof StellarTextMemoStruct>;
  *
  * @param value - Raw memo string (e.g. from confirmation UI).
  * @returns SDK memo, or `null` when the value is empty / whitespace-only.
- * @throws {StructError} When the value is invalid for the inferred type.
+ * @throws {Error} When the value is neither a valid memo id nor text memo.
  */
 export function resolveStellarMemo(value?: string | null): Memo | null {
   const trimmed = value?.trim() ?? '';
@@ -62,10 +45,13 @@ export function resolveStellarMemo(value?: string | null): Memo | null {
     return null;
   }
 
-  if (is(trimmed, StellarMemoIdStruct)) {
+  if (isMemoId(trimmed)) {
     return Memo.id(trimmed);
   }
 
-  assert(trimmed, StellarTextMemoStruct);
-  return Memo.text(trimmed);
+  if (isMemoText(trimmed)) {
+    return Memo.text(trimmed);
+  }
+
+  throw new Error(`Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`);
 }
