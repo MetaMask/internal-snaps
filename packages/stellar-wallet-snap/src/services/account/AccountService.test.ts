@@ -27,7 +27,14 @@ describe('AccountService', () => {
     accountService = mockAccountService().accountService;
   });
 
-  const getAccountsRepositorySpies = () => {
+  type AccountsRepositorySpies = {
+    saveSpy: jest.SpiedFunction<AccountsRepository['save']>;
+    saveManySpy: jest.SpiedFunction<AccountsRepository['saveMany']>;
+    deleteSpy: jest.SpiedFunction<AccountsRepository['delete']>;
+    getAllSpy: jest.SpiedFunction<AccountsRepository['getAll']>;
+  };
+
+  const getAccountsRepositorySpies = (): AccountsRepositorySpies => {
     return {
       saveSpy: jest.spyOn(AccountsRepository.prototype, 'save'),
       saveManySpy: jest.spyOn(AccountsRepository.prototype, 'saveMany'),
@@ -36,12 +43,12 @@ describe('AccountService', () => {
     };
   };
 
-  const getWalletServiceSpies = () => ({
+  type WalletServiceSpies = {
+    deriveAddressSpy: jest.SpiedFunction<WalletService['deriveAddress']>;
+  };
+
+  const getWalletServiceSpies = (): WalletServiceSpies => ({
     deriveAddressSpy: jest.spyOn(WalletService.prototype, 'deriveAddress'),
-    getWalletResolverSpy: jest.spyOn(
-      WalletService.prototype,
-      'getWalletResolver',
-    ),
   });
 
   describe('batchCreate', () => {
@@ -50,11 +57,9 @@ describe('AccountService', () => {
       const walletResolver = jest.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
       jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
-      getWalletResolverSpy.mockResolvedValue(walletResolver);
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -66,8 +71,6 @@ describe('AccountService', () => {
       expect(saveManySpy).toHaveBeenCalledTimes(1);
       expect(saveManySpy.mock.calls[0]?.[0]).toHaveLength(2);
       expect(result.map((account) => account.index)).toStrictEqual([0, 1]);
-      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
-      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySource);
       expect(walletResolver).toHaveBeenCalledTimes(2);
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
@@ -99,10 +102,8 @@ describe('AccountService', () => {
       const walletResolver = jest.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([onlyMiddle]);
-      getWalletResolverSpy.mockResolvedValue(walletResolver);
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -111,8 +112,6 @@ describe('AccountService', () => {
         walletResolver,
       });
 
-      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
-      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySource);
       expect(walletResolver).toHaveBeenCalledTimes(2);
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
@@ -128,11 +127,9 @@ describe('AccountService', () => {
       const walletResolver = jest.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
       jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
-      getWalletResolverSpy.mockResolvedValue(walletResolver);
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -142,8 +139,6 @@ describe('AccountService', () => {
       });
 
       expect(result).toHaveLength(16);
-      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
-      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySource);
       expect(walletResolver).toHaveBeenCalledTimes(16);
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),

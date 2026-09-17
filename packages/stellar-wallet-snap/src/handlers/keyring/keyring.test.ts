@@ -28,6 +28,7 @@ import {
   generateMockTransactions,
 } from '../../services/transaction/__mocks__/transaction.fixtures';
 import { getDerivationPath, WalletService } from '../../services/wallet';
+import type { Wallet } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import {
   getSlip44AssetId,
@@ -67,7 +68,16 @@ describe('KeyringHandler', () => {
   let mockSignTransactionHandler: IKeyringRequestHandler;
   let mockSignAuthEntryHandler: IKeyringRequestHandler;
 
-  const getAccountServiceSpies = () => ({
+  type AccountServiceSpies = {
+    listAccountsSpy: jest.SpiedFunction<AccountService['listAccounts']>;
+    findByIdSpy: jest.SpiedFunction<AccountService['findById']>;
+    deleteSpy: jest.SpiedFunction<AccountService['delete']>;
+    resolveAccountSpy: jest.SpiedFunction<AccountService['resolveAccount']>;
+    batchCreateAccountSpy: jest.SpiedFunction<AccountService['batchCreate']>;
+    findByIdsSpy: jest.SpiedFunction<AccountService['findByIds']>;
+  };
+
+  const getAccountServiceSpies = (): AccountServiceSpies => ({
     listAccountsSpy: jest.spyOn(AccountService.prototype, 'listAccounts'),
     findByIdSpy: jest.spyOn(AccountService.prototype, 'findById'),
     deleteSpy: jest.spyOn(AccountService.prototype, 'delete'),
@@ -230,7 +240,7 @@ describe('KeyringHandler', () => {
   });
 
   describe('createAccounts', () => {
-    const accountsAt = (...indexes: number[]) =>
+    const accountsAt = (...indexes: number[]): StellarKeyringAccount[] =>
       indexes.map((index) =>
         generateStellarKeyringAccount(
           `id-${index}`,
@@ -239,9 +249,22 @@ describe('KeyringHandler', () => {
           index,
         ),
       );
+    const mockGetWalletResolver = (): jest.MockedFunction<
+      (index: number) => Promise<Wallet>
+    > => {
+      const walletResolver = jest.fn(
+        async (_index: number) => ({ address: mockAccount.address }) as Wallet,
+      );
+      jest
+        .spyOn(WalletService.prototype, 'getWalletResolver')
+        .mockResolvedValue(walletResolver);
+
+      return walletResolver;
+    };
 
     it('creates one account for bip44:derive-index', async () => {
       const { batchCreateAccountSpy } = getAccountServiceSpies();
+      const walletResolver = mockGetWalletResolver();
       batchCreateAccountSpy.mockResolvedValue([mockAccount]);
 
       const result = await keyringHandler.createAccounts({
@@ -254,12 +277,14 @@ describe('KeyringHandler', () => {
         entropySource: entropySourceId,
         fromIndex: 2,
         toIndex: 2,
+        walletResolver,
       });
       expect(result).toStrictEqual([asStrictKeyringAccount(mockAccount)]);
     });
 
     it('creates accounts for each index in bip44:derive-index-range', async () => {
       const { batchCreateAccountSpy } = getAccountServiceSpies();
+      const walletResolver = mockGetWalletResolver();
       batchCreateAccountSpy.mockResolvedValue(accountsAt(1, 2, 3));
 
       const result = await keyringHandler.createAccounts({
@@ -272,6 +297,7 @@ describe('KeyringHandler', () => {
         entropySource: entropySourceId,
         fromIndex: 1,
         toIndex: 3,
+        walletResolver,
       });
       expect(result).toHaveLength(3);
       expect(result[0]?.options).toMatchObject({
@@ -284,6 +310,7 @@ describe('KeyringHandler', () => {
 
     it('propagates errors when account creation fails', async () => {
       const { batchCreateAccountSpy } = getAccountServiceSpies();
+      mockGetWalletResolver();
       batchCreateAccountSpy.mockRejectedValue(new Error('Batch create failed'));
 
       await expect(
