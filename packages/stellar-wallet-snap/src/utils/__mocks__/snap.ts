@@ -17,9 +17,6 @@ export const getDefaultEntropySource = jest.fn();
 export const trackEvent = jest.fn();
 
 export const {
-  getState,
-  setState,
-  updateState,
   createInterface,
   showDialog,
   getPreferences,

@@ -291,7 +291,7 @@ export class Transaction {
   }
 
   /**
-   * Checks if the transaction is from the given account.
+   * Checks if the transaction is from the given account by looking at the source account or fee source account.
    *
    * @param accountId - The account ID to check.
    * @returns True if the transaction is from the given account, false otherwise.
@@ -300,6 +300,16 @@ export class Transaction {
     return (
       this.sourceAccount === accountId || this.feeSourceAccount === accountId
     );
+  }
+
+  /**
+   * Checks if the transaction is from the given account by looking at the source account only.
+   *
+   * @param accountId - The account ID to check.
+   * @returns True if the transaction is from the given account, false otherwise.
+   */
+  isExplicitSourceAccount(accountId: string): boolean {
+    return this.sourceAccount === accountId;
   }
 
   /**

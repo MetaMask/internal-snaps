@@ -1,7 +1,8 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 /* eslint-disable jsdoc/require-returns */
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
-import type { AssetEntity, SolanaKeyringAccount } from '../../../entities';
+import type { AssetEntity } from '../../../entities';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetMetadata } from './types';
 
@@ -29,7 +30,7 @@ export class AssetsService {
     return this.#snapAdapter.getAssetsMetadata(assetTypes);
   }
 
-  async fetch(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
+  async fetch(account: ExtendedKeyringAccount): Promise<AssetEntity[]> {
     return this.#snapAdapter.fetch(account);
   }
 
@@ -94,7 +95,7 @@ export class AssetsService {
     return this.#snapAdapter.getAccountAssets(accountId);
   }
 
-  async findByAccount(account: SolanaKeyringAccount): Promise<AssetEntity[]> {
+  async findByAccount(account: ExtendedKeyringAccount): Promise<AssetEntity[]> {
     return this.#snapAdapter.findByAccount(account);
   }
 }

@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING** Remove the deprecated `asset` cluster of handlers: `onAssetHistoricalPrice`, `onAssetsConversion`, `onAssetsLookup` and `onAssetsMarketData` ([#263](https://github.com/MetaMask/internal-snaps/pull/263))
 
+### Fixed
+
+- Tolerate unknown fields in the Token API metadata response so that new fields added by the API no longer fail validation and fall back to default token metadata ([#320](https://github.com/MetaMask/internal-snaps/pull/320))
+
 ## [3.2.0]
 
 ### Added

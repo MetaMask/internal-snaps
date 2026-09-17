@@ -1,6 +1,9 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { address as asAddress, lamports } from '@solana/kit';
@@ -14,7 +17,6 @@ import { parseInstruction, toIInstruction } from '../../../entities';
 import type {
   InstructionParseResult,
   InstructionParseSuccess,
-  SolanaKeyringAccount,
 } from '../../../entities';
 import { LAMPORTS_PER_SOL, Networks } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
@@ -52,7 +54,7 @@ export class TransactionMapper {
    */
   async mapRpcTransaction(
     transactionData: SolanaTransaction,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     scope: Network,
     assetsMetadata?: Record<string, AssetMetadata | null>,
   ): Promise<Transaction | null> {

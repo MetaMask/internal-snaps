@@ -1,8 +1,8 @@
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/utils';
 
-import type { ICache } from './ICache';
-import type { CacheEntry } from './types';
+import type { Logger } from '../logger/Logger';
+import type { Serializable } from '../serialization/types';
+import type { CacheEntry, ICache } from './types';
 
 /**
  * A simple in-memory cache implementation supporting TTL (Time To Live) functionality.
@@ -13,10 +13,10 @@ import type { CacheEntry } from './types';
 export class InMemoryCache implements ICache<Serializable> {
   readonly #cache: Map<string, CacheEntry> = new Map();
 
-  public readonly logger: Logger;
+  readonly #logger: Logger;
 
   constructor(logger: Logger) {
-    this.logger = logger;
+    this.#logger = logger;
   }
 
   #validateTtlOrThrow(ttlMilliseconds?: number): void {
@@ -66,7 +66,7 @@ export class InMemoryCache implements ICache<Serializable> {
     this.#cache.set(key, {
       value,
       expiresAt: Math.min(
-        Date.now() + (ttlMilliseconds ?? Number.MAX_SAFE_INTEGER),
+        Date.now() + ttlMilliseconds,
         Number.MAX_SAFE_INTEGER,
       ),
     });
@@ -129,12 +129,12 @@ export class InMemoryCache implements ICache<Serializable> {
     for (const key of keys) {
       const cacheEntry = this.#cache.get(key);
       if (!cacheEntry) {
-        this.logger.info(`[InMemoryCache] ❌ Cache miss for key "${key}"`);
+        this.#logger.info(`[InMemoryCache] ❌ Cache miss for key "${key}"`);
         result[key] = undefined;
         continue;
       }
 
-      this.logger.info(`[InMemoryCache] 🎉 Cache hit for key "${key}"`);
+      this.#logger.info(`[InMemoryCache] 🎉 Cache hit for key "${key}"`);
       result[key] = cacheEntry.value;
     }
 

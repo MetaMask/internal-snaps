@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -28,14 +28,14 @@ import { assertTransactionStructure } from '../../validation/transaction';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
-import type { State, UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class ConfirmationHandler {
   readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
-  readonly #state: State<UnencryptedStateValue>;
+  readonly #state: IStateManager<UnencryptedStateValue>;
 
   readonly #tronWebFactory: TronWebFactory;
 
@@ -52,7 +52,7 @@ export class ConfirmationHandler {
     logger,
   }: {
     snapClient: SnapClient;
-    state: State<UnencryptedStateValue>;
+    state: IStateManager<UnencryptedStateValue>;
     tronWebFactory: TronWebFactory;
     assetsService: AssetsService;
     feeCalculatorService: FeeCalculatorService;

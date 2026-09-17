@@ -1,7 +1,5 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
-import type { Serializable } from '@metamask/snap-networks-utils';
-import { deserialize, serialize } from '@metamask/snap-networks-utils';
 import type {
   ComponentOrElement,
   DialogResult,
@@ -131,89 +129,6 @@ export async function getDefaultEntropySource(): Promise<EntropySourceId> {
   }
 
   return defaultEntropySource.id;
-}
-
-/**
- * Updates the state.
- *
- * @param params - The parameters for the state update.
- * @param params.newState - The new state to set.
- * @param params.encrypted - Whether the state is encrypted.
- * @returns A Promise that resolves when the state is updated.
- */
-export async function updateState({
-  newState,
-  encrypted,
-}: {
-  newState: Record<string, Serializable>;
-  encrypted: boolean;
-}): Promise<void> {
-  await getSnapProvider().request({
-    method: 'snap_manageState',
-    params: {
-      operation: 'update',
-      newState: serialize(newState) as Record<string, Json>,
-      encrypted,
-    },
-  });
-}
-
-/**
- * Sets the state for the given key.
- *
- * @param params - The parameters for the state update.
- * @param params.key - The key (path) to set.
- * @param params.newState - The new state to set.
- * @param params.encrypted - Whether the state is encrypted.
- * @returns A Promise that resolves when the state is updated.
- */
-export async function setState({
-  key,
-  newState,
-  encrypted,
-}: {
-  key: string;
-  newState: Serializable;
-  encrypted: boolean;
-}): Promise<void> {
-  await getSnapProvider().request({
-    method: 'snap_setState',
-    params: {
-      key,
-      value: serialize(newState),
-      encrypted,
-    },
-  });
-}
-
-/**
- * Retrieves the state for the given key.
- *
- * @param params - The parameters for the state retrieval.
- * @param params.key - (optional) The key to get the state for. If not provided, the whole state is returned.
- * @param params.encrypted - Whether the state is encrypted.
- * @returns The state for the given key.
- */
-export async function getState({
-  key,
-  encrypted,
-}: {
-  key?: string;
-  encrypted: boolean;
-}): Promise<Serializable> {
-  const state = await getSnapProvider().request({
-    method: 'snap_getState',
-    params: {
-      ...(key ? { key } : {}),
-      encrypted,
-    },
-  });
-
-  if (state === null || state === undefined) {
-    return undefined;
-  }
-
-  return deserialize(state);
 }
 
 /**

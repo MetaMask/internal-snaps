@@ -1,6 +1,5 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
-
-import type { ICache } from './ICache';
+import type { Serializable } from '../serialization/types';
+import type { ICache } from './types';
 import { useCache } from './useCache';
 import type { CacheOptions } from './useCache';
 
@@ -50,11 +49,15 @@ describe('useCache', () => {
     };
 
     // Define original functions
-    testFunction = async () => actualExecutionSpy();
-    testFunctionWithArgs = async (arg1: string, arg2: number) =>
-      actualExecutionSpy(arg1, arg2);
-    testFunctionWithComplexArgs = async (obj: { name: string; age: number }) =>
-      actualExecutionSpy(obj);
+    testFunction = async (): Promise<string> => actualExecutionSpy();
+    testFunctionWithArgs = async (
+      arg1: string,
+      arg2: number,
+    ): Promise<string> => actualExecutionSpy(arg1, arg2);
+    testFunctionWithComplexArgs = async (obj: {
+      name: string;
+      age: number;
+    }): Promise<string> => actualExecutionSpy(obj);
 
     // Create cached versions
     cachedTestFunction = useCache(testFunction, cache, {
@@ -103,6 +106,22 @@ describe('useCache', () => {
       expect(actualExecutionSpy).not.toHaveBeenCalled();
       expect(cache.set).not.toHaveBeenCalled();
     });
+
+    it('should skip the cache and refresh the result if refreshCache is enabled', async () => {
+      jest.spyOn(cache, 'get').mockResolvedValue('cached-test');
+
+      const refreshCachedFunction = useCache(testFunction, cache, {
+        ...cacheOptions,
+        refreshCache: true,
+      });
+
+      const result = await refreshCachedFunction();
+
+      expect(result).toBe('test');
+      expect(cache.get).not.toHaveBeenCalled();
+      expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+      expect(cache.set).toHaveBeenCalledWith('testFunction:', 'test', 1000);
+    });
   });
 
   describe('error handling', () => {
@@ -136,6 +155,30 @@ describe('useCache', () => {
 
       expect(result).toBe('test');
       expect(actualExecutionSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should log cache errors using the provided logger', async () => {
+      const errorLogger = {
+        error: jest.fn(),
+      };
+
+      jest
+        .spyOn(cache, 'get')
+        .mockRejectedValueOnce(new Error('Cache get error'));
+      jest
+        .spyOn(cache, 'set')
+        .mockRejectedValueOnce(new Error('Cache set error'));
+      actualExecutionSpy.mockResolvedValueOnce('test');
+
+      const loggedCachedFunction = useCache(testFunction, cache, {
+        ...cacheOptions,
+        logger: errorLogger as never,
+      });
+
+      const result = await loggedCachedFunction();
+
+      expect(result).toBe('test');
+      expect(errorLogger.error).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -187,7 +230,8 @@ describe('useCache', () => {
   describe('anonymous functions', () => {
     it('should handle anonymous functions with a default name', async () => {
       // Anonymous function with no name
-      const anonymousFunction = async () => actualExecutionSpy();
+      const anonymousFunction = async (): Promise<string> =>
+        actualExecutionSpy();
       Object.defineProperty(anonymousFunction, 'name', { value: null });
 
       const cachedAnonymousFunction = useCache(anonymousFunction, cache, {
@@ -217,7 +261,7 @@ describe('useCache', () => {
     it('should handle falsy but valid cache values (false, 0, empty string)', async () => {
       // Test with false
       jest.spyOn(cache, 'get').mockResolvedValue(false);
-      let result = await cachedTestFunction();
+      let result: unknown = await cachedTestFunction();
       expect(result).toBe(false);
       expect(actualExecutionSpy).not.toHaveBeenCalled();
 
