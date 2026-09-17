@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
 
+### Changed
+
+- Reduce `snap_getBip32Entropy` calls during `bip44:discover` from two to one by fetching the coin-type node once and reusing it for both the on-chain activity check and account derivation in `AccountService.batchCreate`; also parallelize the accounts state read and entropy fetch in `AccountService.batchCreate` for non-discover paths ([#308](https://github.com/MetaMask/internal-snaps/pull/308))
+
 ## [1.0.0]
 
 ### Added
