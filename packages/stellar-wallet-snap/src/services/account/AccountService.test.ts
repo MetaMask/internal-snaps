@@ -1,5 +1,4 @@
 import { KnownCaip2ChainId } from '../../api';
-import { MultichainMethod } from '../../handlers/keyring/api';
 import { mockBip32Node } from '../../utils/__mocks__/fixtures';
 import { getBip32Entropy, getDefaultEntropySource } from '../../utils/snap';
 import { WalletService } from '../wallet';
@@ -21,16 +20,11 @@ jest.mock('../../utils/snap');
 
 describe('AccountService', () => {
   let accountService: AccountService;
-  let mockAccount: StellarKeyringAccount;
 
   beforeEach(() => {
     // Mock the entropy source to let the wallet service derive the address
     jest.mocked(getBip32Entropy).mockResolvedValue(mockBip32Node);
     accountService = mockAccountService().accountService;
-    mockAccount = generateMockStellarKeyringAccounts(
-      1,
-      'entropy-source-default',
-    )[0] as StellarKeyringAccount;
   });
 
   const getAccountsRepositorySpies = () => {

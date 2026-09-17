@@ -291,26 +291,6 @@ export class AccountService {
     return account;
   }
 
-  async #deriveAccount({
-    entropySource,
-    index,
-  }: {
-    entropySource: EntropySourceId;
-    index: number;
-  }): Promise<StellarKeyringAccount> {
-    const derivationPath = getDerivationPath(index);
-    const address = await this.#walletService.deriveAddress({
-      entropySource,
-      index,
-    });
-    return this.#toStellarKeyringAccount({
-      entropySource,
-      derivationPath,
-      index,
-      address,
-    });
-  }
-
   #toStellarKeyringAccount({
     entropySource,
     derivationPath,
