@@ -3,6 +3,7 @@ import type {
   AssetsControllerGetAccountAssetByIDAction,
   AssetsControllerGetAccountAssetsByIDsAction,
   AssetsControllerGetAccountAssetsByScopeAction,
+  AssetsControllerGetAssetMetadataAction,
   Caip19AssetId,
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
@@ -20,7 +21,8 @@ export const ASSETS_PROVIDER_NAME = 'AssetsProvider' as const;
 export type AssetsProviderAllowedActions =
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
-  | AssetsControllerGetAccountAssetsByScopeAction;
+  | AssetsControllerGetAccountAssetsByScopeAction
+  | AssetsControllerGetAssetMetadataAction;
 
 /**
  * Messenger restricted to actions consumed by {@link AssetsProvider}.
@@ -92,5 +94,18 @@ export class AssetsProvider {
       accountId,
       scope,
     );
+  }
+
+  /**
+   * Returns metadata for a CAIP-19 asset from controller state, or `undefined`
+   * if the asset is unknown.
+   *
+   * @param assetId - CAIP-19 asset ID.
+   * @returns Controller asset metadata, or `undefined`.
+   */
+  async getAssetMetadata(
+    assetId: Caip19AssetId,
+  ): Promise<ReturnType<AssetsControllerGetAssetMetadataAction['handler']>> {
+    return this.#messenger.call('AssetsController:getAssetMetadata', assetId);
   }
 }

@@ -7,6 +7,7 @@ import type { KnownCaip2ChainId } from '../../../api';
 import { logger, noOpLogger } from '../../../utils/logger';
 import { AccountService } from '../../account/AccountService';
 import { AccountsRepository } from '../../account/AccountsRepository';
+import { createMockAssetsService } from '../../assets/__mocks__/assetsService.fixtures';
 import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
 import { WalletService } from '../../wallet';
@@ -154,7 +155,7 @@ export const createMockAccountWithBalances = (
  * Builds {@link OnChainAccountService} with {@link NetworkService}, plus {@link AccountService}
  * on shared {@link State} for tests that need derivation or persistence.
  *
- * @returns On-chain service plus the account and wallet services wired to the same state.
+ * @returns On-chain service plus the account, wallet, and assets services wired for tests.
  */
 export function mockOnChainAccountService() {
   const walletService = new WalletService();
@@ -172,10 +173,12 @@ export function mockOnChainAccountService() {
     cache: new InMemoryCache(noOpLogger),
   });
   const onChainAccountRepository = new OnChainAccountRepository(state);
+  const { service: assetsService } = createMockAssetsService();
   const onChainAccountService = new OnChainAccountService({
     logger,
     networkService,
     onChainAccountRepository,
+    assetsService,
   });
 
   return {
@@ -183,6 +186,7 @@ export function mockOnChainAccountService() {
     onChainAccountRepository,
     accountService,
     walletService,
+    assetsService,
   };
 }
 

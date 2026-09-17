@@ -81,6 +81,10 @@ describe('NetworkService', () => {
       'sendTransaction',
     ),
     getAccountSpy: jest.spyOn(StellarRpc.Server.prototype, 'getAccount'),
+    getAccountEntrySpy: jest.spyOn(
+      StellarRpc.Server.prototype,
+      'getAccountEntry',
+    ),
     getLedgerEntriesSpy: jest.spyOn(
       StellarRpc.Server.prototype,
       'getLedgerEntries',
@@ -460,6 +464,114 @@ describe('NetworkService', () => {
       await expect(
         networkService.getAccount(testAddress, scope),
       ).rejects.toThrow(NetworkServiceException);
+    });
+  });
+
+  describe('getAccountLedgerMeta', () => {
+    const testAddress =
+      'GB5QOHJZ6RACA26NFDIEHD7I7SLROLC5P4NATSG43OJV2C5WUR4VEUKG';
+
+    const mockAccountEntry = {
+      numSubEntries: () => 4,
+      seqNum: () => ({
+        toString: () => '262764252333343491',
+      }),
+      balance: () => ({
+        toString: () => '351010623',
+      }),
+      ext: () => ({
+        switch: () => 1,
+        v1: () => ({
+          ext: () => ({
+            switch: () => 2,
+            v2: () => ({
+              numSponsoring: () => 1,
+              numSponsored: () => 0,
+            }),
+          }),
+        }),
+      }),
+    };
+
+    it('returns sequence, subentry, and sponsorship counts from RPC getAccountEntry', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockResolvedValue(mockAccountEntry as never);
+
+      await expect(
+        networkService.getAccountLedgerMeta(testAddress, scope),
+      ).resolves.toStrictEqual({
+        sequenceNumber: '262764252333343491',
+        subentryCount: 4,
+        numSponsoring: 1,
+        numSponsored: 0,
+        rawNativeBalance: '351010623',
+      });
+      expect(getAccountEntrySpy).toHaveBeenCalledWith(testAddress);
+    });
+
+    it('throws when the account v1 extension is missing', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockResolvedValue({
+        numSubEntries: () => 3,
+        ext: () => ({
+          switch: () => 0,
+          v1: () => {
+            throw new Error('v1 arm not set');
+          },
+        }),
+      } as never);
+
+      await expect(
+        networkService.getAccountLedgerMeta(testAddress, scope),
+      ).rejects.toThrow(
+        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}: expected account extension v1, got switch 0`,
+      );
+    });
+
+    it('throws when the account v2 extension is missing', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockResolvedValue({
+        numSubEntries: () => 3,
+        ext: () => ({
+          switch: () => 1,
+          v1: () => ({
+            ext: () => ({
+              switch: () => 0,
+              v2: () => {
+                throw new Error('v2 arm not set');
+              },
+            }),
+          }),
+        }),
+      } as never);
+
+      await expect(
+        networkService.getAccountLedgerMeta(testAddress, scope),
+      ).rejects.toThrow(
+        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}: expected account extension v2, got switch 0`,
+      );
+    });
+
+    it('throws AccountNotActivatedException when RPC uses Soroban missing-account error shape', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockRejectedValue(
+        new Error(`Account not found: ${testAddress}`),
+      );
+
+      await expect(
+        networkService.getAccountLedgerMeta(testAddress, scope),
+      ).rejects.toThrow(AccountNotActivatedException);
+    });
+
+    it('throws NetworkServiceException for other RPC errors', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockRejectedValue(new Error('RPC unavailable'));
+
+      await expect(
+        networkService.getAccountLedgerMeta(testAddress, scope),
+      ).rejects.toThrow(
+        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}`,
+      );
     });
   });
 

@@ -34,3 +34,18 @@ export type AssetDataResponse = {
   // CAIP-19 classic asset id (`…/asset:CODE-ISSUER`) from RPC / Stellar asset contract
   assetId: KnownCaip19AssetId;
 };
+
+/**
+ * Account ledger fields from Soroban RPC `getAccountEntry`.
+ *
+ * `sequenceNumber` is `AccountEntry.seqNum` as a decimal string (same encoding
+ * as SDK `rpc.Server.getAccount` / Horizon `sequence`).
+ */
+export type AccountLedgerMeta = {
+  sequenceNumber: string;
+  subentryCount: number;
+  numSponsoring: number;
+  numSponsored: number;
+  /** Native XLM in stroops (`AccountEntry.balance`). */
+  rawNativeBalance: string;
+};

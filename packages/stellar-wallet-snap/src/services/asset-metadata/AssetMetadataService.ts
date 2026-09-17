@@ -16,6 +16,7 @@ import {
   isClassicAssetId,
   isSep41Id,
 } from '../../utils';
+import type { AssetsService, CoreAssetMetadata } from '../assets';
 import type { AssetDataResponse, NetworkService } from '../network';
 import type { AssetUnit, StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
@@ -50,14 +51,18 @@ export class AssetMetadataService {
 
   readonly #logger: Logger;
 
+  readonly #assetsService: AssetsService;
+
   constructor({
     networkService,
     assetMetadataRepository,
     logger,
+    assetsService,
   }: {
     networkService: NetworkService;
     assetMetadataRepository: AssetMetadataRepository;
     logger: Logger;
+    assetsService: AssetsService;
   }) {
     this.#networkService = networkService;
     this.#tokenApiClient = new TokenApiClient({
@@ -65,6 +70,7 @@ export class AssetMetadataService {
     });
     this.#assetMetadataRepository = assetMetadataRepository;
     this.#logger = logger.withPrefix('[🪙 AssetMetadataService]');
+    this.#assetsService = assetsService;
   }
 
   /**
@@ -134,7 +140,8 @@ export class AssetMetadataService {
       this.#logger.debug('No assets found in the state, synchronizing assets');
       // It is possible that the state is empty, due to the first sync.
       // Hence, we synchronize the assets once.
-      await this.synchronize(scope);
+      const tokensMetadata = await this.#getAssetsByChainId(scope);
+      await this.#assetMetadataRepository.saveMany(tokensMetadata);
     }
 
     const sep41Assets = await this.getPersistedSep41AssetsMetadata(scope);
@@ -149,9 +156,19 @@ export class AssetMetadataService {
   /**
    * Fetches and persists all Assets for the given chain ID from the token API.
    *
+   * When the Stellar assets migration flag is on, skips catalog persist;
+   * AssetsController owns fungible metadata.
+   *
    * @param scope - The chain ID to fetch and persist assets for.
    */
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
+    if (await this.#assetsService.isMigrationEnabled()) {
+      this.#logger.debug(
+        'Skipping asset metadata catalog sync; Core migration is on',
+      );
+      return;
+    }
+
     const tokensMetadata = await this.#getAssetsByChainId(scope);
     await this.#assetMetadataRepository.saveMany(tokensMetadata);
   }
@@ -167,7 +184,7 @@ export class AssetMetadataService {
       result.push(getNativeAssetMetadata(chainId));
     }
 
-    // fetch assets from state
+    // fetch assets from Core, then snap state
     const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
     const { assets, missingAssetIds } =
       await this.#getPersistedAssetMetadata(allNonNativeAssetIds);
@@ -201,12 +218,50 @@ export class AssetMetadataService {
     assets: StellarAssetMetadata[];
     missingAssetIds: KnownCaip19AssetId[];
   }> {
-    const cachedAssets =
-      await this.#assetMetadataRepository.getByAssetIds(assetIds);
-    const { hits: assets, missing: missingAssetIds } =
-      this.#partitionHitsAndMissingByArray(assetIds, cachedAssets);
+    const { hits: coreHits, missing: missingAssetIdsFromCore } =
+      await this.#getCoreAssetMetadata(assetIds);
 
-    return { assets, missingAssetIds };
+    if (missingAssetIdsFromCore.length === 0) {
+      return { assets: coreHits, missingAssetIds: [] };
+    }
+
+    const cachedAssets =
+      await this.#assetMetadataRepository.getByAssetIds(missingAssetIdsFromCore);
+    const { hits: snapHits, missing: missingAssetIds } =
+      this.#partitionHitsAndMissingByArray(missingAssetIdsFromCore, cachedAssets);
+
+    return { assets: [...coreHits, ...snapHits], missingAssetIds };
+  }
+
+  async #getCoreAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{
+    hits: StellarAssetMetadata[];
+    missing: KnownCaip19AssetId[];
+  }> {
+    const hits: StellarAssetMetadata[] = [];
+    const missing: KnownCaip19AssetId[] = [];
+
+    if (assetIds.length > 0) {
+      // The order doesnt matter here, 
+      // as we are not using the order of the assets
+      await Promise.all(
+        assetIds.map(async (assetId) =>
+          {
+            const metadata = await this.#assetsService.getAssetMetadata(assetId);
+            if (metadata) {
+              hits.push(toStellarAssetMetadata({
+                assetId,
+                decimals: metadata.decimals,
+                symbol: metadata.symbol,
+                name: metadata.name,
+                iconUrl: metadata.image,
+              }))
+            }
+            missing.push(assetId);;
+          }
+        ),
+      );
+    }
+    return { hits, missing };
   }
 
   async #fetchMissingAssetsMetadata(

@@ -5,6 +5,7 @@ import { AssetType, KnownCaip2ChainId } from '../../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../../constants';
 import { getSlip44AssetId } from '../../../utils/caip';
 import { logger, noOpLogger } from '../../../utils/logger';
+import { createMockAssetsService } from '../../assets/__mocks__/assetsService.fixtures';
 import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
 import type { AssetMetadataByAssetId, StellarAssetMetadata } from '../api';
@@ -74,6 +75,7 @@ export const getMockSep41Assets = (): StellarAssetMetadata[] => {
 };
 
 export const createMockAssetMetadataService = () => {
+  const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
     networkService: new NetworkService({
       logger,
@@ -85,6 +87,7 @@ export const createMockAssetMetadataService = () => {
       }),
     ),
     logger,
+    assetsService,
   });
 
   const assetMetadataRepositorySaveManySpy = jest.spyOn(
