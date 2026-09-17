@@ -1,6 +1,7 @@
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
+import { getMemoDraftValidationError } from '../../../../api';
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
 import {
   ConfirmationContextRefresherKey,
@@ -10,7 +11,6 @@ import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
-import { getMemoDraftValidationError } from '../../../../api';
 import { Duration, updateInterfaceIfExists } from '../../../../utils';
 import type { ConfirmationInterfaceKey } from '../../api';
 import { FetchStatus } from '../../api';
