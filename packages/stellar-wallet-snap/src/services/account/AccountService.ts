@@ -6,11 +6,7 @@ import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { StellarAddress, KnownCaip2ChainId } from '../../api';
 import { KEYRING_ACCOUNT_TYPE } from '../../constants';
 import { MultichainMethod } from '../../handlers/keyring/api';
-import {
-  batchesAll,
-  getDefaultEntropySource,
-  getSnapProvider,
-} from '../../utils';
+import { batchesAll, getSnapProvider } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
 import type { Wallet, WalletService } from '../wallet';
 import { getDerivationPath } from '../wallet';
