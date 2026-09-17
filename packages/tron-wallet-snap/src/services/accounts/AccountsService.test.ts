@@ -54,7 +54,6 @@ const EMPTY_NETWORK_URLS: Record<Network, string> = {
 const MOCK_CONFIG: Config = {
   environment: 'test',
   logLevel: LogLevel.INFO,
-  networks: [],
   activeNetworks: [],
   priceApi: {
     baseUrl: '',
@@ -65,12 +64,7 @@ const MOCK_CONFIG: Config = {
   },
   tokenApi: { baseUrl: '', chunkSize: 0 },
   staticApi: { baseUrl: '' },
-  transactions: { storageLimit: 0 },
   securityAlertsApi: { baseUrl: '' },
-  nftApi: {
-    baseUrl: '',
-    cacheTtlsMilliseconds: { listAddressSolanaNfts: 0, getNftMetadata: 0 },
-  },
   trongridApi: { baseUrls: EMPTY_NETWORK_URLS },
   tronHttpApi: { baseUrls: EMPTY_NETWORK_URLS },
 };
