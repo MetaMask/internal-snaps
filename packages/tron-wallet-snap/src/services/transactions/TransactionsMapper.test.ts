@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/naming-convention */
 import { TransactionType, TransactionStatus } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type {
@@ -7,7 +8,6 @@ import type {
   ContractTransactionInfo,
 } from '../../clients/trongrid/types';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import swapTransactionInfoMock from './mocks/tron-http/gettransactioninfobyid/swap-transaction.json';
 import failedTransactionMock from './mocks/trongrid/account-transactions/failed-transaction.json';
 import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
@@ -19,7 +19,7 @@ import swapContractInfoMock from './mocks/trongrid/account-trc20-transactions/sw
 import { TransactionMapper } from './TransactionsMapper';
 
 describe('TransactionMapper', () => {
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: 'test-account-id',
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx', // From native and TRC20 transfers
     type: 'eip155:eoa',
@@ -106,7 +106,7 @@ describe('TransactionMapper', () => {
 
     describe('TransferAssetContract (TRC10 transfers)', () => {
       // Use the actual address from the TRC10 transaction mock
-      const trc10Account: TronKeyringAccount = {
+      const trc10Account: ExtendedKeyringAccount = {
         ...mockAccount,
         id: 'test-trc10-account',
         address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',

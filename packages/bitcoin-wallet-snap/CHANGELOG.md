@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **BREAKING:** Add the required `BitcoinAccount.isChange` method, and filter send movements on the internal (change) keychain instead of on ownership, so Bitcoin self-sends report their recipient instead of rendering as "Sent / To Unknown" ([#322](https://github.com/MetaMask/internal-snaps/pull/322))
 - Coalesce concurrent account synchronization runs so stacked triggers (the 30s cronjob, `onActive`, and background events scheduled by `setSelectedAccounts`) share one run instead of duplicating network fetches, state writes, and keyring events ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
 - Fix account deletion failing against keyring v2 clients by removing the `AccountDeleted` event emission from the delete flow ([#221](https://github.com/MetaMask/internal-snaps/pull/221))
   - v2 clients reject v1 lifecycle events, which aborted the deletion before the account was removed from state. Deletion is client-initiated in v2, so no event is needed.

@@ -1,9 +1,9 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { bytesToBase64, stringToBytes } from '@metamask/utils';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
-import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import type { Preferences } from '../../../../types/snap';
 import { render } from './render';
@@ -19,7 +19,7 @@ function toBase64(str: string): string {
 }
 
 describe('ConfirmSignMessage render', () => {
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: '123e4567-e89b-42d3-a456-426614174000',
     address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     options: {},

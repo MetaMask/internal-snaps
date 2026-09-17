@@ -265,6 +265,10 @@ export class BdkAccountAdapter implements BitcoinAccount {
     return this.#wallet.is_mine(script);
   }
 
+  isChange(script: ScriptBuf): boolean {
+    return this.#wallet.derivation_of_spk(script)?.[0] === 'internal';
+  }
+
   sentAndReceived(tx: Transaction): [Amount, Amount] {
     const sentAndReceived = this.#wallet.sent_and_received(tx.clone());
     return [sentAndReceived[0], sentAndReceived[1]];

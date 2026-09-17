@@ -10,8 +10,14 @@ import {
   TrxAccountType,
 } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils';
-import { InFlightCoalescer } from '@metamask/snap-networks-utils';
+import {
+  InFlightCoalescer,
+  asStrictKeyringAccount,
+} from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
@@ -20,8 +26,6 @@ import { TronWeb } from 'tronweb';
 import snapManifest from '../../../snap.manifest.json';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
-import { asStrictKeyringAccount } from '../../entities/keyring-account';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import {
   createTronBip44AddressDeriver,
   createTronBip44KeypairDeriver,
@@ -229,12 +233,12 @@ export class AccountsService {
    * @returns One derivation result per account, in input order.
    */
   async deriveTronKeypairs(
-    accounts: TronKeyringAccount[],
+    accounts: ExtendedKeyringAccount[],
   ): Promise<DerivedTronKeypairBatchResult[]> {
     const results: DerivedTronKeypairBatchResult[] = new Array(accounts.length);
     const accountsByEntropySource = new Map<
       EntropySourceId,
-      { index: number; account: TronKeyringAccount }[]
+      { index: number; account: ExtendedKeyringAccount }[]
     >();
 
     accounts.forEach((account, index) => {
@@ -336,7 +340,7 @@ export class AccountsService {
     ]);
     const readAndEntropyMs = Date.now() - startMs;
 
-    const allAccounts = new Map<number, TronKeyringAccount>();
+    const allAccounts = new Map<number, ExtendedKeyringAccount>();
     for (const account of existingAccounts) {
       allAccounts.set(account.index, account);
     }
@@ -348,7 +352,7 @@ export class AccountsService {
       }
     }
 
-    const newAccounts: Record<string, TronKeyringAccount> = {};
+    const newAccounts: Record<string, ExtendedKeyringAccount> = {};
     let created = 0;
     let deriveMs = 0;
     let mergeMs = 0;
@@ -362,7 +366,7 @@ export class AccountsService {
           AccountsService.getDefaultDerivationPath(groupIndex);
         const { address } = await tronAddressDeriver(groupIndex);
 
-        const tronKeyringAccount: TronKeyringAccount = {
+        const tronKeyringAccount: ExtendedKeyringAccount = {
           id,
           entropySource,
           derivationPath,
@@ -432,11 +436,11 @@ export class AccountsService {
     return result;
   }
 
-  async getAll(): Promise<TronKeyringAccount[]> {
+  async getAll(): Promise<ExtendedKeyringAccount[]> {
     return this.#accountsRepository.getAll();
   }
 
-  async getAllSelected(): Promise<TronKeyringAccount[]> {
+  async getAllSelected(): Promise<ExtendedKeyringAccount[]> {
     const [allAccounts, selectedAccountIds] = await Promise.all([
       this.#accountsRepository.getAll(),
       getSelectedAccounts(snap),
@@ -447,7 +451,7 @@ export class AccountsService {
     );
   }
 
-  async findById(id: string): Promise<TronKeyringAccount | null> {
+  async findById(id: string): Promise<ExtendedKeyringAccount | null> {
     return this.#accountsRepository.findById(id);
   }
 
@@ -459,7 +463,7 @@ export class AccountsService {
    * @returns The account if found.
    * @throws {Error} If the account is not found.
    */
-  async findByIdOrThrow(id: string): Promise<TronKeyringAccount> {
+  async findByIdOrThrow(id: string): Promise<ExtendedKeyringAccount> {
     const account = await this.#accountsRepository.findById(id);
 
     if (!account) {
@@ -478,7 +482,7 @@ export class AccountsService {
    * @param ids - Account IDs to resolve.
    * @returns The matching accounts.
    */
-  async findByIds(ids: string[]): Promise<TronKeyringAccount[]> {
+  async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
     const accounts = await this.#accountsRepository.findByIds(ids);
 
     if (ids.length !== accounts.length) {
@@ -488,7 +492,7 @@ export class AccountsService {
     return accounts;
   }
 
-  async findByAddress(address: string): Promise<TronKeyringAccount | null> {
+  async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
     return this.#accountsRepository.findByAddress(address);
   }
 
@@ -502,7 +506,7 @@ export class AccountsService {
    *
    * @param accounts - The accounts to synchronize assets for.
    */
-  async synchronizeAssets(accounts: TronKeyringAccount[]): Promise<void> {
+  async synchronizeAssets(accounts: ExtendedKeyringAccount[]): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
@@ -524,7 +528,9 @@ export class AccountsService {
     await this.#assetsService.saveMany(assets);
   }
 
-  async synchronizeTransactions(accounts: TronKeyringAccount[]): Promise<void> {
+  async synchronizeTransactions(
+    accounts: ExtendedKeyringAccount[],
+  ): Promise<void> {
     const scopes = this.#configProvider.get().activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
@@ -546,7 +552,7 @@ export class AccountsService {
     await this.#transactionsService.saveMany(transactions);
   }
 
-  async synchronize(accounts: TronKeyringAccount[]): Promise<void> {
+  async synchronize(accounts: ExtendedKeyringAccount[]): Promise<void> {
     // Sync triggers stack up (60s cronjob, a background event scheduled by
     // every `setSelectedAccounts` call, post-transaction refreshes), so
     // concurrent invocations for the same accounts share one run instead of

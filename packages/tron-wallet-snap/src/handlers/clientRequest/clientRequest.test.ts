@@ -1,4 +1,5 @@
 import { FeeType, TrxAccountType } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -19,7 +20,6 @@ import type {
   NativeAsset,
   ResourceAsset,
 } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
@@ -52,22 +52,22 @@ const createPassThroughTransactionExpirationRefresherService = () =>
   }) as unknown as TransactionExpirationRefresherService;
 
 /**
- * Creates a minimal TronKeyringAccount fixture for tests that only need
+ * Creates a minimal ExtendedKeyringAccount fixture for tests that only need
  * account identity and derivation metadata.
  *
  * @param overrides - Account fields to override on the default fixture.
  * @returns A Tron keyring account test fixture.
  */
-const createMockTronKeyringAccount = (
-  overrides: Partial<TronKeyringAccount> = {},
-): TronKeyringAccount =>
+const createMockExtendedKeyringAccount = (
+  overrides: Partial<ExtendedKeyringAccount> = {},
+): ExtendedKeyringAccount =>
   ({
     id: TEST_ACCOUNT_ID,
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
     entropySource: 'test-entropy',
     derivationPath: "m/44'/195'/0'/0/0",
     ...overrides,
-  }) as TronKeyringAccount;
+  }) as ExtendedKeyringAccount;
 
 type MockTronWeb = {
   trx: {
@@ -1892,7 +1892,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
 
   type OnAmountInputRequest = Infer<typeof OnAmountInputRequestStruct>;
 
-  const mockAccount = createMockTronKeyringAccount({
+  const mockAccount = createMockExtendedKeyringAccount({
     address: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
     type: 'tron:eoa',
     options: {},
@@ -2787,7 +2787,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
 });
 
 describe('ClientRequestHandler - claimUnstakedTrx', () => {
-  const mockAccount = createMockTronKeyringAccount();
+  const mockAccount = createMockExtendedKeyringAccount();
 
   it('claims unstaked TRX successfully when user confirms', async () => {
     await withClientRequestHandler(
@@ -2889,7 +2889,7 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
 });
 
 describe('ClientRequestHandler - claimTrxStakingRewards', () => {
-  const mockAccount = createMockTronKeyringAccount();
+  const mockAccount = createMockExtendedKeyringAccount();
 
   it('claims staking rewards successfully', async () => {
     await withClientRequestHandler(

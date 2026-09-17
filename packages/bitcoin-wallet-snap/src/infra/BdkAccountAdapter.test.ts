@@ -192,20 +192,40 @@ describe('BdkAccountAdapter', () => {
     });
   });
 
+  const mockScript = mock<ScriptBuf>();
+
+  const indexed = (keychain: KeychainKind, index: number): SpkIndexed =>
+    mock<SpkIndexed>({ 0: keychain, 1: index });
+
+  const adapter = (): BdkAccountAdapter =>
+    BdkAccountAdapter.create(
+      mockId,
+      mockDerivationPath,
+      mockDescriptors,
+      mockNetwork,
+    );
+
+  describe('isChange', () => {
+    it('returns true when the script belongs to the internal keychain', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(indexed('internal', 3));
+
+      expect(adapter().isChange(mockScript)).toBe(true);
+    });
+
+    it('returns false when the script belongs to the external keychain', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(indexed('external', 0));
+
+      expect(adapter().isChange(mockScript)).toBe(false);
+    });
+
+    it('returns false when the script is not ours', () => {
+      mockWallet.derivation_of_spk.mockReturnValue(undefined);
+
+      expect(adapter().isChange(mockScript)).toBe(false);
+    });
+  });
+
   describe('revealToScript', () => {
-    const mockScript = mock<ScriptBuf>();
-
-    const indexed = (keychain: KeychainKind, index: number): SpkIndexed =>
-      mock<SpkIndexed>({ 0: keychain, 1: index });
-
-    const adapter = (): BdkAccountAdapter =>
-      BdkAccountAdapter.create(
-        mockId,
-        mockDerivationPath,
-        mockDescriptors,
-        mockNetwork,
-      );
-
     it('returns false and reveals nothing when the script is not ours', () => {
       mockWallet.derivation_of_spk.mockReturnValue(undefined);
 
