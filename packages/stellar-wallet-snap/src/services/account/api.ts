@@ -1,4 +1,4 @@
-import type { KeyringAccount, EntropySourceId } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 export type KeyringAccountId = string;
 
@@ -9,9 +9,9 @@ export type KeyringAccountState = {
 /** Stellar BIP44 derivation path (e.g. `m/44'/148'` or `m/44'/148'/0'`). */
 export type StellarDerivationPath = `m/44'/148'/${string}'` | `m/44'/148'`;
 
-/** Keyring account extended with Stellar-specific derivation fields. */
-export type StellarKeyringAccount = KeyringAccount & {
-  entropySource: EntropySourceId;
+/**
+ * Shared extended keyring account with Stellar's BIP-44 coin-type path.
+ */
+export type StellarKeyringAccount = ExtendedKeyringAccount & {
   derivationPath: StellarDerivationPath;
-  index: number;
 };
