@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Release/10.0.0 ([#305](https://github.com/MetaMask/internal-snaps/pull/305))
+- fix(stellar-wallet-snap): price-api request missing market data ([#299](https://github.com/MetaMask/internal-snaps/pull/299))
+
 ### Added
 
 - Add back the `endowment:assets` permission for the Bitcoin scopes to the snap manifest, with no-op `onAssetsLookup`, `onAssetsConversion`, `onAssetHistoricalPrice`, and `onAssetsMarketData` entry points required to keep the permission ([#274](https://github.com/MetaMask/internal-snaps/pull/274))
@@ -46,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `onKeyringRequest` responses to correctly return `Json` directly (v2 protocol) instead of v1's `{ pending: false, result }` envelope ([#100](https://github.com/MetaMask/internal-snaps/pull/100))
-
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 
 ## [2.0.0] [DEPRECATED]

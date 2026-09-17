@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(tron-wallet-snap): use shared keyring account ([#319](https://github.com/MetaMask/internal-snaps/pull/319))
+- Release/10.0.0 ([#305](https://github.com/MetaMask/internal-snaps/pull/305))
+- fix(stellar-wallet-snap): price-api request missing market data ([#299](https://github.com/MetaMask/internal-snaps/pull/299))
+
 ### Changed
 
 - **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
