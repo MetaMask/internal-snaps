@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `recoverable` confirmation-refresh outcome for send-flow SEP-29 RequiresMemo (`confirmSend`): omit scan this cycle without nulling `securityScanRequest`, pause auto-cron until UI reschedules ([#291](https://github.com/MetaMask/internal-snaps/pull/291))
 - Add `signProofOfOwnership` client request for silent proof-of-ownership signing (SEP-0053) ([#186](https://github.com/MetaMask/internal-snaps/pull/186))
 - Add `exportAccount` keyring method for base32 Stellar secret-seed export ([#187](https://github.com/MetaMask/internal-snaps/pull/187))
 - Add `@metamask/snap-networks-utils` `^1.0.0` ([#182](https://github.com/MetaMask/internal-snaps/pull/182))
