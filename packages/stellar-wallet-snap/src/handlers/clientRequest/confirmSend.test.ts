@@ -276,7 +276,7 @@ describe('ConfirmSendHandler', () => {
     } = setup();
 
     // Capture XDR before signing mutates the transaction.
-    const unsignedScanXdr = transaction.getRaw().toXDR();
+    const unsignedScanXdr = transaction.getRaw().toXdr();
 
     const result = await handler.handle(baseRequest());
 

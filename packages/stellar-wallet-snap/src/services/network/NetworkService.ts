@@ -387,12 +387,16 @@ export class NetworkService {
         ),
       );
 
-      return ledgerEntries.entries.map((ledgerEntry) => {
-        const contractId = ledgerEntry.val.contractData().contract();
-        const contractAddress = getAddress(contractId);
+      const assets: AssetDataResponse[] = [];
+      for (const ledgerEntry of ledgerEntries.entries) {
+        if (ledgerEntry.val.type !== 'contractData') {
+          continue;
+        }
+        const { contractData } = ledgerEntry.val;
+        const contractAddress = getAddress(contractData.contract);
 
         const extractedAssetData = extractAssetDataFromContractData(
-          ledgerEntry.val.contractData(),
+          contractData,
           contractAddress,
         );
 
@@ -400,23 +404,24 @@ export class NetworkService {
           const { assetCode, assetIssuer } = parseClassicAssetCodeIssuer(
             extractedAssetData.name,
           );
-          return {
+          assets.push({
             // Normalize to use CAIP-19 classic asset id - ${CAIP_2_CHAIN_ID}/token:${ASSET_CODE}-${ASSET_ISSUER}
             assetId: toCaip19ClassicAssetId(scope, assetCode, assetIssuer),
             symbol: extractedAssetData.symbol,
             decimals: extractedAssetData.decimals,
             name: assetCode,
-          };
+          });
+        } else {
+          assets.push({
+            // Normalize to use CAIP-19 SEP-41 asset id - ${CAIP_2_CHAIN_ID}/sep41:${CONTRACT_ADDRESS}
+            assetId: toCaip19Sep41AssetId(scope, extractedAssetData.name),
+            name: extractedAssetData.name,
+            symbol: extractedAssetData.symbol,
+            decimals: extractedAssetData.decimals,
+          });
         }
-
-        return {
-          // Normalize to use CAIP-19 SEP-41 asset id - ${CAIP_2_CHAIN_ID}/sep41:${CONTRACT_ADDRESS}
-          assetId: toCaip19Sep41AssetId(scope, extractedAssetData.name),
-          name: extractedAssetData.name,
-          symbol: extractedAssetData.symbol,
-          decimals: extractedAssetData.decimals,
-        };
-      });
+      }
+      return assets;
     } catch (error: unknown) {
       return this.#throwError({
         error,
@@ -660,7 +665,12 @@ export class NetworkService {
 
       const client = this.#getRpcClient(scope);
       const rawTransaction = transaction.getRaw();
-      const simulateResponse = await client.simulateTransaction(rawTransaction);
+      const simulateResponse = await client.simulateTransaction(
+        rawTransaction,
+        undefined,
+        undefined,
+        false,
+      );
 
       if (rpc.Api.isSimulationError(simulateResponse)) {
         throw new SimulationException(
@@ -726,7 +736,7 @@ export class NetworkService {
           transaction,
           scope,
         );
-        return simulatedTransaction.getRaw().toXDR();
+        return simulatedTransaction.getRaw().toXdr();
       },
       this.#cache,
       {
@@ -919,7 +929,7 @@ export class NetworkService {
 
   #getSendRpcErrorCodeSafe(rpcError: rpc.Api.SendTransactionResponse): string {
     try {
-      return rpcError.errorResult?.result().switch().name ?? 'unknown';
+      return rpcError.errorResult?.result.type ?? 'unknown';
     } catch (error: unknown) {
       this.#logger.warn('Failed to parse send error code', { error });
       return 'unknown';

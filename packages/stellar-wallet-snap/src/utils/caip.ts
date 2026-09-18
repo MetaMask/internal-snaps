@@ -173,7 +173,7 @@ export function parseClassicAssetCodeIssuer(assetReference: string): {
  * @returns The CAIP-19 asset ID.
  */
 export function stellarAssetToCaip19(
-  asset: Asset,
+  asset: unknown,
   scope: KnownCaip2ChainId,
 ): KnownCaip19ClassicAssetId | KnownCaip19Slip44Id {
   if (!(asset instanceof Asset)) {
@@ -182,5 +182,9 @@ export function stellarAssetToCaip19(
   if (asset.isNative()) {
     return getSlip44AssetId(scope);
   }
-  return toCaip19ClassicAssetId(scope, asset.getCode(), asset.getIssuer());
+  const assetIssuer = asset.getIssuer();
+  if (assetIssuer === undefined) {
+    throw new Error(`Invalid asset`);
+  }
+  return toCaip19ClassicAssetId(scope, asset.getCode(), assetIssuer);
 }

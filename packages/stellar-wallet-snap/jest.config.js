@@ -22,6 +22,7 @@ const config = {
     '.*/context\\.ts$', // skip context.ts
     '.*/config\\.ts$', // skip config.ts
     '.*/utils/snap\\.ts$', // skip snap.ts
+    '.*/shims/eventsource\\.ts$', // skip eventsource.ts
   ],
 
   // Indicates which provider should be used to instrument code for coverage
@@ -51,6 +52,13 @@ const config = {
   restoreMocks: true,
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  // Transpile stellar-sdk's ESM-only deps so CJS Jest can load them. Do not use
+  // NODE_OPTIONS=--experimental-vm-modules: native ESM Jest (`useESM` +
+  // extensionsToTreatAsEsm) needs that flag, but then `jest` is not injected as
+  // a global and CJS packages like lodash break named imports.
+  transformIgnorePatterns: [
+    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml)/)',
+  ],
 };
 
 module.exports = config;

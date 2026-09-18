@@ -322,7 +322,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   }): Promise<boolean> {
     const { request, account, assetMetadata, fee, scope, transaction } = params;
     const { toAddress, amount, assetId } = request.params;
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     // The send asset and amount are known from the request, so the estimated
     // changes are just a single outgoing row — no local simulation needed.
     const estimatedChanges = this.#buildEstimatedChanges({
