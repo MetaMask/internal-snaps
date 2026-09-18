@@ -67,6 +67,7 @@ const MOCK_CONFIG: Config = {
   securityAlertsApi: { baseUrl: '' },
   trongridApi: { baseUrls: EMPTY_NETWORK_URLS },
   tronHttpApi: { baseUrls: EMPTY_NETWORK_URLS },
+  explorerApi: { baseUrls: EMPTY_NETWORK_URLS },
 };
 
 /**

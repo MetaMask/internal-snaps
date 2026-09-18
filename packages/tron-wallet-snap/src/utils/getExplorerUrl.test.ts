@@ -1,47 +1,47 @@
-import { Network } from '../constants';
 import { getExplorerUrl } from './getExplorerUrl';
 
 describe('getExplorerUrl', () => {
-  // Set up environment variables for testing
-  beforeAll(() => {
-    process.env.EXPLORER_MAINNET_BASE_URL = 'https://tronscan.org';
-
-    process.env.EXPLORER_NILE_BASE_URL = 'https://nile.tronscan.org';
-
-    process.env.EXPLORER_SHASTA_BASE_URL = 'https://shasta.tronscan.org';
-  });
-
   const mockAddress = 'TJRabPrwbZy45savqYt9XgVjvjQvQnQqQq';
   const mockTx =
     '4RPWUVqAqW6jHbVuZH5qJuvoJM6EeX9m9Q6PC1RkcYBW3J4zY9LuZPZqNiYNXGm5qL6GJgCB7JqhXqV8vkKxnAHd';
 
-  it('should generate mainnet URL for address without cluster param', () => {
-    const url = getExplorerUrl(Network.Mainnet, 'address', mockAddress);
+  it('generates an address URL from the given base URL', () => {
+    const url = getExplorerUrl('https://tronscan.org', 'address', mockAddress);
+
     expect(url).toBe(`https://tronscan.org/#/address/${mockAddress}`);
   });
 
-  it('should generate nile URL for address with cluster param', () => {
-    const url = getExplorerUrl(Network.Nile, 'address', mockAddress);
-    expect(url).toBe(`https://nile.tronscan.org/#/address/${mockAddress}`);
-  });
+  it('generates a transaction URL from the given base URL', () => {
+    const url = getExplorerUrl('https://tronscan.org', 'transaction', mockTx);
 
-  it('should generate shasta URL for address with cluster param', () => {
-    const url = getExplorerUrl(Network.Shasta, 'address', mockAddress);
-    expect(url).toBe(`https://shasta.tronscan.org/#/address/${mockAddress}`);
-  });
-
-  it('should generate mainnet URL for transaction without cluster param', () => {
-    const url = getExplorerUrl(Network.Mainnet, 'transaction', mockTx);
     expect(url).toBe(`https://tronscan.org/#/transaction/${mockTx}`);
   });
 
-  it('should generate nile URL for transaction with cluster param', () => {
-    const url = getExplorerUrl(Network.Nile, 'transaction', mockTx);
-    expect(url).toBe(`https://nile.tronscan.org/#/transaction/${mockTx}`);
+  it('accepts base URLs with a trailing slash', () => {
+    const url = getExplorerUrl('https://tronscan.org/', 'address', mockAddress);
+
+    expect(url).toBe(`https://tronscan.org/#/address/${mockAddress}`);
   });
 
-  it('should generate shasta URL for transaction with cluster param', () => {
-    const url = getExplorerUrl(Network.Shasta, 'transaction', mockTx);
-    expect(url).toBe(`https://shasta.tronscan.org/#/transaction/${mockTx}`);
+  it('uses the base URL it is given, so each explorer can differ', () => {
+    const mainnetUrl = getExplorerUrl(
+      'https://tronscan.org',
+      'address',
+      mockAddress,
+    );
+    const nileUrl = getExplorerUrl(
+      'https://nile.tronscan.org',
+      'address',
+      mockAddress,
+    );
+
+    expect(mainnetUrl).toBe(`https://tronscan.org/#/address/${mockAddress}`);
+    expect(nileUrl).toBe(`https://nile.tronscan.org/#/address/${mockAddress}`);
+  });
+
+  it('throws when the base URL is empty', () => {
+    expect(() => getExplorerUrl('', 'address', mockAddress)).toThrow(
+      'Invalid URL format',
+    );
   });
 });

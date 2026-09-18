@@ -49,6 +49,9 @@ export const ConfigStruct = object({
   tronHttpApi: object({
     baseUrls: record(NetworkStruct, UrlStruct),
   }),
+  explorerApi: object({
+    baseUrls: record(NetworkStruct, UrlStruct),
+  }),
 });
 
 /**
@@ -88,6 +91,13 @@ export const ENVIRONMENT = {
       [Network.Mainnet]: process.env.TRON_HTTP_BASE_URL_MAINNET,
       [Network.Nile]: process.env.TRON_HTTP_BASE_URL_NILE,
       [Network.Shasta]: process.env.TRON_HTTP_BASE_URL_SHASTA,
+    },
+  },
+  explorerApi: {
+    baseUrls: {
+      [Network.Mainnet]: process.env.EXPLORER_MAINNET_BASE_URL,
+      [Network.Nile]: process.env.EXPLORER_NILE_BASE_URL,
+      [Network.Shasta]: process.env.EXPLORER_SHASTA_BASE_URL,
     },
   },
 };
