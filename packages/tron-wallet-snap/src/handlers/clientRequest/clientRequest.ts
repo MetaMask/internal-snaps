@@ -1310,7 +1310,11 @@ export class ClientRequestHandler {
     const accountsToDerive: ExtendedKeyringAccount[] = [];
 
     items.forEach((item, index) => {
-      const validationResult = validateSigningRequest(item, index, accountsById);
+      const validationResult = validateSigningRequest(
+        item,
+        index,
+        accountsById,
+      );
       if (validationResult.status === 'invalid') {
         results[index] = validationResult.result;
         return;
