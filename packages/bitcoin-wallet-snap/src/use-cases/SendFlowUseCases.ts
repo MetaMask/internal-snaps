@@ -34,6 +34,12 @@ type SetAccountEventValue = {
   accountId: string;
 };
 
+/**
+ * Origin used for requests that originate from MetaMask itself rather than a
+ * dApp, such as the built-in send flow.
+ */
+const METAMASK_ORIGIN = 'metamask';
+
 export class SendFlowUseCases {
   readonly #logger: Logger;
 
@@ -133,23 +139,30 @@ export class SendFlowUseCases {
       isMine,
     };
 
-    const interfaceId =
-      await this.#sendFlowRepository.insertConfirmSendForm(context);
+    const interfaceId = await this.#sendFlowRepository.insertConfirmSendForm(
+      context,
+    );
+
+    await this.#snapClient.trackTransactionAdded(account, METAMASK_ORIGIN);
 
     // Blocks and waits for user actions.
-    const confirmed =
-      await this.#snapClient.displayUserPrompt<boolean>(interfaceId);
+    const confirmed = await this.#snapClient.displayUserPrompt<boolean>(
+      interfaceId,
+    );
 
     if (!confirmed) {
+      await this.#snapClient.trackTransactionRejected(account, METAMASK_ORIGIN);
       throw new UserActionError('User canceled the confirmation');
     }
+
+    await this.#snapClient.trackTransactionApproved(account, METAMASK_ORIGIN);
 
     // sign and broadcast
     const signedPsbt = (
       await this.#accountUseCases.signPsbt(
         account.id,
         psbt,
-        'metamask',
+        METAMASK_ORIGIN,
         {
           fill: false,
           broadcast: true,
