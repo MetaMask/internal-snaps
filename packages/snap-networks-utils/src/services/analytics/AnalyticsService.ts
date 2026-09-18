@@ -136,6 +136,14 @@ export class AnalyticsService<
     }
   }
 
+  /**
+   * Track a "Transaction Added" event when a transaction confirmation is shown.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
   async trackTransactionAdded(
     properties: TransactionEventProperties,
   ): Promise<void> {
@@ -146,6 +154,14 @@ export class AnalyticsService<
     );
   }
 
+  /**
+   * Track a "Transaction Rejected" event when the user rejects a transaction.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
   async trackTransactionRejected(
     properties: TransactionEventProperties,
   ): Promise<void> {
@@ -156,6 +172,14 @@ export class AnalyticsService<
     );
   }
 
+  /**
+   * Track a "Transaction Approved" event when a transaction is approved.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
   async trackTransactionApproved(
     properties: TransactionEventProperties,
   ): Promise<void> {
@@ -166,6 +190,14 @@ export class AnalyticsService<
     );
   }
 
+  /**
+   * Track a "Transaction Submitted" event when a transaction is broadcast.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   */
   async trackTransactionSubmitted(
     properties: TransactionEventProperties,
   ): Promise<void> {
@@ -176,6 +208,16 @@ export class AnalyticsService<
     );
   }
 
+  /**
+   * Track a "Transaction Finalized" event when a transaction reaches a final state.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionStatus - Optional final transaction status.
+   * @param properties.transactionType - Optional transaction type.
+   */
   async trackTransactionFinalized({
     origin,
     accountType,
@@ -197,6 +239,18 @@ export class AnalyticsService<
     });
   }
 
+  /**
+   * Track a "Security Alert Detected" event when a malicious or warning
+   * transaction is detected.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.securityAlertResponse - The type of security alert.
+   * @param properties.securityAlertReason - The reason for the security alert.
+   * @param properties.securityAlertDescription - Human-readable description of the alert.
+   */
   async trackSecurityAlertDetected({
     origin,
     accountType,
@@ -216,6 +270,17 @@ export class AnalyticsService<
     });
   }
 
+  /**
+   * Track a "Security Scan Completed" event when a transaction security scan
+   * finishes.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.scanStatus - The status of the scan.
+   * @param properties.hasSecurityAlerts - Whether security alerts were detected.
+   */
   async trackSecurityScanCompleted({
     origin,
     accountType,
@@ -233,6 +298,15 @@ export class AnalyticsService<
     });
   }
 
+  /**
+   * Track a "WebSocket Connection Closed Not Cleanly" event when a Snap
+   * WebSocket disconnects without a clean close.
+   *
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the connection.
+   * @param properties.code - The WebSocket close code.
+   * @param properties.reason - The close reason, if any.
+   */
   async trackWebSocketConnectionClosedNotCleanly({
     origin,
     code,
