@@ -139,16 +139,14 @@ export class SendFlowUseCases {
       isMine,
     };
 
-    const interfaceId = await this.#sendFlowRepository.insertConfirmSendForm(
-      context,
-    );
+    const interfaceId =
+      await this.#sendFlowRepository.insertConfirmSendForm(context);
 
     await this.#snapClient.trackTransactionAdded(account, METAMASK_ORIGIN);
 
     // Blocks and waits for user actions.
-    const confirmed = await this.#snapClient.displayUserPrompt<boolean>(
-      interfaceId,
-    );
+    const confirmed =
+      await this.#snapClient.displayUserPrompt<boolean>(interfaceId);
 
     if (!confirmed) {
       await this.#snapClient.trackTransactionRejected(account, METAMASK_ORIGIN);
