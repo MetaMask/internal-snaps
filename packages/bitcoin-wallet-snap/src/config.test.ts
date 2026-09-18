@@ -1,5 +1,4 @@
-import { LogLevel } from '@metamask/snap-networks-utils';
-import { BaseConfigProvider } from '@metamask/snap-networks-utils';
+import { LogLevel, BaseConfigProvider } from '@metamask/snap-networks-utils';
 
 import { ConfigStruct } from './config';
 
@@ -129,6 +128,19 @@ describe('ConfigProvider', () => {
                 bitcoin: 'not-a-url',
               },
             },
+          },
+          ConfigStruct,
+        ),
+    ).toThrow('Invalid environment configuration');
+  });
+
+  it('throws when defaultAddressType is not a known address type', () => {
+    expect(
+      () =>
+        new BaseConfigProvider(
+          {
+            ...FULL_ENVIRONMENT,
+            defaultAddressType: 'p2pkh-v2',
           },
           ConfigStruct,
         ),
