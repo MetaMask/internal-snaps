@@ -1,19 +1,22 @@
-/* eslint-disable no-restricted-globals */
-import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
+import {
+  BaseConfigProvider,
+  defaultedUrlStruct,
+  LogLevelStruct,
+  parseIntegerStruct,
+  parseFloatStruct,
+  UrlStruct,
+} from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
-  create,
+  coerce,
+  defaulted,
   enums,
   object,
-  defaulted,
-  coerce,
   string,
-  record,
-  number,
-  min,
 } from '@metamask/superstruct';
 
-import { Environment, KnownCaip2ChainIdStruct, KnownCaip2ChainId } from './api';
+/* eslint-disable no-restricted-globals */
+import { Environment, KnownCaip2ChainId } from './api';
 import { getSupportedScopes } from './utils/scopes';
 
 const DEFAULT_TOKEN_API_BASE_URL = 'https://tokens.api.cx.metamask.io';
@@ -32,45 +35,43 @@ const DEFAULT_EXPLORER_TESTNET_BASE_URL =
   'https://stellar.expert/explorer/testnet';
 
 /**
- * A struct to parse an integer from a string.
- *
- * @param minValue - The minimum value for the integer.
- * @param defaultValue - The default value for the integer.
- * @returns A struct to parse an integer from a string.
+ * The network config type.
  */
-const parseIntegerStruct = (
-  minValue: number,
-  defaultValue: number,
-): Struct<number> =>
-  coerce(
-    defaulted(min(number(), minValue), defaultValue),
-    string(),
-    (value: string) => (value === '' ? undefined : parseInt(value, 10)),
-  );
-
-const parseFloatStruct = (
-  minValue: number,
-  defaultValue: number,
-): Struct<number> =>
-  coerce(
-    defaulted(min(number(), minValue), defaultValue),
-    string(),
-    (value: string) => (value === '' ? undefined : parseFloat(value)),
-  );
+export type NetworkConfig = {
+  rpcUrl: string;
+  horizonUrl: string;
+  explorerBaseUrl: string;
+};
 
 /**
- * A struct for validating the network config.
+ * A struct for validating the network config, with a fallback explorer base
+ * URL for unset or empty values.
+ *
+ * @param explorerBaseUrl - The explorer URL to use when the variable is unset
+ * or empty.
+ * @returns A struct for validating the network config.
  */
-const networkConfigStruct = object({
-  rpcUrl: UrlStruct,
-  horizonUrl: UrlStruct,
-  explorerBaseUrl: UrlStruct,
-});
+const networkConfigStruct = (explorerBaseUrl: string): Struct<NetworkConfig> =>
+  object({
+    rpcUrl: UrlStruct,
+    horizonUrl: UrlStruct,
+    explorerBaseUrl: defaultedUrlStruct(explorerBaseUrl),
+  });
+
+const mainnetNetworkConfigStruct = networkConfigStruct(
+  DEFAULT_EXPLORER_MAINNET_BASE_URL,
+);
+
+const testnetNetworkConfigStruct = networkConfigStruct(
+  DEFAULT_EXPLORER_TESTNET_BASE_URL,
+);
 
 /**
  * A struct to validate and coerce the selected network from env.
  * Converts the selected network to lowercase and checks if it is a valid selected network.
  * If the selected network is empty, it returns the default selected network.
+ *
+ * @returns A struct for validating the selected network.
  */
 const selectedNetworkStruct = coerce(
   defaulted(enums(getSupportedScopes()), KnownCaip2ChainId.Mainnet),
@@ -79,34 +80,15 @@ const selectedNetworkStruct = coerce(
 );
 
 /**
- * A struct to validate and coerce log level from env.
- * Converts the log level to lowercase and checks if it is a valid log level.
- * If the log level is empty or missing, it defaults to silent.
- */
-export const LogLevelStruct = coerce(
-  defaulted(
-    enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
-    LogLevel.SILENT,
-  ),
-  string(),
-  (value: string) => (value === '' ? undefined : value.toLowerCase()),
-);
-
-/**
- * A struct for validating the network config map.
- */
-const networkConfigMapStruct = record(
-  KnownCaip2ChainIdStruct,
-  networkConfigStruct,
-);
-
-/**
  * A struct for validating the config.
  */
-const ConfigStruct = object({
+export const ConfigStruct = object({
   environment: enums(Object.values(Environment)),
   logLevel: LogLevelStruct,
-  networks: networkConfigMapStruct,
+  networks: object({
+    [KnownCaip2ChainId.Mainnet]: mainnetNetworkConfigStruct,
+    [KnownCaip2ChainId.Testnet]: testnetNetworkConfigStruct,
+  }),
   selectedNetwork: selectedNetworkStruct,
   transaction: object({
     timeout: parseIntegerStruct(100, 180),
@@ -138,7 +120,7 @@ const ConfigStruct = object({
     maxReconcileAttempts: parseIntegerStruct(2, 5),
     /**
      * The maximum age of a pending transaction in milliseconds.
-     * Used with `maxReconcileAttempts` to evict stale pending txs from snap state;
+     * Used with `maxPendingTransactionAge` to evict stale pending txs from snap state;
      * both limits must be exceeded before a pending tx is dropped.
      * Minimum value is 15000 to avoid dropping the pending transaction too early.
      */
@@ -146,16 +128,16 @@ const ConfigStruct = object({
   }),
   api: object({
     tokenApi: object({
-      baseUrl: UrlStruct,
+      baseUrl: defaultedUrlStruct(DEFAULT_TOKEN_API_BASE_URL),
     }),
     staticApi: object({
-      baseUrl: UrlStruct,
+      baseUrl: defaultedUrlStruct(DEFAULT_STATIC_API_BASE_URL),
     }),
     priceApi: object({
-      baseUrl: UrlStruct,
+      baseUrl: defaultedUrlStruct(DEFAULT_PRICE_API_BASE_URL),
     }),
     securityAlertsApi: object({
-      baseUrl: UrlStruct,
+      baseUrl: defaultedUrlStruct(DEFAULT_SECURITY_ALERTS_API_BASE_URL),
     }),
   }),
   cache: object({
@@ -180,89 +162,77 @@ const ConfigStruct = object({
 export type Config = Infer<typeof ConfigStruct>;
 
 /**
- * The network config type.
+ * The environment consumed by the snap. Each `process.env` reference is
+ * replaced with its build-time value (see `snap.config.ts`).
  */
-export type NetworkConfig = Infer<typeof networkConfigStruct>;
+const ENVIRONMENT = {
+  environment: process.env.ENVIRONMENT,
+  logLevel: process.env.LOG_LEVEL,
+  networks: {
+    [KnownCaip2ChainId.Mainnet]: {
+      rpcUrl: process.env.STELLAR_RPC_URL_MAINNET,
+      horizonUrl: process.env.STELLAR_HORIZON_URL_MAINNET,
+      explorerBaseUrl: process.env.STELLAR_EXPLORER_MAINNET_BASE_URL,
+    },
+    [KnownCaip2ChainId.Testnet]: {
+      rpcUrl: process.env.STELLAR_RPC_URL_TESTNET,
+      horizonUrl: process.env.STELLAR_HORIZON_URL_TESTNET,
+      explorerBaseUrl: process.env.STELLAR_EXPLORER_TESTNET_BASE_URL,
+    },
+  },
+  selectedNetwork: KnownCaip2ChainId.Mainnet,
+  transaction: {
+    timeout: process.env.STELLAR_TRANSACTION_TIMEOUT,
+    pollingAttempts: process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS,
+    trackTransactionMaxReschedules:
+      process.env.STELLAR_TRACK_TRANSACTION_MAX_RESCHEDULES,
+    baseFeeMultiplier: process.env.STELLAR_BASE_FEE_MULTIPLIER,
+    maxFeeThresholdInXLM: process.env.STELLAR_MAX_FEE_THRESHOLD_IN_XLM,
+    maxReconcileAttempts: process.env.STELLAR_MAX_RECONCILE_ATTEMPTS,
+    maxPendingTransactionAge: process.env.STELLAR_MAX_PENDING_TRANSACTION_AGE,
+  },
+  api: {
+    tokenApi: {
+      baseUrl: process.env.TOKEN_API_BASE_URL,
+    },
+    staticApi: {
+      baseUrl: process.env.STATIC_API_BASE_URL,
+    },
+    priceApi: {
+      baseUrl: process.env.PRICE_API_BASE_URL,
+    },
+    securityAlertsApi: {
+      baseUrl: process.env.SECURITY_ALERTS_API_BASE_URL,
+    },
+  },
+  cache: {
+    ttlMilliseconds: {
+      spotPrices: process.env.STELLAR_SPOT_PRICES_TTL_MILLISECONDS,
+      baseFee: process.env.STELLAR_BASE_FEE_TTL_MILLISECONDS,
+      loadOnChainAccount:
+        process.env.STELLAR_LOAD_ON_CHAIN_ACCOUNT_TTL_MILLISECONDS,
+      simulateTransaction:
+        process.env.STELLAR_SIMULATE_TRANSACTION_TTL_MILLISECONDS,
+      sep41AssetBalance:
+        process.env.STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS,
+    },
+  },
+};
+
+/**
+ * The configuration provider of the snap.
+ * The environment is parsed and the config built exactly once, when this
+ * module is imported.
+ *
+ * @example
+ * const { selectedNetwork } = configProvider.config;
+ */
+export const configProvider = new BaseConfigProvider(ENVIRONMENT, ConfigStruct);
 
 /**
  * The app config.
- * Built at module load from env vars injected at build time (see snap.config.ts).
- * Validation throws if the config is invalid; ensure required env vars are set when building the Snap.
+ * Built once from env vars injected at build time (see snap.config.ts).
+ * Validation throws if the config is invalid; ensure required env vars are
+ * set when building the Snap.
  */
-export const AppConfig = create(
-  {
-    environment: process.env.ENVIRONMENT,
-    networks: {
-      [KnownCaip2ChainId.Mainnet]: {
-        rpcUrl: process.env.STELLAR_RPC_URL_MAINNET,
-        horizonUrl: process.env.STELLAR_HORIZON_URL_MAINNET,
-        explorerBaseUrl:
-          process.env.STELLAR_EXPLORER_MAINNET_BASE_URL === ''
-            ? DEFAULT_EXPLORER_MAINNET_BASE_URL
-            : (process.env.STELLAR_EXPLORER_MAINNET_BASE_URL ??
-              DEFAULT_EXPLORER_MAINNET_BASE_URL),
-      },
-      [KnownCaip2ChainId.Testnet]: {
-        rpcUrl: process.env.STELLAR_RPC_URL_TESTNET,
-        horizonUrl: process.env.STELLAR_HORIZON_URL_TESTNET,
-        explorerBaseUrl:
-          process.env.STELLAR_EXPLORER_TESTNET_BASE_URL === ''
-            ? DEFAULT_EXPLORER_TESTNET_BASE_URL
-            : (process.env.STELLAR_EXPLORER_TESTNET_BASE_URL ??
-              DEFAULT_EXPLORER_TESTNET_BASE_URL),
-      },
-    },
-    selectedNetwork: KnownCaip2ChainId.Mainnet,
-    logLevel: process.env.LOG_LEVEL,
-    transaction: {
-      timeout: process.env.STELLAR_TRANSACTION_TIMEOUT,
-      pollingAttempts: process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS,
-      baseFeeMultiplier: process.env.STELLAR_BASE_FEE_MULTIPLIER,
-      maxFeeThresholdInXLM: process.env.STELLAR_MAX_FEE_THRESHOLD_IN_XLM,
-      trackTransactionMaxReschedules:
-        process.env.STELLAR_TRACK_TRANSACTION_MAX_RESCHEDULES,
-      maxReconcileAttempts: process.env.STELLAR_MAX_RECONCILE_ATTEMPTS,
-      maxPendingTransactionAge: process.env.STELLAR_MAX_PENDING_TRANSACTION_AGE,
-    },
-    api: {
-      tokenApi: {
-        baseUrl:
-          process.env.TOKEN_API_BASE_URL === ''
-            ? DEFAULT_TOKEN_API_BASE_URL
-            : (process.env.TOKEN_API_BASE_URL ?? DEFAULT_TOKEN_API_BASE_URL),
-      },
-      staticApi: {
-        baseUrl:
-          process.env.STATIC_API_BASE_URL === ''
-            ? DEFAULT_STATIC_API_BASE_URL
-            : (process.env.STATIC_API_BASE_URL ?? DEFAULT_STATIC_API_BASE_URL),
-      },
-      priceApi: {
-        baseUrl:
-          process.env.PRICE_API_BASE_URL === ''
-            ? DEFAULT_PRICE_API_BASE_URL
-            : (process.env.PRICE_API_BASE_URL ?? DEFAULT_PRICE_API_BASE_URL),
-      },
-      securityAlertsApi: {
-        baseUrl:
-          process.env.SECURITY_ALERTS_API_BASE_URL === ''
-            ? DEFAULT_SECURITY_ALERTS_API_BASE_URL
-            : (process.env.SECURITY_ALERTS_API_BASE_URL ??
-              DEFAULT_SECURITY_ALERTS_API_BASE_URL),
-      },
-    },
-    cache: {
-      ttlMilliseconds: {
-        spotPrices: process.env.STELLAR_SPOT_PRICES_TTL_MILLISECONDS,
-        baseFee: process.env.STELLAR_BASE_FEE_TTL_MILLISECONDS,
-        loadOnChainAccount:
-          process.env.STELLAR_LOAD_ON_CHAIN_ACCOUNT_TTL_MILLISECONDS,
-        simulateTransaction:
-          process.env.STELLAR_SIMULATE_TRANSACTION_TTL_MILLISECONDS,
-        sep41AssetBalance:
-          process.env.STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS,
-      },
-    },
-  },
-  ConfigStruct,
-);
+export const AppConfig = configProvider.config;
