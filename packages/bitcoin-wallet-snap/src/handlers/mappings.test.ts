@@ -4,6 +4,7 @@ import type {
   ScriptBuf,
   Amount,
   Txid,
+  WalletTx,
 } from '@metamask/bitcoindevkit';
 import { Address } from '@metamask/bitcoindevkit';
 import { TransactionStatus, FeeType } from '@metamask/keyring-api';
@@ -11,7 +12,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { BitcoinAccount } from '../entities';
 import { Caip19Asset } from './caip';
-import { mapPsbtToTransaction } from './mappings';
+import { mapPsbtToTransaction, mapToTransaction } from './mappings';
 
 // Mock the entire bitcoindevkit module
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -94,6 +95,7 @@ describe('mapPsbtToTransaction', () => {
     account.addressType = addressType;
     jest.spyOn(account, 'calculateFee').mockReturnValue(mockFeeAmount);
     jest.spyOn(account, 'isMine').mockReturnValue(false);
+    jest.spyOn(account, 'isChange').mockReturnValue(false);
 
     return account;
   }
@@ -197,9 +199,9 @@ describe('mapPsbtToTransaction', () => {
       recipientOutput,
     ]);
 
-    // First output is change (owned by account), second is recipient
+    // First output is change (internal keychain), second is recipient
     jest
-      .spyOn(account, 'isMine')
+      .spyOn(account, 'isChange')
       .mockReturnValueOnce(true) // change output
       .mockReturnValueOnce(false); // recipient output
 
@@ -221,6 +223,44 @@ describe('mapPsbtToTransaction', () => {
     const asset = result.to[0]?.asset;
     expect(asset?.fungible).toBe(true);
     expect((asset as any).amount).toBe('0.0001');
+  });
+
+  it('keeps a self-send recipient output that is owned by the account', () => {
+    const account = createMockAccount();
+    // A self-send has two outputs we own: the recipient (external keychain)
+    // and the change (internal keychain). Both are `isMine`, but only the
+    // change must be filtered out.
+    const recipientOutput = createMockOutput(5000);
+    const changeOutput = createMockOutput(94719);
+    const transaction = createMockTransaction('selfsend123', [
+      recipientOutput,
+      changeOutput,
+    ]);
+
+    jest.spyOn(account, 'isMine').mockReturnValue(true);
+    jest
+      .spyOn(account, 'isChange')
+      .mockReturnValueOnce(false) // recipient output (external)
+      .mockReturnValueOnce(true); // change output (internal)
+
+    jest.mocked(Address.from_script).mockImplementationOnce(
+      () =>
+        ({
+          toString: () => 'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
+        }) as unknown as Address,
+    );
+
+    const result = mapPsbtToTransaction(account, transaction);
+
+    // The self-send recipient must survive, otherwise the activity row falls
+    // back to "Sent / To Unknown" with no amount and no avatar.
+    expect(result.to).toHaveLength(1);
+    expect(result.to[0]?.address).toBe(
+      'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
+    );
+    const asset = result.to[0]?.asset;
+    expect(asset?.fungible).toBe(true);
+    expect((asset as { amount?: string }).amount).toBe('0.00005');
   });
 
   it('uses testnet chain ID and tBTC unit for testnet', () => {
@@ -314,7 +354,7 @@ describe('mapPsbtToTransaction', () => {
     // Test all outputs being change
     const changeOutput = createMockOutput(10000);
     const changeOnlyTx = createMockTransaction('change123', [changeOutput]);
-    jest.spyOn(account, 'isMine').mockReturnValue(true);
+    jest.spyOn(account, 'isChange').mockReturnValue(true);
 
     const changeOnlyResult = mapPsbtToTransaction(account, changeOnlyTx);
     expect(changeOnlyResult.to).toStrictEqual([]);
@@ -335,5 +375,160 @@ describe('mapPsbtToTransaction', () => {
     const feeAsset = result.fees[0]?.asset;
     expect(feeAsset?.fungible).toBe(true);
     expect((feeAsset as any).amount).toBe('0.000025'); // 2500 sats = 0.000025 BTC
+  });
+});
+
+describe('mapToTransaction', () => {
+  const ACCOUNT_ID = '724ac464-6572-4d9c-a8e2-4075c8846d65';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /**
+   * Creates a mock transaction with the specified txid and outputs.
+   *
+   * @param txid - The transaction ID as a string.
+   * @param outputs - Array of transaction outputs.
+   * @returns A mocked Transaction object.
+   */
+  function createMockTransaction(txid: string, outputs: TxOut[]): Transaction {
+    const mockTxid = mock<Txid>();
+    jest.spyOn(mockTxid, 'toString').mockReturnValue(txid);
+
+    return mock<Transaction>({
+      compute_txid: () => mockTxid,
+      output: outputs,
+    });
+  }
+
+  /**
+   * Creates a mock transaction output with the specified amount.
+   *
+   * @param satoshis - The amount in satoshis.
+   * @returns A mocked TxOut object.
+   */
+  function createMockOutput(satoshis: number): TxOut {
+    const mockAmount = mock<Amount>();
+    jest.spyOn(mockAmount, 'to_btc').mockReturnValue(satoshis / 100_000_000);
+
+    const mockScript = mock<ScriptBuf>();
+    jest.spyOn(mockScript, 'is_op_return').mockReturnValue(false);
+
+    return mock<TxOut>({
+      script_pubkey: mockScript,
+      value: mockAmount,
+    });
+  }
+
+  /**
+   * Creates a mock Bitcoin account.
+   *
+   * @param sentSatoshis - The sent amount in satoshis.
+   * @param feeSatoshis - The fee amount in satoshis.
+   * @returns A mocked BitcoinAccount object.
+   */
+  function createMockAccount(
+    sentSatoshis = 100000,
+    feeSatoshis = 281,
+  ): BitcoinAccount {
+    const sentAmount = mock<Amount>();
+    jest
+      .spyOn(sentAmount, 'to_btc')
+      .mockReturnValue(sentSatoshis / 100_000_000);
+
+    const feeAmount = mock<Amount>();
+    jest.spyOn(feeAmount, 'to_btc').mockReturnValue(feeSatoshis / 100_000_000);
+
+    const account = mock<BitcoinAccount>();
+    account.id = ACCOUNT_ID;
+    account.network = 'bitcoin';
+    account.addressType = 'p2wpkh';
+    jest
+      .spyOn(account, 'sentAndReceived')
+      .mockReturnValue([sentAmount, mock<Amount>()]);
+    jest.spyOn(account, 'calculateFee').mockReturnValue(feeAmount);
+    jest.spyOn(account, 'isMine').mockReturnValue(false);
+    jest.spyOn(account, 'isChange').mockReturnValue(false);
+
+    return account;
+  }
+
+  it('keeps a self-send recipient output that is owned by the account', () => {
+    const account = createMockAccount();
+    // Self-send: recipient (external keychain) + change (internal keychain).
+    // Both are owned by the account, so filtering on `isMine` alone would
+    // drop the recipient and leave `to` empty.
+    const recipientOutput = createMockOutput(5000);
+    const changeOutput = createMockOutput(94719);
+    const transaction = createMockTransaction('selfsend456', [
+      recipientOutput,
+      changeOutput,
+    ]);
+
+    jest.spyOn(account, 'isMine').mockReturnValue(true);
+    jest
+      .spyOn(account, 'isChange')
+      .mockReturnValueOnce(false) // recipient output (external)
+      .mockReturnValueOnce(true); // change output (internal)
+
+    jest.mocked(Address.from_script).mockImplementationOnce(
+      () =>
+        ({
+          toString: () => 'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
+        }) as unknown as Address,
+    );
+
+    const result = mapToTransaction(account, {
+      tx: transaction,
+      txid: transaction.compute_txid(),
+      chain_position: { anchor: undefined, last_seen: undefined },
+    } as unknown as WalletTx);
+
+    expect(result.type).toBe('send');
+    expect(result.to).toHaveLength(1);
+    expect(result.to[0]?.address).toBe(
+      'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
+    );
+    const asset = result.to[0]?.asset;
+    expect(asset?.fungible).toBe(true);
+    expect((asset as { amount?: string }).amount).toBe('0.00005');
+  });
+
+  it('filters out change for a regular send to a foreign address', () => {
+    const account = createMockAccount();
+    const changeOutput = createMockOutput(94719);
+    const recipientOutput = createMockOutput(5000);
+    const transaction = createMockTransaction('regularsend789', [
+      changeOutput,
+      recipientOutput,
+    ]);
+
+    jest
+      .spyOn(account, 'isChange')
+      .mockReturnValueOnce(true) // change output
+      .mockReturnValueOnce(false); // recipient output
+
+    jest.mocked(Address.from_script).mockImplementationOnce(
+      () =>
+        ({
+          toString: () => 'bc1qstku2y3pfh9av50lxj55arm8r5gj8tf2yv5nxz',
+        }) as unknown as Address,
+    );
+
+    const result = mapToTransaction(account, {
+      tx: transaction,
+      txid: transaction.compute_txid(),
+      chain_position: { anchor: undefined, last_seen: undefined },
+    } as unknown as WalletTx);
+
+    expect(result.to).toHaveLength(1);
+    expect(result.to[0]?.address).toBe(
+      'bc1qstku2y3pfh9av50lxj55arm8r5gj8tf2yv5nxz',
+    );
   });
 });

@@ -14,8 +14,15 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { UuidStruct, validateOrigin } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import {
+  UuidStruct,
+  asStrictKeyringAccount,
+  validateOrigin,
+} from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,
@@ -33,8 +40,6 @@ import { sortBy } from 'lodash';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS } from '../../constants';
 import type { Network } from '../../constants';
-import { asStrictKeyringAccount } from '../../entities/keyring-account';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -106,7 +111,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     return result ?? null;
   }
 
-  async #listAccounts(): Promise<TronKeyringAccount[]> {
+  async #listAccounts(): Promise<ExtendedKeyringAccount[]> {
     try {
       const keyringAccounts = await this.#accountsService.getAll();
 
@@ -128,7 +133,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   async #getAccount(
     accountId: string,
-  ): Promise<TronKeyringAccount | undefined> {
+  ): Promise<ExtendedKeyringAccount | undefined> {
     try {
       const account =
         (await this.#accountsService.findById(accountId)) ?? undefined;
@@ -153,7 +158,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     }
   }
 
-  async #getAccountOrThrow(accountId: string): Promise<TronKeyringAccount> {
+  async #getAccountOrThrow(accountId: string): Promise<ExtendedKeyringAccount> {
     const account = await this.#getAccount(accountId);
 
     if (!account) {

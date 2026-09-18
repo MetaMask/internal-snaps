@@ -146,7 +146,7 @@ export class SnapAssetsAdapter {
         name: 'Solana',
         symbol: 'SOL',
         fungible: true,
-        iconUrl: `${this.#configProvider.get().staticApi.baseUrl}/api/v2/tokenIcons/assets/${namespace}/${reference}/${assetNamespace}/${assetReference}.png`,
+        iconUrl: `${this.#configProvider.config.staticApi.baseUrl}/api/v2/tokenIcons/assets/${namespace}/${reference}/${assetNamespace}/${assetReference}.png`,
         units: [
           {
             name: 'Solana',

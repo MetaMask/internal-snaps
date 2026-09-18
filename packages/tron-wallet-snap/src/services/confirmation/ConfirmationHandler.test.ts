@@ -1,11 +1,11 @@
 import { FeeType } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { KnownCaip19Id, Network, Networks, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
 import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
@@ -57,7 +57,7 @@ const mockGetIconUrlForKnownAsset = jest.mocked(getIconUrlForKnownAsset);
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
-const mockAccount: TronKeyringAccount = {
+const mockAccount: ExtendedKeyringAccount = {
   id: TEST_ACCOUNT_ID,
   address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
   type: 'tron:eoa',

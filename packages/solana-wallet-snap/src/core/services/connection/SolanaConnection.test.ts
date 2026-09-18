@@ -52,9 +52,9 @@ describe('SolanaConnection', () => {
     jest.clearAllMocks();
 
     mockConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         networks: MOCK_NETWORKS,
-      }),
+      },
       getNetworkBy: jest.fn().mockImplementation((key, value) => {
         switch (key) {
           case 'caip2Id':

@@ -887,14 +887,27 @@ describe('KeyringHandler', () => {
       expect(result.data).toStrictEqual([expectedResult]);
     });
 
-    it('discards own outputs from send transactions', async () => {
+    it('discards change outputs from send transactions', async () => {
       const id = 'some-id';
-      mockAccount.isMine.mockReturnValueOnce(true);
+      mockAccount.isChange.mockReturnValueOnce(true);
 
       const result = await handler.getAccountTransactions(id, pagination);
 
       expect(mockAccounts.get).toHaveBeenCalledWith(id);
       expect(result.data).toStrictEqual([{ ...expectedResult, to: [] }]);
+    });
+
+    it('keeps self-owned recipient outputs from self-send transactions', async () => {
+      const id = 'some-id';
+      // A self-send output is owned by the account, but it is not change: it
+      // must be reported as the recipient so the activity row can render it.
+      mockAccount.isMine.mockReturnValueOnce(true);
+      mockAccount.isChange.mockReturnValueOnce(false);
+
+      const result = await handler.getAccountTransactions(id, pagination);
+
+      expect(mockAccounts.get).toHaveBeenCalledWith(id);
+      expect(result.data).toStrictEqual([expectedResult]);
     });
 
     it('lists transactions successfully: receive', async () => {
