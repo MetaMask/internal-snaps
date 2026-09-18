@@ -1393,11 +1393,6 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/services/accounts/AccountsRepository.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/assets/AssetsRepository.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
