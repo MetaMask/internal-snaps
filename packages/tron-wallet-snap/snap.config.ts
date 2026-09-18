@@ -46,6 +46,10 @@ const config: SnapConfig = {
     TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET ?? '',
     TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE ?? '',
     TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA ?? '',
+    // Explorer
+    EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL ?? '',
+    EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL ?? '',
+    EXPLORER_SHASTA_BASE_URL: process.env.EXPLORER_SHASTA_BASE_URL ?? '',
   },
   polyfills: true,
   preinstalled: {

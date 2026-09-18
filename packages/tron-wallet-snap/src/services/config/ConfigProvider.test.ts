@@ -43,6 +43,13 @@ const VALID_ENVIRONMENT = {
       [Network.Shasta]: 'https://shasta.trongrid.io',
     },
   },
+  explorerApi: {
+    baseUrls: {
+      [Network.Mainnet]: 'https://tronscan.org',
+      [Network.Nile]: 'https://nile.tronscan.org',
+      [Network.Shasta]: 'https://shasta.tronscan.org',
+    },
+  },
 };
 
 describe('ConfigProvider', () => {
@@ -82,6 +89,13 @@ describe('ConfigProvider', () => {
           [Network.Mainnet]: 'https://api.trongrid.io',
           [Network.Nile]: 'https://nile.trongrid.io',
           [Network.Shasta]: 'https://shasta.trongrid.io',
+        },
+      },
+      explorerApi: {
+        baseUrls: {
+          [Network.Mainnet]: 'https://tronscan.org',
+          [Network.Nile]: 'https://nile.tronscan.org',
+          [Network.Shasta]: 'https://shasta.tronscan.org',
         },
       },
     });
