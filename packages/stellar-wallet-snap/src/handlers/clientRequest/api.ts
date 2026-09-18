@@ -1,5 +1,9 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
+  ProofOfOwnershipBatchRequestParamsStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   enums,
@@ -40,6 +44,19 @@ import { isSep41Id } from '../../utils';
 import { parseProofOfOwnershipMessage } from './utils';
 
 /**
+ * Validation struct for one signProofOfOwnershipBatch request item.
+ *
+ * Messages are validated inside the handler so invalid proof messages can be
+ * returned as per-item errors instead of rejecting the whole batch.
+ */
+export { ProofOfOwnershipBatchRequestItemStruct as SignProofOfOwnershipBatchJsonRpcRequestItemStruct } from '@metamask/snap-networks-utils';
+
+/**
+ * Validation struct for one failed signProofOfOwnershipBatch result.
+ */
+export { ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct } from '@metamask/snap-networks-utils';
+
+/**
  * Enum for the client request method.
  */
 export const ClientRequestMethod = {
@@ -55,6 +72,11 @@ export const ClientRequestMethod = {
    * SIP-31 client-only.
    */
   SignProofOfOwnership: 'signProofOfOwnership',
+  /**
+   * Silent batch proof-of-ownership signing for
+   * `@metamask/profile-metrics-controller`. SIP-31 client-only.
+   */
+  SignProofOfOwnershipBatch: 'signProofOfOwnershipBatch',
   /** -------------------------------- Stellar Specific -------------------------------- */
   ChangeTrustOpt: 'changeTrustOpt',
 } as const;
@@ -410,6 +432,12 @@ export const ProofOfOwnershipMessageStruct = refine(
 );
 
 /**
+ * Validation struct for a 64-byte value encoded as lowercase hex with a leading
+ * `0x` prefix.
+ */
+export const SixtyFourByte0xHexStruct = pattern(string(), /^0x[0-9a-f]{128}$/u);
+
+/**
  * Validation struct for the signProofOfOwnership JSON-RPC request.
  * Coerces `nonce` and `address` from `message` (clients send only accountId + message).
  */
@@ -453,7 +481,41 @@ export const SignProofOfOwnershipJsonRpcRequestStruct = coerce(
  * The `0x` prefix is not part of the 64-byte signature length.
  */
 export const SignProofOfOwnershipJsonRpcResponseStruct = object({
-  signature: pattern(string(), /^0x[0-9a-f]{128}$/u),
+  signature: SixtyFourByte0xHexStruct,
+});
+
+/**
+ * Validation struct for the signProofOfOwnershipBatch JSON-RPC request.
+ */
+export const SignProofOfOwnershipBatchJsonRpcRequestStruct = assign(
+  JsonRpcRequestStruct,
+  object({
+    method: literal(ClientRequestMethod.SignProofOfOwnershipBatch),
+    params: ProofOfOwnershipBatchRequestParamsStruct,
+  }),
+);
+
+/**
+ * Validation struct for one successful signProofOfOwnershipBatch result.
+ */
+export const SignProofOfOwnershipBatchSuccessStruct = object({
+  accountId: UuidStruct,
+  signature: SixtyFourByte0xHexStruct,
+});
+
+/**
+ * Validation struct for one signProofOfOwnershipBatch result.
+ */
+export const SignProofOfOwnershipBatchItemResponseStruct = union([
+  SignProofOfOwnershipBatchSuccessStruct,
+  SignProofOfOwnershipBatchErrorStruct,
+]);
+
+/**
+ * Validation struct for the signProofOfOwnershipBatch JSON-RPC response.
+ */
+export const SignProofOfOwnershipBatchJsonRpcResponseStruct = object({
+  results: array(SignProofOfOwnershipBatchItemResponseStruct),
 });
 
 /**
@@ -560,4 +622,18 @@ export type SignProofOfOwnershipJsonRpcRequest = Infer<
  */
 export type SignProofOfOwnershipJsonRpcResponse = Infer<
   typeof SignProofOfOwnershipJsonRpcResponseStruct
+>;
+
+/**
+ * Type for the signProofOfOwnershipBatch JSON-RPC request.
+ */
+export type SignProofOfOwnershipBatchJsonRpcRequest = Infer<
+  typeof SignProofOfOwnershipBatchJsonRpcRequestStruct
+>;
+
+/**
+ * Type for the signProofOfOwnershipBatch JSON-RPC response.
+ */
+export type SignProofOfOwnershipBatchJsonRpcResponse = Infer<
+  typeof SignProofOfOwnershipBatchJsonRpcResponseStruct
 >;

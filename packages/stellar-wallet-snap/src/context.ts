@@ -16,6 +16,7 @@ import { OnAddressInputHandler } from './handlers/clientRequest/onAddressInput';
 import { OnAmountInputHandler } from './handlers/clientRequest/onAmountInput';
 import { SignAndSendTransactionHandler } from './handlers/clientRequest/signAndSendTransaction';
 import { SignProofOfOwnershipHandler } from './handlers/clientRequest/signProofOfOwnership';
+import { SignProofOfOwnershipBatchHandler } from './handlers/clientRequest/signProofOfOwnershipBatch';
 import type { ICronjobRequestHandler } from './handlers/cronjob/api';
 import { BackgroundEventMethod } from './handlers/cronjob/api';
 import {
@@ -285,6 +286,12 @@ const signProofOfOwnershipHandler = new SignProofOfOwnershipHandler({
   accountResolver,
 });
 
+const signProofOfOwnershipBatchHandler = new SignProofOfOwnershipBatchHandler({
+  logger,
+  accountService,
+  walletService,
+});
+
 const clientRequestMethodHandlers: Record<
   ClientRequestMethod,
   IClientRequestHandler
@@ -296,6 +303,8 @@ const clientRequestMethodHandlers: Record<
   [ClientRequestMethod.SignAndSendTransaction]: signAndSendTransactionHandler,
   [ClientRequestMethod.ComputeFee]: computeFeeHandler,
   [ClientRequestMethod.SignProofOfOwnership]: signProofOfOwnershipHandler,
+  [ClientRequestMethod.SignProofOfOwnershipBatch]:
+    signProofOfOwnershipBatchHandler,
 };
 
 const clientRequestHandler = new ClientRequestHandler({

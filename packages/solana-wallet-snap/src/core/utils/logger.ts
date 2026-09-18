@@ -1,12 +1,10 @@
 import { Logger, LogLevel } from '@metamask/snap-networks-utils';
 
-import { ConfigProvider } from '../services/config';
+import { configProvider } from '../services/config';
 import { logMaybeSolanaError } from './logMaybeSolanaError';
 
-const configProvider = new ConfigProvider();
-
 const logger = new Logger({
-  level: configProvider.get().logLevel,
+  level: configProvider.config.logLevel,
   decorators: {
     error: (next, error, ...args): void => {
       logMaybeSolanaError(error, next);
