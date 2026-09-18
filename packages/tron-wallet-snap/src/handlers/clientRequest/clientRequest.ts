@@ -72,7 +72,6 @@ import {
   parseRewardsMessage,
   SignAndSendTransactionRequestStruct,
   SignProofOfOwnershipBatchRequestStruct,
-  SignProofOfOwnershipBatchResponseStruct,
   SignProofOfOwnershipRequestStruct,
   SignRewardsMessageRequestStruct,
 } from './validation';
@@ -1328,12 +1327,6 @@ export class ClientRequestHandler {
     );
 
     const result: SignProofOfOwnershipBatchResponse = { results };
-
-    assertOrThrow(
-      result,
-      SignProofOfOwnershipBatchResponseStruct,
-      new InvalidParamsError(),
-    );
 
     return result;
   }
