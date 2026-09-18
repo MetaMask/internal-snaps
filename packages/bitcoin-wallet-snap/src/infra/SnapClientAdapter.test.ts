@@ -132,6 +132,61 @@ describe('SnapClientAdapter', () => {
 
       expect(mockLogger.error).not.toHaveBeenCalled();
     });
+
+    it("doesn't throw and logs when building properties fails", async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const propertyError = new Error('failed to serialize txid');
+      const tx = mock<WalletTx>({
+        txid: {
+          toString: () => {
+            throw propertyError;
+          },
+        },
+      });
+
+      expect(
+        await snapClient.emitTrackingEvent(
+          TrackingSnapEvent.TransactionReceived,
+          account,
+          tx,
+          'metamask',
+        ),
+      ).toBeUndefined();
+
+      expect(mockRequest).not.toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to track event: Transaction Received',
+        propertyError,
+      );
+    });
+
+    it('rejects pre-broadcast confirmation events at compile time', async () => {
+      const { snapClient } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const tx = mock<WalletTx>({
+        txid: { toString: () => 'txid-123' },
+      });
+
+      expect(
+        await snapClient.emitTrackingEvent(
+          // @ts-expect-error - Transaction Added carries no tx_id, so it must
+          // not be routable through the post-broadcast payload path.
+          TrackingSnapEvent.TransactionAdded,
+          account,
+          tx,
+          'metamask',
+        ),
+      ).toBeUndefined();
+    });
   });
 
   describe('trackTransactionAdded', () => {

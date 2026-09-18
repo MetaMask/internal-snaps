@@ -14,7 +14,13 @@ import type {
 } from '@metamask/snaps-sdk';
 import { DialogType } from '@metamask/snaps-sdk';
 
-import type { BitcoinAccount, Logger, SnapClient } from '../entities';
+import type {
+  BitcoinAccount,
+  Logger,
+  SnapClient,
+  TransactionBroadcastEventType,
+  TransactionConfirmationEventType,
+} from '../entities';
 import {
   computeDisplayBalanceSats,
   TrackingSnapEvent,
@@ -242,7 +248,7 @@ export class SnapClientAdapter implements SnapClient {
   }
 
   async emitTrackingEvent(
-    eventType: TrackingSnapEvent,
+    eventType: TransactionBroadcastEventType,
     account: BitcoinAccount,
     tx: WalletTx,
     origin: string,
@@ -303,7 +309,7 @@ export class SnapClientAdapter implements SnapClient {
    * @param origin - The origin/source that triggered this event.
    */
   async #trackConfirmationEvent(
-    eventType: TrackingSnapEvent,
+    eventType: TransactionConfirmationEventType,
     account: BitcoinAccount,
     origin: string,
   ): Promise<void> {
@@ -349,7 +355,9 @@ export class SnapClientAdapter implements SnapClient {
    * @param eventType - The transaction event type.
    * @returns The event message.
    */
-  #getTrackingMessage(eventType: TrackingSnapEvent): string {
+  #getTrackingMessage(
+    eventType: TransactionBroadcastEventType | TransactionConfirmationEventType,
+  ): string {
     switch (eventType) {
       case TrackingSnapEvent.TransactionAdded:
         return 'Snap transaction added';
