@@ -9,6 +9,8 @@ import {
   string,
 } from '@metamask/superstruct';
 
+import { UrlStruct } from '../urlStruct/urlStruct';
+
 /**
  * Create a struct for environment variables validated against the given
  * struct, where unset and empty strings (the build-time injection default)
@@ -42,6 +44,21 @@ export const commaSeparatedListOf = <Type>(
   item: Struct<Type>,
 ): Struct<Type[]> =>
   coerce(array(item), string(), (value: string) => value.split(','));
+
+/**
+ * Create a struct for a URL environment variable with a fallback: unset and
+ * empty values (the build-time injection default) resolve to the fallback,
+ * and invalid values are rejected.
+ *
+ * @param fallback - The URL to use when the variable is unset or empty.
+ * @returns A struct that parses to the URL.
+ * @example
+ * const EsploraUrlStruct = defaultedUrlStruct('https://blockstream.info/api');
+ */
+export const defaultedUrlStruct = (fallback: string): Struct<string> =>
+  coerce(defaulted(UrlStruct, fallback), string(), (value: string) =>
+    value === '' ? undefined : value,
+  );
 
 /**
  * Create a struct that parses an integer from a string, with a minimum value
