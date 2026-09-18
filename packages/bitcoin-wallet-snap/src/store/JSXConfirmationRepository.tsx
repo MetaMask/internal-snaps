@@ -72,9 +72,8 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
 
     // Blocks and waits for user actions. This logic can live here instead of in the use case
     // because it's common to all confirmations. Move to use case if needed.
-    const confirmed = await this.#snapClient.displayConfirmation<boolean>(
-      interfaceId,
-    );
+    const confirmed =
+      await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
       throw new UserActionError('User canceled the confirmation');
     }
@@ -123,9 +122,8 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
 
     await this.#snapClient.trackTransactionAdded(account, origin);
 
-    const confirmed = await this.#snapClient.displayConfirmation<boolean>(
-      interfaceId,
-    );
+    const confirmed =
+      await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
       await this.#snapClient.trackTransactionRejected(account, origin);
       throw new UserActionError('User canceled the confirmation');
@@ -204,9 +202,8 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
 
     await this.#snapClient.trackTransactionAdded(account, origin);
 
-    const confirmed = await this.#snapClient.displayConfirmation<boolean>(
-      interfaceId,
-    );
+    const confirmed =
+      await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
       await this.#snapClient.trackTransactionRejected(account, origin);
       throw new UserActionError('User canceled the confirmation');
