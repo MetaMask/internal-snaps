@@ -26,6 +26,7 @@ import { TronWeb } from 'tronweb';
 import snapManifest from '../../../snap.manifest.json';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
+import type { DerivedTronKeypair } from '../../utils/deriveTronFromCoinTypeNode';
 import {
   createTronBip44AddressDeriver,
   createTronBip44KeypairDeriver,
@@ -77,21 +78,23 @@ type TronKeypairDeriver = Awaited<
 >;
 
 /**
- * Key material derived for one TRON account.
- */
-export type DerivedTronKeypair = {
-  privateKeyBytes: Uint8Array;
-  publicKeyBytes: Uint8Array;
-  privateKeyHex: string;
-  address: string;
-};
-
-/**
  * Result for one account in a batch TRON keypair derivation.
  */
 export type DerivedTronKeypairBatchResult =
   | DerivedTronKeypair
   | { error: string };
+
+/**
+ * Checks whether a batch derivation result contains derived key material.
+ *
+ * @param result - The derivation result to check.
+ * @returns Whether the result contains a derived TRON keypair.
+ */
+export function isDerivedTronKeypair(
+  result: DerivedTronKeypairBatchResult,
+): result is DerivedTronKeypair {
+  return Object.hasOwn(result, 'privateKeyHex');
+}
 
 /**
  * Validates account creation ranges before any expensive state or entropy work.
