@@ -1,9 +1,9 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { TronWeb } from 'tronweb';
 
 import type { SnapClient } from '../clients/snap/SnapClient';
 import type { TronWebFactory } from '../clients/tronweb/TronWebFactory';
 import type { Network } from '../constants';
-import type { TronKeyringAccount } from '../entities/keyring-account';
 import { BackgroundEventMethod } from '../handlers/cronjob/cronjob';
 import type { AccountsService } from '../services/accounts/AccountsService';
 
@@ -32,7 +32,7 @@ export async function executeOnChainActions({
   accountsService: AccountsService;
   tronWebFactory: TronWebFactory;
   snapClient: SnapClient;
-  account: TronKeyringAccount;
+  account: ExtendedKeyringAccount;
   scope: Network;
   buildTransactions: (tronWeb: TronWeb) => Promise<unknown[]>;
 }): Promise<void> {

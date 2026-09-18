@@ -1,5 +1,6 @@
 import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { TronWeb } from 'tronweb';
 
 import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
@@ -13,7 +14,6 @@ import type {
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
 import { Networks } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { sunToTrx, toUiAmount } from '../../utils/conversion';
 
 // TRC20 transaction types from TronGrid API
@@ -38,7 +38,7 @@ export class TransactionMapper {
     scope,
   }: {
     txId: string;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
   }): Transaction {
     const timestamp = Math.floor(Date.now() / 1000);
@@ -107,7 +107,7 @@ export class TransactionMapper {
     assetSymbol,
   }: {
     txId: string;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
     toAddress: string;
     amount: string;
@@ -315,7 +315,7 @@ export class TransactionMapper {
    *
    * @param params - The parameters for mapping the transaction.
    * @param params.scope - The network scope (e.g., mainnet, shasta).
-   * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
+   * @param params.account - The ExtendedKeyringAccount for which the transaction is being mapped.
    * @param params.trongridTransaction - The raw transaction data from Trongrid.
    * @returns The mapped Transaction or null if the transaction is not supported.
    */
@@ -325,7 +325,7 @@ export class TransactionMapper {
     trongridTransaction,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
   }): Transaction | null {
     const firstContract = trongridTransaction.raw_data
@@ -409,7 +409,7 @@ export class TransactionMapper {
    *
    * @param params - The parameters for mapping the transaction.
    * @param params.scope - The network scope (e.g., mainnet, shasta).
-   * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
+   * @param params.account - The ExtendedKeyringAccount for which the transaction is being mapped.
    * @param params.trongridTransaction - The raw transaction data from Trongrid.
    * @param params.trc10TokenMetadata - Optional map of TRC10 token ID to metadata (including decimals).
    * @returns The mapped Transaction.
@@ -421,7 +421,7 @@ export class TransactionMapper {
     trc10TokenMetadata,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
     trc10TokenMetadata?: Map<string, TRC10TokenMetadata>;
   }): Transaction {
@@ -524,7 +524,7 @@ export class TransactionMapper {
     trc20Transfer,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trc20Transfer: ContractTransactionInfo;
   }): Transaction | null {
     const {
@@ -611,7 +611,7 @@ export class TransactionMapper {
     receivedTransfer,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
     sentTransfer: ContractTransactionInfo;
     receivedTransfer: ContractTransactionInfo;
@@ -695,7 +695,7 @@ export class TransactionMapper {
     trc20Transfer,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
     trc20Transfer: ContractTransactionInfo;
   }): Transaction {
@@ -822,7 +822,7 @@ export class TransactionMapper {
    *
    * @param params - The parameters for mapping the transaction.
    * @param params.scope - The network scope (e.g., mainnet, shasta).
-   * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
+   * @param params.account - The ExtendedKeyringAccount for which the transaction is being mapped.
    * @param params.trongridTransaction - The raw transaction data from Trongrid.
    * @param params.trc20Transfers - Optional array of TRC20 transfers for this transaction ID.
    * @returns The mapped Transaction or null if the transaction is not supported.
@@ -834,7 +834,7 @@ export class TransactionMapper {
     trc20Transfers = [],
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
     trc20Transfers?: ContractTransactionInfo[];
   }): Transaction | null {
@@ -1118,7 +1118,7 @@ export class TransactionMapper {
     trongridTransaction,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
   }): Transaction | null {
     const firstContract = trongridTransaction.raw_data
@@ -1221,7 +1221,7 @@ export class TransactionMapper {
     trongridTransaction,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
   }): Transaction | null {
     const firstContract = trongridTransaction.raw_data
@@ -1306,7 +1306,7 @@ export class TransactionMapper {
    *
    * @param params - The parameters for mapping the transaction.
    * @param params.scope - The network scope (e.g., mainnet, shasta).
-   * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
+   * @param params.account - The ExtendedKeyringAccount for which the transaction is being mapped.
    * @param params.trongridTransaction - The raw transaction data from Trongrid.
    * @param params.trc20Transfers - Optional array of TRC20 transfers for this transaction ID.
    * @param params.trc10TokenMetadata - Optional map of TRC10 token ID to metadata (including decimals).
@@ -1320,7 +1320,7 @@ export class TransactionMapper {
     trc10TokenMetadata,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
     trc20Transfers?: ContractTransactionInfo[];
     trc10TokenMetadata?: Map<string, TRC10TokenMetadata>;
@@ -1395,7 +1395,7 @@ export class TransactionMapper {
    *
    * @param params - The parameters for mapping the transaction.
    * @param params.scope - The network scope (e.g., mainnet, shasta).
-   * @param params.account - The TronKeyringAccount for which the transaction is being mapped.
+   * @param params.account - The ExtendedKeyringAccount for which the transaction is being mapped.
    * @param params.rawTransactions - Array of raw transaction data (primary source).
    * @param params.trc20Transactions - Array of TRC20 transaction data (assistance).
    * @param params.trc10TokenMetadata - Optional map of TRC10 token ID to metadata (including decimals).
@@ -1409,7 +1409,7 @@ export class TransactionMapper {
     trc10TokenMetadata,
   }: {
     scope: Network;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     rawTransactions: TransactionInfo[];
     trc20Transactions: ContractTransactionInfo[];
     trc10TokenMetadata?: Map<string, TRC10TokenMetadata>;

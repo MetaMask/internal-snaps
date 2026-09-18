@@ -43,7 +43,7 @@ export class TokenApiClient {
     this.#fetch = _fetch;
     this.#logger = _logger;
 
-    const { tokenApi, staticApi } = configProvider.get();
+    const { tokenApi, staticApi } = configProvider.config;
     const { baseUrl, chunkSize } = tokenApi;
 
     assert(baseUrl, UrlStruct);

@@ -1,10 +1,10 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionType } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { SpotPrices } from '../../../clients/price-api/types';
 import { KnownCaip19Id } from '../../../constants';
-import type { TronKeyringAccount } from '../../../entities/keyring-account';
 
 export type SpamContext = {
   /**
@@ -17,7 +17,7 @@ export type SpamContext = {
 // A function that returns true if it believes that the passed transaction is a spam, or false if it believes it's legitimate.
 type SpamDetector = (
   transaction: Transaction,
-  account: TronKeyringAccount,
+  account: ExtendedKeyringAccount,
   context: SpamContext,
 ) => boolean;
 
@@ -30,7 +30,7 @@ type SpamDetector = (
  */
 const isTrxAmountLowerThanThreshold: SpamDetector = (
   transaction: Transaction,
-  account: TronKeyringAccount,
+  account: ExtendedKeyringAccount,
 ): boolean => {
   const { to, type } = transaction;
   const { address } = account;
@@ -77,7 +77,7 @@ const isTrxAmountLowerThanThreshold: SpamDetector = (
  */
 const isUnpricedReceivedToken: SpamDetector = (
   transaction: Transaction,
-  account: TronKeyringAccount,
+  account: ExtendedKeyringAccount,
   context: SpamContext,
 ): boolean => {
   if (!context.spotPrices || transaction.type !== TransactionType.Receive) {
@@ -126,7 +126,7 @@ function isTokenAsset(assetType: string): boolean {
  */
 export function isSpam(
   transaction: Transaction,
-  account: TronKeyringAccount,
+  account: ExtendedKeyringAccount,
   context: SpamContext = {},
 ): boolean {
   const detectors: SpamDetector[] = [

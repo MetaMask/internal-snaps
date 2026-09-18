@@ -32,7 +32,7 @@ export class NftApiClient {
     _cache: ICache<Serializable>,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
   ) {
-    const { baseUrl, cacheTtlsMilliseconds } = configProvider.get().nftApi;
+    const { baseUrl, cacheTtlsMilliseconds } = configProvider.config.nftApi;
 
     assert(baseUrl, UrlStruct);
 

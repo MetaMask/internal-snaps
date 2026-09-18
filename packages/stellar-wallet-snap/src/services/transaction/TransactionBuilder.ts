@@ -17,6 +17,7 @@ import type {
   KnownCaip19ClassicAssetId,
   KnownCaip19Slip44Id,
 } from '../../api';
+import { resolveStellarMemo } from '../../api';
 import { AppConfig } from '../../config';
 import {
   isSep41Id,
@@ -98,6 +99,7 @@ export class TransactionBuilder {
    * @param params.destination - Recipient Stellar account id (`G…`).
    * @param params.amount - Amount in the token's smallest units (i128).
    * @param params.baseFee - Per-operation inclusion fee in stroops.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @returns Wrapped unsigned transaction with one `invokeHostFunction` op.
    */
   sep41Transfer(params: {
@@ -107,9 +109,17 @@ export class TransactionBuilder {
     destination: string;
     amount: BigNumber;
     baseFee: BigNumber;
+    memo?: string;
   }): Transaction {
-    const { scope, onChainAccount, assetId, destination, amount, baseFee } =
-      params;
+    const {
+      scope,
+      onChainAccount,
+      assetId,
+      destination,
+      amount,
+      baseFee,
+      memo,
+    } = params;
 
     assertAssetScopeMatch(assetId, scope);
 
@@ -136,6 +146,7 @@ export class TransactionBuilder {
         timeout: this.#getTimeout(),
         scope,
         fee: baseFee.toString(),
+        memo,
       });
     } catch (error: unknown) {
       throw new TransactionBuilderException(
@@ -152,8 +163,9 @@ export class TransactionBuilder {
     onChainAccount: OnChainAccount;
     destination: string;
     amount: BigNumber;
+    memo?: string;
   }): Transaction {
-    const { amount, baseFee, scope, asset, onChainAccount, destination } =
+    const { amount, baseFee, scope, asset, onChainAccount, destination, memo } =
       params;
     return this.#buildTransaction({
       onChainAccount,
@@ -167,6 +179,7 @@ export class TransactionBuilder {
       timeout: this.#getTimeout(),
       scope,
       fee: baseFee,
+      memo,
     });
   }
 
@@ -176,8 +189,10 @@ export class TransactionBuilder {
     onChainAccount: OnChainAccount;
     destination: string;
     amount: BigNumber;
+    memo?: string;
   }): Transaction {
-    const { amount, baseFee, scope, onChainAccount, destination } = params;
+    const { amount, baseFee, scope, onChainAccount, destination, memo } =
+      params;
 
     return this.#buildTransaction({
       onChainAccount,
@@ -190,6 +205,7 @@ export class TransactionBuilder {
       timeout: this.#getTimeout(),
       scope,
       fee: baseFee,
+      memo,
     });
   }
 
@@ -207,6 +223,7 @@ export class TransactionBuilder {
    * @param params.destination.address - Recipient Stellar account id (`G…`).
    * @param params.destination.isActivated - Whether the destination account exists and is funded on-chain.
    * @param params.baseFee - Per-operation inclusion fee in stroops.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @returns An unsigned transaction ready for signing.
    * @throws {InvalidAssetForCreateAccountException} When the destination is unfunded and the asset is not native.
    * @throws {TransactionBuilderException} If building fails.
@@ -221,9 +238,17 @@ export class TransactionBuilder {
       isActivated: boolean;
     };
     baseFee: BigNumber;
+    memo?: string;
   }): Transaction {
-    const { onChainAccount, scope, amount, assetId, destination, baseFee } =
-      params;
+    const {
+      onChainAccount,
+      scope,
+      amount,
+      assetId,
+      destination,
+      baseFee,
+      memo,
+    } = params;
     const { address: toAddress, isActivated } = destination;
 
     assertAssetScopeMatch(assetId, scope);
@@ -237,6 +262,7 @@ export class TransactionBuilder {
           destination: toAddress,
           amount,
           baseFee,
+          memo,
         });
       }
 
@@ -252,6 +278,7 @@ export class TransactionBuilder {
           asset: assetId,
           destination: toAddress,
           amount: normalizedAmount,
+          memo,
         });
       }
       // Unfunded destination → createAccount only.
@@ -265,6 +292,7 @@ export class TransactionBuilder {
         scope,
         amount: normalizedAmount,
         destination: toAddress,
+        memo,
       });
     } catch (error: unknown) {
       if (error instanceof InvalidAssetForCreateAccountException) {
@@ -325,12 +353,14 @@ export class TransactionBuilder {
     timeout,
     scope,
     fee,
+    memo,
   }: {
     onChainAccount: OnChainAccount;
     operations: xdr.Operation[];
     timeout: number;
     scope: KnownCaip2ChainId;
     fee: string;
+    memo?: string;
   }): Transaction {
     const accountInstance = new Account(
       onChainAccount.accountId,
@@ -338,9 +368,19 @@ export class TransactionBuilder {
     );
 
     const networkPassphrase = caip2ChainIdToNetwork(scope);
+    let resolvedMemo;
+    try {
+      resolvedMemo = resolveStellarMemo(memo);
+    } catch (error: unknown) {
+      throw new TransactionBuilderException(
+        error instanceof Error ? error.message : 'Invalid memo',
+        { cause: error },
+      );
+    }
     const builder = new StellarSdkTransactionBuilder(accountInstance, {
       fee,
       networkPassphrase,
+      ...(resolvedMemo ? { memo: resolvedMemo } : {}),
     });
 
     for (const operation of operations) {

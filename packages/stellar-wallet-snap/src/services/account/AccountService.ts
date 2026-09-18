@@ -6,18 +6,16 @@ import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { StellarAddress, KnownCaip2ChainId } from '../../api';
 import { KEYRING_ACCOUNT_TYPE } from '../../constants';
 import { MultichainMethod } from '../../handlers/keyring/api';
-import {
-  batchesAll,
-  getDefaultEntropySource,
-  getSnapProvider,
-} from '../../utils';
+import { batchesAll, getSnapProvider } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
+import type { Wallet, WalletService } from '../wallet';
 import { getDerivationPath } from '../wallet';
-import type { WalletService } from '../wallet';
 import type { AccountsRepository } from './AccountsRepository';
 import type { StellarKeyringAccount, StellarDerivationPath } from './api';
 import { AccountNotFoundException } from './exceptions';
 import { assertSameAddress } from './utils';
+
+type WalletResolver = (index: number) => Promise<Wallet>;
 
 /**
  * Manages Stellar keyring accounts: creation, resolution from state, derivation checks, and persistence.
@@ -41,24 +39,6 @@ export class AccountService {
     this.#logger = logger.withPrefix('[🔑 AccountService]');
     this.#walletService = walletService;
     this.#accountsRepository = accountsRepository;
-  }
-
-  /**
-   * Builds a keyring-shaped account from entropy and index without reading or writing keyring state.
-   *
-   * @param options - Derivation inputs.
-   * @param options.entropySource - Entropy source ID (e.g. from the keyring).
-   * @param options.index - BIP-44 account index.
-   * @returns A promise that resolves to the derived {@link StellarKeyringAccount} shape (new random id).
-   */
-  async deriveKeyringAccount({
-    entropySource,
-    index,
-  }: {
-    entropySource: EntropySourceId;
-    index: number;
-  }): Promise<StellarKeyringAccount> {
-    return await this.#deriveAccount({ entropySource, index });
   }
 
   /**
@@ -120,23 +100,25 @@ export class AccountService {
    * Batch creates Stellar accounts with the given options.
    *
    * @param options - The parameters for batch account creation.
-   * @param options.entropySource - [Optional] The entropy source to use for derivation.
+   * @param options.entropySource - [Required] The entropy source to use for derivation.
    * @param options.fromIndex - [Required] The starting derivation index (inclusive).
    * @param options.toIndex - [Required] The ending derivation index (inclusive).
+   * @param options.walletResolver - [Required] A function, or promise for a function, to resolve the wallet address for a given index.
    * @returns A Promise that resolves to accounts in index order for the full requested range.
    * Existing accounts are reused and only missing accounts are created and persisted.
    */
   async batchCreate(options: {
-    entropySource?: EntropySourceId;
+    entropySource: EntropySourceId;
     fromIndex: number;
     toIndex: number;
+    walletResolver: WalletResolver | Promise<WalletResolver>;
   }): Promise<StellarKeyringAccount[]> {
-    const { fromIndex, toIndex } = options;
-    // MetaMask client is the only caller of this method.
-    // We don't add a mutex here; the caller should ensure requests are piped in order.
-    const accounts = await this.#accountsRepository.getAll();
-    const entropySource =
-      options.entropySource ?? (await getDefaultEntropySource());
+    const { fromIndex, toIndex, entropySource } = options;
+
+    const [accounts, walletResolver] = await Promise.all([
+      this.#accountsRepository.getAll(),
+      Promise.resolve(options.walletResolver),
+    ]);
 
     // 1. Index existing accounts in range by derivation index
     const existingAccountsByIndex = new Map<number, StellarKeyringAccount>();
@@ -150,11 +132,7 @@ export class AccountService {
       }
     }
 
-    // 2. Wallet resolver (single SLIP10 root — cheap repeated derivation per index)
-    const walletResolver =
-      await this.#walletService.getWalletResolver(entropySource);
-
-    // 3. Fill each index in range in derivation order; batchesAll preserves item order in its result.
+    // 2. Fill each index in range in derivation order; batchesAll preserves item order in its result.
     const rangeLength = Math.max(0, toIndex - fromIndex + 1);
     const rangeIndices = Array.from(
       { length: rangeLength },
@@ -307,26 +285,6 @@ export class AccountService {
       throw new AccountNotFoundException(accountId);
     }
     return account;
-  }
-
-  async #deriveAccount({
-    entropySource,
-    index,
-  }: {
-    entropySource: EntropySourceId;
-    index: number;
-  }): Promise<StellarKeyringAccount> {
-    const derivationPath = getDerivationPath(index);
-    const address = await this.#walletService.deriveAddress({
-      entropySource,
-      index,
-    });
-    return this.#toStellarKeyringAccount({
-      entropySource,
-      derivationPath,
-      index,
-      address,
-    });
   }
 
   #toStellarKeyringAccount({

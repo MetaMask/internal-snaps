@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -12,7 +15,6 @@ import type {
   TransactionInfo,
 } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network, Networks } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
 import trc10TransferMock from './mocks/trongrid/account-transactions/trc10-transfer.json';
@@ -142,7 +144,7 @@ async function withTransactionService<ReturnValue>(
 // Import simplified mock data (each file now contains only one transaction)
 
 describe('TransactionsService', () => {
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: 'test-account-id',
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
     type: 'eip155:eoa',
@@ -154,7 +156,7 @@ describe('TransactionsService', () => {
     index: 0,
   };
 
-  const mockAccount2: TronKeyringAccount = {
+  const mockAccount2: ExtendedKeyringAccount = {
     id: 'test-account-id-2',
     address: 'TFDP1vFeSYPT6FUznL7zUjhg5X7p2AA8vw',
     type: 'eip155:eoa',

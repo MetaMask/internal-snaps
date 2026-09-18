@@ -1,10 +1,10 @@
 import type { Transaction } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 import type { AssetEntity } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 
 export type UnencryptedStateValue = {
-  keyringAccounts: Record<string, TronKeyringAccount>;
+  keyringAccounts: Record<string, ExtendedKeyringAccount>;
   assets: Record<string, AssetEntity[]>;
   transactions: Record<string, Transaction[]>;
   mapInterfaceNameToId: Record<string, string>;
