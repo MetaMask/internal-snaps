@@ -1,6 +1,6 @@
 import { BIP44Node } from '@metamask/key-tree';
 import type { JsonBIP44Node, UnhardenedBIP32Node } from '@metamask/key-tree';
-import { hexToBytes } from '@metamask/utils';
+import { hexToBytes, remove0x } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
 
@@ -11,6 +11,16 @@ const DEFAULT_TRON_CHANGE_PATH = [`bip32:0'`, 'bip32:0'] as const;
 type TronBip44ChangeNode = Awaited<
   ReturnType<Awaited<ReturnType<typeof BIP44Node.fromJSON>>['derive']>
 >;
+
+/**
+ * Key material derived for one TRON account.
+ */
+export type DerivedTronKeypair = {
+  privateKeyBytes: Uint8Array;
+  publicKeyBytes: Uint8Array;
+  privateKeyHex: string;
+  address: string;
+};
 
 /**
  * Builds a one-segment BIP-32 path for deriving from the cached change node.
@@ -56,12 +66,7 @@ function tronAddressFromPublicKeyHex(publicKey: string): {
 function tronKeypairFromAddressNode(addressNode: {
   privateKey?: string;
   publicKey?: string;
-}): {
-  address: string;
-  privateKeyBytes: Uint8Array;
-  publicKeyBytes: Uint8Array;
-  privateKeyHex: string;
-} {
+}): DerivedTronKeypair {
   if (!addressNode.privateKey || !addressNode.publicKey) {
     throw new Error('Unable to derive private key');
   }
@@ -70,7 +75,7 @@ function tronKeypairFromAddressNode(addressNode: {
     addressNode.publicKey,
   );
   const privateKeyBytes = hexToBytes(addressNode.privateKey);
-  const privateKeyHex = addressNode.privateKey.slice(2);
+  const privateKeyHex = remove0x(addressNode.privateKey);
 
   return {
     address,
@@ -142,14 +147,7 @@ export async function createTronBip44AddressDeriver(
  */
 export async function createTronBip44KeypairDeriver(
   coinTypeNodeJson: JsonBIP44Node,
-): Promise<
-  (addressIndex: number) => Promise<{
-    address: string;
-    privateKeyBytes: Uint8Array;
-    publicKeyBytes: Uint8Array;
-    privateKeyHex: string;
-  }>
-> {
+): Promise<(addressIndex: number) => Promise<DerivedTronKeypair>> {
   try {
     const changeNode = await createTronBip44ChangeNode(coinTypeNodeJson);
 

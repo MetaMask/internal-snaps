@@ -30,11 +30,8 @@ import {
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
-import type {
-  AccountsService,
-  DerivedTronKeypair,
-  DerivedTronKeypairBatchResult,
-} from '../../services/accounts/AccountsService';
+import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
+import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type {
   NativeCaipAssetType,
@@ -91,18 +88,6 @@ type SigningRequest = {
   account: ExtendedKeyringAccount;
   message: string;
 };
-
-/**
- * Checks whether a batch derivation result contains derived key material.
- *
- * @param result - The derivation result to check.
- * @returns Whether the result contains a derived TRON keypair.
- */
-function isDerivedTronKeypair(
-  result: DerivedTronKeypairBatchResult,
-): result is DerivedTronKeypair {
-  return Object.hasOwn(result, 'privateKeyHex');
-}
 
 export class ClientRequestHandler {
   readonly #logger: Logger;
