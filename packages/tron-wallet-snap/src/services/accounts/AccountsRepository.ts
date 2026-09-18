@@ -148,9 +148,19 @@ export class AccountsRepository {
    * ordering, not input ordering.
    */
   async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
-    const idSet = new Set(ids.map((id) => id.toLowerCase()));
     const accounts = await this.getAll();
-    return accounts.filter((account) => idSet.has(account.id.toLowerCase()));
+    const normalizedIds = new Set<string>();
+
+    ids.forEach((id) => normalizedIds.add(id.toLowerCase()));
+
+    const matchedAccounts: ExtendedKeyringAccount[] = [];
+    accounts.forEach((account) => {
+      if (normalizedIds.has(account.id.toLowerCase())) {
+        matchedAccounts.push(account);
+      }
+    });
+
+    return matchedAccounts;
   }
 
   async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
@@ -172,7 +182,7 @@ export class AccountsRepository {
           [account.id]: account,
         });
 
-        if (!(account.id in added)) {
+        if (!Object.hasOwn(added, account.id)) {
           persistedAccount =
             findAccountByIndexKey(existing, getAccountIndexKey(account)) ??
             account;

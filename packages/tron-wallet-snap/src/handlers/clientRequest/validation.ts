@@ -1,7 +1,6 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
 import {
   parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
-  ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
   ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct,
   ProofOfOwnershipBatchResponseStruct as SignProofOfOwnershipBatchResponseStruct,
   UuidStruct,
@@ -19,7 +18,6 @@ import {
   optional,
   refine,
   string,
-  union,
 } from '@metamask/superstruct';
 import {
   CaipAssetTypeStruct,
@@ -444,22 +442,6 @@ export const SignProofOfOwnershipBatchRequestStruct = object({
   method: literal(ClientRequestMethod.SignProofOfOwnershipBatch),
   params: SignProofOfOwnershipBatchRequestParamsStruct,
 });
-
-/**
- * Validates a successful proof-of-ownership batch item response.
- */
-export const SignProofOfOwnershipBatchSuccessStruct = object({
-  accountId: string(),
-  signature: string(),
-});
-
-/**
- * Validates a proof-of-ownership batch item result.
- */
-export const SignProofOfOwnershipBatchItemResponseStruct = union([
-  SignProofOfOwnershipBatchSuccessStruct,
-  SignProofOfOwnershipBatchErrorStruct,
-]);
 
 /**
  * Response returned by `signProofOfOwnershipBatch`.

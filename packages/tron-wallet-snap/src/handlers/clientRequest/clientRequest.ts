@@ -89,6 +89,89 @@ type SigningRequest = {
   message: string;
 };
 
+type BatchSigningResult = SignProofOfOwnershipBatchResponse['results'][number];
+
+type SigningRequestValidation =
+  | {
+      status: 'valid';
+      signingRequest: SigningRequest;
+    }
+  | {
+      status: 'invalid';
+      result: BatchSigningResult;
+    };
+
+function getUniqueAccountIds(items: { accountId: string }[]): string[] {
+  return Array.from(new Set(items.map((item) => item.accountId)));
+}
+
+function getAccountsByNormalizedId(
+  accounts: ExtendedKeyringAccount[],
+): Map<string, ExtendedKeyringAccount> {
+  const accountsByNormalizedId = new Map<string, ExtendedKeyringAccount>();
+
+  accounts.forEach((account) => {
+    accountsByNormalizedId.set(account.id.toLowerCase(), account);
+  });
+
+  return accountsByNormalizedId;
+}
+
+function validateSigningRequest(
+  {
+    accountId,
+    message,
+  }: {
+    accountId: string;
+    message: string;
+  },
+  index: number,
+  accountsById: Map<string, ExtendedKeyringAccount>,
+): SigningRequestValidation {
+  const account = accountsById.get(accountId.toLowerCase());
+  if (account === undefined) {
+    return {
+      status: 'invalid',
+      result: {
+        accountId,
+        error: `Account not found: ${accountId}`,
+      },
+    };
+  }
+
+  try {
+    const { address: messageAddress } = parseProofOfOwnershipMessage(message);
+
+    if (messageAddress !== account.address) {
+      return {
+        status: 'invalid',
+        result: {
+          accountId,
+          error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${account.address})`,
+        },
+      };
+    }
+
+    return {
+      status: 'valid',
+      signingRequest: {
+        index,
+        accountId,
+        account,
+        message,
+      },
+    };
+  } catch (parseError) {
+    return {
+      status: 'invalid',
+      result: {
+        accountId,
+        error: normalizeError(parseError).message,
+      },
+    };
+  }
+}
+
 export class ClientRequestHandler {
   readonly #logger: Logger;
 
@@ -1216,54 +1299,26 @@ export class ClientRequestHandler {
     const {
       params: { items },
     } = request;
-    const uniqueAccountIds = [
-      ...new Set(items.map(({ accountId }) => accountId)),
-    ];
-    const accounts = await this.#accountsService.findByIds(uniqueAccountIds);
-    const accountsById = new Map(
-      accounts.map((account) => [account.id.toLowerCase(), account]),
+    const accounts = await this.#accountsService.findByIds(
+      getUniqueAccountIds(items),
     );
+    const accountsById = getAccountsByNormalizedId(accounts);
     const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
       items.length,
     );
     const signingRequests: SigningRequest[] = [];
     const accountsToDerive: ExtendedKeyringAccount[] = [];
 
-    items.forEach(({ accountId, message }, index) => {
-      const account = accountsById.get(accountId.toLowerCase());
-      if (!account) {
-        results[index] = {
-          accountId,
-          error: `Account not found: ${accountId}`,
-        };
+    items.forEach((item, index) => {
+      const validationResult = validateSigningRequest(item, index, accountsById);
+      if (validationResult.status === 'invalid') {
+        results[index] = validationResult.result;
         return;
       }
 
-      try {
-        const { address: messageAddress } =
-          parseProofOfOwnershipMessage(message);
-
-        if (messageAddress !== account.address) {
-          results[index] = {
-            accountId,
-            error: `Address in proof-of-ownership message (${messageAddress}) does not match signing account address (${account.address})`,
-          };
-          return;
-        }
-
-        signingRequests.push({
-          index,
-          accountId,
-          account,
-          message,
-        });
-        accountsToDerive.push(account);
-      } catch (parseError) {
-        results[index] = {
-          accountId,
-          error: normalizeError(parseError).message,
-        };
-      }
+      const { signingRequest } = validationResult;
+      signingRequests.push(signingRequest);
+      accountsToDerive.push(signingRequest.account);
     });
 
     const derivedKeypairs =
