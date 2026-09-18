@@ -58,6 +58,9 @@ export type SyncResult = {
 };
 
 export const TrackingSnapEvent = {
+  TransactionAdded: 'Transaction Added',
+  TransactionApproved: 'Transaction Approved',
+  TransactionRejected: 'Transaction Rejected',
   TransactionFinalized: 'Transaction Finalized',
   TransactionReceived: 'Transaction Received',
   TransactionReorged: 'Transaction Reorged',
@@ -247,6 +250,42 @@ export type SnapClient = {
     eventType: TrackingSnapEvent,
     account: BitcoinAccount,
     tx: WalletTx,
+    origin: string,
+  ): Promise<void>;
+
+  /**
+   * Track a "Transaction Added" event when a transaction confirmation is shown.
+   *
+   * Emitted before the transaction is broadcast, so it carries no transaction ID.
+   *
+   * @param account The account the transaction belongs to.
+   * @param origin The origin/source that triggered this event.
+   */
+  trackTransactionAdded(account: BitcoinAccount, origin: string): Promise<void>;
+
+  /**
+   * Track a "Transaction Approved" event when the user approves a transaction.
+   *
+   * Emitted before the transaction is broadcast, so it carries no transaction ID.
+   *
+   * @param account The account the transaction belongs to.
+   * @param origin The origin/source that triggered this event.
+   */
+  trackTransactionApproved(
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<void>;
+
+  /**
+   * Track a "Transaction Rejected" event when the user rejects a transaction.
+   *
+   * Emitted before the transaction is broadcast, so it carries no transaction ID.
+   *
+   * @param account The account the transaction belongs to.
+   * @param origin The origin/source that triggered this event.
+   */
+  trackTransactionRejected(
+    account: BitcoinAccount,
     origin: string,
   ): Promise<void>;
 

@@ -134,6 +134,162 @@ describe('SnapClientAdapter', () => {
     });
   });
 
+  describe('trackTransactionAdded', () => {
+    it('emits a Transaction Added event without a transaction id', async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      mockRequest.mockResolvedValue(undefined);
+
+      expect(
+        await snapClient.trackTransactionAdded(account, 'https://dapp.test'),
+      ).toBeUndefined();
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event: TrackingSnapEvent.TransactionAdded,
+            properties: {
+              origin: 'https://dapp.test',
+              message: 'Snap transaction added',
+              chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
+              account_type: 'bip122:p2wpkh',
+            },
+          },
+        },
+      });
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it("doesn't throw and logs when tracking fails", async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const trackingError = new Error('event tracking failed');
+      mockRequest.mockRejectedValue(trackingError);
+
+      expect(
+        await snapClient.trackTransactionAdded(account, 'metamask'),
+      ).toBeUndefined();
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to track event: Transaction Added',
+        trackingError,
+      );
+    });
+  });
+
+  describe('trackTransactionApproved', () => {
+    it('emits a Transaction Approved event without a transaction id', async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'testnet',
+        addressType: 'p2tr',
+      });
+      mockRequest.mockResolvedValue(undefined);
+
+      expect(
+        await snapClient.trackTransactionApproved(account, 'metamask'),
+      ).toBeUndefined();
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event: TrackingSnapEvent.TransactionApproved,
+            properties: {
+              origin: 'metamask',
+              message: 'Snap transaction approved',
+              chain_id_caip: 'bip122:000000000933ea01ad0ee984209779ba',
+              account_type: 'bip122:p2tr',
+            },
+          },
+        },
+      });
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it("doesn't throw and logs when tracking fails", async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const trackingError = new Error('event tracking failed');
+      mockRequest.mockRejectedValue(trackingError);
+
+      expect(
+        await snapClient.trackTransactionApproved(account, 'metamask'),
+      ).toBeUndefined();
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to track event: Transaction Approved',
+        trackingError,
+      );
+    });
+  });
+
+  describe('trackTransactionRejected', () => {
+    it('emits a Transaction Rejected event without a transaction id', async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      mockRequest.mockResolvedValue(undefined);
+
+      expect(
+        await snapClient.trackTransactionRejected(account, 'metamask'),
+      ).toBeUndefined();
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event: TrackingSnapEvent.TransactionRejected,
+            properties: {
+              origin: 'metamask',
+              message: 'Snap transaction rejected',
+              chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
+              account_type: 'bip122:p2wpkh',
+            },
+          },
+        },
+      });
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it("doesn't throw and logs when tracking fails", async () => {
+      const { snapClient, mockLogger, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const trackingError = new Error('event tracking failed');
+      mockRequest.mockRejectedValue(trackingError);
+
+      expect(
+        await snapClient.trackTransactionRejected(account, 'metamask'),
+      ).toBeUndefined();
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to track event: Transaction Rejected',
+        trackingError,
+      );
+    });
+  });
+
   describe('emitTrackingError', () => {
     it('sends the tracking error payload to the snap client', async () => {
       const { snapClient, mockRequest, mockTrackingLogger } = setupTest();
