@@ -1,4 +1,7 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -7,7 +10,6 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { trxToSun } from '../../utils/conversion';
 import { executeOnChainActions } from '../../utils/executeOnChainActions';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -46,7 +48,7 @@ export class StakingService {
     purpose,
     srNodeAddress,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     assetId: NativeCaipAssetType;
     amount: BigNumber;
     purpose: 'BANDWIDTH' | 'ENERGY';
@@ -90,7 +92,7 @@ export class StakingService {
     assetId,
     amount,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     assetId: StakedCaipAssetType;
     amount: BigNumber;
   }): Promise<void> {
@@ -155,7 +157,7 @@ export class StakingService {
     account,
     scope,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
   }): Promise<void> {
     this.#logger.info(
@@ -180,7 +182,7 @@ export class StakingService {
     account,
     scope,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
   }): Promise<void> {
     this.#logger.info(

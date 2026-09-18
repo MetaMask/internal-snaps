@@ -1,7 +1,10 @@
 import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
 import { KeyringEvent, TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { groupBy } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -16,7 +19,6 @@ import type {
   TransferAssetContractInfo,
 } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TransactionMapper } from './TransactionsMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { isSpam } from './utils/isSpam';
@@ -205,7 +207,7 @@ export class TransactionsService {
    */
   async fetchNewTransactionsForAccount(
     scope: Network,
-    account: TronKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<Transaction[]> {
     this.#logger.info(
       `Fetching new transactions for account ${account.address} on network ${scope}...`,
@@ -416,7 +418,7 @@ export class TransactionsService {
    */
   async #fetchSpotPricesForTokens(
     transactions: Transaction[],
-    account: TronKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<SpotPrices | undefined> {
     const tokenAssetTypes = new Set<string>();
     for (const tx of transactions) {
@@ -453,7 +455,9 @@ export class TransactionsService {
     }
   }
 
-  async findByAccounts(accounts: TronKeyringAccount[]): Promise<Transaction[]> {
+  async findByAccounts(
+    accounts: ExtendedKeyringAccount[],
+  ): Promise<Transaction[]> {
     const transactions = await Promise.all(
       accounts.map(async (account) =>
         this.#transactionsRepository.findByAccountId(account.id),

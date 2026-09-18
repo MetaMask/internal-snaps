@@ -13,7 +13,6 @@ import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AccountsService } from '../accounts';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
-import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
 import { SignatureMonitor } from './SignatureMonitor';
@@ -30,7 +29,6 @@ describe('SignatureMonitor', () => {
   let mockTransactionsService: TransactionsService;
   let mockAnalyticsService: AnalyticsService;
   let mockConnection: SolanaConnection;
-  let mockConfigProvider: ConfigProvider;
 
   const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNTS[0];
 
@@ -93,17 +91,12 @@ describe('SignatureMonitor', () => {
       })),
     } as unknown as SolanaConnection;
 
-    mockConfigProvider = {
-      getActiveNetworks: jest.fn().mockReturnValue([Network.Mainnet]),
-    } as unknown as ConfigProvider;
-
     signatureMonitor = new SignatureMonitor(
       mockSubscriptionService,
       mockAccountService,
       mockTransactionsService,
       mockAnalyticsService,
       mockConnection,
-      mockConfigProvider,
       mockLogger,
     );
   });

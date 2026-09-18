@@ -33,7 +33,8 @@ import {
   WebSocketConnectionService,
 } from './core/services';
 import { AnalyticsService } from './core/services/analytics/AnalyticsService';
-import { ConfigProvider } from './core/services/config';
+import { configProvider } from './core/services/config';
+import type { ConfigProvider } from './core/services/config';
 import { ConfirmationHandler } from './core/services/confirmation/ConfirmationHandler';
 import { SolanaConnection } from './core/services/connection/SolanaConnection';
 import { NameResolutionService } from './core/services/name-resolution/NameResolutionService';
@@ -73,8 +74,6 @@ export type SnapExecutionContext = {
   accountsSynchronizer: AccountsSynchronizer;
   tokenHelper: TokenHelper;
 };
-
-const configProvider = new ConfigProvider();
 
 const eventEmitter = new EventEmitter(logger);
 
@@ -189,7 +188,6 @@ const signatureMonitor = new SignatureMonitor(
   transactionsService,
   analyticsService,
   connection,
-  configProvider,
   logger,
 );
 

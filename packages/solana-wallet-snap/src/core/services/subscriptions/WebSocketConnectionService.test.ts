@@ -79,14 +79,14 @@ describe('WebSocketConnectionService', () => {
     } as unknown as AnalyticsService;
 
     mockConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         networks: mockNetworksConfig,
         subscriptions: {
           maxReconnectAttempts: 5,
           reconnectDelayMilliseconds: 1, // To speed up the tests
           closeConnectionsGracePeriodMilliseconds: 5000, // 5 seconds for testing
         },
-      }),
+      },
       getActiveNetworks: jest
         .fn()
         .mockResolvedValue([Network.Mainnet, Network.Devnet]),
