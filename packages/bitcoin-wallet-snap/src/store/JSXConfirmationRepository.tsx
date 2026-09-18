@@ -120,11 +120,16 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
       context,
     );
 
+    await this.#snapClient.trackTransactionAdded(account, origin);
+
     const confirmed =
       await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
+      await this.#snapClient.trackTransactionRejected(account, origin);
       throw new UserActionError('User canceled the confirmation');
     }
+
+    await this.#snapClient.trackTransactionApproved(account, origin);
   }
 
   async insertSignPsbt(
@@ -195,11 +200,16 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
       context,
     );
 
+    await this.#snapClient.trackTransactionAdded(account, origin);
+
     const confirmed =
       await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
+      await this.#snapClient.trackTransactionRejected(account, origin);
       throw new UserActionError('User canceled the confirmation');
     }
+
+    await this.#snapClient.trackTransactionApproved(account, origin);
   }
 
   async #getExchangeRate(
