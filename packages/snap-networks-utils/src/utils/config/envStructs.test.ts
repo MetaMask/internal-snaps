@@ -57,6 +57,19 @@ describe('defaultedUrlStruct', () => {
     expect(create('', struct)).toBe('https://fallback.example.com');
   });
 
+  it('trims whitespace from values', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
+
+    expect(create(' https://example.com ', struct)).toBe('https://example.com');
+  });
+
+  it('defaults to the fallback for whitespace-only values', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
+
+    expect(create(' ', struct)).toBe('https://fallback.example.com');
+    expect(create('   ', struct)).toBe('https://fallback.example.com');
+  });
+
   it('rejects invalid URLs', () => {
     const struct = defaultedUrlStruct('https://fallback.example.com');
 

@@ -46,19 +46,22 @@ export const commaSeparatedListOf = <Type>(
   coerce(array(item), string(), (value: string) => value.split(','));
 
 /**
- * Create a struct for a URL environment variable with a fallback: unset and
- * empty values (the build-time injection default) resolve to the fallback,
- * and invalid values are rejected.
+ * Create a struct for a URL environment variable with a fallback: unset,
+ * empty, and whitespace-only values (the build-time injection default)
+ * resolve to the fallback, surrounding whitespace is trimmed, and invalid
+ * values are rejected.
  *
- * @param fallback - The URL to use when the variable is unset or empty.
+ * @param fallback - The URL to use when the variable is unset, empty, or
+ * whitespace-only.
  * @returns A struct that parses to the URL.
  * @example
  * const EsploraUrlStruct = defaultedUrlStruct('https://blockstream.info/api');
  */
 export const defaultedUrlStruct = (fallback: string): Struct<string> =>
-  coerce(defaulted(UrlStruct, fallback), string(), (value: string) =>
-    value === '' ? undefined : value,
-  );
+  coerce(defaulted(UrlStruct, fallback), string(), (value: string) => {
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  });
 
 /**
  * Create a struct that parses an integer from a string, with a minimum value
