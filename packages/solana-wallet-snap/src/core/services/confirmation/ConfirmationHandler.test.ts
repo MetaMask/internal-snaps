@@ -20,9 +20,12 @@ jest.mock(
   }),
 );
 
-jest.mock('../../../features/confirmation/views/ConfirmSignMessage/render', () => ({
-  render: jest.fn(),
-}));
+jest.mock(
+  '../../../features/confirmation/views/ConfirmSignMessage/render',
+  () => ({
+    render: jest.fn(),
+  }),
+);
 
 jest.mock('../../../features/confirmation/views/ConfirmSignIn/render', () => ({
   render: jest.fn(),
