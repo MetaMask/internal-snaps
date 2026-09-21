@@ -337,6 +337,7 @@ describe('ClientRequestHandler', () => {
 
       mockSnapClient = {
         scheduleBackgroundEvent: jest.fn(),
+        trackTransactionSubmitted: jest.fn(),
       } as unknown as jest.Mocked<SnapClient>;
       mockStakingService = {} as unknown as jest.Mocked<StakingService>;
       mockConfirmationHandler =
@@ -1518,6 +1519,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     mockSnapClient = {
       scheduleBackgroundEvent: jest.fn(),
+      trackTransactionSubmitted: jest.fn(),
     } as unknown as jest.Mocked<SnapClient>;
 
     mockStakingService = {} as unknown as jest.Mocked<StakingService>;
@@ -1638,6 +1640,78 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     const result = await clientRequestHandler.handle(request as JsonRpcRequest);
 
     expect(result).toStrictEqual({ transactionId });
+  });
+
+  it('emits Transaction Submitted before scheduling the background tracker', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+
+    mockAccountsService.findByIdOrThrow.mockResolvedValue(
+      createMockExtendedKeyringAccount({
+        type: 'tron:eoa',
+        scopes: [scope],
+      }),
+    );
+
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+      privateKeyBytes: new Uint8Array(),
+      publicKeyBytes: new Uint8Array(),
+    });
+
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: {
+              owner_address: CORRECT_OWNER_ADDRESS_HEX,
+            },
+          },
+        },
+      ],
+    });
+
+    await clientRequestHandler.handle(request as JsonRpcRequest);
+
+    expect(mockSnapClient.trackTransactionSubmitted).toHaveBeenCalledWith({
+      origin: 'MetaMask',
+      accountType: 'tron:eoa',
+      chainIdCaip: scope,
+    });
+
+    expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId: transactionId,
+        scope,
+        accountIds: [TEST_ACCOUNT_ID],
+        attempt: 0,
+      },
+      duration: TRACK_TX_INTERVAL,
+    });
+
+    expect(
+      mockSnapClient.trackTransactionSubmitted.mock
+        .invocationCallOrder[0] as number,
+    ).toBeLessThan(
+      mockSnapClient.scheduleBackgroundEvent.mock
+        .invocationCallOrder[0] as number,
+    );
   });
 });
 

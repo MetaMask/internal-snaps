@@ -294,8 +294,16 @@ export class ClientRequestHandler {
     await this.#transactionsService.save(pendingTransaction);
 
     /**
-     * Track transaction after a transaction
+     * Origin is 'MetaMask' because client requests come from MetaMask's own
+     * unified send flow, matching the unified send path and the background
+     * transaction tracker.
      */
+    await this.#snapClient.trackTransactionSubmitted({
+      origin: 'MetaMask',
+      accountType: account.type,
+      chainIdCaip: scope,
+    });
+
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.TrackTransaction,
       params: {
