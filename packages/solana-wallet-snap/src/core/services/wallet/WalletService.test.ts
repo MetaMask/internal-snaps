@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import type { AnalyticsService } from '@metamask/snap-networks-utils';
 
 import { METAMASK_ORIGIN, Network } from '../../constants/solana';
 import {
@@ -17,7 +18,6 @@ import {
 } from '../../test/mocks/utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
 import { MOCK_EXECUTION_SCENARIOS } from '../signer/mocks/scenarios';
 import type { Signer } from '../signer/Signer';
@@ -72,7 +72,7 @@ describe('WalletService', () => {
     );
 
     mockAnalyticsService = {
-      trackEventTransactionSubmitted: jest.fn(),
+      trackTransactionSubmitted: jest.fn(),
     } as unknown as AnalyticsService;
 
     service = new WalletService(
@@ -379,9 +379,10 @@ describe('WalletService', () => {
           );
 
           expect(
-            mockAnalyticsService.trackEventTransactionSubmitted,
-          ).toHaveBeenCalledWith(fromAccount, signature, {
-            scope,
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith({
+            accountType: fromAccount.type,
+            chainIdCaip: scope,
             origin: 'https://metamask.io',
           });
         });

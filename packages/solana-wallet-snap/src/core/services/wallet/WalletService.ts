@@ -2,6 +2,7 @@ import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
 import type {
+  AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
@@ -37,7 +38,6 @@ import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
@@ -333,11 +333,11 @@ export class WalletService {
       sendConfig,
     );
 
-    await this.#analyticsService.trackEventTransactionSubmitted(
-      account,
-      signature,
-      { scope, origin },
-    );
+    await this.#analyticsService.trackTransactionSubmitted({
+      origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    });
 
     await this.#signatureMonitor.monitor(
       signature,

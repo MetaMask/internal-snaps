@@ -1,11 +1,10 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
 import { trackError } from '../../utils/errors';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import { TransactionScanService } from './TransactionScan';
 import { ScanStatus, SecurityAlertResponse } from './types';
 
@@ -30,8 +29,8 @@ describe('TransactionScan', () => {
     } as unknown as Logger;
 
     mockAnalyticsService = {
-      trackEventSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
-      trackEventSecurityAlertDetected: jest.fn().mockResolvedValue(undefined),
+      trackSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
+      trackSecurityAlertDetected: jest.fn().mockResolvedValue(undefined),
     } as unknown as AnalyticsService;
 
     transactionScanService = new TransactionScanService(
@@ -119,14 +118,14 @@ describe('TransactionScan', () => {
 
       // hasSecurityAlerts = false for Benign response
       expect(
-        mockAnalyticsService.trackEventSecurityScanCompleted,
-      ).toHaveBeenCalledWith(
-        mockAccount,
-        'https://metamask.io',
-        Network.Mainnet,
-        ScanStatus.SUCCESS,
-        false,
-      );
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
+        origin: 'https://metamask.io',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        scanStatus: ScanStatus.SUCCESS,
+        hasSecurityAlerts: false,
+      });
     });
 
     it('tracks security alert when malicious transaction is detected', async () => {
@@ -168,25 +167,26 @@ describe('TransactionScan', () => {
 
       // hasSecurityAlerts = true for Warning response
       expect(
-        mockAnalyticsService.trackEventSecurityScanCompleted,
-      ).toHaveBeenCalledWith(
-        mockAccount,
-        'https://metamask.io',
-        Network.Mainnet,
-        ScanStatus.SUCCESS,
-        true,
-      );
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
+        origin: 'https://metamask.io',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        scanStatus: ScanStatus.SUCCESS,
+        hasSecurityAlerts: true,
+      });
 
       expect(
-        mockAnalyticsService.trackEventSecurityAlertDetected,
-      ).toHaveBeenCalledWith(
-        mockAccount,
-        'https://metamask.io',
-        Network.Mainnet,
-        SecurityAlertResponse.Warning,
-        'transfer_farming',
-        "Substantial transfer of the account's assets to untrusted entities",
-      );
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).toHaveBeenCalledWith({
+        origin: 'https://metamask.io',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        securityAlertResponse: SecurityAlertResponse.Warning,
+        securityAlertReason: 'transfer_farming',
+        securityAlertDescription:
+          "Substantial transfer of the account's assets to untrusted entities",
+      });
     });
 
     it('tracks error when scan fails and account is provided', async () => {
@@ -206,14 +206,14 @@ describe('TransactionScan', () => {
       });
 
       expect(
-        mockAnalyticsService.trackEventSecurityScanCompleted,
-      ).toHaveBeenCalledWith(
-        mockAccount,
-        'https://metamask.io',
-        Network.Mainnet,
-        ScanStatus.ERROR,
-        false,
-      );
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
+        origin: 'https://metamask.io',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        scanStatus: ScanStatus.ERROR,
+        hasSecurityAlerts: false,
+      });
     });
   });
 
@@ -256,15 +256,16 @@ describe('TransactionScan', () => {
       });
 
       expect(
-        mockAnalyticsService.trackEventSecurityAlertDetected,
-      ).toHaveBeenCalledWith(
-        mockAccount,
-        'https://metamask.io',
-        Network.Mainnet,
-        SecurityAlertResponse.Warning,
-        'transfer_farming',
-        "Substantial transfer of the account's assets to untrusted entities",
-      );
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).toHaveBeenCalledWith({
+        origin: 'https://metamask.io',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        securityAlertResponse: SecurityAlertResponse.Warning,
+        securityAlertReason: 'transfer_farming',
+        securityAlertDescription:
+          "Substantial transfer of the account's assets to untrusted entities",
+      });
     });
 
     it('returns fallback description for unknown reasons', async () => {
@@ -305,15 +306,15 @@ describe('TransactionScan', () => {
       });
 
       expect(
-        mockAnalyticsService.trackEventSecurityAlertDetected,
-      ).toHaveBeenCalledWith(
-        mockAccount,
-        'https://metamask.io',
-        Network.Mainnet,
-        SecurityAlertResponse.Warning,
-        'unknown_reason',
-        'Security alert: unknown_reason',
-      );
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).toHaveBeenCalledWith({
+        origin: 'https://metamask.io',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        securityAlertResponse: SecurityAlertResponse.Warning,
+        securityAlertReason: 'unknown_reason',
+        securityAlertDescription: 'Security alert: unknown_reason',
+      });
     });
   });
 });

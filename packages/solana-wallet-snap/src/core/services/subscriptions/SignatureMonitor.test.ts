@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
+import type { AnalyticsService } from '@metamask/snap-networks-utils';
 
 import type {
   ConnectionRecoveryHandler,
@@ -12,7 +13,6 @@ import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-ac
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AccountsService } from '../accounts';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
 import { SignatureMonitor } from './SignatureMonitor';
@@ -41,6 +41,9 @@ describe('SignatureMonitor', () => {
 
   const mockTransaction = {
     id: signature,
+    chain: network,
+    status: 'confirmed',
+    type: 'send',
   } as Transaction;
 
   let notificationHandlers: SignatureNotificationHandler[] = [];
@@ -77,8 +80,8 @@ describe('SignatureMonitor', () => {
     } as unknown as TransactionsService;
 
     mockAnalyticsService = {
-      trackEventTransactionFinalized: jest.fn(),
-      trackEventTransactionSubmitted: jest.fn(),
+      trackTransactionFinalized: jest.fn(),
+      trackTransactionSubmitted: jest.fn(),
     } as unknown as AnalyticsService;
 
     mockConnection = {
@@ -178,7 +181,7 @@ describe('SignatureMonitor', () => {
       );
 
       expect(
-        mockAnalyticsService.trackEventTransactionSubmitted,
+        mockAnalyticsService.trackTransactionSubmitted,
       ).not.toHaveBeenCalled();
 
       expect(mockSubscriptionService.unsubscribe).toHaveBeenCalledWith(
@@ -216,10 +219,13 @@ describe('SignatureMonitor', () => {
       );
 
       expect(
-        mockAnalyticsService.trackEventTransactionFinalized,
-      ).toHaveBeenCalledWith(mockAccount, mockTransaction, {
+        mockAnalyticsService.trackTransactionFinalized,
+      ).toHaveBeenCalledWith({
         origin,
-        scope: network,
+        accountType: mockAccount.type,
+        chainIdCaip: mockTransaction.chain,
+        transactionStatus: mockTransaction.status,
+        transactionType: mockTransaction.type,
       });
 
       expect(mockSubscriptionService.unsubscribe).toHaveBeenCalledWith(
@@ -280,9 +286,7 @@ describe('SignatureMonitor', () => {
 
       expect(mockTransactionsService.fetchBySignature).toHaveBeenCalled();
       expect(mockTransactionsService.save).toHaveBeenCalled();
-      expect(
-        mockAnalyticsService.trackEventTransactionFinalized,
-      ).toHaveBeenCalled();
+      expect(mockAnalyticsService.trackTransactionFinalized).toHaveBeenCalled();
     });
   });
 
@@ -314,7 +318,7 @@ describe('SignatureMonitor', () => {
     expect(mockTransactionsService.fetchBySignature).not.toHaveBeenCalled();
     expect(mockTransactionsService.save).not.toHaveBeenCalled();
     expect(
-      mockAnalyticsService.trackEventTransactionFinalized,
+      mockAnalyticsService.trackTransactionFinalized,
     ).not.toHaveBeenCalled();
   });
 });

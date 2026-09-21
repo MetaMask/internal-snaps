@@ -1,4 +1,8 @@
-import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type {
   WebSocketCloseEvent,
   WebSocketEvent,
@@ -13,7 +17,6 @@ import type { EventEmitter } from '../../../infrastructure';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import { getClientStatus } from '../../utils/interface';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
@@ -316,11 +319,11 @@ export class WebSocketConnectionService {
     }
 
     // Track an event
-    await this.#analyticsService.trackEventWebSocketConnectionClosedNotCleanly(
+    await this.#analyticsService.trackWebSocketConnectionClosedNotCleanly({
       origin,
       code,
       reason,
-    );
+    });
 
     await this.#attemptReconnect(network.caip2Id);
   }

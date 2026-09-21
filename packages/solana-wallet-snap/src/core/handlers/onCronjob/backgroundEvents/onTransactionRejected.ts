@@ -38,7 +38,11 @@ export const onTransactionRejected: OnCronjobHandler = async ({ request }) => {
 
     const account = await keyring.getAccountOrThrow(accountId);
 
-    await analyticsService.trackEventTransactionRejected(account, metadata);
+    await analyticsService.trackTransactionRejected({
+      origin: metadata.origin,
+      accountType: account.type,
+      chainIdCaip: metadata.scope,
+    });
   } catch (error) {
     logger.error(error);
     throw new InternalError(error as string) as Error;
