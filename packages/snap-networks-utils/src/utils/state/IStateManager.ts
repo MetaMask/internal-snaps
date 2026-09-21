@@ -17,6 +17,14 @@ export type IStateManager<TStateValue extends Record<string, Serializable>> = {
   getKey<TResponse extends Serializable>(
     key: string,
   ): Promise<TResponse | undefined>;
+
+  /**
+   * Gets the values of the passed keys in the state object.
+   * The keys are the JSON paths to the values to get.
+   *
+   * @returns The values of the keys, or undefined if the keys do not exist.
+   */
+  getKeys(keys: string[]): Promise<Record<string, Serializable>>;
   /**
    * Sets the value of the passed key in the state object.
    * The key is a JSON path to the value to set.
