@@ -139,6 +139,12 @@ export class ConfirmationHandler {
     );
     assertTransactionStructure(rawData);
 
+    await this.#snapClient.trackTransactionAdded({
+      origin: request.origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    });
+
     const result = await renderConfirmSignTransaction(
       request,
       account,
@@ -146,6 +152,20 @@ export class ConfirmationHandler {
     );
 
     await this.#clearInterfaceId(CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME);
+
+    if (result === true) {
+      await this.#snapClient.trackTransactionApproved({
+        origin: request.origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+      });
+    } else {
+      await this.#snapClient.trackTransactionRejected({
+        origin: request.origin,
+        accountType: account.type,
+        chainIdCaip: scope,
+      });
+    }
 
     return result === true;
   }

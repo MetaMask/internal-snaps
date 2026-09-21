@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` for `signTransaction` confirmations, so dApp-initiated transaction confirmations are no longer missing from transaction analytics ([#332](https://github.com/MetaMask/internal-snaps/pull/332))
+  - Only keyring `signTransaction` confirmations were affected. The unified send flow already emitted these events, and `signMessage` continues not to emit them because it is not a transaction.
+
 ### Changed
 
 - **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
