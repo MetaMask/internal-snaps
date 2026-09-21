@@ -44,7 +44,7 @@ describe('SignatureMonitor', () => {
     chain: network,
     status: 'confirmed',
     type: 'send',
-  } as Transaction;
+  } as unknown as Transaction;
 
   let notificationHandlers: SignatureNotificationHandler[] = [];
   let connectionRecoveryHandlers: ConnectionRecoveryHandler[] = [];
