@@ -318,11 +318,12 @@ export class WebSocketConnectionService {
       return;
     }
 
-    // Track an event
+    // Track an event. The client may omit `code` and `reason`, but analytics
+    // properties must be JSON-serializable, so fall back to explicit values.
     await this.#analyticsService.trackWebSocketConnectionClosedNotCleanly({
       origin,
-      code,
-      reason,
+      code: code ?? 0,
+      reason: reason ?? null,
     });
 
     await this.#attemptReconnect(network.caip2Id);

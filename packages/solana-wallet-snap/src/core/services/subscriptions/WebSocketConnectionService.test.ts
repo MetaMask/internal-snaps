@@ -462,8 +462,8 @@ describe('WebSocketConnectionService', () => {
             mockAnalyticsService.trackWebSocketConnectionClosedNotCleanly,
           ).toHaveBeenCalledWith({
             origin: 'wss://some-mock-url.com',
-            code: undefined,
-            reason: undefined,
+            code: 0,
+            reason: null,
           });
         });
       });
