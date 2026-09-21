@@ -44,6 +44,27 @@ const mockSnapRequest = jest.fn();
 
 const MOCK_ORIGIN = 'https://metamask.io';
 
+/**
+ * The shape of a single `snap_scheduleBackgroundEvent` call, shared by every
+ * transaction lifecycle event.
+ */
+type ScheduledEventCall = {
+  method: string;
+  params: {
+    duration: string;
+    request: {
+      method: string;
+      params: {
+        accountId: string;
+        metadata: {
+          scope: SolanaKeyringRequest['scope'];
+          origin: string;
+        };
+      };
+    };
+  };
+};
+
 describe('ConfirmationHandler', () => {
   let confirmationHandler: ConfirmationHandler;
 
@@ -66,6 +87,31 @@ describe('ConfirmationHandler', () => {
       ([request]: [{ params: { request: { method: string } } }]) =>
         request.params.request.method,
     );
+
+  /**
+   * The full `snap_scheduleBackgroundEvent` call expected for a given lifecycle
+   * event. Every event shares one payload shape, so asserting against this
+   * keeps `Added` covered exactly like the terminal events.
+   *
+   * @param method - The lifecycle event method name.
+   * @returns The expected `snap.request` call.
+   */
+  const expectedScheduleCall = (method: string): ScheduledEventCall => ({
+    method: 'snap_scheduleBackgroundEvent',
+    params: {
+      duration: 'PT1S',
+      request: {
+        method,
+        params: {
+          accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          metadata: {
+            scope: mockTransactionRequest.scope,
+            origin: MOCK_ORIGIN,
+          },
+        },
+      },
+    },
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -110,27 +156,18 @@ describe('ConfirmationHandler', () => {
       expect(mockRenderConfirmTransactionRequest).toHaveBeenCalledWith(
         expect.objectContaining({ method }),
       );
-      expect(getScheduledMethods()).toStrictEqual([
-        ScheduleBackgroundEventMethod.OnTransactionAdded,
-        ScheduleBackgroundEventMethod.OnTransactionApproved,
+      expect(mockSnapRequest.mock.calls).toStrictEqual([
+        [
+          expectedScheduleCall(
+            ScheduleBackgroundEventMethod.OnTransactionAdded,
+          ),
+        ],
+        [
+          expectedScheduleCall(
+            ScheduleBackgroundEventMethod.OnTransactionApproved,
+          ),
+        ],
       ]);
-
-      expect(mockSnapRequest).toHaveBeenCalledWith({
-        method: 'snap_scheduleBackgroundEvent',
-        params: {
-          duration: 'PT1S',
-          request: {
-            method: ScheduleBackgroundEventMethod.OnTransactionApproved,
-            params: {
-              accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
-              metadata: {
-                scope: MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST.params.scope,
-                origin: MOCK_ORIGIN,
-              },
-            },
-          },
-        },
-      });
     });
 
     it('schedules Added then Rejected and returns false when the user cancels', async () => {
@@ -142,27 +179,18 @@ describe('ConfirmationHandler', () => {
       );
 
       expect(isConfirmed).toBe(false);
-      expect(getScheduledMethods()).toStrictEqual([
-        ScheduleBackgroundEventMethod.OnTransactionAdded,
-        ScheduleBackgroundEventMethod.OnTransactionRejected,
+      expect(mockSnapRequest.mock.calls).toStrictEqual([
+        [
+          expectedScheduleCall(
+            ScheduleBackgroundEventMethod.OnTransactionAdded,
+          ),
+        ],
+        [
+          expectedScheduleCall(
+            ScheduleBackgroundEventMethod.OnTransactionRejected,
+          ),
+        ],
       ]);
-
-      expect(mockSnapRequest).toHaveBeenCalledWith({
-        method: 'snap_scheduleBackgroundEvent',
-        params: {
-          duration: 'PT1S',
-          request: {
-            method: ScheduleBackgroundEventMethod.OnTransactionRejected,
-            params: {
-              accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
-              metadata: {
-                scope: MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST.params.scope,
-                origin: MOCK_ORIGIN,
-              },
-            },
-          },
-        },
-      });
     });
 
     /**
