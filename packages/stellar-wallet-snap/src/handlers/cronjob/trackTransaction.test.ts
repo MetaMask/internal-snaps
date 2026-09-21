@@ -43,7 +43,9 @@ describe('TrackTransactionHandler', () => {
   beforeEach(() => {
     jest.mocked(scheduleBackgroundEvent).mockClear();
     jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
-    jest.spyOn(analyticsService, 'trackTransactionFinalized').mockResolvedValue();
+    jest
+      .spyOn(analyticsService, 'trackTransactionFinalized')
+      .mockResolvedValue();
   });
 
   function createNetworkTransaction(status: TransactionStatus): Transaction {
