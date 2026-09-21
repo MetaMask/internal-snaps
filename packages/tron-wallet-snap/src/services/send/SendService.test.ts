@@ -13,6 +13,7 @@ import {
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
+import { analyticsService } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { SendService } from './SendService';
@@ -108,9 +109,12 @@ describe('SendService', () => {
       };
 
       mockSnapClient = {
-        trackTransactionSubmitted: jest.fn(),
         scheduleBackgroundEvent: jest.fn(),
       };
+
+      jest
+        .spyOn(analyticsService, 'trackTransactionSubmitted')
+        .mockResolvedValue();
 
       mockTransactionExpirationRefresherService = {
         ensureFreshMetadata: jest.fn(
@@ -156,7 +160,7 @@ describe('SendService', () => {
           signature: ['test-signature'],
         }),
       );
-      expect(mockSnapClient.trackTransactionSubmitted).toHaveBeenCalledWith({
+      expect(analyticsService.trackTransactionSubmitted).toHaveBeenCalledWith({
         origin: 'MetaMask',
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
@@ -334,7 +338,6 @@ describe('SendService', () => {
 
       mockSnapClient = {
         scheduleBackgroundEvent: jest.fn(),
-        trackTransactionSubmitted: jest.fn(),
       };
 
       mockTransactionExpirationRefresherService = {

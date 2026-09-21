@@ -20,6 +20,7 @@ import { FetchStatus } from '../../types/snap';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { analyticsService } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
 
@@ -916,9 +917,7 @@ describe('CronHandler', () => {
 
     type WithTrackTransactionCronHandlerCallback<ReturnValue> = (payload: {
       cronHandler: CronHandler;
-      mockSnapClient: MockSnapClient & {
-        trackTransactionFinalized: jest.Mock;
-      };
+      mockSnapClient: MockSnapClient;
       mockAccountsService: MockAccountsService;
       mockTronHttpClient: jest.Mocked<
         Pick<TronHttpClient, 'getTransactionInfoById'>
@@ -936,8 +935,10 @@ describe('CronHandler', () => {
     ): Promise<ReturnValue> {
       const mockSnapClient = {
         ...buildMockSnapClient(null),
-        trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
       };
+      jest
+        .spyOn(analyticsService, 'trackTransactionFinalized')
+        .mockResolvedValue();
       const mockAccountsService: MockAccountsService = {
         findByIds: jest.fn(),
         synchronize: jest.fn(),
@@ -1019,13 +1020,13 @@ describe('CronHandler', () => {
               method: BackgroundEventMethod.SynchronizeSelectedAccounts,
             }),
           );
-          expect(mockSnapClient.trackTransactionFinalized).toHaveBeenCalledWith(
-            {
-              origin: 'MetaMask',
-              accountType: mockAccount.type,
-              chainIdCaip: Network.Mainnet,
-            },
-          );
+          expect(
+            analyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: 'MetaMask',
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          });
         },
       );
     });
@@ -1083,7 +1084,7 @@ describe('CronHandler', () => {
             mockAccount,
           ]);
           expect(
-            mockSnapClient.trackTransactionFinalized,
+            analyticsService.trackTransactionFinalized,
           ).not.toHaveBeenCalled();
         },
       );
@@ -1118,7 +1119,7 @@ describe('CronHandler', () => {
             mockAccount,
           ]);
           expect(
-            mockSnapClient.trackTransactionFinalized,
+            analyticsService.trackTransactionFinalized,
           ).not.toHaveBeenCalled();
         },
       );

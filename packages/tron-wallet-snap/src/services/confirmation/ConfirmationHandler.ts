@@ -24,6 +24,7 @@ import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/v
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { analyticsService } from '../../utils/analytics';
 import { formatOrigin } from '../../utils/formatOrigin';
 import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
@@ -145,7 +146,7 @@ export class ConfirmationHandler {
       chainIdCaip: scope,
     };
 
-    await this.#snapClient.trackTransactionAdded(trackingProperties);
+    await analyticsService.trackTransactionAdded(trackingProperties);
 
     const result = await renderConfirmSignTransaction(
       request,
@@ -156,9 +157,9 @@ export class ConfirmationHandler {
     await this.#clearInterfaceId(CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME);
 
     if (result === true) {
-      await this.#snapClient.trackTransactionApproved(trackingProperties);
+      await analyticsService.trackTransactionApproved(trackingProperties);
     } else {
-      await this.#snapClient.trackTransactionRejected(trackingProperties);
+      await analyticsService.trackTransactionRejected(trackingProperties);
     }
 
     return result === true;
@@ -192,7 +193,7 @@ export class ConfirmationHandler {
     };
 
     // Track Transaction Added event
-    await this.#snapClient.trackTransactionAdded(trackingProperties);
+    await analyticsService.trackTransactionAdded(trackingProperties);
 
     const result = await renderConfirmTransactionRequest(
       this.#snapClient,
@@ -214,9 +215,9 @@ export class ConfirmationHandler {
 
     // Track Transaction Rejected event if user rejects
     if (result === true) {
-      await this.#snapClient.trackTransactionApproved(trackingProperties);
+      await analyticsService.trackTransactionApproved(trackingProperties);
     } else {
-      await this.#snapClient.trackTransactionRejected(trackingProperties);
+      await analyticsService.trackTransactionRejected(trackingProperties);
     }
 
     return result === true;

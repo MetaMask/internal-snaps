@@ -15,9 +15,8 @@ describe('TransactionScanService', () => {
   });
 
   const createMockSnapClient = (): jest.Mocked<
-    Pick<SnapClient, 'trackSecurityScanCompleted' | 'trackError'>
+    Pick<SnapClient, 'trackError'>
   > => ({
-    trackSecurityScanCompleted: jest.fn(),
     trackError: jest.fn(),
   });
 

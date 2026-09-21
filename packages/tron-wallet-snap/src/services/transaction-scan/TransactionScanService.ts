@@ -13,6 +13,7 @@ import type {
 } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
+import { analyticsService } from '../../utils/analytics';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -118,7 +119,7 @@ export class TransactionScanService {
 
         // Track error if account is provided
         if (account) {
-          await this.#snapClient.trackSecurityScanCompleted({
+          await analyticsService.trackSecurityScanCompleted({
             origin,
             accountType: account.type,
             chainIdCaip: scope,
@@ -145,7 +146,7 @@ export class TransactionScanService {
         );
 
         // Track scan completed
-        await this.#snapClient.trackSecurityScanCompleted({
+        await analyticsService.trackSecurityScanCompleted({
           origin,
           accountType: account.type,
           chainIdCaip: scope,
@@ -162,7 +163,7 @@ export class TransactionScanService {
             ? (scan.validation.type as SecurityAlertResponse)
             : SecurityAlertResponse.Warning;
 
-          await this.#snapClient.trackSecurityAlertDetected({
+          await analyticsService.trackSecurityAlertDetected({
             origin,
             accountType: account.type,
             chainIdCaip: scope,
@@ -182,7 +183,7 @@ export class TransactionScanService {
 
       // Track error if account is provided
       if (account) {
-        await this.#snapClient.trackSecurityScanCompleted({
+        await analyticsService.trackSecurityScanCompleted({
           origin,
           accountType: account.type,
           chainIdCaip: scope,

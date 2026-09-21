@@ -26,6 +26,7 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { analyticsService } from '../../utils/analytics';
 
 export const CronjobMethod = {
   ContinuouslySynchronizeSelectedAccounts:
@@ -728,7 +729,7 @@ export class CronHandler {
       });
 
       // Track Transaction Finalized event now that transaction is confirmed
-      await this.#snapClient.trackTransactionFinalized({
+      await analyticsService.trackTransactionFinalized({
         origin: 'MetaMask',
         accountType: senderAccount.type,
         chainIdCaip: scope,

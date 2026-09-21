@@ -10,6 +10,7 @@ import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
+import { analyticsService } from '../../utils/analytics';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -420,7 +421,7 @@ export class SendService {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
 
-    await this.#snapClient.trackTransactionSubmitted({
+    await analyticsService.trackTransactionSubmitted({
       origin,
       accountType: account.type,
       chainIdCaip: scope,
