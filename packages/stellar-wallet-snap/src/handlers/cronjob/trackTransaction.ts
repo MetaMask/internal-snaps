@@ -12,11 +12,8 @@ import type { NetworkService } from '../../services/network';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { isCompletedTransactionStatus } from '../../services/transaction/utils';
 import { trackError } from '../../utils';
-import {
-  Duration,
-  scheduleBackgroundEvent,
-  trackTransactionFinalized,
-} from '../../utils/snap';
+import { analyticsService } from '../../utils/analytics';
+import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import type {
   TrackTransactionJsonRpcRequest,
   TrackTransactionParams,
@@ -191,7 +188,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       return;
     }
 
-    await trackTransactionFinalized({
+    await analyticsService.trackTransactionFinalized({
       origin: METAMASK_ORIGIN,
       accountType: senderAccount.type,
       chainIdCaip: scope,

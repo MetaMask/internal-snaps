@@ -31,8 +31,8 @@ import { KeyringTransactionType } from '../../services/transaction/KeyringTransa
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import { toCaip19ClassicAssetId, toDisplayBalance } from '../../utils';
+import { analyticsService } from '../../utils/analytics';
 import { logger } from '../../utils/logger';
-import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
 import { ClientRequestMethod } from './api';
@@ -133,7 +133,7 @@ describe('SignAndSendTransactionHandler', () => {
     });
 
     const trackTransactionSubmittedSpy = jest.spyOn(
-      snapUtils,
+      analyticsService,
       'trackTransactionSubmitted',
     );
 

@@ -14,12 +14,9 @@ import {
 import { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
 import { Transaction } from '../../services/transaction/Transaction';
+import { analyticsService } from '../../utils/analytics';
 import { logger, noOpLogger } from '../../utils/logger';
-import {
-  Duration,
-  scheduleBackgroundEvent,
-  trackTransactionFinalized,
-} from '../../utils/snap';
+import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import { BackgroundEventMethod } from './api';
 import { TrackTransactionHandler } from './trackTransaction';
 
@@ -29,7 +26,6 @@ jest.mock('../../utils/snap', () => {
   return {
     ...actual,
     scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
-    trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
     getClientStatus: jest
       .fn()
       .mockResolvedValue({ active: true, locked: false }),
@@ -47,8 +43,7 @@ describe('TrackTransactionHandler', () => {
   beforeEach(() => {
     jest.mocked(scheduleBackgroundEvent).mockClear();
     jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
-    jest.mocked(trackTransactionFinalized).mockClear();
-    jest.mocked(trackTransactionFinalized).mockResolvedValue(undefined);
+    jest.spyOn(analyticsService, 'trackTransactionFinalized').mockResolvedValue();
   });
 
   function createNetworkTransaction(status: TransactionStatus): Transaction {
@@ -162,7 +157,7 @@ describe('TrackTransactionHandler', () => {
       },
     });
 
-    expect(trackTransactionFinalized).toHaveBeenCalledWith({
+    expect(analyticsService.trackTransactionFinalized).toHaveBeenCalledWith({
       origin: METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,

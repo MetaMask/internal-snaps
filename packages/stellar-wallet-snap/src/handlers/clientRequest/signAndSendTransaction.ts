@@ -29,7 +29,7 @@ import {
   removeTrailingZeros,
   trackError,
 } from '../../utils';
-import { trackTransactionSubmitted } from '../../utils/snap';
+import { analyticsService } from '../../utils/analytics';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -136,7 +136,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
       pollTransaction: false,
     });
 
-    await trackTransactionSubmitted({
+    await analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,

@@ -59,8 +59,8 @@ import {
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
+import { analyticsService } from '../../utils/analytics';
 import { logger } from '../../utils/logger';
-import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
 import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
@@ -183,15 +183,15 @@ describe('ConfirmSendHandler', () => {
     });
 
     const trackTransactionAddedSpy = jest.spyOn(
-      snapUtils,
+      analyticsService,
       'trackTransactionAdded',
     );
     const trackTransactionRejectedSpy = jest.spyOn(
-      snapUtils,
+      analyticsService,
       'trackTransactionRejected',
     );
     const trackTransactionApprovedSpy = jest.spyOn(
-      snapUtils,
+      analyticsService,
       'trackTransactionApproved',
     );
 

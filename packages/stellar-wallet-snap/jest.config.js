@@ -18,6 +18,7 @@ const config = {
     '.*/constants\\.ts$', // any file named constants.ts
     '.*/constants/', // any file in a folder named constants
     '.*/utils/logger\\.ts$', // skip logger.ts
+    '.*/utils/analytics\\.ts$', // skip analytics.ts
     '.*/permissions\\.ts$', // skip permissions.ts
     '.*/context\\.ts$', // skip context.ts
     '.*/config\\.ts$', // skip config.ts

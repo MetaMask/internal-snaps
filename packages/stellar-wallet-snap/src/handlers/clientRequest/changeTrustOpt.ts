@@ -24,11 +24,7 @@ import {
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import {
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
-} from '../../utils/snap';
+import { analyticsService } from '../../utils/analytics';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -150,7 +146,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await trackTransactionAdded({
+    await analyticsService.trackTransactionAdded({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
@@ -166,7 +162,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     });
 
     if (!confirmed) {
-      await trackTransactionRejected({
+      await analyticsService.trackTransactionRejected({
         origin: METAMASK_ORIGIN,
         accountType: account.type,
         chainIdCaip: scope,
@@ -174,7 +170,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await trackTransactionApproved({
+    await analyticsService.trackTransactionApproved({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,

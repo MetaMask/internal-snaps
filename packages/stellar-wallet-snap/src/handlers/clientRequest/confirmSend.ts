@@ -29,13 +29,11 @@ import {
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import {
+  analyticsService,
   hasDecimals,
   isSlip44Id,
   toSmallestUnit,
   trackError,
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
 } from '../../utils';
 import type {
   AccountResolver,
@@ -154,7 +152,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await trackTransactionAdded({
+      await analyticsService.trackTransactionAdded({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
@@ -170,7 +168,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           transaction,
         }))
       ) {
-        await trackTransactionRejected({
+        await analyticsService.trackTransactionRejected({
           origin: METAMASK_ORIGIN,
           accountType: stellarKeyringAccount.type,
           chainIdCaip: scope,
@@ -178,7 +176,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await trackTransactionApproved({
+      await analyticsService.trackTransactionApproved({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
