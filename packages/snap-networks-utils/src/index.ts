@@ -123,6 +123,12 @@ export type {
   CachePrefix,
   StateValue,
 } from './utils/cache/StateCache';
+export { createSnapHandlers } from './utils/handlers/createSnapHandlers';
+export type {
+  CreateSnapHandlersOptions,
+  SnapHandlers,
+  WithCatchAndThrowSnapError,
+} from './utils/handlers/createSnapHandlers';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,
