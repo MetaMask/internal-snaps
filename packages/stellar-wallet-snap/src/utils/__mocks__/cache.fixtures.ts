@@ -1,6 +1,4 @@
-import type { Serializable } from '@metamask/snap-networks-utils';
-
-import type { ICache } from '../api';
+import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 
 /**
  * In-memory {@link ICache} for tests (jest.fn wrappers + backing map).

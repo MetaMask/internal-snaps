@@ -1,11 +1,11 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { KEYRING_ACCOUNT_TYPE, METAMASK_ORIGIN } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
-import { InMemoryCache } from '../../services/cache';
 import {
   NetworkService,
   NetworkServiceException,
