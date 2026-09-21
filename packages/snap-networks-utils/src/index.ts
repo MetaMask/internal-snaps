@@ -8,6 +8,21 @@ export {
   RemoteFeatureFlagsProvider,
   type RemoteFeatureFlagsProviderMessenger,
 } from './providers/remote-feature-flags/RemoteFeatureFlagsProvider';
+export {
+  AnalyticsService,
+  SecurityEventType,
+  TransactionEventType,
+} from './services/analytics/AnalyticsService';
+export type {
+  AnalyticsServiceOptions,
+  SecurityAlertDetectedEventProperties,
+  SecurityScanCompletedEventProperties,
+  SnapTrackEventRequest,
+  TrackEventCapableProvider,
+  TransactionEventProperties,
+  TransactionFinalizedEventProperties,
+  WebSocketConnectionClosedEventProperties,
+} from './services/analytics/AnalyticsService';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export { buildUrl } from './utils/buildUrl/buildUrl';
 export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
