@@ -38,3 +38,15 @@ export const getBip32EntropyMock = jest
       });
     },
   );
+
+export const getSolanaCoinTypeNodeMock = jest.fn(
+  async (entropySource?: string) => {
+    const coinTypeNodeJson = await getBip32EntropyMock({
+      entropySource,
+      path: ['m', "44'", "501'"],
+      curve: 'ed25519',
+    });
+
+    return await SLIP10Node.fromJSON(coinTypeNodeJson);
+  },
+);

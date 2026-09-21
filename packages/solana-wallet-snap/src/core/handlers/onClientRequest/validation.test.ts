@@ -366,8 +366,16 @@ describe('validation', () => {
       );
     });
 
+    it('rejects messages with an empty address', () => {
+      expect(() =>
+        assert(
+          `metamask:proof-of-ownership:${nonce}:`,
+          ProofOfOwnershipMessageStruct,
+        ),
+      ).toThrow('non-empty address');
+    });
+
     it.each([
-      `metamask:proof-of-ownership:${nonce}:`,
       `metamask:proof-of-ownership:${nonce}:not-a-solana-address`,
       `metamask:proof-of-ownership:${nonce}:0x1234567890abcdef1234567890abcdef12345678`,
     ])('rejects invalid Solana addresses: "%s"', (message) => {
