@@ -1,9 +1,11 @@
 import { assert, StructError } from '@metamask/superstruct';
 
+import { MAX_INT64 } from '../constants';
 import {
   NonZeroValidStellarAmountStruct,
-  ValidStellarAmountStruct,
   ValidAmountStruct,
+  ValidStellarAmountStruct,
+  ValidStellarInt64Struct,
 } from './integer';
 
 describe('ValidAmountStruct', () => {
@@ -47,6 +49,25 @@ describe('ValidStellarAmountStruct', () => {
 
   it('rejects an amount with more than 7 decimal places', () => {
     expect(() => assert('1.00000001', ValidStellarAmountStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('ValidStellarInt64Struct', () => {
+  it('accepts integer stroops up to max int64', () => {
+    expect(() => assert('0', ValidStellarInt64Struct)).not.toThrow();
+    expect(() => assert(MAX_INT64, ValidStellarInt64Struct)).not.toThrow();
+  });
+
+  it('rejects a fractional amount', () => {
+    expect(() => assert('31.1111', ValidStellarInt64Struct)).toThrow(
+      StructError,
+    );
+  });
+
+  it('rejects a value above max int64', () => {
+    expect(() => assert('9223372036854775808', ValidStellarInt64Struct)).toThrow(
       StructError,
     );
   });

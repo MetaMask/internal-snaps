@@ -1,6 +1,7 @@
 import { create, is } from '@metamask/superstruct';
 
 import { KnownCaip2ChainId } from '../../api';
+import { MAX_INT64 } from '../../constants';
 import { getSlip44AssetId } from '../../utils';
 import {
   USDC_CLASSIC,
@@ -9,7 +10,6 @@ import {
 import { parseCoreAsset, parseCoreAssetMetadata, CoreAssetStruct } from './api';
 
 const NATIVE_ID = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-const USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 
 const nativeAsset = {
   id: NATIVE_ID,
@@ -31,14 +31,29 @@ const classicAsset = {
   id: USDC_CLASSIC,
   chainId: KnownCaip2ChainId.Mainnet,
   balance: {
-    amount: '3',
+    amount: '0.1630079',
     metadata: {
-      limit: '1000',
+      limit: MAX_INT64,
       authorized: true,
       sponsored: false,
     },
   },
-  metadata: { symbol: 'USDC', decimals: 7, address: USDC_ISSUER },
+  metadata: {
+    aggregators: ['metamask', 'stellarUnified'],
+    decimals: 7,
+    image:
+      'https://static.cx.metamask.io/api/v2/tokenIcons/assets/stellar/pubnet/asset/USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN.png',
+    name: 'USDC',
+    occurrences: 2,
+    symbol: 'USDC',
+    type: 'erc20',
+  },
+  price: {
+    id: USDC_CLASSIC,
+    price: 0.999682,
+    usdPrice: 0.999682,
+  },
+  fiatValue: 0.1629560634878,
 };
 
 const sep41Asset = {
@@ -69,7 +84,7 @@ describe('CoreAssetStruct', () => {
     });
   });
 
-  it('accepts classic assets with amount + classic balance metadata', () => {
+  it('accepts classic assets with human amount and stroop trustline limit', () => {
     expect(is(classicAsset, CoreAssetStruct)).toBe(true);
   });
 
@@ -133,10 +148,10 @@ describe('parseCoreAsset', () => {
       id: USDC_CLASSIC,
       chainId: KnownCaip2ChainId.Mainnet,
       balance: {
-        amount: '3',
-        metadata: { limit: '1000', authorized: true, sponsored: false },
+        amount: '0.1630079',
+        metadata: { limit: MAX_INT64, authorized: true, sponsored: false },
       },
-      metadata: { symbol: 'USDC', decimals: 7, address: USDC_ISSUER },
+      metadata: { symbol: 'USDC', decimals: 7, name: 'USDC' },
     });
   });
 
@@ -151,14 +166,12 @@ describe('parseCoreAssetMetadata', () => {
       parseCoreAssetMetadata({
         symbol: 'USDC',
         decimals: 7,
-        address: USDC_ISSUER,
         name: 'USD Coin',
         image: 'https://example.test/usdc.png',
       }),
     ).toMatchObject({
       symbol: 'USDC',
       decimals: 7,
-      address: USDC_ISSUER,
       name: 'USD Coin',
       image: 'https://example.test/usdc.png',
     });

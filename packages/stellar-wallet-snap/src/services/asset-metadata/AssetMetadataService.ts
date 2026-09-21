@@ -241,24 +241,24 @@ export class AssetMetadataService {
     const missing: KnownCaip19AssetId[] = [];
 
     if (assetIds.length > 0) {
-      // The order doesnt matter here, 
-      // as we are not using the order of the assets
+      // The order doesn't matter here, as we are not using the order of the assets.
       await Promise.all(
-        assetIds.map(async (assetId) =>
-          {
-            const metadata = await this.#assetsService.getAssetMetadata(assetId);
-            if (metadata) {
-              hits.push(toStellarAssetMetadata({
+        assetIds.map(async (assetId) => {
+          const metadata = await this.#assetsService.getAssetMetadata(assetId);
+          if (metadata) {
+            hits.push(
+              toStellarAssetMetadata({
                 assetId,
                 decimals: metadata.decimals,
                 symbol: metadata.symbol,
                 name: metadata.name,
                 iconUrl: metadata.image,
-              }))
-            }
-            missing.push(assetId);;
+              }),
+            );
+            return;
           }
-        ),
+          missing.push(assetId);
+        }),
       );
     }
     return { hits, missing };

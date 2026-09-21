@@ -176,6 +176,7 @@ describe('AccountResolver', () => {
     });
     expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       scope,
     );
     expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();

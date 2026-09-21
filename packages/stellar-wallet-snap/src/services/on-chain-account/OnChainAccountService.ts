@@ -2,11 +2,11 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { BASE_RESERVE_STROOPS } from '../../constants';
 import {
   getAssetReference,
   parseClassicAssetCodeIssuer,
   toSmallestUnit,
+  trackError,
 } from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type { StellarAssetMetadata } from '../asset-metadata';
@@ -27,8 +27,9 @@ import {
   SerializableClassicSpendableBalanceStruct,
   SerializableSep41SpendableBalanceStruct,
 } from './OnChainAccountSerializable';
-import type { SerializableSpendableBalance } from './OnChainAccountSerializable';
+import type { OnChainAccountSerializableFull, SerializableSpendableBalance } from './OnChainAccountSerializable';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
+import { subentryCountFromMinimumReserveStroops } from './utils';
 
 /**
  * Stellar on-chain account operations: activation checks and loading {@link OnChainAccount}
@@ -194,6 +195,13 @@ export class OnChainAccountService {
       return null;
     }
 
+    this.#logger.debug('Resolved on-chain account from core', {
+      accountAddress,
+      scope,
+      assets,
+      ledger,
+    });
+
     return OnChainAccount.fromSerializable(
       this.#toSerializableFromCoreAssets({
         accountAddress,
@@ -224,78 +232,93 @@ export class OnChainAccountService {
     scope: KnownCaip2ChainId;
     assets: CoreAsset[];
     ledger?: AccountLedgerMeta;
-  }): ReturnType<typeof OnChainAccountSerializableFullStruct.create> {
-    const balances: SerializableSpendableBalance[] = [];
-    let rawNativeBalance = ledger?.rawNativeBalance ?? '0';
-    let subentryCount = 0;
+  }): OnChainAccountSerializableFull {
+    try {
+      const balances: SerializableSpendableBalance[] = [];
+      let rawNativeBalance = ledger?.rawNativeBalance ?? '0';
+      let subentryCount = 0;
 
-    for (const asset of assets) {
-      if (asset.chainId !== scope) {
-        continue;
-      }
-
-      const { decimals, symbol } = asset.metadata;
-      const balance = toSmallestUnit(
-        new BigNumber(asset.balance.amount),
-        decimals,
-      ).toFixed(0);
-
-      if (isCoreNativeAsset(asset)) {
-        if (ledger === undefined) {
-          rawNativeBalance = balance;
-          const { minimumReserveBalance } = asset.balance.metadata;
-          const reserveUnits = new BigNumber(minimumReserveBalance).div(
-            BASE_RESERVE_STROOPS,
-          );
-          // minReserve = (2 + subentryCount) * BASE when sponsoring/sponsored are 0.
-          subentryCount = BigNumber.maximum(reserveUnits.minus(2), 0).toNumber();
+      for (const asset of assets) {
+        if (asset.chainId !== scope) {
+          continue;
         }
-        continue;
+
+        const assetId = asset.id;
+        const { decimals, symbol } = asset.metadata;
+        const balance = toSmallestUnit(
+          new BigNumber(asset.balance.amount),
+          decimals,
+        ).toFixed(0);
+
+        if (isCoreNativeAsset(asset)) {
+          // When RPC ledger meta is missing, derive subentryCount from Core
+          // `minimumReserveBalance` (stroops), assuming sponsoring fields are 0.
+          if (ledger === undefined) {
+            rawNativeBalance = balance;
+            const { minimumReserveBalance } = asset.balance.metadata;
+            subentryCount = subentryCountFromMinimumReserveStroops(
+              minimumReserveBalance,
+            );
+          }
+          continue;
+        }
+
+        if (isCoreClassicAsset(asset)) {
+          const { limit, authorized, sponsored } = asset.balance.metadata;
+          const { assetIssuer: address } = parseClassicAssetCodeIssuer(
+            getAssetReference(assetId),
+          );
+          balances.push(
+            SerializableClassicSpendableBalanceStruct.create({
+              assetId,
+              symbol,
+              balance,
+              limit,
+              address,
+              authorized,
+              sponsored,
+            }),
+          );
+          continue;
+        }
+
+        if (isCoreSep41Asset(asset)) {
+          balances.push(
+            SerializableSep41SpendableBalanceStruct.create({
+              assetId,
+              symbol,
+              balance,
+              decimals,
+            }),
+          );
+        }
       }
 
-      if (isCoreClassicAsset(asset)) {
-        const { limit, authorized, sponsored } = asset.balance.metadata;
-        const address =
-          asset.metadata.address ??
-          parseClassicAssetCodeIssuer(getAssetReference(asset.id)).assetIssuer;
-        balances.push(
-          SerializableClassicSpendableBalanceStruct.create({
-            assetId: asset.id,
-            symbol,
-            balance,
-            limit: toSmallestUnit(new BigNumber(limit), decimals).toFixed(0),
-            address,
-            authorized,
-            sponsored,
-          }),
-        );
-        continue;
-      }
-
-      if (isCoreSep41Asset(asset)) {
-        balances.push(
-          SerializableSep41SpendableBalanceStruct.create({
-            assetId: asset.id,
-            symbol,
-            balance,
-            decimals,
-          }),
-        );
-      }
+      return OnChainAccountSerializableFullStruct.create({
+        accountId: accountAddress,
+        sequenceNumber: ledger?.sequenceNumber ?? '0',
+        scope,
+        meta: {
+          subentryCount: ledger?.subentryCount ?? subentryCount,
+          numSponsoring: ledger?.numSponsoring ?? 0,
+          numSponsored: ledger?.numSponsored ?? 0,
+        },
+        balances,
+        rawNativeBalance,
+      });
+    } catch (error: unknown) {
+      this.#logger.debug('Error serializing on-chain account from core assets', {
+        error,
+        accountAddress,
+        scope,
+        assets,
+        ledger,
+      });
+      trackError(new Error('Error serializing on-chain account from core assets', {
+        cause: error,
+      }));
+      throw error;
     }
-
-    return OnChainAccountSerializableFullStruct.create({
-      accountId: accountAddress,
-      sequenceNumber: ledger?.sequenceNumber ?? '0',
-      scope,
-      meta: {
-        subentryCount: ledger?.subentryCount ?? subentryCount,
-        numSponsoring: ledger?.numSponsoring ?? 0,
-        numSponsored: ledger?.numSponsored ?? 0,
-      },
-      balances,
-      rawNativeBalance,
-    });
   }
 
   async #getAccountLedgerMetaSafe(

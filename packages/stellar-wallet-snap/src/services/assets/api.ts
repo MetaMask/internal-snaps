@@ -1,4 +1,4 @@
-import { boolean, create, defaulted, number, object, optional, string, type, union } from '@metamask/superstruct';
+import { boolean, create, defaulted, number, optional, string, type, union } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
 
 import {
@@ -6,41 +6,51 @@ import {
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,
   KnownCaip2ChainIdStruct,
+  ValidAmountStruct,
+  ValidStellarAmountStruct,
+  ValidStellarInt64Struct,
 } from '../../api';
 
 /**
  * Controller `Asset.metadata` fields Stellar needs from Core.
- * Uses `type` so other metadata fields from Core are allowed.
+ * Uses `type` so other catalog fields (`aggregators`, `type`, …) are allowed.
+ * Classic issuer is not read from here; parse it from the CAIP-19 `id`.
  */
 export const CoreAssetMetadataStruct = type({
   symbol: string(),
   decimals: number(),
-  /** Classic issuer (or other address); optional for native / SEP-41. */
-  address: optional(string()),
   name: optional(string()),
   image: optional(string()),
 });
 
-/** Core `Asset.balance` fields shared by all asset types. */
+/** Core `Asset.balance` fields shared by all asset types. `amount` is human units. */
 export const CoreAssetBalanceStruct = type({
-  amount: string(),
+  amount: ValidAmountStruct,
 });
 
-/** Core `Asset.balance` for slip44: amount + native keyring balance metadata. */
+/**
+ * Core `Asset.balance` for slip44: human XLM `amount` plus native keyring
+ * metadata (`spendableBalance` / `minimumReserveBalance` are stroops).
+ */
 export const CoreNativeBalanceStruct = type({
-  amount: CoreAssetBalanceStruct.schema.amount,
-  metadata: object({
-    spendableBalance: string(),
-    minimumReserveBalance: string(),
-    decimal: number(),
+  amount: ValidStellarAmountStruct,
+  metadata: type({
+    spendableBalance: ValidStellarInt64Struct,
+    minimumReserveBalance: ValidStellarInt64Struct,
+    // **DEPRECATED:** Accounts API has deprecated the decimal field.
+    // Please don't use it in new code.
+    decimal: optional(number()),
   }),
 });
 
-/** Core `Asset.balance` for classic assets: amount + classic keyring balance metadata. */
+/**
+ * Core `Asset.balance` for classic assets: human `amount` plus trustline
+ * metadata (`limit` is unscaled int64 stroops).
+ */
 export const CoreClassicBalanceStruct = type({
-  amount: CoreAssetBalanceStruct.schema.amount,
-  metadata: object({
-    limit: string(),
+  amount: ValidStellarAmountStruct,
+  metadata: type({
+    limit: ValidStellarInt64Struct,
     authorized: defaulted(boolean(), true),
     sponsored: defaulted(boolean(), false),
   }),

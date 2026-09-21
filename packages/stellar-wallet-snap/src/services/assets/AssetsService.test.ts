@@ -3,6 +3,7 @@ import type { Asset } from '@metamask/assets-controller';
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
+import { MAX_INT64 } from '../../constants';
 import { getSlip44AssetId } from '../../utils';
 import {
   USDC_CLASSIC,
@@ -17,7 +18,6 @@ describe('AssetsService', () => {
   const coreMetadata = {
     symbol: 'USDC',
     decimals: 7,
-    address: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
   };
 
   it('parses Core catalog metadata into CoreAssetMetadata', async () => {
@@ -71,7 +71,7 @@ describe('AssetsService', () => {
         chainId: KnownCaip2ChainId.Mainnet,
         balance: {
           amount: '3',
-          metadata: { limit: '1000', authorized: true, sponsored: false },
+          metadata: { limit: MAX_INT64, authorized: true, sponsored: false },
         },
         metadata: { symbol: 'USDC', decimals: 7 },
       },
@@ -128,7 +128,7 @@ describe('AssetsService', () => {
         chainId: KnownCaip2ChainId.Mainnet,
         balance: {
           amount: '3',
-          metadata: { limit: '1000', authorized: true, sponsored: false },
+          metadata: { limit: MAX_INT64, authorized: true, sponsored: false },
         },
         metadata: { symbol: 'USDC', decimals: 7 },
       },

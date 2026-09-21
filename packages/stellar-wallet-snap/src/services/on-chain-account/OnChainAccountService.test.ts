@@ -2,6 +2,7 @@ import { hexToBytes } from '@metamask/utils';
 import { Keypair } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
+import { MAX_INT64 } from '../../constants';
 import { getSlip44AssetId } from '../../utils';
 import { bufferToUint8Array } from '../../utils/buffer';
 import {
@@ -295,18 +296,14 @@ describe('OnChainAccountService', () => {
             id: usdcId,
             chainId: KnownCaip2ChainId.Mainnet,
             balance: {
-              amount: '3',
+              amount: '0.1630079',
               metadata: {
-                limit: '1000',
+                limit: MAX_INT64,
                 authorized: true,
                 sponsored: false,
               },
             },
-            metadata: {
-              symbol: 'USDC',
-              decimals: 7,
-              address: usdcIssuer,
-            },
+            metadata: { symbol: 'USDC', decimals: 7 },
           },
           {
             id: sep41Id,
@@ -340,10 +337,10 @@ describe('OnChainAccountService', () => {
         expect.arrayContaining([
           expect.objectContaining({
             assetId: usdcId,
-            balance: '30000000',
+            balance: '1630079',
             symbol: 'USDC',
             address: usdcIssuer,
-            limit: '10000000000',
+            limit: MAX_INT64,
             authorized: true,
             sponsored: false,
           }),
