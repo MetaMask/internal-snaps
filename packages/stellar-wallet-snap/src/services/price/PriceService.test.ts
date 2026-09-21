@@ -3,7 +3,7 @@ import type { CaipAssetType } from '@metamask/utils';
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { AppConfig } from '../../config';
 import { logger } from '../../utils';
-import { createMemoryCache } from '../cache/__mocks__/cache.fixtures';
+import { createMemoryCache } from '../../utils/__mocks__/cache.fixtures';
 import type { SpotPrice } from './price-api/api';
 import { PriceApiClient } from './price-api/PriceApiClient';
 import { PriceService } from './PriceService';
