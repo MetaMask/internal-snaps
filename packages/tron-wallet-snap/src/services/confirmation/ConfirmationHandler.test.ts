@@ -585,5 +585,119 @@ describe('ConfirmationHandler', () => {
         );
       });
     });
+
+    it('tracks Added before rendering, then Approved, when the user confirms', async () => {
+      await withConfirmationHandler(
+        async ({ handler, mockSnapClient, mockTronWeb }) => {
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            rawData,
+          );
+          mockRenderConfirmSignTransaction.mockResolvedValue(true);
+
+          const result = await handler.handleKeyringRequest({
+            request,
+            account: mockAccount,
+          });
+
+          expect(result).toBe(true);
+          expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith({
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          });
+          expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith({
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          });
+          expect(
+            mockSnapClient.trackTransactionRejected,
+          ).not.toHaveBeenCalled();
+          expect(
+            mockSnapClient.trackTransactionAdded.mock.invocationCallOrder[0],
+          ).toBeLessThan(
+            mockRenderConfirmSignTransaction.mock
+              .invocationCallOrder[0] as number,
+          );
+        },
+      );
+    });
+
+    it('tracks Rejected when the user rejects', async () => {
+      await withConfirmationHandler(
+        async ({ handler, mockSnapClient, mockTronWeb }) => {
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            rawData,
+          );
+          mockRenderConfirmSignTransaction.mockResolvedValue(false);
+
+          const result = await handler.handleKeyringRequest({
+            request,
+            account: mockAccount,
+          });
+
+          expect(result).toBe(false);
+          expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith({
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          });
+          expect(
+            mockSnapClient.trackTransactionApproved,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it.each([undefined, null])(
+      'tracks Rejected when the dialog resolves to %p',
+      async (dialogResult) => {
+        await withConfirmationHandler(
+          async ({ handler, mockSnapClient, mockTronWeb }) => {
+            mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+              rawData,
+            );
+            mockRenderConfirmSignTransaction.mockResolvedValue(
+              dialogResult as unknown as boolean,
+            );
+
+            const result = await handler.handleKeyringRequest({
+              request,
+              account: mockAccount,
+            });
+
+            expect(result).toBe(false);
+            expect(
+              mockSnapClient.trackTransactionRejected,
+            ).toHaveBeenCalledWith({
+              origin: request.origin,
+              accountType: mockAccount.type,
+              chainIdCaip: Network.Mainnet,
+            });
+          },
+        );
+      },
+    );
+
+    it('does not track transaction events for signMessage requests', async () => {
+      await withConfirmationHandler(async ({ handler, mockSnapClient }) => {
+        const signMessageRequest = {
+          ...request,
+          request: {
+            method: TronMultichainMethod.SignMessage,
+            params: { address: mockAccount.address, message: 'hello' },
+          },
+        };
+
+        await handler.handleKeyringRequest({
+          request: signMessageRequest as unknown as typeof request,
+          account: mockAccount,
+        });
+
+        expect(mockSnapClient.trackTransactionAdded).not.toHaveBeenCalled();
+        expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+        expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+      });
+    });
   });
 });
