@@ -15,7 +15,6 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
-import { configProvider } from '../../../../services/config';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
@@ -45,8 +44,6 @@ export const ConfirmTransactionRequest = ({
   context: ConfirmTransactionRequestContext;
 }): ComponentOrElement => {
   const translate = i18n(preferences.locale);
-
-  const explorerBaseUrl = configProvider.config.explorerApi.baseUrls[scope];
 
   /**
    * Only disable confirm button upon first load (FetchStatus.Loading)
@@ -132,13 +129,7 @@ export const ConfirmTransactionRequest = ({
             <SnapText fontWeight="medium" color="alternative">
               {translate('confirmation.from')}
             </SnapText>
-            <Link
-              href={getExplorerUrl(
-                explorerBaseUrl,
-                'address',
-                fromAddress ?? '',
-              )}
-            >
+            <Link href={getExplorerUrl(scope, 'address', fromAddress ?? '')}>
               <Address
                 address={`${scope}:${fromAddress}`}
                 truncate
@@ -154,13 +145,7 @@ export const ConfirmTransactionRequest = ({
               <SnapText fontWeight="medium" color="alternative">
                 {translate('confirmation.to')}
               </SnapText>
-              <Link
-                href={getExplorerUrl(
-                  explorerBaseUrl,
-                  'address',
-                  toAddress ?? '',
-                )}
-              >
+              <Link href={getExplorerUrl(scope, 'address', toAddress ?? '')}>
                 <Address
                   address={`${scope}:${toAddress}`}
                   truncate

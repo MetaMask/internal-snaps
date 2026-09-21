@@ -1,8 +1,9 @@
 /* eslint-disable no-restricted-globals */
 import {
   BaseConfigProvider,
-  UrlStruct,
+  EnvironmentStruct,
   LogLevelStruct,
+  UrlStruct,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { array, enums, number, object, record } from '@metamask/superstruct';
@@ -23,7 +24,7 @@ const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<string, Network[]> = {
  * from raw strings to typed values.
  */
 export const ConfigStruct = object({
-  environment: enums(['local', 'test', 'production']),
+  environment: EnvironmentStruct,
   logLevel: LogLevelStruct,
   activeNetworks: array(NetworkStruct),
   priceApi: object({
