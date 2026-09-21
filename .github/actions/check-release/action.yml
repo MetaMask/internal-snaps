@@ -15,7 +15,7 @@ runs:
   using: composite
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
 
@@ -135,7 +135,7 @@ runs:
 
     - name: Check if the commit or pull request is a release
       id: is-release
-      uses: MetaMask/action-is-release@v2
+      uses: MetaMask/action-is-release@3cd51b98fa98d1347d06f5961299b0172ee31ae8 # v2.3.0
       with:
         commit-starts-with: ${{ inputs.commit-starts-with }}
         commit-message: ${{ steps.release-commit-message.outputs.COMMIT_MESSAGE }}
@@ -224,7 +224,7 @@ runs:
 
     - name: Hide previous comments
       if: steps.is-release.outputs.IS_RELEASE == 'true'
-      uses: actions/github-script@v9
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
       with:
@@ -254,7 +254,7 @@ runs:
 
     - name: Reply on pull request
       if: steps.check-release.outputs.has-conflicts == 'true'
-      uses: actions/github-script@v9
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         PACKAGE_NAMES: ${{ steps.check-release.outputs.package-names }}
         PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
