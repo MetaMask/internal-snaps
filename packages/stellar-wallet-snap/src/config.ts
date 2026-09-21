@@ -8,6 +8,7 @@ import {
 } from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
+  assign,
   coerce,
   defaulted,
   enums,
@@ -34,14 +35,16 @@ const DEFAULT_EXPLORER_MAINNET_BASE_URL =
 const DEFAULT_EXPLORER_TESTNET_BASE_URL =
   'https://stellar.expert/explorer/testnet';
 
+const networkConfigStruct = object({
+  rpcUrl: UrlStruct,
+  horizonUrl: UrlStruct,
+  explorerBaseUrl: UrlStruct,
+});
+
 /**
  * The network config type.
  */
-export type NetworkConfig = {
-  rpcUrl: string;
-  horizonUrl: string;
-  explorerBaseUrl: string;
-};
+export type NetworkConfig = Infer<typeof networkConfigStruct>;
 
 /**
  * A struct for validating the network config, with a fallback explorer base
@@ -51,18 +54,21 @@ export type NetworkConfig = {
  * or empty.
  * @returns A struct for validating the network config.
  */
-const networkConfigStruct = (explorerBaseUrl: string): Struct<NetworkConfig> =>
-  object({
-    rpcUrl: UrlStruct,
-    horizonUrl: UrlStruct,
-    explorerBaseUrl: defaultedUrlStruct(explorerBaseUrl),
-  });
+const createNetworkConfigStruct = (
+  explorerBaseUrl: string,
+): Struct<NetworkConfig> =>
+  assign(
+    networkConfigStruct,
+    object({
+      explorerBaseUrl: defaultedUrlStruct(explorerBaseUrl),
+    }),
+  );
 
-const mainnetNetworkConfigStruct = networkConfigStruct(
+const mainnetNetworkConfigStruct = createNetworkConfigStruct(
   DEFAULT_EXPLORER_MAINNET_BASE_URL,
 );
 
-const testnetNetworkConfigStruct = networkConfigStruct(
+const testnetNetworkConfigStruct = createNetworkConfigStruct(
   DEFAULT_EXPLORER_TESTNET_BASE_URL,
 );
 
@@ -120,7 +126,7 @@ export const ConfigStruct = object({
     maxReconcileAttempts: parseIntegerStruct(2, 5),
     /**
      * The maximum age of a pending transaction in milliseconds.
-     * Used with `maxPendingTransactionAge` to evict stale pending txs from snap state;
+     * Used with `maxReconcileAttempts` to evict stale pending txs from snap state;
      * both limits must be exceeded before a pending tx is dropped.
      * Minimum value is 15000 to avoid dropping the pending transaction too early.
      */
