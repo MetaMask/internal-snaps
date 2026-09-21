@@ -1210,12 +1210,7 @@ describe('NetworkService', () => {
       ).rejects.toThrow(SimulationException);
 
       expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
-      expect(simulateTransactionSpy).toHaveBeenCalledWith(
-        mockInvoke.getRaw(),
-        undefined,
-        undefined,
-        false,
-      );
+      expect(simulateTransactionSpy).toHaveBeenCalledWith(mockInvoke.getRaw());
     });
 
     it('throws InvalidInvokeContractStructureException when the envelope has more than one invokeHostFunction operation', async () => {

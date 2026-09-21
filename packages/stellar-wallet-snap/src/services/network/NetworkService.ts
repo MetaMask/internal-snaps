@@ -665,12 +665,7 @@ export class NetworkService {
 
       const client = this.#getRpcClient(scope);
       const rawTransaction = transaction.getRaw();
-      const simulateResponse = await client.simulateTransaction(
-        rawTransaction,
-        undefined,
-        undefined,
-        false,
-      );
+      const simulateResponse = await client.simulateTransaction(rawTransaction);
 
       if (rpc.Api.isSimulationError(simulateResponse)) {
         throw new SimulationException(
