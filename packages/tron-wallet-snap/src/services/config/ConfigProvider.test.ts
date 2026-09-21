@@ -129,6 +129,54 @@ describe('ConfigProvider', () => {
     expect(config.securityAlertsApi.baseUrl).toBe(localGateway);
   });
 
+  it('falls back to the default API base URLs when the environment variables are unset', () => {
+    const { config } = new BaseConfigProvider(
+      {
+        ...VALID_ENVIRONMENT,
+        priceApi: {
+          ...VALID_ENVIRONMENT.priceApi,
+          baseUrl: undefined,
+        },
+        tokenApi: {
+          ...VALID_ENVIRONMENT.tokenApi,
+          baseUrl: undefined,
+        },
+        staticApi: {
+          baseUrl: undefined,
+        },
+      },
+      ConfigStruct,
+    );
+
+    expect(config.priceApi.baseUrl).toBe('https://price.api.cx.metamask.io');
+    expect(config.tokenApi.baseUrl).toBe('https://tokens.api.cx.metamask.io');
+    expect(config.staticApi.baseUrl).toBe('https://static.cx.metamask.io');
+  });
+
+  it('falls back to the default API base URLs when the environment variables are empty strings', () => {
+    const { config } = new BaseConfigProvider(
+      {
+        ...VALID_ENVIRONMENT,
+        priceApi: {
+          ...VALID_ENVIRONMENT.priceApi,
+          baseUrl: '',
+        },
+        tokenApi: {
+          ...VALID_ENVIRONMENT.tokenApi,
+          baseUrl: '',
+        },
+        staticApi: {
+          baseUrl: '',
+        },
+      },
+      ConfigStruct,
+    );
+
+    expect(config.priceApi.baseUrl).toBe('https://price.api.cx.metamask.io');
+    expect(config.tokenApi.baseUrl).toBe('https://tokens.api.cx.metamask.io');
+    expect(config.staticApi.baseUrl).toBe('https://static.cx.metamask.io');
+  });
+
   it('throws when the environment does not match the struct', () => {
     expect(
       () =>

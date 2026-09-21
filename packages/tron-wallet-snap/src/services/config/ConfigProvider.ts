@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-globals */
 import {
   BaseConfigProvider,
+  defaultedUrlStruct,
   EnvironmentStruct,
   LogLevelStruct,
   UrlStruct,
@@ -12,6 +13,14 @@ import { Duration } from '@metamask/utils';
 import { Network } from '../../constants';
 
 const NetworkStruct = enums(Object.values(Network) as [Network, ...Network[]]);
+
+/**
+ * The default base URLs for the price, token, and static APIs, used when
+ * the corresponding environment variables are unset.
+ */
+const DEFAULT_PRICE_API_BASE_URL = 'https://price.api.cx.metamask.io';
+const DEFAULT_TOKEN_API_BASE_URL = 'https://tokens.api.cx.metamask.io';
+const DEFAULT_STATIC_API_BASE_URL = 'https://static.cx.metamask.io';
 
 const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<string, Network[]> = {
   production: [Network.Mainnet],
@@ -28,18 +37,18 @@ export const ConfigStruct = object({
   logLevel: LogLevelStruct,
   activeNetworks: array(NetworkStruct),
   priceApi: object({
-    baseUrl: UrlStruct,
+    baseUrl: defaultedUrlStruct(DEFAULT_PRICE_API_BASE_URL),
     chunkSize: number(),
     cacheTtlsMilliseconds: object({
       spotPrices: number(),
     }),
   }),
   tokenApi: object({
-    baseUrl: UrlStruct,
+    baseUrl: defaultedUrlStruct(DEFAULT_TOKEN_API_BASE_URL),
     chunkSize: number(),
   }),
   staticApi: object({
-    baseUrl: UrlStruct,
+    baseUrl: defaultedUrlStruct(DEFAULT_STATIC_API_BASE_URL),
   }),
   securityAlertsApi: object({
     baseUrl: UrlStruct,
