@@ -1,5 +1,8 @@
 import { FeeType, TrxAccountType } from '@metamask/keyring-api';
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+} from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -212,6 +215,10 @@ async function withClientRequestHandler<ReturnValue>(
     trackError: jest.fn(),
   };
 
+  const mockAnalyticsService = {
+    trackTransactionSubmitted: jest.fn(),
+  };
+
   const mockTronWeb = createMockTronWeb();
   const mockTronWebFactory = createMockTronWebFactory(mockTronWeb);
 
@@ -231,6 +238,7 @@ async function withClientRequestHandler<ReturnValue>(
       mockTransactionsService as unknown as TransactionsService,
     transactionExpirationRefresherService:
       mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+    analyticsService: mockAnalyticsService as unknown as AnalyticsService,
   });
 
   return await testFunction({
@@ -250,6 +258,17 @@ async function withClientRequestHandler<ReturnValue>(
 }
 
 describe('ClientRequestHandler', () => {
+  /**
+   * Builds an analytics service test double. Each handler instance gets its own
+   * so call-order assertions stay scoped to the test that created it.
+   *
+   * @returns A mocked AnalyticsService.
+   */
+  const createMockAnalyticsService = (): jest.Mocked<AnalyticsService> =>
+    ({
+      trackTransactionSubmitted: jest.fn(),
+    }) as unknown as jest.Mocked<AnalyticsService>;
+
   describe('computeFee', () => {
     let clientRequestHandler: ClientRequestHandler;
     let mockAccountsService: jest.Mocked<AccountsService>;
@@ -367,6 +386,7 @@ describe('ClientRequestHandler', () => {
         transactionsService: mockTransactionsService,
         transactionExpirationRefresherService:
           mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+        analyticsService: createMockAnalyticsService(),
       });
     });
 
@@ -547,6 +567,7 @@ describe('ClientRequestHandler', () => {
             new TransactionExpirationRefresherService({
               tronWebFactory: mockTronWebFactory,
             }),
+          analyticsService: createMockAnalyticsService(),
         });
 
         await clientRequestHandler.handle(request as JsonRpcRequest);
@@ -1133,6 +1154,7 @@ describe('ClientRequestHandler', () => {
         transactionsService: mockTransactionsService,
         transactionExpirationRefresherService:
           createPassThroughTransactionExpirationRefresherService(),
+        analyticsService: createMockAnalyticsService(),
       });
     });
 
@@ -1359,6 +1381,7 @@ describe('ClientRequestHandler', () => {
         transactionsService: {} as unknown as jest.Mocked<TransactionsService>,
         transactionExpirationRefresherService:
           createPassThroughTransactionExpirationRefresherService(),
+        analyticsService: createMockAnalyticsService(),
       });
     });
 
@@ -1709,6 +1732,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
   let mockFeeCalculatorService: jest.Mocked<FeeCalculatorService>;
   let mockTronWebFactory: jest.Mocked<TronWebFactory>;
   let mockSnapClient: jest.Mocked<SnapClient>;
+  let mockAnalyticsService: jest.Mocked<AnalyticsService>;
   let mockStakingService: jest.Mocked<StakingService>;
   let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
   let mockTransactionsService: jest.Mocked<TransactionsService>;
@@ -1763,8 +1787,11 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     mockSnapClient = {
       scheduleBackgroundEvent: jest.fn(),
-      trackTransactionSubmitted: jest.fn(),
     } as unknown as jest.Mocked<SnapClient>;
+
+    mockAnalyticsService = {
+      trackTransactionSubmitted: jest.fn(),
+    } as unknown as jest.Mocked<AnalyticsService>;
 
     mockStakingService = {} as unknown as jest.Mocked<StakingService>;
 
@@ -1787,6 +1814,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
       transactionsService: mockTransactionsService,
       transactionExpirationRefresherService:
         createPassThroughTransactionExpirationRefresherService(),
+      analyticsService: mockAnalyticsService,
     });
   });
 
@@ -1932,11 +1960,13 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     await clientRequestHandler.handle(request as JsonRpcRequest);
 
-    expect(mockSnapClient.trackTransactionSubmitted).toHaveBeenCalledWith({
-      origin: 'MetaMask',
-      accountType: 'tron:eoa',
-      chainIdCaip: scope,
-    });
+    expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
+      {
+        origin: 'MetaMask',
+        accountType: 'tron:eoa',
+        chainIdCaip: scope,
+      },
+    );
 
     expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
       method: BackgroundEventMethod.TrackTransaction,
@@ -1950,7 +1980,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     });
 
     expect(
-      mockSnapClient.trackTransactionSubmitted.mock
+      mockAnalyticsService.trackTransactionSubmitted.mock
         .invocationCallOrder[0] as number,
     ).toBeLessThan(
       mockSnapClient.scheduleBackgroundEvent.mock

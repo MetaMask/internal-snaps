@@ -1,6 +1,7 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
 import type {
+  AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
@@ -196,6 +197,8 @@ export class ClientRequestHandler {
 
   readonly #snapClient: SnapClient;
 
+  readonly #analyticsService: AnalyticsService;
+
   readonly #stakingService: StakingService;
 
   readonly #confirmationHandler: ConfirmationHandler;
@@ -216,6 +219,7 @@ export class ClientRequestHandler {
     confirmationHandler,
     transactionsService,
     transactionExpirationRefresherService,
+    analyticsService,
   }: {
     logger: Logger;
     accountsService: AccountsService;
@@ -228,6 +232,7 @@ export class ClientRequestHandler {
     confirmationHandler: ConfirmationHandler;
     transactionsService: TransactionsService;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
+    analyticsService: AnalyticsService;
   }) {
     this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#accountsService = accountsService;
@@ -236,6 +241,7 @@ export class ClientRequestHandler {
     this.#feeCalculatorService = feeCalculatorService;
     this.#tronWebFactory = tronWebFactory;
     this.#snapClient = snapClient;
+    this.#analyticsService = analyticsService;
     this.#stakingService = stakingService;
     this.#confirmationHandler = confirmationHandler;
     this.#transactionsService = transactionsService;
@@ -409,7 +415,7 @@ export class ClientRequestHandler {
      * unified send flow, matching the unified send path and the background
      * transaction tracker.
      */
-    await this.#snapClient.trackTransactionSubmitted({
+    await this.#analyticsService.trackTransactionSubmitted({
       origin: 'MetaMask',
       accountType: account.type,
       chainIdCaip: scope,
