@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Emit `Transaction Submitted` from the unified send and change-trust flows so their transactions no longer reach `Transaction Finalized` without a matching submit event ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+- Emit `Transaction Submitted` from the unified send and change-trust flows so their transactions no longer reach `Transaction Finalized` without a matching submit event ([#345](https://github.com/MetaMask/internal-snaps/pull/345))
   - Previously only the swap/bridge `signAndSendTransaction` path emitted `Transaction Submitted`.
 
 ## [1.0.0]

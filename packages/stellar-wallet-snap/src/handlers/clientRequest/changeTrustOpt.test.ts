@@ -48,7 +48,6 @@ import {
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
-import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
 import { ClientRequestMethod, ChangeTrustOptAction } from './api';
@@ -184,30 +183,24 @@ describe('ChangeTrustOptHandler', () => {
       .mockResolvedValue(true);
     const confirmationUIController = new ConfirmationUXController();
 
+    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
+
     const handler = new ChangeTrustOptHandler({
       logger,
       accountResolver,
       transactionService,
       assetMetadataService,
       confirmationUIController,
+      analyticsService: {
+        trackTransactionAdded: trackTransactionAddedSpy,
+        trackTransactionRejected: trackTransactionRejectedSpy,
+        trackTransactionApproved: trackTransactionApprovedSpy,
+        trackTransactionSubmitted: trackTransactionSubmittedSpy,
+      } as never,
     });
-
-    const trackTransactionAddedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionAdded',
-    );
-    const trackTransactionRejectedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionRejected',
-    );
-    const trackTransactionApprovedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionApproved',
-    );
-    const trackTransactionSubmittedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionSubmitted',
-    );
 
     return {
       handler,
