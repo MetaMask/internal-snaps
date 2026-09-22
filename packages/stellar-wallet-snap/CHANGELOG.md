@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
+- Accept CAP-71 v2 Soroban authorization preimages (`envelopeTypeSorobanAuthorizationWithAddress`) in `signAuthEntry` ([#307](https://github.com/MetaMask/internal-snaps/pull/307))
+  - Reject when the v2 bound address is not the signing account
+  - Show `ADDRESS_V2` credential addresses on invoke-host-function confirmation
 
 ### Changed
 
@@ -35,9 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mapped errors cover insufficient balance, expired transactions, destination memo requirements, invalid create-account amount or asset, and trustline failures (not authorized, missing on sender or destination, over destination limit, non-zero balance on remove, or new limit below current balance).
   - Unmapped errors fall back to a generic cannot-complete message.
   - Skip destination validation in `onAmountInput`.
-- Accept CAP-71 v2 Soroban authorization preimages (`envelopeTypeSorobanAuthorizationWithAddress`) in `signAuthEntry` ([#307](https://github.com/MetaMask/internal-snaps/pull/307))
-  - Reject when the v2 bound address is not the signing account
-  - Show `ADDRESS_V2` credential addresses on invoke-host-function confirmation
 
 ### Removed
 
