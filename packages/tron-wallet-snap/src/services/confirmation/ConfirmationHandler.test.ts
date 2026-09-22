@@ -431,12 +431,16 @@ describe('ConfirmationHandler', () => {
         const result = await handler.confirmTransactionRequest(defaultParams);
 
         expect(result).toBe(true);
-        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith({
-          origin: 'MetaMask',
-          accountType: 'tron:eoa',
-          chainIdCaip: Network.Mainnet,
-        });
-        expect(mockAnalyticsService.trackTransactionApproved).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
+          {
+            origin: 'MetaMask',
+            accountType: 'tron:eoa',
+            chainIdCaip: Network.Mainnet,
+          },
+        );
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
@@ -454,7 +458,9 @@ describe('ConfirmationHandler', () => {
         const result = await handler.confirmTransactionRequest(defaultParams);
 
         expect(result).toBe(false);
-        expect(mockAnalyticsService.trackTransactionRejected).toHaveBeenCalledWith({
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
@@ -602,12 +608,16 @@ describe('ConfirmationHandler', () => {
         });
 
         expect(result).toBe(true);
-        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith({
-          origin: request.origin,
-          accountType: mockAccount.type,
-          chainIdCaip: Network.Mainnet,
-        });
-        expect(mockAnalyticsService.trackTransactionApproved).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
+          {
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          },
+        );
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
@@ -638,7 +648,9 @@ describe('ConfirmationHandler', () => {
         });
 
         expect(result).toBe(false);
-        expect(mockAnalyticsService.trackTransactionRejected).toHaveBeenCalledWith({
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).toHaveBeenCalledWith({
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
@@ -692,7 +704,9 @@ describe('ConfirmationHandler', () => {
           account: mockAccount,
         });
 
-        expect(mockAnalyticsService.trackTransactionAdded).not.toHaveBeenCalled();
+        expect(
+          mockAnalyticsService.trackTransactionAdded,
+        ).not.toHaveBeenCalled();
         expect(
           mockAnalyticsService.trackTransactionApproved,
         ).not.toHaveBeenCalled();

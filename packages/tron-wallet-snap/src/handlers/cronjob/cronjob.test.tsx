@@ -1,4 +1,7 @@
-import type { AnalyticsService, IStateManager } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  IStateManager,
+} from '@metamask/snap-networks-utils';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';

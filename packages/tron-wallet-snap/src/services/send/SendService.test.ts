@@ -161,7 +161,9 @@ describe('SendService', () => {
           signature: ['test-signature'],
         }),
       );
-      expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith({
+      expect(
+        mockAnalyticsService.trackTransactionSubmitted,
+      ).toHaveBeenCalledWith({
         origin: 'MetaMask',
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,

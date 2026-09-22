@@ -1,4 +1,7 @@
-import type { AnalyticsService, ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+} from '@metamask/snap-networks-utils';
 import { Types as TronwebTypes } from 'tronweb';
 
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
@@ -733,7 +736,9 @@ describe('TransactionScanService', () => {
 
       await scan(service);
 
-      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
@@ -754,14 +759,18 @@ describe('TransactionScanService', () => {
 
       await scan(service);
 
-      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
         scanStatus: ScanStatus.SUCCESS,
         hasSecurityAlerts: true,
       });
-      expect(mockAnalyticsService.trackSecurityAlertDetected).toHaveBeenCalledWith({
+      expect(
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
@@ -778,7 +787,9 @@ describe('TransactionScanService', () => {
       );
 
       expect(await scan(service)).toBeNull();
-      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
@@ -798,7 +809,9 @@ describe('TransactionScanService', () => {
 
       expect(await scan(service)).toBeNull();
       expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
-      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
