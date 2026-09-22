@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `createSnapHandlers` for wrapped network Snap entrypoints and empty asset handlers. ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
+- Add `createSnapHandlers` for wrapped network Snap entrypoints, empty asset handlers, and an optional per-handler `logError` override. ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add a shared `AnalyticsService` and typed event properties for network Snap telemetry. ([#327](https://github.com/MetaMask/internal-snaps/pull/327))
 - Add shared configuration utilities for network snaps ([#309](https://github.com/MetaMask/internal-snaps/pull/309))
   - `BaseConfigProvider`, a base class owning the configuration lifecycle (parse the explicitly passed environment once against a Superstruct, frozen config, fail-fast on invalid environments)

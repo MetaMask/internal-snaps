@@ -10,6 +10,7 @@ import type {
   OnUserInputHandler,
 } from '@metamask/snaps-sdk';
 
+import type { LogErrorFn } from '../errors/errors';
 import { createSnapHandlers } from './createSnapHandlers';
 import type { WithCatchAndThrowSnapError } from './createSnapHandlers';
 
@@ -36,7 +37,16 @@ describe('createSnapHandlers', () => {
     request: { jsonrpc: '2.0', id: 4, method: 'rpc' },
   } as Parameters<OnRpcRequestHandler>[0];
 
-  function setup(includeRpc = true): {
+  function setup(
+    includeRpc = true,
+    logError?: {
+      keyring?: LogErrorFn;
+      clientRequest?: LogErrorFn;
+      cronjob?: LogErrorFn;
+      userInput?: LogErrorFn;
+      rpc?: LogErrorFn;
+    },
+  ): {
     handlers: ReturnType<typeof createSnapHandlers>;
     keyring: jest.MockedFunction<OnKeyringRequestHandler>;
     clientRequest: jest.MockedFunction<OnClientRequestHandler>;
@@ -69,8 +79,9 @@ describe('createSnapHandlers', () => {
     const wrapper = jest.fn();
     const withCatchAndThrowSnapError: WithCatchAndThrowSnapError = async (
       handler,
+      logErrorOverride,
     ) => {
-      wrapper();
+      wrapper(logErrorOverride);
       return handler();
     };
 
@@ -81,6 +92,7 @@ describe('createSnapHandlers', () => {
       userInput,
       ...(includeRpc ? { rpc } : {}),
       withCatchAndThrowSnapError,
+      logError,
     });
 
     return {
@@ -117,6 +129,17 @@ describe('createSnapHandlers', () => {
     expect(userInput).toHaveBeenCalledWith(userInputArgs);
     expect(rpc).toHaveBeenCalledWith(rpcArgs);
     expect(wrapper).toHaveBeenCalledTimes(5);
+  });
+
+  it('forwards a per-handler logError override', async () => {
+    const keyringLogError = jest.fn();
+    const { handlers, wrapper } = setup(false, { keyring: keyringLogError });
+
+    await handlers.onKeyringRequest(keyringArgs);
+    await handlers.onClientRequest(clientRequestArgs);
+
+    expect(wrapper).toHaveBeenNthCalledWith(1, keyringLogError);
+    expect(wrapper).toHaveBeenNthCalledWith(2, undefined);
   });
 
   it('omits the RPC handler when none is provided', () => {
