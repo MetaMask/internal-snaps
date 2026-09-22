@@ -233,6 +233,7 @@ const clientRequestHandler = new ClientRequestHandler({
   confirmationHandler,
   transactionsService,
   transactionExpirationRefresherService,
+  analyticsService,
 });
 const cronHandler = new CronHandler({
   logger,
