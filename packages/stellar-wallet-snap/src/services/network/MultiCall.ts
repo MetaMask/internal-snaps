@@ -169,12 +169,7 @@ export class MultiCall {
       .addOperation(this.exec(callerAccount, invocations))
       .build();
 
-    const sim = await this.#rpcClient.simulateTransaction(
-      tx,
-      undefined,
-      undefined,
-      false,
-    );
+    const sim = await this.#rpcClient.simulateTransaction(tx);
 
     if (rpc.Api.isSimulationError(sim)) {
       throw new Error(String(sim.error));
