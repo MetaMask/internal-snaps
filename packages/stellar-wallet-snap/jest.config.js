@@ -20,7 +20,6 @@ const config = {
     '.*/utils/logger\\.ts$', // skip logger.ts
     '.*/permissions\\.ts$', // skip permissions.ts
     '.*/context\\.ts$', // skip context.ts
-    '.*/config\\.ts$', // skip config.ts
     '.*/utils/snap\\.ts$', // skip snap.ts
   ],
 
