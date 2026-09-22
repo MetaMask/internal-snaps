@@ -1,7 +1,7 @@
-import type { InputChangeEvent } from '@metamask/snaps-sdk';
+import type { FormSubmitEvent } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
-import { getMemoDraftValidationError } from '../../../../api';
+import { getMemoValidationError } from '../../../../api';
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
 import {
   ConfirmationContextRefresherKey,
@@ -39,16 +39,6 @@ async function reRender(
 }
 
 /**
- * Resolves the memo currently saved on confirmation context.
- *
- * @param context - The interface context.
- * @returns The existing memo string, or empty when none.
- */
-function existingMemoFromContext(context: Record<string, Json>): string {
-  return typeof context.memo === 'string' ? context.memo : '';
-}
-
-/**
  * Opens the memo edit screen from send confirmation.
  *
  * @param options - The user input handler context.
@@ -62,29 +52,19 @@ async function onOpenClick(
   }
   await reRender(id, context, {
     memoScreen: true,
-    memoDraft: existingMemoFromContext(context),
     memoError: null,
   });
 }
 
 /**
- * Tracks the memo input as the user types.
+ * Reads the memo field from a form submit event.
  *
- * @param options - The user input handler context.
+ * @param event - The form submit event.
+ * @returns Trimmed memo string, or empty when absent.
  */
-async function onMemoInputChange(
-  options: UserInputUiEventHandlerContext,
-): Promise<void> {
-  const { id, event, context } = options;
-  if (!context) {
-    return;
-  }
-  const rawValue = (event as InputChangeEvent).value;
-  const value = typeof rawValue === 'string' ? rawValue : '';
-  await reRender(id, context, {
-    memoDraft: value,
-    memoError: getMemoDraftValidationError(value),
-  });
+function memoFromSubmitEvent(event: FormSubmitEvent): string {
+  const rawValue = event.value[MemoEditFormNames.Input];
+  return typeof rawValue === 'string' ? rawValue.trim() : '';
 }
 
 /**
@@ -93,31 +73,30 @@ async function onMemoInputChange(
  *
  * @param options - The user input handler context.
  */
-async function onSaveClick(
+async function onSaveSubmit(
   options: UserInputUiEventHandlerContext,
 ): Promise<void> {
-  const { id, context } = options;
-  if (!context || context.memoError) {
+  const { id, event, context } = options;
+  if (!context) {
     return;
   }
 
-  const memo =
-    typeof context.memoDraft === 'string' ? context.memoDraft.trim() : '';
-  const memoValidationError = getMemoDraftValidationError(memo);
+  const memo = memoFromSubmitEvent(event as FormSubmitEvent);
+  const memoValidationError = getMemoValidationError(memo);
   if (memoValidationError) {
+    // Keep the submitted text in `memo` so the input is not reset when we
+    // re-render with the validation error.
     await reRender(id, context, {
+      memo,
       memoError: memoValidationError,
     });
     return;
   }
 
-  const nextMemo = memo.length > 0 ? memo : '';
-
   const nextContext = {
     ...context,
-    memo: nextMemo,
+    memo,
     memoScreen: false,
-    memoDraft: nextMemo,
     memoError: null,
   };
 
@@ -195,8 +174,7 @@ async function onBackClick(
 export function createEventHandlers(): Record<string, UserInputUiEventHandler> {
   return {
     [MemoEditFormNames.Open]: onOpenClick,
-    [MemoEditFormNames.Input]: onMemoInputChange,
-    [MemoEditFormNames.Save]: onSaveClick,
+    [MemoEditFormNames.Form]: onSaveSubmit,
     [MemoEditFormNames.Back]: onBackClick,
   };
 }

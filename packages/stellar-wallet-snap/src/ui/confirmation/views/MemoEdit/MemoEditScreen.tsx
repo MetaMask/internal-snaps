@@ -5,6 +5,7 @@ import {
   Container,
   Field,
   Footer,
+  Form,
   Heading,
   Input,
   Text as SnapText,
@@ -47,19 +48,25 @@ export const MemoEditScreen = ({
         <SnapText color="alternative">
           {translate('confirmation.memo.description')}
         </SnapText>
-        <Field label={translate('confirmation.memo')} error={errorText}>
-          <Input
-            name={MemoEditFormNames.Input}
-            value={memo}
-            placeholder={translate('confirmation.memo.placeholder')}
-          />
-        </Field>
+        <Form name={MemoEditFormNames.Form}>
+          <Field label={translate('confirmation.memo')} error={errorText}>
+            <Input
+              name={MemoEditFormNames.Input}
+              value={memo}
+              placeholder={translate('confirmation.memo.placeholder')}
+            />
+          </Field>
+        </Form>
       </Box>
       <Footer>
         <Button name={MemoEditFormNames.Back}>
           {translate('confirmation.memo.back')}
         </Button>
-        <Button name={MemoEditFormNames.Save}>
+        <Button
+          name={MemoEditFormNames.Save}
+          type="submit"
+          form={MemoEditFormNames.Form}
+        >
           {translate('confirmation.memo.save')}
         </Button>
       </Footer>

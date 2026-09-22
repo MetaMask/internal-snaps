@@ -156,8 +156,6 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   memoScreen?: boolean;
   // Saved memo for the pending send (UI-owned; not on confirmSend RPC params).
   memo?: string;
-  // Draft memo text while editing.
-  memoDraft?: string;
   // Locale key for memo validation errors on the edit screen.
   memoError?: LocalizedMessage | null;
 };

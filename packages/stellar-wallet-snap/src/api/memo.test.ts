@@ -1,7 +1,7 @@
 import { Memo } from '@stellar/stellar-sdk';
 
 import {
-  getMemoDraftValidationError,
+  getMemoValidationError,
   isMemoId,
   isMemoText,
   resolveStellarMemo,
@@ -34,20 +34,20 @@ describe('isMemoText', () => {
   });
 });
 
-describe('getMemoDraftValidationError', () => {
+describe('getMemoValidationError', () => {
   it('returns null for empty or whitespace-only values', () => {
-    expect(getMemoDraftValidationError('')).toBeNull();
-    expect(getMemoDraftValidationError('   ')).toBeNull();
+    expect(getMemoValidationError('')).toBeNull();
+    expect(getMemoValidationError('   ')).toBeNull();
   });
 
   it('returns null for valid memo id and text values', () => {
-    expect(getMemoDraftValidationError('9876543210')).toBeNull();
-    expect(getMemoDraftValidationError('deposit-ref')).toBeNull();
-    expect(getMemoDraftValidationError('18446744073709551616')).toBeNull();
+    expect(getMemoValidationError('9876543210')).toBeNull();
+    expect(getMemoValidationError('deposit-ref')).toBeNull();
+    expect(getMemoValidationError('18446744073709551616')).toBeNull();
   });
 
   it('returns tooLong when the value exceeds 28 UTF-8 bytes', () => {
-    expect(getMemoDraftValidationError('é'.repeat(15))).toBe(
+    expect(getMemoValidationError('é'.repeat(15))).toBe(
       'confirmation.memo.error.tooLong',
     );
   });

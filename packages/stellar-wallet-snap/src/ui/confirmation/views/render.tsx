@@ -50,7 +50,7 @@ export function renderConfirmationView(
     return (
       <MemoEditScreen
         locale={baseContext.locale}
-        memo={baseContext.memoDraft}
+        memo={baseContext.memo}
         errorKey={baseContext.memoError}
       />
     );
