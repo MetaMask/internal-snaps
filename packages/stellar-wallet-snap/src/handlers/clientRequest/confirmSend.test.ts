@@ -628,6 +628,7 @@ describe('ConfirmSendHandler', () => {
             account,
             toAddress: destinationAddress,
             transactionsFetchStatus: FetchStatus.Error,
+            scanFetchStatus: FetchStatus.Error,
             errorMessage: 'confirmation.txnError.requiresMemo',
           }),
           renderOptions: {

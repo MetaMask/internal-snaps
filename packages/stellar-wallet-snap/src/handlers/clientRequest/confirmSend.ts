@@ -397,7 +397,12 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           toAddress,
           ...(initialValidationError
             ? {
+                // Recoverable RequiresMemo: show the banner, but do not start a
+                // security scan until the user saves a memo (MemoEdit restarts
+                // the refresh pipeline). Keep securityScanRequest below so the
+                // post-memo cycle can re-scan without rebuilding the request.
                 transactionsFetchStatus: FetchStatus.Error,
+                scanFetchStatus: FetchStatus.Error,
                 errorMessage: initialValidationError,
               }
             : {}),
