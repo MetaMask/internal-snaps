@@ -77,7 +77,7 @@ export class TrongridApiClient {
     tronHttpClient: TronHttpClient;
     cache: ICache<Serializable>;
   }) {
-    const { baseUrls } = configProvider.get().trongridApi;
+    const { baseUrls } = configProvider.config.trongridApi;
 
     // Initialize clients for all networks
     Object.entries(baseUrls).forEach(([network, baseUrl]) => {

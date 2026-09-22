@@ -40,7 +40,7 @@ import {
   SnapError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
-import { array, assert, integer, is } from '@metamask/superstruct';
+import { array, assert, is } from '@metamask/superstruct';
 import type { CaipChainId } from '@metamask/utils';
 import type { Signature } from '@solana/kit';
 import { address as asAddress, getAddressDecoder } from '@solana/kit';
@@ -71,7 +71,6 @@ import {
 } from '../../utils/deriveSolanaKeypair';
 import { trackError } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
-import { getLowestUnusedIndex } from '../../utils/getLowestUnusedIndex';
 import {
   endTrace,
   listEntropySources,

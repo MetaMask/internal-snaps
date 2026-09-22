@@ -1,11 +1,14 @@
 import { FeeType } from '@metamask/keyring-api';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+} from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { KnownCaip19Id, Network, Networks, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
 import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
@@ -23,6 +26,12 @@ type MockState = {
   setKey: jest.Mock;
   setKeyWith: jest.Mock;
 };
+
+const mockAnalyticsService = {
+  trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
+  trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
+  trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
+} as unknown as AnalyticsService;
 
 jest.mock(
   '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction',
@@ -57,7 +66,7 @@ const mockGetIconUrlForKnownAsset = jest.mocked(getIconUrlForKnownAsset);
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
-const mockAccount: TronKeyringAccount = {
+const mockAccount: ExtendedKeyringAccount = {
   id: TEST_ACCOUNT_ID,
   address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
   type: 'tron:eoa',
@@ -86,13 +95,7 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
   mockSnapClient: jest.Mocked<
     Pick<
       SnapClient,
-      | 'getPreferences'
-      | 'createInterface'
-      | 'showDialog'
-      | 'trackTransactionAdded'
-      | 'trackTransactionApproved'
-      | 'trackTransactionRejected'
-      | 'trackError'
+      'getPreferences' | 'createInterface' | 'showDialog' | 'trackError'
     >
   >;
   mockState: MockState;
@@ -157,13 +160,7 @@ async function withConfirmationHandler<ReturnValue>(
   const mockSnapClient: jest.Mocked<
     Pick<
       SnapClient,
-      | 'getPreferences'
-      | 'createInterface'
-      | 'showDialog'
-      | 'trackTransactionAdded'
-      | 'trackTransactionApproved'
-      | 'trackTransactionRejected'
-      | 'trackError'
+      'getPreferences' | 'createInterface' | 'showDialog' | 'trackError'
     >
   > = {
     getPreferences: jest.fn().mockResolvedValue({
@@ -180,11 +177,12 @@ async function withConfirmationHandler<ReturnValue>(
     }),
     createInterface: jest.fn().mockResolvedValue('mock-interface-id'),
     showDialog: jest.fn().mockResolvedValue(true),
-    trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
-    trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
-    trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
     trackError: jest.fn().mockResolvedValue(undefined),
   };
+
+  jest.mocked(mockAnalyticsService.trackTransactionAdded).mockClear();
+  jest.mocked(mockAnalyticsService.trackTransactionApproved).mockClear();
+  jest.mocked(mockAnalyticsService.trackTransactionRejected).mockClear();
 
   const mockState: MockState = {
     getKey: jest.fn(),
@@ -199,6 +197,7 @@ async function withConfirmationHandler<ReturnValue>(
     assetsService: mockAssetsService,
     feeCalculatorService: mockFeeCalculatorService,
     logger: mockLogger,
+    analyticsService: mockAnalyticsService,
   });
 
   return await testFunction({
@@ -426,39 +425,49 @@ describe('ConfirmationHandler', () => {
     };
 
     it('returns true and tracks approval when user confirms', async () => {
-      await withConfirmationHandler(async ({ handler, mockSnapClient }) => {
+      await withConfirmationHandler(async ({ handler }) => {
         mockRenderConfirmTransactionRequest.mockResolvedValue(true);
 
         const result = await handler.confirmTransactionRequest(defaultParams);
 
         expect(result).toBe(true);
-        expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
+          {
+            origin: 'MetaMask',
+            accountType: 'tron:eoa',
+            chainIdCaip: Network.Mainnet,
+          },
+        );
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });
-        expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith({
-          origin: 'MetaMask',
-          accountType: 'tron:eoa',
-          chainIdCaip: Network.Mainnet,
-        });
-        expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).not.toHaveBeenCalled();
       });
     });
 
     it('returns false and tracks rejection when user rejects', async () => {
-      await withConfirmationHandler(async ({ handler, mockSnapClient }) => {
+      await withConfirmationHandler(async ({ handler }) => {
         mockRenderConfirmTransactionRequest.mockResolvedValue(null);
 
         const result = await handler.confirmTransactionRequest(defaultParams);
 
         expect(result).toBe(false);
-        expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith({
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });
-        expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).not.toHaveBeenCalled();
       });
     });
 
@@ -583,6 +592,127 @@ describe('ConfirmationHandler', () => {
           mockAccount,
           rawData,
         );
+      });
+    });
+
+    it('tracks Added before rendering, then Approved, when the user confirms', async () => {
+      await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          rawData,
+        );
+        mockRenderConfirmSignTransaction.mockResolvedValue(true);
+
+        const result = await handler.handleKeyringRequest({
+          request,
+          account: mockAccount,
+        });
+
+        expect(result).toBe(true);
+        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
+          {
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          },
+        );
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
+          origin: request.origin,
+          accountType: mockAccount.type,
+          chainIdCaip: Network.Mainnet,
+        });
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).not.toHaveBeenCalled();
+        expect(
+          jest.mocked(mockAnalyticsService.trackTransactionAdded).mock
+            .invocationCallOrder[0],
+        ).toBeLessThan(
+          mockRenderConfirmSignTransaction.mock
+            .invocationCallOrder[0] as number,
+        );
+      });
+    });
+
+    it('tracks Rejected when the user rejects', async () => {
+      await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          rawData,
+        );
+        mockRenderConfirmSignTransaction.mockResolvedValue(false);
+
+        const result = await handler.handleKeyringRequest({
+          request,
+          account: mockAccount,
+        });
+
+        expect(result).toBe(false);
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).toHaveBeenCalledWith({
+          origin: request.origin,
+          accountType: mockAccount.type,
+          chainIdCaip: Network.Mainnet,
+        });
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).not.toHaveBeenCalled();
+      });
+    });
+
+    it.each([undefined, null])(
+      'tracks Rejected when the dialog resolves to %p',
+      async (dialogResult) => {
+        await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            rawData,
+          );
+          mockRenderConfirmSignTransaction.mockResolvedValue(
+            dialogResult as unknown as boolean,
+          );
+
+          const result = await handler.handleKeyringRequest({
+            request,
+            account: mockAccount,
+          });
+
+          expect(result).toBe(false);
+          expect(
+            mockAnalyticsService.trackTransactionRejected,
+          ).toHaveBeenCalledWith({
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          });
+        });
+      },
+    );
+
+    it('does not track transaction events for signMessage requests', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        const signMessageRequest = {
+          ...request,
+          request: {
+            method: TronMultichainMethod.SignMessage,
+            params: { address: mockAccount.address, message: 'hello' },
+          },
+        };
+
+        await handler.handleKeyringRequest({
+          request: signMessageRequest as unknown as typeof request,
+          account: mockAccount,
+        });
+
+        expect(
+          mockAnalyticsService.trackTransactionAdded,
+        ).not.toHaveBeenCalled();
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).not.toHaveBeenCalled();
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).not.toHaveBeenCalled();
       });
     });
   });

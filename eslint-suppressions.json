@@ -208,9 +208,6 @@
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.ts": {
@@ -218,7 +215,7 @@
       "count": 10
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 3
+      "count": 1
     },
     "@typescript-eslint/only-throw-error": {
       "count": 1
@@ -301,14 +298,6 @@
     },
     "no-unused-private-class-members": {
       "count": 2
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/config/ConfigProvider.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/services/confirmation/ConfirmationHandler.ts": {
@@ -434,11 +423,6 @@
   },
   "packages/solana-wallet-snap/src/core/services/subscriptions/SignatureMonitor.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/subscriptions/SignatureMonitor.ts": {
-    "no-unused-private-class-members": {
       "count": 1
     }
   },
@@ -1108,11 +1092,6 @@
       "count": 1
     }
   },
-  "packages/stellar-wallet-snap/src/handlers/keyring/keyring.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
-    }
-  },
   "packages/stellar-wallet-snap/src/handlers/keyring/signAuthEntry.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
@@ -1126,11 +1105,6 @@
   "packages/stellar-wallet-snap/src/handlers/keyring/signTransaction.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/account/AccountService.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
     }
   },
   "packages/stellar-wallet-snap/src/services/account/__mocks__/account.fixtures.ts": {
@@ -1163,26 +1137,6 @@
     }
   },
   "packages/stellar-wallet-snap/src/services/asset-metadata/token-api/TokenApiClient.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/StateCache.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/StateCache.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/useCache.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 4
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/cache/useCacheUntil.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
     }
@@ -1419,16 +1373,6 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/services/accounts/AccountsRepository.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/accounts/AccountsService.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/assets/AssetsRepository.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
@@ -1519,11 +1463,6 @@
     },
     "@typescript-eslint/no-explicit-any": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/utils/getExplorerUrl.test.ts": {
-    "n/no-process-env": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/validation/transaction.test.ts": {

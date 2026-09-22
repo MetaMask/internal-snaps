@@ -1,5 +1,6 @@
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+
 import { Network } from '../../../../constants';
-import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
@@ -64,7 +65,7 @@ function collectTexts(node: any): string[] {
 }
 
 describe('ConfirmSignTransaction', () => {
-  const mockAccount: TronKeyringAccount = {
+  const mockAccount: ExtendedKeyringAccount = {
     id: '123e4567-e89b-42d3-a456-426614174000',
     address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     options: {},

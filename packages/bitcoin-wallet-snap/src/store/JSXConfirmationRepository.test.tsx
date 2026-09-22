@@ -108,6 +108,14 @@ describe('JSXConfirmationRepository', () => {
         repo.insertSignMessage(mockAccount, message, origin),
       ).rejects.toThrow('User canceled the confirmation');
     });
+
+    it('does not track transaction confirmation events', async () => {
+      await repo.insertSignMessage(mockAccount, message, origin);
+
+      expect(mockSnapClient.trackTransactionAdded).not.toHaveBeenCalled();
+      expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+      expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+    });
   });
 
   describe('insertSendTransfer', () => {
@@ -224,6 +232,35 @@ describe('JSXConfirmationRepository', () => {
       await expect(
         repo.insertSendTransfer(mockAccount, mockPsbt, recipient, origin),
       ).rejects.toThrow('User canceled the confirmation');
+
+      expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+      );
+      expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+    });
+
+    it('tracks Transaction Added before showing the confirmation and Transaction Approved when confirmed', async () => {
+      await repo.insertSendTransfer(mockAccount, mockPsbt, recipient, origin);
+
+      expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+      );
+      expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+      );
+      expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+
+      const addedOrder =
+        mockSnapClient.trackTransactionAdded.mock.invocationCallOrder[0];
+      const displayOrder =
+        mockSnapClient.displayConfirmation.mock.invocationCallOrder[0];
+      const approvedOrder =
+        mockSnapClient.trackTransactionApproved.mock.invocationCallOrder[0];
+      expect(addedOrder).toBeLessThan(displayOrder as number);
+      expect(displayOrder).toBeLessThan(approvedOrder as number);
     });
 
     it('sets exchangeRate to undefined for non-mainnet networks', async () => {
@@ -414,6 +451,35 @@ describe('JSXConfirmationRepository', () => {
       await expect(
         repo.insertSignPsbt(mockAccount, mockSignPsbt, origin, options),
       ).rejects.toThrow('User canceled the confirmation');
+
+      expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+      );
+      expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+    });
+
+    it('tracks Transaction Added before showing the confirmation and Transaction Approved when confirmed', async () => {
+      await repo.insertSignPsbt(mockAccount, mockSignPsbt, origin, options);
+
+      expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+      );
+      expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+      );
+      expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+
+      const addedOrder =
+        mockSnapClient.trackTransactionAdded.mock.invocationCallOrder[0];
+      const displayOrder =
+        mockSnapClient.displayConfirmation.mock.invocationCallOrder[0];
+      const approvedOrder =
+        mockSnapClient.trackTransactionApproved.mock.invocationCallOrder[0];
+      expect(addedOrder).toBeLessThan(displayOrder as number);
+      expect(displayOrder).toBeLessThan(approvedOrder as number);
     });
 
     it('handles PSBT without fee information gracefully', async () => {

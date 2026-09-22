@@ -29,7 +29,7 @@ describe('TokenApiClient', () => {
     jest.clearAllMocks();
 
     mockConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         tokenApi: {
           baseUrl: 'https://some-mock-url.com',
           chunkSize: 50,
@@ -37,8 +37,8 @@ describe('TokenApiClient', () => {
         staticApi: {
           baseUrl: 'https://some-mock-static-url.com',
         },
-      }),
-    } as unknown as ConfigProvider;
+      },
+    } as ConfigProvider;
 
     client = new TokenApiClient(mockConfigProvider, mockFetch, mockLogger);
   });
@@ -46,12 +46,12 @@ describe('TokenApiClient', () => {
   describe('constructor', () => {
     it('rejects invalid baseUrl', async () => {
       const invalidConfigProvider = {
-        get: jest.fn().mockReturnValue({
+        config: {
           tokenApi: {
             baseUrl: 'invalid-url',
           },
-        }),
-      } as unknown as ConfigProvider;
+        },
+      } as ConfigProvider;
 
       expect(
         () => new TokenApiClient(invalidConfigProvider, mockFetch, mockLogger),
@@ -135,11 +135,11 @@ describe('TokenApiClient', () => {
         thirdTokenAddress,
       ];
       const chunkedConfigProvider = {
-        get: jest.fn().mockReturnValue({
+        config: {
           tokenApi: { baseUrl: 'https://some-mock-url.com', chunkSize: 2 },
           staticApi: { baseUrl: 'https://some-mock-static-url.com' },
-        }),
-      } as unknown as ConfigProvider;
+        },
+      } as ConfigProvider;
       client = new TokenApiClient(chunkedConfigProvider, mockFetch, mockLogger);
       mockFetch
         .mockResolvedValueOnce({

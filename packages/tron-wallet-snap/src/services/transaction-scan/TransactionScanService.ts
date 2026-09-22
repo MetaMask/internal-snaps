@@ -1,4 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -10,7 +14,6 @@ import type {
 } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import { isUnsupportedSimulationError } from './isUnsupportedSimulationError';
 import type {
@@ -31,14 +34,18 @@ export class TransactionScanService {
 
   readonly #logger: Logger;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor(
     securityAlertsApiClient: SecurityAlertsApiClient,
     snapClient: SnapClient,
     logger: Logger,
+    analyticsService: AnalyticsService,
   ) {
     this.#securityAlertsApiClient = securityAlertsApiClient;
     this.#snapClient = snapClient;
     this.#logger = logger;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -66,7 +73,7 @@ export class TransactionScanService {
     origin: string;
     scope: Network;
     options?: string[] | undefined;
-    account?: TronKeyringAccount;
+    account?: ExtendedKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     if (!isTransactionWellFormed(transactionRawData)) {
       this.#logger.warn(
@@ -117,7 +124,7 @@ export class TransactionScanService {
 
         // Track error if account is provided
         if (account) {
-          await this.#snapClient.trackSecurityScanCompleted({
+          await this.#analyticsService.trackSecurityScanCompleted({
             origin,
             accountType: account.type,
             chainIdCaip: scope,
@@ -144,7 +151,7 @@ export class TransactionScanService {
         );
 
         // Track scan completed
-        await this.#snapClient.trackSecurityScanCompleted({
+        await this.#analyticsService.trackSecurityScanCompleted({
           origin,
           accountType: account.type,
           chainIdCaip: scope,
@@ -161,7 +168,7 @@ export class TransactionScanService {
             ? (scan.validation.type as SecurityAlertResponse)
             : SecurityAlertResponse.Warning;
 
-          await this.#snapClient.trackSecurityAlertDetected({
+          await this.#analyticsService.trackSecurityAlertDetected({
             origin,
             accountType: account.type,
             chainIdCaip: scope,
@@ -181,7 +188,7 @@ export class TransactionScanService {
 
       // Track error if account is provided
       if (account) {
-        await this.#snapClient.trackSecurityScanCompleted({
+        await this.#analyticsService.trackSecurityScanCompleted({
           origin,
           accountType: account.type,
           chainIdCaip: scope,

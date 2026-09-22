@@ -212,6 +212,19 @@ export type BitcoinAccount = {
   isMine(script: ScriptBuf): boolean;
 
   /**
+   * Return whether or not a `script` is a change script of this wallet, i.e. it
+   * belongs to the internal (change) keychain.
+   *
+   * Unlike {@link isMine} this distinguishes the recipient output of a send that
+   * targets one of our own addresses from the change output of the same
+   * transaction, as both are owned by the wallet.
+   *
+   * @param script - The Bitcoin script.
+   * @returns whether the script is a change script.
+   */
+  isChange(script: ScriptBuf): boolean;
+
+  /**
    * Compute the `tx`'s sent and received [`Amount`]s.
    * This method returns a tuple `(sent, received)`. Sent is the sum of the txin amounts
    * that spend from previous txouts tracked by this wallet. Received is the summation
@@ -273,6 +286,14 @@ export type BitcoinAccountRepository = {
    * @returns the list of accounts
    */
   getAll(): Promise<BitcoinAccount[]>;
+
+  /**
+   * Get accounts by their ids.
+   *
+   * @param ids - Account IDs.
+   * @returns the accounts that exist, in requested order
+   */
+  getByIds(ids: string[]): Promise<BitcoinAccount[]>;
 
   /**
    * Get an account by its derivation path.
