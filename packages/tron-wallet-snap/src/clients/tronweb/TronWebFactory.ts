@@ -29,8 +29,7 @@ export class TronWebFactory {
    * const balance = await tronWeb.trx.getBalance(address);
    */
   createClient(network: Network, privateKey?: string): TronWeb {
-    const config = this.#configProvider.get();
-    const { baseUrls } = config.trongridApi;
+    const { baseUrls } = this.#configProvider.config.trongridApi;
 
     const fullHost = baseUrls[network];
     if (!fullHost) {

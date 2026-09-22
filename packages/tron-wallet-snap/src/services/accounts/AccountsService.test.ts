@@ -19,9 +19,9 @@ import { LogLevel } from '@metamask/snap-networks-utils';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
+import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
-import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
@@ -55,7 +55,6 @@ const EMPTY_NETWORK_URLS: Record<Network, string> = {
 const MOCK_CONFIG: Config = {
   environment: 'test',
   logLevel: LogLevel.INFO,
-  networks: [],
   activeNetworks: [],
   priceApi: {
     baseUrl: '',
@@ -66,14 +65,10 @@ const MOCK_CONFIG: Config = {
   },
   tokenApi: { baseUrl: '', chunkSize: 0 },
   staticApi: { baseUrl: '' },
-  transactions: { storageLimit: 0 },
   securityAlertsApi: { baseUrl: '' },
-  nftApi: {
-    baseUrl: '',
-    cacheTtlsMilliseconds: { listAddressSolanaNfts: 0, getNftMetadata: 0 },
-  },
   trongridApi: { baseUrls: EMPTY_NETWORK_URLS },
   tronHttpApi: { baseUrls: EMPTY_NETWORK_URLS },
+  explorerApi: { baseUrls: EMPTY_NETWORK_URLS },
 };
 
 /**
@@ -107,7 +102,7 @@ type WithAccountsServiceCallback = (payload: {
       | 'delete'
     >
   >;
-  mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>>;
+  mockConfigProvider: { config: Config };
   mockLogger: Logger;
   mockAssetsService: jest.Mocked<
     Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
@@ -142,7 +137,7 @@ async function withAccountsService(
 
   const keyringAccounts: ExtendedKeyringAccount[] = [];
 
-  const getAccountIndexKey = (account: ExtendedKeyringAccount) =>
+  const getAccountIndexKey = (account: ExtendedKeyringAccount): string =>
     `${account.entropySource}:${account.index}`;
 
   const mockAccountsRepository: jest.Mocked<
@@ -233,8 +228,8 @@ async function withAccountsService(
     }),
   };
 
-  const mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>> = {
-    get: jest.fn().mockReturnValue(MOCK_CONFIG),
+  const mockConfigProvider: { config: Config } = {
+    config: MOCK_CONFIG,
   };
 
   const mockSnapClient: jest.Mocked<
@@ -334,6 +329,72 @@ describe('AccountsService', () => {
           }),
         ).rejects.toThrow('Key derivation failed');
       });
+    });
+  });
+
+  describe('deriveTronKeypairs', () => {
+    const createAccount = (index: number): ExtendedKeyringAccount =>
+      ({
+        id: `account-${index}`,
+        entropySource: 'test-entropy',
+        derivationPath: AccountsService.getDefaultDerivationPath(index),
+        index,
+        address: `TAccount${index}`,
+        type: TrxAccountType.Eoa,
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      }) as unknown as ExtendedKeyringAccount;
+
+    it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          createAccount(0),
+          createAccount(1),
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+        expect(result[1]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+      }, coinJson);
+    });
+
+    it('derives using the account index instead of the derivation path index', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+      const keypairDeriver = await createTronBip44KeypairDeriver(coinJson);
+      const expectedIndex0Keypair = await keypairDeriver(0);
+      const unexpectedIndex5Keypair = await keypairDeriver(5);
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          {
+            ...createAccount(0),
+            derivationPath: "m/44'/195'/0'/0/5",
+          },
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result[0]).toStrictEqual(expectedIndex0Keypair);
+        expect(result[0]).not.toStrictEqual(unexpectedIndex5Keypair);
+      }, coinJson);
     });
   });
 
@@ -982,10 +1043,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet, Network.Shasta],
-          });
+          };
           mockAssetsService.fetchAssetsAndBalancesForAccount.mockResolvedValue(
             mockAssets,
           );
@@ -1011,7 +1072,7 @@ describe('AccountsService', () => {
     it('handles empty activeNetworks', async () => {
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue(MOCK_CONFIG);
+          mockConfigProvider.config = MOCK_CONFIG;
 
           const account: ExtendedKeyringAccount = {
             id: 'empty-id',
@@ -1070,10 +1131,10 @@ describe('AccountsService', () => {
           mockConfigProvider,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
           mockTransactionsService.fetchNewTransactionsForAccount.mockResolvedValue(
             mockTransactions,
           );
@@ -1112,10 +1173,10 @@ describe('AccountsService', () => {
           mockAssetsService,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await accountsService.synchronize([account]);
 
@@ -1154,10 +1215,10 @@ describe('AccountsService', () => {
           mockAssetsService,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await Promise.all([
             accountsService.synchronize([account]),
@@ -1182,10 +1243,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await accountsService.synchronize([account]);
           await accountsService.synchronize([account]);
@@ -1203,10 +1264,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await Promise.all([
             accountsService.synchronize([accountA]),

@@ -13,7 +13,7 @@ jest.mock('../../../../utils/i18n', () => ({
 
 // Mock getExplorerUrl
 jest.mock('../../../../utils/getExplorerUrl', () => ({
-  getExplorerUrl: (_scope: string, _type: string, _address: string) =>
+  getExplorerUrl: (_scope: Network, _type: string, _address: string) =>
     'https://explorer.example.com',
 }));
 
