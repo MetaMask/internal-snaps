@@ -29,10 +29,7 @@ import {
   TrustlineNotFoundException,
   UpdateTrustlineException,
 } from '../exceptions';
-import {
-  assertMemoWhenDestinationRequires,
-  shouldSkipValidationException,
-} from '../utils';
+import { assertMemoWhenDestinationRequires } from '../utils';
 import { isSep41TransferInvoke, parseSep41TransferInvoke } from '../xdrParser';
 import type {
   OperationSimulator,
@@ -40,7 +37,12 @@ import type {
   ValidateContext,
   AccountState,
 } from './api';
-import { getAccount, effectiveSource, getSpendableNative } from './utils';
+import {
+  getAccount,
+  effectiveSource,
+  getSpendableNative,
+  shouldSkipValidationException,
+} from './utils';
 
 type ClassicAssetId = KnownCaip19ClassicAssetId | KnownCaip19Slip44Id;
 
