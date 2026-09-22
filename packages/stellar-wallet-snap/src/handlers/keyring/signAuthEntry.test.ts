@@ -111,19 +111,10 @@ describe('SignAuthEntryHandler', () => {
       'renderConfirmationDialog'
     > as unknown as ConfirmationUXController;
 
-    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
-
     const handler = new SignAuthEntryHandler({
       logger,
       accountResolver,
       confirmationUIController,
-      analyticsService: {
-        trackTransactionAdded: trackTransactionAddedSpy,
-        trackTransactionRejected: trackTransactionRejectedSpy,
-        trackTransactionApproved: trackTransactionApprovedSpy,
-      } as never,
     });
 
     return {
@@ -131,9 +122,6 @@ describe('SignAuthEntryHandler', () => {
       mockAccount,
       wallet,
       renderConfirmationDialog,
-      trackTransactionAddedSpy,
-      trackTransactionApprovedSpy,
-      trackTransactionRejectedSpy,
     };
   }
 
@@ -434,71 +422,6 @@ describe('SignAuthEntryHandler', () => {
     expect(result).toStrictEqual({
       signedAuthEntry: expected,
       signerAddress: wallet.address,
-    });
-  });
-
-  describe('tracks transaction events', () => {
-    it('tracks transaction added before the confirmation and approved on confirm', async () => {
-      const {
-        handler,
-        mockAccount,
-        renderConfirmationDialog,
-        trackTransactionAddedSpy,
-        trackTransactionApprovedSpy,
-        trackTransactionRejectedSpy,
-      } = setupHandler();
-      renderConfirmationDialog.mockResolvedValue(true);
-
-      await handler.handle(buildRequest(mockAccount.id));
-
-      const expectedProperties = {
-        origin: 'https://example.com',
-        accountType: mockAccount.type,
-        chainIdCaip: KnownCaip2ChainId.Mainnet,
-      };
-
-      expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);
-      expect(trackTransactionApprovedSpy).toHaveBeenCalledWith(
-        expectedProperties,
-      );
-      expect(trackTransactionRejectedSpy).not.toHaveBeenCalled();
-
-      const addedOrder = trackTransactionAddedSpy.mock.invocationCallOrder[0];
-      const dialogOrder = renderConfirmationDialog.mock.invocationCallOrder[0];
-      const approvedOrder =
-        trackTransactionApprovedSpy.mock.invocationCallOrder[0];
-      expect(addedOrder).toBeLessThan(dialogOrder as number);
-      expect(dialogOrder).toBeLessThan(approvedOrder as number);
-    });
-
-    it('tracks transaction rejected when the user declines', async () => {
-      const {
-        handler,
-        mockAccount,
-        renderConfirmationDialog,
-        trackTransactionAddedSpy,
-        trackTransactionApprovedSpy,
-        trackTransactionRejectedSpy,
-      } = setupHandler();
-      renderConfirmationDialog.mockResolvedValue(false);
-
-      const result = await handler.handle(buildRequest(mockAccount.id));
-
-      expect(result).toMatchObject({
-        error: { code: Sep43ErrorCode.UserRejected },
-      });
-
-      const expectedProperties = {
-        origin: 'https://example.com',
-        accountType: mockAccount.type,
-        chainIdCaip: KnownCaip2ChainId.Mainnet,
-      };
-
-      expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);
-      expect(trackTransactionRejectedSpy).toHaveBeenCalledWith(
-        expectedProperties,
-      );
-      expect(trackTransactionApprovedSpy).not.toHaveBeenCalled();
     });
   });
 });

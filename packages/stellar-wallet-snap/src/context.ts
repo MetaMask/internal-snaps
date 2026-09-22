@@ -164,7 +164,6 @@ const signAuthEntryHandler = new SignAuthEntryHandler({
   logger,
   accountResolver,
   confirmationUIController,
-  analyticsService,
 });
 
 const keyringMethodHandlers: Record<MultichainMethod, IKeyringRequestHandler> =

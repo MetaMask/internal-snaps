@@ -1,8 +1,4 @@
-import type {
-  AnalyticsService,
-  Logger,
-  TransactionEventProperties,
-} from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { xdr } from '@stellar/stellar-sdk';
 
@@ -49,18 +45,14 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
 > {
   readonly #confirmationUIController: ConfirmationUXController;
 
-  readonly #analyticsService: AnalyticsService;
-
   constructor({
     logger,
     accountResolver,
     confirmationUIController,
-    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     confirmationUIController: ConfirmationUXController;
-    analyticsService: AnalyticsService;
   }) {
     super({
       logger,
@@ -70,7 +62,6 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
       responseStruct: SignAuthEntryResponseStruct,
     });
     this.#confirmationUIController = confirmationUIController;
-    this.#analyticsService = analyticsService;
   }
 
   protected async execute(
@@ -82,22 +73,9 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
 
     const readableAuthEntry = this.#decodeSorobanAuthPreimage(authEntry);
 
-    // Tracking properties are shared with the decision events so Added / Approved /
-    // Rejected stay consistent with the unified send flow.
-    const trackingProperties: TransactionEventProperties = {
-      origin: request.origin,
-      accountType: account.type,
-      chainIdCaip: request.scope,
-    };
-
-    await this.#analyticsService.trackTransactionAdded(trackingProperties);
-
     if (!(await this.#confirm(request, account, readableAuthEntry))) {
-      await this.#analyticsService.trackTransactionRejected(trackingProperties);
       throw new UserRejectedRequestError() as unknown as Error;
     }
-
-    await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
     const signedAuthEntry = wallet.signAuthEntry(authEntry);
 
