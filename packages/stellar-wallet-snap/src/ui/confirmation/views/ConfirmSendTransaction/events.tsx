@@ -1,6 +1,3 @@
-import type { DialogResult } from '@metamask/snaps-sdk';
-import { isObject } from '@metamask/utils';
-
 import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
@@ -15,41 +12,6 @@ export const ConfirmSendTransactionFormNames = {
 
 export type ConfirmSendTransactionFormNames =
   (typeof ConfirmSendTransactionFormNames)[keyof typeof ConfirmSendTransactionFormNames];
-
-export type ConfirmSendDialogResult = {
-  confirmed: boolean;
-  memo?: string | null;
-};
-
-/**
- * Parses the confirm-send dialog result (`{ confirmed, memo? }`, with boolean compat).
- *
- * @param result - Dialog result from `snap_resolveInterface`.
- * @returns Normalized confirmation + optional memo from the UI.
- */
-export function parseConfirmSendDialogResult(
-  result: DialogResult,
-): ConfirmSendDialogResult {
-  if (result === true) {
-    return { confirmed: true };
-  }
-  if (result === false || result === null) {
-    return { confirmed: false };
-  }
-  if (!isObject(result)) {
-    return { confirmed: false };
-  }
-
-  const confirmed = Boolean(result.confirmed);
-  const { memo: memoValue } = result;
-  if (typeof memoValue === 'string' && memoValue.trim()) {
-    return { confirmed, memo: memoValue.trim() };
-  }
-  if (memoValue === null) {
-    return { confirmed, memo: null };
-  }
-  return { confirmed };
-}
 
 /**
  * Handles the click event for the cancel button.

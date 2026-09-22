@@ -1,6 +1,7 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import type { DialogResult } from '@metamask/snaps-sdk';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
-import { ensureError } from '@metamask/utils';
+import { ensureError, isObject } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
@@ -28,8 +29,6 @@ import {
   FetchStatus,
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
-import type { ConfirmSendDialogResult } from '../../ui/confirmation/views/ConfirmSendTransaction/events';
-import { parseConfirmSendDialogResult } from '../../ui/confirmation/views/ConfirmSendTransaction/events';
 import type { LocalizedMessage } from '../../utils';
 import {
   hasDecimals,
@@ -59,6 +58,41 @@ import {
   assertRefreshedTransactionFeeNotHigher,
   getTxnErrorMessageKey,
 } from './utils';
+
+type ConfirmSendDialogResult = {
+  confirmed: boolean;
+  memo?: string | null;
+};
+
+/**
+ * Parses the confirm-send dialog result (`{ confirmed, memo? }`, with boolean compat).
+ *
+ * @param result - Dialog result from `snap_resolveInterface`.
+ * @returns Normalized confirmation + optional memo from the UI.
+ */
+function parseConfirmSendDialogResult(
+  result: DialogResult,
+): ConfirmSendDialogResult {
+  if (result === true) {
+    return { confirmed: true };
+  }
+  if (result === false || result === null) {
+    return { confirmed: false };
+  }
+  if (!isObject(result)) {
+    return { confirmed: false };
+  }
+
+  const confirmed = Boolean(result.confirmed);
+  const { memo: memoValue } = result;
+  if (typeof memoValue === 'string' && memoValue.trim()) {
+    return { confirmed, memo: memoValue.trim() };
+  }
+  if (memoValue === null) {
+    return { confirmed, memo: null };
+  }
+  return { confirmed };
+}
 
 /**
  * Confirms and submits a send transaction for Unified Non-EVM Send.
