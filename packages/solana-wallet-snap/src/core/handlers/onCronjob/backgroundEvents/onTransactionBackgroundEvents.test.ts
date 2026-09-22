@@ -30,19 +30,19 @@ describe('transaction background events', () => {
     {
       handler: onTransactionAdded,
       method: ScheduleBackgroundEventMethod.OnTransactionAdded,
-      track: analyticsService.trackTransactionAdded,
+      track: 'trackTransactionAdded',
     },
     {
       handler: onTransactionApproved,
       method: ScheduleBackgroundEventMethod.OnTransactionApproved,
-      track: analyticsService.trackTransactionApproved,
+      track: 'trackTransactionApproved',
     },
     {
       handler: onTransactionRejected,
       method: ScheduleBackgroundEventMethod.OnTransactionRejected,
-      track: analyticsService.trackTransactionRejected,
+      track: 'trackTransactionRejected',
     },
-  ])('tracks $method', async ({ handler, method, track }) => {
+  ] as const)('tracks $method', async ({ handler, method, track }) => {
     await handler({
       request: {
         id: '1',
@@ -59,7 +59,7 @@ describe('transaction background events', () => {
     });
 
     expect(keyring.getAccountOrThrow).toHaveBeenCalledWith(account.id);
-    expect(track).toHaveBeenCalledWith({
+    expect(analyticsService[track]).toHaveBeenCalledWith({
       origin,
       accountType: account.type,
       chainIdCaip: Network.Mainnet,
