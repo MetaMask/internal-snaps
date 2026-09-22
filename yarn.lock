@@ -3736,6 +3736,7 @@ __metadata:
     dotenv: "npm:^17.2.1"
     express: "npm:^4.21.1"
     jest: "npm:30.0.3"
+    jest-it-up: "npm:^2.0.2"
     jest-transform-stub: "npm:2.0.0"
     lodash: "npm:^4.17.21"
     oxfmt: "npm:^0.45.0"
