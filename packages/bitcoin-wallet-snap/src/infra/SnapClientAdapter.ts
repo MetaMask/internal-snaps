@@ -14,7 +14,13 @@ import type {
 } from '@metamask/snaps-sdk';
 import { DialogType } from '@metamask/snaps-sdk';
 
-import type { BitcoinAccount, Logger, SnapClient } from '../entities';
+import type {
+  BitcoinAccount,
+  Logger,
+  SnapClient,
+  TransactionBroadcastEventType,
+  TransactionConfirmationEventType,
+} from '../entities';
 import {
   computeDisplayBalanceSats,
   TrackingSnapEvent,
@@ -242,47 +248,137 @@ export class SnapClientAdapter implements SnapClient {
   }
 
   async emitTrackingEvent(
-    eventType: TrackingSnapEvent,
+    eventType: TransactionBroadcastEventType,
     account: BitcoinAccount,
     tx: WalletTx,
     origin: string,
   ): Promise<void> {
-    try {
-      const createMessage = (): string => {
-        switch (eventType) {
-          case TrackingSnapEvent.TransactionFinalized:
-            return 'Snap transaction finalized';
-          case TrackingSnapEvent.TransactionSubmitted:
-            return 'Snap transaction submitted';
-          case TrackingSnapEvent.TransactionReorged:
-            return 'Snap transaction reorged';
-          case TrackingSnapEvent.TransactionReceived:
-            return 'Snap transaction received';
-          default:
-            throw new AssertionError(`Unhandled tracking event type`, {
-              eventType,
-              origin,
-            });
-        }
-      };
+    const transactionKey =
+      eventType === TrackingSnapEvent.MissedTransactionsDiscovered
+        ? 'transaction_hash'
+        : 'tx_id';
 
+    await this.#trackEvent(eventType, () => ({
+      origin,
+      message: this.#getTrackingMessage(eventType),
+      chain_id_caip: networkToScope[account.network],
+      account_type: addressTypeToCaip[account.addressType],
+      [transactionKey]: tx.txid.toString(),
+    }));
+  }
+
+  async trackTransactionAdded(
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<void> {
+    await this.#trackConfirmationEvent(
+      TrackingSnapEvent.TransactionAdded,
+      account,
+      origin,
+    );
+  }
+
+  async trackTransactionApproved(
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<void> {
+    await this.#trackConfirmationEvent(
+      TrackingSnapEvent.TransactionApproved,
+      account,
+      origin,
+    );
+  }
+
+  async trackTransactionRejected(
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<void> {
+    await this.#trackConfirmationEvent(
+      TrackingSnapEvent.TransactionRejected,
+      account,
+      origin,
+    );
+  }
+
+  /**
+   * Tracks a confirmation event, which happens before the transaction is
+   * broadcast, so no transaction ID is available yet.
+   *
+   * @param eventType - The confirmation event type.
+   * @param account - The account the transaction belongs to.
+   * @param origin - The origin/source that triggered this event.
+   */
+  async #trackConfirmationEvent(
+    eventType: TransactionConfirmationEventType,
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<void> {
+    await this.#trackEvent(eventType, () => ({
+      origin,
+      message: this.#getTrackingMessage(eventType),
+      chain_id_caip: networkToScope[account.network],
+      account_type: addressTypeToCaip[account.addressType],
+    }));
+  }
+
+  /**
+   * Sends a tracking event, logging (but not throwing) on failure.
+   *
+   * Event properties are resolved lazily so that failures while building them
+   * are contained and never break the caller's flow.
+   *
+   * @param eventType - The event type to track.
+   * @param getProperties - Resolves the event properties.
+   */
+  async #trackEvent(
+    eventType: TrackingSnapEvent,
+    getProperties: () => Record<string, Json>,
+  ): Promise<void> {
+    try {
       await snap.request({
         method: 'snap_trackEvent',
         params: {
           event: {
             event: eventType,
-            properties: {
-              origin,
-              message: createMessage(),
-              chain_id_caip: networkToScope[account.network],
-              account_type: addressTypeToCaip[account.addressType],
-              tx_id: tx.txid.toString(),
-            },
+            properties: getProperties(),
           },
         },
       });
     } catch (error) {
       this.#logger.error(`Failed to track event: ${eventType}`, error);
+    }
+  }
+
+  /**
+   * Resolves the user-facing message for a transaction tracking event.
+   *
+   * @param eventType - The transaction event type.
+   * @returns The event message.
+   */
+  #getTrackingMessage(
+    eventType: TransactionBroadcastEventType | TransactionConfirmationEventType,
+  ): string {
+    switch (eventType) {
+      case TrackingSnapEvent.TransactionAdded:
+        return 'Snap transaction added';
+      case TrackingSnapEvent.TransactionApproved:
+        return 'Snap transaction approved';
+      case TrackingSnapEvent.TransactionRejected:
+        return 'Snap transaction rejected';
+      case TrackingSnapEvent.TransactionFinalized:
+        return 'Snap transaction finalized';
+      case TrackingSnapEvent.TransactionSubmitted:
+        return 'Snap transaction submitted';
+      case TrackingSnapEvent.TransactionReorged:
+        return 'Snap transaction reorged';
+      case TrackingSnapEvent.TransactionReceived:
+        return 'Snap transaction received';
+      case TrackingSnapEvent.MissedTransactionsDiscovered:
+        return 'Snap discovered missed transaction';
+      default:
+        throw new AssertionError(`Unhandled tracking event type`, {
+          eventType,
+        });
     }
   }
 

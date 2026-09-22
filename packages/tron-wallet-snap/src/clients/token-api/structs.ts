@@ -2,14 +2,14 @@ import { UrlStruct } from '@metamask/snap-networks-utils';
 import {
   array,
   integer,
-  object,
   optional,
   string,
+  type as typeStruct,
 } from '@metamask/superstruct';
 
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 
-export const TokenMetadataStruct = object({
+export const TokenMetadataStruct = typeStruct({
   decimals: integer(),
   assetId: TokenCaipAssetTypeStruct,
   name: optional(string()),

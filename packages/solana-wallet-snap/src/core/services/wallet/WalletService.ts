@@ -1,11 +1,18 @@
+import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import { normalizeError } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
 import type { Commitment, SignatureBytes } from '@solana/kit';
 import {
   address as asAddress,
-  assertTransactionIsFullySigned,
+  assertIsFullySignedTransaction,
+  assertIsSendableTransaction,
   createKeyPairSignerFromPrivateKeyBytes,
   createSignableMessage,
   getBase58Codec,
@@ -13,21 +20,24 @@ import {
   getBase64Codec,
   getSignatureFromTransaction,
   getUtf8Codec,
+  pipe,
   sendTransactionWithoutConfirmingFactory,
   verifySignature,
 } from '@solana/kit';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import { METAMASK_ORIGIN } from '../../constants/solana';
 import type { Caip10Address, Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import { addressToCaip10 } from '../../utils/addressToCaip10';
-import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
+import {
+  deriveSolanaKeypair,
+  deriveSolanaKeypairFromCoinTypeNode,
+} from '../../utils/deriveSolanaKeypair';
+import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
@@ -49,6 +59,27 @@ import type {
   SolanaSignMessageResponse,
   SolanaSignTransactionResponse,
 } from './structs';
+
+/**
+ * One message-signing request for the internal Solana batch signing path.
+ */
+export type SolanaSignMessageBatchRequest = {
+  /**
+   * Account whose key should sign the message.
+   */
+  account: ExtendedKeyringAccount;
+  /**
+   * Base64-encoded message to sign.
+   */
+  message: string;
+};
+
+/**
+ * Result for one message in the internal Solana batch signing path.
+ */
+export type SolanaSignMessageBatchResult =
+  | SolanaSignMessageResponse
+  | { error: string };
 
 export class WalletService {
   readonly #connection: SolanaConnection;
@@ -90,7 +121,7 @@ export class WalletService {
    * @throws If the request is invalid.
    */
   async resolveAccountAddress(
-    keyringAccounts: SolanaKeyringAccount[],
+    keyringAccounts: ExtendedKeyringAccount[],
     scope: Network,
     request: SolanaWalletRequest,
   ): Promise<Caip10Address> {
@@ -161,7 +192,7 @@ export class WalletService {
    * @returns A Promise that resolves to the signed transaction.
    */
   async signTransaction(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     transaction: string,
     scope: Network,
     origin: string,
@@ -204,7 +235,7 @@ export class WalletService {
 
     // If the transaction is fully signed, we can monitor it.
     try {
-      assertTransactionIsFullySigned(partiallySignedTransaction);
+      assertIsFullySignedTransaction(partiallySignedTransaction);
       const signature = getSignatureFromTransaction(partiallySignedTransaction);
       await this.#signatureMonitor.monitor(
         signature,
@@ -240,7 +271,7 @@ export class WalletService {
    * @returns A Promise that resolves to the signed transaction.
    */
   async signAndSendTransaction(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     transactionMessageBase64Encoded: string,
     scope: Network,
     origin: string,
@@ -278,7 +309,7 @@ export class WalletService {
     const explorerUrl = getSolanaExplorerUrl(scope, 'tx', signature);
     this.#logger.info(`Sending transaction: ${explorerUrl}`);
 
-    assertTransactionIsFullySigned(partiallySignedTransaction);
+    assertIsSendableTransaction(partiallySignedTransaction);
 
     const sendConfig = {
       ...(options?.preflightCommitment
@@ -302,11 +333,11 @@ export class WalletService {
       sendConfig,
     );
 
-    await this.#analyticsService.trackEventTransactionSubmitted(
-      account,
-      signature,
-      { scope, origin },
-    );
+    await this.#analyticsService.trackTransactionSubmitted({
+      origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    });
 
     await this.#signatureMonitor.monitor(
       signature,
@@ -337,21 +368,109 @@ export class WalletService {
    * @returns A Promise that resolves to the signed message.
    */
   async signMessage(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     message: string,
   ): Promise<SolanaSignMessageResponse> {
     this.#logger.log('Signing message', account, message);
 
-    const { address, entropySource, derivationPath } = account;
-    const addressAsAddress = asAddress(address);
-    const messageBytes = getBase64Codec().encode(message);
-    const messageUtf8 = getUtf8Codec().decode(messageBytes);
-    const signableMessage = createSignableMessage(messageUtf8);
-
+    const { entropySource, derivationPath } = account;
     const { privateKeyBytes } = await deriveSolanaKeypair({
       entropySource,
       derivationPath,
     });
+
+    return this.#signMessageWithPrivateKey(account, message, privateKeyBytes);
+  }
+
+  /**
+   * Signs multiple base64-encoded messages using Solana accounts.
+   *
+   * Requests are grouped by entropy source so the coin-type node is fetched
+   * once per source and account keys are derived locally. Results are returned
+   * in input order, with per-item errors for invalid derivation paths or
+   * signing failures.
+   *
+   * @param requests - Message signing requests.
+   * @returns One signing result per request, in input order.
+   */
+  async signMessages(
+    requests: SolanaSignMessageBatchRequest[],
+  ): Promise<SolanaSignMessageBatchResult[]> {
+    this.#logger.info(`Signing message batch for ${requests.length} requests`);
+
+    const results: SolanaSignMessageBatchResult[] = new Array(requests.length);
+    const requestsByEntropySource = new Map<
+      string,
+      { index: number; request: SolanaSignMessageBatchRequest }[]
+    >();
+
+    requests.forEach((request, index) => {
+      const sourceRequests =
+        requestsByEntropySource.get(request.account.entropySource) ?? [];
+      sourceRequests.push({ index, request });
+      requestsByEntropySource.set(
+        request.account.entropySource,
+        sourceRequests,
+      );
+    });
+
+    await Promise.all(
+      [...requestsByEntropySource.entries()].map(
+        async ([entropySource, sourceRequests]) => {
+          try {
+            const coinTypeNode = await getSolanaCoinTypeNode(entropySource);
+
+            for (const { index, request } of sourceRequests) {
+              try {
+                const privateKeyBytes = await this.#deriveSigningPrivateKey({
+                  coinTypeNode,
+                  account: request.account,
+                });
+
+                results[index] = await this.#signMessageWithPrivateKey(
+                  request.account,
+                  request.message,
+                  privateKeyBytes,
+                );
+              } catch (error) {
+                results[index] = { error: normalizeError(error).message };
+              }
+            }
+          } catch (error) {
+            for (const { index } of sourceRequests) {
+              results[index] = { error: normalizeError(error).message };
+            }
+          }
+        },
+      ),
+    );
+
+    return results;
+  }
+
+  /**
+   * Signs a base64-encoded message with an already-derived private key.
+   *
+   * This keeps the single-message and batch-message code paths using the same
+   * message encoding and signature response validation.
+   *
+   * @param account - Account whose address should own the signature.
+   * @param message - Base64-encoded message to sign.
+   * @param privateKeyBytes - Private key bytes for the account.
+   * @returns The wallet-standard signed message response.
+   */
+  async #signMessageWithPrivateKey(
+    account: ExtendedKeyringAccount,
+    message: string,
+    privateKeyBytes: Uint8Array,
+  ): Promise<SolanaSignMessageResponse> {
+    const addressAsAddress = asAddress(account.address);
+    const messageUtf8 = pipe(
+      message,
+      getBase64Codec().encode,
+      getUtf8Codec().decode,
+    );
+    const signableMessage = createSignableMessage(messageUtf8);
 
     const signer =
       await createKeyPairSignerFromPrivateKeyBytes(privateKeyBytes);
@@ -382,6 +501,36 @@ export class WalletService {
   }
 
   /**
+   * Derives private key bytes for signing.
+   *
+   * Derivation errors are deliberately collapsed to a generic message so error
+   * responses cannot include library context around private key material.
+   *
+   * @param params - The derivation parameters.
+   * @param params.coinTypeNode - The Solana coin-type node for the account's entropy source.
+   * @param params.account - The account to derive private key bytes for.
+   * @returns Private key bytes for the account.
+   */
+  async #deriveSigningPrivateKey({
+    coinTypeNode,
+    account,
+  }: {
+    coinTypeNode: SLIP10Node;
+    account: ExtendedKeyringAccount;
+  }): Promise<Uint8Array> {
+    try {
+      const { privateKeyBytes } = await deriveSolanaKeypairFromCoinTypeNode({
+        coinTypeNode,
+        accountIndex: account.index,
+      });
+
+      return privateKeyBytes;
+    } catch {
+      throw new Error('Unable to derive private key');
+    }
+  }
+
+  /**
    * Signs in to the Solana blockchain. Receives a sign in intent object
    * that contains data like domain, or uri, then converts it into a message
    * using `JSON.stringify()`, then signs the message.
@@ -392,7 +541,7 @@ export class WalletService {
    * @throws If the request is invalid.
    */
   async signIn(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     params: SolanaSignInRequest['params'],
   ): Promise<SolanaSignInResponse> {
     this.#logger.log('Signing in', account, params);
@@ -427,7 +576,7 @@ export class WalletService {
    * signature is valid.
    */
   async verifySignature(
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     signatureBase58: Infer<typeof Base58Struct>,
     messageBase64: Infer<typeof Base64Struct>,
   ): Promise<boolean> {

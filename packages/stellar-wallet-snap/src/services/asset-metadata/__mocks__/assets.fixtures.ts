@@ -1,16 +1,12 @@
+import { InMemoryState, InMemoryCache } from '@metamask/snap-networks-utils';
+
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../../api';
 import { AssetType, KnownCaip2ChainId } from '../../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../../constants';
 import { getSlip44AssetId } from '../../../utils/caip';
 import { logger, noOpLogger } from '../../../utils/logger';
-import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
-import { State } from '../../state';
-import type {
-  AssetMetadataByAssetId,
-  KeyringAssetMetadataByAssetId,
-  StellarAssetMetadata,
-} from '../api';
+import type { AssetMetadataByAssetId, StellarAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
 import { AssetMetadataService } from '../AssetMetadataService';
 
@@ -76,46 +72,6 @@ export const getMockSep41Assets = (): StellarAssetMetadata[] => {
   return [usdcSep41, usdtSep41];
 };
 
-export const generateMockKeyringAssetMetadata =
-  (): KeyringAssetMetadataByAssetId => {
-    return {
-      [NATIVE]: {
-        name: NATIVE_ASSET_NAME,
-        symbol: NATIVE_ASSET_SYMBOL,
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [
-          {
-            name: NATIVE_ASSET_NAME,
-            symbol: NATIVE_ASSET_SYMBOL,
-            decimals: 7,
-          },
-        ],
-      },
-      [USDC_CLASSIC]: {
-        name: 'USDC',
-        symbol: 'USDC',
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [{ name: 'USDC', symbol: 'USDC', decimals: 7 }],
-      },
-      [USDC_SEP41]: {
-        name: 'USDC',
-        symbol: 'USDC',
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [{ name: 'USDC', symbol: 'USDC', decimals: 7 }],
-      },
-      [USDT_SEP41]: {
-        name: 'USDT',
-        symbol: 'USDT',
-        fungible: true,
-        iconUrl: 'https://example.test/icon.png',
-        units: [{ name: 'USDT', symbol: 'USDT', decimals: 7 }],
-      },
-    } as KeyringAssetMetadataByAssetId;
-  };
-
 export const createMockAssetMetadataService = () => {
   const service = new AssetMetadataService({
     networkService: new NetworkService({
@@ -123,9 +79,8 @@ export const createMockAssetMetadataService = () => {
       cache: new InMemoryCache(noOpLogger),
     }),
     assetMetadataRepository: new AssetMetadataRepository(
-      new State({
-        encrypted: false,
-        defaultState: { assets: generateMockStellarAssetMetadata() },
+      new InMemoryState({
+        assets: generateMockStellarAssetMetadata(),
       }),
     ),
     logger,
@@ -141,15 +96,9 @@ export const createMockAssetMetadataService = () => {
     'getByAssetIds',
   );
 
-  const getAssetsMetadataByAssetIdsSpy = jest.spyOn(
-    AssetMetadataService.prototype,
-    'getAssetsMetadataByAssetIds',
-  );
-
   return {
     service,
     assetMetadataRepositorySaveManySpy,
     assetMetadataRepositoryGetByAssetIdsSpy,
-    getAssetsMetadataByAssetIdsSpy,
   };
 };

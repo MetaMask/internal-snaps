@@ -207,10 +207,10 @@ describe('TransactionService', () => {
       const result = await transactionService.createValidatedSwapTransaction({
         onChainAccount: testOnChainAccount,
         scope,
-        xdr: transaction.getRaw().toXDR(),
+        xdr: transaction.getRaw().toXdr(),
       });
 
-      expect(result.getRaw().toXDR()).toBe(transaction.getRaw().toXDR());
+      expect(result.getRaw().toXdr()).toBe(transaction.getRaw().toXdr());
       expect(simulateTransactionSpy).not.toHaveBeenCalled();
       expect(loadOnChainAccountsSpy).toHaveBeenCalledWith([], scope);
     });
@@ -238,10 +238,10 @@ describe('TransactionService', () => {
       const result = await transactionService.createValidatedSwapTransaction({
         onChainAccount: testOnChainAccount,
         scope,
-        xdr: transaction.getRaw().toXDR(),
+        xdr: transaction.getRaw().toXdr(),
       });
 
-      expect(result.getRaw().toXDR()).toBe(transaction.getRaw().toXDR());
+      expect(result.getRaw().toXdr()).toBe(transaction.getRaw().toXdr());
       expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
       expect(loadOnChainAccountsSpy).toHaveBeenCalledWith([], scope);
     });
@@ -562,6 +562,51 @@ describe('TransactionService', () => {
 
       expect(tx.transactionOperations).toHaveLength(1);
       expect(tx.transactionOperations[0]?.type).toBe('payment');
+    });
+
+    it('attaches memo on a classic native send', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      const destWallet = getTestWallet();
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(destWallet.address, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = new OnChainAccount(
+        destAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      jest
+        .spyOn(NetworkService.prototype, 'getBaseFee')
+        .mockResolvedValue(new BigNumber('100'));
+
+      const tx = await transactionService.createValidatedSendTransaction({
+        onChainAccount: sourceOnChain,
+        amount: new BigNumber('1000000'),
+        scope: KnownCaip2ChainId.Mainnet,
+        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+        destination: destWallet.address,
+        memo: 'deposit-ref',
+      });
+
+      expect(tx.getMemo()).toBe('deposit-ref');
     });
 
     it('returns a createAccount transaction for native XLM to an unfunded destination', async () => {

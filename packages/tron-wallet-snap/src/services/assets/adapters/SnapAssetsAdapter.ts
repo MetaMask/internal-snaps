@@ -5,7 +5,7 @@ import type {
   KeyringAccount,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
 import type { AssetMetadata, FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
@@ -39,7 +39,7 @@ import {
 } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toUiAmount } from '../../../utils/conversion';
-import type { State, UnencryptedStateValue } from '../../state/State';
+import type { UnencryptedStateValue } from '../../state/stateTypes';
 import type { AssetsRepository } from '../AssetsRepository';
 import type {
   InLockPeriodCaipAssetType,
@@ -86,7 +86,7 @@ export class SnapAssetsAdapter {
 
   readonly #assetsRepository: AssetsRepository;
 
-  readonly #state: State<UnencryptedStateValue>;
+  readonly #state: IStateManager<UnencryptedStateValue>;
 
   readonly #trongridApiClient: TrongridApiClient;
 
@@ -110,7 +110,7 @@ export class SnapAssetsAdapter {
   }: {
     logger: Logger;
     assetsRepository: AssetsRepository;
-    state: State<UnencryptedStateValue>;
+    state: IStateManager<UnencryptedStateValue>;
     trongridApiClient: TrongridApiClient;
     tronHttpClient: TronHttpClient;
     priceApiClient: PriceApiClient;

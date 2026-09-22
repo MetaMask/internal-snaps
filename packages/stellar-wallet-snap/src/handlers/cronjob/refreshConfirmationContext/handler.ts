@@ -140,6 +140,13 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       updatedContext,
     });
 
+    if (results.some((result) => result?.halt)) {
+      this.logger.info(
+        'Confirmation refresh halted; cron will not be rescheduled',
+      );
+      return;
+    }
+
     if (results.some((result) => result?.reschedule)) {
       await RefreshConfirmationContextHandler.scheduleBackgroundEvent({
         scope,
@@ -177,6 +184,8 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
    * refreshers see, so the scan refresher scans the renewed envelope rather than
    * a stale snapshot. The remaining refreshers then run in parallel.
    *
+   * If the transaction refresher returns `halt`, the scan refresher will be omitted.
+   *
    * Each refresher is isolated so one rejection does not prevent the others from
    * completing.
    *
@@ -188,19 +197,19 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
     ctx: ConfirmationDataContext,
     activeRefreshers: readonly IConfirmationContextRefresher[],
   ): Promise<ConfirmationContextRefreshResult[]> {
-    const transactionRefresher = activeRefreshers.find(
-      (refresher) =>
-        refresher.key === ConfirmationContextRefresherKey.Transaction,
-    );
-    const remainingRefreshers = activeRefreshers.filter(
-      (refresher) =>
-        refresher.key !== ConfirmationContextRefresherKey.Transaction,
+    const remainingRefreshers = new Map(
+      activeRefreshers.map((refresher) => [refresher.key, refresher]),
     );
 
     const results: ConfirmationContextRefreshResult[] = [];
     let workingContext = ctx;
 
+    const transactionRefresher = remainingRefreshers.get(
+      ConfirmationContextRefresherKey.Transaction,
+    );
     if (transactionRefresher) {
+      remainingRefreshers.delete(ConfirmationContextRefresherKey.Transaction);
+
       const transactionResult = await this.#settleRefresher(
         transactionRefresher,
         workingContext,
@@ -212,10 +221,15 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       if (transactionResult?.result) {
         workingContext = { ...workingContext, ...transactionResult.result };
       }
+
+      // `halt` omits the scan this cycle. Other remaining refreshers still run.
+      if (transactionResult?.halt) {
+        remainingRefreshers.delete(ConfirmationContextRefresherKey.Scan);
+      }
     }
 
     const remainingResults = await Promise.all(
-      remainingRefreshers.map(async (refresher) =>
+      [...remainingRefreshers.values()].map(async (refresher) =>
         this.#settleRefresher(refresher, workingContext),
       ),
     );

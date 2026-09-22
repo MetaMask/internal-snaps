@@ -1,4 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type {
   WebSocketCloseEvent,
   WebSocketEvent,
@@ -13,10 +17,8 @@ import type { EventEmitter } from '../../../infrastructure';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import { getClientStatus } from '../../utils/interface';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
 
 /**
@@ -71,7 +73,7 @@ export class WebSocketConnectionService {
       maxReconnectAttempts,
       reconnectDelayMilliseconds,
       closeConnectionsGracePeriodMilliseconds,
-    } = configProvider.get().subscriptions;
+    } = configProvider.config.subscriptions;
 
     this.#connectionRepository = connectionRepository;
     this.#analyticsService = analyticsService;
@@ -306,7 +308,7 @@ export class WebSocketConnectionService {
 
     // Here, we cannot rely on this.#connectionRepository.getById() because the connection doesn't exist anymore,
     // so we need to find the network from the event origin
-    const { networks } = this.#configProvider.get();
+    const { networks } = this.#configProvider.config;
     const network = networks.find((item) =>
       item.webSocketUrl.startsWith(origin),
     );
@@ -316,12 +318,13 @@ export class WebSocketConnectionService {
       return;
     }
 
-    // Track an event
-    await this.#analyticsService.trackEventWebSocketConnectionClosedNotCleanly(
+    // Track an event. The client may omit `code` and `reason`, but analytics
+    // properties must be JSON-serializable, so fall back to explicit values.
+    await this.#analyticsService.trackWebSocketConnectionClosedNotCleanly({
       origin,
-      code,
-      reason,
-    );
+      code: code ?? 0,
+      reason: reason ?? null,
+    });
 
     await this.#attemptReconnect(network.caip2Id);
   }

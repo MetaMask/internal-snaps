@@ -1,3 +1,8 @@
+import type {
+  AnalyticsService,
+  IStateManager,
+} from '@metamask/snap-networks-utils';
+
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
@@ -8,7 +13,7 @@ import {
   TRACK_TX_MAX_ATTEMPTS,
 } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
-import type { State, UnencryptedStateValue } from '../../services/state/State';
+import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { JsonTransactionRawData } from '../../services/transaction-expiration-refresher/types';
 import type { TransactionScanService } from '../../services/transaction-scan/TransactionScanService';
@@ -20,6 +25,10 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
+
+const mockAnalyticsService = {
+  trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
+} as unknown as AnalyticsService;
 
 /**
  * Subset of SnapClient methods exercised by `refreshConfirmationSend`.
@@ -387,13 +396,14 @@ function buildCronHandler({
     logger: mockLogger,
     accountsService: {} as AccountsService,
     snapClient: mockSnapClient as unknown as SnapClient,
-    state: mockState as unknown as State<UnencryptedStateValue>,
+    state: mockState as unknown as IStateManager<UnencryptedStateValue>,
     priceApiClient: {} as PriceApiClient,
     tronHttpClient: {} as TronHttpClient,
     transactionScanService:
       mockTransactionScanService as unknown as TransactionScanService,
     transactionExpirationRefresherService:
       transactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+    analyticsService: mockAnalyticsService,
   });
 }
 
@@ -914,9 +924,7 @@ describe('CronHandler', () => {
 
     type WithTrackTransactionCronHandlerCallback<ReturnValue> = (payload: {
       cronHandler: CronHandler;
-      mockSnapClient: MockSnapClient & {
-        trackTransactionFinalized: jest.Mock;
-      };
+      mockSnapClient: MockSnapClient;
       mockAccountsService: MockAccountsService;
       mockTronHttpClient: jest.Mocked<
         Pick<TronHttpClient, 'getTransactionInfoById'>
@@ -934,8 +942,8 @@ describe('CronHandler', () => {
     ): Promise<ReturnValue> {
       const mockSnapClient = {
         ...buildMockSnapClient(null),
-        trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
       };
+      jest.mocked(mockAnalyticsService.trackTransactionFinalized).mockClear();
       const mockAccountsService: MockAccountsService = {
         findByIds: jest.fn(),
         synchronize: jest.fn(),
@@ -949,12 +957,13 @@ describe('CronHandler', () => {
         logger: mockLogger,
         accountsService: mockAccountsService as unknown as AccountsService,
         snapClient: mockSnapClient as unknown as SnapClient,
-        state: {} as unknown as State<UnencryptedStateValue>,
+        state: {} as unknown as IStateManager<UnencryptedStateValue>,
         priceApiClient: {} as PriceApiClient,
         tronHttpClient: mockTronHttpClient as unknown as TronHttpClient,
         transactionScanService: {} as unknown as TransactionScanService,
         transactionExpirationRefresherService:
           {} as unknown as TransactionExpirationRefresherService,
+        analyticsService: mockAnalyticsService,
       });
 
       return await testFunction({
@@ -1017,13 +1026,13 @@ describe('CronHandler', () => {
               method: BackgroundEventMethod.SynchronizeSelectedAccounts,
             }),
           );
-          expect(mockSnapClient.trackTransactionFinalized).toHaveBeenCalledWith(
-            {
-              origin: 'MetaMask',
-              accountType: mockAccount.type,
-              chainIdCaip: Network.Mainnet,
-            },
-          );
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: 'MetaMask',
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+          });
         },
       );
     });
@@ -1081,7 +1090,7 @@ describe('CronHandler', () => {
             mockAccount,
           ]);
           expect(
-            mockSnapClient.trackTransactionFinalized,
+            mockAnalyticsService.trackTransactionFinalized,
           ).not.toHaveBeenCalled();
         },
       );
@@ -1116,7 +1125,7 @@ describe('CronHandler', () => {
             mockAccount,
           ]);
           expect(
-            mockSnapClient.trackTransactionFinalized,
+            mockAnalyticsService.trackTransactionFinalized,
           ).not.toHaveBeenCalled();
         },
       );

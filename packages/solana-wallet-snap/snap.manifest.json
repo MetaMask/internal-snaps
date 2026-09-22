@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "5XRlmv4jiAX3IKwm1vWkTlTRvieyZ4yBBgbQvDbXMQc=",
+    "shasum": "QrB8vILkJxJ9R3oqh5OhtB05Y21vDyUBZpfPaPlvD+M=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -71,6 +71,12 @@
           ]
         }
       }
+    },
+    "endowment:assets": {
+      "scopes": [
+        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+      ]
     },
     "endowment:name-lookup": {
       "chains": [

@@ -1,4 +1,6 @@
+/* eslint-disable no-restricted-globals -- Snap configuration executes in Node.js. */
 import type { SnapConfig } from '@metamask/snaps-cli';
+import { merge } from '@metamask/snaps-cli';
 import { config as dotenv } from 'dotenv';
 import { resolve } from 'path';
 
@@ -33,10 +35,6 @@ const config: SnapConfig = {
     PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL ?? '',
     SECURITY_ALERTS_API_BASE_URL:
       process.env.SECURITY_ALERTS_API_BASE_URL ?? '',
-    STELLAR_FIAT_EXCHANGE_RATES_TTL_MILLISECONDS:
-      process.env.STELLAR_FIAT_EXCHANGE_RATES_TTL_MILLISECONDS ?? '',
-    STELLAR_HISTORICAL_PRICES_TTL_MILLISECONDS:
-      process.env.STELLAR_HISTORICAL_PRICES_TTL_MILLISECONDS ?? '',
     STELLAR_SPOT_PRICES_TTL_MILLISECONDS:
       process.env.STELLAR_SPOT_PRICES_TTL_MILLISECONDS ?? '',
     STELLAR_BASE_FEE_TTL_MILLISECONDS:
@@ -61,6 +59,15 @@ const config: SnapConfig = {
     hidden: true,
     hideSnapBranding: true,
   },
+  customizeWebpackConfig: (webpackConfig) =>
+    merge(webpackConfig, {
+      resolve: {
+        alias: {
+          eventsource: resolve(__dirname, 'src/shims/eventsource.ts'),
+        },
+      },
+    }),
 };
 
 export default config;
+/* eslint-enable no-restricted-globals */

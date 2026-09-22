@@ -14,25 +14,11 @@ export const listEntropySources = jest.fn();
 
 export const getDefaultEntropySource = jest.fn();
 
-export const trackEvent = jest.fn();
-
 export const {
-  getState,
-  setState,
-  updateState,
   createInterface,
   showDialog,
   getPreferences,
   resolveInterface,
   scheduleBackgroundEvent,
   Duration,
-  TransactionEventType,
-  SecurityEventType,
-  trackTransactionAdded,
-  trackTransactionRejected,
-  trackTransactionApproved,
-  trackTransactionSubmitted,
-  trackTransactionFinalized,
-  trackSecurityAlertDetected,
-  trackSecurityScanCompleted,
 } = actual;

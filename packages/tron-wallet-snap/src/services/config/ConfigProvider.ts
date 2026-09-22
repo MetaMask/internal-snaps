@@ -1,238 +1,131 @@
 /* eslint-disable no-restricted-globals */
-import { UrlStruct, LogLevel } from '@metamask/snap-networks-utils';
-import type { Infer } from '@metamask/superstruct';
 import {
-  array,
-  coerce,
-  create,
-  enums,
-  object,
-  string,
-} from '@metamask/superstruct';
+  BaseConfigProvider,
+  defaultedUrlStruct,
+  EnvironmentStruct,
+  LogLevelStruct,
+  UrlStruct,
+} from '@metamask/snap-networks-utils';
+import type { Infer } from '@metamask/superstruct';
+import { array, enums, number, object, record } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 
-import { Network, Networks } from '../../constants';
+import { Network } from '../../constants';
 
-const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<Env['ENVIRONMENT'], Network[]> = {
+const NetworkStruct = enums(Object.values(Network) as [Network, ...Network[]]);
+
+/**
+ * The default base URLs for the price, token, and static APIs, used when
+ * the corresponding environment variables are unset.
+ */
+const DEFAULT_PRICE_API_BASE_URL = 'https://price.api.cx.metamask.io';
+const DEFAULT_TOKEN_API_BASE_URL = 'https://tokens.api.cx.metamask.io';
+const DEFAULT_STATIC_API_BASE_URL = 'https://static.cx.metamask.io';
+
+const ENVIRONMENT_TO_ACTIVE_NETWORKS: Record<string, Network[]> = {
   production: [Network.Mainnet],
   local: [Network.Mainnet],
   test: [Network.Mainnet],
 };
 
-const CommaSeparatedListOfUrlsStruct = coerce(
-  array(UrlStruct),
-  string(),
-  (value: string) => value.split(','),
-);
-
-const EnvStruct = object({
-  ENVIRONMENT: enums(['local', 'test', 'production']),
-  LOG_LEVEL: enums(Object.values(LogLevel) as [LogLevel, ...LogLevel[]]),
-  RPC_URL_LIST_MAINNET: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LIST_NILE_TESTNET: CommaSeparatedListOfUrlsStruct,
-  RPC_URL_LIST_SHASTA_TESTNET: CommaSeparatedListOfUrlsStruct,
-  EXPLORER_MAINNET_BASE_URL: UrlStruct,
-  EXPLORER_NILE_BASE_URL: UrlStruct,
-  EXPLORER_SHASTA_BASE_URL: UrlStruct,
-  PRICE_API_BASE_URL: UrlStruct,
-  TOKEN_API_BASE_URL: UrlStruct,
-  STATIC_API_BASE_URL: UrlStruct,
-  SECURITY_ALERTS_API_BASE_URL: UrlStruct,
-  NFT_API_BASE_URL: UrlStruct,
-  LOCAL_API_BASE_URL: string(),
-  TRONGRID_BASE_URL_MAINNET: UrlStruct,
-  TRONGRID_BASE_URL_NILE: UrlStruct,
-  TRONGRID_BASE_URL_SHASTA: UrlStruct,
-  TRON_HTTP_BASE_URL_MAINNET: UrlStruct,
-  TRON_HTTP_BASE_URL_NILE: UrlStruct,
-  TRON_HTTP_BASE_URL_SHASTA: UrlStruct,
+/**
+ * The struct describing the configuration of the snap, including coercions
+ * from raw strings to typed values.
+ */
+export const ConfigStruct = object({
+  environment: EnvironmentStruct,
+  logLevel: LogLevelStruct,
+  activeNetworks: array(NetworkStruct),
+  priceApi: object({
+    baseUrl: defaultedUrlStruct(DEFAULT_PRICE_API_BASE_URL),
+    chunkSize: number(),
+    cacheTtlsMilliseconds: object({
+      spotPrices: number(),
+    }),
+  }),
+  tokenApi: object({
+    baseUrl: defaultedUrlStruct(DEFAULT_TOKEN_API_BASE_URL),
+    chunkSize: number(),
+  }),
+  staticApi: object({
+    baseUrl: defaultedUrlStruct(DEFAULT_STATIC_API_BASE_URL),
+  }),
+  securityAlertsApi: object({
+    baseUrl: UrlStruct,
+  }),
+  trongridApi: object({
+    baseUrls: record(NetworkStruct, UrlStruct),
+  }),
+  tronHttpApi: object({
+    baseUrls: record(NetworkStruct, UrlStruct),
+  }),
+  explorerApi: object({
+    baseUrls: record(NetworkStruct, UrlStruct),
+  }),
 });
 
-type Env = Infer<typeof EnvStruct>;
-
-export type NetworkConfig = (typeof Networks)[Network] & {
-  rpcUrls: string[];
-  explorerBaseUrl: string;
-};
-
-export type Config = {
-  environment: string;
-  logLevel: LogLevel;
-  networks: NetworkConfig[];
-  activeNetworks: Network[];
+/**
+ * The environment consumed by the snap. Each `process.env` reference is
+ * replaced with its build-time value (see `snap.config.ts`).
+ */
+export const ENVIRONMENT = {
+  environment: process.env.ENVIRONMENT,
+  logLevel: process.env.LOG_LEVEL,
+  activeNetworks: ENVIRONMENT_TO_ACTIVE_NETWORKS[process.env.ENVIRONMENT ?? ''],
   priceApi: {
-    baseUrl: string;
-    chunkSize: number;
+    baseUrl: process.env.PRICE_API_BASE_URL,
+    chunkSize: 50,
     cacheTtlsMilliseconds: {
-      spotPrices: number;
-    };
-  };
+      spotPrices: Duration.Minute,
+    },
+  },
   tokenApi: {
-    baseUrl: string;
-    chunkSize: number;
-  };
+    baseUrl: process.env.TOKEN_API_BASE_URL,
+    chunkSize: 50,
+  },
   staticApi: {
-    baseUrl: string;
-  };
-  transactions: {
-    storageLimit: number;
-  };
+    baseUrl: process.env.STATIC_API_BASE_URL,
+  },
   securityAlertsApi: {
-    baseUrl: string;
-  };
-  nftApi: {
-    baseUrl: string;
-    cacheTtlsMilliseconds: {
-      listAddressSolanaNfts: number;
-      getNftMetadata: number;
-    };
-  };
+    baseUrl: process.env.SECURITY_ALERTS_API_BASE_URL,
+  },
   trongridApi: {
-    baseUrls: Record<Network, string>;
-  };
+    baseUrls: {
+      [Network.Mainnet]: process.env.TRONGRID_BASE_URL_MAINNET,
+      [Network.Nile]: process.env.TRONGRID_BASE_URL_NILE,
+      [Network.Shasta]: process.env.TRONGRID_BASE_URL_SHASTA,
+    },
+  },
   tronHttpApi: {
-    baseUrls: Record<Network, string>;
-  };
+    baseUrls: {
+      [Network.Mainnet]: process.env.TRON_HTTP_BASE_URL_MAINNET,
+      [Network.Nile]: process.env.TRON_HTTP_BASE_URL_NILE,
+      [Network.Shasta]: process.env.TRON_HTTP_BASE_URL_SHASTA,
+    },
+  },
+  explorerApi: {
+    baseUrls: {
+      [Network.Mainnet]: process.env.EXPLORER_MAINNET_BASE_URL,
+      [Network.Nile]: process.env.EXPLORER_NILE_BASE_URL,
+      [Network.Shasta]: process.env.EXPLORER_SHASTA_BASE_URL,
+    },
+  },
 };
+
+export type Config = Infer<typeof ConfigStruct>;
 
 /**
- * A utility class that provides the configuration of the snap.
+ * The type of the tron snap's configuration provider, for dependency
+ * injection and test doubles.
+ */
+export type ConfigProvider = BaseConfigProvider<typeof ConfigStruct>;
+
+/**
+ * The configuration provider of the snap.
+ * The environment is parsed and the config built exactly once, when this
+ * module is imported.
  *
  * @example
- * const configProvider = new ConfigProvider();
- * const { networks } = configProvider.get();
- * @example
- * // You can use utility methods for more advanced manipulations.
- * const network = configProvider.getNetworkBy('caip2Id', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
+ * const { activeNetworks } = configProvider.config;
  */
-export class ConfigProvider {
-  readonly #config: Config;
-
-  constructor() {
-    const environment = this.#parseEnvironment();
-    this.#config = this.#buildConfig(environment);
-  }
-
-  #parseEnvironment(): Env {
-    const rawEnvironment = {
-      ENVIRONMENT: process.env.ENVIRONMENT,
-      LOG_LEVEL: process.env.LOG_LEVEL,
-      // RPC
-      RPC_URL_LIST_MAINNET: process.env.RPC_URL_LIST_MAINNET,
-      RPC_URL_LIST_NILE_TESTNET: process.env.RPC_URL_LIST_NILE_TESTNET,
-      RPC_URL_LIST_SHASTA_TESTNET: process.env.RPC_URL_LIST_SHASTA_TESTNET,
-      // Block explorer
-      EXPLORER_MAINNET_BASE_URL: process.env.EXPLORER_MAINNET_BASE_URL,
-      EXPLORER_NILE_BASE_URL: process.env.EXPLORER_NILE_BASE_URL,
-      EXPLORER_SHASTA_BASE_URL: process.env.EXPLORER_SHASTA_BASE_URL,
-      // APIs
-      PRICE_API_BASE_URL: process.env.PRICE_API_BASE_URL,
-      TOKEN_API_BASE_URL: process.env.TOKEN_API_BASE_URL,
-      STATIC_API_BASE_URL: process.env.STATIC_API_BASE_URL,
-      SECURITY_ALERTS_API_BASE_URL: process.env.SECURITY_ALERTS_API_BASE_URL,
-      NFT_API_BASE_URL: process.env.NFT_API_BASE_URL,
-      LOCAL_API_BASE_URL: process.env.LOCAL_API_BASE_URL,
-      // // TronGrid API
-      TRONGRID_BASE_URL_MAINNET: process.env.TRONGRID_BASE_URL_MAINNET,
-      TRONGRID_BASE_URL_NILE: process.env.TRONGRID_BASE_URL_NILE,
-      TRONGRID_BASE_URL_SHASTA: process.env.TRONGRID_BASE_URL_SHASTA,
-      // // Tron HTTP API URLs
-      TRON_HTTP_BASE_URL_MAINNET: process.env.TRON_HTTP_BASE_URL_MAINNET,
-      TRON_HTTP_BASE_URL_NILE: process.env.TRON_HTTP_BASE_URL_NILE,
-      TRON_HTTP_BASE_URL_SHASTA: process.env.TRON_HTTP_BASE_URL_SHASTA,
-    };
-
-    // Validate and parse them before returning
-    return create(rawEnvironment, EnvStruct);
-  }
-
-  #buildConfig(environment: Env): Config {
-    return {
-      environment: environment.ENVIRONMENT,
-      logLevel: environment.LOG_LEVEL,
-      networks: [
-        {
-          ...Networks[Network.Mainnet],
-          rpcUrls: environment.RPC_URL_LIST_MAINNET,
-          explorerBaseUrl: environment.EXPLORER_MAINNET_BASE_URL,
-        },
-        {
-          ...Networks[Network.Nile],
-          rpcUrls: environment.RPC_URL_LIST_NILE_TESTNET,
-          explorerBaseUrl: environment.EXPLORER_NILE_BASE_URL,
-        },
-        {
-          ...Networks[Network.Shasta],
-          rpcUrls: environment.RPC_URL_LIST_SHASTA_TESTNET,
-          explorerBaseUrl: environment.EXPLORER_SHASTA_BASE_URL,
-        },
-      ],
-      activeNetworks: ENVIRONMENT_TO_ACTIVE_NETWORKS[environment.ENVIRONMENT],
-      priceApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.PRICE_API_BASE_URL,
-        chunkSize: 50,
-        cacheTtlsMilliseconds: {
-          spotPrices: Duration.Minute,
-        },
-      },
-      tokenApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.TOKEN_API_BASE_URL,
-        chunkSize: 50,
-      },
-      staticApi: {
-        baseUrl: environment.STATIC_API_BASE_URL,
-      },
-      transactions: {
-        storageLimit: 10,
-      },
-      securityAlertsApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.SECURITY_ALERTS_API_BASE_URL,
-      },
-      nftApi: {
-        baseUrl:
-          environment.ENVIRONMENT === 'test'
-            ? environment.LOCAL_API_BASE_URL
-            : environment.NFT_API_BASE_URL,
-        cacheTtlsMilliseconds: {
-          listAddressSolanaNfts: Duration.Minute,
-          getNftMetadata: Duration.Minute,
-        },
-      },
-      trongridApi: {
-        baseUrls: {
-          [Network.Mainnet]: environment.TRONGRID_BASE_URL_MAINNET,
-          [Network.Nile]: environment.TRONGRID_BASE_URL_NILE,
-          [Network.Shasta]: environment.TRONGRID_BASE_URL_SHASTA,
-        },
-      },
-      tronHttpApi: {
-        baseUrls: {
-          [Network.Mainnet]: environment.TRON_HTTP_BASE_URL_MAINNET,
-          [Network.Nile]: environment.TRON_HTTP_BASE_URL_NILE,
-          [Network.Shasta]: environment.TRON_HTTP_BASE_URL_SHASTA,
-        },
-      },
-    };
-  }
-
-  public get(): Config {
-    return this.#config;
-  }
-
-  public getNetworkBy(key: keyof NetworkConfig, value: string): NetworkConfig {
-    const network = this.get().networks.find((item) => item[key] === value);
-    if (!network) {
-      throw new Error(`Network ${key} not found`);
-    }
-    return network;
-  }
-}
+export const configProvider = new BaseConfigProvider(ENVIRONMENT, ConfigStruct);

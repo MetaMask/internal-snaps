@@ -1,6 +1,9 @@
-import type { SolanaKeyringAccount } from '../../../entities';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type {
+  ExtendedKeyringAccount,
+  IStateManager,
+} from '@metamask/snap-networks-utils';
+
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class AccountsRepository {
   readonly #state: IStateManager<UnencryptedStateValue>;
@@ -9,7 +12,7 @@ export class AccountsRepository {
     this.#state = state;
   }
 
-  async getAll(): Promise<SolanaKeyringAccount[]> {
+  async getAll(): Promise<ExtendedKeyringAccount[]> {
     const accounts =
       await this.#state.getKey<UnencryptedStateValue['keyringAccounts']>(
         'keyringAccounts',
@@ -18,17 +21,32 @@ export class AccountsRepository {
     return Object.values(accounts ?? {});
   }
 
-  async findById(id: string): Promise<SolanaKeyringAccount | null> {
+  async findById(id: string): Promise<ExtendedKeyringAccount | null> {
     return (await this.#state.getKey(`keyringAccounts.${id}`)) ?? null;
   }
 
-  async findByAddress(address: string): Promise<SolanaKeyringAccount | null> {
+  /**
+   * Finds multiple Solana keyring accounts with a single full account-state
+   * read.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts. Result ordering follows stored account
+   * ordering, not input ordering.
+   */
+  async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
+    const idSet = new Set(ids.map((id) => id.toLowerCase()));
+    const accounts = await this.getAll();
+
+    return accounts.filter((account) => idSet.has(account.id.toLowerCase()));
+  }
+
+  async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
     const accounts = await this.getAll();
 
     return accounts.find((account) => account.address === address) ?? null;
   }
 
-  async save(account: SolanaKeyringAccount): Promise<void> {
+  async save(account: ExtendedKeyringAccount): Promise<void> {
     await this.#state.setKey(`keyringAccounts.${account.id}`, account);
   }
 

@@ -1,7 +1,6 @@
 import { mnemonicPhraseToBytes } from '@metamask/key-tree';
 import { SolMethod, SolScope } from '@metamask/keyring-api';
-
-import type { SolanaKeyringAccount } from '../../../entities';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 export const MOCK_SEED_PHRASE =
   'sugar interest animal afford dog imitate relief lizard width strategy embark midnight';
@@ -25,7 +24,7 @@ export const ALL_SCOPES = [SolScope.Mainnet, SolScope.Testnet, SolScope.Devnet];
  * sugar interest animal afford dog imitate relief lizard width strategy embark midnight
  */
 
-export const MOCK_SOLANA_KEYRING_ACCOUNT_0: SolanaKeyringAccount = {
+export const MOCK_SOLANA_KEYRING_ACCOUNT_0: ExtendedKeyringAccount = {
   address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
   entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
   derivationPath: `m/44'/501'/0'/0'`,
@@ -56,7 +55,7 @@ export const MOCK_SOLANA_KEYRING_ACCOUNT_0_PUBLIC_KEY_BYTES = Uint8Array.from([
   185, 200, 241, 76, 205, 92, 21, 136, 75, 157, 88, 79, 89, 248, 223, 116,
 ]);
 
-export const MOCK_SOLANA_KEYRING_ACCOUNT_1: SolanaKeyringAccount = {
+export const MOCK_SOLANA_KEYRING_ACCOUNT_1: ExtendedKeyringAccount = {
   address: 'FvS1p2dQnhWNrHyuVpJRU5mkYRkSTrubXHs4XrAn3PGo',
   entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
   derivationPath: `m/44'/501'/1'/0'`,
@@ -82,7 +81,7 @@ export const MOCK_SOLANA_KEYRING_ACCOUNT_1_PRIVATE_KEY_BYTES = Uint8Array.from([
   179, 3, 131, 173, 86, 94, 23, 72, 63, 239, 110, 125, 30, 210, 84, 194,
 ]);
 
-export const MOCK_SOLANA_KEYRING_ACCOUNT_2: SolanaKeyringAccount = {
+export const MOCK_SOLANA_KEYRING_ACCOUNT_2: ExtendedKeyringAccount = {
   address: '27h6cm6S9ag5y4ASi1a1vbTSKEsQMjEdfvZ6atPjmbuD',
   entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
   derivationPath: `m/44'/501'/2'/0'`,
@@ -108,7 +107,7 @@ export const MOCK_SOLANA_KEYRING_ACCOUNT_2_PRIVATE_KEY_BYTES = Uint8Array.from([
   101, 85, 226, 215, 67, 23, 223, 247, 240, 157, 111, 214, 41, 42,
 ]);
 
-export const MOCK_SOLANA_KEYRING_ACCOUNT_3: SolanaKeyringAccount = {
+export const MOCK_SOLANA_KEYRING_ACCOUNT_3: ExtendedKeyringAccount = {
   address: '3SYHDFbhoxuTCYCGRw7KSL8GbwUoByjtvyy7pUZeAhh8',
   entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
   derivationPath: `m/44'/501'/3'/0'`,
@@ -134,7 +133,7 @@ export const MOCK_SOLANA_KEYRING_ACCOUNT_3_PRIVATE_KEY_BYTES = Uint8Array.from([
   3, 95, 186, 173, 83, 212, 239, 180, 41, 7, 213, 92, 250, 122, 122,
 ]);
 
-export const MOCK_SOLANA_KEYRING_ACCOUNT_4: SolanaKeyringAccount = {
+export const MOCK_SOLANA_KEYRING_ACCOUNT_4: ExtendedKeyringAccount = {
   address: 'FDUGdV6bjhvw5gbirXCvqbTSWK9999kcrZcrHoCQzXJK',
   entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
   derivationPath: `m/44'/501'/4'/0'`,
@@ -160,7 +159,7 @@ export const MOCK_SOLANA_KEYRING_ACCOUNT_4_PRIVATE_KEY_BYTES = Uint8Array.from([
   87, 234, 231, 209, 140, 109, 175, 247, 42, 249, 9, 224, 62, 60, 54,
 ]);
 
-export const MOCK_SOLANA_KEYRING_ACCOUNT_5: SolanaKeyringAccount = {
+export const MOCK_SOLANA_KEYRING_ACCOUNT_5: ExtendedKeyringAccount = {
   address: 'GN1DST49kafBmRDnKKwUbR6nJWoqzSJBPoHwcTXzgmkH',
   entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
   derivationPath: `m/44'/501'/5'/0'`,
@@ -186,7 +185,7 @@ export const MOCK_SOLANA_KEYRING_ACCOUNT_5_PRIVATE_KEY_BYTES = Uint8Array.from([
   27, 142, 254, 188, 4, 157, 96, 132, 101, 35, 165, 225, 205, 245, 102,
 ]);
 
-export const MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0: SolanaKeyringAccount =
+export const MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0: ExtendedKeyringAccount =
   {
     entropySource: MOCK_SEED_PHRASE_2_ENTROPY_SOURCE,
     derivationPath: `m/44'/501'/0'/0'`,
@@ -214,7 +213,7 @@ export const MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0_PRIVATE_KEY_BYTES =
     204, 43, 227, 179, 113, 233, 221, 254, 63, 233, 35, 17, 13, 116, 143, 32,
   ]);
 
-export const MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_1: SolanaKeyringAccount =
+export const MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_1: ExtendedKeyringAccount =
   {
     entropySource: MOCK_SEED_PHRASE_2_ENTROPY_SOURCE,
     derivationPath: `m/44'/501'/1'/0'`,

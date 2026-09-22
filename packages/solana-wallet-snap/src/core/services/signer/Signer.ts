@@ -1,7 +1,10 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import type {
-  BaseTransactionMessage,
+  TransactionMessage,
   Transaction,
   TransactionWithLifetime,
 } from '@solana/kit';
@@ -16,7 +19,6 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import {
@@ -69,7 +71,7 @@ export class Signer {
    */
   async partiallySignBase64String(
     base64String: Infer<typeof Base64Struct>,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     network: Network,
     config?: DecompileTransactionMessageFetchingLookupTablesConfig,
     transactionSource?: TransactionSource,
@@ -156,8 +158,8 @@ export class Signer {
    * @returns The partially signed transaction.
    */
   async #prepareAndPartiallySignTransactionMessage(
-    transactionMessage: BaseTransactionMessage,
-    account: SolanaKeyringAccount,
+    transactionMessage: TransactionMessage,
+    account: ExtendedKeyringAccount,
     scope: Network,
     refreshBlockhashBeforeSigning: boolean,
   ): Promise<Readonly<Transaction & TransactionWithLifetime>> {
@@ -180,7 +182,7 @@ export class Signer {
       isTransactionMessageWithComputeUnitLimitInstruction(transactionMessage);
 
     /**
-     * We add a compute unit limit if it's missing, but also if we the compute unit price is missing.
+     * We add a compute unit limit if it's missing, but also if the compute unit price is missing.
      * Why? Because we will add an extra instruction for the compute unit price, which incidentally increases
      * the compute unit consumed by the transaction. So we need to re-estimate the compute unit limit and override it.
      */
@@ -243,7 +245,7 @@ export class Signer {
    */
   async #partiallySignTransaction(
     transaction: Transaction,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ) {
     const { privateKeyBytes } = await deriveSolanaKeypair({
       entropySource: account.entropySource,

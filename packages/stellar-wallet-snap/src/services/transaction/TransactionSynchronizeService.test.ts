@@ -5,18 +5,19 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 import type { Horizon } from '@stellar/stellar-sdk';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
-import { toCaip19Sep41AssetId } from '../../utils';
+import { toCaip19Sep41AssetId, bufferToUint8Array } from '../../utils';
+import { createMemoryCache } from '../../utils/__mocks__/cache.fixtures';
 import { logger } from '../../utils/logger';
 import { getSnapProvider } from '../../utils/snap';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
 import type { AccountService } from '../account/AccountService';
 import type { StellarAssetMetadata } from '../asset-metadata/api';
 import { toStellarAssetMetadata } from '../asset-metadata/utils';
-import { createMemoryCache } from '../cache/__mocks__/cache.fixtures';
 import { NetworkService, TransactionNotFoundException } from '../network';
 import {
   createMockAccountWithBalances,
@@ -24,7 +25,6 @@ import {
   horizonSource,
 } from '../on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
-import { State } from '../state/State';
 import type { ActivatedAccountPair } from '../sync/api';
 import { sep41SendTransactionResponse } from './__mocks__/horizon-transaction-responses.fixtures';
 import {
@@ -70,10 +70,10 @@ function buildOnChainPaymentTransaction(params: {
 
   return Transaction.fromHorizon({
     horizonTransaction: {
-      id: inner.hash().toString('hex'),
-      hash: inner.hash().toString('hex'),
+      id: bufferToUint8Array(inner.hash()).toString('hex'),
+      hash: bufferToUint8Array(inner.hash()).toString('hex'),
 
-      envelope_xdr: inner.toXDR(),
+      envelope_xdr: inner.toXdr(),
 
       fee_charged: inner.fee,
       successful: true,
@@ -109,12 +109,9 @@ describe('TransactionSynchronizeService', () => {
     const { cache } = createMemoryCache();
     const networkService = new NetworkService({ logger, cache });
     const transactionRepository = new TransactionRepository(
-      new State({
-        encrypted: false,
-        defaultState: {
-          transactions: {},
-          lastScanTokens: {},
-        },
+      new InMemoryState({
+        transactions: {},
+        lastScanTokens: {},
       }),
     );
     const transactionMapper = new TransactionMapper({

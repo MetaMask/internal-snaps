@@ -167,6 +167,14 @@ export class StoredAccountAdapter implements BitcoinAccount {
     return this.#unsupported();
   }
 
+  isChange(_script: ScriptBuf): boolean {
+    return this.#unsupported();
+  }
+
+  revealToScript(_script: ScriptBuf): boolean {
+    return this.#unsupported();
+  }
+
   sentAndReceived(_tx: Transaction): [Amount, Amount] {
     return this.#unsupported();
   }

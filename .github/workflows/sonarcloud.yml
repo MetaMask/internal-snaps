@@ -1,0 +1,56 @@
+name: SonarCloud
+
+on:
+  workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        description: SonarCloud token
+        required: true
+
+jobs:
+  sonarcloud-scan:
+    name: SonarCloud scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout and setup environment
+        # This is MetaMask/action-checkout-and-setup@v3
+        uses: MetaMask/action-checkout-and-setup@0543b5929698c71e3ccc6ed24eac87825669b5de
+        with:
+          is-high-risk-environment: false
+          # SonarCloud needs the full history for new-code and blame data
+          fetch-depth: 0
+
+      - name: Download coverage artifacts
+        # This is actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: coverage-*
+          path: .coverage-artifacts
+
+      - name: Arrange coverage for SonarCloud
+        # Single-file artifact uploads do not preserve the source directory,
+        # and each artifact downloads into .coverage-artifacts/coverage-<dir>/.
+        # Move each lcov back to packages/<dir>/coverage/lcov.info to match
+        # sonar.javascript.lcov.reportPaths.
+        run: |
+          for dir in .coverage-artifacts/coverage-*/; do
+            pkg="${dir##*/coverage-}"
+            pkg="${pkg%/}"
+            if [ -f "${dir}lcov.info" ]; then
+              mkdir -p "packages/${pkg}/coverage"
+              mv "${dir}lcov.info" "packages/${pkg}/coverage/lcov.info"
+            fi
+          done
+          ls packages/*/coverage/lcov.info
+        shell: bash
+
+      - name: SonarCloud scan
+        # This is SonarSource/sonarqube-scan-action@v7.1.0
+        uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

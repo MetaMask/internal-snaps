@@ -1,11 +1,12 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
+
 import { KnownCaip19Id, Network } from '../../constants';
 import type {
   AssetEntity,
   NativeAsset,
   TokenAsset,
 } from '../../entities/assets';
-import type { IStateManager } from '../state/IStateManager';
-import type { UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import { AssetsRepository } from './AssetsRepository';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
@@ -109,6 +110,7 @@ describe('AssetsRepository', () => {
         return stateValue;
       },
       deleteKey: async () => undefined,
+      deleteKeys: async () => undefined,
     };
 
     return {

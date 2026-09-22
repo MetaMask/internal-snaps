@@ -1,4 +1,9 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -9,7 +14,6 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Networks, ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { TRX_IMAGE_SVG } from '../../static/tron-logo';
 import { FetchStatus } from '../../types/snap';
@@ -28,20 +32,22 @@ import { assertTransactionStructure } from '../../validation/transaction';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
-import type { State, UnencryptedStateValue } from '../state/State';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 
 export class ConfirmationHandler {
   readonly #logger: Logger;
 
   readonly #snapClient: SnapClient;
 
-  readonly #state: State<UnencryptedStateValue>;
+  readonly #state: IStateManager<UnencryptedStateValue>;
 
   readonly #tronWebFactory: TronWebFactory;
 
   readonly #assetsService: AssetsService;
 
   readonly #feeCalculatorService: FeeCalculatorService;
+
+  readonly #analyticsService: AnalyticsService;
 
   constructor({
     snapClient,
@@ -50,13 +56,15 @@ export class ConfirmationHandler {
     assetsService,
     feeCalculatorService,
     logger,
+    analyticsService,
   }: {
     snapClient: SnapClient;
-    state: State<UnencryptedStateValue>;
+    state: IStateManager<UnencryptedStateValue>;
     tronWebFactory: TronWebFactory;
     assetsService: AssetsService;
     feeCalculatorService: FeeCalculatorService;
     logger: Logger;
+    analyticsService: AnalyticsService;
   }) {
     this.#logger = logger.withPrefix('[🔑 ConfirmationHandler]');
     this.#snapClient = snapClient;
@@ -64,6 +72,7 @@ export class ConfirmationHandler {
     this.#tronWebFactory = tronWebFactory;
     this.#assetsService = assetsService;
     this.#feeCalculatorService = feeCalculatorService;
+    this.#analyticsService = analyticsService;
   }
 
   async #clearInterfaceId(interfaceName: string): Promise<void> {
@@ -80,7 +89,7 @@ export class ConfirmationHandler {
     account,
   }: {
     request: TronWalletKeyringRequest;
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
   }): Promise<boolean> {
     this.#logger.info('Handling keyring request', {
       request,
@@ -105,7 +114,7 @@ export class ConfirmationHandler {
 
   async #handleSignMessageRequest(
     request: TronWalletKeyringRequest,
-    account: TronKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     const result = await renderConfirmSignMessage(request, account);
     return result === true;
@@ -113,7 +122,7 @@ export class ConfirmationHandler {
 
   async #handleSignTransactionRequest(
     request: TronWalletKeyringRequest,
-    account: TronKeyringAccount,
+    account: ExtendedKeyringAccount,
   ): Promise<boolean> {
     assert(request.request.params, SignTransactionRequestStruct);
 
@@ -136,6 +145,14 @@ export class ConfirmationHandler {
     );
     assertTransactionStructure(rawData);
 
+    const trackingProperties = {
+      origin: request.origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    };
+
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
+
     const result = await renderConfirmSignTransaction(
       request,
       account,
@@ -143,6 +160,12 @@ export class ConfirmationHandler {
     );
 
     await this.#clearInterfaceId(CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME);
+
+    if (result === true) {
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
+    } else {
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
+    }
 
     return result === true;
   }
@@ -168,12 +191,14 @@ export class ConfirmationHandler {
     origin: string;
     transactionRawData: TronwebTypes.Transaction['raw_data'];
   }): Promise<boolean> {
-    // Track Transaction Added event
-    await this.#snapClient.trackTransactionAdded({
+    const trackingProperties = {
       origin,
       accountType,
       chainIdCaip: scope,
-    });
+    };
+
+    // Track Transaction Added event
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
     const result = await renderConfirmTransactionRequest(
       this.#snapClient,
@@ -195,17 +220,9 @@ export class ConfirmationHandler {
 
     // Track Transaction Rejected event if user rejects
     if (result === true) {
-      await this.#snapClient.trackTransactionApproved({
-        origin,
-        accountType,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
     } else {
-      await this.#snapClient.trackTransactionRejected({
-        origin,
-        accountType,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
     }
 
     return result === true;
@@ -227,7 +244,7 @@ export class ConfirmationHandler {
     account,
     scope,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
   }): Promise<boolean> {
     const tronWeb = this.#tronWebFactory.createClient(scope);

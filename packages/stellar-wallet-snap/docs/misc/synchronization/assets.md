@@ -22,7 +22,7 @@ Asset metadata catalog refresh from the token API.
 
 Triggered by the `synchronizeAssets` cron (see [syncAssets.md](../../use-cases/cron-job/syncAssets.md)). Always uses **mainnet** scope — asset metadata is only available there, regardless of the user's selected network.
 
-Wire format: [SIP-29 Snap Assets API](https://metamask.github.io/SIPs/SIPS/sip-29) (lookup handlers read from the persisted catalog).
+Wire format: [SIP-29 Snap Assets API](https://metamask.github.io/SIPs/SIPS/sip-29).
 
 ## Step-by-step
 
@@ -53,13 +53,11 @@ sequenceDiagram
 
 ## Data source
 
-| Data                                      | Source                                           |
-| ----------------------------------------- | ------------------------------------------------ |
-| Asset catalog (symbol, decimals, icon, …) | **Token API** → persisted in **snap state**      |
-| On-demand lookup (`onAssetsLookup`)       | Snap state catalog (fetch + persist missing ids) |
+| Data                                      | Source                                      |
+| ----------------------------------------- | ------------------------------------------- |
+| Asset catalog (symbol, decimals, icon, …) | **Token API** → persisted in **snap state** |
 
 ## Related
 
 - [syncAssets.md](../../use-cases/cron-job/syncAssets.md) — cron entry
-- [assets.md](../../use-cases/assets/assets.md) — `onAssets*` handlers
 - [transaction.md](./transaction.md) — SEP-41 metadata used during tx mapping

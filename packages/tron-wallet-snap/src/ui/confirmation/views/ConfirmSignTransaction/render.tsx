@@ -1,4 +1,5 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
@@ -7,7 +8,6 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
-import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../../services/transaction-scan/buildExpiredScanResult';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
@@ -62,7 +62,7 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
  */
 export async function render(
   request: KeyringRequest,
-  account: TronKeyringAccount,
+  account: ExtendedKeyringAccount,
   rawData: TronwebTypes.Transaction['raw_data'],
 ): Promise<DialogResult> {
   const { snapClient, transactionScanService } = snapContext;

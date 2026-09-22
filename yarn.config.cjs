@@ -200,32 +200,36 @@ module.exports = defineConfig({
           '../../scripts/since-latest-release.sh',
         );
 
-        // All non-root packages must have the same "test" script.
-        expectWorkspaceField(
+        // All non-root packages must run Jest with the silent reporter. Extra
+        // prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
+        expectWorkspaceFieldRegex(
           workspace,
           'scripts.test',
-          'NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter',
+          /jest --reporters=jest-silent-reporter$/u,
         );
 
-        // All non-root packages must have the same "test:clean" script.
-        expectWorkspaceField(
+        // All non-root packages must have a "test:clean" script that clears the
+        // Jest cache. Extra prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
+        expectWorkspaceFieldRegex(
           workspace,
           'scripts.test:clean',
-          'NODE_OPTIONS=--experimental-vm-modules jest --clearCache',
+          /jest --clearCache$/u,
         );
 
-        // All non-root packages must have the same "test:verbose" script.
-        expectWorkspaceField(
+        // All non-root packages must have a "test:verbose" script that runs Jest
+        // in verbose mode. Extra prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
+        expectWorkspaceFieldRegex(
           workspace,
           'scripts.test:verbose',
-          'NODE_OPTIONS=--experimental-vm-modules jest --verbose',
+          /jest --verbose$/u,
         );
 
-        // All non-root packages must have the same "test:watch" script.
-        expectWorkspaceField(
+        // All non-root packages must have a "test:watch" script that runs Jest
+        // in watch mode. Extra prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
+        expectWorkspaceFieldRegex(
           workspace,
           'scripts.test:watch',
-          'NODE_OPTIONS=--experimental-vm-modules jest --watch',
+          /jest --watch$/u,
         );
       }
 
@@ -286,8 +290,9 @@ module.exports = defineConfig({
         expectWorkspaceField(workspace, 'packageManager', 'yarn@4.17.1');
       }
 
-      // All packages must specify a minimum Node.js version of 20.
-      expectWorkspaceField(workspace, 'engines.node', '>=20');
+      // All packages must specify Node.js ^22.14.0 or ^24 as their minimum
+      // supported version.
+      expectWorkspaceField(workspace, 'engines.node', '^22.14.0 || ^24');
 
       // All non-root public packages should be published to the NPM registry;
       // all non-root private packages should not.
@@ -499,6 +504,38 @@ function expectWorkspaceField(workspace, fieldName, expectedValue = undefined) {
     (fieldValue === undefined || fieldValue === null)
   ) {
     workspace.error(`Missing required field "${fieldName}".`);
+  }
+}
+
+/**
+ * Expect that the workspace has the given field, that it is a string, and that
+ * it matches the given regular expression. If the field is missing, is not a
+ * string, or does not match, this will log an error and cause the constraint to
+ * fail.
+ *
+ * @param {Workspace} workspace - The workspace to check.
+ * @param {string} fieldName - The field to check.
+ * @param {RegExp} regex - The regular expression the field value must match.
+ */
+function expectWorkspaceFieldRegex(workspace, fieldName, regex) {
+  const fieldValue = get(workspace.manifest, fieldName);
+
+  if (fieldValue === undefined || fieldValue === null) {
+    workspace.error(`Missing required field "${fieldName}".`);
+    return;
+  }
+
+  if (typeof fieldValue !== 'string') {
+    workspace.error(
+      `Expected field "${fieldName}" to be a string, but got ${typeof fieldValue}.`,
+    );
+    return;
+  }
+
+  if (!regex.test(fieldValue)) {
+    workspace.error(
+      `Expected field "${fieldName}" to match ${inspect(regex)}, but found "${fieldValue}".`,
+    );
   }
 }
 

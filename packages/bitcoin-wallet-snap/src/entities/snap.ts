@@ -58,14 +58,39 @@ export type SyncResult = {
 };
 
 export const TrackingSnapEvent = {
+  TransactionAdded: 'Transaction Added',
+  TransactionApproved: 'Transaction Approved',
+  TransactionRejected: 'Transaction Rejected',
   TransactionFinalized: 'Transaction Finalized',
   TransactionReceived: 'Transaction Received',
   TransactionReorged: 'Transaction Reorged',
   TransactionSubmitted: 'Transaction Submitted',
+  MissedTransactionsDiscovered: 'Missed Transactions Discovered',
 } as const;
 
 export type TrackingSnapEvent =
   (typeof TrackingSnapEvent)[keyof typeof TrackingSnapEvent];
+
+/**
+ * Event types emitted from the transaction confirmation flows, before the
+ * transaction is broadcast. These carry no transaction ID.
+ */
+export type TransactionConfirmationEventType =
+  | typeof TrackingSnapEvent.TransactionAdded
+  | typeof TrackingSnapEvent.TransactionApproved
+  | typeof TrackingSnapEvent.TransactionRejected;
+
+/**
+ * Event types emitted after a transaction is broadcast. These carry a
+ * transaction ID (`tx_id`, or `transaction_hash` for discovery events).
+ *
+ * Excludes the pre-broadcast confirmation events in
+ * `TransactionConfirmationEventType`.
+ */
+export type TransactionBroadcastEventType = Exclude<
+  TrackingSnapEvent,
+  TransactionConfirmationEventType
+>;
 
 /**
  * The SnapClient represents the MetaMask Snap state and manages the BIP-32 entropy from the Wallet SRP.
@@ -237,15 +262,55 @@ export type SnapClient = {
   /**
    * Track events that comply with the SIP-32 spec (https://metamask.github.io/SIPs/SIPS/sip-32)
    *
+   * Only accepts post-broadcast event types, since the emitted payload includes
+   * the transaction ID. Use the `trackTransaction*` methods for the
+   * pre-broadcast confirmation events.
+   *
    * @param eventType The event type we want to track
    * @param account The correlated bitcoin account
    * @param tx The transaction we want to capture metrics for
    * @param origin The origin/source that triggered this event
    */
   emitTrackingEvent(
-    eventType: TrackingSnapEvent,
+    eventType: TransactionBroadcastEventType,
     account: BitcoinAccount,
     tx: WalletTx,
+    origin: string,
+  ): Promise<void>;
+
+  /**
+   * Track a "Transaction Added" event when a transaction confirmation is shown.
+   *
+   * Emitted before the transaction is broadcast, so it carries no transaction ID.
+   *
+   * @param account The account the transaction belongs to.
+   * @param origin The origin/source that triggered this event.
+   */
+  trackTransactionAdded(account: BitcoinAccount, origin: string): Promise<void>;
+
+  /**
+   * Track a "Transaction Approved" event when the user approves a transaction.
+   *
+   * Emitted before the transaction is broadcast, so it carries no transaction ID.
+   *
+   * @param account The account the transaction belongs to.
+   * @param origin The origin/source that triggered this event.
+   */
+  trackTransactionApproved(
+    account: BitcoinAccount,
+    origin: string,
+  ): Promise<void>;
+
+  /**
+   * Track a "Transaction Rejected" event when the user rejects a transaction.
+   *
+   * Emitted before the transaction is broadcast, so it carries no transaction ID.
+   *
+   * @param account The account the transaction belongs to.
+   * @param origin The origin/source that triggered this event.
+   */
+  trackTransactionRejected(
+    account: BitcoinAccount,
     origin: string,
   ): Promise<void>;
 

@@ -1,15 +1,18 @@
+import { InMemoryState } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  IStateManager,
+} from '@metamask/snap-networks-utils';
+
 import type { WebSocketConnection } from '../../../entities';
 import { EventEmitter } from '../../../infrastructure';
 import { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { ConfigProvider } from '../config';
 import type { NetworkConfig } from '../config/ConfigProvider';
-import { InMemoryState } from '../state/InMemoryState';
-import type { IStateManager } from '../state/IStateManager';
-import { DEFAULT_UNENCRYPTED_STATE } from '../state/State';
-import type { UnencryptedStateValue } from '../state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
+import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
 import { WebSocketConnectionService } from './WebSocketConnectionService';
 
@@ -74,18 +77,18 @@ describe('WebSocketConnectionService', () => {
     } as unknown as WebSocketConnectionRepository;
 
     mockAnalyticsService = {
-      trackEventWebSocketConnectionClosedNotCleanly: jest.fn(),
+      trackWebSocketConnectionClosedNotCleanly: jest.fn(),
     } as unknown as AnalyticsService;
 
     mockConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         networks: mockNetworksConfig,
         subscriptions: {
           maxReconnectAttempts: 5,
           reconnectDelayMilliseconds: 1, // To speed up the tests
           closeConnectionsGracePeriodMilliseconds: 5000, // 5 seconds for testing
         },
-      }),
+      },
       getActiveNetworks: jest
         .fn()
         .mockResolvedValue([Network.Mainnet, Network.Devnet]),
@@ -371,7 +374,7 @@ describe('WebSocketConnectionService', () => {
           });
 
           expect(
-            mockAnalyticsService.trackEventWebSocketConnectionClosedNotCleanly,
+            mockAnalyticsService.trackWebSocketConnectionClosedNotCleanly,
           ).not.toHaveBeenCalled();
         });
       });
@@ -456,8 +459,12 @@ describe('WebSocketConnectionService', () => {
           });
 
           expect(
-            mockAnalyticsService.trackEventWebSocketConnectionClosedNotCleanly,
-          ).toHaveBeenCalled();
+            mockAnalyticsService.trackWebSocketConnectionClosedNotCleanly,
+          ).toHaveBeenCalledWith({
+            origin: 'wss://some-mock-url.com',
+            code: 0,
+            reason: null,
+          });
         });
       });
     });

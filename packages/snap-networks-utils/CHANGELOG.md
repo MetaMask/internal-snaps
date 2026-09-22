@@ -9,9 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `resolveOrigin`, which resolves a request origin (plus the `originMetadata` that rides along requests relayed over WalletConnect or the SDK) into what a snap may display and what may feed security logic ([#275](https://github.com/MetaMask/internal-snaps/pull/275))
-  - Returns `displayOrigin` (hostname, `MetaMask`, or `null` when there is nothing meaningful to show, e.g. a WalletConnect channel id), `isSelfReported` (the hostname came from the requester and cannot be verified, so it must be framed as unverified), and `verifiedOrigin` (the only value allowed to reach transaction scans and SIWS-style domain checks)
-  - Exported alongside the `ResolvedOrigin` and `SelfReportedOriginMetadata` types
+- Add a shared `AnalyticsService` and typed event properties for network Snap telemetry. ([#327](https://github.com/MetaMask/internal-snaps/pull/327))
+- Add shared configuration utilities for network snaps ([#309](https://github.com/MetaMask/internal-snaps/pull/309))
+  - `BaseConfigProvider`, a base class owning the configuration lifecycle (parse the explicitly passed environment once against a Superstruct, frozen config, fail-fast on invalid environments)
+  - `parseEnv` for fail-fast parsing of raw environment records against a struct
+  - `emptyToUndefined`, `commaSeparatedListOf`, `parseIntegerStruct`, and `parseFloatStruct` structs for parsing environment variables
+  - `LogLevelStruct` for parsing a `LogLevel` from an environment variable
+- Add `defaultedUrlStruct` for validating URL environment variables that fall back to a default when unset or empty. ([#312](https://github.com/MetaMask/internal-snaps/pull/312))
+- Add `ExtendedKeyringAccount`, `KeyringAccountExtension`, and `asStrictKeyringAccount` for snap keyring accounts that persist `entropySource`, `derivationPath`, and `index`. ([#300](https://github.com/MetaMask/internal-snaps/pull/300))
+- Add shared snap state helpers `IStateManager`, `State`, and `InMemoryState` (Tron-style write mutex plus blob/path locking). ([#288](https://github.com/MetaMask/internal-snaps/pull/288))
+- Add shared caching utilities for network snaps ([#287](https://github.com/MetaMask/internal-snaps/pull/287))
+  - `ICache`, `CacheEntry`, and `TimestampMilliseconds` for describing a generic cache
+  - `InMemoryCache`, a TTL-backed in-memory cache
+  - `StateCache`, a cache backed by a snap state manager
+  - `useCache` and `useCacheUntil` for wrapping functions with fixed-TTL and dynamic-expiry caching
 - Add shared proof-of-ownership message parsing utilities, batch request/response structs, and batch request/response types. ([#268](https://github.com/MetaMask/internal-snaps/pull/268))
 - Add a `UuidStruct` Superstruct for validating UUID v4 strings. ([#243](https://github.com/MetaMask/internal-snaps/pull/243))
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
@@ -31,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `sanitizeControlCharacters` and `sanitizeUri` utilities for validating and sanitizing user-provided strings and URIs. ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
 - Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- Add `resolveOrigin`, which resolves a request origin (plus the `originMetadata` that rides along requests relayed over WalletConnect or the SDK) into what a snap may display and what may feed security logic ([#275](https://github.com/MetaMask/internal-snaps/pull/275))
+  - Returns `displayOrigin` (hostname, `MetaMask`, or `null` when there is nothing meaningful to show, e.g. a WalletConnect channel id), `isSelfReported` (the hostname came from the requester and cannot be verified, so it must be framed as unverified), and `verifiedOrigin` (the only value allowed to reach transaction scans and SIWS-style domain checks)
+  - Exported alongside the `ResolvedOrigin` and `SelfReportedOriginMetadata` types
 
 ### Changed
 

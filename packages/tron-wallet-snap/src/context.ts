@@ -1,17 +1,21 @@
 import {
+  AnalyticsService,
   AssetsProvider,
+  InMemoryCache,
   RemoteFeatureFlagsProvider,
+  State,
+  StateCache,
 } from '@metamask/snap-networks-utils';
 import type {
   AssetsProviderMessenger,
+  IStateManager,
   RemoteFeatureFlagsProviderMessenger,
 } from '@metamask/snap-networks-utils';
 import { getMessenger } from '@metamask/snaps-sdk';
 
-import { InMemoryCache } from './caching/InMemoryCache';
-import { StateCache } from './caching/StateCache';
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './clients/security-alerts-api/SecurityAlertsApiClient';
+import { getSnapProvider } from './clients/snap/getSnapProvider';
 import { SnapClient } from './clients/snap/SnapClient';
 import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
@@ -28,13 +32,13 @@ import { CoreAssetsAdapter } from './services/assets/adapters/CoreAssetsAdapter'
 import { SnapAssetsAdapter } from './services/assets/adapters/SnapAssetsAdapter';
 import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
-import { ConfigProvider } from './services/config';
+import { configProvider } from './services/config';
 import { ConfirmationHandler } from './services/confirmation/ConfirmationHandler';
 import { FeeCalculatorService } from './services/send/FeeCalculatorService';
 import { SendService } from './services/send/SendService';
 import { StakingService } from './services/staking/StakingService';
-import type { UnencryptedStateValue } from './services/state/State';
-import { State } from './services/state/State';
+import { DEFAULT_UNENCRYPTED_STATE } from './services/state/stateTypes';
+import type { UnencryptedStateValue } from './services/state/stateTypes';
 import { TransactionExpirationRefresherService } from './services/transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { TransactionScanService } from './services/transaction-scan/TransactionScanService';
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
@@ -44,6 +48,7 @@ import type {
   CoreMessenger,
   CoreMessengerClient,
 } from './types/core-messenger';
+import { trackError } from './utils/errors';
 import logger, { noOpLogger } from './utils/logger';
 
 /**
@@ -55,16 +60,16 @@ import logger, { noOpLogger } from './utils/logger';
  * 3. Business services (AssetsService, TransactionsService, AccountsService)
  * 4. Handlers (CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
  */
-export const configProvider = new ConfigProvider();
+
+const analyticsService = new AnalyticsService({
+  getSnapProvider,
+  logger,
+  trackError,
+});
 
 const state = new State({
   encrypted: false,
-  defaultState: {
-    keyringAccounts: {},
-    assets: {},
-    transactions: {},
-    mapInterfaceNameToId: {},
-  },
+  defaultState: DEFAULT_UNENCRYPTED_STATE,
 });
 
 const snapClient = new SnapClient();
@@ -180,6 +185,7 @@ const sendService = new SendService({
   tronWebFactory,
   feeCalculatorService,
   transactionExpirationRefresherService,
+  analyticsService,
 });
 
 const stakingService = new StakingService({
@@ -199,6 +205,7 @@ const transactionScanService = new TransactionScanService(
   securityAlertsApiClient,
   snapClient,
   logger,
+  analyticsService,
 );
 
 const confirmationHandler = new ConfirmationHandler({
@@ -208,6 +215,7 @@ const confirmationHandler = new ConfirmationHandler({
   assetsService,
   feeCalculatorService,
   logger,
+  analyticsService,
 });
 
 /**
@@ -225,6 +233,7 @@ const clientRequestHandler = new ClientRequestHandler({
   confirmationHandler,
   transactionsService,
   transactionExpirationRefresherService,
+  analyticsService,
 });
 const cronHandler = new CronHandler({
   logger,
@@ -235,6 +244,7 @@ const cronHandler = new CronHandler({
   tronHttpClient,
   transactionScanService,
   transactionExpirationRefresherService,
+  analyticsService,
 });
 const keyringHandler = new KeyringHandler({
   logger,
@@ -261,7 +271,8 @@ export type SnapExecutionContext = {
   /**
    * Services
    */
-  state: State<UnencryptedStateValue>;
+  analyticsService: AnalyticsService;
+  state: IStateManager<UnencryptedStateValue>;
   priceApiClient: PriceApiClient;
   feeCalculatorService: FeeCalculatorService;
   assetsService: AssetsService;
@@ -298,6 +309,7 @@ const snapContext: SnapExecutionContext = {
   /**
    * Services
    */
+  analyticsService,
   state,
   priceApiClient,
   feeCalculatorService,
@@ -325,6 +337,7 @@ const snapContext: SnapExecutionContext = {
 };
 
 export {
+  analyticsService,
   /**
    * Handlers
    */

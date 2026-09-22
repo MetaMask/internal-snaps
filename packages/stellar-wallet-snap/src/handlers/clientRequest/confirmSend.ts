@@ -1,4 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
@@ -33,9 +37,6 @@ import {
   isSlip44Id,
   toSmallestUnit,
   trackError,
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
 } from '../../utils';
 import type {
   AccountResolver,
@@ -76,18 +77,22 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
   readonly #logger: Logger;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     transactionService,
     assetMetadataService,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix('[👍 ConfirmSendHandler]');
     super({
@@ -100,6 +105,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     this.#assetMetadataService = assetMetadataService;
     this.#confirmationUIController = confirmationUIController;
     this.#logger = prefixedLogger;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -107,8 +113,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
    *
    * @param resolved - Keyring account, live on-chain snapshot, and wallet.
    * @param request - JSON-RPC request with send params (`scope` is derived from `assetId`).
-   * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` for validation failures.
-   * @throws {UserRejectedRequestError} If the user rejects the confirmation prompt.
+   * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` for post-confirm validation failures or unexpected errors.
+   * @throws {UserRejectedRequestError} If the user rejects a valid confirmation, or after the pre-submit error confirmation is dismissed (that dialog only supports reject).
    */
   protected async execute(
     resolved: ResolvedActivatedAccount,
@@ -143,23 +149,24 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
             destination: toAddress,
           });
       } catch (error: unknown) {
-        if (error instanceof TransactionValidationException) {
-          await this.#displayDialogWithErrorMessage({
-            request,
-            account: stellarKeyringAccount,
-            assetMetadata,
-            scope,
-            error,
-          });
-        }
-        throw error;
+        await this.#displayDialogWithErrorMessage({
+          request,
+          account: stellarKeyringAccount,
+          assetMetadata,
+          scope,
+          error,
+        });
+        // The error confirmation only supports dismiss, so abort as a user rejection.
+        throw ensureError(new UserRejectedRequestError());
       }
 
-      await trackTransactionAdded({
+      const trackingProperties: TransactionEventProperties = {
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
-      });
+      };
+
+      await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
       if (
         !(await this.#confirmSend({
@@ -171,19 +178,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           transaction,
         }))
       ) {
-        await trackTransactionRejected({
-          origin: METAMASK_ORIGIN,
-          accountType: stellarKeyringAccount.type,
-          chainIdCaip: scope,
-        });
+        await this.#analyticsService.trackTransactionRejected(
+          trackingProperties,
+        );
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await trackTransactionApproved({
-        origin: METAMASK_ORIGIN,
-        accountType: stellarKeyringAccount.type,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
       const {
         wallet: refreshedWallet,
@@ -204,6 +205,10 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         transaction: refreshedTransaction,
         pollTransaction: false,
       });
+
+      await this.#analyticsService.trackTransactionSubmitted(
+        trackingProperties,
+      );
 
       await this.#transactionService.savePendingKeyringTransactionSafe({
         type: KeyringTransactionType.Send,
@@ -323,7 +328,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   }): Promise<boolean> {
     const { request, account, assetMetadata, fee, scope, transaction } = params;
     const { toAddress, amount, assetId } = request.params;
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     // The send asset and amount are known from the request, so the estimated
     // changes are just a single outgoing row — no local simulation needed.
     const estimatedChanges = this.#buildEstimatedChanges({
@@ -384,7 +389,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     account: StellarKeyringAccount;
     assetMetadata: StellarAssetMetadata;
     scope: KnownCaip2ChainId;
-    error: TransactionValidationException;
+    error: unknown;
   }): Promise<void> {
     const { request, account, assetMetadata, scope, error } = params;
     const { toAddress, amount, assetId } = request.params;

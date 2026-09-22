@@ -11,7 +11,12 @@ import type {
   Psbt,
   Address,
 } from '@metamask/bitcoindevkit';
-import type { JsonSLIP10Node } from '@metamask/key-tree';
+import type { BIP32Node, BIP39Node, JsonSLIP10Node } from '@metamask/key-tree';
+import {
+  mnemonicPhraseToBytes,
+  SLIP10Node as RealSlip10Node,
+} from '@metamask/key-tree';
+import { Signer } from 'bip322-js';
 import { mock } from 'jest-mock-extended';
 
 import type {
@@ -113,6 +118,28 @@ describe('AccountUseCases', () => {
       await expect(useCases.list()).rejects.toBe(error);
 
       expect(mockRepository.getAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('getByIds', () => {
+    it('returns accounts by id', async () => {
+      const mockAccount = mock<BitcoinAccount>();
+
+      mockRepository.getByIds.mockResolvedValue([mockAccount]);
+
+      const result = await useCases.getByIds(['some-id']);
+
+      expect(mockRepository.getByIds).toHaveBeenCalledWith(['some-id']);
+      expect(result).toStrictEqual([mockAccount]);
+    });
+
+    it('propagates an error if the repository getByIds fails', async () => {
+      const error = new Error('Get failed');
+      mockRepository.getByIds.mockRejectedValue(error);
+
+      await expect(useCases.getByIds(['some-id'])).rejects.toBe(error);
+
+      expect(mockRepository.getByIds).toHaveBeenCalledWith(['some-id']);
     });
   });
 
@@ -1092,6 +1119,74 @@ describe('AccountUseCases', () => {
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
     });
+
+    it('reveals and persists own output scripts after signing (broadcast: false)', async () => {
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(true);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: false,
+      });
+
+      expect(mockAccount.revealToScript).toHaveBeenCalledWith(
+        mockOutput.script_pubkey,
+      );
+      expect(mockRepository.update).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('reveals and persists own output scripts after signing (broadcast: true)', async () => {
+      mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(true);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: true,
+      });
+
+      expect(mockAccount.revealToScript).toHaveBeenCalledWith(
+        mockOutput.script_pubkey,
+      );
+      expect(mockRepository.update).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('does not persist when no output scripts get revealed (broadcast: false)', async () => {
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(false);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: false,
+      });
+
+      expect(mockRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('only persists once via #broadcast when no output scripts get revealed (broadcast: true)', async () => {
+      mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      mockAccount.isMine.mockReturnValue(true);
+      mockAccount.revealToScript.mockReturnValue(false);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: true,
+      });
+
+      expect(mockRepository.update).toHaveBeenCalledTimes(1);
+      expect(mockRepository.update).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('does not call revealToScript for outputs that are not isMine', async () => {
+      mockAccount.isMine.mockReturnValue(false);
+
+      await useCases.signPsbt('account-id', mockPsbt, 'metamask', {
+        fill: false,
+        broadcast: false,
+      });
+
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
+    });
   });
 
   describe('fillPsbt', () => {
@@ -1185,6 +1280,7 @@ describe('AccountUseCases', () => {
       expect(mockTxBuilder.drainToByScript).toHaveBeenCalledWith(
         mockOutput.script_pubkey,
       );
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
       expect(psbt).toBe(mockFilledPsbt);
     });
 
@@ -1414,6 +1510,221 @@ describe('AccountUseCases', () => {
       // Result should be the rebuilt PSBT with all outputs preserved
       expect(result).toBe(rebuiltPsbt);
     });
+
+    const identifiableOutput = (scriptHex: string, sats: bigint): TxOut => {
+      const scriptPubkey = mock<ScriptBuf>();
+      scriptPubkey.to_hex_string.mockReturnValue(scriptHex);
+      const value = mock<Amount>();
+      value.to_sat.mockReturnValue(sats);
+
+      return mock<TxOut>({ script_pubkey: scriptPubkey, value });
+    };
+
+    const accountOwning = (owned: ScriptBuf[]): BitcoinAccount => {
+      const account = mock<BitcoinAccount>({
+        id: 'account-id',
+        network: 'bitcoin',
+        isMine: (script: ScriptBuf) => owned.includes(script),
+        capabilities: [AccountCapability.FillPsbt],
+      });
+      account.buildTx.mockReturnValue(mockTxBuilder);
+      return account;
+    };
+
+    it('adds every template output as a fixed recipient when the wallet-owned output is not last', async () => {
+      const changeOutput = identifiableOutput('0014aaaa', 2548n);
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [changeOutput, depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: { output: [changeOutput, depositOutput] },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      await useCases.fillPsbt('account-id', template);
+
+      expect(mockTxBuilder.drainToByScript).not.toHaveBeenCalled();
+      expect(mockTxBuilder.addRecipientByScript).toHaveBeenCalledTimes(2);
+      expect(mockTxBuilder.addRecipientByScript).toHaveBeenNthCalledWith(
+        1,
+        changeOutput.value,
+        changeOutput.script_pubkey,
+      );
+      expect(mockTxBuilder.addRecipientByScript).toHaveBeenNthCalledWith(
+        2,
+        depositOutput.value,
+        depositOutput.script_pubkey,
+      );
+    });
+
+    it('throws when the built outputs are reordered against the template', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const opReturnOutput = identifiableOutput('6a3ecccc', 0n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, opReturnOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: {
+            output: [
+              opReturnOutput,
+              identifiableOutput('0014aaaa', 2548n),
+              depositOutput,
+            ],
+          },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(accountOwning([]));
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('throws when a built output value diverges from the template', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: { output: [identifiableOutput('5120bbbb', 1n)] },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(accountOwning([]));
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('accepts a built PSBT that appends a change output after the template outputs', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const opReturnOutput = identifiableOutput('6a3ecccc', 0n);
+      const appendedChange = identifiableOutput('0014aaaa', 2548n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, opReturnOutput] },
+        toString: () => 'templateBase64',
+      });
+      const builtPsbt = mock<Psbt>({
+        unsigned_tx: {
+          output: [depositOutput, opReturnOutput, appendedChange],
+        },
+      });
+      mockTxBuilder.finish.mockReturnValue(builtPsbt);
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([appendedChange.script_pubkey]),
+      );
+
+      expect(await useCases.fillPsbt('account-id', template)).toBe(builtPsbt);
+    });
+
+    it('throws when the built PSBT appends an output that is not ours', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: {
+            output: [depositOutput, identifiableOutput('5120dddd', 1000n)],
+          },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(accountOwning([]));
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('throws when the built PSBT appends more than one output', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const firstAppended = identifiableOutput('0014aaaa', 1000n);
+      const secondAppended = identifiableOutput('0014eeee', 1000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput] },
+        toString: () => 'templateBase64',
+      });
+      mockTxBuilder.finish.mockReturnValue(
+        mock<Psbt>({
+          unsigned_tx: {
+            output: [depositOutput, firstAppended, secondAppended],
+          },
+        }),
+      );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([
+          firstAppended.script_pubkey,
+          secondAppended.script_pubkey,
+        ]),
+      );
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
+
+    it('accepts the drained output taking a value the template did not specify', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 496774n);
+      const changeOutput = identifiableOutput('0014aaaa', 1000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, changeOutput] },
+        toString: () => 'templateBase64',
+      });
+      const builtPsbt = mock<Psbt>({
+        unsigned_tx: {
+          output: [depositOutput, identifiableOutput('0014aaaa', 2548n)],
+        },
+      });
+      mockTxBuilder.finish.mockReturnValue(builtPsbt);
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      expect(await useCases.fillPsbt('account-id', template)).toBe(builtPsbt);
+      expect(mockTxBuilder.drainToByScript).toHaveBeenCalledWith(
+        changeOutput.script_pubkey,
+      );
+    });
+
+    it('throws when the rebuild changes the value of the wallet-owned output', async () => {
+      const depositOutput = identifiableOutput('5120bbbb', 100000n);
+      const changeOutput = identifiableOutput('0014aaaa', 5000n);
+      const template = mock<Psbt>({
+        unsigned_tx: { output: [depositOutput, changeOutput] },
+        toString: () => 'templateBase64',
+      });
+      // first attempt drops the sub-dust drain, so the rebuild adds every
+      // template output as a fixed recipient and no drain is configured
+      mockTxBuilder.finish
+        .mockReturnValueOnce(
+          mock<Psbt>({ unsigned_tx: { output: [depositOutput] } }),
+        )
+        .mockReturnValueOnce(
+          mock<Psbt>({
+            unsigned_tx: {
+              output: [depositOutput, identifiableOutput('0014aaaa', 1n)],
+            },
+          }),
+        );
+      mockRepository.get.mockResolvedValueOnce(
+        accountOwning([changeOutput.script_pubkey]),
+      );
+
+      await expect(useCases.fillPsbt('account-id', template)).rejects.toThrow(
+        'Built PSBT does not preserve the template outputs',
+      );
+    });
   });
 
   describe('computeFee', () => {
@@ -1503,6 +1814,7 @@ describe('AccountUseCases', () => {
         mockOutput.script_pubkey,
       );
       expect(mockTxBuilder.addRecipientByScript).not.toHaveBeenCalled();
+      expect(mockAccount.revealToScript).not.toHaveBeenCalled();
       expect(fee).toBe(mockFee);
     });
 
@@ -1789,6 +2101,7 @@ describe('AccountUseCases', () => {
 
   describe('signMessage', () => {
     const mockAccount = mock<BitcoinAccount>({
+      id: 'account-id',
       publicAddress: mock<Address>({
         toString: () => 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
       }),
@@ -1850,6 +2163,27 @@ describe('AccountUseCases', () => {
       ).rejects.toThrow('Failed to sign message');
     });
 
+    it('does not include the signed message in WalletError metadata', async () => {
+      mockSnapClient.getPrivateEntropy.mockResolvedValue({
+        privateKey: '0x1234567890abcdef', // wrong private key returned
+      } as JsonSLIP10Node);
+
+      let thrownError: unknown;
+      try {
+        await useCases.signMessage('account-id', mockMessage, mockOrigin);
+      } catch (error) {
+        thrownError = error;
+      }
+
+      expect(thrownError).toMatchObject({
+        message: 'Failed to sign message',
+        data: { id: 'account-id' },
+      });
+      expect(
+        (thrownError as { data?: Record<string, unknown> }).data,
+      ).not.toHaveProperty('message');
+    });
+
     it('throws AssertionError if entropy has no privateKey', async () => {
       mockSnapClient.getPrivateEntropy.mockResolvedValue(
         mock<JsonSLIP10Node>({ privateKey: undefined }),
@@ -1886,6 +2220,99 @@ describe('AccountUseCases', () => {
       expect(
         mockConfirmationRepository.insertSignMessage,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signProofOfOwnershipMessages', () => {
+    const mnemonic =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const parentPath = ['entropy-1', "84'", "1'"];
+    const mockMessage = 'metamask:proof-of-ownership:nonce:bcrt1qaddress';
+
+    /**
+     * Derives the real SLIP-10 node for a path from the fixture mnemonic.
+     *
+     * @param segments - Hardened path segments below the master node.
+     * @returns The derived node.
+     */
+    async function deriveFixtureNode(
+      segments: string[],
+    ): Promise<RealSlip10Node> {
+      const derivationPath: [BIP39Node, ...BIP32Node[]] = [
+        mnemonicPhraseToBytes(mnemonic) as BIP39Node,
+        ...segments.map((segment) => `bip32:${segment}` as BIP32Node),
+      ];
+
+      return RealSlip10Node.fromDerivationPath({
+        derivationPath,
+        curve: 'secp256k1',
+      });
+    }
+
+    const createAccount = (index: number): BitcoinAccount =>
+      mock<BitcoinAccount>({
+        id: `account-${index}`,
+        publicAddress: mock<Address>({
+          toString: () => 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
+        }),
+        capabilities: [AccountCapability.SignMessage],
+        derivationPath: [...parentPath, `${index}'`],
+        network: 'regtest',
+      });
+
+    beforeEach(async () => {
+      const parentNode = await deriveFixtureNode(["84'", "1'"]);
+      mockSnapClient.getPrivateEntropy.mockResolvedValue(parentNode.toJSON());
+    });
+
+    it('signs messages with one private entropy fetch for accounts sharing a parent path', async () => {
+      jest
+        .spyOn(Signer, 'sign')
+        .mockReturnValueOnce('mock-bip322-signature-0')
+        .mockReturnValueOnce('mock-bip322-signature-1');
+
+      const result = await useCases.signProofOfOwnershipMessages([
+        { account: createAccount(0), message: mockMessage },
+        { account: createAccount(1), message: mockMessage },
+      ]);
+
+      expect(mockSnapClient.getPrivateEntropy).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.getPrivateEntropy).toHaveBeenCalledWith(parentPath);
+      expect(
+        mockConfirmationRepository.insertSignMessage,
+      ).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([
+        { signature: 'mock-bip322-signature-0' },
+        { signature: 'mock-bip322-signature-1' },
+      ]);
+    });
+
+    it('returns an item-level error when an account cannot sign messages', async () => {
+      const account = createAccount(0);
+      account.capabilities = [];
+
+      const result = await useCases.signProofOfOwnershipMessages([
+        { account, message: mockMessage },
+      ]);
+
+      expect(mockSnapClient.getPrivateEntropy).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([
+        { error: 'Account missing given capability' },
+      ]);
+    });
+
+    it('does not expose derivation error details in batch signing results', async () => {
+      const sensitiveError = 'derived private key bytes: secret';
+      jest.spyOn(RealSlip10Node, 'fromJSON').mockResolvedValueOnce({
+        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+      } as never);
+
+      const result = await useCases.signProofOfOwnershipMessages([
+        { account: createAccount(0), message: mockMessage },
+      ]);
+
+      expect(result).toStrictEqual([{ error: 'Unable to derive private key' }]);
+      expect(JSON.stringify(result)).not.toContain(sensitiveError);
     });
   });
 });
