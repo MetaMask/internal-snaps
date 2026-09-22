@@ -68,7 +68,7 @@ async function onOpenClick(
 }
 
 /**
- * Tracks the memo draft as the user types.
+ * Tracks the memo input as the user types.
  *
  * @param options - The user input handler context.
  */
@@ -101,17 +101,17 @@ async function onSaveClick(
     return;
   }
 
-  const draft =
+  const memo =
     typeof context.memoDraft === 'string' ? context.memoDraft.trim() : '';
-  const draftError = getMemoDraftValidationError(draft);
-  if (draftError) {
+  const memoValidationError = getMemoDraftValidationError(memo);
+  if (memoValidationError) {
     await reRender(id, context, {
-      memoError: draftError,
+      memoError: memoValidationError,
     });
     return;
   }
 
-  const nextMemo = draft.length > 0 ? draft : '';
+  const nextMemo = memo.length > 0 ? memo : '';
 
   const nextContext = {
     ...context,

@@ -17,8 +17,8 @@ import { MemoEditFormNames } from './constants';
 
 export type MemoEditScreenProps = {
   locale: ConfirmationBaseProps['locale'];
-  memoDraft?: string;
-  memoError?: LocalizedMessage | null;
+  memo?: string;
+  errorKey?: LocalizedMessage | null;
 };
 
 /**
@@ -26,17 +26,17 @@ export type MemoEditScreenProps = {
  *
  * @param props - The screen props.
  * @param props.locale - The active locale.
- * @param props.memoDraft - Current draft memo text.
- * @param props.memoError - Optional validation error message key.
+ * @param props.memo - Current memo text being edited.
+ * @param props.errorKey - Optional validation error message key.
  * @returns The memo edit screen.
  */
 export const MemoEditScreen = ({
   locale,
-  memoDraft = '',
-  memoError,
+  memo = '',
+  errorKey,
 }: MemoEditScreenProps): ComponentOrElement => {
   const translate = i18n(locale);
-  const errorText = memoError ? translate(memoError) : undefined;
+  const errorText = errorKey ? translate(errorKey) : undefined;
 
   return (
     <Container>
@@ -50,7 +50,7 @@ export const MemoEditScreen = ({
         <Field label={translate('confirmation.memo')} error={errorText}>
           <Input
             name={MemoEditFormNames.Input}
-            value={memoDraft}
+            value={memo}
             placeholder={translate('confirmation.memo.placeholder')}
           />
         </Field>
