@@ -3,7 +3,7 @@ import type {
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
 import { resolveInterface } from '../../../../utils';
-import { memoFromContext } from '../../utils';
+import { getMemoFromContext } from '../../utils';
 
 export const ConfirmSendTransactionFormNames = {
   Cancel: 'confirm-send-transaction-cancel',
@@ -38,7 +38,7 @@ async function onConfirmButtonClick(
   const { id, context } = options;
   await resolveInterface(id, {
     confirmed: true,
-    memo: memoFromContext(context),
+    memo: getMemoFromContext(context),
   });
 }
 

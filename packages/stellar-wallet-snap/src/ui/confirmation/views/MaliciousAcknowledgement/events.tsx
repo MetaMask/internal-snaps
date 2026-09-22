@@ -8,7 +8,7 @@ import type {
 import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
 import { ConfirmationInterfaceKey } from '../../api';
 import type { FetchStatus } from '../../api';
-import { memoFromContext, shouldDisableConfirmation } from '../../utils';
+import { getMemoFromContext, shouldDisableConfirmation } from '../../utils';
 import { renderConfirmationView } from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 
@@ -111,7 +111,7 @@ async function onProceedClick(
   ) {
     await resolveInterface(id, {
       confirmed: true,
-      memo: memoFromContext(context),
+      memo: getMemoFromContext(context),
     });
     return;
   }

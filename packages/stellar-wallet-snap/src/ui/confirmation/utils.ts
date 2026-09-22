@@ -418,7 +418,7 @@ export function getParam<Response extends Json>(
  * @param context - The interface context.
  * @returns Trimmed memo string, or `null` when missing/blank.
  */
-export function memoFromContext(
+export function getMemoFromContext(
   context: Record<string, Json> | null | undefined,
 ): string | null {
   if (typeof context?.memo === 'string' && context.memo.trim()) {
