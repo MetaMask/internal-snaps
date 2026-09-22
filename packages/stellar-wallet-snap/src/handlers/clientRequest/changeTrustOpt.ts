@@ -1,4 +1,8 @@
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
@@ -150,11 +154,13 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await this.#analyticsService.trackTransactionAdded({
+    const trackingProperties: TransactionEventProperties = {
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
-    });
+    };
+
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
     const confirmed = await this.#confirmChangeTrustOpt({
       request,
@@ -166,19 +172,11 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     });
 
     if (!confirmed) {
-      await this.#analyticsService.trackTransactionRejected({
-        origin: METAMASK_ORIGIN,
-        accountType: account.type,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await this.#analyticsService.trackTransactionApproved({
-      origin: METAMASK_ORIGIN,
-      accountType: account.type,
-      chainIdCaip: scope,
-    });
+    await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
     const refreshed = await this.#refreshTransactionAfterConfirmation({
       request,
@@ -207,6 +205,8 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       scope,
       transaction: refreshedTransaction,
     });
+
+    await this.#analyticsService.trackTransactionSubmitted(trackingProperties);
 
     await this.#transactionService.savePendingKeyringTransactionSafe({
       type:
