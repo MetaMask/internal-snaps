@@ -1,8 +1,8 @@
 import type { OperationRecord } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
-import { calculateSpendableBalance } from '../../on-chain-account/utils';
 import type { AnyErrorConstructor } from '../../../utils';
+import { calculateSpendableBalance } from '../../on-chain-account/utils';
 import { TransactionValidationException } from '../exceptions';
 import type { AccountState, SimulationState } from './api';
 

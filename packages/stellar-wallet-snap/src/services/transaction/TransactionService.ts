@@ -235,7 +235,14 @@ export class TransactionService {
    * Thin wrapper over {@link createValidatedSendTransaction}: one skip build, then a
    * cached dest load (warmed by that build) to derive `requiresMemoRecovery`.
    *
-   * @param params - Same inputs as {@link createValidatedSendTransaction} (without skip).
+   * @param params - The parameters for the draft confirm-send transaction.
+   * @param params.onChainAccount - The on-chain account.
+   * @param params.amount - The amount to send.
+   * @param params.scope - The CAIP-2 chain ID.
+   * @param params.assetId - The CAIP-19 asset ID.
+   * @param params.destination - The destination address.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.useCache - Whether to use the cache.
    * @returns The draft transaction and whether the confirmation should show RequiresMemo recovery.
    */
   async createDraftSendTransactionForConfirm(params: {

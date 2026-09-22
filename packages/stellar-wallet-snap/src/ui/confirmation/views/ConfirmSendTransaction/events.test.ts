@@ -2,10 +2,7 @@ import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
 import { resolveInterface } from '../../../../utils';
-import {
-  ConfirmSendTransactionFormNames,
-  createEventHandlers,
-} from './events';
+import { ConfirmSendTransactionFormNames, createEventHandlers } from './events';
 
 jest.mock('../../../../utils', () => ({
   ...jest.requireActual('../../../../utils'),
