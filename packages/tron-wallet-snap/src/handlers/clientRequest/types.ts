@@ -25,6 +25,11 @@ export const ClientRequestMethod = {
    * Sign Proof of Ownership
    */
   SignProofOfOwnership: 'signProofOfOwnership',
+  /**
+   * Sign multiple proof-of-ownership messages for MetaMask identity
+   * authentication.
+   */
+  SignProofOfOwnershipBatch: 'signProofOfOwnershipBatch',
 } as const;
 
 export type ClientRequestMethod =

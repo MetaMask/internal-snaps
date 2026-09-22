@@ -19,6 +19,7 @@ import { LogLevel } from '@metamask/snap-networks-utils';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
+import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
@@ -142,7 +143,7 @@ async function withAccountsService(
 
   const keyringAccounts: ExtendedKeyringAccount[] = [];
 
-  const getAccountIndexKey = (account: ExtendedKeyringAccount) =>
+  const getAccountIndexKey = (account: ExtendedKeyringAccount): string =>
     `${account.entropySource}:${account.index}`;
 
   const mockAccountsRepository: jest.Mocked<
@@ -334,6 +335,72 @@ describe('AccountsService', () => {
           }),
         ).rejects.toThrow('Key derivation failed');
       });
+    });
+  });
+
+  describe('deriveTronKeypairs', () => {
+    const createAccount = (index: number): ExtendedKeyringAccount =>
+      ({
+        id: `account-${index}`,
+        entropySource: 'test-entropy',
+        derivationPath: AccountsService.getDefaultDerivationPath(index),
+        index,
+        address: `TAccount${index}`,
+        type: TrxAccountType.Eoa,
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      }) as unknown as ExtendedKeyringAccount;
+
+    it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          createAccount(0),
+          createAccount(1),
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+        expect(result[1]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+      }, coinJson);
+    });
+
+    it('derives using the account index instead of the derivation path index', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+      const keypairDeriver = await createTronBip44KeypairDeriver(coinJson);
+      const expectedIndex0Keypair = await keypairDeriver(0);
+      const unexpectedIndex5Keypair = await keypairDeriver(5);
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          {
+            ...createAccount(0),
+            derivationPath: "m/44'/195'/0'/0/5",
+          },
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result[0]).toStrictEqual(expectedIndex0Keypair);
+        expect(result[0]).not.toStrictEqual(unexpectedIndex5Keypair);
+      }, coinJson);
     });
   });
 
