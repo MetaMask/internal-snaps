@@ -31,7 +31,6 @@ import { KeyringTransactionType } from '../../services/transaction/KeyringTransa
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import { toCaip19ClassicAssetId, toDisplayBalance } from '../../utils';
-import { analyticsService } from '../../utils/analytics';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
@@ -125,17 +124,17 @@ describe('SignAndSendTransactionHandler', () => {
       .mockResolvedValue(undefined);
     const signTransactionSpy = jest.spyOn(wallet, 'signTransaction');
 
+    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
+
     const handler = new SignAndSendTransactionHandler({
       logger,
       accountResolver,
       transactionService,
       assetMetadataService,
+      analyticsService: {
+        trackTransactionSubmitted: trackTransactionSubmittedSpy,
+      } as never,
     });
-
-    const trackTransactionSubmittedSpy = jest.spyOn(
-      analyticsService,
-      'trackTransactionSubmitted',
-    );
 
     const request: SignAndSendTransactionJsonRpcRequest = {
       jsonrpc: '2.0',

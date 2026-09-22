@@ -47,7 +47,6 @@ import {
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import { analyticsService } from '../../utils/analytics';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
@@ -184,26 +183,22 @@ describe('ChangeTrustOptHandler', () => {
       .mockResolvedValue(true);
     const confirmationUIController = new ConfirmationUXController();
 
+    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
+
     const handler = new ChangeTrustOptHandler({
       logger,
       accountResolver,
       transactionService,
       assetMetadataService,
       confirmationUIController,
+      analyticsService: {
+        trackTransactionAdded: trackTransactionAddedSpy,
+        trackTransactionRejected: trackTransactionRejectedSpy,
+        trackTransactionApproved: trackTransactionApprovedSpy,
+      } as never,
     });
-
-    const trackTransactionAddedSpy = jest.spyOn(
-      analyticsService,
-      'trackTransactionAdded',
-    );
-    const trackTransactionRejectedSpy = jest.spyOn(
-      analyticsService,
-      'trackTransactionRejected',
-    );
-    const trackTransactionApprovedSpy = jest.spyOn(
-      analyticsService,
-      'trackTransactionApproved',
-    );
 
     return {
       handler,

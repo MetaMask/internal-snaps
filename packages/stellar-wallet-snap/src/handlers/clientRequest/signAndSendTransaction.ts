@@ -1,5 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
 
@@ -29,7 +29,6 @@ import {
   removeTrailingZeros,
   trackError,
 } from '../../utils';
-import { analyticsService } from '../../utils/analytics';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -58,16 +57,20 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
 
   readonly #assetMetadataService: AssetMetadataService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     transactionService,
     assetMetadataService,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix(
       '[👋 SignAndSendTransactionHandler]',
@@ -80,6 +83,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
     });
     this.#transactionService = transactionService;
     this.#assetMetadataService = assetMetadataService;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -136,7 +140,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
       pollTransaction: false,
     });
 
-    await analyticsService.trackTransactionSubmitted({
+    await this.#analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,

@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
@@ -29,7 +29,6 @@ import {
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import {
-  analyticsService,
   hasDecimals,
   isSlip44Id,
   toSmallestUnit,
@@ -74,18 +73,22 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
   readonly #logger: Logger;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     transactionService,
     assetMetadataService,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix('[👍 ConfirmSendHandler]');
     super({
@@ -98,6 +101,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     this.#assetMetadataService = assetMetadataService;
     this.#confirmationUIController = confirmationUIController;
     this.#logger = prefixedLogger;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -152,7 +156,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await analyticsService.trackTransactionAdded({
+      await this.#analyticsService.trackTransactionAdded({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
@@ -168,7 +172,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           transaction,
         }))
       ) {
-        await analyticsService.trackTransactionRejected({
+        await this.#analyticsService.trackTransactionRejected({
           origin: METAMASK_ORIGIN,
           accountType: stellarKeyringAccount.type,
           chainIdCaip: scope,
@@ -176,7 +180,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await analyticsService.trackTransactionApproved({
+      await this.#analyticsService.trackTransactionApproved({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,

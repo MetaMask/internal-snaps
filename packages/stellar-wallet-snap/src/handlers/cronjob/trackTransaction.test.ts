@@ -14,7 +14,6 @@ import {
 import { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
 import { Transaction } from '../../services/transaction/Transaction';
-import { analyticsService } from '../../utils/analytics';
 import { logger, noOpLogger } from '../../utils/logger';
 import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import { BackgroundEventMethod } from './api';
@@ -39,13 +38,12 @@ describe('TrackTransactionHandler', () => {
   const accountId = '22222222-2222-4222-8222-222222222222';
   const receiverAddress =
     'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
+  const trackTransactionFinalized = jest.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     jest.mocked(scheduleBackgroundEvent).mockClear();
     jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
-    jest
-      .spyOn(analyticsService, 'trackTransactionFinalized')
-      .mockResolvedValue();
+    trackTransactionFinalized.mockClear();
   });
 
   function createNetworkTransaction(status: TransactionStatus): Transaction {
@@ -109,6 +107,9 @@ describe('TrackTransactionHandler', () => {
         accountsRepository: {} as never,
         walletService: {} as never,
       }),
+      analyticsService: {
+        trackTransactionFinalized,
+      } as never,
     });
 
     return {
@@ -159,7 +160,7 @@ describe('TrackTransactionHandler', () => {
       },
     });
 
-    expect(analyticsService.trackTransactionFinalized).toHaveBeenCalledWith({
+    expect(trackTransactionFinalized).toHaveBeenCalledWith({
       origin: METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,
