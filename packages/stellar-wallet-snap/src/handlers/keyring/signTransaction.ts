@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import type { StellarKeyringAccount } from '../../services/account';
@@ -11,11 +11,6 @@ import type { Wallet } from '../../services/wallet';
 import type { ContextWithPrices } from '../../ui/confirmation/api';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
-import {
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
-} from '../../utils/snap';
 import type { AccountResolver } from '../accountResolver';
 import type { SignTransactionRequest, SignTransactionResponse } from './api';
 import {
@@ -41,14 +36,18 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
 > {
   readonly #confirmationUIController: ConfirmationUXController;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     super({
       logger,
@@ -58,6 +57,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
       responseStruct: SignTransactionResponseStruct,
     });
     this.#confirmationUIController = confirmationUIController;
+    this.#analyticsService = analyticsService;
   }
 
   protected async execute(
@@ -86,14 +86,14 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
       chainIdCaip: scope,
     };
 
-    await trackTransactionAdded(trackingProperties);
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
     if (!(await this.#confirmation(request, transaction, account))) {
-      await trackTransactionRejected(trackingProperties);
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
       throw new UserRejectedRequestError() as unknown as Error;
     }
 
-    await trackTransactionApproved(trackingProperties);
+    await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
     wallet.signTransaction(transaction);
     const signedTxXdr = transaction.getRaw().toXDR();

@@ -9,7 +9,6 @@ import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { bufferToUint8Array } from '../../utils/buffer';
 import { logger } from '../../utils/logger';
-import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { MultichainMethod } from './api';
 import type { SignAuthEntryRequest } from './api';
@@ -112,24 +111,20 @@ describe('SignAuthEntryHandler', () => {
       'renderConfirmationDialog'
     > as unknown as ConfirmationUXController;
 
+    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
+
     const handler = new SignAuthEntryHandler({
       logger,
       accountResolver,
       confirmationUIController,
+      analyticsService: {
+        trackTransactionAdded: trackTransactionAddedSpy,
+        trackTransactionRejected: trackTransactionRejectedSpy,
+        trackTransactionApproved: trackTransactionApprovedSpy,
+      } as never,
     });
-
-    const trackTransactionAddedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionAdded',
-    );
-    const trackTransactionApprovedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionApproved',
-    );
-    const trackTransactionRejectedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionRejected',
-    );
 
     return {
       handler,
