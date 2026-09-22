@@ -158,4 +158,10 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   memo?: string;
   // Locale key for memo validation errors on the edit screen.
   memoError?: LocalizedMessage | null;
+  /**
+   * Pending `snap_scheduleBackgroundEvent` id for confirmation context refresh.
+   * Stored so callers can cancel-and-replace (bitcoin send-flow pattern) instead
+   * of stacking parallel refresh chains (e.g. MemoEdit Save vs open cron).
+   */
+  backgroundEventId?: string;
 };
