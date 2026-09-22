@@ -1,4 +1,8 @@
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
@@ -156,11 +160,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await this.#analyticsService.trackTransactionAdded({
+      const trackingProperties: TransactionEventProperties = {
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
-      });
+      };
+
+      await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
       if (
         !(await this.#confirmSend({
@@ -172,19 +178,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           transaction,
         }))
       ) {
-        await this.#analyticsService.trackTransactionRejected({
-          origin: METAMASK_ORIGIN,
-          accountType: stellarKeyringAccount.type,
-          chainIdCaip: scope,
-        });
+        await this.#analyticsService.trackTransactionRejected(
+          trackingProperties,
+        );
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await this.#analyticsService.trackTransactionApproved({
-        origin: METAMASK_ORIGIN,
-        accountType: stellarKeyringAccount.type,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
       const {
         wallet: refreshedWallet,
@@ -206,11 +206,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         pollTransaction: false,
       });
 
-      await this.#analyticsService.trackTransactionSubmitted({
-        origin: METAMASK_ORIGIN,
-        accountType: stellarKeyringAccount.type,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionSubmitted(
+        trackingProperties,
+      );
 
       await this.#transactionService.savePendingKeyringTransactionSafe({
         type: KeyringTransactionType.Send,
