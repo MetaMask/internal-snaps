@@ -1,3 +1,4 @@
+import { InvalidMemoException, resolveStellarMemo } from '../../api';
 import { StellarAddressStruct } from '../../api/address';
 import type { Transaction } from '../../services/transaction';
 import {
@@ -59,6 +60,9 @@ export function getTxnErrorMessageKey(
   error: unknown,
   senderAddress: string,
 ): LocalizedMessage {
+  if (error instanceof InvalidMemoException) {
+    return 'confirmation.memo.error.tooLong';
+  }
   if (error instanceof InsufficientBalanceException) {
     return 'confirmation.txnError.insufficientBalance';
   }
@@ -98,6 +102,23 @@ export function getTxnErrorMessageKey(
     return 'confirmation.txnError.expired';
   }
   return 'confirmation.txnError.generic';
+}
+
+/**
+ * Validates a memo the same way {@link resolveStellarMemo} attaches it.
+ *
+ * @param memo - Raw memo from the confirmation UI (may include whitespace).
+ * @returns Locale error key, or `null` when empty/whitespace or valid.
+ */
+export function getMemoValidationErrorKey(
+  memo: string,
+): LocalizedMessage | null {
+  try {
+    resolveStellarMemo(memo);
+    return null;
+  } catch (error: unknown) {
+    return getTxnErrorMessageKey(error, '');
+  }
 }
 
 /**

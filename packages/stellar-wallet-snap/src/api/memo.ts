@@ -5,6 +5,18 @@ const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_ID_PATTERN = /^\d+$/u;
 
 /**
+ * Thrown when a memo string cannot be attached as a Stellar text or id memo.
+ */
+export class InvalidMemoException extends Error {
+  constructor(
+    message = `Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`,
+  ) {
+    super(message);
+    this.name = 'InvalidMemoException';
+  }
+}
+
+/**
  * Whether `value` is a non-negative decimal uint64 memo id.
  *
  * @param value - Trimmed memo string.
@@ -29,34 +41,6 @@ export function isMemoText(value: string): boolean {
 }
 
 /**
- * Locale keys returned by {@link getMemoValidationError}.
- */
-export type MemoValidationErrorKey = 'confirmation.memo.error.tooLong';
-
-/**
- * Validates a memo the same way {@link resolveStellarMemo} will attach it:
- * all-digit uint64 → memo id; otherwise text (≤ 28 UTF-8 bytes). Digits outside
- * uint64 that still fit in 28 bytes are accepted as text.
- *
- * @param value - Raw memo from the confirmation UI (may include whitespace).
- * @returns Locale error key, or `null` when empty/whitespace or valid.
- */
-export function getMemoValidationError(
-  value: string,
-): MemoValidationErrorKey | null {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  if (isMemoId(trimmed) || isMemoText(trimmed)) {
-    return null;
-  }
-
-  return 'confirmation.memo.error.tooLong';
-}
-
-/**
  * Narrows an unknown dialog/context memo value to a string when present.
  *
  * @param memo - Raw memo from dialog result or confirmation context.
@@ -72,9 +56,11 @@ export function getMemoStrOrUndefined(memo: unknown): string | undefined {
  * All-digit uint64 values → {@link Memo.id}; otherwise {@link Memo.text}.
  * Empty / whitespace-only values are treated as absent.
  *
+ * Used on the transaction build path (TransactionBuilder), not only UI.
+ *
  * @param value - Raw memo string (e.g. from confirmation UI).
  * @returns SDK memo, or `null` when the value is empty / whitespace-only.
- * @throws {Error} When the value is neither a valid memo id nor text memo.
+ * @throws {InvalidMemoException} When the value is neither a valid memo id nor text memo.
  */
 export function resolveStellarMemo(value?: string | null): Memo | null {
   const trimmed = value?.trim() ?? '';
@@ -90,5 +76,5 @@ export function resolveStellarMemo(value?: string | null): Memo | null {
     return Memo.text(trimmed);
   }
 
-  throw new Error(`Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`);
+  throw new InvalidMemoException();
 }

@@ -1,8 +1,8 @@
 import type { FormSubmitEvent } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
-import { getMemoValidationError } from '../../../../api';
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
+import { getMemoValidationErrorKey } from '../../../../handlers/clientRequest/utils';
 import {
   ConfirmationContextRefresherKey,
   RefreshConfirmationContextHandler,
@@ -82,7 +82,7 @@ async function onSaveSubmit(
   }
 
   const memo = memoFromSubmitEvent(event as FormSubmitEvent);
-  const memoValidationError = getMemoValidationError(memo);
+  const memoValidationError = getMemoValidationErrorKey(memo);
   if (memoValidationError) {
     // Keep the submitted text in `memo` so the input is not reset when we
     // re-render with the validation error.
