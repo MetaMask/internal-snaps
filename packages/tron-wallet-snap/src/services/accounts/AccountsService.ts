@@ -510,7 +510,7 @@ export class AccountsService {
    * @param accounts - The accounts to synchronize assets for.
    */
   async synchronizeAssets(accounts: ExtendedKeyringAccount[]): Promise<void> {
-    const scopes = this.#configProvider.get().activeNetworks;
+    const scopes = this.#configProvider.config.activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );
@@ -534,7 +534,7 @@ export class AccountsService {
   async synchronizeTransactions(
     accounts: ExtendedKeyringAccount[],
   ): Promise<void> {
-    const scopes = this.#configProvider.get().activeNetworks;
+    const scopes = this.#configProvider.config.activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );

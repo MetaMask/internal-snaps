@@ -48,6 +48,10 @@ export {
 } from './utils/config/envStructs';
 export { LogLevelStruct } from './utils/config/logLevelStruct';
 export {
+  Environment,
+  EnvironmentStruct,
+} from './utils/config/environmentStruct';
+export {
   batchesAll,
   batchesAllSettled,
   batchesAllSettledWithChunks,

@@ -1465,11 +1465,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/utils/getExplorerUrl.test.ts": {
-    "n/no-process-env": {
-      "count": 3
-    }
-  },
   "packages/tron-wallet-snap/src/validation/transaction.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
