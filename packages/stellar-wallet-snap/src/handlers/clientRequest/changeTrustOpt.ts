@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
@@ -12,7 +12,6 @@ import type { AccountNotActivatedException } from '../../services/network';
 import type { OnChainAccount } from '../../services/on-chain-account';
 import {
   KeyringTransactionType,
-  TransactionValidationException,
   TrustlineNotFoundException,
 } from '../../services/transaction';
 import type {
@@ -25,11 +24,6 @@ import {
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import {
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
-} from '../../utils/snap';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -60,18 +54,22 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
 
   readonly #confirmationUIController: ConfirmationUXController;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     transactionService,
     assetMetadataService,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     assetMetadataService: AssetMetadataService;
     transactionService: TransactionService;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix('[💼 ChangeTrustOptHandler]');
     super({
@@ -83,6 +81,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     this.#transactionService = transactionService;
     this.#assetMetadataService = assetMetadataService;
     this.#confirmationUIController = confirmationUIController;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -109,9 +108,9 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
    * @returns A `ChangeTrustOptJsonRpcResponse`:
    * - `{ status: true, transactionId }` when the transaction is built, signed, and submitted.
    * - `{ status: true }` when preflight finds an existing classic trustline with limit greater than zero for an add request.
-   * @throws {TrustlineNotFoundException} If a delete request targets a trustline that does not exist.
-   * @throws {TransactionValidationException} If pre-submit or post-confirm validation fails.
-   * @throws {UserRejectedRequestError} If the user rejects the confirmation prompt.
+   * @throws {TrustlineNotFoundException} If an opt-out trustline disappears after confirmation.
+   * @throws {TransactionValidationException} If validation fails after the user confirms (for example a higher refreshed fee).
+   * @throws {UserRejectedRequestError} If the user rejects a valid confirmation, or after the pre-submit error confirmation is dismissed (that dialog only supports reject).
    */
   protected async execute(
     resolvedAccount: ResolvedActivatedAccount,
@@ -141,18 +140,17 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
         limit: limitForTx,
       });
     } catch (error: unknown) {
-      if (error instanceof TransactionValidationException) {
-        await this.#displayDialogWithErrorMessage({
-          request,
-          account,
-          assetMetadata,
-          error,
-        });
-      }
-      throw error;
+      await this.#displayDialogWithErrorMessage({
+        request,
+        account,
+        assetMetadata,
+        error,
+      });
+      // The error confirmation only supports dismiss, so abort as a user rejection.
+      throw ensureError(new UserRejectedRequestError());
     }
 
-    await trackTransactionAdded({
+    await this.#analyticsService.trackTransactionAdded({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
@@ -168,7 +166,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     });
 
     if (!confirmed) {
-      await trackTransactionRejected({
+      await this.#analyticsService.trackTransactionRejected({
         origin: METAMASK_ORIGIN,
         accountType: account.type,
         chainIdCaip: scope,
@@ -176,7 +174,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await trackTransactionApproved({
+    await this.#analyticsService.trackTransactionApproved({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
@@ -421,7 +419,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     request: ChangeTrustOptJsonRpcRequest;
     account: StellarKeyringAccount;
     assetMetadata: StellarAssetMetadata;
-    error: TransactionValidationException;
+    error: unknown;
   }): Promise<void> {
     const { request, account, assetMetadata, error } = params;
     const { scope, action } = request.params;

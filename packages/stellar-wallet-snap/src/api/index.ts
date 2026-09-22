@@ -7,3 +7,4 @@ export * from './integer';
 export * from './xdr';
 export * from './xdrTypes';
 export * from './transactionHash';
+export * from './memo';

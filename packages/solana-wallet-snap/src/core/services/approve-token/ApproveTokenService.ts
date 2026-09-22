@@ -1,4 +1,7 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
@@ -29,14 +32,13 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network } from '../../constants/solana';
 import { deriveSolanaKeypair } from '../../utils/deriveSolanaKeypair';
 import type { TokenHelper } from '../assets/TokenHelper';
 import type { SolanaConnection } from '../connection';
 
 export type ApproveTokenParams = {
-  account: SolanaKeyringAccount;
+  account: ExtendedKeyringAccount;
   mint: Address;
   delegate: Address;
   amount: string;

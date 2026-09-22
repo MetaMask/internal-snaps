@@ -1,4 +1,9 @@
-import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+  IStateManager,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -6,7 +11,6 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { Network } from '../../constants';
 import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
@@ -62,6 +66,8 @@ export class CronHandler {
 
   readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountsService,
@@ -71,6 +77,7 @@ export class CronHandler {
     tronHttpClient,
     transactionScanService,
     transactionExpirationRefresherService,
+    analyticsService,
   }: {
     logger: Logger;
     accountsService: AccountsService;
@@ -80,6 +87,7 @@ export class CronHandler {
     tronHttpClient: TronHttpClient;
     transactionScanService: TransactionScanService;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
+    analyticsService: AnalyticsService;
   }) {
     this.#logger = logger.withPrefix('[⏰ CronHandler]');
     this.#accountsService = accountsService;
@@ -90,6 +98,7 @@ export class CronHandler {
     this.#transactionScanService = transactionScanService;
     this.#transactionExpirationRefresherService =
       transactionExpirationRefresherService;
+    this.#analyticsService = analyticsService;
   }
 
   async handle(request: JsonRpcRequest): Promise<void> {
@@ -369,7 +378,7 @@ export class CronHandler {
       const scanAccount = {
         type: interfaceContext.accountType,
         address: fromAddress,
-      } as TronKeyringAccount;
+      } as ExtendedKeyringAccount;
 
       let { scan } = interfaceContext;
       let { scanFetchStatus } = interfaceContext;
@@ -725,7 +734,7 @@ export class CronHandler {
       });
 
       // Track Transaction Finalized event now that transaction is confirmed
-      await this.#snapClient.trackTransactionFinalized({
+      await this.#analyticsService.trackTransactionFinalized({
         origin: 'MetaMask',
         accountType: senderAccount.type,
         chainIdCaip: scope,

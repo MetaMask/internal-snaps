@@ -37,7 +37,6 @@ import {
 import {
   RemoveTrustlineWithNonZeroBalanceException,
   TransactionValidationException,
-  TrustlineNotFoundException,
 } from '../../services/transaction/exceptions';
 import { KeyringTransactionType } from '../../services/transaction/KeyringTransactionBuilder';
 import { WalletService } from '../../services/wallet';
@@ -49,7 +48,6 @@ import {
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
-import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
 import { ClientRequestMethod, ChangeTrustOptAction } from './api';
@@ -185,26 +183,22 @@ describe('ChangeTrustOptHandler', () => {
       .mockResolvedValue(true);
     const confirmationUIController = new ConfirmationUXController();
 
+    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
+
     const handler = new ChangeTrustOptHandler({
       logger,
       accountResolver,
       transactionService,
       assetMetadataService,
       confirmationUIController,
+      analyticsService: {
+        trackTransactionAdded: trackTransactionAddedSpy,
+        trackTransactionRejected: trackTransactionRejectedSpy,
+        trackTransactionApproved: trackTransactionApprovedSpy,
+      } as never,
     });
-
-    const trackTransactionAddedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionAdded',
-    );
-    const trackTransactionRejectedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionRejected',
-    );
-    const trackTransactionApprovedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionApproved',
-    );
 
     return {
       handler,
@@ -414,7 +408,7 @@ describe('ChangeTrustOptHandler', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('shows the opt-out confirmation then throws when the trustline does not exist', async () => {
+  it('shows the opt-out confirmation then throws UserRejectedRequestError when the trustline does not exist', async () => {
     const {
       handler,
       account,
@@ -427,7 +421,7 @@ describe('ChangeTrustOptHandler', () => {
     } = setup();
 
     await expect(handler.handle(deleteRequest)).rejects.toThrow(
-      TrustlineNotFoundException,
+      UserRejectedRequestError,
     );
 
     expect(resolve).toHaveBeenCalledWith(assetId);
@@ -453,7 +447,7 @@ describe('ChangeTrustOptHandler', () => {
     expect(savePendingKeyringTransaction).not.toHaveBeenCalled();
   });
 
-  it('shows the opt-out confirmation then throws when the trustline balance is non-zero', async () => {
+  it('shows the opt-out confirmation then throws UserRejectedRequestError when the trustline balance is non-zero', async () => {
     const {
       handler,
       account,
@@ -467,7 +461,7 @@ describe('ChangeTrustOptHandler', () => {
     );
 
     await expect(handler.handle(deleteRequest)).rejects.toThrow(
-      RemoveTrustlineWithNonZeroBalanceException,
+      UserRejectedRequestError,
     );
 
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
@@ -490,7 +484,7 @@ describe('ChangeTrustOptHandler', () => {
     expect(sendTransaction).not.toHaveBeenCalled();
   });
 
-  it('shows the opt-in confirmation then throws when pre-submit validation fails', async () => {
+  it('shows the opt-in confirmation then throws UserRejectedRequestError when pre-submit validation fails', async () => {
     const {
       handler,
       account,
@@ -505,7 +499,7 @@ describe('ChangeTrustOptHandler', () => {
     );
 
     await expect(handler.handle(addRequest)).rejects.toThrow(
-      TransactionValidationException,
+      UserRejectedRequestError,
     );
 
     expect(renderConfirmationDialog).toHaveBeenCalledWith({

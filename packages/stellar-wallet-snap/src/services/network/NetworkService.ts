@@ -1,4 +1,9 @@
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
+import { useCache } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
@@ -29,8 +34,6 @@ import {
   rethrowIfInstanceElseThrow,
   batchesAllSettled,
 } from '../../utils';
-import type { ICache } from '../cache';
-import { useCache } from '../cache';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
@@ -154,6 +157,7 @@ export class NetworkService {
     refreshCache: boolean = false,
   ): Promise<BigNumber> {
     return useCache(this.getBaseFee.bind(this), this.#cache, {
+      logger: this.#logger,
       functionName: 'NetworkService:getBaseFeeWithCache',
       ttlMilliseconds: AppConfig.cache.ttlMilliseconds.baseFee,
       refreshCache,
@@ -274,6 +278,7 @@ export class NetworkService {
       },
       this.#cache,
       {
+        logger: this.#logger,
         functionName: 'NetworkService:loadOnChainAccount',
         ttlMilliseconds: AppConfig.cache.ttlMilliseconds.loadOnChainAccount,
         refreshCache,
@@ -582,6 +587,7 @@ export class NetworkService {
     Record<string, Record<KnownCaip19Sep41AssetId, BigNumber | null>>
   > {
     return useCache(this.getSep41AssetBalances.bind(this), this.#cache, {
+      logger: this.#logger,
       functionName: 'NetworkService:getSep41AssetBalancesWithCache',
       ttlMilliseconds: AppConfig.cache.ttlMilliseconds.sep41AssetBalance,
     })(params);
@@ -740,6 +746,7 @@ export class NetworkService {
       },
       this.#cache,
       {
+        logger: this.#logger,
         functionName: 'NetworkService:simulateSep41TransferWithCache',
         ttlMilliseconds: AppConfig.cache.ttlMilliseconds.simulateTransaction,
         refreshCache,

@@ -2,7 +2,11 @@
 
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
-import { InMemoryState, Logger } from '@metamask/snap-networks-utils';
+import {
+  InMemoryState,
+  Logger,
+  asStrictKeyringAccount,
+} from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -10,7 +14,6 @@ import { signature } from '@solana/kit';
 import bs58 from 'bs58';
 
 import type { AssetEntity } from '../../../entities';
-import { asStrictKeyringAccount } from '../../../entities';
 import type { Caip10Address } from '../../constants/solana';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import type {
@@ -35,15 +38,13 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_0_PRIVATE_KEY_BYTES,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
-  MOCK_SOLANA_KEYRING_ACCOUNT_2,
   MOCK_SOLANA_KEYRING_ACCOUNT_3,
-  MOCK_SOLANA_KEYRING_ACCOUNT_4,
-  MOCK_SOLANA_KEYRING_ACCOUNT_5,
   MOCK_SOLANA_KEYRING_ACCOUNTS,
-  MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_0,
-  MOCK_SOLANA_SEED_PHRASE_2_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
-import { getBip32EntropyMock } from '../../test/mocks/utils/getBip32Entropy';
+import {
+  getBip32EntropyMock,
+  getSolanaCoinTypeNodeMock,
+} from '../../test/mocks/utils/getBip32Entropy';
 import { trackError } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
@@ -56,6 +57,7 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 
 jest.mock('../../utils/getBip32Entropy', () => ({
   getBip32Entropy: getBip32EntropyMock,
+  getSolanaCoinTypeNode: getSolanaCoinTypeNodeMock,
 }));
 
 jest.mock('../../utils/errors', () => ({
@@ -687,6 +689,42 @@ describe('SolanaKeyring', () => {
           groupIndex: 10,
         }),
       ).rejects.toThrow('Network error');
+    });
+
+    it('fetches entropy once via the coin-type path regardless of on-chain activity', async () => {
+      // No activity — early return path.
+      mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([]);
+      await keyring.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        groupIndex: 10,
+      });
+      expect(getBip32Entropy).toHaveBeenCalledTimes(1);
+      expect(getBip32Entropy).toHaveBeenCalledWith({
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
+
+      jest.clearAllMocks();
+
+      // With activity — account creation path.
+      mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([
+        signature(
+          '2qfNzGs15dt999rt1AUJ7D1oPQaukMPPmHR2u5ZmDo4cVtr1Pr2Dax4Jo7ryTpM8jxjtXLi5NHy4uyr68MVh5my6',
+        ),
+      ]);
+      await keyring.createAccounts({
+        type: AccountCreationType.Bip44Discover,
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        groupIndex: 10,
+      });
+      expect(getBip32Entropy).toHaveBeenCalledTimes(1);
+      expect(getBip32Entropy).toHaveBeenCalledWith({
+        entropySource: MOCK_SEED_PHRASE_ENTROPY_SOURCE,
+        path: ['m', "44'", "501'"],
+        curve: 'ed25519',
+      });
     });
   });
 

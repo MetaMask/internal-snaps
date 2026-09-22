@@ -1,10 +1,8 @@
 import { Logger, LogLevel } from '@metamask/snap-networks-utils';
 
-import { ConfigProvider } from '../services/config';
+import { configProvider } from '../services/config';
 
-export const configProvider = new ConfigProvider();
-
-const logger = new Logger({ level: configProvider.get().logLevel });
+const logger = new Logger({ level: configProvider.config.logLevel });
 
 export const noOpLogger = new Logger({ level: LogLevel.SILENT });
 

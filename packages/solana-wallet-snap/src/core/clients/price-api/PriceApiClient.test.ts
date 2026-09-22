@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { CaipAssetType } from '@metamask/keyring-api';
-import type { Serializable } from '@metamask/snap-networks-utils';
+import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
-import type { ICache } from '../../caching/ICache';
-import { InMemoryCache } from '../../caching/InMemoryCache';
 import { KnownCaip19Id } from '../../constants/solana';
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
@@ -21,7 +20,7 @@ describe('PriceApiClient', () => {
     mockFetch = jest.fn();
 
     const mockConfigProvider: ConfigProvider = {
-      get: jest.fn().mockReturnValue({
+      config: {
         priceApi: {
           baseUrl: 'https://some-mock-url.com',
           chunkSize: 50,
@@ -29,8 +28,8 @@ describe('PriceApiClient', () => {
             spotPrices: 0,
           },
         },
-      }),
-    } as unknown as ConfigProvider;
+      },
+    } as ConfigProvider;
 
     mockCache = new InMemoryCache(mockLogger);
 
@@ -232,7 +231,7 @@ describe('PriceApiClient', () => {
   describe('security', () => {
     it('rejects invalid base URLs in constructor', () => {
       const invalidConfigProvider = {
-        get: jest.fn().mockReturnValue({
+        config: {
           priceApi: {
             baseUrl: 'invalid-url',
             chunkSize: 50,
@@ -240,8 +239,8 @@ describe('PriceApiClient', () => {
               spotPrices: 0,
             },
           },
-        }),
-      } as unknown as ConfigProvider;
+        },
+      } as ConfigProvider;
 
       expect(
         () =>

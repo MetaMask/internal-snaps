@@ -39,7 +39,7 @@ export class PriceApiClient {
     _logger: Logger = logger,
   ) {
     const { baseUrl, chunkSize, cacheTtlsMilliseconds } =
-      configProvider.get().priceApi;
+      configProvider.config.priceApi;
 
     assert(baseUrl, UrlStruct);
 

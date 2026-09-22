@@ -1,7 +1,7 @@
 import { TrxAccountType, TrxScope } from '@metamask/keyring-api';
 import { InMemoryState } from '@metamask/snap-networks-utils';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 import { AccountsRepository } from './AccountsRepository';
 
@@ -12,7 +12,7 @@ import { AccountsRepository } from './AccountsRepository';
  * @returns An in-memory state seeded with the provided accounts.
  */
 function createEmptyState(
-  keyringAccounts: Record<string, TronKeyringAccount> = {},
+  keyringAccounts: Record<string, ExtendedKeyringAccount> = {},
 ): InMemoryState<UnencryptedStateValue> {
   return new InMemoryState<UnencryptedStateValue>({
     keyringAccounts,
@@ -29,8 +29,8 @@ function createEmptyState(
  * @returns A complete Tron keyring account for tests.
  */
 function createTestAccount(
-  overrides: Partial<TronKeyringAccount> = {},
-): TronKeyringAccount {
+  overrides: Partial<ExtendedKeyringAccount> = {},
+): ExtendedKeyringAccount {
   return {
     id: 'account-0',
     entropySource: 'test-entropy',
@@ -88,6 +88,21 @@ describe('AccountsRepository', () => {
       'account-0',
       'account-2',
     ]);
+  });
+
+  it('findByIds matches account IDs case-insensitively', async () => {
+    const account = createTestAccount({
+      id: '123e4567-e89b-42d3-a456-426614174000',
+    });
+    const repository = new AccountsRepository(
+      createEmptyState({ [account.id]: account }),
+    );
+
+    const accounts = await repository.findByIds([
+      '123E4567-E89B-42D3-A456-426614174000',
+    ]);
+
+    expect(accounts).toStrictEqual([account]);
   });
 
   it('persists a new account through create', async () => {

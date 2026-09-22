@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
-import type { Serializable } from '@metamask/snap-networks-utils';
+import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
-import type { ICache } from '../../caching/ICache';
-import { useCache } from '../../caching/useCache';
 import type { ConfigProvider } from '../../services/config';
+import { useCache } from '../../utils/caching';
 import { trackError } from '../../utils/errors';
 import type {
   Balance,
@@ -33,7 +32,7 @@ export class NftApiClient {
     _cache: ICache<Serializable>,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
   ) {
-    const { baseUrl, cacheTtlsMilliseconds } = configProvider.get().nftApi;
+    const { baseUrl, cacheTtlsMilliseconds } = configProvider.config.nftApi;
 
     assert(baseUrl, UrlStruct);
 

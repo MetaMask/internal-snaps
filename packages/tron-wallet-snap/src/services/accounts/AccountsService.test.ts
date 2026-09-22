@@ -10,16 +10,18 @@ import type {
 } from '@metamask/keyring-api';
 import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { LogLevel } from '@metamask/snap-networks-utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
+import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
-import type { ConfigProvider } from '../config';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
@@ -53,7 +55,6 @@ const EMPTY_NETWORK_URLS: Record<Network, string> = {
 const MOCK_CONFIG: Config = {
   environment: 'test',
   logLevel: LogLevel.INFO,
-  networks: [],
   activeNetworks: [],
   priceApi: {
     baseUrl: '',
@@ -64,14 +65,10 @@ const MOCK_CONFIG: Config = {
   },
   tokenApi: { baseUrl: '', chunkSize: 0 },
   staticApi: { baseUrl: '' },
-  transactions: { storageLimit: 0 },
   securityAlertsApi: { baseUrl: '' },
-  nftApi: {
-    baseUrl: '',
-    cacheTtlsMilliseconds: { listAddressSolanaNfts: 0, getNftMetadata: 0 },
-  },
   trongridApi: { baseUrls: EMPTY_NETWORK_URLS },
   tronHttpApi: { baseUrls: EMPTY_NETWORK_URLS },
+  explorerApi: { baseUrls: EMPTY_NETWORK_URLS },
 };
 
 /**
@@ -105,7 +102,7 @@ type WithAccountsServiceCallback = (payload: {
       | 'delete'
     >
   >;
-  mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>>;
+  mockConfigProvider: { config: Config };
   mockLogger: Logger;
   mockAssetsService: jest.Mocked<
     Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
@@ -138,9 +135,9 @@ async function withAccountsService(
     configurable: true,
   });
 
-  const keyringAccounts: TronKeyringAccount[] = [];
+  const keyringAccounts: ExtendedKeyringAccount[] = [];
 
-  const getAccountIndexKey = (account: TronKeyringAccount) =>
+  const getAccountIndexKey = (account: ExtendedKeyringAccount): string =>
     `${account.entropySource}:${account.index}`;
 
   const mockAccountsRepository: jest.Mocked<
@@ -184,7 +181,7 @@ async function withAccountsService(
       ),
     create: jest
       .fn()
-      .mockImplementation(async (account: TronKeyringAccount) => {
+      .mockImplementation(async (account: ExtendedKeyringAccount) => {
         const conflicting = keyringAccounts.find(
           (existing) =>
             getAccountIndexKey(existing) === getAccountIndexKey(account),
@@ -200,9 +197,9 @@ async function withAccountsService(
     mergeKeyringAccounts: jest
       .fn()
       .mockImplementation(
-        async (newAccounts: Record<string, TronKeyringAccount>) => {
+        async (newAccounts: Record<string, ExtendedKeyringAccount>) => {
           const occupied = new Set(keyringAccounts.map(getAccountIndexKey));
-          const added: Record<string, TronKeyringAccount> = {};
+          const added: Record<string, ExtendedKeyringAccount> = {};
 
           for (const [id, account] of Object.entries(newAccounts)) {
             const indexKey = getAccountIndexKey(account);
@@ -231,8 +228,8 @@ async function withAccountsService(
     }),
   };
 
-  const mockConfigProvider: jest.Mocked<Pick<ConfigProvider, 'get'>> = {
-    get: jest.fn().mockReturnValue(MOCK_CONFIG),
+  const mockConfigProvider: { config: Config } = {
+    config: MOCK_CONFIG,
   };
 
   const mockSnapClient: jest.Mocked<
@@ -335,6 +332,72 @@ describe('AccountsService', () => {
     });
   });
 
+  describe('deriveTronKeypairs', () => {
+    const createAccount = (index: number): ExtendedKeyringAccount =>
+      ({
+        id: `account-${index}`,
+        entropySource: 'test-entropy',
+        derivationPath: AccountsService.getDefaultDerivationPath(index),
+        index,
+        address: `TAccount${index}`,
+        type: TrxAccountType.Eoa,
+        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        options: {},
+        methods: ['signMessage', 'signTransaction'],
+      }) as unknown as ExtendedKeyringAccount;
+
+    it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          createAccount(0),
+          createAccount(1),
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledTimes(1);
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+        expect(result[1]).toMatchObject({
+          privateKeyHex: expect.any(String),
+          address: expect.any(String),
+        });
+      }, coinJson);
+    });
+
+    it('derives using the account index instead of the derivation path index', async () => {
+      const coinJson = await getTronTestCoinTypeJson();
+      const keypairDeriver = await createTronBip44KeypairDeriver(coinJson);
+      const expectedIndex0Keypair = await keypairDeriver(0);
+      const unexpectedIndex5Keypair = await keypairDeriver(5);
+
+      await withAccountsService(async ({ accountsService, mockSnapClient }) => {
+        const result = await accountsService.deriveTronKeypairs([
+          {
+            ...createAccount(0),
+            derivationPath: "m/44'/195'/0'/0/5",
+          },
+        ]);
+
+        expect(mockSnapClient.getBip32Entropy).toHaveBeenCalledWith({
+          entropySource: 'test-entropy',
+          path: ['m', "44'", "195'"],
+          curve: 'secp256k1',
+        });
+        expect(result[0]).toStrictEqual(expectedIndex0Keypair);
+        expect(result[0]).not.toStrictEqual(unexpectedIndex5Keypair);
+      }, coinJson);
+    });
+  });
+
   describe('createAccounts', () => {
     it('persists new accounts with a single merge and one coin-type entropy call', async () => {
       const coinJson = await getTronTestCoinTypeJson();
@@ -375,7 +438,7 @@ describe('AccountsService', () => {
             mockAccountsRepository.mergeKeyringAccounts,
           ).toHaveBeenCalledTimes(1);
           const merged = mockAccountsRepository.mergeKeyringAccounts.mock
-            .calls[0]?.[0] as Record<string, TronKeyringAccount>;
+            .calls[0]?.[0] as Record<string, ExtendedKeyringAccount>;
           expect(Object.keys(merged)).toHaveLength(2);
         },
         coinJson,
@@ -407,7 +470,7 @@ describe('AccountsService', () => {
           ).toHaveBeenCalledTimes(1);
 
           const mergedAccounts = mockAccountsRepository.mergeKeyringAccounts
-            .mock.calls[0]?.[0] as Record<string, TronKeyringAccount>;
+            .mock.calls[0]?.[0] as Record<string, ExtendedKeyringAccount>;
 
           expect(Object.keys(mergedAccounts)).toHaveLength(101);
           expect(
@@ -422,7 +485,7 @@ describe('AccountsService', () => {
 
     it('returns persisted accounts when merge skips indices taken concurrently', async () => {
       const coinJson = await getTronTestCoinTypeJson();
-      const concurrentAccount: TronKeyringAccount = {
+      const concurrentAccount: ExtendedKeyringAccount = {
         id: 'concurrent-0',
         entropySource: 'test-entropy',
         derivationPath: "m/44'/195'/0'/0/0",
@@ -472,7 +535,7 @@ describe('AccountsService', () => {
 
     it('does not merge when accounts already exist for the range', async () => {
       const coinJson = await getTronTestCoinTypeJson();
-      const existing0: TronKeyringAccount = {
+      const existing0: ExtendedKeyringAccount = {
         id: 'existing-0',
         entropySource: 'test-entropy',
         derivationPath: "m/44'/195'/0'/0/0",
@@ -483,7 +546,7 @@ describe('AccountsService', () => {
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
-      const existing1: TronKeyringAccount = {
+      const existing1: ExtendedKeyringAccount = {
         id: 'existing-1',
         entropySource: 'test-entropy',
         derivationPath: "m/44'/195'/0'/0/1",
@@ -715,7 +778,7 @@ describe('AccountsService', () => {
 
   describe('getAll', () => {
     it('delegates to repository and returns result', async () => {
-      const accounts: TronKeyringAccount[] = [
+      const accounts: ExtendedKeyringAccount[] = [
         {
           id: 'a1',
           address: 'TAddr1',
@@ -744,7 +807,7 @@ describe('AccountsService', () => {
 
   describe('getAllSelected', () => {
     it('returns only accounts whose IDs are in getSelectedAccounts', async () => {
-      const account1: TronKeyringAccount = {
+      const account1: ExtendedKeyringAccount = {
         id: 'selected-1',
         address: 'TAddr1',
         type: TrxAccountType.Eoa,
@@ -755,7 +818,7 @@ describe('AccountsService', () => {
         derivationPath: "m/44'/195'/0'/0/0",
         index: 0,
       };
-      const account2: TronKeyringAccount = {
+      const account2: ExtendedKeyringAccount = {
         id: 'not-selected',
         address: 'TAddr2',
         type: TrxAccountType.Eoa,
@@ -796,7 +859,7 @@ describe('AccountsService', () => {
 
   describe('findById', () => {
     it('delegates to repository', async () => {
-      const account: TronKeyringAccount = {
+      const account: ExtendedKeyringAccount = {
         id: 'find-id',
         address: 'TFind',
         type: TrxAccountType.Eoa,
@@ -825,7 +888,7 @@ describe('AccountsService', () => {
 
   describe('findByIdOrThrow', () => {
     it('returns account when found', async () => {
-      const account: TronKeyringAccount = {
+      const account: ExtendedKeyringAccount = {
         id: 'throw-found',
         address: 'TFound',
         type: TrxAccountType.Eoa,
@@ -863,7 +926,7 @@ describe('AccountsService', () => {
 
   describe('findByIds', () => {
     it('returns accounts from repository', async () => {
-      const accounts: TronKeyringAccount[] = [
+      const accounts: ExtendedKeyringAccount[] = [
         {
           id: 'id1',
           address: 'T1',
@@ -909,7 +972,7 @@ describe('AccountsService', () => {
 
   describe('findByAddress', () => {
     it('delegates to repository', async () => {
-      const account: TronKeyringAccount = {
+      const account: ExtendedKeyringAccount = {
         id: 'addr-id',
         address: 'TByAddress123456789012345678',
         type: TrxAccountType.Eoa,
@@ -954,7 +1017,7 @@ describe('AccountsService', () => {
 
   describe('synchronizeAssets', () => {
     it('calls fetch for each account and scope, then saveMany', async () => {
-      const account: TronKeyringAccount = {
+      const account: ExtendedKeyringAccount = {
         id: 'sync-asset-id',
         address: 'TSyncAsset12345678901234567',
         type: TrxAccountType.Eoa,
@@ -980,10 +1043,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet, Network.Shasta],
-          });
+          };
           mockAssetsService.fetchAssetsAndBalancesForAccount.mockResolvedValue(
             mockAssets,
           );
@@ -1009,9 +1072,9 @@ describe('AccountsService', () => {
     it('handles empty activeNetworks', async () => {
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue(MOCK_CONFIG);
+          mockConfigProvider.config = MOCK_CONFIG;
 
-          const account: TronKeyringAccount = {
+          const account: ExtendedKeyringAccount = {
             id: 'empty-id',
             address: 'TEmpty12345678901234567890',
             type: TrxAccountType.Eoa,
@@ -1036,7 +1099,7 @@ describe('AccountsService', () => {
 
   describe('synchronizeTransactions', () => {
     it('calls fetch for each account and scope, then saveMany', async () => {
-      const account: TronKeyringAccount = {
+      const account: ExtendedKeyringAccount = {
         id: 'sync-tx-id',
         address: 'TSyncTx123456789012345678',
         type: TrxAccountType.Eoa,
@@ -1068,10 +1131,10 @@ describe('AccountsService', () => {
           mockConfigProvider,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
           mockTransactionsService.fetchNewTransactionsForAccount.mockResolvedValue(
             mockTransactions,
           );
@@ -1091,7 +1154,7 @@ describe('AccountsService', () => {
 
   describe('synchronize', () => {
     it('calls both synchronizeAssets and synchronizeTransactions', async () => {
-      const account: TronKeyringAccount = {
+      const account: ExtendedKeyringAccount = {
         id: 'sync-id',
         address: 'TSync12345678901234567890',
         type: TrxAccountType.Eoa,
@@ -1110,10 +1173,10 @@ describe('AccountsService', () => {
           mockAssetsService,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await accountsService.synchronize([account]);
 
@@ -1130,7 +1193,7 @@ describe('AccountsService', () => {
     const makeSyncAccount = (
       id: string,
       index: number,
-    ): TronKeyringAccount => ({
+    ): ExtendedKeyringAccount => ({
       id,
       address: `TCoalesce${index}2345678901234567890`,
       type: TrxAccountType.Eoa,
@@ -1152,10 +1215,10 @@ describe('AccountsService', () => {
           mockAssetsService,
           mockTransactionsService,
         }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await Promise.all([
             accountsService.synchronize([account]),
@@ -1180,10 +1243,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await accountsService.synchronize([account]);
           await accountsService.synchronize([account]);
@@ -1201,10 +1264,10 @@ describe('AccountsService', () => {
 
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.get.mockReturnValue({
+          mockConfigProvider.config = {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
-          });
+          };
 
           await Promise.all([
             accountsService.synchronize([accountA]),

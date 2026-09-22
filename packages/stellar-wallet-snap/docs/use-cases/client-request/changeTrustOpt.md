@@ -25,9 +25,9 @@ Add or remove a classic Stellar trustline for an asset on a managed account.
 - `{ status: true }` — opt-in already satisfied (trustline exists with limit > 0), or became redundant while the dialog was open
 - `{ status: false }` — account not activated (funding prompt shown; not an RPC error)
 
-Pre-submit validation failures (missing trustline, non-zero opt-out balance, reserve, fee) are shown in the change-trust confirmation dialog first (no fee or price estimates). After the dialog closes, the handler rethrows the validation error. Failures after the user confirms rethrow without a second dialog.
+Pre-submit validation failures (missing trustline, non-zero opt-out balance, reserve, fee) are shown in the change-trust confirmation dialog first (no fee or price estimates). That dialog only supports dismiss; after it closes, the handler throws `UserRejectedRequestError`. Failures after the user confirms a valid change-trust rethrow without a second dialog.
 
-User rejection of a valid confirmation dialog throws `UserRejectedRequestError`.
+User rejection of a valid confirmation dialog also throws `UserRejectedRequestError`.
 
 ## Participants
 
@@ -51,9 +51,9 @@ User rejection of a valid confirmation dialog throws `UserRejectedRequestError`.
 
 1. **Route** — `onClientRequest` dispatches to `ChangeTrustOptHandler`.
 2. **Resolve** — `AccountResolver` loads keyring account, wallet, and activated on-chain account from the **live network**. Unfunded accounts show the activation prompt and return `{ status: false }`.
-3. **Short-circuit** — If `add` and a trustline with limit > 0 already exists → `{ status: true }`. If `delete` and no trustline, the opt-out confirmation shows the error, then `TrustlineNotFoundException` is rethrown.
+3. **Short-circuit** — If `add` and a trustline with limit > 0 already exists → `{ status: true }`. If `delete` and no trustline, the opt-out confirmation shows the error, then the handler throws `UserRejectedRequestError`.
 4. **Build** — Resolve asset metadata; `TransactionService.createValidatedChangeTrustTransaction` builds a change-trust op (`delete` forces limit `"0"`).
-5. **Pre-submit validation errors** — Missing trustline, non-zero opt-out balance, reserve, and fee failures are shown in the change-trust confirmation (no fee or price estimates). After the dialog closes, the handler rethrows.
+5. **Pre-submit validation errors** — Missing trustline, non-zero opt-out balance, reserve, and fee failures are shown in the change-trust confirmation (no fee or price estimates). After the dialog is dismissed, the handler throws `UserRejectedRequestError`.
 6. **Confirm** — `ConfirmationUXController` shows opt-in or opt-out UI (fee, security scan, local re-validation cron while open).
 7. **Refresh** — After confirm, account is resolved again from the live network; fee must not exceed what the user approved; redundant opt-in returns `{ status: true }` without submit. Validation failures here rethrow without a second dialog.
 8. **Sign & send** — `Wallet.signTransaction` → `TransactionService.sendTransaction`.

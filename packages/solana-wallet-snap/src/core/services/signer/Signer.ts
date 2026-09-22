@@ -1,4 +1,7 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import type {
   TransactionMessage,
@@ -16,7 +19,6 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 
-import type { SolanaKeyringAccount } from '../../../entities';
 import type { Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import {
@@ -69,7 +71,7 @@ export class Signer {
    */
   async partiallySignBase64String(
     base64String: Infer<typeof Base64Struct>,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     network: Network,
     config?: DecompileTransactionMessageFetchingLookupTablesConfig,
     transactionSource?: TransactionSource,
@@ -157,7 +159,7 @@ export class Signer {
    */
   async #prepareAndPartiallySignTransactionMessage(
     transactionMessage: TransactionMessage,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
     scope: Network,
     refreshBlockhashBeforeSigning: boolean,
   ): Promise<Readonly<Transaction & TransactionWithLifetime>> {
@@ -243,7 +245,7 @@ export class Signer {
    */
   async #partiallySignTransaction(
     transaction: Transaction,
-    account: SolanaKeyringAccount,
+    account: ExtendedKeyringAccount,
   ) {
     const { privateKeyBytes } = await deriveSolanaKeypair({
       entropySource: account.entropySource,

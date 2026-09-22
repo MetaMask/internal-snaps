@@ -1,11 +1,10 @@
-import { InMemoryState } from '@metamask/snap-networks-utils';
+import { InMemoryState, InMemoryCache } from '@metamask/snap-networks-utils';
 
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../../api';
 import { AssetType, KnownCaip2ChainId } from '../../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../../constants';
 import { getSlip44AssetId } from '../../../utils/caip';
 import { logger, noOpLogger } from '../../../utils/logger';
-import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
 import type { AssetMetadataByAssetId, StellarAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
