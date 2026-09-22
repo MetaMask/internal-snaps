@@ -26,7 +26,11 @@ import { TronWeb } from 'tronweb';
 import snapManifest from '../../../snap.manifest.json';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
-import { createTronBip44AddressDeriver } from '../../utils/deriveTronFromCoinTypeNode';
+import type { DerivedTronKeypair } from '../../utils/deriveTronFromCoinTypeNode';
+import {
+  createTronBip44AddressDeriver,
+  createTronBip44KeypairDeriver,
+} from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError } from '../../utils/errors';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
@@ -65,6 +69,32 @@ type AccountCreationRange = {
 type TronAddressDeriver = Awaited<
   ReturnType<typeof createTronBip44AddressDeriver>
 >;
+
+/**
+ * A function that derives a TRON keypair from a BIP44 account index.
+ */
+type TronKeypairDeriver = Awaited<
+  ReturnType<typeof createTronBip44KeypairDeriver>
+>;
+
+/**
+ * Result for one account in a batch TRON keypair derivation.
+ */
+export type DerivedTronKeypairBatchResult =
+  | DerivedTronKeypair
+  | { error: string };
+
+/**
+ * Checks whether a batch derivation result contains derived key material.
+ *
+ * @param result - The derivation result to check.
+ * @returns Whether the result contains a derived TRON keypair.
+ */
+export function isDerivedTronKeypair(
+  result: DerivedTronKeypairBatchResult,
+): result is DerivedTronKeypair {
+  return Object.hasOwn(result, 'privateKeyHex');
+}
 
 /**
  * Validates account creation ranges before any expensive state or entropy work.
@@ -153,12 +183,7 @@ export class AccountsService {
   }: {
     entropySource?: EntropySourceId | undefined;
     derivationPath: string;
-  }): Promise<{
-    privateKeyBytes: Uint8Array;
-    publicKeyBytes: Uint8Array;
-    privateKeyHex: string;
-    address: string;
-  }> {
+  }): Promise<DerivedTronKeypair> {
     try {
       this.#logger.log({ derivationPath }, 'Generating TRON wallet');
 
@@ -198,6 +223,58 @@ export class AccountsService {
       // Sanitize errors to prevent leaking sensitive cryptographic information
       throw sanitizeSensitiveError(error);
     }
+  }
+
+  /**
+   * Derives keypairs for multiple TRON accounts with one coin-type entropy
+   * fetch per entropy source.
+   *
+   * Results are returned in input order. Individual account derivation failures
+   * are returned as item-level errors so callers can preserve partial success.
+   *
+   * @param accounts - The accounts to derive key material for.
+   * @returns One derivation result per account, in input order.
+   */
+  async deriveTronKeypairs(
+    accounts: ExtendedKeyringAccount[],
+  ): Promise<DerivedTronKeypairBatchResult[]> {
+    const results: DerivedTronKeypairBatchResult[] = new Array(accounts.length);
+    const accountsByEntropySource = new Map<
+      EntropySourceId,
+      { index: number; account: ExtendedKeyringAccount }[]
+    >();
+
+    accounts.forEach((account, index) => {
+      const sourceAccounts =
+        accountsByEntropySource.get(account.entropySource) ?? [];
+      sourceAccounts.push({ index, account });
+      accountsByEntropySource.set(account.entropySource, sourceAccounts);
+    });
+
+    await Promise.all(
+      [...accountsByEntropySource.entries()].map(
+        async ([entropySource, sourceAccounts]) => {
+          try {
+            const keypairDeriver =
+              await this.#createTronKeypairDeriver(entropySource);
+
+            for (const { index, account } of sourceAccounts) {
+              try {
+                results[index] = await keypairDeriver(account.index);
+              } catch {
+                results[index] = { error: 'Unable to derive private key' };
+              }
+            }
+          } catch {
+            for (const { index } of sourceAccounts) {
+              results[index] = { error: 'Unable to derive private key' };
+            }
+          }
+        },
+      ),
+    );
+
+    return results;
   }
 
   /**
@@ -399,6 +476,15 @@ export class AccountsService {
     return account;
   }
 
+  /**
+   * Finds multiple TRON keyring accounts.
+   *
+   * Missing accounts are logged but not thrown so callers can decide whether
+   * partial results are acceptable.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts.
+   */
   async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
     const accounts = await this.#accountsRepository.findByIds(ids);
 
@@ -424,7 +510,7 @@ export class AccountsService {
    * @param accounts - The accounts to synchronize assets for.
    */
   async synchronizeAssets(accounts: ExtendedKeyringAccount[]): Promise<void> {
-    const scopes = this.#configProvider.get().activeNetworks;
+    const scopes = this.#configProvider.config.activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );
@@ -448,7 +534,7 @@ export class AccountsService {
   async synchronizeTransactions(
     accounts: ExtendedKeyringAccount[],
   ): Promise<void> {
-    const scopes = this.#configProvider.get().activeNetworks;
+    const scopes = this.#configProvider.config.activeNetworks;
     const combinations = accounts.flatMap((account) =>
       scopes.map((scope) => ({ account, scope })),
     );
@@ -497,6 +583,24 @@ export class AccountsService {
     })) as JsonBIP44Node;
 
     return createTronBip44AddressDeriver(bip44Node);
+  }
+
+  /**
+   * Creates a TRON keypair deriver from the coin-type node.
+   *
+   * @param entropySource - Entropy source used to fetch the coin-type node.
+   * @returns A deriver for `m/44'/195'/0'/0/index` keypairs.
+   */
+  async #createTronKeypairDeriver(
+    entropySource: EntropySourceId,
+  ): Promise<TronKeypairDeriver> {
+    const bip44Node = (await this.#snapClient.getBip32Entropy({
+      entropySource,
+      path: ['m', "44'", "195'"],
+      curve: CURVE,
+    })) as JsonBIP44Node;
+
+    return createTronBip44KeypairDeriver(bip44Node);
   }
 
   static getDefaultDerivationPath(index: number): `m/${string}` {

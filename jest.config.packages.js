@@ -22,13 +22,13 @@ module.exports = {
   collectCoverage: true,
 
   // An array of glob patterns indicating a set of files for which coverage information should be collected
-  collectCoverageFrom: ['./src/**/*.ts'],
+  collectCoverageFrom: ['./src/**/*.{ts,tsx}'],
 
   // The directory where Jest should output its coverage files
   coverageDirectory: 'coverage',
 
   // An array of regexp pattern strings used to skip coverage collection
-  coveragePathIgnorePatterns: ['.*/index\\.ts', 'jest\\.setup\\.ts'],
+  coveragePathIgnorePatterns: ['.*/index\\.ts$', 'jest\\.setup\\.ts$'],
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: 'babel',
@@ -80,11 +80,11 @@ module.exports = {
   // Here we ensure that Jest resolves `@metamask/*` imports to the uncompiled source code for packages that live in this repo.
   // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`.
   moduleNameMapper: {
-    '^@metamask/json-rpc-engine/v2$': [
-      '<rootDir>/../json-rpc-engine/src/v2/index.ts',
-    ],
     '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
-    '^@metamask/(.+)$': [
+    // Matches bare package specifiers only (e.g. `@metamask/foo`), so subpath
+    // exports such as `@metamask/foo/node` keep resolving through the package
+    // `exports` map instead of being redirected to a non-existent source path.
+    '^@metamask/([^/]+)$': [
       '<rootDir>/../$1/src',
       // Some @metamask/* packages we are referencing aren't in this monorepo,
       // so in that case use their published versions
@@ -153,7 +153,10 @@ module.exports = {
   // snapshotSerializers: [],
 
   // The test environment that will be used for testing
-  testEnvironment: 'node',
+  // NOTE: Do not set this here. A `testEnvironment` in this base would override
+  // the one supplied by a package's preset (e.g. `@metamask/snaps-jest`), which
+  // breaks `installSnap()`. Packages should let their preset own this option.
+  // testEnvironment: undefined,
 
   // Options that will be passed to the testEnvironment
   testEnvironmentOptions: {

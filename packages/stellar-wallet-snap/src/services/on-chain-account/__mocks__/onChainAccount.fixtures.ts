@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { InMemoryState } from '@metamask/snap-networks-utils';
+import { InMemoryState, InMemoryCache } from '@metamask/snap-networks-utils';
 import type { Horizon } from '@stellar/stellar-sdk';
 import { Account } from '@stellar/stellar-sdk';
 
@@ -7,7 +7,6 @@ import type { KnownCaip2ChainId } from '../../../api';
 import { logger, noOpLogger } from '../../../utils/logger';
 import { AccountService } from '../../account/AccountService';
 import { AccountsRepository } from '../../account/AccountsRepository';
-import { InMemoryCache } from '../../cache';
 import { NetworkService } from '../../network';
 import { WalletService } from '../../wallet';
 import { OnChainAccount } from '../OnChainAccount';

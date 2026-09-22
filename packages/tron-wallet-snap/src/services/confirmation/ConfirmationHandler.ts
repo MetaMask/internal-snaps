@@ -1,4 +1,5 @@
 import type {
+  AnalyticsService,
   ExtendedKeyringAccount,
   IStateManager,
   Logger,
@@ -46,6 +47,8 @@ export class ConfirmationHandler {
 
   readonly #feeCalculatorService: FeeCalculatorService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     snapClient,
     state,
@@ -53,6 +56,7 @@ export class ConfirmationHandler {
     assetsService,
     feeCalculatorService,
     logger,
+    analyticsService,
   }: {
     snapClient: SnapClient;
     state: IStateManager<UnencryptedStateValue>;
@@ -60,6 +64,7 @@ export class ConfirmationHandler {
     assetsService: AssetsService;
     feeCalculatorService: FeeCalculatorService;
     logger: Logger;
+    analyticsService: AnalyticsService;
   }) {
     this.#logger = logger.withPrefix('[🔑 ConfirmationHandler]');
     this.#snapClient = snapClient;
@@ -67,6 +72,7 @@ export class ConfirmationHandler {
     this.#tronWebFactory = tronWebFactory;
     this.#assetsService = assetsService;
     this.#feeCalculatorService = feeCalculatorService;
+    this.#analyticsService = analyticsService;
   }
 
   async #clearInterfaceId(interfaceName: string): Promise<void> {
@@ -139,6 +145,14 @@ export class ConfirmationHandler {
     );
     assertTransactionStructure(rawData);
 
+    const trackingProperties = {
+      origin: request.origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    };
+
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
+
     const result = await renderConfirmSignTransaction(
       request,
       account,
@@ -146,6 +160,12 @@ export class ConfirmationHandler {
     );
 
     await this.#clearInterfaceId(CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME);
+
+    if (result === true) {
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
+    } else {
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
+    }
 
     return result === true;
   }
@@ -171,12 +191,14 @@ export class ConfirmationHandler {
     origin: string;
     transactionRawData: TronwebTypes.Transaction['raw_data'];
   }): Promise<boolean> {
-    // Track Transaction Added event
-    await this.#snapClient.trackTransactionAdded({
+    const trackingProperties = {
       origin,
       accountType,
       chainIdCaip: scope,
-    });
+    };
+
+    // Track Transaction Added event
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
     const result = await renderConfirmTransactionRequest(
       this.#snapClient,
@@ -198,17 +220,9 @@ export class ConfirmationHandler {
 
     // Track Transaction Rejected event if user rejects
     if (result === true) {
-      await this.#snapClient.trackTransactionApproved({
-        origin,
-        accountType,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
     } else {
-      await this.#snapClient.trackTransactionRejected({
-        origin,
-        accountType,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
     }
 
     return result === true;

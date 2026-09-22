@@ -1,4 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import {
   Account,
   Contract,
@@ -20,7 +21,6 @@ import { AppConfig } from '../../config';
 import { STELLAR_DECIMAL_PLACES } from '../../constants';
 import { toSmallestUnit } from '../../utils';
 import { logger } from '../../utils/logger';
-import { InMemoryCache } from '../cache/InMemoryCache';
 import { createMockAccountWithBalances } from '../on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
