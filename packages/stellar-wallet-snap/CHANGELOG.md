@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` from the SEP-43 `signTransaction` confirmation ([#346](https://github.com/MetaMask/internal-snaps/pull/346))
+  - Only the unified send and change-trust flows emitted decision events before; dApp-initiated transaction signatures were invisible.
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
 
