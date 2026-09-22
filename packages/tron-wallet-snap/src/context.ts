@@ -30,7 +30,7 @@ import { CoreAssetsAdapter } from './services/assets/adapters/CoreAssetsAdapter'
 import { SnapAssetsAdapter } from './services/assets/adapters/SnapAssetsAdapter';
 import { AssetsRepository } from './services/assets/AssetsRepository';
 import { AssetsService } from './services/assets/AssetsService';
-import { ConfigProvider } from './services/config';
+import { configProvider } from './services/config';
 import { ConfirmationHandler } from './services/confirmation/ConfirmationHandler';
 import { FeeCalculatorService } from './services/send/FeeCalculatorService';
 import { SendService } from './services/send/SendService';
@@ -57,7 +57,6 @@ import logger, { noOpLogger } from './utils/logger';
  * 3. Business services (AssetsService, TransactionsService, AccountsService)
  * 4. Handlers (CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
  */
-export const configProvider = new ConfigProvider();
 
 const state = new State({
   encrypted: false,

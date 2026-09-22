@@ -21,7 +21,6 @@ const config = {
     '.*/utils/analytics\\.ts$', // skip analytics.ts
     '.*/permissions\\.ts$', // skip permissions.ts
     '.*/context\\.ts$', // skip context.ts
-    '.*/config\\.ts$', // skip config.ts
     '.*/utils/snap\\.ts$', // skip snap.ts
   ],
 

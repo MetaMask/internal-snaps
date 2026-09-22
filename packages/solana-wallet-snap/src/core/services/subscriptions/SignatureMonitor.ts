@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { assert, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { signature as asSignature } from '@solana/kit';
@@ -14,7 +14,6 @@ import type {
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import type { AccountsService } from '../accounts/AccountsService';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import { SUPPORTED_NETWORKS } from '../config/ConfigProvider';
 import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
@@ -181,14 +180,13 @@ export class SignatureMonitor {
       switch (commitment) {
         case 'confirmed':
         case 'finalized':
-          await this.#analyticsService.trackEventTransactionFinalized(
-            account,
-            transaction,
-            {
-              scope: network,
-              origin,
-            },
-          );
+          await this.#analyticsService.trackTransactionFinalized({
+            origin,
+            accountType: account.type,
+            chainIdCaip: transaction.chain,
+            transactionStatus: transaction.status,
+            transactionType: transaction.type,
+          });
           break;
         default:
           this.#logger.warn(`⚠️ Commitment ${commitment} not supported`);

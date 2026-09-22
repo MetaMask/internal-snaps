@@ -140,9 +140,27 @@ export class AccountsRepository {
     return accounts.find((account) => account.id === id) ?? null;
   }
 
+  /**
+   * Finds multiple Tron keyring accounts with a single full account-state read.
+   *
+   * @param ids - Account IDs to resolve.
+   * @returns The matching accounts. Result ordering follows stored account
+   * ordering, not input ordering.
+   */
   async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
     const accounts = await this.getAll();
-    return accounts.filter((account) => ids.includes(account.id));
+    const normalizedIds = new Set<string>();
+
+    ids.forEach((id) => normalizedIds.add(id.toLowerCase()));
+
+    const matchedAccounts: ExtendedKeyringAccount[] = [];
+    accounts.forEach((account) => {
+      if (normalizedIds.has(account.id.toLowerCase())) {
+        matchedAccounts.push(account);
+      }
+    });
+
+    return matchedAccounts;
   }
 
   async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
@@ -164,7 +182,7 @@ export class AccountsRepository {
           [account.id]: account,
         });
 
-        if (!(account.id in added)) {
+        if (!Object.hasOwn(added, account.id)) {
           persistedAccount =
             findAccountByIndexKey(existing, getAccountIndexKey(account)) ??
             account;
