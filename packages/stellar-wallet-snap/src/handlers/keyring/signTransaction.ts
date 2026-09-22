@@ -11,6 +11,11 @@ import type { Wallet } from '../../services/wallet';
 import type { ContextWithPrices } from '../../ui/confirmation/api';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import {
+  trackTransactionAdded,
+  trackTransactionApproved,
+  trackTransactionRejected,
+} from '../../utils/snap';
 import type { AccountResolver } from '../accountResolver';
 import type { SignTransactionRequest, SignTransactionResponse } from './api';
 import {
@@ -73,9 +78,22 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
 
     // We do not process RPC simulation here, we trust the fee that provided by the dapp.
     // If the transaction is invalid, the security scan will output the error.
+    // Tracking properties are shared with the decision events so Added / Approved /
+    // Rejected stay consistent with the unified send flow.
+    const trackingProperties = {
+      origin: request.origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    };
+
+    await trackTransactionAdded(trackingProperties);
+
     if (!(await this.#confirmation(request, transaction, account))) {
+      await trackTransactionRejected(trackingProperties);
       throw new UserRejectedRequestError() as unknown as Error;
     }
+
+    await trackTransactionApproved(trackingProperties);
 
     wallet.signTransaction(transaction);
     const signedTxXdr = transaction.getRaw().toXDR();

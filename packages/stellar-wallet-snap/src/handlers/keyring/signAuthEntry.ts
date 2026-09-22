@@ -8,6 +8,11 @@ import { AuthorizationMapper } from '../../services/transaction';
 import type { Wallet } from '../../services/wallet';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import {
+  trackTransactionAdded,
+  trackTransactionApproved,
+  trackTransactionRejected,
+} from '../../utils/snap';
 import type { AccountResolver } from '../accountResolver';
 import type { SignAuthEntryRequest, SignAuthEntryResponse } from './api';
 import { SignAuthEntryRequestStruct, SignAuthEntryResponseStruct } from './api';
@@ -73,9 +78,22 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
 
     const readableAuthEntry = this.#decodeSorobanAuthPreimage(authEntry);
 
+    // Tracking properties are shared with the decision events so Added / Approved /
+    // Rejected stay consistent with the unified send flow.
+    const trackingProperties = {
+      origin: request.origin,
+      accountType: account.type,
+      chainIdCaip: request.scope,
+    };
+
+    await trackTransactionAdded(trackingProperties);
+
     if (!(await this.#confirm(request, account, readableAuthEntry))) {
+      await trackTransactionRejected(trackingProperties);
       throw new UserRejectedRequestError() as unknown as Error;
     }
+
+    await trackTransactionApproved(trackingProperties);
 
     const signedAuthEntry = wallet.signAuthEntry(authEntry);
 

@@ -11,6 +11,7 @@ import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { logger } from '../../utils/logger';
+import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { MultichainMethod } from './api';
 import type { SignTransactionRequest } from './api';
@@ -65,11 +66,27 @@ describe('SignTransactionHandler', () => {
       confirmationUIController,
     });
 
+    const trackTransactionAddedSpy = jest.spyOn(
+      snapUtils,
+      'trackTransactionAdded',
+    );
+    const trackTransactionApprovedSpy = jest.spyOn(
+      snapUtils,
+      'trackTransactionApproved',
+    );
+    const trackTransactionRejectedSpy = jest.spyOn(
+      snapUtils,
+      'trackTransactionRejected',
+    );
+
     return {
       handler,
       mockAccount,
       wallet,
       renderConfirmationDialog,
+      trackTransactionAddedSpy,
+      trackTransactionApprovedSpy,
+      trackTransactionRejectedSpy,
     };
   }
 
@@ -256,5 +273,78 @@ describe('SignTransactionHandler', () => {
       error: { code: Sep43ErrorCode.InvalidRequest },
     });
     expect(renderConfirmationDialog).not.toHaveBeenCalled();
+  });
+
+  describe('tracks transaction events', () => {
+    it('tracks transaction added before the confirmation and approved on confirm', async () => {
+      const {
+        handler,
+        mockAccount,
+        wallet,
+        renderConfirmationDialog,
+        trackTransactionAddedSpy,
+        trackTransactionApprovedSpy,
+        trackTransactionRejectedSpy,
+      } = setupHandler();
+
+      const transaction = buildMainnetPaymentFromWallet(wallet.address);
+      const xdr = transaction.getRaw().toXDR();
+      renderConfirmationDialog.mockResolvedValue(true);
+
+      await handler.handle(buildRequest(mockAccount.id, xdr));
+
+      const expectedProperties = {
+        origin: 'https://example.com',
+        accountType: mockAccount.type,
+        chainIdCaip: KnownCaip2ChainId.Mainnet,
+      };
+
+      expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);
+      expect(trackTransactionApprovedSpy).toHaveBeenCalledWith(
+        expectedProperties,
+      );
+      expect(trackTransactionRejectedSpy).not.toHaveBeenCalled();
+
+      const addedOrder = trackTransactionAddedSpy.mock.invocationCallOrder[0];
+      const dialogOrder = renderConfirmationDialog.mock.invocationCallOrder[0];
+      const approvedOrder =
+        trackTransactionApprovedSpy.mock.invocationCallOrder[0];
+      expect(addedOrder).toBeLessThan(dialogOrder as number);
+      expect(dialogOrder).toBeLessThan(approvedOrder as number);
+    });
+
+    it('tracks transaction rejected when the user declines', async () => {
+      const {
+        handler,
+        mockAccount,
+        wallet,
+        renderConfirmationDialog,
+        trackTransactionAddedSpy,
+        trackTransactionApprovedSpy,
+        trackTransactionRejectedSpy,
+      } = setupHandler();
+
+      const transaction = buildMainnetPaymentFromWallet(wallet.address);
+      const xdr = transaction.getRaw().toXDR();
+      renderConfirmationDialog.mockResolvedValue(false);
+
+      const result = await handler.handle(buildRequest(mockAccount.id, xdr));
+
+      expect(result).toMatchObject({
+        error: { code: Sep43ErrorCode.UserRejected },
+      });
+
+      const expectedProperties = {
+        origin: 'https://example.com',
+        accountType: mockAccount.type,
+        chainIdCaip: KnownCaip2ChainId.Mainnet,
+      };
+
+      expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);
+      expect(trackTransactionRejectedSpy).toHaveBeenCalledWith(
+        expectedProperties,
+      );
+      expect(trackTransactionApprovedSpy).not.toHaveBeenCalled();
+    });
   });
 });
