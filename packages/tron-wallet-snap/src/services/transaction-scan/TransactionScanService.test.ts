@@ -80,6 +80,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         createMockSnapClient() as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       await service.scanTransaction({
