@@ -1,4 +1,4 @@
-import type { Operation } from '@stellar/stellar-sdk';
+import type { OperationRecord } from '@stellar/stellar-sdk';
 import {
   Account,
   Asset,
@@ -1568,7 +1568,9 @@ describe('TransactionSimulator', () => {
       const [invokeOp] = sorobanTx.transactionOperations;
       jest
         .spyOn(sorobanTx, 'transactionOperations', 'get')
-        .mockReturnValue([{ ...invokeOp, source: otherSource } as Operation]);
+        .mockReturnValue([
+          { ...invokeOp, source: otherSource } as OperationRecord,
+        ]);
 
       expect(() => simulator.simulate(sorobanTx, loaded)).toThrow(
         TransactionValidationException,

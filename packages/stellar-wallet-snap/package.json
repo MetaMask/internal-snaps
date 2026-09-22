@@ -41,10 +41,10 @@
     "publish:preview": "yarn npm publish --tag preview",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
-    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
-    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
-    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+    "test": "jest --reporters=jest-silent-reporter",
+    "test:clean": "jest --clearCache",
+    "test:verbose": "jest --verbose",
+    "test:watch": "jest --watch"
   },
   "devDependencies": {
     "@metamask/auto-changelog": "^6.1.1",
@@ -57,7 +57,7 @@
     "@metamask/snaps-sdk": "^12.0.1",
     "@metamask/superstruct": "^3.4.1",
     "@metamask/utils": "^11.11.0",
-    "@stellar/stellar-sdk": "^15.0.1",
+    "@stellar/stellar-sdk": "^17.0.1",
     "@types/jest": "^30.0.0",
     "async-mutex": "^0.5.0",
     "bignumber.js": "^9.3.1",

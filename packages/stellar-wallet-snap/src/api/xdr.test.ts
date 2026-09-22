@@ -38,7 +38,7 @@ function buildTransactionXdr(operations: xdr.Operation[]): string {
     builder.addOperation(operation);
   }
 
-  return builder.setTimeout(60).build().toXDR();
+  return builder.setTimeout(60).build().toXdr();
 }
 
 describe('SwapTransactionXdrStruct', () => {

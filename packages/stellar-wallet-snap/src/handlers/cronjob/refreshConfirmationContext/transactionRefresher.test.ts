@@ -49,7 +49,7 @@ describe('ConfirmationTransactionRefresher', () => {
   const transaction = buildMockClassicTransaction(paymentOperations, {
     networkPassphrase: Networks.TESTNET,
   });
-  const transactionXdr = transaction.getRaw().toXDR();
+  const transactionXdr = transaction.getRaw().toXdr();
 
   // The envelope previously held in the security-scan request. Each refresh
   // cycle rebuilds the transaction and swaps this for the freshly rebuilt one.
@@ -58,7 +58,7 @@ describe('ConfirmationTransactionRefresher', () => {
     timeout: 600,
   })
     .getRaw()
-    .toXDR();
+    .toXdr();
 
   const sendRequest = {
     jsonrpc: '2.0' as const,
@@ -382,7 +382,7 @@ describe('ConfirmationTransactionRefresher', () => {
 
       const result = await refresher.refresh(
         createTransactionContext({
-          transaction: expiredTransaction.getRaw().toXDR(),
+          transaction: expiredTransaction.getRaw().toXdr(),
         }),
       );
 
