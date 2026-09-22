@@ -193,8 +193,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
         result: {
           transactionsFetchStatus: FetchStatus.Error,
           errorMessage: getTxnErrorMessageKey(error, accountAddress),
-          // Clear the scan loading state in the confirmation UI. Scan is omitted
-          // via `halt` / `recoverable` — do not null `securityScanRequest`.
+          // Clear the scan loading state in the confirmation UI + skip the security scan request.
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
