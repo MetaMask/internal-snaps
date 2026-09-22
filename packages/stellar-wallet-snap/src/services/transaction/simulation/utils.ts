@@ -2,8 +2,8 @@ import type { Operation } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { calculateSpendableBalance } from '../../on-chain-account/utils';
+import type { AnyErrorConstructor } from '../../../utils';
 import { TransactionValidationException } from '../exceptions';
-import type { TransactionValidationExceptionClass } from '../exceptions';
 import type { AccountState, SimulationState } from './api';
 
 /**
@@ -14,8 +14,8 @@ import type { AccountState, SimulationState } from './api';
  * @returns True when validation should skip throwing this exception type.
  */
 export function shouldSkipValidationException(
-  skipExceptions: readonly TransactionValidationExceptionClass[] | undefined,
-  exceptionClass: TransactionValidationExceptionClass,
+  skipExceptions: readonly AnyErrorConstructor[] | undefined,
+  exceptionClass: AnyErrorConstructor,
 ): boolean {
   if (!skipExceptions?.length) {
     return false;

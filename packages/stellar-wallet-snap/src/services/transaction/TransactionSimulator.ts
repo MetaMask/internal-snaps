@@ -7,6 +7,7 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isClassicAssetId, isSep41Id } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { StellarOperationType } from './api';
 import {
@@ -14,7 +15,6 @@ import {
   TransactionValidationException,
   UnsupportedOperationTypeException,
 } from './exceptions';
-import type { TransactionValidationExceptionClass } from './exceptions';
 import type {
   AccountState,
   SimulationState,
@@ -75,8 +75,9 @@ export type TransactionSimulatorOptions = {
   /**
    * Validation exception constructors to suppress during simulation
    * (e.g. `[RequiresMemoException]` for recoverable RequiresMemo drafts).
+   * Uses the same `AnyErrorConstructor` list shape as `rethrowIfInstanceElseThrow`.
    */
-  skipExceptions?: TransactionValidationExceptionClass[];
+  skipExceptions?: readonly AnyErrorConstructor[];
 };
 
 export class TransactionSimulator {
@@ -130,7 +131,7 @@ export class TransactionSimulator {
     operations: SupportedOPType[];
     transaction: Transaction;
     initialState: SimulationState;
-    skipExceptions?: TransactionValidationExceptionClass[];
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): SimulationState[] {
     const { operations, initialState, transaction, skipExceptions } = params;
 
@@ -335,7 +336,7 @@ export class TransactionSimulator {
     scope: KnownCaip2ChainId;
     operations: readonly Operation[];
     transaction: Transaction;
-    skipExceptions?: TransactionValidationExceptionClass[];
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): void {
     const {
       op,

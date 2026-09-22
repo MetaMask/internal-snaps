@@ -21,15 +21,6 @@ export class TransactionDeserializationException extends TransactionServiceExcep
 export class TransactionValidationException extends TransactionServiceException {}
 
 /**
- * Exception *constructors* that may be listed in `skipExceptions` to suppress
- * matching validation failures during simulation (e.g. `[RequiresMemoException]`).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- subclass ctors take varying args
-export type TransactionValidationExceptionClass = new (
-  ...args: any[]
-) => TransactionValidationException;
-
-/**
  * Thrown when a caller-supplied CAIP-2 scope does not match the transaction envelope's network.
  */
 export class TransactionScopeNotMatchException extends TransactionValidationException {

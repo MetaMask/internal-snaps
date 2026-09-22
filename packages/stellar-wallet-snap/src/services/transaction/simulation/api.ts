@@ -5,7 +5,7 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../../api';
-import type { TransactionValidationExceptionClass } from '../exceptions';
+import type { AnyErrorConstructor } from '../../../utils';
 import type { Transaction } from '../Transaction';
 
 /**
@@ -64,8 +64,9 @@ export type ValidateContext = ApplyContext & {
   /**
    * Validation exception constructors to suppress during simulation
    * (e.g. `[RequiresMemoException]` for recoverable RequiresMemo drafts).
+   * Uses the same `AnyErrorConstructor` list shape as `rethrowIfInstanceElseThrow`.
    */
-  skipExceptions?: TransactionValidationExceptionClass[];
+  skipExceptions?: readonly AnyErrorConstructor[];
 };
 
 /**

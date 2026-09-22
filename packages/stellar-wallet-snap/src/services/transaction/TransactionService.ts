@@ -9,6 +9,7 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isSep41Id, isSlip44Id, trackError } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import type { AccountService } from '../account';
 import type { StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
@@ -24,7 +25,6 @@ import {
   InvalidAssetForCreateAccountException,
   RequiresMemoException,
 } from './exceptions';
-import type { TransactionValidationExceptionClass } from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
 import { Transaction } from './Transaction';
@@ -168,7 +168,7 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
-    skipExceptions?: TransactionValidationExceptionClass[];
+    skipExceptions?: readonly AnyErrorConstructor[];
     useCache?: boolean;
   }): Promise<Transaction> {
     const {
@@ -311,7 +311,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount;
     memo?: string;
-    skipExceptions?: TransactionValidationExceptionClass[];
+    skipExceptions?: readonly AnyErrorConstructor[];
     useCache: boolean;
   }): Promise<Transaction> {
     const {
@@ -417,7 +417,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount | null;
     memo?: string;
-    skipExceptions?: TransactionValidationExceptionClass[];
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): Promise<Transaction> {
     const {
       onChainAccount,
