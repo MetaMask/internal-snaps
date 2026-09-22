@@ -10,8 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add send confirmation memo edit UI for SEP-29 RequiresMemo recovery: store memo on confirmation context (`context.memo`), resolve dialog as `{ confirmed, memo? }`, and rebuild with `skipExceptions: [RequiresMemoException]` / post-confirm memo attach (no client wire `memo` / `memoType` params) ([#323](https://github.com/MetaMask/internal-snaps/pull/323))
+- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
 - Add `recoverable` confirmation-refresh outcome for send-flow SEP-29 RequiresMemo (`confirmSend`): omit scan this cycle without nulling `securityScanRequest`, pause auto-cron until UI reschedules ([#291](https://github.com/MetaMask/internal-snaps/pull/291))
+
+### Changed
+
+- Reduce `snap_getBip32Entropy` calls during `bip44:discover` from two to one by fetching the coin-type node once and reusing it for both the on-chain activity check and account derivation in `AccountService.batchCreate`; also parallelize the accounts state read and entropy fetch in `AccountService.batchCreate` for non-discover paths ([#308](https://github.com/MetaMask/internal-snaps/pull/308))
+- Bump `@stellar/stellar-sdk` from `^15.0.1` to `^17.0.1` ([#302](https://github.com/MetaMask/internal-snaps/pull/302))
+  - Show distinct confirmation titles for each revoke-sponsorship operation type (account, claimable balance, data, liquidity pool, offer, signer, trustline)
 
 ## [1.0.0]
 

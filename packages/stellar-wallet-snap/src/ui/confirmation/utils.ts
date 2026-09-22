@@ -366,7 +366,7 @@ export type ResolvedAssetDisplay = {
  * @param scope - CAIP-2 chain of the transaction.
  * @param assetReference - Either `'native'` or a classic `CODE-ISSUER` / `CODE:ISSUER` string.
  * @returns The resolved display data, or `null` when the reference cannot be parsed
- * (e.g. liquidity pool ids that arrive on `setTrustLineFlags` / `revokeSponsorship`).
+ * (e.g. liquidity pool ids that arrive on `setTrustLineFlags` / `revoke*Sponsorship`).
  */
 export function resolveAssetDisplay(
   scope: KnownCaip2ChainId,

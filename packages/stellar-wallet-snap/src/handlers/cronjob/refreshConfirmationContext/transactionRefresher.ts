@@ -166,7 +166,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           throw new Error('Unsupported request method for transaction refresh');
       }
 
-      const rebuiltTransactionXdr = rebuiltTransaction.getRaw().toXDR();
+      const rebuiltTransactionXdr = rebuiltTransaction.getRaw().toXdr();
 
       return {
         result: {

@@ -12,7 +12,6 @@ import {
   getSlip44AssetId,
   isSlip44Id,
   stellarAssetToCaip19,
-  toCaip19ClassicAssetId,
   toSmallestUnit,
 } from '../../../utils';
 import { StellarOperationType } from '../api';
@@ -605,17 +604,21 @@ export class ChangeTrustOPSimulator implements OperationSimulator {
     const sourceId = effectiveSource(op, txSource);
     const source = getAccount(state, sourceId);
     const asset = op.line;
-    if (!(asset instanceof Asset)) {
+
+    let assetId: KnownCaip19ClassicAssetId;
+    try {
+      assetId = stellarAssetToCaip19(asset, scope) as KnownCaip19ClassicAssetId;
+    } catch {
       throw new InvalidTrustlineException(
-        `ChangeTrust line must be Stellar SAC Asset or Stellar Classic Asset, ${asset.constructor.name} is not supported`,
+        `ChangeTrust line must be Stellar SAC Asset or Stellar Classic Asset`,
       );
     }
 
-    const assetId = toCaip19ClassicAssetId(
-      scope,
-      asset.getCode(),
-      asset.getIssuer(),
-    );
+    if (isSlip44Id(assetId)) {
+      throw new InvalidTrustlineException(
+        `ChangeTrust line must be a Stellar SAC Asset or Stellar Classic Asset, native is not supported`,
+      );
+    }
 
     // Operation limit is in human-readable form; convert to stroops like Horizon balances.
     const limit = new BigNumber(op.limit);

@@ -1,4 +1,4 @@
-import type { Operation } from '@stellar/stellar-sdk';
+import type { OperationRecord } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { calculateSpendableBalance } from '../../on-chain-account/utils';
@@ -34,7 +34,7 @@ export function shouldSkipValidationException(
  * @param txSource - The transaction source.
  * @returns Effective source account public key.
  */
-export function effectiveSource(op: Operation, txSource: string): string {
+export function effectiveSource(op: OperationRecord, txSource: string): string {
   return op.source ?? txSource;
 }
 

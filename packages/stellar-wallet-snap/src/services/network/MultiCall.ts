@@ -7,7 +7,7 @@ import {
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk';
-import type { Operation, Transaction } from '@stellar/stellar-sdk';
+import type { Transaction } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api/network';
 import { BASE_FEE } from '../../constants';
@@ -108,7 +108,7 @@ export class MultiCall {
   exec(
     caller: Contract | Address | string,
     invocations: (InvocationV1 | InvocationV0)[],
-  ): xdr.Operation<Operation.InvokeHostFunction> {
+  ): xdr.Operation {
     const args: xdr.ScVal[] = invocations.map((invocation) => {
       switch (invocation.version) {
         case 'v0':

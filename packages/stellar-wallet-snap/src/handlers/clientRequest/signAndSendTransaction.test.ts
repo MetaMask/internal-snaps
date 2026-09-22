@@ -32,7 +32,6 @@ import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import { toCaip19ClassicAssetId, toDisplayBalance } from '../../utils';
 import { logger } from '../../utils/logger';
-import * as snapUtils from '../../utils/snap';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
 import { ClientRequestMethod } from './api';
@@ -80,7 +79,7 @@ describe('SignAndSendTransactionHandler', () => {
         sequence: onChainAccount.sequenceNumber,
       },
     });
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
 
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
@@ -125,17 +124,17 @@ describe('SignAndSendTransactionHandler', () => {
       .mockResolvedValue(undefined);
     const signTransactionSpy = jest.spyOn(wallet, 'signTransaction');
 
+    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
+
     const handler = new SignAndSendTransactionHandler({
       logger,
       accountResolver,
       transactionService,
       assetMetadataService,
+      analyticsService: {
+        trackTransactionSubmitted: trackTransactionSubmittedSpy,
+      } as never,
     });
-
-    const trackTransactionSubmittedSpy = jest.spyOn(
-      snapUtils,
-      'trackTransactionSubmitted',
-    );
 
     const request: SignAndSendTransactionJsonRpcRequest = {
       jsonrpc: '2.0',
@@ -366,7 +365,7 @@ describe('SignAndSendTransactionHandler', () => {
         },
       },
     );
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     createValidatedSwapTransaction.mockResolvedValueOnce(transaction);
 
     await handler.handle({
@@ -509,7 +508,7 @@ describe('SignAndSendTransactionHandler', () => {
         },
       },
     );
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     createValidatedSwapTransaction.mockResolvedValueOnce(transaction);
 
     await handler.handle({
@@ -701,7 +700,7 @@ describe('SignAndSendTransactionHandler', () => {
         },
       },
     );
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     createValidatedSwapTransaction.mockResolvedValueOnce(transaction);
 
     await handler.handle({

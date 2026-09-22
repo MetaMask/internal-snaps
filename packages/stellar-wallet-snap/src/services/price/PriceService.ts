@@ -1,9 +1,12 @@
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 
 import { AppConfig } from '../../config';
 import { trackError } from '../../utils';
-import type { ICache } from '../cache';
 import type {
   SpotPrice,
   SpotPricesResponse,

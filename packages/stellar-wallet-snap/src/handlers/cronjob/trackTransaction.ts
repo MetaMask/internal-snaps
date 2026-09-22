@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 
 import type { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
@@ -12,11 +12,7 @@ import type { NetworkService } from '../../services/network';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { isCompletedTransactionStatus } from '../../services/transaction/utils';
 import { trackError } from '../../utils';
-import {
-  Duration,
-  scheduleBackgroundEvent,
-  trackTransactionFinalized,
-} from '../../utils/snap';
+import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import type {
   TrackTransactionJsonRpcRequest,
   TrackTransactionParams,
@@ -51,16 +47,20 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
 
   readonly #accountService: AccountService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     networkService,
     synchronizeService,
     accountService,
+    analyticsService,
   }: {
     logger: Logger;
     networkService: NetworkService;
     synchronizeService: SynchronizeService;
     accountService: AccountService;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix('[TrackTransactionHandler]');
     super({
@@ -70,6 +70,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
     this.#networkService = networkService;
     this.#synchronizeService = synchronizeService;
     this.#accountService = accountService;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -191,7 +192,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       return;
     }
 
-    await trackTransactionFinalized({
+    await this.#analyticsService.trackTransactionFinalized({
       origin: METAMASK_ORIGIN,
       accountType: senderAccount.type,
       chainIdCaip: scope,

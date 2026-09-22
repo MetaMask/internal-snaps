@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError, isObject } from '@metamask/utils';
@@ -36,9 +36,6 @@ import {
   isSlip44Id,
   toSmallestUnit,
   trackError,
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
 } from '../../utils';
 import type {
   AccountResolver,
@@ -114,18 +111,22 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
   readonly #logger: Logger;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     transactionService,
     assetMetadataService,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     transactionService: TransactionService;
     assetMetadataService: AssetMetadataService;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix('[👍 ConfirmSendHandler]');
     super({
@@ -138,6 +139,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     this.#assetMetadataService = assetMetadataService;
     this.#confirmationUIController = confirmationUIController;
     this.#logger = prefixedLogger;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -193,7 +195,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await trackTransactionAdded({
+      await this.#analyticsService.trackTransactionAdded({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
@@ -212,7 +214,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       });
 
       if (!dialogResult.confirmed) {
-        await trackTransactionRejected({
+        await this.#analyticsService.trackTransactionRejected({
           origin: METAMASK_ORIGIN,
           accountType: stellarKeyringAccount.type,
           chainIdCaip: scope,
@@ -222,7 +224,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
       const confirmedMemo = getMemoStrOrUndefined(dialogResult.memo);
 
-      await trackTransactionApproved({
+      await this.#analyticsService.trackTransactionApproved({
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
@@ -378,7 +380,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       initialValidationError,
     } = params;
     const { toAddress, amount, assetId } = request.params;
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     // The send asset and amount are known from the request, so the estimated
     // changes are just a single outgoing row — no local simulation needed.
     const estimatedChanges = this.#buildEstimatedChanges({

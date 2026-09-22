@@ -310,8 +310,26 @@
     "confirmation.transaction.restorefootprint": {
       "message": "Restore footprint"
     },
-    "confirmation.transaction.revokesponsorship": {
-      "message": "Revoke sponsorship"
+    "confirmation.transaction.revokeaccountsponsorship": {
+      "message": "Revoke account sponsorship"
+    },
+    "confirmation.transaction.revokeclaimablebalancesponsorship": {
+      "message": "Revoke claimable balance sponsorship"
+    },
+    "confirmation.transaction.revokedatasponsorship": {
+      "message": "Revoke data sponsorship"
+    },
+    "confirmation.transaction.revokeliquiditypoolsponsorship": {
+      "message": "Revoke liquidity pool sponsorship"
+    },
+    "confirmation.transaction.revokeoffersponsorship": {
+      "message": "Revoke offer sponsorship"
+    },
+    "confirmation.transaction.revokesignersponsorship": {
+      "message": "Revoke signer sponsorship"
+    },
+    "confirmation.transaction.revoketrustlinesponsorship": {
+      "message": "Revoke trustline sponsorship"
     },
     "confirmation.transaction.setoptions": {
       "message": "Set options"

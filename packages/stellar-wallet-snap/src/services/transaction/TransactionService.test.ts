@@ -224,10 +224,10 @@ describe('TransactionService', () => {
       const result = await transactionService.createValidatedSwapTransaction({
         onChainAccount: testOnChainAccount,
         scope,
-        xdr: transaction.getRaw().toXDR(),
+        xdr: transaction.getRaw().toXdr(),
       });
 
-      expect(result.getRaw().toXDR()).toBe(transaction.getRaw().toXDR());
+      expect(result.getRaw().toXdr()).toBe(transaction.getRaw().toXdr());
       expect(simulateTransactionSpy).not.toHaveBeenCalled();
       expect(loadOnChainAccountsSpy).toHaveBeenCalledWith([], scope);
     });
@@ -255,10 +255,10 @@ describe('TransactionService', () => {
       const result = await transactionService.createValidatedSwapTransaction({
         onChainAccount: testOnChainAccount,
         scope,
-        xdr: transaction.getRaw().toXDR(),
+        xdr: transaction.getRaw().toXdr(),
       });
 
-      expect(result.getRaw().toXDR()).toBe(transaction.getRaw().toXDR());
+      expect(result.getRaw().toXdr()).toBe(transaction.getRaw().toXdr());
       expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
       expect(loadOnChainAccountsSpy).toHaveBeenCalledWith([], scope);
     });

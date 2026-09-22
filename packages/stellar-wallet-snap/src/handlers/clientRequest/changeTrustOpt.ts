@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
@@ -24,11 +24,6 @@ import {
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
-import {
-  trackTransactionAdded,
-  trackTransactionApproved,
-  trackTransactionRejected,
-} from '../../utils/snap';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -59,18 +54,22 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
 
   readonly #confirmationUIController: ConfirmationUXController;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     transactionService,
     assetMetadataService,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     assetMetadataService: AssetMetadataService;
     transactionService: TransactionService;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     const prefixedLogger = logger.withPrefix('[💼 ChangeTrustOptHandler]');
     super({
@@ -82,6 +81,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     this.#transactionService = transactionService;
     this.#assetMetadataService = assetMetadataService;
     this.#confirmationUIController = confirmationUIController;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -150,7 +150,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await trackTransactionAdded({
+    await this.#analyticsService.trackTransactionAdded({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
@@ -166,7 +166,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     });
 
     if (!confirmed) {
-      await trackTransactionRejected({
+      await this.#analyticsService.trackTransactionRejected({
         origin: METAMASK_ORIGIN,
         accountType: account.type,
         chainIdCaip: scope,
@@ -174,7 +174,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await trackTransactionApproved({
+    await this.#analyticsService.trackTransactionApproved({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
@@ -372,7 +372,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       confirmationInterfaceKey,
     } = params;
     const { scope } = request.params;
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
 
     return (
       (await this.#confirmationUIController.renderConfirmationDialog({

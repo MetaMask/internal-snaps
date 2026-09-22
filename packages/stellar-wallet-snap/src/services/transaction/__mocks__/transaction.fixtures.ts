@@ -16,8 +16,8 @@ import {
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../../api';
 import { KnownCaip2ChainId } from '../../../api';
 import { getSlip44AssetId, logger } from '../../../utils';
+import { createMemoryCache } from '../../../utils/__mocks__/cache.fixtures';
 import { mockAccountService } from '../../account/__mocks__/account.fixtures';
-import { createMemoryCache } from '../../cache/__mocks__/cache.fixtures';
 import { NetworkService } from '../../network';
 import { generateStellarAddress } from '../../wallet/__mocks__/wallet.fixtures';
 import { Transaction } from '../Transaction';
@@ -28,7 +28,7 @@ import { TransactionService } from '../TransactionService';
 export const createMockTransactionService = () => {
   const { cache } = createMemoryCache();
   const networkService = new NetworkService({ logger, cache });
-  const transactionBuilder = new TransactionBuilder({ logger });
+  const transactionBuilder = new TransactionBuilder();
   const { accountService } = mockAccountService();
   const transactionService = new TransactionService({
     logger,
@@ -524,7 +524,7 @@ export function buildMockHorizonTransactionRecord(
     ]);
 
   return {
-    envelope_xdr: transaction.getRaw().toXDR(),
+    envelope_xdr: transaction.getRaw().toXdr(),
     fee_charged: options.feeCharged ?? transaction.totalFee.toFixed(0),
     paging_token: options.pagingToken ?? '1',
     source_account: options.sourceAccount ?? transaction.sourceAccount,

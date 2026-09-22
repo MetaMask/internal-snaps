@@ -391,7 +391,7 @@ describe('TransactionScanService', () => {
       );
       jest.advanceTimersByTime(2000);
 
-      return expiredTransaction.getRaw().toXDR();
+      return expiredTransaction.getRaw().toXdr();
     }
 
     it('returns a transaction expired error when the time bound has passed', async () => {

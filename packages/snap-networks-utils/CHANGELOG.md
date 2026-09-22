@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a shared `AnalyticsService` and typed event properties for network Snap telemetry. ([#327](https://github.com/MetaMask/internal-snaps/pull/327))
 - Add shared configuration utilities for network snaps ([#309](https://github.com/MetaMask/internal-snaps/pull/309))
   - `BaseConfigProvider`, a base class owning the configuration lifecycle (parse the explicitly passed environment once against a Superstruct, frozen config, fail-fast on invalid environments)
   - `parseEnv` for fail-fast parsing of raw environment records against a struct
   - `emptyToUndefined`, `commaSeparatedListOf`, `parseIntegerStruct`, and `parseFloatStruct` structs for parsing environment variables
   - `LogLevelStruct` for parsing a `LogLevel` from an environment variable
+- Add `defaultedUrlStruct` for validating URL environment variables that fall back to a default when unset or empty. ([#312](https://github.com/MetaMask/internal-snaps/pull/312))
 - Add `ExtendedKeyringAccount`, `KeyringAccountExtension`, and `asStrictKeyringAccount` for snap keyring accounts that persist `entropySource`, `derivationPath`, and `index`. ([#300](https://github.com/MetaMask/internal-snaps/pull/300))
 - Add shared snap state helpers `IStateManager`, `State`, and `InMemoryState` (Tron-style write mutex plus blob/path locking). ([#288](https://github.com/MetaMask/internal-snaps/pull/288))
 - Add shared caching utilities for network snaps ([#287](https://github.com/MetaMask/internal-snaps/pull/287))

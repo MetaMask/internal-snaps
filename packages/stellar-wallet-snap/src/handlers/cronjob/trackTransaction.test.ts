@@ -1,11 +1,11 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { KEYRING_ACCOUNT_TYPE, METAMASK_ORIGIN } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
-import { InMemoryCache } from '../../services/cache';
 import {
   NetworkService,
   NetworkServiceException,
@@ -15,11 +15,7 @@ import { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
 import { Transaction } from '../../services/transaction/Transaction';
 import { logger, noOpLogger } from '../../utils/logger';
-import {
-  Duration,
-  scheduleBackgroundEvent,
-  trackTransactionFinalized,
-} from '../../utils/snap';
+import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import { BackgroundEventMethod } from './api';
 import { TrackTransactionHandler } from './trackTransaction';
 
@@ -29,7 +25,6 @@ jest.mock('../../utils/snap', () => {
   return {
     ...actual,
     scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
-    trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
     getClientStatus: jest
       .fn()
       .mockResolvedValue({ active: true, locked: false }),
@@ -43,12 +38,12 @@ describe('TrackTransactionHandler', () => {
   const accountId = '22222222-2222-4222-8222-222222222222';
   const receiverAddress =
     'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
+  const trackTransactionFinalized = jest.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     jest.mocked(scheduleBackgroundEvent).mockClear();
     jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
-    jest.mocked(trackTransactionFinalized).mockClear();
-    jest.mocked(trackTransactionFinalized).mockResolvedValue(undefined);
+    trackTransactionFinalized.mockClear();
   });
 
   function createNetworkTransaction(status: TransactionStatus): Transaction {
@@ -112,6 +107,9 @@ describe('TrackTransactionHandler', () => {
         accountsRepository: {} as never,
         walletService: {} as never,
       }),
+      analyticsService: {
+        trackTransactionFinalized,
+      } as never,
     });
 
     return {

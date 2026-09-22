@@ -2,7 +2,7 @@ import { KeyringEvent, TransactionStatus } from '@metamask/keyring-api';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { parseCaipAssetType } from '@metamask/utils';
-import type { Operation } from '@stellar/stellar-sdk';
+import type { Operation, OperationRecord } from '@stellar/stellar-sdk';
 import { Asset } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 import { groupBy } from 'lodash';
@@ -194,7 +194,7 @@ export function assertMemoWhenDestinationRequires(
  * @param scope - CAIP-2 chain of the transaction.
  * @param assetReference - Either `'native'` or a classic `CODE-ISSUER` / `CODE:ISSUER` string.
  * @returns The CAIP-19 id, or `null` when the reference cannot be parsed
- * (e.g. liquidity pool ids that arrive on `setTrustLineFlags` / `revokeSponsorship`).
+ * (e.g. liquidity pool ids that arrive on `setTrustLineFlags` / `revoke*Sponsorship`).
  */
 export function parseOperationAssetReferenceSafe(
   scope: KnownCaip2ChainId,
@@ -284,7 +284,7 @@ export function parseExpirationMaxTime(
  * @returns Whether the operation is an invoke host function operation.
  */
 export function isInvokeHostFunctionOperation(
-  operation: Operation | undefined,
+  operation: OperationRecord | undefined,
 ): operation is Operation.InvokeHostFunction {
   return operation?.type === StellarOperationType.InvokeHostFunction;
 }
@@ -296,7 +296,7 @@ export function isInvokeHostFunctionOperation(
  * @returns Whether the operation is a payment operation.
  */
 export function isPaymentOperation(
-  operation: Operation,
+  operation: OperationRecord,
 ): operation is Operation.Payment {
   return operation.type === StellarOperationType.Payment;
 }
@@ -308,7 +308,7 @@ export function isPaymentOperation(
  * @returns Whether the operation is a path payment operation.
  */
 export function isPathPaymentOperation(
-  operation: Operation,
+  operation: OperationRecord,
 ): operation is
   | Operation.PathPaymentStrictSend
   | Operation.PathPaymentStrictReceive {
@@ -329,7 +329,7 @@ export function isSwapTransaction(
   transaction: Transaction,
   accountAddress: string,
 ): boolean {
-  const isSwapXdr = SwapTransactionXdrStruct.is(transaction.getRaw().toXDR());
+  const isSwapXdr = SwapTransactionXdrStruct.is(transaction.getRaw().toXdr());
   const isSourceAccount = transaction.sourceAccount === accountAddress;
   if (!isSwapXdr || !isSourceAccount) {
     return false;
@@ -352,7 +352,7 @@ export function isBridgeSendTransaction(
   transaction: Transaction,
   accountAddress: string,
 ): boolean {
-  const isSwapXdr = SwapTransactionXdrStruct.is(transaction.getRaw().toXDR());
+  const isSwapXdr = SwapTransactionXdrStruct.is(transaction.getRaw().toXdr());
   const isSourceAccount = transaction.sourceAccount === accountAddress;
   if (!isSwapXdr || !isSourceAccount) {
     return false;
@@ -504,7 +504,7 @@ export function isDustPaymentTransaction(
  * @returns Whether the operation credits `accountAddress`.
  */
 export function isReceiveOperation(
-  operation: Operation,
+  operation: OperationRecord,
   accountAddress: string,
 ): operation is
   | Operation.Payment

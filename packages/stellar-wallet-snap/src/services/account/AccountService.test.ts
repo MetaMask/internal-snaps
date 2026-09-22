@@ -1,5 +1,4 @@
 import { KnownCaip2ChainId } from '../../api';
-import { MultichainMethod } from '../../handlers/keyring/api';
 import { mockBip32Node } from '../../utils/__mocks__/fixtures';
 import { getBip32Entropy, getDefaultEntropySource } from '../../utils/snap';
 import { WalletService } from '../wallet';
@@ -21,19 +20,21 @@ jest.mock('../../utils/snap');
 
 describe('AccountService', () => {
   let accountService: AccountService;
-  let mockAccount: StellarKeyringAccount;
 
   beforeEach(() => {
     // Mock the entropy source to let the wallet service derive the address
     jest.mocked(getBip32Entropy).mockResolvedValue(mockBip32Node);
     accountService = mockAccountService().accountService;
-    mockAccount = generateMockStellarKeyringAccounts(
-      1,
-      'entropy-source-default',
-    )[0] as StellarKeyringAccount;
   });
 
-  const getAccountsRepositorySpies = () => {
+  type AccountsRepositorySpies = {
+    saveSpy: jest.SpiedFunction<AccountsRepository['save']>;
+    saveManySpy: jest.SpiedFunction<AccountsRepository['saveMany']>;
+    deleteSpy: jest.SpiedFunction<AccountsRepository['delete']>;
+    getAllSpy: jest.SpiedFunction<AccountsRepository['getAll']>;
+  };
+
+  const getAccountsRepositorySpies = (): AccountsRepositorySpies => {
     return {
       saveSpy: jest.spyOn(AccountsRepository.prototype, 'save'),
       saveManySpy: jest.spyOn(AccountsRepository.prototype, 'saveMany'),
@@ -42,12 +43,12 @@ describe('AccountService', () => {
     };
   };
 
-  const getWalletServiceSpies = () => ({
+  type WalletServiceSpies = {
+    deriveAddressSpy: jest.SpiedFunction<WalletService['deriveAddress']>;
+  };
+
+  const getWalletServiceSpies = (): WalletServiceSpies => ({
     deriveAddressSpy: jest.spyOn(WalletService.prototype, 'deriveAddress'),
-    getWalletResolverSpy: jest.spyOn(
-      WalletService.prototype,
-      'getWalletResolver',
-    ),
   });
 
   describe('batchCreate', () => {
@@ -56,23 +57,20 @@ describe('AccountService', () => {
       const walletResolver = jest.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
       jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
-      getWalletResolverSpy.mockResolvedValue(walletResolver);
 
       const result = await accountService.batchCreate({
         entropySource,
         fromIndex: 0,
         toIndex: 1,
+        walletResolver,
       });
 
       expect(saveManySpy).toHaveBeenCalledTimes(1);
       expect(saveManySpy.mock.calls[0]?.[0]).toHaveLength(2);
       expect(result.map((account) => account.index)).toStrictEqual([0, 1]);
-      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
-      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySource);
       expect(walletResolver).toHaveBeenCalledTimes(2);
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
@@ -104,19 +102,16 @@ describe('AccountService', () => {
       const walletResolver = jest.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([onlyMiddle]);
-      getWalletResolverSpy.mockResolvedValue(walletResolver);
 
       const result = await accountService.batchCreate({
         entropySource,
         fromIndex: 0,
         toIndex: 2,
+        walletResolver,
       });
 
-      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
-      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySource);
       expect(walletResolver).toHaveBeenCalledTimes(2);
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
@@ -132,21 +127,18 @@ describe('AccountService', () => {
       const walletResolver = jest.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { getWalletResolverSpy } = getWalletServiceSpies();
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
       jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
-      getWalletResolverSpy.mockResolvedValue(walletResolver);
 
       const result = await accountService.batchCreate({
         entropySource,
         fromIndex: 0,
         toIndex: 15,
+        walletResolver,
       });
 
       expect(result).toHaveLength(16);
-      expect(getWalletResolverSpy).toHaveBeenCalledTimes(1);
-      expect(getWalletResolverSpy).toHaveBeenCalledWith(entropySource);
       expect(walletResolver).toHaveBeenCalledTimes(16);
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
@@ -290,28 +282,6 @@ describe('AccountService', () => {
           scope: KnownCaip2ChainId.Mainnet,
         }),
       ).rejects.toThrow(DerivedAccountAddressMismatchException);
-    });
-  });
-
-  describe('deriveKeyringAccount', () => {
-    it('returns a keyring-shaped derived account', async () => {
-      const { deriveAddressSpy } = getWalletServiceSpies();
-      deriveAddressSpy.mockResolvedValue(mockAccount.address);
-
-      const account = await accountService.deriveKeyringAccount({
-        entropySource: mockAccount.entropySource,
-        index: mockAccount.index,
-      });
-
-      expect(account).toStrictEqual({
-        ...mockAccount,
-        id: expect.any(String),
-        methods: [
-          MultichainMethod.SignMessage,
-          MultichainMethod.SignTransaction,
-          MultichainMethod.SignAuthEntry,
-        ],
-      });
     });
   });
 });

@@ -1,4 +1,4 @@
-import type { Operation } from '@stellar/stellar-sdk';
+import type { Operation, OperationRecord } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import type {
@@ -183,7 +183,7 @@ export class TransactionSimulator {
   }
 
   #preflightValidation(
-    ops: Operation[],
+    ops: OperationRecord[],
     account: OnChainAccount,
     transaction: Transaction,
     options?: TransactionSimulatorOptions,
@@ -272,7 +272,7 @@ export class TransactionSimulator {
   }
 
   #assertSupportedOP(
-    op: Operation,
+    op: OperationRecord,
     supportedOPTypeSet: Set<string>,
   ): asserts op is SupportedOPType {
     const operationType = this.#supportedOperationType(op);
@@ -281,7 +281,7 @@ export class TransactionSimulator {
     }
   }
 
-  #assertExpectedOP(op: Operation, types: Set<string>): void {
+  #assertExpectedOP(op: OperationRecord, types: Set<string>): void {
     const operationType = this.#supportedOperationType(op);
     if (operationType === null) {
       throw new UnsupportedOperationTypeException(op.type);
@@ -294,8 +294,8 @@ export class TransactionSimulator {
   }
 
   #assertOPLength(
-    ops: Operation[],
-  ): asserts ops is [Operation, ...Operation[]] {
+    ops: OperationRecord[],
+  ): asserts ops is [OperationRecord, ...OperationRecord[]] {
     if (ops.length === 0) {
       throw new TransactionValidationException(
         `Transaction must have at least one operation`,
@@ -334,7 +334,7 @@ export class TransactionSimulator {
     state: SimulationState;
     txSource: string;
     scope: KnownCaip2ChainId;
-    operations: readonly Operation[];
+    operations: readonly OperationRecord[];
     transaction: Transaction;
     skipExceptions?: readonly AnyErrorConstructor[];
   }): void {
@@ -432,7 +432,7 @@ export class TransactionSimulator {
     return operationType;
   }
 
-  #supportedOperationType(op: Operation): SupportedOperations | null {
+  #supportedOperationType(op: OperationRecord): SupportedOperations | null {
     if (op.type === SupportedOperations.Payment) {
       return SupportedOperations.Payment;
     }

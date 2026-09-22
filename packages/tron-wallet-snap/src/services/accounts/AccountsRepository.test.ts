@@ -90,6 +90,21 @@ describe('AccountsRepository', () => {
     ]);
   });
 
+  it('findByIds matches account IDs case-insensitively', async () => {
+    const account = createTestAccount({
+      id: '123e4567-e89b-42d3-a456-426614174000',
+    });
+    const repository = new AccountsRepository(
+      createEmptyState({ [account.id]: account }),
+    );
+
+    const accounts = await repository.findByIds([
+      '123E4567-E89B-42D3-A456-426614174000',
+    ]);
+
+    expect(accounts).toStrictEqual([account]);
+  });
+
   it('persists a new account through create', async () => {
     const repository = new AccountsRepository(createEmptyState());
     const account = createTestAccount({ id: 'new-account' });
