@@ -2,6 +2,7 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
+import { getMemoStrOrUndefined } from '../../../api';
 import type { AssetMetadataService } from '../../../services/asset-metadata';
 import { RequiresMemoException } from '../../../services/transaction';
 import type {
@@ -102,7 +103,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
     ctx: ConfirmationDataContext,
   ): Promise<ConfirmationContextRefreshResult> {
     const validationCtx = ctx as TransactionValidationContext;
-    const { request, accountId, scope, securityScanRequest, origin } =
+    const { request, accountId, scope, securityScanRequest, origin, memo } =
       validationCtx;
     // Use the scan request address as Default if it is present.
     let accountAddress = securityScanRequest?.accountAddress ?? '';
@@ -142,9 +143,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
               assetId: request.params.assetId,
               destination: request.params.toAddress,
               amount,
-              ...(typeof validationCtx.memo === 'string'
-                ? { memo: validationCtx.memo }
-                : {}),
+              memo: getMemoStrOrUndefined(memo),
             });
           break;
         }

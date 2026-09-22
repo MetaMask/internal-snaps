@@ -57,6 +57,16 @@ export function getMemoValidationError(
 }
 
 /**
+ * Narrows an unknown dialog/context memo value to a string when present.
+ *
+ * @param memo - Raw memo from dialog result or confirmation context.
+ * @returns The memo string, or `undefined` when not a string.
+ */
+export function getMemoStrOrUndefined(memo: unknown): string | undefined {
+  return typeof memo === 'string' ? memo : undefined;
+}
+
+/**
  * Builds a Stellar SDK {@link Memo} from a string value.
  *
  * All-digit uint64 values → {@link Memo.id}; otherwise {@link Memo.text}.

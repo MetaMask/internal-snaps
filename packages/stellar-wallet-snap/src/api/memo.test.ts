@@ -1,6 +1,7 @@
 import { Memo } from '@stellar/stellar-sdk';
 
 import {
+  getMemoStrOrUndefined,
   getMemoValidationError,
   isMemoId,
   isMemoText,
@@ -31,6 +32,20 @@ describe('isMemoText', () => {
 
   it('rejects text over 28 UTF-8 bytes', () => {
     expect(isMemoText('é'.repeat(15))).toBe(false);
+  });
+});
+
+describe('getMemoStrOrUndefined', () => {
+  it('returns the string when memo is a string', () => {
+    expect(getMemoStrOrUndefined('deposit-ref')).toBe('deposit-ref');
+    expect(getMemoStrOrUndefined('')).toBe('');
+  });
+
+  it('returns undefined for non-string values', () => {
+    expect(getMemoStrOrUndefined(undefined)).toBeUndefined();
+    expect(getMemoStrOrUndefined(null)).toBeUndefined();
+    expect(getMemoStrOrUndefined(true)).toBeUndefined();
+    expect(getMemoStrOrUndefined({ memo: 'x' })).toBeUndefined();
   });
 });
 

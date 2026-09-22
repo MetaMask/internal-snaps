@@ -5,6 +5,7 @@ import { ensureError, isObject } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
+import { getMemoStrOrUndefined } from '../../api';
 import { METAMASK_ORIGIN } from '../../constants';
 import type { StellarKeyringAccount } from '../../services/account';
 import type {
@@ -219,8 +220,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      const confirmedMemo =
-        typeof dialogResult.memo === 'string' ? dialogResult.memo : undefined;
+      const confirmedMemo = getMemoStrOrUndefined(dialogResult.memo);
 
       await trackTransactionApproved({
         origin: METAMASK_ORIGIN,
