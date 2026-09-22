@@ -423,12 +423,13 @@ describe('SignAuthEntryRequestStruct', () => {
     // CAP-71 v2 preimage
     {
       ...validSignAuthEntryRequest,
-      request: { authEntry: v2AuthEntry },
+      request: {
+        method: MultichainMethod.SignAuthEntry,
+        params: { authEntry: v2AuthEntry },
+      },
     },
-  ])('accepts a valid signAuthEntry keyring request', () => {
-    expect(() =>
-      assert(validSignAuthEntryRequest, SignAuthEntryRequestStruct),
-    ).not.toThrow();
+  ])('accepts a valid signAuthEntry keyring request', (request) => {
+    expect(() => assert(request, SignAuthEntryRequestStruct)).not.toThrow();
   });
 
   it('accepts an SEP-43 opts bag with address and networkPassphrase', () => {
