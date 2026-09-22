@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reduce `snap_getBip32Entropy` calls during `bip44:discover` from two to one by fetching the coin-type node once and reusing it for both the on-chain activity check and account derivation in `AccountService.batchCreate`; also parallelize the accounts state read and entropy fetch in `AccountService.batchCreate` for non-discover paths ([#308](https://github.com/MetaMask/internal-snaps/pull/308))
 
+### Fixed
+
+- Emit `Transaction Submitted` from the unified send and change-trust flows so their transactions no longer reach `Transaction Finalized` without a matching submit event ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+  - Previously only the swap/bridge `signAndSendTransaction` path emitted `Transaction Submitted`.
+
 ## [1.0.0]
 
 ### Added

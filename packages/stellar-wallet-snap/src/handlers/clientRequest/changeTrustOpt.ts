@@ -28,6 +28,7 @@ import {
   trackTransactionAdded,
   trackTransactionApproved,
   trackTransactionRejected,
+  trackTransactionSubmitted,
 } from '../../utils/snap';
 import type {
   AccountResolver,
@@ -206,6 +207,12 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       onChainAccount: refreshedOnChainAccount,
       scope,
       transaction: refreshedTransaction,
+    });
+
+    await trackTransactionSubmitted({
+      origin: METAMASK_ORIGIN,
+      accountType: account.type,
+      chainIdCaip: scope,
     });
 
     await this.#transactionService.savePendingKeyringTransactionSafe({

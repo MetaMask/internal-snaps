@@ -37,6 +37,7 @@ import {
   trackTransactionApproved,
   trackTransactionRejected,
 } from '../../utils';
+import { trackTransactionSubmitted } from '../../utils/snap';
 import type {
   AccountResolver,
   ResolvedActivatedAccount,
@@ -202,6 +203,12 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         scope,
         transaction: refreshedTransaction,
         pollTransaction: false,
+      });
+
+      await trackTransactionSubmitted({
+        origin: METAMASK_ORIGIN,
+        accountType: stellarKeyringAccount.type,
+        chainIdCaip: scope,
       });
 
       await this.#transactionService.savePendingKeyringTransactionSafe({

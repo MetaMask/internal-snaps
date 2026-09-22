@@ -204,6 +204,10 @@ describe('ChangeTrustOptHandler', () => {
       snapUtils,
       'trackTransactionApproved',
     );
+    const trackTransactionSubmittedSpy = jest.spyOn(
+      snapUtils,
+      'trackTransactionSubmitted',
+    );
 
     return {
       handler,
@@ -227,6 +231,7 @@ describe('ChangeTrustOptHandler', () => {
       trackTransactionAddedSpy,
       trackTransactionRejectedSpy,
       trackTransactionApprovedSpy,
+      trackTransactionSubmittedSpy,
     };
   }
 
@@ -750,6 +755,27 @@ describe('ChangeTrustOptHandler', () => {
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
       });
+    });
+
+    it('tracks transaction submitted after broadcast', async () => {
+      const {
+        handler,
+        account,
+        trackTransactionSubmittedSpy,
+        sendTransaction,
+      } = setup();
+      await handler.handle(addRequest);
+
+      expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
+        accountType: account.type,
+        chainIdCaip: scope,
+        origin: METAMASK_ORIGIN,
+      });
+
+      const submittedOrder =
+        trackTransactionSubmittedSpy.mock.invocationCallOrder[0];
+      const sendOrder = sendTransaction.mock.invocationCallOrder[0];
+      expect(sendOrder).toBeLessThan(submittedOrder as number);
     });
   });
 });
