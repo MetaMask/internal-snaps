@@ -1,4 +1,8 @@
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import type { StellarKeyringAccount } from '../../services/account';
@@ -80,7 +84,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
     // If the transaction is invalid, the security scan will output the error.
     // Tracking properties are shared with the decision events so Added / Approved /
     // Rejected stay consistent with the unified send flow.
-    const trackingProperties = {
+    const trackingProperties: TransactionEventProperties = {
       origin: request.origin,
       accountType: account.type,
       chainIdCaip: scope,

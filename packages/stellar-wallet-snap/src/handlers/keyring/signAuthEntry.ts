@@ -1,4 +1,8 @@
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { xdr } from '@stellar/stellar-sdk';
 
@@ -80,7 +84,7 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
 
     // Tracking properties are shared with the decision events so Added / Approved /
     // Rejected stay consistent with the unified send flow.
-    const trackingProperties = {
+    const trackingProperties: TransactionEventProperties = {
       origin: request.origin,
       accountType: account.type,
       chainIdCaip: request.scope,
