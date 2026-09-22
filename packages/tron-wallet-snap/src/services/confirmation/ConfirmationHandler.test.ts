@@ -1,5 +1,8 @@
 import { FeeType } from '@metamask/keyring-api';
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+} from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -10,7 +13,6 @@ import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
 import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
-import { analyticsService } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
@@ -24,6 +26,12 @@ type MockState = {
   setKey: jest.Mock;
   setKeyWith: jest.Mock;
 };
+
+const mockAnalyticsService = {
+  trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
+  trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
+  trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
+} as unknown as AnalyticsService;
 
 jest.mock(
   '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction',
@@ -172,9 +180,9 @@ async function withConfirmationHandler<ReturnValue>(
     trackError: jest.fn().mockResolvedValue(undefined),
   };
 
-  jest.spyOn(analyticsService, 'trackTransactionAdded').mockResolvedValue();
-  jest.spyOn(analyticsService, 'trackTransactionApproved').mockResolvedValue();
-  jest.spyOn(analyticsService, 'trackTransactionRejected').mockResolvedValue();
+  jest.mocked(mockAnalyticsService.trackTransactionAdded).mockClear();
+  jest.mocked(mockAnalyticsService.trackTransactionApproved).mockClear();
+  jest.mocked(mockAnalyticsService.trackTransactionRejected).mockClear();
 
   const mockState: MockState = {
     getKey: jest.fn(),
@@ -189,6 +197,7 @@ async function withConfirmationHandler<ReturnValue>(
     assetsService: mockAssetsService,
     feeCalculatorService: mockFeeCalculatorService,
     logger: mockLogger,
+    analyticsService: mockAnalyticsService,
   });
 
   return await testFunction({
@@ -422,18 +431,18 @@ describe('ConfirmationHandler', () => {
         const result = await handler.confirmTransactionRequest(defaultParams);
 
         expect(result).toBe(true);
-        expect(analyticsService.trackTransactionAdded).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });
-        expect(analyticsService.trackTransactionApproved).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionApproved).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });
         expect(
-          analyticsService.trackTransactionRejected,
+          mockAnalyticsService.trackTransactionRejected,
         ).not.toHaveBeenCalled();
       });
     });
@@ -445,13 +454,13 @@ describe('ConfirmationHandler', () => {
         const result = await handler.confirmTransactionRequest(defaultParams);
 
         expect(result).toBe(false);
-        expect(analyticsService.trackTransactionRejected).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionRejected).toHaveBeenCalledWith({
           origin: 'MetaMask',
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });
         expect(
-          analyticsService.trackTransactionApproved,
+          mockAnalyticsService.trackTransactionApproved,
         ).not.toHaveBeenCalled();
       });
     });
@@ -593,21 +602,21 @@ describe('ConfirmationHandler', () => {
         });
 
         expect(result).toBe(true);
-        expect(analyticsService.trackTransactionAdded).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith({
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
         });
-        expect(analyticsService.trackTransactionApproved).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionApproved).toHaveBeenCalledWith({
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
         });
         expect(
-          analyticsService.trackTransactionRejected,
+          mockAnalyticsService.trackTransactionRejected,
         ).not.toHaveBeenCalled();
         expect(
-          jest.mocked(analyticsService.trackTransactionAdded).mock
+          jest.mocked(mockAnalyticsService.trackTransactionAdded).mock
             .invocationCallOrder[0],
         ).toBeLessThan(
           mockRenderConfirmSignTransaction.mock
@@ -629,13 +638,13 @@ describe('ConfirmationHandler', () => {
         });
 
         expect(result).toBe(false);
-        expect(analyticsService.trackTransactionRejected).toHaveBeenCalledWith({
+        expect(mockAnalyticsService.trackTransactionRejected).toHaveBeenCalledWith({
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
         });
         expect(
-          analyticsService.trackTransactionApproved,
+          mockAnalyticsService.trackTransactionApproved,
         ).not.toHaveBeenCalled();
       });
     });
@@ -658,7 +667,7 @@ describe('ConfirmationHandler', () => {
 
           expect(result).toBe(false);
           expect(
-            analyticsService.trackTransactionRejected,
+            mockAnalyticsService.trackTransactionRejected,
           ).toHaveBeenCalledWith({
             origin: request.origin,
             accountType: mockAccount.type,
@@ -683,12 +692,12 @@ describe('ConfirmationHandler', () => {
           account: mockAccount,
         });
 
-        expect(analyticsService.trackTransactionAdded).not.toHaveBeenCalled();
+        expect(mockAnalyticsService.trackTransactionAdded).not.toHaveBeenCalled();
         expect(
-          analyticsService.trackTransactionApproved,
+          mockAnalyticsService.trackTransactionApproved,
         ).not.toHaveBeenCalled();
         expect(
-          analyticsService.trackTransactionRejected,
+          mockAnalyticsService.trackTransactionRejected,
         ).not.toHaveBeenCalled();
       });
     });

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
+import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -13,12 +14,15 @@ import {
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
-import { analyticsService } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import { SendService } from './SendService';
 
 type Transaction = TronwebTypes.Transaction<TronwebTypes.TransferContract>;
+
+const mockAnalyticsService = {
+  trackTransactionSubmitted: jest.fn().mockResolvedValue(undefined),
+} as unknown as AnalyticsService;
 
 describe('SendService', () => {
   type MockTransferContract = Transaction['raw_data']['contract'][number];
@@ -112,10 +116,6 @@ describe('SendService', () => {
         scheduleBackgroundEvent: jest.fn(),
       };
 
-      jest
-        .spyOn(analyticsService, 'trackTransactionSubmitted')
-        .mockResolvedValue();
-
       mockTransactionExpirationRefresherService = {
         ensureFreshMetadata: jest.fn(
           async ({ transaction }: { transaction: unknown }) => transaction,
@@ -129,6 +129,7 @@ describe('SendService', () => {
         feeCalculatorService: mockFeeCalculatorService,
         logger: mockLogger,
         snapClient: mockSnapClient,
+        analyticsService: mockAnalyticsService,
         transactionExpirationRefresherService:
           mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
       });
@@ -160,7 +161,7 @@ describe('SendService', () => {
           signature: ['test-signature'],
         }),
       );
-      expect(analyticsService.trackTransactionSubmitted).toHaveBeenCalledWith({
+      expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith({
         origin: 'MetaMask',
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
@@ -353,6 +354,7 @@ describe('SendService', () => {
         feeCalculatorService: mockFeeCalculatorService,
         logger: mockLogger,
         snapClient: mockSnapClient,
+        analyticsService: mockAnalyticsService,
         transactionExpirationRefresherService:
           mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
       });
@@ -1155,6 +1157,7 @@ describe('SendService', () => {
           feeCalculatorService: mockFeeCalculatorService,
           logger: mockLogger,
           snapClient: mockSnapClient,
+          analyticsService: mockAnalyticsService,
           transactionExpirationRefresherService:
             new TransactionExpirationRefresherService({
               tronWebFactory: mockTronWebFactory,
@@ -1250,6 +1253,7 @@ describe('SendService', () => {
           feeCalculatorService: mockFeeCalculatorService,
           logger: mockLogger,
           snapClient: mockSnapClient,
+          analyticsService: mockAnalyticsService,
           transactionExpirationRefresherService:
             new TransactionExpirationRefresherService({
               tronWebFactory: mockTronWebFactory,

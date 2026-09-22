@@ -1,4 +1,5 @@
 import type {
+  AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
@@ -13,7 +14,6 @@ import type {
 } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
-import { analyticsService } from '../../utils/analytics';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -33,14 +33,18 @@ export class TransactionScanService {
 
   readonly #logger: Logger;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor(
     securityAlertsApiClient: SecurityAlertsApiClient,
     snapClient: SnapClient,
     logger: Logger,
+    analyticsService: AnalyticsService,
   ) {
     this.#securityAlertsApiClient = securityAlertsApiClient;
     this.#snapClient = snapClient;
     this.#logger = logger;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -119,7 +123,7 @@ export class TransactionScanService {
 
         // Track error if account is provided
         if (account) {
-          await analyticsService.trackSecurityScanCompleted({
+          await this.#analyticsService.trackSecurityScanCompleted({
             origin,
             accountType: account.type,
             chainIdCaip: scope,
@@ -146,7 +150,7 @@ export class TransactionScanService {
         );
 
         // Track scan completed
-        await analyticsService.trackSecurityScanCompleted({
+        await this.#analyticsService.trackSecurityScanCompleted({
           origin,
           accountType: account.type,
           chainIdCaip: scope,
@@ -163,7 +167,7 @@ export class TransactionScanService {
             ? (scan.validation.type as SecurityAlertResponse)
             : SecurityAlertResponse.Warning;
 
-          await analyticsService.trackSecurityAlertDetected({
+          await this.#analyticsService.trackSecurityAlertDetected({
             origin,
             accountType: account.type,
             chainIdCaip: scope,
@@ -183,7 +187,7 @@ export class TransactionScanService {
 
       // Track error if account is provided
       if (account) {
-        await analyticsService.trackSecurityScanCompleted({
+        await this.#analyticsService.trackSecurityScanCompleted({
           origin,
           accountType: account.type,
           chainIdCaip: scope,

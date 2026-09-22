@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
@@ -10,7 +10,6 @@ import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
-import { analyticsService } from '../../utils/analytics';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -34,6 +33,8 @@ export class SendService {
 
   readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     accountsService,
     assetsService,
@@ -42,6 +43,7 @@ export class SendService {
     logger,
     snapClient,
     transactionExpirationRefresherService,
+    analyticsService,
   }: {
     accountsService: AccountsService;
     assetsService: AssetsService;
@@ -50,6 +52,7 @@ export class SendService {
     logger: Logger;
     snapClient: SnapClient;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
+    analyticsService: AnalyticsService;
   }) {
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
@@ -59,6 +62,7 @@ export class SendService {
     this.#snapClient = snapClient;
     this.#transactionExpirationRefresherService =
       transactionExpirationRefresherService;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -421,7 +425,7 @@ export class SendService {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
 
-    await analyticsService.trackTransactionSubmitted({
+    await this.#analyticsService.trackTransactionSubmitted({
       origin,
       accountType: account.type,
       chainIdCaip: scope,

@@ -1,4 +1,5 @@
 import {
+  AnalyticsService,
   AssetsProvider,
   InMemoryCache,
   RemoteFeatureFlagsProvider,
@@ -14,6 +15,7 @@ import { getMessenger } from '@metamask/snaps-sdk';
 
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
 import { SecurityAlertsApiClient } from './clients/security-alerts-api/SecurityAlertsApiClient';
+import { getSnapProvider } from './clients/snap/getSnapProvider';
 import { SnapClient } from './clients/snap/SnapClient';
 import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
@@ -46,6 +48,7 @@ import type {
   CoreMessenger,
   CoreMessengerClient,
 } from './types/core-messenger';
+import { trackError } from './utils/errors';
 import logger, { noOpLogger } from './utils/logger';
 
 /**
@@ -58,6 +61,12 @@ import logger, { noOpLogger } from './utils/logger';
  * 4. Handlers (CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
  */
 export const configProvider = new ConfigProvider();
+
+const analyticsService = new AnalyticsService({
+  getSnapProvider,
+  logger,
+  trackError,
+});
 
 const state = new State({
   encrypted: false,
@@ -177,6 +186,7 @@ const sendService = new SendService({
   tronWebFactory,
   feeCalculatorService,
   transactionExpirationRefresherService,
+  analyticsService,
 });
 
 const stakingService = new StakingService({
@@ -196,6 +206,7 @@ const transactionScanService = new TransactionScanService(
   securityAlertsApiClient,
   snapClient,
   logger,
+  analyticsService,
 );
 
 const confirmationHandler = new ConfirmationHandler({
@@ -205,6 +216,7 @@ const confirmationHandler = new ConfirmationHandler({
   assetsService,
   feeCalculatorService,
   logger,
+  analyticsService,
 });
 
 /**
@@ -232,6 +244,7 @@ const cronHandler = new CronHandler({
   tronHttpClient,
   transactionScanService,
   transactionExpirationRefresherService,
+  analyticsService,
 });
 const keyringHandler = new KeyringHandler({
   logger,
@@ -258,6 +271,7 @@ export type SnapExecutionContext = {
   /**
    * Services
    */
+  analyticsService: AnalyticsService;
   state: IStateManager<UnencryptedStateValue>;
   priceApiClient: PriceApiClient;
   feeCalculatorService: FeeCalculatorService;
@@ -295,6 +309,7 @@ const snapContext: SnapExecutionContext = {
   /**
    * Services
    */
+  analyticsService,
   state,
   priceApiClient,
   feeCalculatorService,
@@ -322,6 +337,7 @@ const snapContext: SnapExecutionContext = {
 };
 
 export {
+  analyticsService,
   /**
    * Handlers
    */

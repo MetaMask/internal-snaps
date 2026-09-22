@@ -1,4 +1,5 @@
 import type {
+  AnalyticsService,
   ExtendedKeyringAccount,
   IStateManager,
   Logger,
@@ -26,7 +27,6 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import { analyticsService } from '../../utils/analytics';
 
 export const CronjobMethod = {
   ContinuouslySynchronizeSelectedAccounts:
@@ -66,6 +66,8 @@ export class CronHandler {
 
   readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountsService,
@@ -75,6 +77,7 @@ export class CronHandler {
     tronHttpClient,
     transactionScanService,
     transactionExpirationRefresherService,
+    analyticsService,
   }: {
     logger: Logger;
     accountsService: AccountsService;
@@ -84,6 +87,7 @@ export class CronHandler {
     tronHttpClient: TronHttpClient;
     transactionScanService: TransactionScanService;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
+    analyticsService: AnalyticsService;
   }) {
     this.#logger = logger.withPrefix('[⏰ CronHandler]');
     this.#accountsService = accountsService;
@@ -94,6 +98,7 @@ export class CronHandler {
     this.#transactionScanService = transactionScanService;
     this.#transactionExpirationRefresherService =
       transactionExpirationRefresherService;
+    this.#analyticsService = analyticsService;
   }
 
   async handle(request: JsonRpcRequest): Promise<void> {
@@ -729,7 +734,7 @@ export class CronHandler {
       });
 
       // Track Transaction Finalized event now that transaction is confirmed
-      await analyticsService.trackTransactionFinalized({
+      await this.#analyticsService.trackTransactionFinalized({
         origin: 'MetaMask',
         accountType: senderAccount.type,
         chainIdCaip: scope,

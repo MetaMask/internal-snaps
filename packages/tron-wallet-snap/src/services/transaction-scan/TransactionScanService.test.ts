@@ -1,15 +1,19 @@
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { Types as TronwebTypes } from 'tronweb';
 
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
-import { analyticsService } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionScanService } from './TransactionScanService';
 import type { TransactionScanResult } from './types';
 import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
+
+const mockAnalyticsService = {
+  trackSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
+  trackSecurityAlertDetected: jest.fn().mockResolvedValue(undefined),
+} as unknown as AnalyticsService;
 
 describe('TransactionScanService', () => {
   const mockAccount: ExtendedKeyringAccount = {
@@ -107,6 +111,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -164,6 +169,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -222,6 +228,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -279,6 +286,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -337,6 +345,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -420,6 +429,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -502,6 +512,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -541,6 +552,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       await service.scanTransaction({
@@ -564,6 +576,7 @@ describe('TransactionScanService', () => {
         }) as unknown as SecurityAlertsApiClient,
         createMockSnapClient() as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -595,6 +608,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         createMockSnapClient() as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -634,6 +648,7 @@ describe('TransactionScanService', () => {
         }) as unknown as SecurityAlertsApiClient,
         createMockSnapClient() as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       const result = await service.scanTransaction({
@@ -652,6 +667,7 @@ describe('TransactionScanService', () => {
       {} as SecurityAlertsApiClient,
       {} as SnapClient,
       mockLogger,
+      mockAnalyticsService,
     );
 
     it('describes missing reasons', () => {
@@ -687,6 +703,7 @@ describe('TransactionScanService', () => {
         mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
         mockSnapClient as unknown as SnapClient,
         mockLogger,
+        mockAnalyticsService,
       );
 
       return { service, mockSecurityAlertsApiClient, mockSnapClient };
@@ -703,18 +720,20 @@ describe('TransactionScanService', () => {
         account: mockAccount,
       });
 
+    beforeEach(() => {
+      jest.mocked(mockAnalyticsService.trackSecurityScanCompleted).mockClear();
+      jest.mocked(mockAnalyticsService.trackSecurityAlertDetected).mockClear();
+    });
+
     it('tracks a successful scan without alerts', async () => {
       const { service } = createService({
         simulation: { status: 'Success' },
         validation: { status: 'Success', result_type: 'Benign' },
       });
-      jest
-        .spyOn(analyticsService, 'trackSecurityScanCompleted')
-        .mockResolvedValue();
 
       await scan(service);
 
-      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
@@ -732,23 +751,17 @@ describe('TransactionScanService', () => {
           reason: 'transfer_farming',
         },
       });
-      jest
-        .spyOn(analyticsService, 'trackSecurityScanCompleted')
-        .mockResolvedValue();
-      jest
-        .spyOn(analyticsService, 'trackSecurityAlertDetected')
-        .mockResolvedValue();
 
       await scan(service);
 
-      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
         scanStatus: ScanStatus.SUCCESS,
         hasSecurityAlerts: true,
       });
-      expect(analyticsService.trackSecurityAlertDetected).toHaveBeenCalledWith({
+      expect(mockAnalyticsService.trackSecurityAlertDetected).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
@@ -763,12 +776,9 @@ describe('TransactionScanService', () => {
       const { service } = createService(
         null as unknown as SecurityAlertSimulationValidationResponse,
       );
-      jest
-        .spyOn(analyticsService, 'trackSecurityScanCompleted')
-        .mockResolvedValue();
 
       expect(await scan(service)).toBeNull();
-      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
@@ -785,13 +795,10 @@ describe('TransactionScanService', () => {
           validation: { status: 'Success', result_type: 'Benign' },
         });
       mockSecurityAlertsApiClient.scanTransaction.mockRejectedValueOnce(error);
-      jest
-        .spyOn(analyticsService, 'trackSecurityScanCompleted')
-        .mockResolvedValue();
 
       expect(await scan(service)).toBeNull();
       expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
-      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+      expect(mockAnalyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,

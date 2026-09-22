@@ -1,4 +1,4 @@
-import type { IStateManager } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, IStateManager } from '@metamask/snap-networks-utils';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -20,9 +20,12 @@ import { FetchStatus } from '../../types/snap';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import { analyticsService } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
+
+const mockAnalyticsService = {
+  trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
+} as unknown as AnalyticsService;
 
 /**
  * Subset of SnapClient methods exercised by `refreshConfirmationSend`.
@@ -397,6 +400,7 @@ function buildCronHandler({
       mockTransactionScanService as unknown as TransactionScanService,
     transactionExpirationRefresherService:
       transactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+    analyticsService: mockAnalyticsService,
   });
 }
 
@@ -936,9 +940,7 @@ describe('CronHandler', () => {
       const mockSnapClient = {
         ...buildMockSnapClient(null),
       };
-      jest
-        .spyOn(analyticsService, 'trackTransactionFinalized')
-        .mockResolvedValue();
+      jest.mocked(mockAnalyticsService.trackTransactionFinalized).mockClear();
       const mockAccountsService: MockAccountsService = {
         findByIds: jest.fn(),
         synchronize: jest.fn(),
@@ -958,6 +960,7 @@ describe('CronHandler', () => {
         transactionScanService: {} as unknown as TransactionScanService,
         transactionExpirationRefresherService:
           {} as unknown as TransactionExpirationRefresherService,
+        analyticsService: mockAnalyticsService,
       });
 
       return await testFunction({
@@ -1021,7 +1024,7 @@ describe('CronHandler', () => {
             }),
           );
           expect(
-            analyticsService.trackTransactionFinalized,
+            mockAnalyticsService.trackTransactionFinalized,
           ).toHaveBeenCalledWith({
             origin: 'MetaMask',
             accountType: mockAccount.type,
@@ -1084,7 +1087,7 @@ describe('CronHandler', () => {
             mockAccount,
           ]);
           expect(
-            analyticsService.trackTransactionFinalized,
+            mockAnalyticsService.trackTransactionFinalized,
           ).not.toHaveBeenCalled();
         },
       );
@@ -1119,7 +1122,7 @@ describe('CronHandler', () => {
             mockAccount,
           ]);
           expect(
-            analyticsService.trackTransactionFinalized,
+            mockAnalyticsService.trackTransactionFinalized,
           ).not.toHaveBeenCalled();
         },
       );
