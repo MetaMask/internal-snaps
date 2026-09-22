@@ -188,6 +188,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           scope,
           error,
         });
+        // The error confirmation only supports dismiss, so abort as a user rejection.
         throw ensureError(new UserRejectedRequestError());
       }
 
