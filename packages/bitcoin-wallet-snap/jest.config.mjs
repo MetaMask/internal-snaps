@@ -35,6 +35,9 @@ const config = {
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
   },
+  moduleNameMapper: {
+    '\\.svg$': 'jest-transform-stub',
+  },
   resetMocks: true,
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
 };

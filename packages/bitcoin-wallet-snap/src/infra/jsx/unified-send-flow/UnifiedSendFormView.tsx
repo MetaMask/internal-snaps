@@ -52,6 +52,10 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
   const fee = psbt.fee().to_sat();
   const currency = networkToCurrencyUnit[network];
 
+  // Empty when there is nothing meaningful to show (e.g. a WalletConnect
+  // connection id): the origin row is hidden instead of showing a blank value.
+  const requestOrigin = displayOrigin(origin ?? 'metamask');
+
   return (
     <Container>
       <Box>
@@ -100,12 +104,14 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
         </Section>
 
         <Section>
-          <Box alignment="space-between" direction="horizontal">
-            <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.requestOrigin')}
-            </SnapText>
-            <SnapText>{displayOrigin(origin ?? 'metamask')}</SnapText>
-          </Box>
+          {requestOrigin ? (
+            <Box alignment="space-between" direction="horizontal">
+              <SnapText fontWeight="medium" color="alternative">
+                {t('confirmation.requestOrigin')}
+              </SnapText>
+              <SnapText>{requestOrigin}</SnapText>
+            </Box>
+          ) : null}
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
