@@ -102,7 +102,16 @@ type SigningRequestValidation =
     };
 
 function getUniqueAccountIds(items: { accountId: string }[]): string[] {
-  return Array.from(new Set(items.map((item) => item.accountId)));
+  const seen = new Set<string>();
+  const uniqueIds: string[] = [];
+  items.forEach(({ accountId }) => {
+    const normalizedId = accountId.toLowerCase();
+    if (!seen.has(normalizedId)) {
+      seen.add(normalizedId);
+      uniqueIds.push(accountId);
+    }
+  });
+  return uniqueIds;
 }
 
 function getAccountsByNormalizedId(
