@@ -289,14 +289,23 @@ export class ConfirmationUXController {
     }
 
     if (refresherKeys.length > 0) {
-      await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-        {
-          scope,
-          interfaceId: id,
-          interfaceKey,
-          refresherKeys,
-        },
-        Duration.OneSecond,
+      const backgroundEventId =
+        await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+          {
+            scope,
+            interfaceId: id,
+            interfaceKey,
+            refresherKeys,
+          },
+          Duration.OneSecond,
+        );
+      // Persist the pending event id so MemoEdit (or a later replace) can cancel
+      // it before scheduling another chain — bitcoin send-flow pattern.
+      const contextWithEventId = { ...context, backgroundEventId };
+      await updateInterfaceIfExists(
+        id,
+        renderConfirmationView(interfaceKey, contextWithEventId),
+        contextWithEventId,
       );
     }
 

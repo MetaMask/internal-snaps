@@ -124,28 +124,43 @@ async function onSaveSubmit(
       }
     : nextContext;
 
+  const { scope } = context;
+  if (canRestartRefresh && typeof scope === 'string') {
+    const previousEventId =
+      typeof context.backgroundEventId === 'string'
+        ? context.backgroundEventId
+        : undefined;
+    // Cancel any pending open/prices cron first, then schedule Transaction+Scan
+    // restart (bitcoin-style replace — avoids stacked refresh chains).
+    const backgroundEventId =
+      await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+        {
+          scope: scope as ConfirmSendJsonRpcRequest['params']['scope'],
+          interfaceId: id,
+          interfaceKey,
+          refresherKeys: [
+            ConfirmationContextRefresherKey.Transaction,
+            ConfirmationContextRefresherKey.Scan,
+            ConfirmationContextRefresherKey.Prices,
+          ],
+        },
+        Duration.OneSecond,
+        { replaceEventId: previousEventId },
+      );
+    const contextWithEventId = { ...refreshedContext, backgroundEventId };
+    await updateInterfaceIfExists(
+      id,
+      renderConfirmationView(interfaceKey, contextWithEventId),
+      contextWithEventId,
+    );
+    return;
+  }
+
   await updateInterfaceIfExists(
     id,
     renderConfirmationView(interfaceKey, refreshedContext),
     refreshedContext,
   );
-
-  const { scope } = context;
-  if (canRestartRefresh && typeof scope === 'string') {
-    await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-      {
-        scope: scope as ConfirmSendJsonRpcRequest['params']['scope'],
-        interfaceId: id,
-        interfaceKey,
-        refresherKeys: [
-          ConfirmationContextRefresherKey.Transaction,
-          ConfirmationContextRefresherKey.Scan,
-          ConfirmationContextRefresherKey.Prices,
-        ],
-      },
-      Duration.OneSecond,
-    );
-  }
 }
 
 /**
