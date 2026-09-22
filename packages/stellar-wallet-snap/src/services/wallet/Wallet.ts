@@ -70,11 +70,9 @@ export class Wallet {
     try {
       const messageBuffer = this.#encodeMessage(message);
 
-      const signature = this.#signer
-        .sign(hash(bufferToUint8Array(messageBuffer)))
-        .toString(encode);
+      const signedBytes = this.#signer.sign(hash(messageBuffer));
 
-      return signature;
+      return bufferToUint8Array(signedBytes).toString(encode);
     } catch {
       throw new SignMessageException();
     }
@@ -99,7 +97,7 @@ export class Wallet {
       const messageBuffer = this.#encodeMessage(message);
 
       const verified = this.#signer.verify(
-        hash(bufferToUint8Array(messageBuffer)),
+        hash(messageBuffer),
         bufferToUint8Array(signature, encode),
       );
 
@@ -129,11 +127,9 @@ export class Wallet {
     try {
       const preimageBuffer = bufferToUint8Array(authEntry, 'base64');
 
-      const signature = this.#signer
-        .sign(hash(preimageBuffer))
-        .toString(encode);
+      const signedBytes = this.#signer.sign(hash(preimageBuffer));
 
-      return signature;
+      return bufferToUint8Array(signedBytes).toString(encode);
     } catch {
       throw new SignAuthEntryException();
     }

@@ -1,4 +1,6 @@
+/* eslint-disable no-restricted-globals -- Snap configuration executes in Node.js. */
 import type { SnapConfig } from '@metamask/snaps-cli';
+import { merge } from '@metamask/snaps-cli';
 import { config as dotenv } from 'dotenv';
 import { resolve } from 'path';
 
@@ -57,6 +59,15 @@ const config: SnapConfig = {
     hidden: true,
     hideSnapBranding: true,
   },
+  customizeWebpackConfig: (webpackConfig) =>
+    merge(webpackConfig, {
+      resolve: {
+        alias: {
+          eventsource: resolve(__dirname, 'src/shims/eventsource.ts'),
+        },
+      },
+    }),
 };
 
 export default config;
+/* eslint-enable no-restricted-globals */

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Emit `Transaction Submitted` from the Wallet Standard `signAndSendTransaction` path so its transactions no longer reach `Transaction Finalized` without a matching submit event ([#343](https://github.com/MetaMask/internal-snaps/pull/343))
 - Tolerate unknown fields in the Token API metadata response so that new fields added by the API no longer fail validation and fall back to default token metadata ([#320](https://github.com/MetaMask/internal-snaps/pull/320))
 
 ## [3.2.0]

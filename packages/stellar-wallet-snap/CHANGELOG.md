@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Reduce `snap_getBip32Entropy` calls during `bip44:discover` from two to one by fetching the coin-type node once and reusing it for both the on-chain activity check and account derivation in `AccountService.batchCreate`; also parallelize the accounts state read and entropy fetch in `AccountService.batchCreate` for non-discover paths ([#308](https://github.com/MetaMask/internal-snaps/pull/308))
+- Bump `@stellar/stellar-sdk` from `^15.0.1` to `^17.0.1` ([#302](https://github.com/MetaMask/internal-snaps/pull/302))
+  - Show distinct confirmation titles for each revoke-sponsorship operation type (account, claimable balance, data, liquidity pool, offer, signer, trustline)
 
 ### Fixed
 
