@@ -1053,6 +1053,34 @@ describe('SendFlowUseCases', () => {
       ).rejects.toThrow('User canceled the confirmation');
     });
 
+    it('tracks Transaction Added, Approved and Rejected with the metamask origin', async () => {
+      await useCases.confirmSendFlow(mockAccount, amount, toAddress);
+
+      expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
+        mockAccount,
+        'metamask',
+      );
+      expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
+        mockAccount,
+        'metamask',
+      );
+      expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
+    });
+
+    it('tracks Transaction Rejected when the user cancels', async () => {
+      mockSnapClient.displayUserPrompt.mockResolvedValue(false);
+
+      await expect(
+        useCases.confirmSendFlow(mockAccount, amount, toAddress),
+      ).rejects.toThrow('User canceled the confirmation');
+
+      expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
+        mockAccount,
+        'metamask',
+      );
+      expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
+    });
+
     it('throws error when buildTx fails', async () => {
       const buildError = new Error('Failed to build transaction');
       mockAccount.buildTx.mockImplementation(() => {

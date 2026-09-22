@@ -41,6 +41,7 @@ export { parseEnv } from './utils/config/parseEnv';
 export { BaseConfigProvider } from './utils/config/BaseConfigProvider';
 export {
   commaSeparatedListOf,
+  defaultedUrlStruct,
   emptyToUndefined,
   parseIntegerStruct,
   parseFloatStruct,

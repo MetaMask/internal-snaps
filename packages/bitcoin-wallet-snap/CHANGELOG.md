@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#266](https://github.com/MetaMask/internal-snaps/pull/266))
+- Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` tracking events from Bitcoin transaction confirmations ([#328](https://github.com/MetaMask/internal-snaps/pull/328), [#329](https://github.com/MetaMask/internal-snaps/pull/329))
+
 ## [3.0.0]
 
 ### Added

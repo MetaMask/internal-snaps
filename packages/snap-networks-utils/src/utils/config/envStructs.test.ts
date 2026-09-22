@@ -3,6 +3,7 @@ import { create, number, string } from '@metamask/superstruct';
 import { UrlStruct } from '../urlStruct/urlStruct';
 import {
   commaSeparatedListOf,
+  defaultedUrlStruct,
   emptyToUndefined,
   parseIntegerStruct,
   parseFloatStruct,
@@ -35,6 +36,42 @@ describe('emptyToUndefined', () => {
 
   it('rejects values the item struct rejects', () => {
     const struct = emptyToUndefined(UrlStruct);
+
+    expect(() => create('not-a-url', struct)).toThrow(
+      'Invalid URL format: Invalid URL',
+    );
+  });
+});
+
+describe('defaultedUrlStruct', () => {
+  it('parses a URL from a string', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
+
+    expect(create('https://example.com', struct)).toBe('https://example.com');
+  });
+
+  it('defaults to the fallback when unset or empty', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
+
+    expect(create(undefined, struct)).toBe('https://fallback.example.com');
+    expect(create('', struct)).toBe('https://fallback.example.com');
+  });
+
+  it('trims whitespace from values', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
+
+    expect(create(' https://example.com ', struct)).toBe('https://example.com');
+  });
+
+  it('defaults to the fallback for whitespace-only values', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
+
+    expect(create(' ', struct)).toBe('https://fallback.example.com');
+    expect(create('   ', struct)).toBe('https://fallback.example.com');
+  });
+
+  it('rejects invalid URLs', () => {
+    const struct = defaultedUrlStruct('https://fallback.example.com');
 
     expect(() => create('not-a-url', struct)).toThrow(
       'Invalid URL format: Invalid URL',
