@@ -1,6 +1,5 @@
-import type { Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
-import type { xdr, OperationOptions } from '@stellar/stellar-sdk';
+import type { xdr } from '@stellar/stellar-sdk';
 import {
   Account,
   Address,
@@ -10,7 +9,6 @@ import {
   ScInt,
   TransactionBuilder as StellarSdkTransactionBuilder,
 } from '@stellar/stellar-sdk';
-import { BigNumber } from 'bignumber.js';
 
 import type {
   KnownCaip2ChainId,
@@ -27,7 +25,7 @@ import {
   normalizeAmount,
   rethrowIfInstanceElseThrow,
 } from '../../utils';
-import { baseInclusionFee, caip2ChainIdToNetwork } from '../network/utils';
+import { caip2ChainIdToNetwork } from '../network/utils';
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
   InvalidAssetForCreateAccountException,
@@ -41,12 +39,6 @@ import { assertAssetScopeMatch, caip19ToStellarAsset } from './utils';
  * transactions with an updated sequence. All methods return a {@link Transaction} wrapper.
  */
 export class TransactionBuilder {
-  readonly #logger: Logger;
-
-  constructor({ logger }: { logger: Logger }) {
-    this.#logger = logger.withPrefix('[💰 TransactionBuilder]');
-  }
-
   /**
    * Builds a change-trust operation transaction for the given asset.
    *
@@ -75,7 +67,7 @@ export class TransactionBuilder {
     assertAssetScopeMatch(assetId, scope);
 
     try {
-      const operationOpt: OperationOptions.ChangeTrust = {
+      const operationOpt: Parameters<typeof Operation.changeTrust>[0] = {
         asset: caip19ToStellarAsset(assetId),
       };
       if (limit !== undefined) {
@@ -341,50 +333,8 @@ export class TransactionBuilder {
         );
       }
 
-      if (transaction.operationCount === 0) {
-        throw new TransactionBuilderException('No operations in transaction');
-      }
-
-      // the initial fee passed to the builder gets scaled up based on the number
-      // of operations at the end, so we have to down-scale first
-      let fee = new BigNumber(rawTransaction.fee)
-        .dividedBy(rawTransaction.operations.length)
-        .integerValue(BigNumber.ROUND_FLOOR);
-
-      if (!fee.isFinite() || fee.isLessThanOrEqualTo(0)) {
-        this.#logger.warn(
-          'Invalid fee amount, falling back to configured inclusion fee',
-        );
-        fee = baseInclusionFee();
-      }
-
-      // Minimal clone of the transaction
-      const builder = new StellarSdkTransactionBuilder(
-        new Account(transaction.sourceAccount, sequenceNumber),
-        {
-          fee: fee.toString(),
-          memo: rawTransaction.memo,
-          networkPassphrase: rawTransaction.networkPassphrase,
-          timebounds: rawTransaction.timeBounds,
-          ledgerbounds: rawTransaction.ledgerBounds,
-          minAccountSequence: rawTransaction.minAccountSequence,
-          minAccountSequenceAge: rawTransaction.minAccountSequenceAge,
-          minAccountSequenceLedgerGap:
-            rawTransaction.minAccountSequenceLedgerGap,
-          // TODO: add extraSigners when cloning the envelope
-        },
-      );
-
-      // Clone the transaction operations
-      if ('tx' in rawTransaction) {
-        const tx = rawTransaction.tx as xdr.Transaction;
-        tx.operations().forEach((op) => builder.addOperation(op));
-      } else {
-        throw new TransactionBuilderException(
-          'Failed to clone the transaction, it is not a compatible transaction',
-        );
-      }
-
+      const builder = StellarSdkTransactionBuilder.cloneFrom(rawTransaction);
+      builder.source = new Account(rawTransaction.source, sequenceNumber);
       return new Transaction(builder.build());
     } catch (error: unknown) {
       return rethrowIfInstanceElseThrow(

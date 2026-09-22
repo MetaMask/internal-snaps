@@ -130,7 +130,7 @@ describe('SignTransactionHandler', () => {
       setupHandler();
 
     const transaction = buildMainnetPaymentFromWallet(wallet.address);
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     const signSpy = jest.spyOn(wallet, 'signTransaction');
     renderConfirmationDialog.mockResolvedValue(true);
 
@@ -152,7 +152,7 @@ describe('SignTransactionHandler', () => {
       }),
     );
     expect(result).toStrictEqual({
-      signedTxXdr: signedTransaction.getRaw().toXDR(),
+      signedTxXdr: signedTransaction.getRaw().toXdr(),
       signerAddress: wallet.address,
     });
   });
@@ -162,7 +162,7 @@ describe('SignTransactionHandler', () => {
       setupHandler();
 
     const transaction = buildMainnetPaymentFromWallet(wallet.address);
-    const xdr = transaction.getRaw().toXDR();
+    const xdr = transaction.getRaw().toXdr();
     const signSpy = jest.spyOn(wallet, 'signTransaction');
     renderConfirmationDialog.mockResolvedValue(false);
 

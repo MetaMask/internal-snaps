@@ -61,13 +61,13 @@ function buildAuthEntryPreimageXdr({
   });
   const sorobanAuth = new xdr.HashIdPreimageSorobanAuthorization({
     networkId: hash(bufferToUint8Array(networkPassphrase, 'utf8')),
-    nonce: xdr.Int64.fromString('123456789'),
+    nonce: 123456789n,
     signatureExpirationLedger: 1_000_000,
     invocation,
   });
-  return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(sorobanAuth)
-    .toXDR()
-    .toString('base64');
+  return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(sorobanAuth).toXdr(
+    'base64',
+  );
 }
 
 describe('SignAuthEntryHandler', () => {
@@ -216,8 +216,8 @@ describe('SignAuthEntryHandler', () => {
       xdr.ScVal.scvAddress(Address.fromString(recipient).toScAddress()),
       xdr.ScVal.scvI128(
         new xdr.Int128Parts({
-          hi: xdr.Int64.fromString('0'),
-          lo: xdr.Uint64.fromString('10'),
+          hi: 0n,
+          lo: 10n,
         }),
       ),
     ];
@@ -405,9 +405,7 @@ describe('SignAuthEntryHandler', () => {
           xdr.Asset.assetTypeNative(),
         ),
       }),
-    )
-      .toXDR()
-      .toString('base64');
+    ).toXdr('base64');
 
     const result = await handler.handle(
       buildRequest(mockAccount.id, { authEntry: wrongPreimage }),

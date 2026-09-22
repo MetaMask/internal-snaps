@@ -96,7 +96,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
     await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
     wallet.signTransaction(transaction);
-    const signedTxXdr = transaction.getRaw().toXDR();
+    const signedTxXdr = transaction.getRaw().toXdr();
 
     return {
       signedTxXdr,
@@ -152,7 +152,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
         },
         securityScanRequest: {
           accountAddress: account.address,
-          transaction: transaction.getRaw().toXDR(),
+          transaction: transaction.getRaw().toXdr(),
         },
         tokenPrices,
       })) === true

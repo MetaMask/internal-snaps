@@ -1,7 +1,7 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import type {
   Transaction as StellarTransaction,
-  Operation,
+  OperationRecord,
   Horizon,
 } from '@stellar/stellar-sdk';
 import {
@@ -265,7 +265,7 @@ export class Transaction {
    * @returns The transaction ID.
    */
   get id(): string {
-    return this.#inner.hash().toString('hex');
+    return bufferToUint8Array(this.#inner.hash()).toString('hex');
   }
 
   /**
@@ -346,7 +346,7 @@ export class Transaction {
    *
    * @returns The operations.
    */
-  get transactionOperations(): Operation[] {
+  get transactionOperations(): OperationRecord[] {
     const raw = this.getRaw();
     if (raw instanceof FeeBumpTransaction) {
       return raw.innerTransaction.operations;
@@ -380,7 +380,7 @@ export class Transaction {
   }): Transaction {
     const { xdr, scope } = params;
     try {
-      const decoded = StellarTransactionBuilder.fromXDR(
+      const decoded = StellarTransactionBuilder.fromXdr(
         xdr,
         caip2ChainIdToNetwork(scope),
       );

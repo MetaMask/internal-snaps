@@ -45,7 +45,7 @@ const buildTestInvokeXdr = () => {
     .addOperation(contract.call('swap'))
     .setTimeout(60)
     .build()
-    .toXDR();
+    .toXdr();
 };
 
 const classicAssetId =

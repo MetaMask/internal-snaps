@@ -142,15 +142,18 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
    * @returns Fields displayed in the confirmation dialog.
    */
   #decodeSorobanAuthPreimage(authEntry: string): ReadableAuthEntry {
-    const preimage = xdr.HashIdPreimage.fromXDR(authEntry, 'base64');
-    const sorobanAuth = preimage.sorobanAuthorization();
+    const preimage = xdr.HashIdPreimage.fromXdr(authEntry, 'base64');
+    if (preimage.type !== 'envelopeTypeSorobanAuthorization') {
+      throw new Error('HashIdPreimage is not a Soroban authorization preimage');
+    }
+    const sorobanAuth = preimage.sorobanAuthorization;
 
     return {
       authorizations: new AuthorizationMapper().mapInvocation(
-        sorobanAuth.invocation(),
+        sorobanAuth.invocation,
       ),
-      signatureExpirationLedger: sorobanAuth.signatureExpirationLedger(),
-      nonce: sorobanAuth.nonce().toString(),
+      signatureExpirationLedger: sorobanAuth.signatureExpirationLedger,
+      nonce: sorobanAuth.nonce.toString(),
     };
   }
 }
