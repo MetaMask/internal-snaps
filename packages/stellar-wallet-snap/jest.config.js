@@ -18,7 +18,7 @@ module.exports = {
 
   // An array of regexp pattern strings used to skip coverage collection
   coveragePathIgnorePatterns: [
-    '.*/index\\.ts$', // any index.ts
+    ...baseConfig.coveragePathIgnorePatterns,
     '.*/constants\\.ts$', // any file named constants.ts
     '.*/constants/', // any file in a folder named constants
     '.*/utils/logger\\.ts$', // skip logger.ts
