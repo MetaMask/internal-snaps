@@ -1,10 +1,10 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 
 import type { Network } from '../../../../constants';
 import snapContext from '../../../../context';
-import type { TronKeyringAccount } from '../../../../entities/keyring-account';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { formatOrigin } from '../../../../utils/formatOrigin';
 import { FALLBACK_LANGUAGE } from '../../../../utils/i18n';
@@ -20,7 +20,7 @@ import { ConfirmSignMessage } from './ConfirmSignMessage';
  */
 export async function render(
   request: KeyringRequest,
-  account: TronKeyringAccount,
+  account: ExtendedKeyringAccount,
 ): Promise<DialogResult> {
   assert(request.request.params, SignMessageRequestStruct);
 

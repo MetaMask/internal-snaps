@@ -26,7 +26,7 @@ export class SecurityAlertsApiClient {
     _fetch: typeof globalThis.fetch = globalThis.fetch,
     _logger: Logger = logger,
   ) {
-    const { baseUrl } = configProvider.get().securityAlertsApi;
+    const { baseUrl } = configProvider.config.securityAlertsApi;
 
     this.#fetch = _fetch;
     this.#logger = _logger;

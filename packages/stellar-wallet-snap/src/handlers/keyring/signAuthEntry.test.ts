@@ -1,10 +1,11 @@
 import { Address, Keypair, Networks, hash, xdr } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
-import { AccountService } from '../../services/account';
+import { buildAuthEntryPreimageXdr } from '../../api/__mocks__/xdr.fixtures';
+import { AccountService, StellarKeyringAccount } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import { mockOnChainAccountService } from '../../services/on-chain-account/__mocks__/onChainAccount.fixtures';
-import { WalletService } from '../../services/wallet';
+import { Wallet, WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { bufferToUint8Array } from '../../utils/buffer';
@@ -17,59 +18,6 @@ import { SignAuthEntryHandler } from './signAuthEntry';
 
 jest.mock('../../utils/logger');
 
-/**
- * Builds a minimal but valid base64-encoded `HashIdPreimage`
- * (envelopeTypeSorobanAuthorization) for tests. The field values are
- * arbitrary — we only need the XDR to round-trip through superstruct
- * validation and the handler's preimage decoder.
- *
- * @param options - Optional overrides for the generated preimage.
- * @param options.networkPassphrase - Network passphrase to embed as
- * `networkId`. Defaults to mainnet so happy-path tests pass
- * `HashIdPreimageXdrStruct`'s mainnet-only check.
- * @param options.args - `ScVal` arguments to attach to the contract function.
- * Defaults to no arguments (matching a `transfer` with empty args list).
- * @param options.subInvocations - Nested authorized invocations to attach.
- * Defaults to an empty list.
- * @returns Base64 XDR of a Soroban authorization preimage.
- */
-function buildAuthEntryPreimageXdr({
-  networkPassphrase = Networks.PUBLIC,
-  args = [],
-  subInvocations = [],
-}: {
-  networkPassphrase?: string;
-  args?: xdr.ScVal[];
-  subInvocations?: xdr.SorobanAuthorizedInvocation[];
-} = {}): string {
-  const contractIdBytes = new Uint8Array(32).fill(1);
-  const contractAddress = Address.contract(
-    bufferToUint8Array(contractIdBytes),
-  ).toScAddress();
-  const invokeContractArgs = new xdr.InvokeContractArgs({
-    contractAddress,
-    functionName: 'transfer',
-    args,
-  });
-  const fn =
-    xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-      invokeContractArgs,
-    );
-  const invocation = new xdr.SorobanAuthorizedInvocation({
-    function: fn,
-    subInvocations,
-  });
-  const sorobanAuth = new xdr.HashIdPreimageSorobanAuthorization({
-    networkId: hash(bufferToUint8Array(networkPassphrase, 'utf8')),
-    nonce: xdr.Int64.fromString('123456789'),
-    signatureExpirationLedger: 1_000_000,
-    invocation,
-  });
-  return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(sorobanAuth)
-    .toXDR()
-    .toString('base64');
-}
-
 describe('SignAuthEntryHandler', () => {
   /**
    * Builds a {@link SignAuthEntryHandler} with mocked account / wallet
@@ -77,7 +25,12 @@ describe('SignAuthEntryHandler', () => {
    *
    * @returns Handler instance and the test doubles needed by each spec.
    */
-  function setupHandler() {
+  function setupHandler(): {
+    handler: SignAuthEntryHandler;
+    mockAccount: StellarKeyringAccount;
+    wallet: Wallet;
+    renderConfirmationDialog: jest.Mock;
+  } {
     const wallet = getTestWallet();
     const accountId = globalThis.crypto.randomUUID();
     const mockAccount = generateStellarKeyringAccount(
@@ -144,18 +97,50 @@ describe('SignAuthEntryHandler', () => {
     },
   });
 
-  it('returns signedAuthEntry and signerAddress on confirm', async () => {
-    const { handler, mockAccount, wallet, renderConfirmationDialog } =
-      setupHandler();
-    renderConfirmationDialog.mockResolvedValue(true);
+  it.each([
+    ['v1', (_address: string): string => validAuthEntry],
+    [
+      'v2',
+      (address: string): string =>
+        buildAuthEntryPreimageXdr({ boundAddress: address }),
+    ],
+  ] as const)(
+    'returns signedAuthEntry on confirm for a %s preimage',
+    async (_version, buildEntry) => {
+      const { handler, mockAccount, wallet, renderConfirmationDialog } =
+        setupHandler();
+      renderConfirmationDialog.mockResolvedValue(true);
 
-    const result = await handler.handle(buildRequest(mockAccount.id));
+      const authEntry = buildEntry(wallet.address);
+      const result = await handler.handle(
+        buildRequest(mockAccount.id, { authEntry }),
+      );
 
-    const expected = wallet.signAuthEntry(validAuthEntry);
-    expect(result).toStrictEqual({
-      signedAuthEntry: expected,
-      signerAddress: wallet.address,
+      expect(result).toStrictEqual({
+        signedAuthEntry: wallet.signAuthEntry(authEntry),
+        signerAddress: wallet.address,
+      });
+    },
+  );
+
+  it('returns error -3 when a v2 bound address does not match the signing account', async () => {
+    const { handler, mockAccount, renderConfirmationDialog } = setupHandler();
+
+    const result = await handler.handle(
+      buildRequest(mockAccount.id, {
+        authEntry: buildAuthEntryPreimageXdr({
+          boundAddress: Keypair.random().publicKey(),
+        }),
+      }),
+    );
+
+    expect(result).toMatchObject({
+      error: {
+        code: Sep43ErrorCode.InvalidRequest,
+        message: expect.stringContaining('bound address'),
+      },
     });
+    expect(renderConfirmationDialog).not.toHaveBeenCalled();
   });
 
   it('passes a decoded readable preimage to the confirmation dialog', async () => {
@@ -204,8 +189,8 @@ describe('SignAuthEntryHandler', () => {
       xdr.ScVal.scvAddress(Address.fromString(recipient).toScAddress()),
       xdr.ScVal.scvI128(
         new xdr.Int128Parts({
-          hi: xdr.Int64.fromString('0'),
-          lo: xdr.Uint64.fromString('10'),
+          hi: 0n,
+          lo: 10n,
         }),
       ),
     ];
@@ -355,29 +340,44 @@ describe('SignAuthEntryHandler', () => {
     expect(renderConfirmationDialog).not.toHaveBeenCalled();
   });
 
-  it("returns error -3 when authEntry's embedded networkId is not mainnet", async () => {
-    const { handler, mockAccount, renderConfirmationDialog } = setupHandler();
-
-    // Same shape as the mainnet fixture, but with the embedded `networkId`
-    // bound to testnet. The keyring `scope`/`opts.networkPassphrase` look
-    // mainnet-y, so without the networkId check the snap would happily sign
-    // a Soroban auth signature valid only against testnet.
-    const testnetAuthEntry = buildAuthEntryPreimageXdr({
+  it.each([
+    {
+      // v1 preimage
+      boundAddress: undefined,
       networkPassphrase: Networks.TESTNET,
-    });
+    },
+    {
+      // CAP-71 v2 preimage
+      boundAddress: Keypair.random().publicKey(),
+      networkPassphrase: Networks.TESTNET,
+    },
+  ])(
+    "returns error -3 when authEntry's embedded networkId is not mainnet",
+    async ({ boundAddress, networkPassphrase }) => {
+      const { handler, mockAccount, renderConfirmationDialog } = setupHandler();
 
-    const result = await handler.handle(
-      buildRequest(mockAccount.id, { authEntry: testnetAuthEntry }),
-    );
+      // Same shape as the mainnet fixture, but with the embedded `networkId`
+      // bound to testnet. The keyring `scope`/`opts.networkPassphrase` look
+      // mainnet-y, so without the networkId check the snap would happily sign
+      // a Soroban auth signature valid only against testnet.
+      const testnetAuthEntry = buildAuthEntryPreimageXdr({
+        networkPassphrase,
+        boundAddress,
+      });
 
-    expect(result).toMatchObject({
-      error: {
-        code: Sep43ErrorCode.InvalidRequest,
-        ext: [expect.stringContaining('networkId')],
-      },
-    });
-    expect(renderConfirmationDialog).not.toHaveBeenCalled();
-  });
+      const result = await handler.handle(
+        buildRequest(mockAccount.id, { authEntry: testnetAuthEntry }),
+      );
+
+      expect(result).toMatchObject({
+        error: {
+          code: Sep43ErrorCode.InvalidRequest,
+          ext: [expect.stringContaining('networkId')],
+        },
+      });
+      expect(renderConfirmationDialog).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns error -3 when authEntry is a non-Soroban HashIdPreimage', async () => {
     const { handler, mockAccount, renderConfirmationDialog } = setupHandler();
@@ -393,9 +393,7 @@ describe('SignAuthEntryHandler', () => {
           xdr.Asset.assetTypeNative(),
         ),
       }),
-    )
-      .toXDR()
-      .toString('base64');
+    ).toXdr('base64');
 
     const result = await handler.handle(
       buildRequest(mockAccount.id, { authEntry: wrongPreimage }),

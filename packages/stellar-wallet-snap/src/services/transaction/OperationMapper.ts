@@ -1,17 +1,18 @@
 import type { Json } from '@metamask/utils';
-import type { Asset, Operation } from '@stellar/stellar-sdk';
+import type { Asset, OperationRecord } from '@stellar/stellar-sdk';
 import { LiquidityPoolAsset, LiquidityPoolId, xdr } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { bufferToUint8Array } from '../../utils';
-import { StellarOperationType } from './api';
-import type { Transaction } from './Transaction';
 import {
+  bufferToUint8Array,
   getAddress,
   getFunctionName,
-  parseScValToReadableJson,
-} from './xdrParser';
+  getSorobanAuthAddressFromAuthEntrySafe,
+} from '../../utils';
+import { StellarOperationType } from './api';
+import type { Transaction } from './Transaction';
+import { parseScValToReadableJson } from './xdrParser';
 
 /**
  * Semantic hint for how a confirmation row should be rendered.
@@ -177,8 +178,8 @@ export class AuthorizationMapper extends AbstractOperationMapper {
       try {
         authorizations.push(
           ...this.mapInvocation(
-            entry.rootInvocation(),
-            this.#getAuthAddress(entry),
+            entry.rootInvocation,
+            getSorobanAuthAddressFromAuthEntrySafe(entry),
           ),
         );
       } catch {
@@ -222,7 +223,7 @@ export class AuthorizationMapper extends AbstractOperationMapper {
     if (params.length > 0) {
       authorizations.push({ params });
     }
-    for (const sub of invocation.subInvocations()) {
+    for (const sub of invocation.subInvocations) {
       this.#appendInvocationAuthorizations(authorizations, sub, authAddress);
     }
   }
@@ -238,25 +239,25 @@ export class AuthorizationMapper extends AbstractOperationMapper {
       );
     }
 
-    const fn = invocation.function();
-    switch (fn.switch()) {
-      case xdr.SorobanAuthorizedFunctionType.sorobanAuthorizedFunctionTypeContractFn(): {
-        const contractFn = fn.contractFn();
+    const fn = invocation.function;
+    switch (fn.type) {
+      case 'sorobanAuthorizedFunctionTypeContractFn': {
+        const { contractFn } = fn;
         rows.push(
           this.field(
             'contractId',
-            getAddress(contractFn.contractAddress()),
+            getAddress(contractFn.contractAddress),
             FieldType.copyable,
           ),
         );
         rows.push(
           this.field(
             'functionName',
-            getFunctionName(contractFn.functionName()),
+            getFunctionName(contractFn.functionName),
             FieldType.text,
           ),
         );
-        const args = contractFn.args();
+        const { args } = contractFn;
         if (args.length > 0) {
           rows.push(
             this.field(
@@ -268,10 +269,10 @@ export class AuthorizationMapper extends AbstractOperationMapper {
         }
         break;
       }
-      case xdr.SorobanAuthorizedFunctionType.sorobanAuthorizedFunctionTypeCreateContractHostFn():
+      case 'sorobanAuthorizedFunctionTypeCreateContractHostFn':
         rows.push(this.field('functionName', 'createContract', FieldType.text));
         break;
-      case xdr.SorobanAuthorizedFunctionType.sorobanAuthorizedFunctionTypeCreateContractV2HostFn():
+      case 'sorobanAuthorizedFunctionTypeCreateContractV2HostFn':
         rows.push(
           this.field('functionName', 'createContractV2', FieldType.text),
         );
@@ -280,17 +281,6 @@ export class AuthorizationMapper extends AbstractOperationMapper {
         rows.push(this.field('functionName', 'authorization', FieldType.text));
     }
     return rows;
-  }
-
-  #getAuthAddress(entry: xdr.SorobanAuthorizationEntry): string | null {
-    const credentials = entry.credentials();
-    if (
-      credentials.switch() !==
-      xdr.SorobanCredentialsType.sorobanCredentialsAddress()
-    ) {
-      return null;
-    }
-    return getAddress(credentials.address().address());
   }
 }
 
@@ -326,7 +316,7 @@ export class OperationMapper extends AbstractOperationMapper {
   }
 
   #mapAuthorizations(
-    operations: readonly Operation[],
+    operations: readonly OperationRecord[],
   ): ReadableAuthorizationJson[] {
     const authMapper = new AuthorizationMapper();
     const authorizations: ReadableAuthorizationJson[] = [];
@@ -352,7 +342,7 @@ export class OperationMapper extends AbstractOperationMapper {
    * @returns Serializable operation summary.
    */
   #mapOperation(
-    operation: Operation,
+    operation: OperationRecord,
     index: number,
     transactionSource: string,
   ): ReadableOperationJson {
@@ -373,25 +363,22 @@ export class OperationMapper extends AbstractOperationMapper {
     };
   }
 
-  #mapSorobanPlaceholder(operation: Operation): ReadableOperationField[] {
+  #mapSorobanPlaceholder(operation: OperationRecord): ReadableOperationField[] {
     if (operation.type === StellarOperationType.InvokeHostFunction) {
       const hostOp = operation;
       const rows: ReadableOperationField[] = [];
       try {
         const { func } = hostOp;
 
-        if (
-          func?.switch() ===
-          xdr.HostFunctionType.hostFunctionTypeInvokeContract()
-        ) {
-          const invokeArgs = func.invokeContract();
-          const contractAddress = getAddress(invokeArgs.contractAddress());
-          const functionName = getFunctionName(invokeArgs.functionName());
+        if (func?.type === 'hostFunctionTypeInvokeContract') {
+          const invokeArgs = func.invokeContract;
+          const contractAddress = getAddress(invokeArgs.contractAddress);
+          const functionName = getFunctionName(invokeArgs.functionName);
           rows.push(
             this.field('contractId', contractAddress, FieldType.copyable),
           );
           rows.push(this.field('functionName', functionName, FieldType.text));
-          const args = invokeArgs.args();
+          const { args } = invokeArgs;
           if (args.length > 0) {
             rows.push(
               this.field(
@@ -432,7 +419,7 @@ export class OperationMapper extends AbstractOperationMapper {
     ];
   }
 
-  #mapClassicParams(operation: Operation): ReadableOperationField[] {
+  #mapClassicParams(operation: OperationRecord): ReadableOperationField[] {
     switch (operation.type) {
       case StellarOperationType.Payment: {
         const payment = operation;
@@ -756,7 +743,13 @@ export class OperationMapper extends AbstractOperationMapper {
       }
       case StellarOperationType.EndSponsoringFutureReserves:
         return [];
-      case StellarOperationType.RevokeSponsorship:
+      case StellarOperationType.RevokeAccountSponsorship:
+      case StellarOperationType.RevokeTrustlineSponsorship:
+      case StellarOperationType.RevokeOfferSponsorship:
+      case StellarOperationType.RevokeDataSponsorship:
+      case StellarOperationType.RevokeClaimableBalanceSponsorship:
+      case StellarOperationType.RevokeLiquidityPoolSponsorship:
+      case StellarOperationType.RevokeSignerSponsorship:
         return this.#mapRevokeSponsorship(operation);
       case StellarOperationType.Clawback: {
         const clawback = operation;
@@ -853,7 +846,7 @@ export class OperationMapper extends AbstractOperationMapper {
     }
   }
 
-  #mapRevokeSponsorship(operation: Operation): ReadableOperationField[] {
+  #mapRevokeSponsorship(operation: OperationRecord): ReadableOperationField[] {
     if ('seller' in operation && 'offerId' in operation) {
       const revokeOffer = operation as {
         seller: string;
@@ -911,7 +904,7 @@ export class OperationMapper extends AbstractOperationMapper {
       return [this.field('account', revokeAccount.account, 'address')];
     }
     return [
-      this.field('note', 'revokeSponsorship shape not recognized.', 'text'),
+      this.field('note', 'revoke sponsorship shape not recognized.', 'text'),
     ];
   }
 
@@ -924,37 +917,35 @@ export class OperationMapper extends AbstractOperationMapper {
 
   #formatPredicate(predicate: xdr.ClaimPredicate): string {
     try {
-      const type = predicate.switch();
-      if (type === xdr.ClaimPredicateType.claimPredicateUnconditional()) {
+      const { type } = predicate;
+      if (type === 'claimPredicateUnconditional') {
         return 'unconditional';
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateBeforeAbsoluteTime()) {
-        const absBeforeVal = predicate.absBefore();
-        const seconds = Number(absBeforeVal.toXDR().readBigInt64BE(0));
+      if (type === 'claimPredicateBeforeAbsoluteTime') {
+        const seconds = Number(predicate.absBefore);
         return `before ${new Date(seconds * 1000).toISOString()}`;
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateBeforeRelativeTime()) {
-        const relBeforeVal = predicate.relBefore();
-        return `within ${String(relBeforeVal)}s`;
+      if (type === 'claimPredicateBeforeRelativeTime') {
+        return `within ${String(predicate.relBefore)}s`;
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateAnd()) {
-        const preds = predicate.andPredicates();
+      if (type === 'claimPredicateAnd') {
+        const preds = predicate.andPredicates;
         const left = preds[0];
         const right = preds[1];
         if (left && right) {
           return `(${this.#formatPredicate(left)} AND ${this.#formatPredicate(right)})`;
         }
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateOr()) {
-        const preds = predicate.orPredicates();
+      if (type === 'claimPredicateOr') {
+        const preds = predicate.orPredicates;
         const left = preds[0];
         const right = preds[1];
         if (left && right) {
           return `(${this.#formatPredicate(left)} OR ${this.#formatPredicate(right)})`;
         }
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateNot()) {
-        const inner = predicate.notPredicate();
+      if (type === 'claimPredicateNot') {
+        const inner = predicate.notPredicate;
         return inner ? `NOT ${this.#formatPredicate(inner)}` : 'NOT(null)';
       }
     } catch {

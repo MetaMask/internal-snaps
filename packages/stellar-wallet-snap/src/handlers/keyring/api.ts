@@ -257,7 +257,7 @@ export const SignTransactionResponseStruct = union([
  * Validation struct for the signAuthEntry request.
  *
  * Params follow the SEP-43 `SignAuthEntry` shape: a base64-encoded
- * `HashIdPreimage` (Soroban authorization preimage) and the optional
+ * `HashIdPreimage` (v1 or CAP-71 v2 Soroban authorization preimage) and the optional
  * `opts` bag (`address`, `networkPassphrase`).
  *
  * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0043.md

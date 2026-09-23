@@ -17,7 +17,10 @@ import type {
   KeyringSnapRpc,
 } from '@metamask/keyring-api/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { validateOrigin } from '@metamask/snap-networks-utils';
+import {
+  asStrictKeyringAccount,
+  validateOrigin,
+} from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -139,12 +142,12 @@ export class KeyringHandler implements KeyringSnapRpc {
     if (!account) {
       throw new AccountNotFoundException(accountId);
     }
-    return this.#toKeyringAccount(account);
+    return asStrictKeyringAccount(account);
   }
 
   async getAccounts(): Promise<KeyringAccount[]> {
     const accounts = await this.#accountService.listAccounts();
-    return accounts.map((account) => this.#toKeyringAccount(account));
+    return accounts.map(asStrictKeyringAccount);
   }
 
   /**
@@ -162,26 +165,41 @@ export class KeyringHandler implements KeyringSnapRpc {
       `${AccountCreationType.Bip44Discover}`,
     ] as const);
 
+    const walletResolverPromise = this.#walletService.getWalletResolver(
+      options.entropySource,
+    );
+
     // For discovery, only create the account if it has on-chain activity. No
     // activity means we've reached the end of the discoverable accounts, so we
     // return nothing and the client stops discovering.
     if (options.type === AccountCreationType.Bip44Discover) {
-      const account = await this.#accountService.deriveKeyringAccount({
-        entropySource: options.entropySource,
-        index: options.groupIndex,
-      });
+      // One entropy call at the coin-type path (m/44'/148'); the resolver is
+      // passed into batchCreate so it doesn't re-fetch.
+      const walletResolver = await walletResolverPromise;
+      const wallet = await walletResolver(options.groupIndex);
 
-      if (!(await this.#hasOnChainActivity(account, getSupportedScopes()))) {
+      if (
+        !(await this.#hasOnChainActivity(wallet.address, getSupportedScopes()))
+      ) {
         return [];
       }
+
+      const createdAccounts = await this.#accountService.batchCreate({
+        entropySource: options.entropySource,
+        fromIndex: options.groupIndex,
+        toIndex: options.groupIndex,
+        walletResolver,
+      });
+
+      return createdAccounts.map(asStrictKeyringAccount);
     }
 
     let range;
     if (options.type === AccountCreationType.Bip44DeriveIndexRange) {
       range = options.range;
     } else {
-      // Bip44DeriveIndex | Bip44Discover — a single group index. Ranges are
-      // inclusive, so `from` and `to` are the same.
+      // Bip44DeriveIndex — a single group index. Ranges are inclusive, so
+      // `from` and `to` are the same.
       range = { from: options.groupIndex, to: options.groupIndex };
     }
 
@@ -189,21 +207,10 @@ export class KeyringHandler implements KeyringSnapRpc {
       entropySource: options.entropySource,
       fromIndex: range.from,
       toIndex: range.to,
+      walletResolver: walletResolverPromise,
     });
 
-    return createdAccounts.map((account) => this.#toKeyringAccount(account));
-  }
-
-  #toKeyringAccount(account: StellarKeyringAccount): KeyringAccount {
-    const { id, address, type, options, methods, scopes } = account;
-    return {
-      id,
-      address,
-      type,
-      options,
-      methods,
-      scopes,
-    };
+    return createdAccounts.map(asStrictKeyringAccount);
   }
 
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
@@ -285,18 +292,18 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Checks whether the given account is activated on any of the given scopes.
    *
-   * @param account - The derived account to check.
+   * @param address - The address of the account to check.
    * @param scopes - The scopes to check for on-chain activity.
    * @returns Whether the account is activated on at least one scope.
    */
   async #hasOnChainActivity(
-    account: StellarKeyringAccount,
+    address: string,
     scopes: KnownCaip2ChainId[],
   ): Promise<boolean> {
     const activityOnScopes = await Promise.all(
       scopes.map(async (scope) =>
         this.#onChainAccountService.isAccountActivated({
-          accountAddress: account.address,
+          accountAddress: address,
           scope,
         }),
       ),

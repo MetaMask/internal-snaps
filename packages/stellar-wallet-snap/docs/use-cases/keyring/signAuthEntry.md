@@ -1,6 +1,6 @@
 # Use case: `signAuthEntry`
 
-SEP-43: confirm and sign a Soroban authorization preimage (`HashIdPreimage` / `envelopeTypeSorobanAuthorization`).
+SEP-43: confirm and sign a Soroban authorization preimage (`HashIdPreimage`: v1 `envelopeTypeSorobanAuthorization` or CAP-71 v2 `envelopeTypeSorobanAuthorizationWithAddress`).
 
 |              |                                                                                       |
 | ------------ | ------------------------------------------------------------------------------------- |
@@ -27,7 +27,7 @@ Wire format follows **SEP-43** `signAuthEntry` (via keyring `submitRequest`):
 
 Local validators: [`handlers/keyring/api.ts`](../../../src/handlers/keyring/api.ts) (`SignAuthEntryRequestStruct` / `SignAuthEntryResponseStruct`).
 
-The dapp supplies a base64 `HashIdPreimage`. The Snap decodes it for the confirmation UI (contract, function, args, nested invocations, nonce, expiry ledger), then on approve signs `sha256(preimage)` with ed25519. Network id is already inside the preimage (mainnet-only validation at the struct layer).
+The dapp supplies a base64 `HashIdPreimage`. The Snap decodes it for the confirmation UI (contract, function, args, nested invocations, nonce, expiry ledger, and the CAP-71 bound address when present), then on approve signs `sha256(preimage)` with ed25519. Network id is already inside the preimage (mainnet-only validation at the struct layer). A v2 bound address that is not the signing account is rejected (`-3 InvalidRequest`) before the confirmation dialog.
 
 ## Step-by-step
 

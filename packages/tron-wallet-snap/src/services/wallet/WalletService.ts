@@ -1,12 +1,14 @@
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyring-account';
 import {
   TronMultichainErrors,
   TronMultichainMethod,
@@ -65,7 +67,7 @@ export class WalletService {
     method,
     params,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
     method: TronMultichainMethod;
     params: Json;
@@ -133,7 +135,7 @@ export class WalletService {
     scope,
     params,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
     params: Json;
   }): Promise<{ signature: string }> {
@@ -195,7 +197,7 @@ export class WalletService {
     scope,
     params,
   }: {
-    account: TronKeyringAccount;
+    account: ExtendedKeyringAccount;
     scope: Network;
     params: Json;
   }): Promise<{ signature: string }> {
@@ -290,7 +292,7 @@ export class WalletService {
    * @throws If the request is invalid or no matching account is found.
    */
   async resolveAccountAddress(
-    keyringAccounts: TronKeyringAccount[],
+    keyringAccounts: ExtendedKeyringAccount[],
     scope: Network,
     request: JsonRpcRequest,
   ): Promise<ResolvedAccountAddress> {

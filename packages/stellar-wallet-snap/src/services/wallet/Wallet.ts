@@ -70,11 +70,9 @@ export class Wallet {
     try {
       const messageBuffer = this.#encodeMessage(message);
 
-      const signature = this.#signer
-        .sign(hash(bufferToUint8Array(messageBuffer)))
-        .toString(encode);
+      const signedBytes = this.#signer.sign(hash(messageBuffer));
 
-      return signature;
+      return bufferToUint8Array(signedBytes).toString(encode);
     } catch {
       throw new SignMessageException();
     }
@@ -99,7 +97,7 @@ export class Wallet {
       const messageBuffer = this.#encodeMessage(message);
 
       const verified = this.#signer.verify(
-        hash(bufferToUint8Array(messageBuffer)),
+        hash(messageBuffer),
         bufferToUint8Array(signature, encode),
       );
 
@@ -110,8 +108,9 @@ export class Wallet {
   }
 
   /**
-   * Signs a SEP-43 Soroban auth entry preimage. The dapp passes the
-   * `HashIdPreimage` (envelopeTypeSorobanAuthorization) as base64 XDR — the
+   * Signs a SEP-43 Soroban auth entry preimage. The dapp passes a
+   * `HashIdPreimage` (v1 `envelopeTypeSorobanAuthorization` or CAP-71 v2
+   * `envelopeTypeSorobanAuthorizationWithAddress`) as base64 XDR — the
    * wallet hashes the bytes with SHA-256 and signs the digest. No
    * "Stellar Signed Message" prefix is applied: the network ID is already
    * embedded inside the preimage.
@@ -129,11 +128,9 @@ export class Wallet {
     try {
       const preimageBuffer = bufferToUint8Array(authEntry, 'base64');
 
-      const signature = this.#signer
-        .sign(hash(preimageBuffer))
-        .toString(encode);
+      const signedBytes = this.#signer.sign(hash(preimageBuffer));
 
-      return signature;
+      return bufferToUint8Array(signedBytes).toString(encode);
     } catch {
       throw new SignAuthEntryException();
     }

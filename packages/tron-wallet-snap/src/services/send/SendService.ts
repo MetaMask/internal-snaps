@@ -1,4 +1,4 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
@@ -33,6 +33,8 @@ export class SendService {
 
   readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     accountsService,
     assetsService,
@@ -41,6 +43,7 @@ export class SendService {
     logger,
     snapClient,
     transactionExpirationRefresherService,
+    analyticsService,
   }: {
     accountsService: AccountsService;
     assetsService: AssetsService;
@@ -49,6 +52,7 @@ export class SendService {
     logger: Logger;
     snapClient: SnapClient;
     transactionExpirationRefresherService: TransactionExpirationRefresherService;
+    analyticsService: AnalyticsService;
   }) {
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
@@ -58,6 +62,7 @@ export class SendService {
     this.#snapClient = snapClient;
     this.#transactionExpirationRefresherService =
       transactionExpirationRefresherService;
+    this.#analyticsService = analyticsService;
   }
 
   /**
@@ -420,7 +425,7 @@ export class SendService {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
 
-    await this.#snapClient.trackTransactionSubmitted({
+    await this.#analyticsService.trackTransactionSubmitted({
       origin,
       accountType: account.type,
       chainIdCaip: scope,

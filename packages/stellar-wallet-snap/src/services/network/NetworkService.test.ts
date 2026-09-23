@@ -1,4 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import { InMemoryCache } from '@metamask/snap-networks-utils';
 import {
   Account,
   Contract,
@@ -20,7 +21,6 @@ import { AppConfig } from '../../config';
 import { STELLAR_DECIMAL_PLACES } from '../../constants';
 import { toSmallestUnit } from '../../utils';
 import { logger } from '../../utils/logger';
-import { InMemoryCache } from '../cache/InMemoryCache';
 import { createMockAccountWithBalances } from '../on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
@@ -1205,9 +1205,7 @@ describe('NetworkService', () => {
       sendTransactionSpy.mockResolvedValue({
         status: 'ERROR',
         errorResult: {
-          result: jest.fn().mockReturnValue({
-            switch: () => ({ name: KnownRpcError.TxBadSeq }),
-          }),
+          result: { type: KnownRpcError.TxBadSeq },
         },
       } as never);
       const mockTransaction = createMockTransaction();
@@ -1222,9 +1220,7 @@ describe('NetworkService', () => {
       sendTransactionSpy.mockResolvedValue({
         status: 'ERROR',
         errorResult: {
-          result: jest.fn().mockReturnValue({
-            switch: () => ({ name: KnownRpcError.TxBadAuth }),
-          }),
+          result: { type: KnownRpcError.TxBadAuth },
         },
       } as never);
       const mockTransaction = createMockTransaction();
@@ -1396,7 +1392,7 @@ describe('NetworkService', () => {
       });
 
       expect(simulateTxSpy).toHaveBeenCalledTimes(1);
-      expect(first.getRaw().toXDR()).toBe(second.getRaw().toXDR());
+      expect(first.getRaw().toXdr()).toBe(second.getRaw().toXdr());
       simulateTxSpy.mockRestore();
     });
 

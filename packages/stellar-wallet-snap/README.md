@@ -36,7 +36,6 @@ High-level layout of `packages/snap` (nested implementation folders like `servic
 | `src/services/`                  | Domain logic (no Snap entry-point routing)                                     |
 | `src/services/account/`          | Keyring account persistence and lookups                                        |
 | `src/services/asset-metadata/`   | Asset metadata resolution (symbol, icon, …)                                    |
-| `src/services/cache/`            | In-memory and state-backed caches                                              |
 | `src/services/network/`          | Horizon / network calls, fees, activation checks                               |
 | `src/services/on-chain-account/` | On-chain balances, trustlines, and sync                                        |
 | `src/services/price/`            | Spot / conversion prices                                                       |

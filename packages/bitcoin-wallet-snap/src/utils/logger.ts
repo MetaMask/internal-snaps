@@ -1,7 +1,7 @@
 import { Logger } from '@metamask/snap-networks-utils';
 
-import { Config } from '../config';
+import { configProvider } from '../config';
 
-const logger = new Logger({ level: Config.logLevel });
+const logger = new Logger({ level: configProvider.config.logLevel });
 
 export default logger;

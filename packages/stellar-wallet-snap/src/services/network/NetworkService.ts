@@ -1,4 +1,9 @@
-import type { Logger, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
+import { useCache } from '@metamask/snap-networks-utils';
 import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
@@ -29,17 +34,13 @@ import {
   toCaip19Sep41AssetId,
   rethrowIfInstanceElseThrow,
   batchesAllSettled,
+  getAddress,
 } from '../../utils';
-import type { ICache } from '../cache';
-import { useCache } from '../cache';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
 import { assertInvokeHostFunctionSoleOperation } from '../transaction/utils';
-import {
-  extractAssetDataFromContractData,
-  getAddress,
-} from '../transaction/xdrParser';
+import { extractAssetDataFromContractData } from '../transaction/xdrParser';
 import type { AccountLedgerMeta, AssetDataResponse } from './api';
 import { KnownRpcError } from './api';
 import {
@@ -155,6 +156,7 @@ export class NetworkService {
     refreshCache: boolean = false,
   ): Promise<BigNumber> {
     return useCache(this.getBaseFee.bind(this), this.#cache, {
+      logger: this.#logger,
       functionName: 'NetworkService:getBaseFeeWithCache',
       ttlMilliseconds: AppConfig.cache.ttlMilliseconds.baseFee,
       refreshCache,
@@ -275,6 +277,7 @@ export class NetworkService {
       },
       this.#cache,
       {
+        logger: this.#logger,
         functionName: 'NetworkService:loadOnChainAccount',
         ttlMilliseconds: AppConfig.cache.ttlMilliseconds.loadOnChainAccount,
         refreshCache,
@@ -442,12 +445,16 @@ export class NetworkService {
         ),
       );
 
-      return ledgerEntries.entries.map((ledgerEntry) => {
-        const contractId = ledgerEntry.val.contractData().contract();
-        const contractAddress = getAddress(contractId);
+      const assets: AssetDataResponse[] = [];
+      for (const ledgerEntry of ledgerEntries.entries) {
+        if (ledgerEntry.val.type !== 'contractData') {
+          continue;
+        }
+        const { contractData } = ledgerEntry.val;
+        const contractAddress = getAddress(contractData.contract);
 
         const extractedAssetData = extractAssetDataFromContractData(
-          ledgerEntry.val.contractData(),
+          contractData,
           contractAddress,
         );
 
@@ -455,23 +462,24 @@ export class NetworkService {
           const { assetCode, assetIssuer } = parseClassicAssetCodeIssuer(
             extractedAssetData.name,
           );
-          return {
+          assets.push({
             // Normalize to use CAIP-19 classic asset id - ${CAIP_2_CHAIN_ID}/token:${ASSET_CODE}-${ASSET_ISSUER}
             assetId: toCaip19ClassicAssetId(scope, assetCode, assetIssuer),
             symbol: extractedAssetData.symbol,
             decimals: extractedAssetData.decimals,
             name: assetCode,
-          };
+          });
+        } else {
+          assets.push({
+            // Normalize to use CAIP-19 SEP-41 asset id - ${CAIP_2_CHAIN_ID}/sep41:${CONTRACT_ADDRESS}
+            assetId: toCaip19Sep41AssetId(scope, extractedAssetData.name),
+            name: extractedAssetData.name,
+            symbol: extractedAssetData.symbol,
+            decimals: extractedAssetData.decimals,
+          });
         }
-
-        return {
-          // Normalize to use CAIP-19 SEP-41 asset id - ${CAIP_2_CHAIN_ID}/sep41:${CONTRACT_ADDRESS}
-          assetId: toCaip19Sep41AssetId(scope, extractedAssetData.name),
-          name: extractedAssetData.name,
-          symbol: extractedAssetData.symbol,
-          decimals: extractedAssetData.decimals,
-        };
-      });
+      }
+      return assets;
     } catch (error: unknown) {
       return this.#throwError({
         error,
@@ -632,6 +640,7 @@ export class NetworkService {
     Record<string, Record<KnownCaip19Sep41AssetId, BigNumber | null>>
   > {
     return useCache(this.getSep41AssetBalances.bind(this), this.#cache, {
+      logger: this.#logger,
       functionName: 'NetworkService:getSep41AssetBalancesWithCache',
       ttlMilliseconds: AppConfig.cache.ttlMilliseconds.sep41AssetBalance,
     })(params);
@@ -781,10 +790,11 @@ export class NetworkService {
           transaction,
           scope,
         );
-        return simulatedTransaction.getRaw().toXDR();
+        return simulatedTransaction.getRaw().toXdr();
       },
       this.#cache,
       {
+        logger: this.#logger,
         functionName: 'NetworkService:simulateSep41TransferWithCache',
         ttlMilliseconds: AppConfig.cache.ttlMilliseconds.simulateTransaction,
         refreshCache,
@@ -974,7 +984,7 @@ export class NetworkService {
 
   #getSendRpcErrorCodeSafe(rpcError: rpc.Api.SendTransactionResponse): string {
     try {
-      return rpcError.errorResult?.result().switch().name ?? 'unknown';
+      return rpcError.errorResult?.result.type ?? 'unknown';
     } catch (error: unknown) {
       this.#logger.warn('Failed to parse send error code', { error });
       return 'unknown';

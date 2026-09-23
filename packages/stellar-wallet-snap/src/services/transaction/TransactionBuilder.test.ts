@@ -10,7 +10,6 @@ import { BigNumber } from 'bignumber.js';
 import type { KnownCaip19ClassicAssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { getSlip44AssetId, toSmallestUnit } from '../../utils';
-import { logger } from '../../utils/logger';
 import { baseInclusionFee } from '../network/utils';
 import {
   createMockAccountWithBalances,
@@ -20,6 +19,7 @@ import {
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { getTestWallet } from '../wallet/__mocks__/wallet.fixtures';
 import type { Wallet } from '../wallet/Wallet';
+import { buildMockClassicTransaction } from './__mocks__/transaction.fixtures';
 import {
   InvalidAssetForCreateAccountException,
   TransactionBuilderException,
@@ -28,8 +28,6 @@ import {
 import { Transaction } from './Transaction';
 import { TransactionBuilder } from './TransactionBuilder';
 
-jest.mock('../../utils/logger');
-
 describe('TransactionBuilder', () => {
   let transactionBuilder: TransactionBuilder;
   let testAsset: KnownCaip19ClassicAssetId;
@@ -37,7 +35,7 @@ describe('TransactionBuilder', () => {
   let testOnChainAccount: OnChainAccount;
 
   beforeEach(() => {
-    transactionBuilder = new TransactionBuilder({ logger });
+    transactionBuilder = new TransactionBuilder();
     testAsset = `stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`;
     testWalletWithSigner = getTestWallet();
     const acc = createMockAccountWithBalances(
@@ -132,6 +130,60 @@ describe('TransactionBuilder', () => {
       expect((rebuiltRaw as StellarTransaction).sequence).toBe('101');
     });
 
+    it('keeps the original total fee when rebuilding a multi-operation transaction', () => {
+      const destinationA = getTestWallet().address;
+      const destinationB = getTestWallet().address;
+      const transaction = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              destination: destinationA,
+              asset: 'native',
+              amount: '1',
+            },
+          },
+          {
+            type: 'payment',
+            params: {
+              destination: destinationB,
+              asset: 'native',
+              amount: '2',
+            },
+          },
+        ],
+        {
+          networkPassphrase: Networks.PUBLIC,
+          source: {
+            accountId: testOnChainAccount.accountId,
+            sequence: testOnChainAccount.sequenceNumber,
+          },
+          baseFeePerOperation: '100',
+        },
+      );
+
+      expect(transaction.operationCount).toBe(2);
+      expect(transaction.totalFee).toStrictEqual(new BigNumber(200));
+
+      const seqAcc = createMockAccountWithBalances(
+        testWalletWithSigner.address,
+        '100',
+        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+      );
+      const rebuiltTransaction = transactionBuilder.rebuildTxnWithNewSeq({
+        transaction,
+        sequenceNumber: new OnChainAccount(seqAcc, KnownCaip2ChainId.Mainnet)
+          .sequenceNumber,
+      });
+
+      expect(rebuiltTransaction.operationCount).toBe(2);
+      expect(rebuiltTransaction.totalFee).toStrictEqual(transaction.totalFee);
+      expect(rebuiltTransaction.totalFee).toStrictEqual(new BigNumber(200));
+      const rebuiltRaw = rebuiltTransaction.getRaw();
+      expect(rebuiltRaw).toBeInstanceOf(StellarTransaction);
+      expect((rebuiltRaw as StellarTransaction).sequence).toBe('101');
+    });
+
     it('throws a TransactionBuilderException if rebuilding the transaction fails', () => {
       const transaction = transactionBuilder.changeTrust({
         baseFee: '100',
@@ -212,6 +264,66 @@ describe('TransactionBuilder', () => {
       expect(transaction.network).toStrictEqual(Networks.PUBLIC);
       expect(transaction.getRaw()).toBeInstanceOf(StellarTransaction);
       expect(transaction.hasCreateAccount).toBe(false);
+      expect(transaction.getMemo()).toBeNull();
+    });
+
+    it('attaches a text memo when provided', () => {
+      const testDestination = getTestWallet();
+      const transaction = transactionBuilder.transfer({
+        onChainAccount: testOnChainAccount,
+        scope: KnownCaip2ChainId.Mainnet,
+        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+        amount: new BigNumber(100),
+        destination: {
+          address: testDestination.address,
+          isActivated: true,
+        },
+        baseFee: new BigNumber(100),
+        memo: 'deposit-ref',
+      });
+
+      expect(transaction.getMemo()).toBe('deposit-ref');
+      expect((transaction.getRaw() as StellarTransaction).memo.type).toBe(
+        'text',
+      );
+    });
+
+    it('infers memo id for numeric exchange-style memos', () => {
+      const testDestination = getTestWallet();
+      const transaction = transactionBuilder.transfer({
+        onChainAccount: testOnChainAccount,
+        scope: KnownCaip2ChainId.Mainnet,
+        assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+        amount: new BigNumber(100),
+        destination: {
+          address: testDestination.address,
+          isActivated: true,
+        },
+        baseFee: new BigNumber(100),
+        memo: '123456789',
+      });
+
+      expect(transaction.getMemo()).toBe('123456789');
+      expect((transaction.getRaw() as StellarTransaction).memo.type).toBe('id');
+    });
+
+    it('throws TransactionBuilderException when the memo is invalid', () => {
+      const testDestination = getTestWallet();
+
+      expect(() =>
+        transactionBuilder.transfer({
+          onChainAccount: testOnChainAccount,
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          amount: new BigNumber(100),
+          destination: {
+            address: testDestination.address,
+            isActivated: true,
+          },
+          baseFee: new BigNumber(100),
+          memo: 'é'.repeat(15),
+        }),
+      ).toThrow(TransactionBuilderException);
     });
 
     it('builds a create account transaction', () => {
