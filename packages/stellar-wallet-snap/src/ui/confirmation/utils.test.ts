@@ -9,6 +9,7 @@ import { FetchStatus } from './api';
 import {
   ConfirmationBanner,
   getParam,
+  getInvocationDetailParams,
   isFetchInProgress,
   formatOrigin,
   isLocalTransactionValidationFailed,
@@ -323,6 +324,27 @@ describe('confirmation utils', () => {
 
     it('returns null for an empty params list', () => {
       expect(getParam([], 'functionName')).toBeNull();
+    });
+  });
+
+  describe('getInvocationDetailParams', () => {
+    it('drops header keys and keeps the rest in order', () => {
+      expect(
+        getInvocationDetailParams([
+          {
+            key: 'authorizedAddress',
+            value: 'GABC',
+            type: FieldType.copyable,
+          },
+          { key: 'contractId', value: 'CABC', type: FieldType.copyable },
+          {
+            key: 'functionName',
+            value: 'createContract',
+            type: FieldType.text,
+          },
+          { key: 'salt', value: 'aa', type: FieldType.copyable },
+        ]),
+      ).toStrictEqual([{ key: 'salt', value: 'aa', type: FieldType.copyable }]);
     });
   });
 });

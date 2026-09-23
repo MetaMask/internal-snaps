@@ -8,19 +8,23 @@ import {
   Divider,
 } from '@metamask/snaps-sdk/jsx';
 
+import type { KnownCaip2ChainId } from '../../../api';
 import type { ReadableAuthorizationJson } from '../../../services/transaction/OperationMapper';
 import { i18n } from '../../../utils';
-import { getParam } from '../utils';
+import { getInvocationDetailParams, getParam } from '../utils';
 import { InvocationSummary } from './InvocationSummary';
+import { ReadableParamsList } from './ReadableParamsList';
 
 export type AuthorizationsProps = {
   locale: string;
+  scope: KnownCaip2ChainId;
   authorizations: ReadableAuthorizationJson[];
 };
 
 export const Authorizations = ({
   authorizations,
   locale,
+  scope,
 }: AuthorizationsProps): ComponentOrElement => {
   const translate = i18n(locale);
 
@@ -32,6 +36,16 @@ export const Authorizations = ({
           authJson.params,
           'authorizedAddress',
         );
+        const contractAddress = getParam<string | null>(
+          authJson.params,
+          'contractId',
+        );
+        const functionName = getParam<string | null>(
+          authJson.params,
+          'functionName',
+        );
+        const detailParams = getInvocationDetailParams(authJson.params);
+
         return (
           <Box
             key={`auth-${index}`}
@@ -46,12 +60,20 @@ export const Authorizations = ({
                 <Copyable value={authorizedAddress} />
               </Box>
             )}
-            <InvocationSummary
-              locale={locale}
-              contractAddress={getParam(authJson.params, 'contractId')}
-              functionName={getParam(authJson.params, 'functionName')}
-              args={getParam(authJson.params, 'arguments')}
-            />
+            {contractAddress === null && functionName === null ? null : (
+              <InvocationSummary
+                locale={locale}
+                contractAddress={contractAddress}
+                functionName={functionName}
+              />
+            )}
+            {detailParams.length === 0 ? null : (
+              <ReadableParamsList
+                params={detailParams}
+                locale={locale}
+                scope={scope}
+              />
+            )}
             <Box>{null}</Box>
             <Divider />
             <Box>{null}</Box>
