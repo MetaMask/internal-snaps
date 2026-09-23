@@ -117,8 +117,14 @@ export class State<
    * Reads and deserializes the value at `key`, or the whole state blob when `key` is omitted.
    *
    * @param key - The JSON-path key OR array of keys to read. Omit to read the whole blob.
-   * @returns - The deserialized value, or `undefined` when the key is absent. If an array is passed, the values of the keys will be returned in an object.
+   * @returns - The deserialized value, or `undefined` when a single key is absent. If an array is passed, the values of the keys will be returned in an object.
    */
+  async #read<TValue extends Serializable>(key: string[]): Promise<TValue>;
+
+  async #read<TValue extends Serializable>(
+    key?: string,
+  ): Promise<TValue | undefined>;
+
   async #read<TValue extends Serializable>(
     key?: string | string[],
   ): Promise<TValue | undefined> {
@@ -173,8 +179,9 @@ export class State<
   }
 
   async getKeys(keys: string[]): Promise<Record<string, Serializable>> {
-    const values = await this.#read<Record<string, Serializable>>(keys);
-    return values ?? {};
+    return this.#lock.wrapRegularStateOperation(async () =>
+      this.#read<Record<string, Serializable>>(keys),
+    );
   }
 
   async setKey(key: string, value: Serializable): Promise<void> {

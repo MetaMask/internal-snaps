@@ -229,11 +229,8 @@ describe('State', () => {
   describe('getKeys', () => {
     it('gets the values of the passed keys', async () => {
       snap.request.mockResolvedValue({
-        users: [
-          { name: 'John', age: 30 },
-          { name: 'Jane', age: 20 },
-          { name: 'Jim', age: 10 },
-        ],
+        'users.0.name': 'John',
+        'users.2.name': 'Jim',
       });
 
       expect(
