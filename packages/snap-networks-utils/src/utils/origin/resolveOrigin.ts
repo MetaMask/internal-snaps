@@ -1,16 +1,6 @@
-import { DEFAULT_METAMASK_ORIGIN } from '../originPermissions/createOriginPermissions';
+import type { OriginMetadata } from '@metamask/snaps-sdk';
 
-/**
- * Metadata that accompanies a request whose origin the client cannot verify,
- * e.g. a request relayed over WalletConnect or the SDK.
- *
- * Mirrors `OriginMetadata` from `@metamask/snaps-sdk` / `@metamask/keyring-api`,
- * redeclared here so this package does not have to pick one of the two.
- */
-export type SelfReportedOriginMetadata = {
-  transport: string;
-  selfReportedOrigin: string;
-};
+import { DEFAULT_METAMASK_ORIGIN } from '../originPermissions/createOriginPermissions';
 
 export type ResolvedOrigin = {
   /**
@@ -59,24 +49,24 @@ const httpsHostname = (value: string): string | null => {
  */
 export function resolveOrigin(
   origin: string | undefined,
-  originMetadata?: SelfReportedOriginMetadata | null,
+  originMetadata?: OriginMetadata | null,
 ): ResolvedOrigin {
-  const verifiedHostname = origin ? httpsHostname(origin) : null;
-
-  if (verifiedHostname && origin) {
-    return {
-      displayOrigin: verifiedHostname,
-      isSelfReported: false,
-      verifiedOrigin: origin,
-    };
-  }
-
-  if (origin?.toLowerCase() === DEFAULT_METAMASK_ORIGIN) {
-    return {
-      displayOrigin: 'MetaMask',
-      isSelfReported: false,
-      verifiedOrigin: null,
-    };
+  if (origin) {
+    const verifiedHostname = httpsHostname(origin);
+    if (verifiedHostname) {
+      return {
+        displayOrigin: verifiedHostname,
+        isSelfReported: false,
+        verifiedOrigin: origin,
+      };
+    }
+    if (origin.toLowerCase() === DEFAULT_METAMASK_ORIGIN) {
+      return {
+        displayOrigin: 'MetaMask',
+        isSelfReported: false,
+        verifiedOrigin: null,
+      };
+    }
   }
 
   const selfReportedHostname = originMetadata?.selfReportedOrigin
