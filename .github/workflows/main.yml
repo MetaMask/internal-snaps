@@ -20,7 +20,7 @@ jobs:
       - name: Check pull request merge queue status
         id: check-skip-merge-queue
         if: github.event_name == 'merge_group'
-        uses: MetaMask/github-tools/.github/actions/check-skip-merge-queue@v1
+        uses: MetaMask/github-tools/.github/actions/check-skip-merge-queue@7e0d74bc7b79ce9601e52f58d5e4d36c19591df9 # v1.19.0
 
   check-workflows:
     name: Check workflows
@@ -29,7 +29,7 @@ jobs:
     if: github.event_name != 'merge_group' || needs.check-skip-merge-queue.outputs.skip-merge-queue != 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Download actionlint
         id: download-actionlint
         run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12
@@ -41,7 +41,7 @@ jobs:
   analyse-code:
     name: Analyse code
     needs: check-workflows
-    uses: MetaMask/action-security-code-scanner/.github/workflows/security-scan.yml@v2
+    uses: MetaMask/action-security-code-scanner/.github/workflows/security-scan.yml@becb242930b3cc271c26da0280050db9c157e291 # v2.1.1
     with:
       scanner-ref: v2
       paths-ignored: |
@@ -134,7 +134,7 @@ jobs:
       IS_RELEASE_PR: ${{ steps.check-release.outputs.IS_RELEASE_PR }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check release
         id: check-release
         ### This action run on pull request and merge queue.
@@ -154,10 +154,10 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Restore build artifacts
         if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: package-dist-${{ github.sha }}
           path: packages
@@ -176,7 +176,7 @@ jobs:
       IS_RELEASE: ${{ steps.is-release.outputs.IS_RELEASE }}
     steps:
       - id: is-release
-        uses: MetaMask/action-is-release@v2
+        uses: MetaMask/action-is-release@3cd51b98fa98d1347d06f5961299b0172ee31ae8 # v2.3.0
         with:
           commit-starts-with: ${{ vars.RELEASE_COMMIT_PREFIX }}
 
