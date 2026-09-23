@@ -26,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Show distinct confirmation titles for each revoke-sponsorship operation type (account, claimable balance, data, liquidity pool, offer, signer, trustline)
 - Bump `@metamask/snaps-sdk` from `^12.0.1` to `^12.1.0` ([#356](https://github.com/MetaMask/internal-snaps/pull/356))
 
-
 ### Fixed
 
 - Emit `Transaction Submitted` from the unified send and change-trust flows so their transactions no longer reach `Transaction Finalized` without a matching submit event ([#345](https://github.com/MetaMask/internal-snaps/pull/345))
