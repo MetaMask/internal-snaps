@@ -1,6 +1,5 @@
-import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
 import { resolveOrigin } from '@metamask/snap-networks-utils';
-import type { DialogResult } from '@metamask/snaps-sdk';
+import type { DialogResult, OriginMetadata } from '@metamask/snaps-sdk';
 
 import type { KnownCaip2ChainId } from '../../api';
 import { METAMASK_ORIGIN } from '../../constants';
@@ -60,7 +59,7 @@ type RenderConfirmationDialogCommon<Props extends ConfirmationViewProps> = {
   renderContext: Props;
   origin?: string;
   /** Metadata for origins the client could not verify (WalletConnect, SDK). */
-  originMetadata?: SelfReportedOriginMetadata | null;
+  originMetadata?: OriginMetadata | null;
   renderOptions?: ConfirmationRenderOptions;
   securityScanRequest?: Omit<SecurityScanRequest, 'origin' | 'scope'>;
   transactionValidationRequest?: TransactionValidationRequest;
