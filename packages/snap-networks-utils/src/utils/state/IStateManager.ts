@@ -22,7 +22,7 @@ export type IStateManager<TStateValue extends Record<string, Serializable>> = {
    * Gets the values of the passed keys in the state object.
    * The keys are the JSON paths to the values to get.
    *
-   * @returns The values of the keys, or undefined if the keys do not exist.
+   * @returns An object with the keys as the keys and the values as the values, or null if the keys do not exist.
    */
   getKeys(keys: string[]): Promise<Record<string, Serializable>>;
   /**

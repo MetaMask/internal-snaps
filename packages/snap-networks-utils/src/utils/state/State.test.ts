@@ -233,9 +233,17 @@ describe('State', () => {
         'users.2.name': 'Jim',
       });
 
-      expect(
-        await state.getKeys(['users.0.name', 'users.2.name']),
-      ).toStrictEqual({
+      const result = await state.getKeys(['users.0.name', 'users.2.name']);
+
+      expect(snap.request).toHaveBeenCalledWith({
+        method: 'snap_getState',
+        params: {
+          key: ['users.0.name', 'users.2.name'],
+          encrypted: false,
+        },
+      });
+
+      expect(result).toStrictEqual({
         'users.0.name': 'John',
         'users.2.name': 'Jim',
       });
