@@ -176,7 +176,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
             scope,
             transaction: rebuiltTransactionXdr,
           },
-          // Clear a prior validation error (e.g. RequiresMemo after memo added).
+          // Mark re-validation complete (Save sets Fetching before restart).
           transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
