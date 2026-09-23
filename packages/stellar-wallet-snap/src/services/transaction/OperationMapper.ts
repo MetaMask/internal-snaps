@@ -4,15 +4,15 @@ import { LiquidityPoolAsset, LiquidityPoolId, xdr } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { SorobanCredentialsType } from '../../api';
-import { bufferToUint8Array } from '../../utils';
-import { StellarOperationType } from './api';
-import type { Transaction } from './Transaction';
 import {
+  bufferToUint8Array,
   getAddress,
   getFunctionName,
-  parseScValToReadableJson,
-} from './xdrParser';
+  getSorobanAuthAddressFromAuthEntrySafe,
+} from '../../utils';
+import { StellarOperationType } from './api';
+import type { Transaction } from './Transaction';
+import { parseScValToReadableJson } from './xdrParser';
 
 /**
  * Semantic hint for how a confirmation row should be rendered.
@@ -179,7 +179,7 @@ export class AuthorizationMapper extends AbstractOperationMapper {
         authorizations.push(
           ...this.mapInvocation(
             entry.rootInvocation,
-            this.#getAuthAddress(entry),
+            getSorobanAuthAddressFromAuthEntrySafe(entry),
           ),
         );
       } catch {
@@ -281,17 +281,6 @@ export class AuthorizationMapper extends AbstractOperationMapper {
         rows.push(this.field('functionName', 'authorization', FieldType.text));
     }
     return rows;
-  }
-
-  #getAuthAddress(entry: xdr.SorobanAuthorizationEntry): string | null {
-    const { credentials } = entry;
-    if (credentials.type === SorobanCredentialsType.Address) {
-      return getAddress(credentials.address.address);
-    }
-    if (credentials.type === SorobanCredentialsType.AddressV2) {
-      return getAddress(credentials.addressV2.address);
-    }
-    return null;
   }
 }
 

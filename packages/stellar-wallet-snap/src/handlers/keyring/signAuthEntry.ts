@@ -2,17 +2,17 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { xdr } from '@stellar/stellar-sdk';
 
-import {
-  isSorobanAuthPreimageV1,
-  isSorobanAuthPreimageV2,
-} from '../../api/xdr';
 import type { StellarKeyringAccount } from '../../services/account';
 import type { ReadableAuthorizationJson } from '../../services/transaction';
 import { AuthorizationMapper } from '../../services/transaction';
-import { getAddress } from '../../services/transaction/xdrParser';
 import type { Wallet } from '../../services/wallet';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import {
+  isSorobanAuthPreimageV1,
+  isSorobanAuthPreimageV2,
+  getAddress,
+} from '../../utils/xdr';
 import type { AccountResolver } from '../accountResolver';
 import type { SignAuthEntryRequest, SignAuthEntryResponse } from './api';
 import { SignAuthEntryRequestStruct, SignAuthEntryResponseStruct } from './api';

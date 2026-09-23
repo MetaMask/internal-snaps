@@ -10,7 +10,7 @@ import {
 
 import { StellarOperationType } from '../services/transaction/api';
 import { bufferToUint8Array } from '../utils/buffer';
-import { SorobanAuthPreimageType } from './xdrTypes';
+import { isSorobanAuthPreimageV1, isSorobanAuthPreimageV2 } from '../utils/xdr';
 
 /**
  * Validation struct for XDR: must be a valid base64 encoded XDR string.
@@ -146,40 +146,6 @@ export const SwapTransactionXdrStruct = refine(
 // against when verifying a Soroban authorization signature, so the embedded
 // `networkId` of any preimage we agree to sign must equal it.
 const MAINNET_NETWORK_ID = hash(bufferToUint8Array(Networks.PUBLIC, 'utf8'));
-
-export type SorobanAuthPreimageV1 = Extract<
-  xdr.HashIdPreimage,
-  { type: typeof SorobanAuthPreimageType.V1 }
->;
-
-export type SorobanAuthPreimageV2 = Extract<
-  xdr.HashIdPreimage,
-  { type: typeof SorobanAuthPreimageType.V2 }
->;
-
-/**
- * Narrows a `HashIdPreimage` to the v1 Soroban authorization arm.
- *
- * @param preimage - Decoded `HashIdPreimage`.
- * @returns True when `type` is `envelopeTypeSorobanAuthorization`.
- */
-export function isSorobanAuthPreimageV1(
-  preimage: xdr.HashIdPreimage,
-): preimage is SorobanAuthPreimageV1 {
-  return preimage.type === SorobanAuthPreimageType.V1;
-}
-
-/**
- * Narrows a `HashIdPreimage` to the CAP-71 v2 Soroban authorization arm.
- *
- * @param preimage - Decoded `HashIdPreimage`.
- * @returns True when `type` is `envelopeTypeSorobanAuthorizationWithAddress`.
- */
-export function isSorobanAuthPreimageV2(
-  preimage: xdr.HashIdPreimage,
-): preimage is SorobanAuthPreimageV2 {
-  return preimage.type === SorobanAuthPreimageType.V2;
-}
 
 /**
  * Validation struct for a SEP-43 `signAuthEntry` payload: a base64-encoded
