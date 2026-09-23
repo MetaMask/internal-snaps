@@ -10,6 +10,7 @@ import {
 
 import { StellarOperationType } from '../services/transaction/api';
 import { bufferToUint8Array } from '../utils/buffer';
+import { isSorobanAuthPreimageV1, isSorobanAuthPreimageV2 } from '../utils/xdr';
 
 /**
  * Validation struct for XDR: must be a valid base64 encoded XDR string.
@@ -148,9 +149,11 @@ const MAINNET_NETWORK_ID = hash(bufferToUint8Array(Networks.PUBLIC, 'utf8'));
 
 /**
  * Validation struct for a SEP-43 `signAuthEntry` payload: a base64-encoded
- * `HashIdPreimage` whose discriminant is `envelopeTypeSorobanAuthorization`
- * AND whose embedded `networkId` matches Stellar mainnet. Anything else is
- * rejected at the struct level so the handler can return -3 InvalidRequest.
+ * `HashIdPreimage` whose discriminant is
+ * `envelopeTypeSorobanAuthorization` (v1) or
+ * `envelopeTypeSorobanAuthorizationWithAddress` (CAP-71 v2), AND whose
+ * embedded `networkId` matches Stellar mainnet. Anything else is rejected at
+ * the struct level so the handler can return -3 InvalidRequest.
  *
  * The `networkId` check matters because — unlike `signTransaction`, where the
  * network passphrase is supplied by the signer — `signAuthEntry` SHA-256s the
@@ -165,10 +168,14 @@ export const HashIdPreimageXdrStruct = refine(
   (value: string) => {
     try {
       const preimage = xdr.HashIdPreimage.fromXdr(value, 'base64');
-      if (preimage.type !== 'envelopeTypeSorobanAuthorization') {
+      let embeddedNetworkId;
+      if (isSorobanAuthPreimageV1(preimage)) {
+        embeddedNetworkId = preimage.sorobanAuthorization.networkId;
+      } else if (isSorobanAuthPreimageV2(preimage)) {
+        embeddedNetworkId = preimage.sorobanAuthorizationWithAddress.networkId;
+      } else {
         return 'HashIdPreimage is not a Soroban authorization preimage';
       }
-      const embeddedNetworkId = preimage.sorobanAuthorization.networkId;
       if (!new xdr.Hash(MAINNET_NETWORK_ID).equals(embeddedNetworkId)) {
         return 'HashIdPreimage networkId is not Stellar mainnet';
       }

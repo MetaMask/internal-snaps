@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Only the unified send and change-trust flows emitted decision events before; dApp-initiated transaction signatures were invisible.
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
+- Accept CAP-71 v2 Soroban authorization preimages (`envelopeTypeSorobanAuthorizationWithAddress`) in `signAuthEntry` ([#307](https://github.com/MetaMask/internal-snaps/pull/307))
+  - Reject when the v2 bound address is not the signing account
+  - Show `ADDRESS_V2` credential addresses on invoke-host-function confirmation
 
 ### Changed
 

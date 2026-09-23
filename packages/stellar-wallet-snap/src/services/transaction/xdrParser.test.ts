@@ -8,7 +8,6 @@ import {
   toCaip19ClassicAssetId,
   toCaip19Sep41AssetId,
 } from '../../utils';
-import { bufferToUint8Array } from '../../utils/buffer';
 import { caip2ChainIdToNetwork } from '../network/utils';
 import {
   swapTransactionPathReceiveResponse,
@@ -26,8 +25,6 @@ import {
   parseSep41TransferInvoke,
   parseSuccessfulTransactionResult,
   parseScValToReadableJson,
-  getAddress,
-  getFunctionName,
   TransactionResultType,
   parseTransferContractEventSafe,
   xdrAssetToCaip19,
@@ -263,33 +260,6 @@ describe('transaction-xdr-decoder', () => {
       );
       expect(() => parseSep41TransferInvoke(operation, scope)).toThrow(
         'Invalid transfer function arguments',
-      );
-    });
-  });
-
-  describe('getAddress', () => {
-    it('converts contract ScAddress to a C-strkey', () => {
-      const contractId =
-        'CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN';
-      const wrapped = buildMockInvokeHostFunctionTransaction('transfer', [], {
-        contractId,
-      });
-      const op = wrapped
-        .transactionOperations[0] as Operation.InvokeHostFunction;
-      const scAddress = getInvokeContractArgs(op).contractAddress;
-
-      expect(getAddress(scAddress)).toBe(contractId);
-    });
-  });
-
-  describe('getFunctionName', () => {
-    it('returns string function names unchanged', () => {
-      expect(getFunctionName('approve')).toBe('approve');
-    });
-
-    it('decodes byte function names as UTF-8', () => {
-      expect(getFunctionName(bufferToUint8Array('transfer', 'utf8'))).toBe(
-        'transfer',
       );
     });
   });

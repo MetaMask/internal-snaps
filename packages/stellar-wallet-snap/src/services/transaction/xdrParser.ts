@@ -5,7 +5,6 @@ import {
   StrKey,
   xdr,
   scValToNative,
-  Address,
 } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
@@ -18,6 +17,8 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import {
+  getAddress,
+  getFunctionName,
   getSlip44AssetId,
   rethrowIfInstanceElseThrow,
   stellarAssetToCaip19,
@@ -214,37 +215,6 @@ export function parseSuccessfulTransactionResult(
       { cause: error },
     );
   }
-}
-
-/**
- * Converts an XDR {@link xdr.ScAddress} to a Stellar strkey string (`G…` / `C…`).
- *
- * @param scAddress - Contract or account address from invoke / auth XDR.
- * @returns Strkey-encoded address.
- */
-export function getAddress(scAddress: xdr.ScAddress): string {
-  return Address.fromScAddress(scAddress).toString();
-}
-
-/**
- * Normalizes a Soroban contract function name (`SCSymbol`) to a UTF-8 string.
- *
- * The SDK types `functionName` as `xdr.XdrString` (UTF-8). Older call sites
- * may still pass a plain string or raw bytes.
- *
- * @param fnName - Value from `invokeContract.functionName` / auth `contractFn`.
- * @returns UTF-8 function name.
- */
-export function getFunctionName(
-  fnName: string | Uint8Array | { toString: () => string },
-): string {
-  if (typeof fnName === 'string') {
-    return fnName;
-  }
-  if (fnName instanceof Uint8Array) {
-    return bufferToUint8Array(fnName).toString('utf8');
-  }
-  return fnName.toString();
 }
 
 /**

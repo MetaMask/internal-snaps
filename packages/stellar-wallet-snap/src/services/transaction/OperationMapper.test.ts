@@ -1,5 +1,6 @@
 import {
   Account,
+  Address,
   Asset,
   AuthClawbackEnabledFlag,
   AuthRequiredFlag,
@@ -903,6 +904,53 @@ describe('OperationMapper', () => {
         type: 'json',
       },
     ]);
+  });
+
+  it('maps invokeHostFunction ADDRESS_V2 auth authorizedAddress', () => {
+    const authorizedAddress = Keypair.random().publicKey();
+    const contractId =
+      'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT';
+    const authEntry = new xdr.SorobanAuthorizationEntry({
+      credentials: xdr.SorobanCredentials.sorobanCredentialsAddressV2(
+        new xdr.SorobanAddressCredentials({
+          address: Address.fromString(authorizedAddress).toScAddress(),
+          nonce: 1n,
+          signatureExpirationLedger: 1_000_000,
+          signature: xdr.ScVal.scvVoid(),
+        }),
+      ),
+      rootInvocation: new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: Address.fromString(contractId).toScAddress(),
+              functionName: 'transfer',
+              args: [],
+            }),
+          ),
+        subInvocations: [],
+      }),
+    });
+    const wrapped = buildRawOpTransaction(
+      Operation.invokeContractFunction({
+        contract: contractId,
+        function: 'swap',
+        args: [],
+        auth: [authEntry],
+      }),
+    );
+    const readable = mapper.mapTransaction(wrapped);
+
+    expect(readable.authorizations).toHaveLength(1);
+    expect(readable.authorizations[0]?.params).toStrictEqual(
+      expect.arrayContaining([
+        {
+          key: 'authorizedAddress',
+          value: authorizedAddress,
+          type: 'copyable',
+        },
+      ]),
+    );
   });
 
   it('maps extendFootprintTtl operation', () => {
