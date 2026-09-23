@@ -15,7 +15,11 @@ describe('InMemoryState', () => {
     });
 
     expect(await state.get()).toStrictEqual({
-      users: [{ name: 'John', age: 30 }],
+      users: [
+        { name: 'John', age: 30 },
+        { name: 'Jane', age: 20 },
+        { name: 'Jim', age: 10 },
+      ],
     });
     expect(await state.getKey('users.0.name')).toBe('John');
 
