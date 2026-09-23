@@ -1,4 +1,4 @@
-import type { Operation } from '@stellar/stellar-sdk';
+import type { Operation, OperationRecord } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import type {
@@ -7,6 +7,7 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isClassicAssetId, isSep41Id } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { StellarOperationType } from './api';
 import {
@@ -71,6 +72,12 @@ export type TransactionSimulatorOptions = {
    * Extra accounts merged into simulation (e.g. payment destinations). Ignored when simulation path does not apply.
    */
   preloadedAccounts?: OnChainAccount[];
+  /**
+   * Validation exception constructors to suppress during simulation
+   * (e.g. `[RequiresMemoException]` for RequiresMemo drafts).
+   * Uses the same `AnyErrorConstructor` list shape as `rethrowIfInstanceElseThrow`.
+   */
+  skipExceptions?: readonly AnyErrorConstructor[];
 };
 
 export class TransactionSimulator {
@@ -116,6 +123,7 @@ export class TransactionSimulator {
       operations: ops,
       transaction,
       initialState: this.#buildInitialState(account, options),
+      skipExceptions: options?.skipExceptions,
     });
   }
 
@@ -123,8 +131,9 @@ export class TransactionSimulator {
     operations: SupportedOPType[];
     transaction: Transaction;
     initialState: SimulationState;
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): SimulationState[] {
-    const { operations, initialState, transaction } = params;
+    const { operations, initialState, transaction, skipExceptions } = params;
 
     const txSource = transaction.sourceAccount;
     const feeSource = transaction.feeSourceAccount;
@@ -163,6 +172,7 @@ export class TransactionSimulator {
           scope,
           operations,
           transaction,
+          skipExceptions,
         });
         this.#applyOP({ op, state, txSource, scope, opIndex });
         stack.push(state);
@@ -173,7 +183,7 @@ export class TransactionSimulator {
   }
 
   #preflightValidation(
-    ops: Operation[],
+    ops: OperationRecord[],
     account: OnChainAccount,
     transaction: Transaction,
     options?: TransactionSimulatorOptions,
@@ -262,7 +272,7 @@ export class TransactionSimulator {
   }
 
   #assertSupportedOP(
-    op: Operation,
+    op: OperationRecord,
     supportedOPTypeSet: Set<string>,
   ): asserts op is SupportedOPType {
     const operationType = this.#supportedOperationType(op);
@@ -271,7 +281,7 @@ export class TransactionSimulator {
     }
   }
 
-  #assertExpectedOP(op: Operation, types: Set<string>): void {
+  #assertExpectedOP(op: OperationRecord, types: Set<string>): void {
     const operationType = this.#supportedOperationType(op);
     if (operationType === null) {
       throw new UnsupportedOperationTypeException(op.type);
@@ -284,8 +294,8 @@ export class TransactionSimulator {
   }
 
   #assertOPLength(
-    ops: Operation[],
-  ): asserts ops is [Operation, ...Operation[]] {
+    ops: OperationRecord[],
+  ): asserts ops is [OperationRecord, ...OperationRecord[]] {
     if (ops.length === 0) {
       throw new TransactionValidationException(
         `Transaction must have at least one operation`,
@@ -324,11 +334,20 @@ export class TransactionSimulator {
     state: SimulationState;
     txSource: string;
     scope: KnownCaip2ChainId;
-    operations: readonly Operation[];
+    operations: readonly OperationRecord[];
     transaction: Transaction;
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): void {
-    const { op, opIndex, state, txSource, scope, operations, transaction } =
-      params;
+    const {
+      op,
+      opIndex,
+      state,
+      txSource,
+      scope,
+      operations,
+      transaction,
+      skipExceptions,
+    } = params;
     const operationType = this.#getSupportedOperationType(op);
 
     this.#operationSimulator[operationType].validate(
@@ -338,6 +357,7 @@ export class TransactionSimulator {
         scope,
         opIndex,
         transaction,
+        skipExceptions,
       },
       op,
       operations,
@@ -412,7 +432,7 @@ export class TransactionSimulator {
     return operationType;
   }
 
-  #supportedOperationType(op: Operation): SupportedOperations | null {
+  #supportedOperationType(op: OperationRecord): SupportedOperations | null {
     if (op.type === SupportedOperations.Payment) {
       return SupportedOperations.Payment;
     }

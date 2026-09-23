@@ -1,10 +1,11 @@
-import type { Operation } from '@stellar/stellar-sdk';
+import type { OperationRecord } from '@stellar/stellar-sdk';
 
 import type {
   KnownCaip19ClassicAssetId,
   KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../../api';
+import type { AnyErrorConstructor } from '../../../utils';
 import type { Transaction } from '../Transaction';
 
 /**
@@ -60,6 +61,12 @@ export type ApplyContext = {
 /** Extends {@link ApplyContext} with the envelope (e.g. memo checks on payment validation). */
 export type ValidateContext = ApplyContext & {
   transaction: Transaction;
+  /**
+   * Validation exception constructors to suppress during simulation
+   * (e.g. `[RequiresMemoException]` for RequiresMemo drafts).
+   * Uses the same `AnyErrorConstructor` list shape as `rethrowIfInstanceElseThrow`.
+   */
+  skipExceptions?: readonly AnyErrorConstructor[];
 };
 
 /**
@@ -68,8 +75,8 @@ export type ValidateContext = ApplyContext & {
 export type OperationSimulator = {
   validate(
     ctx: ValidateContext,
-    op: Operation,
-    allOperations?: readonly Operation[],
+    op: OperationRecord,
+    allOperations?: readonly OperationRecord[],
   ): void;
-  apply(ctx: ApplyContext, op: Operation): void;
+  apply(ctx: ApplyContext, op: OperationRecord): void;
 };

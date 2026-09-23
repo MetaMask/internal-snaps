@@ -49,7 +49,7 @@ describe('ConfirmationTransactionRefresher', () => {
   const transaction = buildMockClassicTransaction(paymentOperations, {
     networkPassphrase: Networks.TESTNET,
   });
-  const transactionXdr = transaction.getRaw().toXDR();
+  const transactionXdr = transaction.getRaw().toXdr();
 
   // The envelope previously held in the security-scan request. Each refresh
   // cycle rebuilds the transaction and swaps this for the freshly rebuilt one.
@@ -58,7 +58,7 @@ describe('ConfirmationTransactionRefresher', () => {
     timeout: 600,
   })
     .getRaw()
-    .toXDR();
+    .toXdr();
 
   const sendRequest = {
     jsonrpc: '2.0' as const,
@@ -179,6 +179,25 @@ describe('ConfirmationTransactionRefresher', () => {
     });
   });
 
+  it('passes context.memo into createValidatedSendTransaction on ConfirmSend rebuild', async () => {
+    const { refresher, transactionService } = setup();
+
+    await refresher.refresh(
+      createTransactionContext({ memo: '  exchange-ref  ' }),
+    );
+
+    expect(
+      transactionService.createValidatedSendTransaction,
+    ).toHaveBeenCalledWith({
+      onChainAccount: { accountId, scope },
+      scope,
+      assetId: sendRequest.params.assetId,
+      destination: toAddress,
+      amount: expect.anything(),
+      memo: '  exchange-ref  ',
+    });
+  });
+
   it.each([
     {
       error: new InsufficientBalanceException('1', '2'),
@@ -192,10 +211,6 @@ describe('ConfirmationTransactionRefresher', () => {
       error: new InsufficientBalanceToCoverBaseReserveException('1', '2'),
       errorMessage:
         'confirmation.txnError.insufficientBalanceToCoverBaseReserve',
-    },
-    {
-      error: new RequiresMemoException(toAddress),
-      errorMessage: 'confirmation.txnError.requiresMemo',
     },
     {
       error: new InvalidAmountForCreateAccountException('0.5'),
@@ -258,10 +273,30 @@ describe('ConfirmationTransactionRefresher', () => {
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        halt: true,
+        pause: true,
       });
     },
   );
+
+  it('pauses on RequiresMemo without nulling securityScanRequest', async () => {
+    const { refresher, transactionService } = setup();
+    transactionService.createValidatedSendTransaction.mockRejectedValueOnce(
+      new RequiresMemoException(toAddress),
+    );
+
+    const result = await refresher.refresh(createTransactionContext());
+
+    expect(result).toStrictEqual({
+      result: {
+        transactionsFetchStatus: FetchStatus.Error,
+        errorMessage: 'confirmation.txnError.requiresMemo',
+        scanFetchStatus: FetchStatus.Error,
+      },
+      reschedule: false,
+      pause: true,
+    });
+    expect(result?.result.securityScanRequest).toBeUndefined();
+  });
 
   it('re-validates a change-trust opt-in transaction', async () => {
     const { refresher, transactionService } = setup();
@@ -382,7 +417,7 @@ describe('ConfirmationTransactionRefresher', () => {
 
       const result = await refresher.refresh(
         createTransactionContext({
-          transaction: expiredTransaction.getRaw().toXDR(),
+          transaction: expiredTransaction.getRaw().toXdr(),
         }),
       );
 

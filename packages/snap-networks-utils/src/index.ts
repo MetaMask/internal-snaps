@@ -41,11 +41,16 @@ export { parseEnv } from './utils/config/parseEnv';
 export { BaseConfigProvider } from './utils/config/BaseConfigProvider';
 export {
   commaSeparatedListOf,
+  defaultedUrlStruct,
   emptyToUndefined,
   parseIntegerStruct,
   parseFloatStruct,
 } from './utils/config/envStructs';
 export { LogLevelStruct } from './utils/config/logLevelStruct';
+export {
+  Environment,
+  EnvironmentStruct,
+} from './utils/config/environmentStruct';
 export {
   batchesAll,
   batchesAllSettled,
@@ -123,6 +128,14 @@ export type {
   CachePrefix,
   StateValue,
 } from './utils/cache/StateCache';
+export {
+  noopAssetHandlers,
+  wrapSnapHandlers,
+} from './utils/handlers/wrapSnapHandlers';
+export type {
+  SnapHandlers,
+  WithCatchAndThrowSnapError,
+} from './utils/handlers/wrapSnapHandlers';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,

@@ -7,10 +7,13 @@ import {
   Networks,
   Operation,
   TransactionBuilder,
+  hash,
+  xdr,
 } from '@stellar/stellar-sdk';
-import type { xdr } from '@stellar/stellar-sdk';
 
-import { SwapTransactionXdrStruct } from './xdr';
+import { bufferToUint8Array } from '../utils/buffer';
+import { buildAuthEntryPreimageXdr } from './__mocks__/xdr.fixtures';
+import { HashIdPreimageXdrStruct, SwapTransactionXdrStruct } from './xdr';
 
 const sourceAddress =
   'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
@@ -38,7 +41,7 @@ function buildTransactionXdr(operations: xdr.Operation[]): string {
     builder.addOperation(operation);
   }
 
-  return builder.setTimeout(60).build().toXDR();
+  return builder.setTimeout(60).build().toXdr();
 }
 
 describe('SwapTransactionXdrStruct', () => {
@@ -127,8 +130,8 @@ describe('SwapTransactionXdrStruct', () => {
         amount: '1',
       }),
     ]),
-  ])('accepts a valid swap transaction XDR', (xdr) => {
-    expect(() => assert(xdr, SwapTransactionXdrStruct)).not.toThrow();
+  ])('accepts a valid swap transaction XDR', (xdrString) => {
+    expect(() => assert(xdrString, SwapTransactionXdrStruct)).not.toThrow();
   });
 
   it.each([
@@ -151,7 +154,45 @@ describe('SwapTransactionXdrStruct', () => {
         amount: '1',
       }),
     ]),
-  ])('rejects an invalid swap transaction XDR', (xdr) => {
-    expect(() => assert(xdr, SwapTransactionXdrStruct)).toThrow(StructError);
+  ])('rejects an invalid swap transaction XDR', (xdrString) => {
+    expect(() => assert(xdrString, SwapTransactionXdrStruct)).toThrow(
+      StructError,
+    );
+  });
+});
+
+describe('HashIdPreimageXdrStruct', () => {
+  const boundAddress = Keypair.random().publicKey();
+
+  it.each([
+    ['v1', buildAuthEntryPreimageXdr()],
+    ['v2', buildAuthEntryPreimageXdr({ boundAddress })],
+  ])('accepts a mainnet %s Soroban authorization preimage', (_label, value) => {
+    expect(() => assert(value, HashIdPreimageXdrStruct)).not.toThrow();
+  });
+
+  it.each([
+    ['v1', buildAuthEntryPreimageXdr({ networkPassphrase: Networks.TESTNET })],
+    [
+      'v2',
+      buildAuthEntryPreimageXdr({
+        networkPassphrase: Networks.TESTNET,
+        boundAddress,
+      }),
+    ],
+    [
+      'contract id',
+      xdr.HashIdPreimage.envelopeTypeContractId(
+        new xdr.HashIdPreimageContractId({
+          networkId: hash(bufferToUint8Array(Networks.PUBLIC, 'utf8')),
+          contractIdPreimage:
+            xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+              xdr.Asset.assetTypeNative(),
+            ),
+        }),
+      ).toXdr('base64'),
+    ],
+  ])('rejects a %s HashIdPreimage', (_label, value) => {
+    expect(() => assert(value, HashIdPreimageXdrStruct)).toThrow(StructError);
   });
 });

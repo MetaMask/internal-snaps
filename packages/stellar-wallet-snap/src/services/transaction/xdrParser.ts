@@ -1,11 +1,10 @@
 import type { Json } from '@metamask/utils';
-import type { Operation } from '@stellar/stellar-sdk';
 import {
   Asset,
+  Operation,
   StrKey,
   xdr,
   scValToNative,
-  Address,
 } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
@@ -18,9 +17,11 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import {
+  getAddress,
+  getFunctionName,
   getSlip44AssetId,
   rethrowIfInstanceElseThrow,
-  toCaip19ClassicAssetId,
+  stellarAssetToCaip19,
   toCaip19Sep41AssetId,
   toDisplayBalance,
 } from '../../utils';
@@ -136,25 +137,35 @@ export function parseSuccessfulTransactionResult(
   scope: KnownCaip2ChainId,
 ): SuccessfulTransactionResult | null {
   try {
-    const transactionResult = xdr.TransactionResult.fromXDR(
+    const transactionResult = xdr.TransactionResult.fromXdr(
       bufferToUint8Array(xdrString, 'base64'),
     );
-    const feeCharged = transactionResult.feeCharged().toString();
+    const feeCharged = transactionResult.feeCharged.toString();
     const operationResults: OperationResult[] = [];
 
-    const result = transactionResult.result();
-    if (result.switch().name !== 'txSuccess') {
+    const { result } = transactionResult;
+    if (result.type !== 'txSuccess') {
       return null;
     }
 
-    for (const opResult of result.results()) {
-      const tr = opResult.tr();
-      const { name } = tr.value().switch();
+    for (const opResult of result.results) {
+      if (opResult.type !== 'opInner') {
+        operationResults.push(null);
+        continue;
+      }
+      const { tr } = opResult;
 
       try {
-        if (name === TransactionResultType.PathPaymentStrictSendSuccess) {
-          const success = tr.pathPaymentStrictSendResult().success();
-          const receiveSide = extractLastReceiveSide(success.last(), scope);
+        if (tr.type === 'pathPaymentStrictSend') {
+          const sendResult = tr.pathPaymentStrictSendResult;
+          if (sendResult.type !== 'pathPaymentStrictSendSuccess') {
+            operationResults.push(null);
+            continue;
+          }
+          const receiveSide = extractLastReceiveSide(
+            sendResult.success.last,
+            scope,
+          );
 
           if (receiveSide) {
             operationResults.push({
@@ -165,13 +176,15 @@ export function parseSuccessfulTransactionResult(
             });
             continue;
           }
-        } else if (
-          name === TransactionResultType.PathPaymentStrictReceiveSuccess
-        ) {
-          const success = tr.pathPaymentStrictReceiveResult().success();
+        } else if (tr.type === 'pathPaymentStrictReceive') {
+          const receiveResult = tr.pathPaymentStrictReceiveResult;
+          if (receiveResult.type !== 'pathPaymentStrictReceiveSuccess') {
+            operationResults.push(null);
+            continue;
+          }
           const sendSide = extractFirstOfferSendSide(
-            success.offers()[0],
-            success.last(),
+            receiveResult.success.offers[0],
+            receiveResult.success.last,
             scope,
           );
 
@@ -205,31 +218,6 @@ export function parseSuccessfulTransactionResult(
 }
 
 /**
- * Converts an XDR {@link xdr.ScAddress} to a Stellar strkey string (`G…` / `C…`).
- *
- * @param scAddress - Contract or account address from invoke / auth XDR.
- * @returns Strkey-encoded address.
- */
-export function getAddress(scAddress: xdr.ScAddress): string {
-  return Address.fromScAddress(scAddress).toString();
-}
-
-/**
- * Normalizes a Soroban contract function name (`SCSymbol`) to a UTF-8 string.
- *
- * The SDK types `functionName()` as `string | Buffer` because the XDR field is
- * raw bytes.
- *
- * @param fnName - Value from `invokeContract().functionName()` / auth `contractFn`.
- * @returns UTF-8 function name.
- */
-export function getFunctionName(fnName: string | Uint8Array): string {
-  return typeof fnName === 'string'
-    ? fnName
-    : bufferToUint8Array(fnName).toString('utf8');
-}
-
-/**
  * Returns whether the operation invokes a contract `transfer(from, to, amount)`.
  *
  * @param op - Parsed `invokeHostFunction` operation.
@@ -239,10 +227,10 @@ export function isSep41TransferInvoke(
   op: Operation.InvokeHostFunction,
 ): boolean {
   const { func } = op;
-  if (func?.switch().name !== 'hostFunctionTypeInvokeContract') {
+  if (func?.type !== 'hostFunctionTypeInvokeContract') {
     return false;
   }
-  return getFunctionName(func.invokeContract().functionName()) === 'transfer';
+  return getFunctionName(func.invokeContract.functionName) === 'transfer';
 }
 
 /**
@@ -263,15 +251,15 @@ export function parseSep41TransferInvoke(
 ): ParsedSep41TransferInvoke {
   try {
     const { func } = op;
-    if (func?.switch().name !== 'hostFunctionTypeInvokeContract') {
+    if (func?.type !== 'hostFunctionTypeInvokeContract') {
       throw new XdrParseException('Not an invoke contract operation');
     }
-    const ic = func.invokeContract();
-    if (getFunctionName(ic.functionName()) !== 'transfer') {
+    const ic = func.invokeContract;
+    if (getFunctionName(ic.functionName) !== 'transfer') {
       throw new XdrParseException('Contract is not a transfer function');
     }
 
-    const args = ic.args();
+    const { args } = ic;
     if (
       args.length !== 3 ||
       args[0] === undefined ||
@@ -281,7 +269,7 @@ export function parseSep41TransferInvoke(
       throw new XdrParseException('Invalid transfer function arguments');
     }
 
-    const contractAddr = getAddress(ic.contractAddress());
+    const contractAddr = getAddress(ic.contractAddress);
 
     const fromNative = scValToNative(args[0]);
     const toNative = scValToNative(args[1]);
@@ -327,25 +315,18 @@ export function xdrAssetToCaip19(
   asset: xdr.Asset,
   scope: KnownCaip2ChainId,
 ): TransactionResultAsset {
-  switch (asset.switch().name) {
+  switch (asset.type) {
     case 'assetTypeNative':
       return getSlip44AssetId(scope);
     case 'assetTypeCreditAlphanum4':
     case 'assetTypeCreditAlphanum12': {
       try {
         const stellarAsset = Asset.fromOperation(asset);
-        return toCaip19ClassicAssetId(
-          scope,
-          stellarAsset.getCode(),
-          stellarAsset.getIssuer(),
-        );
+        return stellarAssetToCaip19(stellarAsset, scope);
       } catch {
         return undefined;
       }
     }
-    // Pool-share assets (e.g. AMM path routes) are not mapped to CAIP-19.
-    case 'assetTypePoolShare':
-      return undefined;
     default:
       return undefined;
   }
@@ -392,7 +373,7 @@ export function parseScValToReadableJson(scv: xdr.ScVal): string {
     return nativeToReadableJson(scValToNative(scv));
   } catch {
     // If the ScVal cannot be converted to a native value, return the base64 XDR representation.
-    return scv.toXDR('base64');
+    return scv.toXdr('base64');
   }
 }
 
@@ -479,12 +460,18 @@ export function extractAssetDataFromContractData(
   isStellarClassicAsset: boolean;
 } {
   try {
-    const contractDataInstance = contractData.val().instance();
+    const contractVal = contractData.val;
+    if (contractVal.type !== 'scvContractInstance') {
+      throw new XdrParseException(
+        `Contract ${contractAddress} is not a contract instance`,
+      );
+    }
+    const contractDataInstance = contractVal.instance;
 
     // contractDataName is either contractExecutableWasm or contractExecutableStellarAsset
     // contractExecutableWasm: Wasm contract
     // contractExecutableStellarAsset: Stellar asset contract
-    const contractDataName = contractDataInstance.executable().switch().name;
+    const contractDataName = contractDataInstance.executable.type;
 
     const isStellarClassicAsset =
       contractDataName === 'contractExecutableStellarAsset';
@@ -497,31 +484,41 @@ export function extractAssetDataFromContractData(
     };
 
     // it is possible to have empty storage, such as when the contract is not a token contract
-    for (const entry of contractDataInstance?.storage() ?? []) {
-      const key = entry.key();
-      const keyName = key.switch().name;
-
-      if (keyName !== 'scvSymbol' || key.sym().toString() !== 'METADATA') {
+    for (const entry of contractDataInstance.storage ?? []) {
+      const { key } = entry;
+      if (key.type !== 'scvSymbol' || key.sym.toString() !== 'METADATA') {
         continue;
       }
 
-      for (const mapEntry of entry.val().map() ?? []) {
-        const fieldName = mapEntry.key().sym().toString();
-        const value = mapEntry.val();
+      if (entry.val.type !== 'scvMap') {
+        continue;
+      }
+
+      for (const mapEntry of entry.val.map ?? []) {
+        if (mapEntry.key.type !== 'scvSymbol') {
+          continue;
+        }
+        const fieldName = mapEntry.key.sym.toString();
+        const value = mapEntry.val;
 
         switch (fieldName) {
           case 'name':
             // if it is a Stellar asset contract, the name is ${ASSET_CODE}:${ASSET_ISSUER}
             // if it is a Wasm contract, the "name" is set to the contract address (used as the SEP-41 assetRef/identifier)
-            assetData.name = isStellarClassicAsset
-              ? value.str().toString()
-              : contractAddress;
+            assetData.name = contractAddress;
+            if (isStellarClassicAsset && value.type === 'scvString') {
+              assetData.name = value.str.toString();
+            }
             break;
           case 'symbol':
-            assetData.symbol = value.str().toString();
+            if (value.type === 'scvString') {
+              assetData.symbol = value.str.toString();
+            }
             break;
           case 'decimal':
-            assetData.decimals = value.u32();
+            if (value.type === 'scvU32') {
+              assetData.decimals = value.u32;
+            }
             break;
           default:
             break;
@@ -575,7 +572,7 @@ export function parseContractEventsFromResultMeta<Result>(params: {
 }): Result[] {
   try {
     const { resultMetaXdr, parseEvent } = params;
-    const meta = xdr.TransactionMeta.fromXDR(
+    const meta = xdr.TransactionMeta.fromXdr(
       bufferToUint8Array(resultMetaXdr, 'base64'),
     );
 
@@ -584,17 +581,14 @@ export function parseContractEventsFromResultMeta<Result>(params: {
     let events: xdr.ContractEvent[] = [];
 
     // Handle both V3 and V4 transaction meta formats
-    switch (meta.switch()) {
-      case 3: {
-        const sorobanMeta = meta.v3().sorobanMeta();
-        events = sorobanMeta ? [...sorobanMeta.events()] : [];
+    switch (meta.type) {
+      case 'v3': {
+        const { sorobanMeta } = meta.v3;
+        events = sorobanMeta ? [...sorobanMeta.events] : [];
         break;
       }
-      case 4: {
-        events = meta
-          .v4()
-          .operations()
-          .flatMap((op) => [...op.events()]);
+      case 'v4': {
+        events = meta.v4.operations.flatMap((op) => [...op.events]);
         break;
       }
       default:
@@ -636,13 +630,13 @@ export function parseTransferContractEventSafe(
   scope: KnownCaip2ChainId,
 ): ParsedContractReceiveTransfer | null {
   try {
-    const body = event.body();
-    if (body.switch() !== 0) {
+    const { body } = event;
+    if (body.type !== 'v0') {
       return null;
     }
 
-    const v0 = body.v0();
-    const topics = v0.topics().map((topic) => scValToNative(topic));
+    const { v0 } = body;
+    const topics = v0.topics.map((topic) => scValToNative(topic));
     if (topics.length !== 4) {
       return null;
     }
@@ -667,7 +661,7 @@ export function parseTransferContractEventSafe(
       return null;
     }
 
-    const transferAmount = scValToNative(v0.data());
+    const transferAmount = scValToNative(v0.data);
     if (
       typeof transferAmount !== 'bigint' &&
       typeof transferAmount !== 'number' &&
@@ -699,9 +693,9 @@ export function parseTransferContractEventSafe(
  * @returns StrKey-encoded Stellar address.
  */
 function xdrPublicKeyToAddress(publicKey: xdr.PublicKey): string | undefined {
-  switch (publicKey.switch().name) {
+  switch (publicKey.type) {
     case 'publicKeyTypeEd25519':
-      return StrKey.encodeEd25519PublicKey(publicKey.ed25519());
+      return StrKey.encodeEd25519PublicKey(publicKey.ed25519.toBytes());
     default:
       return undefined;
   }
@@ -723,9 +717,9 @@ function extractLastReceiveSide(
   }
 
   return {
-    amount: new BigNumber(last.amount().toString()),
-    asset: xdrAssetToCaip19(last.asset(), scope),
-    destination: xdrPublicKeyToAddress(last.destination()),
+    amount: new BigNumber(last.amount.toString()),
+    asset: xdrAssetToCaip19(last.asset, scope),
+    destination: xdrPublicKeyToAddress(last.destination),
   };
 }
 
@@ -749,28 +743,28 @@ function extractFirstOfferSendSide(
 
   let claim:
     | {
-        amountBought(): xdr.Int64;
-        assetBought(): xdr.Asset;
+        amountBought: bigint;
+        assetBought: xdr.Asset;
       }
     | undefined;
 
-  switch (offer.switch().name) {
+  switch (offer.type) {
     case 'claimAtomTypeOrderBook':
-      claim = offer.orderBook();
+      claim = offer.orderBook;
       break;
     case 'claimAtomTypeLiquidityPool':
-      claim = offer.liquidityPool();
+      claim = offer.liquidityPool;
       break;
     case 'claimAtomTypeV0':
-      claim = offer.v0();
+      claim = offer.v0;
       break;
     default:
       return undefined;
   }
 
   return {
-    amount: new BigNumber(claim.amountBought().toString()),
-    asset: xdrAssetToCaip19(claim.assetBought(), scope),
-    destination: xdrPublicKeyToAddress(last.destination()),
+    amount: new BigNumber(claim.amountBought.toString()),
+    asset: xdrAssetToCaip19(claim.assetBought, scope),
+    destination: xdrPublicKeyToAddress(last.destination),
   };
 }

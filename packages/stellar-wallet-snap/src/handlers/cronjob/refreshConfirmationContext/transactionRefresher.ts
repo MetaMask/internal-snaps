@@ -2,6 +2,7 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
+import { getMemoStrOrUndefined } from '../../../api';
 import type { AssetMetadataService } from '../../../services/asset-metadata';
 import type {
   Transaction,
@@ -36,6 +37,8 @@ type TransactionValidationContext = ConfirmationDataContext &
     // origin is always present on the rendered confirmation context
     // (ConfirmationBaseProps.origin), but isn't part of the validation struct.
     origin?: string;
+    // UI-owned memo saved via MemoEdit (not on confirmSend RPC params).
+    memo?: string;
   };
 
 /**
@@ -99,7 +102,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
     ctx: ConfirmationDataContext,
   ): Promise<ConfirmationContextRefreshResult> {
     const validationCtx = ctx as TransactionValidationContext;
-    const { request, accountId, scope, securityScanRequest, origin } =
+    const { request, accountId, scope, securityScanRequest, origin, memo } =
       validationCtx;
     // Use the scan request address as Default if it is present.
     let accountAddress = securityScanRequest?.accountAddress ?? '';
@@ -139,6 +142,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
               assetId: request.params.assetId,
               destination: request.params.toAddress,
               amount,
+              memo: getMemoStrOrUndefined(memo),
             });
           break;
         }
@@ -161,7 +165,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           throw new Error('Unsupported request method for transaction refresh');
       }
 
-      const rebuiltTransactionXdr = rebuiltTransaction.getRaw().toXDR();
+      const rebuiltTransactionXdr = rebuiltTransaction.getRaw().toXdr();
 
       return {
         result: {
@@ -188,7 +192,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        halt: true,
+        pause: true,
       };
     }
   }

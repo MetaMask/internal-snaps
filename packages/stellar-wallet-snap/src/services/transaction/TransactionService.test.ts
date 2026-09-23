@@ -11,6 +11,7 @@ import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip19ClassicAssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
+import { ACCOUNT_REQUIRES_MEMO, MEMO_REQUIRED_KEY } from '../../constants';
 import { getSlip44AssetId, getSnapProvider } from '../../utils';
 import { generateMockStellarKeyringAccounts } from '../account/__mocks__/account.fixtures';
 import type { StellarKeyringAccount } from '../account/api';
@@ -49,6 +50,22 @@ jest.mock('../../utils/snap');
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),
 }));
+
+/**
+ * Horizon account response fixture with optional SEP-29 `data_attr`.
+ *
+ * @param mockAccount - Base Horizon account.
+ * @param dataAttr - Account data entries.
+ * @returns Horizon-shaped account used by {@link OnChainAccount.fromHorizon}.
+ */
+function mockHorizonAccountResponse(
+  mockAccount: ReturnType<typeof createMockAccountWithBalances>,
+  dataAttr: Record<string, string>,
+): Parameters<typeof OnChainAccount.fromHorizon>[0] {
+  return Object.assign(mockAccount, {
+    data_attr: dataAttr,
+  }) as unknown as Parameters<typeof OnChainAccount.fromHorizon>[0];
+}
 
 describe('TransactionService', () => {
   describe('savePendingKeyringTransaction', () => {
@@ -207,10 +224,10 @@ describe('TransactionService', () => {
       const result = await transactionService.createValidatedSwapTransaction({
         onChainAccount: testOnChainAccount,
         scope,
-        xdr: transaction.getRaw().toXDR(),
+        xdr: transaction.getRaw().toXdr(),
       });
 
-      expect(result.getRaw().toXDR()).toBe(transaction.getRaw().toXDR());
+      expect(result.getRaw().toXdr()).toBe(transaction.getRaw().toXdr());
       expect(simulateTransactionSpy).not.toHaveBeenCalled();
       expect(loadOnChainAccountsSpy).toHaveBeenCalledWith([], scope);
     });
@@ -238,10 +255,10 @@ describe('TransactionService', () => {
       const result = await transactionService.createValidatedSwapTransaction({
         onChainAccount: testOnChainAccount,
         scope,
-        xdr: transaction.getRaw().toXDR(),
+        xdr: transaction.getRaw().toXdr(),
       });
 
-      expect(result.getRaw().toXDR()).toBe(transaction.getRaw().toXDR());
+      expect(result.getRaw().toXdr()).toBe(transaction.getRaw().toXdr());
       expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
       expect(loadOnChainAccountsSpy).toHaveBeenCalledWith([], scope);
     });
@@ -804,6 +821,149 @@ describe('TransactionService', () => {
       expect(
         (error as InvalidAssetForCreateAccountException).message,
       ).toContain(USDC_SEP41);
+    });
+  });
+
+  describe('createDraftSendTransactionForConfirm', () => {
+    it('returns requiresMemoRecovery false when the destination does not require a memo', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      const destWallet = getTestWallet();
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(destWallet.address, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = new OnChainAccount(
+        destAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      jest
+        .spyOn(NetworkService.prototype, 'getBaseFee')
+        .mockResolvedValue(new BigNumber('100'));
+
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: destWallet.address,
+        });
+
+      expect(result.requiresMemoRecovery).toBe(false);
+      expect(result.transaction.transactionOperations[0]?.type).toBe('payment');
+    });
+
+    it('returns requiresMemoRecovery true when the destination requires a memo and none is attached', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      const destWallet = getTestWallet();
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(destWallet.address, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = OnChainAccount.fromHorizon(
+        mockHorizonAccountResponse(destAcc, {
+          [MEMO_REQUIRED_KEY]: ACCOUNT_REQUIRES_MEMO,
+        }),
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      jest
+        .spyOn(NetworkService.prototype, 'getBaseFee')
+        .mockResolvedValue(new BigNumber('100'));
+
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: destWallet.address,
+        });
+
+      expect(result.requiresMemoRecovery).toBe(true);
+      expect(result.transaction.getMemo()).toBeNull();
+    });
+
+    it('returns requiresMemoRecovery false when a memo is already attached', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      const destWallet = getTestWallet();
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(destWallet.address, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = OnChainAccount.fromHorizon(
+        mockHorizonAccountResponse(destAcc, {
+          [MEMO_REQUIRED_KEY]: ACCOUNT_REQUIRES_MEMO,
+        }),
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      jest
+        .spyOn(NetworkService.prototype, 'getBaseFee')
+        .mockResolvedValue(new BigNumber('100'));
+
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: destWallet.address,
+          memo: 'exchange-ref',
+        });
+
+      expect(result.requiresMemoRecovery).toBe(false);
+      expect(result.transaction.getMemo()).toBe('exchange-ref');
     });
   });
 });

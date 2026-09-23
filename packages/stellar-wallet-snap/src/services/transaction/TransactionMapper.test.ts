@@ -15,6 +15,7 @@ import {
   toCaip19ClassicAssetId,
   toCaip19Sep41AssetId,
   toDisplayBalance,
+  bufferToUint8Array,
 } from '../../utils';
 import { logger } from '../../utils/logger';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
@@ -60,10 +61,10 @@ function toHorizonTransaction(
   const inner = transaction.getRaw();
 
   return {
-    id: inner.hash().toString('hex'),
-    hash: inner.hash().toString('hex'),
+    id: bufferToUint8Array(inner.hash()).toString('hex'),
+    hash: bufferToUint8Array(inner.hash()).toString('hex'),
 
-    envelope_xdr: inner.toXDR(),
+    envelope_xdr: inner.toXdr(),
 
     fee_charged: inner.fee,
     successful: true,

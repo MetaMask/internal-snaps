@@ -366,7 +366,7 @@ export type ResolvedAssetDisplay = {
  * @param scope - CAIP-2 chain of the transaction.
  * @param assetReference - Either `'native'` or a classic `CODE-ISSUER` / `CODE:ISSUER` string.
  * @returns The resolved display data, or `null` when the reference cannot be parsed
- * (e.g. liquidity pool ids that arrive on `setTrustLineFlags` / `revokeSponsorship`).
+ * (e.g. liquidity pool ids that arrive on `setTrustLineFlags` / `revoke*Sponsorship`).
  */
 export function resolveAssetDisplay(
   scope: KnownCaip2ChainId,
@@ -410,4 +410,40 @@ export function getParam<Response extends Json>(
 ): Response | null {
   const value = params.find((param) => param.key === key)?.value;
   return (value ?? null) as Response | null;
+}
+
+/**
+ * Reads a trimmed memo from confirmation interface context (UI-owned, not RPC params).
+ *
+ * @param context - The interface context.
+ * @returns Trimmed memo string, or `null` when missing/blank.
+ */
+export function getMemoFromContext(
+  context: Record<string, Json> | null | undefined,
+): string | null {
+  if (typeof context?.memo === 'string' && context.memo.trim()) {
+    return context.memo.trim();
+  }
+  return null;
+}
+
+/**
+ * Keys rendered above the flat param list (authorized address, contract, function).
+ */
+export const INVOCATION_HEADER_KEYS = new Set([
+  'authorizedAddress',
+  'contractId',
+  'functionName',
+]);
+
+/**
+ * Remaining confirmation rows after the invocation header.
+ *
+ * @param params - Mapped operation or authorization fields.
+ * @returns Params that should render line-by-line.
+ */
+export function getInvocationDetailParams(
+  params: ReadableOperationField[],
+): ReadableOperationField[] {
+  return params.filter((param) => !INVOCATION_HEADER_KEYS.has(param.key));
 }

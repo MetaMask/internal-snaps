@@ -1,4 +1,5 @@
 import type {
+  AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
@@ -8,7 +9,6 @@ import type { SecurityAlertSimulationValidationResponse } from '../../clients/se
 import { METAMASK_ORIGIN, METAMASK_ORIGIN_URL } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
-import type { AnalyticsService } from '../analytics/AnalyticsService';
 import type { TransactionScanResult, TransactionScanValidation } from './types';
 import { ScanStatus, SecurityAlertResponse } from './types';
 
@@ -77,13 +77,13 @@ export class TransactionScanService {
         );
 
         if (account) {
-          await this.#analyticsService.trackEventSecurityScanCompleted(
-            account,
+          await this.#analyticsService.trackSecurityScanCompleted({
             origin,
-            scope,
-            ScanStatus.ERROR,
-            false,
-          );
+            accountType: account.type,
+            chainIdCaip: scope,
+            scanStatus: ScanStatus.ERROR,
+            hasSecurityAlerts: false,
+          });
         }
 
         return null;
@@ -104,13 +104,13 @@ export class TransactionScanService {
         );
 
         const analyticsPromises = [
-          this.#analyticsService.trackEventSecurityScanCompleted(
-            account,
+          this.#analyticsService.trackSecurityScanCompleted({
             origin,
-            scope,
+            accountType: account.type,
+            chainIdCaip: scope,
             scanStatus,
-            hasSecurityAlert,
-          ),
+            hasSecurityAlerts: hasSecurityAlert,
+          }),
         ];
 
         if (hasSecurityAlert) {
@@ -122,14 +122,16 @@ export class TransactionScanService {
             : SecurityAlertResponse.Warning;
 
           analyticsPromises.push(
-            this.#analyticsService.trackEventSecurityAlertDetected(
-              account,
+            this.#analyticsService.trackSecurityAlertDetected({
               origin,
-              scope,
-              securityAlertType,
-              scan.validation.reason ?? 'unknown',
-              this.#getSecurityAlertDescription(scan.validation),
-            ),
+              accountType: account.type,
+              chainIdCaip: scope,
+              securityAlertResponse: securityAlertType,
+              securityAlertReason: scan.validation.reason ?? 'unknown',
+              securityAlertDescription: this.#getSecurityAlertDescription(
+                scan.validation,
+              ),
+            }),
           );
         }
 
@@ -148,13 +150,13 @@ export class TransactionScanService {
       this.#logger.error(error);
 
       if (account) {
-        await this.#analyticsService.trackEventSecurityScanCompleted(
-          account,
+        await this.#analyticsService.trackSecurityScanCompleted({
           origin,
-          scope,
-          ScanStatus.ERROR,
-          false,
-        );
+          accountType: account.type,
+          chainIdCaip: scope,
+          scanStatus: ScanStatus.ERROR,
+          hasSecurityAlerts: false,
+        });
       }
 
       return null;

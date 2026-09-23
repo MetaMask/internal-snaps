@@ -1,4 +1,8 @@
-import { State } from '@metamask/snap-networks-utils';
+import {
+  AnalyticsService,
+  State,
+  InMemoryCache,
+} from '@metamask/snap-networks-utils';
 import { assert, object } from '@metamask/superstruct';
 
 import { AppConfig } from './config';
@@ -40,7 +44,6 @@ import {
   AssetMetadataRepository,
   AssetMetadataService,
 } from './services/asset-metadata';
-import { InMemoryCache } from './services/cache';
 import { NetworkService } from './services/network';
 import {
   OnChainAccountRepository,
@@ -60,7 +63,7 @@ import {
 } from './services/transaction-scan';
 import { WalletService } from './services/wallet';
 import { ConfirmationUXController } from './ui/confirmation/controller';
-import { logger, noOpLogger } from './utils';
+import { getSnapProvider, logger, noOpLogger, trackError } from './utils';
 
 assert(AppConfig, object());
 
@@ -74,6 +77,12 @@ const transactionRepository = new TransactionRepository(state);
 const assetMetadataRepository = new AssetMetadataRepository(state);
 
 /** ------------------------------ Services  ------------------------------ */
+const analyticsService = new AnalyticsService({
+  getSnapProvider,
+  logger,
+  trackError,
+});
+
 const appCache = new InMemoryCache(noOpLogger);
 const networkService = new NetworkService({ logger, cache: appCache });
 
@@ -83,9 +92,7 @@ const assetMetadataService = new AssetMetadataService({
   logger,
 });
 
-const transactionBuilder = new TransactionBuilder({
-  logger,
-});
+const transactionBuilder = new TransactionBuilder();
 const walletService = new WalletService();
 
 const accountService = new AccountService({
@@ -144,6 +151,7 @@ const signTransactionHandler = new SignTransactionHandler({
   logger,
   accountResolver,
   confirmationUIController,
+  analyticsService,
 });
 
 const signMessageHandler = new SignMessageHandler({
@@ -214,6 +222,7 @@ const trackTransactionHandler = new TrackTransactionHandler({
   networkService,
   synchronizeService,
   accountService,
+  analyticsService,
 });
 
 const syncAccountsHandler = new SyncAccountsHandler({
@@ -249,6 +258,7 @@ const changeTrustOptHandler = new ChangeTrustOptHandler({
   assetMetadataService,
   transactionService,
   confirmationUIController,
+  analyticsService,
 });
 
 const onAddressInputHandler = new OnAddressInputHandler();
@@ -265,6 +275,7 @@ const signAndSendTransactionHandler = new SignAndSendTransactionHandler({
   accountResolver,
   transactionService,
   assetMetadataService,
+  analyticsService,
 });
 
 const confirmSendHandler = new ConfirmSendHandler({
@@ -273,6 +284,7 @@ const confirmSendHandler = new ConfirmSendHandler({
   transactionService,
   assetMetadataService,
   confirmationUIController,
+  analyticsService,
 });
 
 const computeFeeHandler = new ComputeFeeHandler({

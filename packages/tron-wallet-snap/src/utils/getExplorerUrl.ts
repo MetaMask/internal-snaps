@@ -1,31 +1,22 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
 
 import { Network } from '../constants';
+import { configProvider } from '../services/config/ConfigProvider';
 
 /**
- * Get the Solana Explorer URL for a given scope, type, and value.
+ * Get the Tron Explorer URL for a given scope, type, and value.
  *
- * @param scope - The scope of the Solana network.
+ * @param scope - The scope of the Tron Explorer.
  * @param type - The type of the value to explore.
  * @param value - The value to explore.
- * @returns The Solana Explorer URL.
+ * @returns The Tron Explorer URL.
  */
 export function getExplorerUrl(
   scope: Network,
   type: 'address' | 'transaction',
   value: string,
 ): string {
-  // TODO: Get these URLs from configuration instead of environment variables
-  const NETWORK_TO_EXPLORER_PATH = {
-    /* eslint-disable-next-line no-restricted-globals */
-    [Network.Mainnet]: process.env.EXPLORER_MAINNET_BASE_URL as string,
-    /* eslint-disable-next-line no-restricted-globals */
-    [Network.Nile]: process.env.EXPLORER_NILE_BASE_URL as string,
-    /* eslint-disable-next-line no-restricted-globals */
-    [Network.Shasta]: process.env.EXPLORER_SHASTA_BASE_URL as string,
-  };
-
-  const baseUrl = NETWORK_TO_EXPLORER_PATH[scope];
+  const baseUrl = configProvider.config.explorerApi.baseUrls[scope];
 
   const url = buildUrl({
     baseUrl,

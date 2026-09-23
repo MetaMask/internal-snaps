@@ -1,4 +1,8 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import type { StellarKeyringAccount } from '../../services/account';
@@ -36,14 +40,18 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
 > {
   readonly #confirmationUIController: ConfirmationUXController;
 
+  readonly #analyticsService: AnalyticsService;
+
   constructor({
     logger,
     accountResolver,
     confirmationUIController,
+    analyticsService,
   }: {
     logger: Logger;
     accountResolver: AccountResolver;
     confirmationUIController: ConfirmationUXController;
+    analyticsService: AnalyticsService;
   }) {
     super({
       logger,
@@ -53,6 +61,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
       responseStruct: SignTransactionResponseStruct,
     });
     this.#confirmationUIController = confirmationUIController;
+    this.#analyticsService = analyticsService;
   }
 
   protected async execute(
@@ -73,12 +82,25 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
 
     // We do not process RPC simulation here, we trust the fee that provided by the dapp.
     // If the transaction is invalid, the security scan will output the error.
+    // Tracking properties are shared with the decision events so Added / Approved /
+    // Rejected stay consistent with the unified send flow.
+    const trackingProperties: TransactionEventProperties = {
+      origin: request.origin,
+      accountType: account.type,
+      chainIdCaip: scope,
+    };
+
+    await this.#analyticsService.trackTransactionAdded(trackingProperties);
+
     if (!(await this.#confirmation(request, transaction, account))) {
+      await this.#analyticsService.trackTransactionRejected(trackingProperties);
       throw new UserRejectedRequestError() as unknown as Error;
     }
 
+    await this.#analyticsService.trackTransactionApproved(trackingProperties);
+
     wallet.signTransaction(transaction);
-    const signedTxXdr = transaction.getRaw().toXDR();
+    const signedTxXdr = transaction.getRaw().toXdr();
 
     return {
       signedTxXdr,
@@ -134,7 +156,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
         },
         securityScanRequest: {
           accountAddress: account.address,
-          transaction: transaction.getRaw().toXDR(),
+          transaction: transaction.getRaw().toXdr(),
         },
         tokenPrices,
       })) === true

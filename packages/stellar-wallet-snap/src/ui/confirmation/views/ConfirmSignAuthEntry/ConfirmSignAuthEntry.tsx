@@ -101,7 +101,11 @@ export const ConfirmSignAuthEntry = ({
         </Section>
 
         {authorizations.length > 0 ? (
-          <Authorizations locale={locale} authorizations={authorizations} />
+          <Authorizations
+            locale={locale}
+            scope={scope}
+            authorizations={authorizations}
+          />
         ) : null}
       </Box>
       <Footer>

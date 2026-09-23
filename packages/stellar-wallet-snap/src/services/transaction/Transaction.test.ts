@@ -13,6 +13,7 @@ import {
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
+import { bufferToUint8Array } from '../../utils/buffer';
 import { TransactionDeserializationException } from './exceptions';
 import { Transaction } from './Transaction';
 
@@ -288,11 +289,11 @@ describe('Transaction', () => {
         .build();
 
       const wrapped = Transaction.fromXdr({
-        xdr: inner.toXDR(),
+        xdr: inner.toXdr(),
         scope: KnownCaip2ChainId.Testnet,
       });
 
-      expect(wrapped.id).toBe(inner.hash().toString('hex'));
+      expect(wrapped.id).toBe(bufferToUint8Array(inner.hash()).toString('hex'));
       expect(wrapped.totalFee.toFixed(0)).toBe('100');
       expect(wrapped.feeCharged.toFixed(0)).toBe('100');
     });
@@ -315,7 +316,7 @@ describe('Transaction', () => {
         .build();
 
       const horizonRecord = {
-        envelope_xdr: inner.toXDR(),
+        envelope_xdr: inner.toXdr(),
 
         fee_charged: '300',
         successful: true,
@@ -350,7 +351,7 @@ describe('Transaction', () => {
         .build();
 
       const horizonRecord = {
-        envelope_xdr: inner.toXDR(),
+        envelope_xdr: inner.toXdr(),
 
         fee_charged: '100',
         successful: false,

@@ -1,17 +1,33 @@
 import type { Json } from '@metamask/utils';
-import type { Asset, Operation } from '@stellar/stellar-sdk';
-import { LiquidityPoolAsset, LiquidityPoolId, xdr } from '@stellar/stellar-sdk';
+import type { OperationRecord } from '@stellar/stellar-sdk';
+import {
+  Asset,
+  LiquidityPoolAsset,
+  LiquidityPoolId,
+  hash,
+  xdr,
+} from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { bufferToUint8Array } from '../../utils';
-import { StellarOperationType } from './api';
-import type { Transaction } from './Transaction';
 import {
+  bufferToUint8Array,
   getAddress,
   getFunctionName,
-  parseScValToReadableJson,
-} from './xdrParser';
+  getSorobanAuthAddressFromAuthEntrySafe,
+  isContractIdPreimageAddress,
+  isContractIdPreimageAsset,
+  isContractExecutableWasm,
+  isContractExecutableExternalRef,
+  isInvokeContract,
+  isCreateContractV1,
+  isCreateContractV2,
+  isUploadContractWasm,
+  SorobanAuthorizedFunctionType,
+} from '../../utils';
+import { StellarOperationType } from './api';
+import type { Transaction } from './Transaction';
+import { parseScValToReadableJson } from './xdrParser';
 
 /**
  * Semantic hint for how a confirmation row should be rendered.
@@ -71,7 +87,18 @@ export type ReadableAuthorizationJson = {
 };
 
 export type ReadableAuthorizationParams = ReadableOperationField & {
-  key: 'authorizedAddress' | 'contractId' | 'functionName' | 'arguments';
+  key:
+    | 'authorizedAddress'
+    | 'contractId'
+    | 'functionName'
+    | 'arguments'
+    | 'deployer'
+    | 'salt'
+    | 'asset'
+    | 'executableType'
+    | 'executableWasmHash'
+    | 'executableOwner'
+    | 'executableTag';
 };
 
 /**
@@ -159,6 +186,204 @@ class AbstractOperationMapper {
     }
     return value;
   }
+
+  /**
+   * Confirmation rows for `createContract` / `createContractV2`.
+   *
+   * Flattened like other Stellar wallets (salt / executable type / wasm hash).
+   * Mapping failures are swallowed so signing is not blocked.
+   *
+   * @param functionName - Host-function display name.
+   * @param contractIdPreimage - Contract id preimage (salt when from address).
+   * @param executable - Wasm, SAC, or CAP-85 external-ref executable.
+   * @param constructorArgs - Optional CAP-46 constructor args (v2 only).
+   * @returns Flattened confirmation rows.
+   */
+  #mapCreateContractRows(
+    functionName: 'createContract' | 'createContractV2',
+    contractIdPreimage: xdr.ContractIdPreimage,
+    executable: xdr.ContractExecutable,
+    constructorArgs?: readonly xdr.ScVal[],
+  ): ReadableOperationField[] {
+    const rows: ReadableOperationField[] = [
+      this.field('functionName', functionName, FieldType.text),
+    ];
+    try {
+      if (isContractIdPreimageAddress(contractIdPreimage)) {
+        rows.push(
+          this.field(
+            'deployer',
+            getAddress(contractIdPreimage.fromAddress.address),
+            FieldType.copyable,
+          ),
+        );
+        rows.push(
+          this.field(
+            'salt',
+            String(contractIdPreimage.fromAddress.salt),
+            FieldType.copyable,
+          ),
+        );
+      } else if (isContractIdPreimageAsset(contractIdPreimage)) {
+        rows.push(
+          this.field(
+            'asset',
+            Asset.fromOperation(contractIdPreimage.fromAsset).toString(),
+            FieldType.asset,
+          ),
+        );
+      }
+      rows.push(this.field('executableType', executable.type, FieldType.text));
+      if (isContractExecutableWasm(executable)) {
+        rows.push(
+          this.field(
+            'executableWasmHash',
+            String(executable.wasmHash),
+            FieldType.copyable,
+          ),
+        );
+      } else if (isContractExecutableExternalRef(executable)) {
+        rows.push(
+          this.field(
+            'executableOwner',
+            getAddress(executable.externalRef.executableOwner),
+            FieldType.copyable,
+          ),
+        );
+        rows.push(
+          this.field(
+            'executableTag',
+            String(executable.externalRef.tag),
+            FieldType.text,
+          ),
+        );
+      }
+      if (constructorArgs !== undefined && constructorArgs.length > 0) {
+        rows.push(
+          this.field(
+            'arguments',
+            constructorArgs.map((arg) => parseScValToReadableJson(arg)),
+            FieldType.json,
+          ),
+        );
+      }
+    } catch {
+      // Keep functionName only; never block signing on display mapping.
+    }
+    return rows;
+  }
+
+  /**
+   * Confirmation rows for a contract invoke (`INVOKE_CONTRACT` / auth `contractFn`).
+   *
+   * @param invokeArgs - Contract address, function name, and args.
+   * @returns Flattened confirmation rows.
+   */
+  #mapInvokeContractRows(
+    invokeArgs: xdr.InvokeContractArgs,
+  ): ReadableOperationField[] {
+    const rows: ReadableOperationField[] = [
+      this.field(
+        'contractId',
+        getAddress(invokeArgs.contractAddress),
+        FieldType.copyable,
+      ),
+      this.field(
+        'functionName',
+        getFunctionName(invokeArgs.functionName),
+        FieldType.text,
+      ),
+    ];
+    const { args } = invokeArgs;
+    if (args.length > 0) {
+      rows.push(
+        this.field(
+          'arguments',
+          args.map((arg) => parseScValToReadableJson(arg)),
+          FieldType.json,
+        ),
+      );
+    }
+    return rows;
+  }
+
+  /**
+   * Shared invoke / create-contract / create-contract-v2 display mapping used
+   * by both `invokeHostFunction` ops and Soroban auth invocations.
+   *
+   * @param hostFunction - Decoded host function, if present.
+   * @returns Confirmation rows, or empty when `hostFunction` is missing.
+   */
+  protected mapHostFunctionRows(
+    hostFunction: xdr.HostFunction | undefined,
+  ): ReadableOperationField[] {
+    if (isInvokeContract(hostFunction)) {
+      return this.#mapInvokeContractRows(hostFunction.invokeContract);
+    }
+    if (isCreateContractV1(hostFunction)) {
+      const { createContract } = hostFunction;
+      return this.#mapCreateContractRows(
+        'createContract',
+        createContract.contractIdPreimage,
+        createContract.executable,
+      );
+    }
+    if (isCreateContractV2(hostFunction)) {
+      const { createContractV2 } = hostFunction;
+      return this.#mapCreateContractRows(
+        'createContractV2',
+        createContractV2.contractIdPreimage,
+        createContractV2.executable,
+        createContractV2.constructorArgs,
+      );
+    }
+    if (isUploadContractWasm(hostFunction)) {
+      const wasmHash = bufferToUint8Array(
+        hash(bufferToUint8Array(hostFunction.wasm)),
+      ).toString('hex');
+      return [
+        this.field('functionName', 'uploadContractWasm', FieldType.text),
+        this.field('executableWasmHash', wasmHash, FieldType.copyable),
+      ];
+    }
+    const hostFnType = (hostFunction as { type?: string } | undefined)?.type;
+    return hostFnType
+      ? [this.field('functionName', hostFnType, FieldType.text)]
+      : [];
+  }
+
+  /**
+   * Maps a `SorobanAuthorizedFunction` the same way as the matching host-function
+   * arm (`contractFn` → invoke, `createContractHostFn` → create, …).
+   *
+   * @param authorizedFunction - Root or nested auth invocation function.
+   * @returns Confirmation rows.
+   */
+  protected mapAuthorizedFunctionRows(
+    authorizedFunction: xdr.SorobanAuthorizedFunction,
+  ): ReadableOperationField[] {
+    switch (authorizedFunction.type) {
+      case SorobanAuthorizedFunctionType.ContractFn:
+        return this.#mapInvokeContractRows(authorizedFunction.contractFn);
+      case SorobanAuthorizedFunctionType.CreateContractHostFn:
+        return this.#mapCreateContractRows(
+          'createContract',
+          authorizedFunction.createContractHostFn.contractIdPreimage,
+          authorizedFunction.createContractHostFn.executable,
+        );
+      case SorobanAuthorizedFunctionType.CreateContractV2HostFn:
+        return this.#mapCreateContractRows(
+          'createContractV2',
+          authorizedFunction.createContractV2HostFn.contractIdPreimage,
+          authorizedFunction.createContractV2HostFn.executable,
+          authorizedFunction.createContractV2HostFn.constructorArgs,
+        );
+      default: {
+        const { type } = authorizedFunction as { type: string };
+        return [this.field('functionName', type, FieldType.text)];
+      }
+    }
+  }
 }
 
 export class AuthorizationMapper extends AbstractOperationMapper {
@@ -177,8 +402,8 @@ export class AuthorizationMapper extends AbstractOperationMapper {
       try {
         authorizations.push(
           ...this.mapInvocation(
-            entry.rootInvocation(),
-            this.#getAuthAddress(entry),
+            entry.rootInvocation,
+            getSorobanAuthAddressFromAuthEntrySafe(entry),
           ),
         );
       } catch {
@@ -222,7 +447,7 @@ export class AuthorizationMapper extends AbstractOperationMapper {
     if (params.length > 0) {
       authorizations.push({ params });
     }
-    for (const sub of invocation.subInvocations()) {
+    for (const sub of invocation.subInvocations) {
       this.#appendInvocationAuthorizations(authorizations, sub, authAddress);
     }
   }
@@ -238,59 +463,9 @@ export class AuthorizationMapper extends AbstractOperationMapper {
       );
     }
 
-    const fn = invocation.function();
-    switch (fn.switch()) {
-      case xdr.SorobanAuthorizedFunctionType.sorobanAuthorizedFunctionTypeContractFn(): {
-        const contractFn = fn.contractFn();
-        rows.push(
-          this.field(
-            'contractId',
-            getAddress(contractFn.contractAddress()),
-            FieldType.copyable,
-          ),
-        );
-        rows.push(
-          this.field(
-            'functionName',
-            getFunctionName(contractFn.functionName()),
-            FieldType.text,
-          ),
-        );
-        const args = contractFn.args();
-        if (args.length > 0) {
-          rows.push(
-            this.field(
-              'arguments',
-              args.map((arg) => parseScValToReadableJson(arg)),
-              FieldType.json,
-            ),
-          );
-        }
-        break;
-      }
-      case xdr.SorobanAuthorizedFunctionType.sorobanAuthorizedFunctionTypeCreateContractHostFn():
-        rows.push(this.field('functionName', 'createContract', FieldType.text));
-        break;
-      case xdr.SorobanAuthorizedFunctionType.sorobanAuthorizedFunctionTypeCreateContractV2HostFn():
-        rows.push(
-          this.field('functionName', 'createContractV2', FieldType.text),
-        );
-        break;
-      default:
-        rows.push(this.field('functionName', 'authorization', FieldType.text));
-    }
+    const fn = invocation.function;
+    rows.push(...this.mapAuthorizedFunctionRows(fn));
     return rows;
-  }
-
-  #getAuthAddress(entry: xdr.SorobanAuthorizationEntry): string | null {
-    const credentials = entry.credentials();
-    if (
-      credentials.switch() !==
-      xdr.SorobanCredentialsType.sorobanCredentialsAddress()
-    ) {
-      return null;
-    }
-    return getAddress(credentials.address().address());
   }
 }
 
@@ -326,7 +501,7 @@ export class OperationMapper extends AbstractOperationMapper {
   }
 
   #mapAuthorizations(
-    operations: readonly Operation[],
+    operations: readonly OperationRecord[],
   ): ReadableAuthorizationJson[] {
     const authMapper = new AuthorizationMapper();
     const authorizations: ReadableAuthorizationJson[] = [];
@@ -352,7 +527,7 @@ export class OperationMapper extends AbstractOperationMapper {
    * @returns Serializable operation summary.
    */
   #mapOperation(
-    operation: Operation,
+    operation: OperationRecord,
     index: number,
     transactionSource: string,
   ): ReadableOperationJson {
@@ -369,39 +544,16 @@ export class OperationMapper extends AbstractOperationMapper {
       classic,
       params: classic
         ? this.#mapClassicParams(operation)
-        : this.#mapSorobanPlaceholder(operation),
+        : this.#mapSorobanParams(operation),
     };
   }
 
-  #mapSorobanPlaceholder(operation: Operation): ReadableOperationField[] {
+  #mapSorobanParams(operation: OperationRecord): ReadableOperationField[] {
     if (operation.type === StellarOperationType.InvokeHostFunction) {
       const hostOp = operation;
       const rows: ReadableOperationField[] = [];
       try {
-        const { func } = hostOp;
-
-        if (
-          func?.switch() ===
-          xdr.HostFunctionType.hostFunctionTypeInvokeContract()
-        ) {
-          const invokeArgs = func.invokeContract();
-          const contractAddress = getAddress(invokeArgs.contractAddress());
-          const functionName = getFunctionName(invokeArgs.functionName());
-          rows.push(
-            this.field('contractId', contractAddress, FieldType.copyable),
-          );
-          rows.push(this.field('functionName', functionName, FieldType.text));
-          const args = invokeArgs.args();
-          if (args.length > 0) {
-            rows.push(
-              this.field(
-                'arguments',
-                args.map((arg) => parseScValToReadableJson(arg)),
-                'json',
-              ),
-            );
-          }
-        }
+        rows.push(...this.mapHostFunctionRows(hostOp.func));
       } catch {
         // Fall through to XDR fallback
       }
@@ -432,7 +584,7 @@ export class OperationMapper extends AbstractOperationMapper {
     ];
   }
 
-  #mapClassicParams(operation: Operation): ReadableOperationField[] {
+  #mapClassicParams(operation: OperationRecord): ReadableOperationField[] {
     switch (operation.type) {
       case StellarOperationType.Payment: {
         const payment = operation;
@@ -756,7 +908,13 @@ export class OperationMapper extends AbstractOperationMapper {
       }
       case StellarOperationType.EndSponsoringFutureReserves:
         return [];
-      case StellarOperationType.RevokeSponsorship:
+      case StellarOperationType.RevokeAccountSponsorship:
+      case StellarOperationType.RevokeTrustlineSponsorship:
+      case StellarOperationType.RevokeOfferSponsorship:
+      case StellarOperationType.RevokeDataSponsorship:
+      case StellarOperationType.RevokeClaimableBalanceSponsorship:
+      case StellarOperationType.RevokeLiquidityPoolSponsorship:
+      case StellarOperationType.RevokeSignerSponsorship:
         return this.#mapRevokeSponsorship(operation);
       case StellarOperationType.Clawback: {
         const clawback = operation;
@@ -853,7 +1011,7 @@ export class OperationMapper extends AbstractOperationMapper {
     }
   }
 
-  #mapRevokeSponsorship(operation: Operation): ReadableOperationField[] {
+  #mapRevokeSponsorship(operation: OperationRecord): ReadableOperationField[] {
     if ('seller' in operation && 'offerId' in operation) {
       const revokeOffer = operation as {
         seller: string;
@@ -911,7 +1069,7 @@ export class OperationMapper extends AbstractOperationMapper {
       return [this.field('account', revokeAccount.account, 'address')];
     }
     return [
-      this.field('note', 'revokeSponsorship shape not recognized.', 'text'),
+      this.field('note', 'revoke sponsorship shape not recognized.', 'text'),
     ];
   }
 
@@ -924,37 +1082,35 @@ export class OperationMapper extends AbstractOperationMapper {
 
   #formatPredicate(predicate: xdr.ClaimPredicate): string {
     try {
-      const type = predicate.switch();
-      if (type === xdr.ClaimPredicateType.claimPredicateUnconditional()) {
+      const { type } = predicate;
+      if (type === 'claimPredicateUnconditional') {
         return 'unconditional';
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateBeforeAbsoluteTime()) {
-        const absBeforeVal = predicate.absBefore();
-        const seconds = Number(absBeforeVal.toXDR().readBigInt64BE(0));
+      if (type === 'claimPredicateBeforeAbsoluteTime') {
+        const seconds = Number(predicate.absBefore);
         return `before ${new Date(seconds * 1000).toISOString()}`;
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateBeforeRelativeTime()) {
-        const relBeforeVal = predicate.relBefore();
-        return `within ${String(relBeforeVal)}s`;
+      if (type === 'claimPredicateBeforeRelativeTime') {
+        return `within ${String(predicate.relBefore)}s`;
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateAnd()) {
-        const preds = predicate.andPredicates();
+      if (type === 'claimPredicateAnd') {
+        const preds = predicate.andPredicates;
         const left = preds[0];
         const right = preds[1];
         if (left && right) {
           return `(${this.#formatPredicate(left)} AND ${this.#formatPredicate(right)})`;
         }
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateOr()) {
-        const preds = predicate.orPredicates();
+      if (type === 'claimPredicateOr') {
+        const preds = predicate.orPredicates;
         const left = preds[0];
         const right = preds[1];
         if (left && right) {
           return `(${this.#formatPredicate(left)} OR ${this.#formatPredicate(right)})`;
         }
       }
-      if (type === xdr.ClaimPredicateType.claimPredicateNot()) {
-        const inner = predicate.notPredicate();
+      if (type === 'claimPredicateNot') {
+        const inner = predicate.notPredicate;
         return inner ? `NOT ${this.#formatPredicate(inner)}` : 'NOT(null)';
       }
     } catch {
