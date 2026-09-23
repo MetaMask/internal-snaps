@@ -426,3 +426,24 @@ export function getMemoFromContext(
   }
   return null;
 }
+
+/**
+ * Keys rendered above the flat param list (authorized address, contract, function).
+ */
+export const INVOCATION_HEADER_KEYS = new Set([
+  'authorizedAddress',
+  'contractId',
+  'functionName',
+]);
+
+/**
+ * Remaining confirmation rows after the invocation header.
+ *
+ * @param params - Mapped operation or authorization fields.
+ * @returns Params that should render line-by-line.
+ */
+export function getInvocationDetailParams(
+  params: ReadableOperationField[],
+): ReadableOperationField[] {
+  return params.filter((param) => !INVOCATION_HEADER_KEYS.has(param.key));
+}

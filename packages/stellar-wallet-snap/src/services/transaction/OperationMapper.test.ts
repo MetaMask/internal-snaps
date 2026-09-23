@@ -10,15 +10,21 @@ import {
   Networks,
   Operation,
   TransactionBuilder as StellarTransactionBuilder,
+  hash,
   xdr,
 } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
 import {
+  buildContractIdPreimageFromAddress,
+  buildExternalRefExecutable,
+} from '../../api/__mocks__/xdr.fixtures';
+import { bufferToUint8Array } from '../../utils';
+import {
   buildMockClassicTransaction,
   buildMockInvokeHostFunctionTransaction,
 } from './__mocks__/transaction.fixtures';
-import { OperationMapper } from './OperationMapper';
+import { AuthorizationMapper, OperationMapper } from './OperationMapper';
 import { Transaction } from './Transaction';
 
 /**
@@ -39,6 +45,8 @@ function buildRawOpTransaction(...ops: any[]): Transaction {
   }
   return new Transaction(builder.setTimeout(60).build());
 }
+
+const contractId = 'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT';
 
 describe('OperationMapper', () => {
   const mapper = new OperationMapper();
@@ -765,13 +773,13 @@ describe('OperationMapper', () => {
     const tokenA = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
     const recipient =
       'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
-    const contractId =
+    const swapContractId =
       'CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM';
     const wrapped = buildMockInvokeHostFunctionTransaction(
       'swap_exact_amount_in',
       [tokenA, 12n, tokenA, 1n, 23n, recipient],
       {
-        contractId,
+        contractId: swapContractId,
         networkPassphrase: Networks.PUBLIC,
         source: {
           accountId: recipient,
@@ -790,7 +798,7 @@ describe('OperationMapper', () => {
     const [op] = mapper.mapTransaction(wrapped).operations;
 
     expect(op?.params).toStrictEqual([
-      { key: 'contractId', value: contractId, type: 'copyable' },
+      { key: 'contractId', value: swapContractId, type: 'copyable' },
       {
         key: 'functionName',
         value: 'swap_exact_amount_in',
@@ -908,8 +916,6 @@ describe('OperationMapper', () => {
 
   it('maps invokeHostFunction ADDRESS_V2 auth authorizedAddress', () => {
     const authorizedAddress = Keypair.random().publicKey();
-    const contractId =
-      'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT';
     const authEntry = new xdr.SorobanAuthorizationEntry({
       credentials: xdr.SorobanCredentials.sorobanCredentialsAddressV2(
         new xdr.SorobanAddressCredentials({
@@ -986,6 +992,277 @@ describe('OperationMapper', () => {
     expect(op?.classic).toBe(false);
     expect(op?.params).toStrictEqual([
       { key: 'note', value: 'Soroban restoreFootprint.', type: 'text' },
+    ]);
+  });
+
+  it('maps createContract invokeHostFunction with CAP-85 externalRef for display', () => {
+    const wrapped = buildRawOpTransaction(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeCreateContract(
+          new xdr.CreateContractArgs({
+            contractIdPreimage: buildContractIdPreimageFromAddress(
+              Keypair.random().publicKey(),
+            ),
+            executable: buildExternalRefExecutable(contractId, 'beacon-v1'),
+          }),
+        ),
+        auth: [],
+      }),
+    );
+
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.params).toStrictEqual([
+      { key: 'functionName', value: 'createContract', type: 'text' },
+      {
+        key: 'deployer',
+        value: expect.stringMatching(/^G/u),
+        type: 'copyable',
+      },
+      {
+        key: 'salt',
+        value:
+          '0000000000000000000000000000000000000000000000000000000000000000',
+        type: 'copyable',
+      },
+      {
+        key: 'executableType',
+        value: 'contractExecutableExternalRef',
+        type: 'text',
+      },
+      { key: 'executableOwner', value: contractId, type: 'copyable' },
+      { key: 'executableTag', value: 'beacon-v1', type: 'text' },
+    ]);
+  });
+
+  it('maps createContractV2 constructor args including scvExecutableTag', () => {
+    const wrapped = buildRawOpTransaction(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeCreateContractV2(
+          new xdr.CreateContractArgsV2({
+            contractIdPreimage: buildContractIdPreimageFromAddress(
+              Keypair.random().publicKey(),
+            ),
+            executable: xdr.ContractExecutable.contractExecutableStellarAsset(),
+            constructorArgs: [xdr.ScVal.scvExecutableTag('v2')],
+          }),
+        ),
+        auth: [],
+      }),
+    );
+
+    const [op] = mapper.mapTransaction(wrapped).operations;
+
+    expect(op?.params).toStrictEqual([
+      { key: 'functionName', value: 'createContractV2', type: 'text' },
+      {
+        key: 'deployer',
+        value: expect.stringMatching(/^G/u),
+        type: 'copyable',
+      },
+      {
+        key: 'salt',
+        value:
+          '0000000000000000000000000000000000000000000000000000000000000000',
+        type: 'copyable',
+      },
+      {
+        key: 'executableType',
+        value: 'contractExecutableStellarAsset',
+        type: 'text',
+      },
+      { key: 'arguments', value: ['v2'], type: 'json' },
+    ]);
+  });
+
+  it('maps createContractV2 wasm + constructor args from envelope XDR', () => {
+    // Unsigned testnet createContractV2 (wasm hash + 3 constructor args).
+    const envelopeXdr =
+      'AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAMgAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAABqs11hAAAAAAAAAAEAAAAAAAAAGAAAAAMAAAAAAAAAAAAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqAAAAABERERERERERERERERERERERERERERERERERERERERERAAAAAwAAABIAAAABJUfpzy1IcVjP1dYbur8cEQRPmgQRI3GXBkzV1KVvt38AAAAOAAAAB2luaXQtdjIAAAAAFgAAAAliZWFjb24tdjEAAAAAAAABAAAAAQAAAAAAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAAAAAAAAgAPQkAAAAABAAAAAgAAAAAAAAAAAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqoAAAAAEREREREREREREREREREREREREREREREREREREREREREAAAADAAAAEgAAAAElR+nPLUhxWM/V1hu6vxwRBE+aBBEjcZcGTNXUpW+3fwAAAA4AAAAHaW5pdC12MgAAAAAWAAAACWJlYWNvbi12MQAAAAAAAAAAAAAAAAAAAA==';
+
+    const wrapped = Transaction.fromXdr({
+      xdr: envelopeXdr,
+      scope: KnownCaip2ChainId.Testnet,
+    });
+    const readable = mapper.mapTransaction(wrapped);
+    const [op] = readable.operations;
+
+    expect(op?.params.map((param) => param.key)).not.toContain('note');
+    expect(op?.params).toStrictEqual([
+      { key: 'functionName', value: 'createContractV2', type: 'text' },
+      {
+        key: 'deployer',
+        value: 'GC2BKLYOOYPDEFJKLKY6FNNRQMGFLVHJKQRGNSSRRGSMPGF32LHCQVGF',
+        type: 'copyable',
+      },
+      {
+        key: 'salt',
+        value:
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        type: 'copyable',
+      },
+      {
+        key: 'executableType',
+        value: 'contractExecutableWasm',
+        type: 'text',
+      },
+      {
+        key: 'executableWasmHash',
+        value:
+          '1111111111111111111111111111111111111111111111111111111111111111',
+        type: 'copyable',
+      },
+      {
+        key: 'arguments',
+        value: [
+          'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT',
+          'init-v2',
+          'beacon-v1',
+        ],
+        type: 'json',
+      },
+    ]);
+    expect(readable.authorizations[0]?.params).toStrictEqual(
+      expect.arrayContaining([
+        { key: 'functionName', value: 'createContractV2', type: 'text' },
+        {
+          key: 'executableWasmHash',
+          value:
+            '1111111111111111111111111111111111111111111111111111111111111111',
+          type: 'copyable',
+        },
+        {
+          key: 'arguments',
+          value: [
+            'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT',
+            'init-v2',
+            'beacon-v1',
+          ],
+          type: 'json',
+        },
+      ]),
+    );
+  });
+
+  it('shows an unknown host-function arm as functionName instead of the generic note', () => {
+    const wrapped = buildRawOpTransaction(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeCreateContract(
+          new xdr.CreateContractArgs({
+            contractIdPreimage: buildContractIdPreimageFromAddress(
+              Keypair.random().publicKey(),
+            ),
+            executable: xdr.ContractExecutable.contractExecutableStellarAsset(),
+          }),
+        ),
+        auth: [],
+      }),
+    );
+    const hostOp = wrapped
+      .transactionOperations[0] as Operation.InvokeHostFunction;
+    Object.defineProperty(hostOp.func, 'type', {
+      value: 'hostFunctionTypeFuture',
+    });
+
+    expect(mapper.mapTransaction(wrapped).operations[0]?.params).toStrictEqual([
+      {
+        key: 'functionName',
+        value: 'hostFunctionTypeFuture',
+        type: 'text',
+      },
+    ]);
+  });
+
+  it('maps uploadContractWasm with the wasm hash', () => {
+    const wasm = bufferToUint8Array(new Uint8Array([0x00, 0x61, 0x73, 0x6d]));
+    const wrapped = buildRawOpTransaction(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeUploadContractWasm(wasm),
+        auth: [],
+      }),
+    );
+
+    const [op] = mapper.mapTransaction(wrapped).operations;
+    expect(op?.params).toStrictEqual([
+      { key: 'functionName', value: 'uploadContractWasm', type: 'text' },
+      {
+        key: 'executableWasmHash',
+        value: bufferToUint8Array(hash(wasm)).toString('hex'),
+        type: 'copyable',
+      },
+    ]);
+  });
+
+  it('maps createContract fromAsset preimage as an asset row', () => {
+    const wrapped = buildRawOpTransaction(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeCreateContract(
+          new xdr.CreateContractArgs({
+            contractIdPreimage:
+              xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+                Asset.native().toXDRObject(),
+              ),
+            executable: xdr.ContractExecutable.contractExecutableStellarAsset(),
+          }),
+        ),
+        auth: [],
+      }),
+    );
+
+    const [op] = mapper.mapTransaction(wrapped).operations;
+    expect(op?.params).toStrictEqual([
+      { key: 'functionName', value: 'createContract', type: 'text' },
+      { key: 'asset', value: 'native', type: 'asset' },
+      {
+        key: 'executableType',
+        value: 'contractExecutableStellarAsset',
+        type: 'text',
+      },
+    ]);
+  });
+});
+
+describe('AuthorizationMapper', () => {
+  const authMapper = new AuthorizationMapper();
+
+  it('maps createContract auth with CAP-85 externalRef for display', () => {
+    const invocation = new xdr.SorobanAuthorizedInvocation({
+      function:
+        xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+          new xdr.CreateContractArgs({
+            contractIdPreimage: buildContractIdPreimageFromAddress(
+              Keypair.random().publicKey(),
+            ),
+            executable: buildExternalRefExecutable(contractId, 'beacon-v1'),
+          }),
+        ),
+      subInvocations: [],
+    });
+
+    expect(authMapper.mapInvocation(invocation)).toStrictEqual([
+      {
+        params: [
+          { key: 'functionName', value: 'createContract', type: 'text' },
+          {
+            key: 'deployer',
+            value: expect.stringMatching(/^G/u),
+            type: 'copyable',
+          },
+          {
+            key: 'salt',
+            value:
+              '0000000000000000000000000000000000000000000000000000000000000000',
+            type: 'copyable',
+          },
+          {
+            key: 'executableType',
+            value: 'contractExecutableExternalRef',
+            type: 'text',
+          },
+          { key: 'executableOwner', value: contractId, type: 'copyable' },
+          { key: 'executableTag', value: 'beacon-v1', type: 'text' },
+        ],
+      },
     ]);
   });
 });
