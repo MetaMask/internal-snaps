@@ -9,9 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add send confirmation memo edit UI for SEP-29 RequiresMemo recovery: store memo on confirmation context (`context.memo`), resolve dialog as `{ confirmed, memo? }`, and rebuild with `skipExceptions: [RequiresMemoException]` / post-confirm memo attach (no client wire `memo` / `memoType` params). Live refresh **pauses** on RequiresMemo (omit scan / pause auto-cron); MemoEdit Save cancel-and-replaces to restart validation and scanning ([#323](https://github.com/MetaMask/internal-snaps/pull/323), [#291](https://github.com/MetaMask/internal-snaps/pull/291))
+- Add send confirmation memo edit UI for SEP-29 RequiresMemo recovery: store memo on confirmation context (`context.memo`), resolve dialog as `{ confirmed, memo? }`, and rebuild with `skipExceptions: [RequiresMemoException]` / post-confirm memo attach (no client wire `memo` / `memoType` params). Live refresh pauses on RequiresMemo (omit scan / pause auto-cron); MemoEdit Save cancel-and-replaces to restart validation and scanning ([#323](https://github.com/MetaMask/internal-snaps/pull/323))
+- Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` from the SEP-43 `signTransaction` confirmation ([#346](https://github.com/MetaMask/internal-snaps/pull/346))
+  - Only the unified send and change-trust flows emitted decision events before; dApp-initiated transaction signatures were invisible.
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
 - Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
+- Accept CAP-71 v2 Soroban authorization preimages (`envelopeTypeSorobanAuthorizationWithAddress`) in `signAuthEntry` ([#307](https://github.com/MetaMask/internal-snaps/pull/307))
+  - Reject when the v2 bound address is not the signing account
+  - Show `ADDRESS_V2` credential addresses on invoke-host-function confirmation
 
 ### Changed
 
