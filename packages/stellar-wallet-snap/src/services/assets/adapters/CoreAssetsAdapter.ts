@@ -1,4 +1,8 @@
-import type { Asset, Caip19AssetId, AssetMetadata } from '@metamask/assets-controller';
+import type {
+  Asset,
+  Caip19AssetId,
+  AssetMetadata,
+} from '@metamask/assets-controller';
 import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../../api';

@@ -23,7 +23,6 @@ export async function isAssetsMigrationEnabled(
   );
 
   return (
-    parseSnapsAssetsMigrationStage(flagValue) !==
-    SnapsAssetsMigrationStage.Off
+    parseSnapsAssetsMigrationStage(flagValue) !== SnapsAssetsMigrationStage.Off
   );
 }

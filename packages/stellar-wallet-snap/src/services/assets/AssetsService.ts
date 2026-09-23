@@ -1,6 +1,9 @@
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
 
-import type { KnownCaip19AssetIdOrSlip44Id, KnownCaip2ChainId } from '../../api';
+import type {
+  KnownCaip19AssetIdOrSlip44Id,
+  KnownCaip2ChainId,
+} from '../../api';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { parseCoreAsset, parseCoreAssetMetadata } from './api';
 import type { CoreAsset, CoreAssetMetadata } from './api';

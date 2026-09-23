@@ -225,10 +225,14 @@ export class AssetMetadataService {
       return { assets: coreHits, missingAssetIds: [] };
     }
 
-    const cachedAssets =
-      await this.#assetMetadataRepository.getByAssetIds(missingAssetIdsFromCore);
+    const cachedAssets = await this.#assetMetadataRepository.getByAssetIds(
+      missingAssetIdsFromCore,
+    );
     const { hits: snapHits, missing: missingAssetIds } =
-      this.#partitionHitsAndMissingByArray(missingAssetIdsFromCore, cachedAssets);
+      this.#partitionHitsAndMissingByArray(
+        missingAssetIdsFromCore,
+        cachedAssets,
+      );
 
     return { assets: [...coreHits, ...snapHits], missingAssetIds };
   }

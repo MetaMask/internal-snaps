@@ -67,9 +67,9 @@ describe('ValidStellarInt64Struct', () => {
   });
 
   it('rejects a value above max int64', () => {
-    expect(() => assert('9223372036854775808', ValidStellarInt64Struct)).toThrow(
-      StructError,
-    );
+    expect(() =>
+      assert('9223372036854775808', ValidStellarInt64Struct),
+    ).toThrow(StructError);
   });
 });
 

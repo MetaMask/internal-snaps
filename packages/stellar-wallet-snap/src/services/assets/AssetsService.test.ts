@@ -9,9 +9,9 @@ import {
   USDC_CLASSIC,
   USDC_SEP41,
 } from '../asset-metadata/__mocks__/assets.fixtures';
+import { createMockAssetsService } from './__mocks__/assetsService.fixtures';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { AssetsService } from './AssetsService';
-import { createMockAssetsService } from './__mocks__/assetsService.fixtures';
 
 describe('AssetsService', () => {
   const assetId = USDC_CLASSIC;

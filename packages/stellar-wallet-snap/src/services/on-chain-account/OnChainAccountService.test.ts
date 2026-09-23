@@ -232,8 +232,7 @@ describe('OnChainAccountService', () => {
   describe('resolveOnChainAccountFromCore', () => {
     const usdcIssuer =
       'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-    const usdcId =
-      `stellar:pubnet/asset:USDC-${usdcIssuer}` as const;
+    const usdcId = `stellar:pubnet/asset:USDC-${usdcIssuer}` as const;
     const sep41Id =
       'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75' as const;
 
@@ -259,7 +258,9 @@ describe('OnChainAccountService', () => {
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
       jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      jest.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([]);
+      jest
+        .spyOn(assetsService, 'getAccountAssetsByScope')
+        .mockResolvedValue([]);
 
       expect(
         await onChainAccountService.resolveOnChainAccountFromCore(
@@ -313,12 +314,11 @@ describe('OnChainAccountService', () => {
           },
         ]);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountFromCore(
-          KnownCaip2ChainId.Mainnet,
-          keyringAccountId,
-          accountAddress,
-        );
+      const result = await onChainAccountService.resolveOnChainAccountFromCore(
+        KnownCaip2ChainId.Mainnet,
+        keyringAccountId,
+        accountAddress,
+      );
 
       expect(result).toBeInstanceOf(OnChainAccount);
       const full = result?.toSerializableFull();
@@ -388,13 +388,12 @@ describe('OnChainAccountService', () => {
         },
       ]);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountFromCore(
-          KnownCaip2ChainId.Mainnet,
-          globalThis.crypto.randomUUID(),
-          accountAddress,
-          { resolveAccountFromNetwork: true },
-        );
+      const result = await onChainAccountService.resolveOnChainAccountFromCore(
+        KnownCaip2ChainId.Mainnet,
+        globalThis.crypto.randomUUID(),
+        accountAddress,
+        { resolveAccountFromNetwork: true },
+      );
 
       expect(result?.sequenceNumber).toBe('99');
       expect(result?.subentryCount).toBe(4);
@@ -483,7 +482,11 @@ describe('OnChainAccountService', () => {
         'synchronize',
       );
 
-      await onChainAccountService.synchronize([], KnownCaip2ChainId.Mainnet, []);
+      await onChainAccountService.synchronize(
+        [],
+        KnownCaip2ChainId.Mainnet,
+        [],
+      );
 
       expect(synchronizeSpy).not.toHaveBeenCalled();
     });

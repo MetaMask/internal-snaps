@@ -1,4 +1,13 @@
-import { boolean, create, defaulted, number, optional, string, type, union } from '@metamask/superstruct';
+import {
+  boolean,
+  create,
+  defaulted,
+  number,
+  optional,
+  string,
+  type,
+  union,
+} from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
 
 import {
@@ -97,7 +106,9 @@ export function isCoreNativeAsset(asset: CoreAsset): asset is CoreNativeAsset {
   return Slip44CoreAssetStruct.is(asset);
 }
 
-export function isCoreClassicAsset(asset: CoreAsset): asset is CoreClassicAsset {
+export function isCoreClassicAsset(
+  asset: CoreAsset,
+): asset is CoreClassicAsset {
   return ClassicCoreAssetStruct.is(asset);
 }
 
@@ -125,7 +136,9 @@ export function parseCoreAsset(value: unknown): CoreAsset | null {
  * @param value - Raw AssetsController asset metadata.
  * @returns The Stellar-shaped metadata, or `null` when the payload is not Stellar.
  */
-export function parseCoreAssetMetadata(value: unknown): CoreAssetMetadata | null {
+export function parseCoreAssetMetadata(
+  value: unknown,
+): CoreAssetMetadata | null {
   try {
     return create(value, CoreAssetMetadataStruct);
   } catch {

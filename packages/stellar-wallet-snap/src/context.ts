@@ -12,6 +12,7 @@ import type {
 import { getMessenger } from '@metamask/snaps-sdk';
 import { assert, object } from '@metamask/superstruct';
 
+import type { CoreMessenger } from './api/core-messenger';
 import { AppConfig } from './config';
 import { KeyringHandler, CronjobHandler, UserInputHandler } from './handlers';
 import { AccountResolver } from './handlers/accountResolver';
@@ -71,7 +72,6 @@ import {
 } from './services/transaction-scan';
 import { WalletService } from './services/wallet';
 import { ConfirmationUXController } from './ui/confirmation/controller';
-import type { CoreMessenger } from './api/core-messenger';
 import { getSnapProvider, logger, noOpLogger, trackError } from './utils';
 
 assert(AppConfig, object());

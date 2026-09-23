@@ -27,7 +27,10 @@ import {
   SerializableClassicSpendableBalanceStruct,
   SerializableSep41SpendableBalanceStruct,
 } from './OnChainAccountSerializable';
-import type { OnChainAccountSerializableFull, SerializableSpendableBalance } from './OnChainAccountSerializable';
+import type {
+  OnChainAccountSerializableFull,
+  SerializableSpendableBalance,
+} from './OnChainAccountSerializable';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
 import { subentryCountFromMinimumReserveStroops } from './utils';
 
@@ -128,8 +131,12 @@ export class OnChainAccountService {
     accountAddress: string,
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccount | null> {
-    if ((await this.#assetsService.isMigrationEnabled())) {
-      return this.resolveOnChainAccountFromCore(scope, keyringAccountId, accountAddress);
+    if (await this.#assetsService.isMigrationEnabled()) {
+      return this.resolveOnChainAccountFromCore(
+        scope,
+        keyringAccountId,
+        accountAddress,
+      );
     }
 
     const onChainAccount =
@@ -307,16 +314,21 @@ export class OnChainAccountService {
         rawNativeBalance,
       });
     } catch (error: unknown) {
-      this.#logger.debug('Error serializing on-chain account from core assets', {
-        error,
-        accountAddress,
-        scope,
-        assets,
-        ledger,
-      });
-      trackError(new Error('Error serializing on-chain account from core assets', {
-        cause: error,
-      }));
+      this.#logger.debug(
+        'Error serializing on-chain account from core assets',
+        {
+          error,
+          accountAddress,
+          scope,
+          assets,
+          ledger,
+        },
+      );
+      trackError(
+        new Error('Error serializing on-chain account from core assets', {
+          cause: error,
+        }),
+      );
       throw error;
     }
   }
@@ -355,7 +367,9 @@ export class OnChainAccountService {
     sep41Assets: StellarAssetMetadata[],
   ): Promise<void> {
     if (await this.#assetsService.isMigrationEnabled()) {
-      this.#logger.debug('Skipping on-chain account synchronization; Core migration is on');
+      this.#logger.debug(
+        'Skipping on-chain account synchronization; Core migration is on',
+      );
       return;
     }
 
