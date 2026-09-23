@@ -16,6 +16,7 @@ SEP-43: show a confirmation, then return a **signed** transaction XDR to the dap
 | `SignTransactionHandler`   | `handlers/keyring`          | Decode, confirm, sign                                  |
 | `AccountResolver`          | `handlers/`                 | Load keyring account + wallet                          |
 | `Wallet`                   | `services/wallet`           | `signTransaction`                                      |
+| `OperationMapper`          | `services/transaction`      | Decode envelope ops + Soroban auth into confirmation rows |
 | `ConfirmationUXController` | `ui/confirmation`           | Sign-transaction dialog                                |
 | `TransactionScanService`   | `services/transaction-scan` | Security scan + remote simulation while dialog is open |
 
@@ -34,12 +35,31 @@ Local Superstruct validators live in [`handlers/keyring/api.ts`](../../../src/ha
 - **No broadcast** — after signing, the Snap returns the SEP-43 success fields (`signedTxXdr`, `signerAddress`). Submitting to the network is entirely the dapp’s job (unlike [`confirmSend`](../client-request/confirmSend.md) / [`signAndSendTransaction`](../client-request/signAndSendTransaction.md)).
 - Fee on the envelope is trusted as provided by the dapp; security scan / remote simulation may still surface issues in the confirmation UI.
 - Failures / user reject are returned in the SEP-43 `error` envelope (does not throw to the dapp).
+- Analytics: opening the dialog emits `Transaction Added`; confirm / reject emit `Transaction Approved` / `Transaction Rejected`.
+
+## Confirmation UI
+
+`OperationMapper` (`mapTransaction`) turns the decoded envelope into `ReadableTransactionJson`. The dialog shows origin, account, network, fee, memo, optional **Authorizations**, then each operation.
+
+Classic operations render as a type heading plus labeled params (amounts, assets, flags, and so on).
+
+`invokeHostFunction` is decoded per host-function arm (not a generic Soroban note):
+
+| Host function            | Confirmation rows                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `invokeContract`         | Contract id, function name, args                                                                           |
+| `createContract`         | Function name; deployer + salt (`fromAddress`) or asset (`fromAsset` / SAC); executable (wasm hash or CAP-85 `externalRef` owner + tag) |
+| `createContractV2`       | Same as `createContract`, plus constructor args when present                                               |
+| `uploadContractWasm`     | Function name + wasm SHA-256                                                                               |
+| Unknown arm              | `functionName` only                                                                                        |
+
+Invoke-host-function ops with a known contract / function show those two fields in `InvocationSummary`; remaining rows (args, salt, executable, …) are listed below via `ReadableParamsList`. Auth entries on the same op use `AuthorizationMapper` (shared create-contract / invoke row mapping) in the Authorizations section. Token prices apply to classic amount / asset rows, not auth rows. Mapping failures are swallowed so signing is not blocked.
 
 ## Step-by-step
 
 1. Resolve account + wallet for the signer.
 2. `Transaction.fromXdr` + assert scope matches.
-3. Show confirmation (readable ops, fee, prices, security scan / remote simulation).
+3. Show confirmation (`OperationMapper` rows, fee, prices, security scan / remote simulation).
 4. On approve → `wallet.signTransaction` → return signed XDR.
 5. On reject → user-rejected path mapped to SEP-43 error response.
 
