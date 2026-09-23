@@ -226,6 +226,25 @@ describe('State', () => {
     });
   });
 
+  describe('getKeys', () => {
+    it('gets the values of the passed keys', async () => {
+      snap.request.mockResolvedValue({
+        users: [
+          { name: 'John', age: 30 },
+          { name: 'Jane', age: 20 },
+          { name: 'Jim', age: 10 },
+        ],
+      });
+
+      expect(
+        await state.getKeys(['users.0.name', 'users.2.name']),
+      ).toStrictEqual({
+        'users.0.name': 'John',
+        'users.2.name': 'Jim',
+      });
+    });
+  });
+
   describe('setKey', () => {
     it('sets the value of a key', async () => {
       await state.setKey('users.1.name', 'Bob');
