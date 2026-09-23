@@ -3353,6 +3353,7 @@ __metadata:
     bignumber.js: "npm:^9.3.1"
     deepmerge: "npm:^4.2.2"
     jest: "npm:30.0.3"
+    jest-it-up: "npm:^2.0.2"
     lodash: "npm:^4.17.21"
     ts-jest: "npm:^29.4.1"
     tsx: "npm:^4.20.5"
