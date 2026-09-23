@@ -174,7 +174,6 @@ describe('ConfirmationTransactionRefresher', () => {
           scope,
           transaction: transactionXdr,
         },
-        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -325,7 +324,6 @@ describe('ConfirmationTransactionRefresher', () => {
           scope,
           transaction: transactionXdr,
         },
-        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -367,7 +365,6 @@ describe('ConfirmationTransactionRefresher', () => {
           ...securityScanRequest,
           transaction: transactionXdr,
         },
-        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -395,7 +392,6 @@ describe('ConfirmationTransactionRefresher', () => {
           ...securityScanRequest,
           transaction: transactionXdr,
         },
-        transactionsFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
     });
@@ -436,7 +432,6 @@ describe('ConfirmationTransactionRefresher', () => {
             scope,
             transaction: transactionXdr,
           },
-          transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
       });

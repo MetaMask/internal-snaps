@@ -119,7 +119,7 @@ async function onSaveSubmit(
   const refreshedContext = canRestartRefresh
     ? {
         ...nextContext,
-        transactionsFetchStatus: FetchStatus.Fetching,
+        transactionsFetchStatus: FetchStatus.Fetched,
         scanFetchStatus: FetchStatus.Fetching,
       }
     : nextContext;

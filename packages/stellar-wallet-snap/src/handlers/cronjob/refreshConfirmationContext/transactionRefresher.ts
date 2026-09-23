@@ -176,8 +176,6 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
             scope,
             transaction: rebuiltTransactionXdr,
           },
-          // Mark re-validation complete (Save sets Fetching before restart).
-          transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
       };
