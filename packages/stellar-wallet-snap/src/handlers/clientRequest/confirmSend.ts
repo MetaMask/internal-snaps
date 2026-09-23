@@ -1,4 +1,8 @@
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionEventProperties,
+} from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError, isObject } from '@metamask/utils';
@@ -195,11 +199,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await this.#analyticsService.trackTransactionAdded({
+      const trackingProperties: TransactionEventProperties = {
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
-      });
+      };
+
+      await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
       const dialogResult = await this.#confirmSend({
         request,
@@ -214,21 +220,15 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       });
 
       if (!dialogResult.confirmed) {
-        await this.#analyticsService.trackTransactionRejected({
-          origin: METAMASK_ORIGIN,
-          accountType: stellarKeyringAccount.type,
-          chainIdCaip: scope,
-        });
+        await this.#analyticsService.trackTransactionRejected(
+          trackingProperties,
+        );
         throw ensureError(new UserRejectedRequestError());
       }
 
       const confirmedMemo = getMemoStrOrUndefined(dialogResult.memo);
 
-      await this.#analyticsService.trackTransactionApproved({
-        origin: METAMASK_ORIGIN,
-        accountType: stellarKeyringAccount.type,
-        chainIdCaip: scope,
-      });
+      await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
       const {
         wallet: refreshedWallet,
@@ -250,6 +250,10 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         transaction: refreshedTransaction,
         pollTransaction: false,
       });
+
+      await this.#analyticsService.trackTransactionSubmitted(
+        trackingProperties,
+      );
 
       await this.#transactionService.savePendingKeyringTransactionSafe({
         type: KeyringTransactionType.Send,

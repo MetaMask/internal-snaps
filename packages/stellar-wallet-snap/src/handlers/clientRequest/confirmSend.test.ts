@@ -182,6 +182,7 @@ describe('ConfirmSendHandler', () => {
     const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
     const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
     const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
 
     const handler = new ConfirmSendHandler({
       logger,
@@ -193,6 +194,7 @@ describe('ConfirmSendHandler', () => {
         trackTransactionAdded: trackTransactionAddedSpy,
         trackTransactionRejected: trackTransactionRejectedSpy,
         trackTransactionApproved: trackTransactionApprovedSpy,
+        trackTransactionSubmitted: trackTransactionSubmittedSpy,
       } as never,
     });
 
@@ -215,6 +217,7 @@ describe('ConfirmSendHandler', () => {
       trackTransactionAddedSpy,
       trackTransactionRejectedSpy,
       trackTransactionApprovedSpy,
+      trackTransactionSubmittedSpy,
     };
   }
 
@@ -895,6 +898,27 @@ describe('ConfirmSendHandler', () => {
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
       });
+    });
+
+    it('tracks transaction submitted after broadcast', async () => {
+      const {
+        handler,
+        account,
+        trackTransactionSubmittedSpy,
+        sendTransaction,
+      } = setup();
+      await handler.handle(baseRequest());
+
+      expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
+        accountType: account.type,
+        chainIdCaip: scope,
+        origin: METAMASK_ORIGIN,
+      });
+
+      const submittedOrder =
+        trackTransactionSubmittedSpy.mock.invocationCallOrder[0];
+      const sendOrder = sendTransaction.mock.invocationCallOrder[0];
+      expect(sendOrder).toBeLessThan(submittedOrder as number);
     });
   });
 });

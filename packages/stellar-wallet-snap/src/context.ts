@@ -151,6 +151,7 @@ const signTransactionHandler = new SignTransactionHandler({
   logger,
   accountResolver,
   confirmationUIController,
+  analyticsService,
 });
 
 const signMessageHandler = new SignMessageHandler({

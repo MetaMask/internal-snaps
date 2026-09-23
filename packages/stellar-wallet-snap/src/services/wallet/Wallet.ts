@@ -108,8 +108,9 @@ export class Wallet {
   }
 
   /**
-   * Signs a SEP-43 Soroban auth entry preimage. The dapp passes the
-   * `HashIdPreimage` (envelopeTypeSorobanAuthorization) as base64 XDR — the
+   * Signs a SEP-43 Soroban auth entry preimage. The dapp passes a
+   * `HashIdPreimage` (v1 `envelopeTypeSorobanAuthorization` or CAP-71 v2
+   * `envelopeTypeSorobanAuthorizationWithAddress`) as base64 XDR — the
    * wallet hashes the bytes with SHA-256 and signs the digest. No
    * "Stellar Signed Message" prefix is applied: the network ID is already
    * embedded inside the preimage.

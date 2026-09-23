@@ -33,15 +33,13 @@ import {
   toCaip19Sep41AssetId,
   rethrowIfInstanceElseThrow,
   batchesAllSettled,
+  getAddress,
 } from '../../utils';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
 import { assertInvokeHostFunctionSoleOperation } from '../transaction/utils';
-import {
-  extractAssetDataFromContractData,
-  getAddress,
-} from '../transaction/xdrParser';
+import { extractAssetDataFromContractData } from '../transaction/xdrParser';
 import type { AssetDataResponse } from './api';
 import { KnownRpcError } from './api';
 import {

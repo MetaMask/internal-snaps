@@ -8,11 +8,16 @@ import { AuthorizationMapper } from '../../services/transaction';
 import type { Wallet } from '../../services/wallet';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import {
+  isSorobanAuthPreimageV1,
+  isSorobanAuthPreimageV2,
+  getAddress,
+} from '../../utils/xdr';
 import type { AccountResolver } from '../accountResolver';
 import type { SignAuthEntryRequest, SignAuthEntryResponse } from './api';
 import { SignAuthEntryRequestStruct, SignAuthEntryResponseStruct } from './api';
 import { BaseSep43KeyringHandler } from './base';
-import type { Sep43Error } from './exceptions';
+import { Sep43Error, Sep43ErrorCode } from './exceptions';
 
 /**
  * Human-readable Soroban auth entry summary rendered in the confirmation
@@ -31,11 +36,13 @@ export type ReadableAuthEntry = {
 /**
  * SEP-43 `signAuthEntry` keyring handler.
  *
- * The dapp passes a base64-encoded `HashIdPreimage`
- * (envelopeTypeSorobanAuthorization). The handler decodes it for display in
- * the confirmation dialog and, on confirm, asks the wallet to
+ * The dapp passes a base64-encoded `HashIdPreimage` (v1
+ * `envelopeTypeSorobanAuthorization` or CAP-71 v2
+ * `envelopeTypeSorobanAuthorizationWithAddress`). The handler decodes it for
+ * display in the confirmation dialog and, on confirm, asks the wallet to
  * `sha256(preimage) → ed25519 sign`. The network passphrase is already
  * baked into the preimage's `networkId`, so no additional prefix is applied.
+ * A v2 bound address that does not match the signing account is rejected.
  *
  * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0043.md
  */
@@ -71,7 +78,10 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
     const { account, wallet } = resolved;
     const { authEntry } = request.request.params;
 
-    const readableAuthEntry = this.#decodeSorobanAuthPreimage(authEntry);
+    const { readableAuthEntry, boundAddress } =
+      this.#decodeSorobanAuthPreimage(authEntry);
+
+    this.#assertIsValidBoundAddress(boundAddress, account.address);
 
     if (!(await this.#confirm(request, account, readableAuthEntry))) {
       throw new UserRejectedRequestError() as unknown as Error;
@@ -117,25 +127,67 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
 
   /**
    * Decodes a SEP-43 `signAuthEntry` payload into the user-facing summary.
-   * The struct has already validated that the input parses as
-   * `HashIdPreimage.envelopeTypeSorobanAuthorization`, so the cast is safe.
+   * The struct has already validated a v1 or CAP-71 v2 Soroban authorization
+   * preimage, so other `HashIdPreimage` arms are not expected.
    *
    * @param authEntry - Base64-encoded `HashIdPreimage` XDR.
-   * @returns Fields displayed in the confirmation dialog.
+   * @returns Fields displayed in the confirmation dialog, plus the CAP-71
+   * bound address when present.
    */
-  #decodeSorobanAuthPreimage(authEntry: string): ReadableAuthEntry {
+  #decodeSorobanAuthPreimage(authEntry: string): {
+    readableAuthEntry: ReadableAuthEntry;
+    boundAddress: string | null;
+  } {
     const preimage = xdr.HashIdPreimage.fromXdr(authEntry, 'base64');
-    if (preimage.type !== 'envelopeTypeSorobanAuthorization') {
-      throw new Error('HashIdPreimage is not a Soroban authorization preimage');
-    }
-    const sorobanAuth = preimage.sorobanAuthorization;
 
-    return {
-      authorizations: new AuthorizationMapper().mapInvocation(
-        sorobanAuth.invocation,
-      ),
-      signatureExpirationLedger: sorobanAuth.signatureExpirationLedger,
-      nonce: sorobanAuth.nonce.toString(),
-    };
+    if (isSorobanAuthPreimageV1(preimage)) {
+      const { invocation, signatureExpirationLedger, nonce } =
+        preimage.sorobanAuthorization;
+      return {
+        readableAuthEntry: {
+          authorizations: new AuthorizationMapper().mapInvocation(invocation),
+          signatureExpirationLedger,
+          nonce: nonce.toString(),
+        },
+        boundAddress: null,
+      };
+    }
+
+    if (isSorobanAuthPreimageV2(preimage)) {
+      const { invocation, signatureExpirationLedger, nonce, address } =
+        preimage.sorobanAuthorizationWithAddress;
+      const boundAddress = getAddress(address);
+      return {
+        readableAuthEntry: {
+          authorizations: new AuthorizationMapper().mapInvocation(
+            invocation,
+            boundAddress,
+          ),
+          signatureExpirationLedger,
+          nonce: nonce.toString(),
+        },
+        boundAddress,
+      };
+    }
+
+    // Safe guard:
+    // The request struct already accepted only v1/v2 Soroban auth preimages.
+    throw new Sep43Error({
+      code: Sep43ErrorCode.InvalidRequest,
+      message: 'HashIdPreimage is not a Soroban authorization preimage',
+    });
+  }
+
+  #assertIsValidBoundAddress(
+    boundAddress: string | null,
+    accountAddress: string,
+  ): void {
+    if (boundAddress === null || boundAddress === accountAddress) {
+      return;
+    }
+    throw new Sep43Error({
+      code: Sep43ErrorCode.InvalidRequest,
+      message: 'Authorization bound address does not match the signing account',
+    });
   }
 }
