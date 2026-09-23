@@ -370,6 +370,24 @@
     "confirmation.transaction.param.functionName": {
       "message": "Function"
     },
+    "confirmation.transaction.param.deployer": {
+      "message": "Desplegador"
+    },
+    "confirmation.transaction.param.salt": {
+      "message": "Salt"
+    },
+    "confirmation.transaction.param.executableType": {
+      "message": "Executable Type"
+    },
+    "confirmation.transaction.param.executableWasmHash": {
+      "message": "Executable Wasm Hash"
+    },
+    "confirmation.transaction.param.executableOwner": {
+      "message": "Executable Owner"
+    },
+    "confirmation.transaction.param.executableTag": {
+      "message": "Executable Tag"
+    },
     "confirmation.transaction.param.arguments": {
       "message": "Arguments"
     },
