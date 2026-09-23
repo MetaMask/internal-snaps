@@ -128,6 +128,14 @@ export type {
   CachePrefix,
   StateValue,
 } from './utils/cache/StateCache';
+export {
+  noopAssetHandlers,
+  wrapSnapHandlers,
+} from './utils/handlers/wrapSnapHandlers';
+export type {
+  SnapHandlers,
+  WithCatchAndThrowSnapError,
+} from './utils/handlers/wrapSnapHandlers';
 export type {
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,
