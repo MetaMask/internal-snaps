@@ -10,9 +10,6 @@ export const SorobanAuthPreimageType = {
   V2: 'envelopeTypeSorobanAuthorizationWithAddress',
 } as const;
 
-export type SorobanAuthPreimageType =
-  (typeof SorobanAuthPreimageType)[keyof typeof SorobanAuthPreimageType];
-
 /**
  * `SorobanCredentials.type` arms used when mapping invoke-host-function auth.
  */
@@ -20,6 +17,57 @@ export const SorobanCredentialsType = {
   Address: 'sorobanCredentialsAddress',
   AddressV2: 'sorobanCredentialsAddressV2',
 } as const;
+
+/**
+ * `HostFunction.type` arms decoded for invoke-host-function confirmation.
+ */
+export const HostFunctionType = {
+  InvokeContract: 'hostFunctionTypeInvokeContract',
+  CreateContract: 'hostFunctionTypeCreateContract',
+  CreateContractV2: 'hostFunctionTypeCreateContractV2',
+  UploadContractWasm: 'hostFunctionTypeUploadContractWasm',
+} as const;
+
+/**
+ * `ContractExecutable.type` arms, including CAP-85 `EXTERNAL_REF`.
+ */
+export const ContractExecutableType = {
+  Wasm: 'contractExecutableWasm',
+  StellarAsset: 'contractExecutableStellarAsset',
+  ExternalRef: 'contractExecutableExternalRef',
+} as const;
+
+/**
+ * `SorobanAuthorizedFunction.type` arms on auth-entry invocations.
+ */
+export const SorobanAuthorizedFunctionType = {
+  ContractFn: 'sorobanAuthorizedFunctionTypeContractFn',
+  CreateContractHostFn: 'sorobanAuthorizedFunctionTypeCreateContractHostFn',
+  CreateContractV2HostFn: 'sorobanAuthorizedFunctionTypeCreateContractV2HostFn',
+} as const;
+
+/**
+ * `ContractIdPreimage.type` arms used when mapping create-contract confirmation.
+ */
+export const ContractIdPreimageType = {
+  ContractIdPreimageFromAddress: 'contractIdPreimageFromAddress',
+  ContractIdPreimageFromAsset: 'contractIdPreimageFromAsset',
+} as const;
+
+export type ContractIdPreimageType =
+  (typeof ContractIdPreimageType)[keyof typeof ContractIdPreimageType];
+
+export type ContractExecutableType =
+  (typeof ContractExecutableType)[keyof typeof ContractExecutableType];
+
+export type HostFunctionType =
+  (typeof HostFunctionType)[keyof typeof HostFunctionType];
+
+export type SorobanAuthPreimageType =
+  (typeof SorobanAuthPreimageType)[keyof typeof SorobanAuthPreimageType];
+
+export type SorobanAuthorizedFunctionType =
+  (typeof SorobanAuthorizedFunctionType)[keyof typeof SorobanAuthorizedFunctionType];
 
 export type SorobanCredentialsType =
   (typeof SorobanCredentialsType)[keyof typeof SorobanCredentialsType];
@@ -90,6 +138,102 @@ export function isCredentialAddressV2(
   credentials: xdr.SorobanCredentials,
 ): credentials is CredentialAddressV2 {
   return credentials.type === SorobanCredentialsType.AddressV2;
+}
+
+/**
+ * Narrows a `ContractIdPreimage` to the `contractIdPreimageFromAddress` arm.
+ *
+ * @param preimage - Decoded `ContractIdPreimage`.
+ * @returns True when `type` is `contractIdPreimageFromAddress`.
+ */
+export function isContractIdPreimageAddress(
+  preimage: xdr.ContractIdPreimage,
+): preimage is xdr.ContractIdPreimageAddress {
+  return preimage.type === ContractIdPreimageType.ContractIdPreimageFromAddress;
+}
+
+/**
+ * Narrows a `ContractIdPreimage` to the `contractIdPreimageFromAsset` arm.
+ *
+ * @param preimage - Decoded `ContractIdPreimage`.
+ * @returns True when `type` is `contractIdPreimageFromAsset`.
+ */
+export function isContractIdPreimageAsset(
+  preimage: xdr.ContractIdPreimage,
+): preimage is xdr.ContractIdPreimageAsset {
+  return preimage.type === ContractIdPreimageType.ContractIdPreimageFromAsset;
+}
+
+/**
+ * Narrows a `ContractExecutable` to the `contractExecutableWasm` arm.
+ *
+ * @param executable - Decoded `ContractExecutable`.
+ * @returns True when `type` is `contractExecutableWasm`.
+ */
+export function isContractExecutableWasm(
+  executable: xdr.ContractExecutable,
+): executable is xdr.ContractExecutableWasm {
+  return executable.type === ContractExecutableType.Wasm;
+}
+
+/**
+ * Narrows a `ContractExecutable` to the `contractExecutableExternalRef` arm.
+ *
+ * @param executable - Decoded `ContractExecutable`.
+ * @returns True when `type` is `contractExecutableExternalRef`.
+ */
+export function isContractExecutableExternalRef(
+  executable: xdr.ContractExecutable,
+): executable is xdr.ContractExecutableExternalRefArm {
+  return executable.type === ContractExecutableType.ExternalRef;
+}
+
+/**
+ * Narrows a host function to `CREATE_CONTRACT_V2`.
+ *
+ * @param hostFunction - Decoded `HostFunction`, if present.
+ * @returns True when `type` is `hostFunctionTypeCreateContractV2`.
+ */
+export function isCreateContractV2(
+  hostFunction: xdr.HostFunction | undefined,
+): hostFunction is xdr.HostFunctionCreateContractV2 {
+  return hostFunction?.type === HostFunctionType.CreateContractV2;
+}
+
+/**
+ * Narrows a host function to `CREATE_CONTRACT`.
+ *
+ * @param hostFunction - Decoded `HostFunction`, if present.
+ * @returns True when `type` is `hostFunctionTypeCreateContract`.
+ */
+export function isCreateContractV1(
+  hostFunction: xdr.HostFunction | undefined,
+): hostFunction is xdr.HostFunctionCreateContract {
+  return hostFunction?.type === HostFunctionType.CreateContract;
+}
+
+/**
+ * Narrows a host function to `UPLOAD_CONTRACT_WASM`.
+ *
+ * @param hostFunction - Decoded `HostFunction`, if present.
+ * @returns True when `type` is `hostFunctionTypeUploadContractWasm`.
+ */
+export function isUploadContractWasm(
+  hostFunction: xdr.HostFunction | undefined,
+): hostFunction is xdr.HostFunctionUploadContractWasm {
+  return hostFunction?.type === HostFunctionType.UploadContractWasm;
+}
+
+/**
+ * Narrows a host function to `INVOKE_CONTRACT`.
+ *
+ * @param hostFunction - Decoded `HostFunction`, if present.
+ * @returns True when `type` is `hostFunctionTypeInvokeContract`.
+ */
+export function isInvokeContract(
+  hostFunction: xdr.HostFunction | undefined,
+): hostFunction is xdr.HostFunctionInvokeContract {
+  return hostFunction?.type === HostFunctionType.InvokeContract;
 }
 
 /**

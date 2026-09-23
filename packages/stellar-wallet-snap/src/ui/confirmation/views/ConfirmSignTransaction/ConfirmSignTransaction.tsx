@@ -11,35 +11,28 @@ import {
   Divider,
   Copyable,
 } from '@metamask/snaps-sdk/jsx';
-import type { Json } from '@metamask/utils';
-import { isNullOrUndefined } from '@metamask/utils';
 
-import type { KnownCaip2ChainId } from '../../../../api';
 import type { StellarKeyringAccount } from '../../../../services/account';
-import type {
-  ReadableOperationField,
-  ReadableTransactionJson,
-} from '../../../../services/transaction';
+import type { ReadableTransactionJson } from '../../../../services/transaction';
 import { StellarOperationType } from '../../../../services/transaction';
 import type { Locale, LocalizedMessage } from '../../../../utils';
 import { i18n } from '../../../../utils';
 import type { ConfirmationBaseProps, FeeData } from '../../api';
 import { FetchStatus } from '../../api';
-import { Asset } from '../../components/Asset';
 import { Authorizations } from '../../components/Authorizations';
 import { ConfirmationFooter } from '../../components/ConfirmationFooter';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { FeeRow } from '../../components/Fee';
 import { InvocationSummary } from '../../components/InvocationSummary';
-import { JsonParamsSummary } from '../../components/JsonParamsSummary';
 import { NetworkRow } from '../../components/Network';
+import { ReadableParamsList } from '../../components/ReadableParamsList';
 import { TransactionAlert } from '../../components/TransactionAlert';
 import {
   getAccountName,
+  getInvocationDetailParams,
   getParam,
   hasEnabledTransactionScan,
   requiresMaliciousAcknowledgement,
-  resolveAssetDisplay,
   shouldDisableConfirmation,
 } from '../../utils';
 import { ConfirmSignTransactionFormNames } from './events';
@@ -51,148 +44,6 @@ export type ConfirmSignTransactionProps = Omit<
   feeData: FeeData;
   readableTransaction: ReadableTransactionJson;
   account: StellarKeyringAccount;
-};
-
-const AmountRow = ({ amount }: { amount: string }): ComponentOrElement => {
-  return <SnapText>{amount}</SnapText>;
-};
-
-const AssetParam = ({
-  scope,
-  assetReference,
-  amount,
-  preferences,
-  price,
-  priceLoading,
-}: {
-  scope: KnownCaip2ChainId;
-  assetReference: string;
-  amount?: string;
-  preferences?: ConfirmationBaseProps['preferences'];
-  price?: string | null;
-  priceLoading?: boolean;
-}): ComponentOrElement => {
-  const resolved = resolveAssetDisplay(scope, assetReference);
-  if (!resolved) {
-    // Liquidity pool ids and other non-classic references fall back to the raw string.
-    if (amount === undefined) {
-      return <SnapText>{assetReference}</SnapText>;
-    }
-    return (
-      <Box direction="horizontal" alignment="end">
-        <SnapText>{amount}</SnapText>
-        <SnapText>{assetReference}</SnapText>
-      </Box>
-    );
-  }
-
-  return (
-    <Asset
-      symbol={resolved.symbol}
-      amount={amount}
-      iconUrl={resolved.iconUrl}
-      link={resolved.link}
-      preferences={preferences}
-      price={price ?? null}
-      priceLoading={priceLoading}
-    />
-  );
-};
-
-const RenderReadableParamValue = (params: {
-  locale: string;
-  type: string;
-  value: Json;
-  scope: KnownCaip2ChainId;
-  preferences?: ConfirmationBaseProps['preferences'];
-  tokenPrices?: ConfirmationBaseProps['tokenPrices'];
-  priceLoading?: boolean;
-}): ComponentOrElement | null => {
-  const { type, value, scope, preferences, tokenPrices, priceLoading, locale } =
-    params;
-  if (isNullOrUndefined(value)) {
-    return null;
-  }
-  switch (type) {
-    case 'assetWithAmount': {
-      if (!Array.isArray(value)) {
-        return null;
-      }
-      const [assetReference, amount] = value as [string, string];
-      const resolved = resolveAssetDisplay(scope, assetReference);
-      const price = resolved ? (tokenPrices?.[resolved.assetId] ?? null) : null;
-      return (
-        <AssetParam
-          scope={scope}
-          assetReference={assetReference}
-          amount={amount}
-          preferences={preferences}
-          price={price}
-          priceLoading={priceLoading}
-        />
-      );
-    }
-    case 'asset':
-      return <AssetParam scope={scope} assetReference={value as string} />;
-    case 'address':
-      return <Copyable value={value as string} />;
-    case 'amount':
-      return <AmountRow amount={value as string} />;
-    default:
-      return <JsonParamsSummary value={value} locale={locale} />;
-  }
-};
-
-const ReadableParamsList = ({
-  params,
-  locale,
-  scope,
-  preferences,
-  tokenPrices,
-  priceLoading,
-}: {
-  params: ReadableOperationField[];
-  locale: string;
-  scope: KnownCaip2ChainId;
-  preferences?: ConfirmationBaseProps['preferences'];
-  tokenPrices?: ConfirmationBaseProps['tokenPrices'];
-  priceLoading?: boolean;
-}): ComponentOrElement => {
-  const translate = i18n(locale);
-  return (
-    <Box direction="vertical">
-      {params
-        .filter((param) => !isNullOrUndefined(param.value))
-        .map((param, paramIndex) => {
-          const useVertical =
-            param.type === 'json' ||
-            param.type === 'copyable' ||
-            (typeof param.value === 'string' && param.value.length > 40);
-          return (
-            <Box
-              key={`${param.key}-${paramIndex}`}
-              alignment="space-between"
-              direction={useVertical ? 'vertical' : 'horizontal'}
-            >
-              <SnapText fontWeight="medium" color="alternative">
-                {translate(
-                  `confirmation.transaction.param.${param.key}` as LocalizedMessage,
-                )}
-              </SnapText>
-              <RenderReadableParamValue
-                locale={locale}
-                type={param.type}
-                value={param.value}
-                scope={scope}
-                preferences={preferences}
-                tokenPrices={tokenPrices}
-                priceLoading={priceLoading}
-              />
-            </Box>
-          );
-        })}
-    </Box>
-  );
 };
 
 export const ConfirmSignTransaction = ({
@@ -293,6 +144,7 @@ export const ConfirmSignTransaction = ({
         {readableTransaction.authorizations.length > 0 ? (
           <Authorizations
             locale={locale}
+            scope={scope}
             authorizations={readableTransaction.authorizations}
           />
         ) : null}
@@ -310,15 +162,10 @@ export const ConfirmSignTransaction = ({
               operationJson.params,
               'functionName',
             );
-            const args = getParam<Json | null>(
-              operationJson.params,
-              'arguments',
-            );
-            // Decoded invoke → InvocationSummary; fallback `note` (and other
-            // undecoded host fns) → generic param rows.
-            const showInvocationSummary =
-              isInvokeHostFunction &&
-              (contractAddress !== null || functionName !== null);
+            // Header: contract + function. Remaining rows (args, salt, …) below.
+            const detailParams = isInvokeHostFunction
+              ? getInvocationDetailParams(operationJson.params)
+              : operationJson.params;
 
             return (
               <Box
@@ -340,16 +187,17 @@ export const ConfirmSignTransaction = ({
                     <Copyable value={operationJson.source} />
                   </Box>
                 )}
-                {showInvocationSummary ? (
+                {isInvokeHostFunction &&
+                (contractAddress !== null || functionName !== null) ? (
                   <InvocationSummary
                     locale={locale}
                     contractAddress={contractAddress}
                     functionName={functionName}
-                    args={args}
                   />
-                ) : (
+                ) : null}
+                {detailParams.length === 0 ? null : (
                   <ReadableParamsList
-                    params={operationJson.params}
+                    params={detailParams}
                     locale={locale}
                     scope={scope}
                     preferences={preferences}

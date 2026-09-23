@@ -9,3 +9,4 @@ export * from './ConfirmationFooter';
 export * from './Authorizations';
 export * from './InvocationSummary';
 export * from './JsonParamsSummary';
+export * from './ReadableParamsList';

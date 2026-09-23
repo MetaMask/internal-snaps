@@ -1,15 +1,27 @@
-import { Address, Keypair, xdr } from '@stellar/stellar-sdk';
+import { Address, Asset, Keypair, xdr } from '@stellar/stellar-sdk';
 
-import { buildAuthEntryPreimageXdr } from '../api/__mocks__/xdr.fixtures';
+import {
+  buildAuthEntryPreimageXdr,
+  buildContractIdPreimageFromAddress,
+  buildExternalRefExecutable,
+} from '../api/__mocks__/xdr.fixtures';
 import { bufferToUint8Array } from './buffer';
 import {
   getAddress,
   getFunctionName,
   getSorobanAuthAddressFromAuthEntrySafe,
+  isContractExecutableExternalRef,
+  isContractExecutableWasm,
+  isContractIdPreimageAddress,
+  isContractIdPreimageAsset,
+  isCreateContractV1,
+  isCreateContractV2,
   isCredentialAddressV1,
   isCredentialAddressV2,
+  isInvokeContract,
   isSorobanAuthPreimageV1,
   isSorobanAuthPreimageV2,
+  isUploadContractWasm,
 } from './xdr';
 
 const accountAddress =
@@ -184,5 +196,105 @@ describe('getSorobanAuthAddressFromAuthEntrySafe', () => {
     } as unknown as xdr.SorobanAuthorizationEntry;
 
     expect(getSorobanAuthAddressFromAuthEntrySafe(entry)).toBeNull();
+  });
+});
+
+describe('isContractIdPreimageAddress', () => {
+  it('narrows fromAddress preimages', () => {
+    const fromAddress = buildContractIdPreimageFromAddress(accountAddress);
+    const fromAsset = xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+      Asset.native().toXDRObject(),
+    );
+
+    expect(isContractIdPreimageAddress(fromAddress)).toBe(true);
+    expect(isContractIdPreimageAsset(fromAddress)).toBe(false);
+    expect(isContractIdPreimageAddress(fromAsset)).toBe(false);
+  });
+});
+
+describe('isContractIdPreimageAsset', () => {
+  it('narrows fromAsset preimages', () => {
+    const fromAsset = xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+      Asset.native().toXDRObject(),
+    );
+
+    expect(isContractIdPreimageAsset(fromAsset)).toBe(true);
+    expect(isContractIdPreimageAddress(fromAsset)).toBe(false);
+  });
+});
+
+describe('isContractExecutableWasm', () => {
+  it('narrows wasm executables', () => {
+    const wasm = xdr.ContractExecutable.contractExecutableWasm(
+      bufferToUint8Array(new Uint8Array(32).fill(0x11)),
+    );
+    const stellarAsset =
+      xdr.ContractExecutable.contractExecutableStellarAsset();
+
+    expect(isContractExecutableWasm(wasm)).toBe(true);
+    expect(isContractExecutableExternalRef(wasm)).toBe(false);
+    expect(isContractExecutableWasm(stellarAsset)).toBe(false);
+  });
+});
+
+describe('isContractExecutableExternalRef', () => {
+  it('narrows CAP-85 externalRef executables', () => {
+    const externalRef = buildExternalRefExecutable(contractId, 'beacon-v1');
+    const stellarAsset =
+      xdr.ContractExecutable.contractExecutableStellarAsset();
+
+    expect(isContractExecutableExternalRef(externalRef)).toBe(true);
+    expect(isContractExecutableWasm(externalRef)).toBe(false);
+    expect(isContractExecutableExternalRef(stellarAsset)).toBe(false);
+  });
+});
+
+describe('host function type guards', () => {
+  const createContractV1 = xdr.HostFunction.hostFunctionTypeCreateContract(
+    new xdr.CreateContractArgs({
+      contractIdPreimage: buildContractIdPreimageFromAddress(accountAddress),
+      executable: xdr.ContractExecutable.contractExecutableStellarAsset(),
+    }),
+  );
+  const createContractV2 = xdr.HostFunction.hostFunctionTypeCreateContractV2(
+    new xdr.CreateContractArgsV2({
+      contractIdPreimage: buildContractIdPreimageFromAddress(accountAddress),
+      executable: xdr.ContractExecutable.contractExecutableStellarAsset(),
+      constructorArgs: [],
+    }),
+  );
+  const uploadWasm = xdr.HostFunction.hostFunctionTypeUploadContractWasm(
+    bufferToUint8Array(new Uint8Array([0x00, 0x61, 0x73, 0x6d])),
+  );
+  const invokeContract = xdr.HostFunction.hostFunctionTypeInvokeContract(
+    new xdr.InvokeContractArgs({
+      contractAddress: Address.fromString(contractId).toScAddress(),
+      functionName: 'transfer',
+      args: [],
+    }),
+  );
+
+  it('narrows CREATE_CONTRACT', () => {
+    expect(isCreateContractV1(createContractV1)).toBe(true);
+    expect(isCreateContractV1(createContractV2)).toBe(false);
+    expect(isCreateContractV1(undefined)).toBe(false);
+  });
+
+  it('narrows CREATE_CONTRACT_V2', () => {
+    expect(isCreateContractV2(createContractV2)).toBe(true);
+    expect(isCreateContractV2(createContractV1)).toBe(false);
+    expect(isCreateContractV2(undefined)).toBe(false);
+  });
+
+  it('narrows UPLOAD_CONTRACT_WASM', () => {
+    expect(isUploadContractWasm(uploadWasm)).toBe(true);
+    expect(isUploadContractWasm(invokeContract)).toBe(false);
+    expect(isUploadContractWasm(undefined)).toBe(false);
+  });
+
+  it('narrows INVOKE_CONTRACT', () => {
+    expect(isInvokeContract(invokeContract)).toBe(true);
+    expect(isInvokeContract(uploadWasm)).toBe(false);
+    expect(isInvokeContract(undefined)).toBe(false);
   });
 });
