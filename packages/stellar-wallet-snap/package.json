@@ -41,7 +41,8 @@
     "publish:preview": "yarn npm publish --tag preview",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
-    "test": "jest --reporters=jest-silent-reporter",
+    "test": "jest --reporters=jest-silent-reporter && yarn coverage:ratchet",
+    "coverage:ratchet": "[ -n \"$CI\" ] || jest-it-up",
     "test:clean": "jest --clearCache",
     "test:verbose": "jest --verbose",
     "test:watch": "jest --watch"
