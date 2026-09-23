@@ -43,17 +43,16 @@ Runs (or refreshes) the remote security scan on `securityScanRequest` in context
 Runs **first** when enabled. Rebuilds from the original request against a live on-chain account (fresh fee, sequence, time bounds, destination activation). Confirm-time send / change-trust rebuilds again before signing; this cycle does not patch the stored confirmation `transaction` XDR.
 
 - **Success** — write the rebuilt XDR into `securityScanRequest` so scan does not use a stale snapshot.
-- **Hard failure (`halt`)** — set `transactionsFetchStatus` / `scanFetchStatus` to error with a mapped banner message; omit the security scan this cycle; do **not** reschedule further auto-cron cycles. Used for validation errors the user cannot fix in-dialog (balance, trustline, etc.).
-- **Recoverable failure (`recoverable`)** — same banner + omit scan this cycle + pause auto-cron, but keep `securityScanRequest` intact (do not null it). Used for SEP-29 `RequiresMemo` so a later UI-triggered refresh (after the user adds a memo) can rebuild and re-scan without reconstructing the scan request. Distinct from `halt`: soft-fail intended to be resumed by the UI, not a permanent hard-stop signal.
+- **Failure (`pause`)** — set `transactionsFetchStatus` / `scanFetchStatus` to error with a mapped banner message; omit the security scan this cycle; do **not** reschedule further auto-cron cycles. Applies to validation errors including SEP-29 `RequiresMemo`. The UI may call `scheduleBackgroundEvent` again after an in-dialog fix (e.g. user adds a memo via MemoEdit).
 
 ## Step-by-step (one cycle)
 
 1. Resolve enabled refreshers from `refresherKeys`.
 2. Load interface context; if the dialog was dismissed → stop (no reschedule).
 3. Run **transaction** refresher alone (if selected), merge its patch.
-4. Run **prices** and **scan** in parallel on the updated context (scan is omitted when the transaction refresher returned `halt` or `recoverable`).
+4. Run **prices** and **scan** in parallel on the updated context (scan is omitted when the transaction refresher returned `pause`).
 5. Merge patches → `ConfirmationUXController.updateConfirmation`.
-6. If any refresher **halt**ed or returned **recoverable** → stop (no auto-reschedule). Otherwise if any refresher asks to **reschedule** → schedule the next `refreshConfirmationContext` event.
+6. If any refresher **pause**d → stop (no auto-reschedule). Otherwise if any refresher asks to **reschedule** → schedule the next `refreshConfirmationContext` event.
 
 ## Sequence
 
