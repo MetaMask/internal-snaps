@@ -4,6 +4,7 @@ import type { Json } from '@metamask/utils';
 import type { ConfirmationInterfaceKey } from '../../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../../ui/confirmation/controller';
 import {
+  cancelBackgroundEventIfExists,
   Duration,
   getInterfaceContextIfExists,
   scheduleBackgroundEvent,
@@ -17,7 +18,7 @@ import {
   RefreshConfirmationContextJsonRpcRequestStruct,
 } from '../api';
 import { CronjobBaseHandler } from '../base';
-import { ConfirmationContextRefresherKey } from './api';
+import { ConfirmationContextRefresherKey, shouldPauseRefresh } from './api';
 import type {
   ConfirmationContextRefreshResult,
   ConfirmationContextRefreshers,
@@ -40,11 +41,25 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
 
   readonly #confirmationUIController: ConfirmationUXController;
 
+  /**
+   * Schedules a confirmation-context refresh. Optionally cancels a prior pending
+   * event first (bitcoin-style replace) so Save/open do not stack parallel chains.
+   *
+   * @param params - Cron params including interface id and refresher keys.
+   * @param duration - Delay before the event fires.
+   * @param options - Replace options.
+   * @param options.replaceEventId - Pending event id from context to cancel first.
+   * @returns The new background event id (persist on confirmation context).
+   */
   static async scheduleBackgroundEvent(
     params: RefreshConfirmationContextParams,
     duration: Duration = Duration.TwentySeconds,
-  ): Promise<void> {
-    await scheduleBackgroundEvent({
+    options?: { replaceEventId?: string },
+  ): Promise<string> {
+    if (options?.replaceEventId) {
+      await cancelBackgroundEventIfExists(options.replaceEventId);
+    }
+    return scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshConfirmationContext,
       params,
       duration,
@@ -129,32 +144,47 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       {},
     );
 
-    const updatedContext: ConfirmationDataContext = {
+    let updatedContext: ConfirmationDataContext = {
       ...latestContext,
       ...refresherPatches,
     };
+
+    // `pause` stops auto-cron. UI may call scheduleBackgroundEvent again after
+    // an in-dialog fix (e.g. user adds a memo). Clear the spent event id — this
+    // tick already ran; there is no pending replacement.
+    if (results.some(shouldPauseRefresh)) {
+      this.logger.info(
+        'Confirmation refresh paused; cron will not be rescheduled',
+      );
+      updatedContext = omitBackgroundEventId(updatedContext);
+      await this.#reRender({
+        interfaceId,
+        interfaceKey,
+        updatedContext,
+      });
+      return;
+    }
+
+    // Schedule the next tick before re-render so `backgroundEventId` is persisted
+    // in the same context write (bitcoin send-flow pattern).
+    if (results.some((result) => result?.reschedule)) {
+      const backgroundEventId =
+        await RefreshConfirmationContextHandler.scheduleBackgroundEvent({
+          scope,
+          interfaceId,
+          interfaceKey,
+          refresherKeys,
+        });
+      updatedContext = { ...updatedContext, backgroundEventId };
+    } else {
+      updatedContext = omitBackgroundEventId(updatedContext);
+    }
 
     await this.#reRender({
       interfaceId,
       interfaceKey,
       updatedContext,
     });
-
-    if (results.some((result) => result?.halt)) {
-      this.logger.info(
-        'Confirmation refresh halted; cron will not be rescheduled',
-      );
-      return;
-    }
-
-    if (results.some((result) => result?.reschedule)) {
-      await RefreshConfirmationContextHandler.scheduleBackgroundEvent({
-        scope,
-        interfaceId,
-        interfaceKey,
-        refresherKeys,
-      });
-    }
   }
 
   #resolveRefreshers(
@@ -184,7 +214,8 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
    * refreshers see, so the scan refresher scans the renewed envelope rather than
    * a stale snapshot. The remaining refreshers then run in parallel.
    *
-   * If the transaction refresher returns `halt`, the scan refresher will be omitted.
+   * If the transaction refresher returns `pause`, the scan refresher will be
+   * omitted.
    *
    * Each refresher is isolated so one rejection does not prevent the others from
    * completing.
@@ -222,8 +253,8 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
         workingContext = { ...workingContext, ...transactionResult.result };
       }
 
-      // `halt` omits the scan this cycle. Other remaining refreshers still run.
-      if (transactionResult?.halt) {
+      // `pause` omits the scan this cycle. Other remaining refreshers still run.
+      if (shouldPauseRefresh(transactionResult)) {
         remainingRefreshers.delete(ConfirmationContextRefresherKey.Scan);
       }
     }
@@ -314,6 +345,19 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
 
     return interfaceContext;
   }
+}
+
+/**
+ * Drops a spent or absent pending refresh event id from confirmation context.
+ *
+ * @param context - Confirmation data context that may include `backgroundEventId`.
+ * @returns Context without `backgroundEventId`.
+ */
+function omitBackgroundEventId(
+  context: ConfirmationDataContext,
+): ConfirmationDataContext {
+  const { backgroundEventId: _removed, ...rest } = context;
+  return rest;
 }
 
 /**

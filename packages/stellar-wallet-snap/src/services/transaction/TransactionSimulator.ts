@@ -7,6 +7,7 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isClassicAssetId, isSep41Id } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { StellarOperationType } from './api';
 import {
@@ -71,6 +72,12 @@ export type TransactionSimulatorOptions = {
    * Extra accounts merged into simulation (e.g. payment destinations). Ignored when simulation path does not apply.
    */
   preloadedAccounts?: OnChainAccount[];
+  /**
+   * Validation exception constructors to suppress during simulation
+   * (e.g. `[RequiresMemoException]` for RequiresMemo drafts).
+   * Uses the same `AnyErrorConstructor` list shape as `rethrowIfInstanceElseThrow`.
+   */
+  skipExceptions?: readonly AnyErrorConstructor[];
 };
 
 export class TransactionSimulator {
@@ -116,6 +123,7 @@ export class TransactionSimulator {
       operations: ops,
       transaction,
       initialState: this.#buildInitialState(account, options),
+      skipExceptions: options?.skipExceptions,
     });
   }
 
@@ -123,8 +131,9 @@ export class TransactionSimulator {
     operations: SupportedOPType[];
     transaction: Transaction;
     initialState: SimulationState;
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): SimulationState[] {
-    const { operations, initialState, transaction } = params;
+    const { operations, initialState, transaction, skipExceptions } = params;
 
     const txSource = transaction.sourceAccount;
     const feeSource = transaction.feeSourceAccount;
@@ -163,6 +172,7 @@ export class TransactionSimulator {
           scope,
           operations,
           transaction,
+          skipExceptions,
         });
         this.#applyOP({ op, state, txSource, scope, opIndex });
         stack.push(state);
@@ -326,9 +336,18 @@ export class TransactionSimulator {
     scope: KnownCaip2ChainId;
     operations: readonly OperationRecord[];
     transaction: Transaction;
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): void {
-    const { op, opIndex, state, txSource, scope, operations, transaction } =
-      params;
+    const {
+      op,
+      opIndex,
+      state,
+      txSource,
+      scope,
+      operations,
+      transaction,
+      skipExceptions,
+    } = params;
     const operationType = this.#getSupportedOperationType(op);
 
     this.#operationSimulator[operationType].validate(
@@ -338,6 +357,7 @@ export class TransactionSimulator {
         scope,
         opIndex,
         transaction,
+        skipExceptions,
       },
       op,
       operations,

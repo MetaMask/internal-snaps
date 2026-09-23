@@ -139,6 +139,12 @@ describe('ConfirmSendHandler', () => {
 
     const { transactionService, transactionRepositorySaveManySpy } =
       createMockTransactionService();
+    const createDraftSendTransactionForConfirm = jest
+      .spyOn(
+        TransactionService.prototype,
+        'createDraftSendTransactionForConfirm',
+      )
+      .mockResolvedValue({ transaction, requiresMemoRecovery: false });
     const createValidatedSendTransaction = jest
       .spyOn(TransactionService.prototype, 'createValidatedSendTransaction')
       .mockResolvedValue(transaction);
@@ -199,6 +205,7 @@ describe('ConfirmSendHandler', () => {
       wallet,
       assetMetadata,
       transaction,
+      createDraftSendTransactionForConfirm,
       createValidatedSendTransaction,
       resolveOnChainAccountSpy,
       renderConfirmationDialog,
@@ -238,7 +245,11 @@ describe('ConfirmSendHandler', () => {
 
   it('returns invalid when value has more decimal places than the asset supports', async () => {
     const sep41AssetId = USDC_SEP41 as KnownCaip19Sep41AssetId;
-    const { handler, createValidatedSendTransaction } = setup();
+    const {
+      handler,
+      createDraftSendTransactionForConfirm,
+      createValidatedSendTransaction,
+    } = setup();
     const assetMetadata = generateMockStellarAssetMetadata()[
       sep41AssetId
     ] as StellarAssetMetadata;
@@ -254,6 +265,7 @@ describe('ConfirmSendHandler', () => {
       valid: false,
       errors: [{ code: MultiChainSendErrorCodes.Invalid }],
     });
+    expect(createDraftSendTransactionForConfirm).not.toHaveBeenCalled();
     expect(createValidatedSendTransaction).not.toHaveBeenCalled();
   });
 
@@ -265,6 +277,7 @@ describe('ConfirmSendHandler', () => {
       wallet,
       assetMetadata,
       transaction,
+      createDraftSendTransactionForConfirm,
       createValidatedSendTransaction,
       renderConfirmationDialog,
       signTransactionSpy,
@@ -282,6 +295,13 @@ describe('ConfirmSendHandler', () => {
       valid: true,
       errors: [],
       transactionId,
+    });
+    expect(createDraftSendTransactionForConfirm).toHaveBeenCalledWith({
+      onChainAccount,
+      scope,
+      assetId,
+      amount: new BigNumber('10000000'),
+      destination: destinationAddress,
     });
     expect(createValidatedSendTransaction).toHaveBeenCalledWith({
       onChainAccount,
@@ -392,7 +412,6 @@ describe('ConfirmSendHandler', () => {
       handler,
       onChainAccount,
       wallet,
-      transaction,
       createValidatedSendTransaction,
       signTransactionSpy,
       sendTransaction,
@@ -420,13 +439,11 @@ describe('ConfirmSendHandler', () => {
         },
       },
     );
-    createValidatedSendTransaction
-      .mockResolvedValueOnce(transaction)
-      .mockResolvedValueOnce(refreshedTransaction);
+    createValidatedSendTransaction.mockResolvedValueOnce(refreshedTransaction);
 
     await handler.handle(baseRequest());
 
-    expect(createValidatedSendTransaction).toHaveBeenCalledTimes(2);
+    expect(createValidatedSendTransaction).toHaveBeenCalledTimes(1);
     expect(signTransactionSpy).toHaveBeenCalledWith(refreshedTransaction);
     expect(sendTransaction).toHaveBeenCalledWith({
       wallet,
@@ -441,7 +458,6 @@ describe('ConfirmSendHandler', () => {
     const {
       handler,
       wallet,
-      transaction,
       createValidatedSendTransaction,
       signTransactionSpy,
       sendTransaction,
@@ -470,9 +486,7 @@ describe('ConfirmSendHandler', () => {
         baseFeePerOperation: '300',
       },
     );
-    createValidatedSendTransaction
-      .mockResolvedValueOnce(transaction)
-      .mockResolvedValueOnce(higherFeeTransaction);
+    createValidatedSendTransaction.mockResolvedValueOnce(higherFeeTransaction);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
@@ -491,10 +505,6 @@ describe('ConfirmSendHandler', () => {
       {
         error: new InsufficientBalanceToCoverFeeException('0', '1'),
         message: 'confirmation.txnError.insufficientBalanceToCoverFee',
-      },
-      {
-        error: new RequiresMemoException(destinationAddress),
-        message: 'confirmation.txnError.requiresMemo',
       },
       {
         error: new InvalidAmountForCreateAccountException('0.5'),
@@ -531,12 +541,12 @@ describe('ConfirmSendHandler', () => {
           handler,
           account,
           assetMetadata,
-          createValidatedSendTransaction,
+          createDraftSendTransactionForConfirm,
           renderConfirmationDialog,
           signTransactionSpy,
           sendTransaction,
         } = setup();
-        createValidatedSendTransaction.mockRejectedValueOnce(error);
+        createDraftSendTransactionForConfirm.mockRejectedValueOnce(error);
 
         await expect(handler.handle(baseRequest())).rejects.toThrow(
           UserRejectedRequestError,
@@ -583,14 +593,131 @@ describe('ConfirmSendHandler', () => {
       },
     );
 
+    it('opens a send confirmation when the destination requires a memo', async () => {
+      const {
+        handler,
+        account,
+        transaction,
+        createDraftSendTransactionForConfirm,
+        createValidatedSendTransaction,
+        renderConfirmationDialog,
+        signTransactionSpy,
+        sendTransaction,
+      } = setup();
+      createDraftSendTransactionForConfirm.mockResolvedValueOnce({
+        transaction,
+        requiresMemoRecovery: true,
+      });
+      createValidatedSendTransaction.mockResolvedValueOnce(transaction);
+      renderConfirmationDialog.mockResolvedValueOnce({
+        confirmed: true,
+        memo: 'exchange-ref',
+      });
+
+      expect(await handler.handle(baseRequest())).toStrictEqual({
+        valid: true,
+        errors: [],
+        transactionId,
+      });
+      expect(createDraftSendTransactionForConfirm).toHaveBeenCalledTimes(1);
+      expect(createValidatedSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          memo: 'exchange-ref',
+        }),
+      );
+      expect(renderConfirmationDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renderContext: expect.objectContaining({
+            account,
+            toAddress: destinationAddress,
+            transactionsFetchStatus: FetchStatus.Error,
+            scanFetchStatus: FetchStatus.Error,
+            errorMessage: 'confirmation.txnError.requiresMemo',
+          }),
+          renderOptions: {
+            loadPrice: true,
+            securityScanning: true,
+            localSimulation: true,
+          },
+        }),
+      );
+      expect(signTransactionSpy).toHaveBeenCalled();
+      expect(sendTransaction).toHaveBeenCalled();
+    });
+
+    it('returns invalid when RequiresMemo recovery confirms without a memo', async () => {
+      const {
+        handler,
+        transaction,
+        createDraftSendTransactionForConfirm,
+        createValidatedSendTransaction,
+        renderConfirmationDialog,
+        signTransactionSpy,
+        sendTransaction,
+      } = setup();
+      createDraftSendTransactionForConfirm.mockResolvedValueOnce({
+        transaction,
+        requiresMemoRecovery: true,
+      });
+      createValidatedSendTransaction.mockRejectedValueOnce(
+        new RequiresMemoException(destinationAddress),
+      );
+      renderConfirmationDialog.mockResolvedValueOnce({ confirmed: true });
+
+      expect(await handler.handle(baseRequest())).toStrictEqual({
+        valid: false,
+        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
+      });
+      expect(createValidatedSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destination: destinationAddress,
+        }),
+      );
+      expect(signTransactionSpy).not.toHaveBeenCalled();
+      expect(sendTransaction).not.toHaveBeenCalled();
+    });
+
+    it('shows the error confirmation when the confirmation draft build fails', async () => {
+      const {
+        handler,
+        createDraftSendTransactionForConfirm,
+        renderConfirmationDialog,
+        signTransactionSpy,
+        sendTransaction,
+      } = setup();
+      createDraftSendTransactionForConfirm.mockRejectedValueOnce(
+        new InsufficientBalanceException('0', '1'),
+      );
+      renderConfirmationDialog.mockResolvedValue(false);
+
+      await expect(handler.handle(baseRequest())).rejects.toThrow(
+        UserRejectedRequestError,
+      );
+      expect(createDraftSendTransactionForConfirm).toHaveBeenCalledTimes(1);
+      expect(renderConfirmationDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renderContext: expect.objectContaining({
+            errorMessage: 'confirmation.txnError.insufficientBalance',
+          }),
+          renderOptions: {
+            loadPrice: false,
+            securityScanning: false,
+            localSimulation: false,
+          },
+        }),
+      );
+      expect(signTransactionSpy).not.toHaveBeenCalled();
+      expect(sendTransaction).not.toHaveBeenCalled();
+    });
+
     it('throws UserRejectedRequestError after the user dismisses the validation confirmation', async () => {
       const {
         handler,
-        createValidatedSendTransaction,
+        createDraftSendTransactionForConfirm,
         renderConfirmationDialog,
       } = setup();
-      createValidatedSendTransaction.mockRejectedValueOnce(
-        new RequiresMemoException(destinationAddress),
+      createDraftSendTransactionForConfirm.mockRejectedValueOnce(
+        new InsufficientBalanceException('0', '1'),
       );
       renderConfirmationDialog.mockResolvedValue(false);
 
@@ -600,18 +727,46 @@ describe('ConfirmSendHandler', () => {
     });
   });
 
+  it('passes dialog memo into the post-confirm rebuild without mutating request params', async () => {
+    const {
+      handler,
+      onChainAccount,
+      createDraftSendTransactionForConfirm,
+      createValidatedSendTransaction,
+      renderConfirmationDialog,
+    } = setup();
+    renderConfirmationDialog.mockResolvedValueOnce({
+      confirmed: true,
+      memo: '  deposit-ref  ',
+    });
+
+    await handler.handle(baseRequest());
+
+    expect(createDraftSendTransactionForConfirm).toHaveBeenCalledWith({
+      onChainAccount,
+      scope,
+      assetId,
+      amount: new BigNumber('10000000'),
+      destination: destinationAddress,
+    });
+    expect(createValidatedSendTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: 'deposit-ref',
+      }),
+    );
+  });
+
   it('returns error codes without a second confirmation when refresh fails after approval', async () => {
     const {
       handler,
-      transaction,
       createValidatedSendTransaction,
       renderConfirmationDialog,
       signTransactionSpy,
       sendTransaction,
     } = setup();
-    createValidatedSendTransaction
-      .mockResolvedValueOnce(transaction)
-      .mockRejectedValueOnce(new InsufficientBalanceException('0', '1'));
+    createValidatedSendTransaction.mockRejectedValueOnce(
+      new InsufficientBalanceException('0', '1'),
+    );
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
@@ -672,12 +827,17 @@ describe('ConfirmSendHandler', () => {
   });
 
   it('throws InvalidParamsError when amount fails struct validation', async () => {
-    const { handler, createValidatedSendTransaction } = setup();
+    const {
+      handler,
+      createDraftSendTransactionForConfirm,
+      createValidatedSendTransaction,
+    } = setup();
 
     await expect(
       handler.handle(baseRequest({ amount: '1.00000001' })),
     ).rejects.toThrow(InvalidParamsError);
 
+    expect(createDraftSendTransactionForConfirm).not.toHaveBeenCalled();
     expect(createValidatedSendTransaction).not.toHaveBeenCalled();
   });
 

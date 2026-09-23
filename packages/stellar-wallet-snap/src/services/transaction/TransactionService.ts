@@ -9,6 +9,7 @@ import type {
   KnownCaip2ChainId,
 } from '../../api';
 import { isSep41Id, isSlip44Id, trackError } from '../../utils';
+import type { AnyErrorConstructor } from '../../utils';
 import type { AccountService } from '../account';
 import type { StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
@@ -22,6 +23,7 @@ import type { Wallet } from '../wallet';
 import {
   InsufficientBalanceException,
   InvalidAssetForCreateAccountException,
+  RequiresMemoException,
 } from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
@@ -36,6 +38,7 @@ import {
 import type { TransactionSimulatorOptions } from './TransactionSimulator';
 import { TransactionSynchronizeService } from './TransactionSynchronizeService';
 import {
+  assertMemoWhenDestinationRequires,
   assertTransactionScope,
   emitAccountTransactionsUpdated,
 } from './utils';
@@ -142,6 +145,11 @@ export class TransactionService {
   /**
    * Creates a validated send transaction.
    *
+   * When `skipExceptions` includes {@link RequiresMemoException}, SEP-29 is skipped
+   * during simulation so a draft envelope is available (e.g. RequiresMemo
+   * confirmation). Prefer {@link createDraftSendTransactionForConfirm} when the caller
+   * also needs to know whether memo recovery UI is required.
+   *
    * @param params - The parameters for the transaction.
    * @param params.onChainAccount - The on-chain account.
    * @param params.amount - The amount to send.
@@ -149,8 +157,9 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.skipExceptions - Validation exception constructors to suppress during simulation.
    * @param params.useCache - Whether to use the cache.
-   * @returns A promise that resolves to the validated transaction.
+   * @returns The validated transaction.
    */
   async createValidatedSendTransaction(params: {
     onChainAccount: OnChainAccount;
@@ -159,6 +168,7 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
+    skipExceptions?: readonly AnyErrorConstructor[];
     useCache?: boolean;
   }): Promise<Transaction> {
     const {
@@ -168,6 +178,7 @@ export class TransactionService {
       amount,
       destination,
       memo,
+      skipExceptions,
       useCache = false,
     } = params;
 
@@ -199,6 +210,7 @@ export class TransactionService {
         destination,
         destinationAccount,
         memo,
+        skipExceptions,
         useCache,
       });
     }
@@ -212,7 +224,70 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
+      skipExceptions,
     });
+  }
+
+  /**
+   * Builds a confirm-send draft envelope with SEP-29 skipped, then reports whether
+   * memo recovery UI is still needed (via {@link assertMemoWhenDestinationRequires}).
+   *
+   * Thin wrapper over {@link createValidatedSendTransaction}: one skip build, then a
+   * cached dest load (warmed by that build) to derive `requiresMemoRecovery`.
+   *
+   * @param params - The parameters for the draft confirm-send transaction.
+   * @param params.onChainAccount - The on-chain account.
+   * @param params.amount - The amount to send.
+   * @param params.scope - The CAIP-2 chain ID.
+   * @param params.assetId - The CAIP-19 asset ID.
+   * @param params.destination - The destination address.
+   * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.useCache - Whether to use the cache.
+   * @returns The draft transaction and whether the confirmation should show RequiresMemo recovery.
+   */
+  async createDraftSendTransactionForConfirm(params: {
+    onChainAccount: OnChainAccount;
+    amount: BigNumber;
+    scope: KnownCaip2ChainId;
+    assetId: KnownCaip19AssetIdOrSlip44Id;
+    destination: string;
+    memo?: string;
+    useCache?: boolean;
+  }): Promise<{ transaction: Transaction; requiresMemoRecovery: boolean }> {
+    const { onChainAccount, scope, destination } = params;
+
+    const transaction = await this.createValidatedSendTransaction({
+      ...params,
+      skipExceptions: [RequiresMemoException],
+    });
+
+    let requiresMemoRecovery = false;
+    // SEP-29 applies to inbound payments from other accounts; skip self-payments.
+    // Dest was loaded during the draft build; useCache avoids a second Horizon round-trip.
+    if (onChainAccount.accountId !== destination) {
+      const destinationAccount = await this.#loadActivatedAccountOrNull(
+        destination,
+        scope,
+        true,
+      );
+      if (destinationAccount !== null) {
+        try {
+          assertMemoWhenDestinationRequires(
+            transaction,
+            destinationAccount.accountId,
+            destinationAccount.requiresMemo,
+          );
+        } catch (error: unknown) {
+          if (error instanceof RequiresMemoException) {
+            requiresMemoRecovery = true;
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
+
+    return { transaction, requiresMemoRecovery };
   }
 
   /**
@@ -226,6 +301,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.skipExceptions - Validation exception constructors to suppress during simulation.
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
    * such as amount-input validation, where the caller needs fee/balance feedback on
@@ -242,6 +318,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount;
     memo?: string;
+    skipExceptions?: readonly AnyErrorConstructor[];
     useCache: boolean;
   }): Promise<Transaction> {
     const {
@@ -252,6 +329,7 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
+      skipExceptions,
       useCache,
     } = params;
 
@@ -311,6 +389,7 @@ export class TransactionService {
     this.validateTransaction(transaction, onChainAccount, {
       expectedOPTypes: [SupportedOperations.InvokeHostFunction],
       preloadedAccounts: destinationAccount ? [destinationAccount] : undefined,
+      skipExceptions,
     });
 
     return transaction;
@@ -334,6 +413,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.skipExceptions - Validation exception constructors to suppress during simulation.
    * @returns A promise that resolves to the validated transaction.
    */
   async #createValidatedClassicAssetTransfer(params: {
@@ -344,6 +424,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount | null;
     memo?: string;
+    skipExceptions?: readonly AnyErrorConstructor[];
   }): Promise<Transaction> {
     const {
       onChainAccount,
@@ -353,6 +434,7 @@ export class TransactionService {
       destinationAccount,
       destination,
       memo,
+      skipExceptions,
     } = params;
 
     const isDestinationActivated = destinationAccount !== null;
@@ -382,6 +464,7 @@ export class TransactionService {
         ? [SupportedOperations.Payment]
         : [SupportedOperations.CreateAccount],
       preloadedAccounts: destinationAccount ? [destinationAccount] : undefined,
+      skipExceptions,
     });
 
     return transaction;

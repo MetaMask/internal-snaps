@@ -5,6 +5,18 @@ const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_ID_PATTERN = /^\d+$/u;
 
 /**
+ * Thrown when a memo string cannot be attached as a Stellar text or id memo.
+ */
+export class InvalidMemoException extends Error {
+  constructor(
+    message = `Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`,
+  ) {
+    super(message);
+    this.name = 'InvalidMemoException';
+  }
+}
+
+/**
  * Whether `value` is a non-negative decimal uint64 memo id.
  *
  * @param value - Trimmed memo string.
@@ -29,14 +41,26 @@ export function isMemoText(value: string): boolean {
 }
 
 /**
+ * Narrows an unknown dialog/context memo value to a string when present.
+ *
+ * @param memo - Raw memo from dialog result or confirmation context.
+ * @returns The memo string, or `undefined` when not a string.
+ */
+export function getMemoStrOrUndefined(memo: unknown): string | undefined {
+  return typeof memo === 'string' ? memo : undefined;
+}
+
+/**
  * Builds a Stellar SDK {@link Memo} from a string value.
  *
  * All-digit uint64 values → {@link Memo.id}; otherwise {@link Memo.text}.
  * Empty / whitespace-only values are treated as absent.
  *
+ * Used on the transaction build path (TransactionBuilder), not only UI.
+ *
  * @param value - Raw memo string (e.g. from confirmation UI).
  * @returns SDK memo, or `null` when the value is empty / whitespace-only.
- * @throws {Error} When the value is neither a valid memo id nor text memo.
+ * @throws {InvalidMemoException} When the value is neither a valid memo id nor text memo.
  */
 export function resolveStellarMemo(value?: string | null): Memo | null {
   const trimmed = value?.trim() ?? '';
@@ -52,5 +76,5 @@ export function resolveStellarMemo(value?: string | null): Memo | null {
     return Memo.text(trimmed);
   }
 
-  throw new Error(`Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`);
+  throw new InvalidMemoException();
 }

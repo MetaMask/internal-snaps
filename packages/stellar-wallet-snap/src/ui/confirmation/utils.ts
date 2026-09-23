@@ -413,6 +413,21 @@ export function getParam<Response extends Json>(
 }
 
 /**
+ * Reads a trimmed memo from confirmation interface context (UI-owned, not RPC params).
+ *
+ * @param context - The interface context.
+ * @returns Trimmed memo string, or `null` when missing/blank.
+ */
+export function getMemoFromContext(
+  context: Record<string, Json> | null | undefined,
+): string | null {
+  if (typeof context?.memo === 'string' && context.memo.trim()) {
+    return context.memo.trim();
+  }
+  return null;
+}
+
+/**
  * Keys rendered above the flat param list (authorized address, contract, function).
  */
 export const INVOCATION_HEADER_KEYS = new Set([

@@ -2,6 +2,7 @@ import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
+  Button,
   Container,
   Heading,
   Icon,
@@ -33,6 +34,7 @@ import {
   requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
+import { MemoEditFormNames } from '../MemoEdit/constants';
 import { ConfirmSendTransactionFormNames } from './events';
 
 export type ConfirmSendTransactionProps = ConfirmationBaseProps &
@@ -57,6 +59,7 @@ export const ConfirmSendTransaction = ({
   scanFetchStatus = FetchStatus.Initial,
   transactionsFetchStatus = FetchStatus.Initial,
   errorMessage,
+  memo: contextMemo,
 }: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
   const { address } = account;
@@ -64,6 +67,10 @@ export const ConfirmSendTransaction = ({
     scanFetchStatus,
     transactionsFetchStatus,
   });
+  const memo =
+    typeof contextMemo === 'string' && contextMemo.trim()
+      ? contextMemo.trim()
+      : undefined;
 
   return (
     <Container>
@@ -149,6 +156,22 @@ export const ConfirmSendTransaction = ({
               tokenPricesFetchStatus={tokenPricesFetchStatus}
             />
           )}
+        </Section>
+
+        <Section>
+          <Box alignment="space-between" direction="horizontal">
+            <SnapText fontWeight="medium" color="alternative">
+              {t('confirmation.memo')}
+            </SnapText>
+            <Box direction="horizontal" alignment="end">
+              <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
+              <Button name={MemoEditFormNames.Open}>
+                {memo
+                  ? t('confirmation.memo.update')
+                  : t('confirmation.memo.add')}
+              </Button>
+            </Box>
+          </Box>
         </Section>
       </Box>
       <ConfirmationFooter

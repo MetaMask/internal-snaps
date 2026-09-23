@@ -8,6 +8,7 @@ import { logger } from '../../../utils/logger';
 import {
   getInterfaceContextIfExists,
   scheduleBackgroundEvent,
+  cancelBackgroundEventIfExists,
 } from '../../../utils/snap';
 import { BackgroundEventMethod } from '../api';
 import {
@@ -28,11 +29,20 @@ jest.mock('../../../utils/snap', () => {
     ...actual,
     getInterfaceContextIfExists: jest.fn(),
     scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
+    cancelBackgroundEvent: jest.fn().mockResolvedValue(undefined),
+    cancelBackgroundEventIfExists: jest.fn().mockResolvedValue(undefined),
   };
 });
 
 describe('RefreshConfirmationContextHandler', () => {
   const baseContext = createConfirmationDataContext();
+
+  beforeEach(() => {
+    jest.mocked(scheduleBackgroundEvent).mockClear();
+    jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
+    jest.mocked(cancelBackgroundEventIfExists).mockClear();
+    jest.mocked(getInterfaceContextIfExists).mockReset();
+  });
 
   function createMockRefresher(
     key: ConfirmationContextRefresherKey,
@@ -64,16 +74,32 @@ describe('RefreshConfirmationContextHandler', () => {
   }
 
   it('schedules refresh confirmation context background event', async () => {
-    await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-      confirmationContextRequestParams,
-      Duration.FiveSeconds,
-    );
+    const eventId =
+      await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+        confirmationContextRequestParams,
+        Duration.FiveSeconds,
+      );
 
+    expect(eventId).toBe('scheduled');
     expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
       method: BackgroundEventMethod.RefreshConfirmationContext,
       params: confirmationContextRequestParams,
       duration: Duration.FiveSeconds,
     });
+    expect(cancelBackgroundEventIfExists).not.toHaveBeenCalled();
+  });
+
+  it('cancels a prior event id when replaceEventId is provided', async () => {
+    await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+      confirmationContextRequestParams,
+      Duration.OneSecond,
+      { replaceEventId: 'previous-event' },
+    );
+
+    expect(cancelBackgroundEventIfExists).toHaveBeenCalledWith(
+      'previous-event',
+    );
+    expect(scheduleBackgroundEvent).toHaveBeenCalled();
   });
 
   it('returns early when the interface no longer exists', async () => {
@@ -241,6 +267,7 @@ describe('RefreshConfirmationContextHandler', () => {
         ...latestContext,
         tokenPricesFetchStatus: FetchStatus.Fetched,
         extraField: 'patched',
+        backgroundEventId: 'scheduled',
       },
     });
     expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
@@ -429,7 +456,7 @@ describe('RefreshConfirmationContextHandler', () => {
     expect(updateConfirmation).toHaveBeenCalled();
   });
 
-  it('skips the security scan and does not reschedule when a refresher halts', async () => {
+  it('skips the security scan and does not reschedule when a refresher pauses', async () => {
     jest
       .mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
@@ -444,7 +471,7 @@ describe('RefreshConfirmationContextHandler', () => {
             scanFetchStatus: FetchStatus.Error,
           },
           reschedule: false,
-          halt: true,
+          pause: true,
         }),
       },
     );

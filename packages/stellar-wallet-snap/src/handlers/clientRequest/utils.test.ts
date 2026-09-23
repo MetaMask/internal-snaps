@@ -1,3 +1,4 @@
+import { InvalidMemoException } from '../../api';
 import { USDC_CLASSIC } from '../../services/asset-metadata/__mocks__/assets.fixtures';
 import {
   InsufficientBalanceException,
@@ -14,7 +15,7 @@ import {
   TrustlineNotFoundException,
   UpdateTrustlineException,
 } from '../../services/transaction';
-import { getTxnErrorMessageKey } from './utils';
+import { getMemoValidationErrorKey, getTxnErrorMessageKey } from './utils';
 
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
@@ -23,6 +24,10 @@ const assetId = USDC_CLASSIC;
 
 describe('getTxnErrorMessageKey', () => {
   it.each([
+    {
+      error: new InvalidMemoException(),
+      message: 'confirmation.memo.error.tooLong',
+    },
     {
       error: new InsufficientBalanceException('0', '1'),
       message: 'confirmation.txnError.insufficientBalance',
@@ -82,5 +87,24 @@ describe('getTxnErrorMessageKey', () => {
     },
   ])('maps $message', ({ error, senderAddress: sender, message }) => {
     expect(getTxnErrorMessageKey(error, sender ?? senderAddress)).toBe(message);
+  });
+});
+
+describe('getMemoValidationErrorKey', () => {
+  it('returns null for empty or whitespace-only values', () => {
+    expect(getMemoValidationErrorKey('')).toBeNull();
+    expect(getMemoValidationErrorKey('   ')).toBeNull();
+  });
+
+  it('returns null for valid memo id and text values', () => {
+    expect(getMemoValidationErrorKey('9876543210')).toBeNull();
+    expect(getMemoValidationErrorKey('deposit-ref')).toBeNull();
+    expect(getMemoValidationErrorKey('18446744073709551616')).toBeNull();
+  });
+
+  it('returns tooLong when the value exceeds 28 UTF-8 bytes', () => {
+    expect(getMemoValidationErrorKey('é'.repeat(15))).toBe(
+      'confirmation.memo.error.tooLong',
+    );
   });
 });

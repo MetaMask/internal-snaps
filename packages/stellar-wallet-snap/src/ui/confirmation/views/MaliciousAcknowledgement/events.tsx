@@ -6,8 +6,9 @@ import type {
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
 import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
-import type { ConfirmationInterfaceKey, FetchStatus } from '../../api';
-import { shouldDisableConfirmation } from '../../utils';
+import { ConfirmationInterfaceKey } from '../../api';
+import type { FetchStatus } from '../../api';
+import { getMemoFromContext, shouldDisableConfirmation } from '../../utils';
 import { renderConfirmationView } from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 
@@ -100,6 +101,17 @@ async function onProceedClick(
     await reRender(id, context, {
       acknowledgementScreen: false,
       acknowledged: false,
+    });
+    return;
+  }
+
+  // Confirm-send needs the UI memo in the dialog result; other flows keep a boolean.
+  if (
+    context.interfaceKey === ConfirmationInterfaceKey.ConfirmSendTransaction
+  ) {
+    await resolveInterface(id, {
+      confirmed: true,
+      memo: getMemoFromContext(context),
     });
     return;
   }
