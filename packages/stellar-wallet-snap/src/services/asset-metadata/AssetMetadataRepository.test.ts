@@ -45,6 +45,7 @@ function createMockStateManager(
       }
       return undefined;
     },
+    getKeys: jest.fn(async () => Promise.resolve({})),
     setKey: jest.fn(async () => Promise.resolve()),
     setKeyWith: jest.fn(async () => Promise.resolve()),
     update: async (updater) => {
