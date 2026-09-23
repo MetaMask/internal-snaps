@@ -1,14 +1,38 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
+import {
+  getAssetReference,
+  parseClassicAssetCodeIssuer,
+  toSmallestUnit,
+  trackError,
+} from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type { StellarAssetMetadata } from '../asset-metadata';
+import type { AssetsService } from '../assets';
+import {
+  isCoreClassicAsset,
+  isCoreNativeAsset,
+  isCoreSep41Asset,
+} from '../assets/api';
+import type { CoreAsset } from '../assets/api';
 import { AccountNotActivatedException } from '../network';
-import type { NetworkService } from '../network';
+import type { AccountLedgerMeta, NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountRepository } from './OnChainAccountRepository';
+import {
+  OnChainAccountSerializableFullStruct,
+  SerializableClassicSpendableBalanceStruct,
+  SerializableSep41SpendableBalanceStruct,
+} from './OnChainAccountSerializable';
+import type {
+  OnChainAccountSerializableFull,
+  SerializableSpendableBalance,
+} from './OnChainAccountSerializable';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
+import { subentryCountFromMinimumReserveStroops } from './utils';
 
 /**
  * Stellar on-chain account operations: activation checks and loading {@link OnChainAccount}
@@ -21,14 +45,20 @@ export class OnChainAccountService {
 
   readonly #onChainAccountRepository: OnChainAccountRepository;
 
+  readonly #assetsService: AssetsService;
+
+  readonly #logger: Logger;
+
   constructor({
     networkService,
     onChainAccountRepository,
     logger,
+    assetsService,
   }: {
     networkService: NetworkService;
     onChainAccountRepository: OnChainAccountRepository;
     logger: Logger;
+    assetsService: AssetsService;
   }) {
     this.#networkService = networkService;
     this.#onChainAccountSynchronizeService =
@@ -37,7 +67,9 @@ export class OnChainAccountService {
         onChainAccountRepository,
         logger,
       });
+    this.#logger = logger.withPrefix('💼 OnChainAccountService');
     this.#onChainAccountRepository = onChainAccountRepository;
+    this.#assetsService = assetsService;
   }
 
   /**
@@ -87,16 +119,26 @@ export class OnChainAccountService {
   }
 
   /**
-   * Loads the on-chain account for the given keyring account id from the State.
+   * Loads the on-chain account for the given keyring account id from snap state.
    *
    * @param keyringAccountId - The keyring account id to load the on-chain account for.
+   * @param accountAddress - Stellar G-address for the account header.
    * @param scope - The CAIP-2 chain id to load the on-chain account for.
    * @returns The on-chain account, or `null` if not found.
    */
   async resolveOnChainAccountByKeyringAccountId(
     keyringAccountId: string,
+    accountAddress: string,
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccount | null> {
+    if (await this.#assetsService.isMigrationEnabled()) {
+      return this.resolveOnChainAccountFromCore(
+        scope,
+        keyringAccountId,
+        accountAddress,
+      );
+    }
+
     const onChainAccount =
       await this.#onChainAccountRepository.findByKeyringAccountId(
         keyringAccountId,
@@ -108,8 +150,212 @@ export class OnChainAccountService {
   }
 
   /**
+   * Best-effort {@link OnChainAccount} from Core holdings for fast read paths.
+   *
+   * Binds balances from AssetsController when the Stellar migration flag is on.
+   * Protocol fields (sequence, subentries, sponsorship, native stroops) come from
+   * {@link NetworkService.getAccountLedgerMeta} when `resolveAccountFromNetwork` is set;
+   * otherwise sequence is `0`, sponsorships are 0, and `subentryCount` is derived from Core
+   * native `minimumReserveBalance`.
+   * Not a substitute for live Horizon for send / fee / ChangeTrust.
+   *
+   * @param scope - CAIP-2 network.
+   * @param keyringAccountId - MetaMask keyring account id.
+   * @param accountAddress - Stellar G-address for the account header.
+   * @param options - Optional RPC ledger overlay.
+   * @param options.resolveAccountFromNetwork - When true, overlay sequence / meta / native
+   * from Soroban `getAccountEntry`.
+   * @returns Bound account, or `null` when migration is off, Core is empty, or the
+   * account is not activated on Horizon (when network load is requested).
+   */
+  async resolveOnChainAccountFromCore(
+    scope: KnownCaip2ChainId,
+    keyringAccountId: string,
+    accountAddress: string,
+    options?: {
+      resolveAccountFromNetwork?: boolean;
+    },
+  ): Promise<OnChainAccount | null> {
+    if (!(await this.#assetsService.isMigrationEnabled())) {
+      return null;
+    }
+
+    const { resolveAccountFromNetwork = false } = options ?? {};
+    let ledger: AccountLedgerMeta | undefined;
+
+    if (resolveAccountFromNetwork) {
+      ledger = await this.#getAccountLedgerMetaSafe(accountAddress, scope);
+      if (!ledger) {
+        return null;
+      }
+    }
+
+    const assets = await this.#assetsService.getAccountAssetsByScope(
+      scope,
+      keyringAccountId,
+    );
+
+    if (assets.length === 0) {
+      // If the account has no assets from core,
+      // Possiblly not indexed, or not activated
+      // Return null to categorize it as not activated
+      return null;
+    }
+
+    this.#logger.debug('Resolved on-chain account from core', {
+      accountAddress,
+      scope,
+      assets,
+      ledger,
+    });
+
+    return OnChainAccount.fromSerializable(
+      this.#toSerializableFromCoreAssets({
+        accountAddress,
+        scope,
+        assets,
+        ledger,
+      }),
+    );
+  }
+
+  /**
+   * Maps validated Core holdings into a full on-chain snapshot (best effort).
+   *
+   * @param params - Account header and Core assets for one scope.
+   * @param params.accountAddress - Stellar G-address for the snapshot header.
+   * @param params.scope - CAIP-2 network.
+   * @param params.assets - Assets that are held by the account from core client controller.
+   * @param params.ledger - Optional RPC ledger overlay (sequence, meta, native stroops).
+   * @returns Full serializable binding for {@link OnChainAccount.fromSerializable}.
+   */
+  #toSerializableFromCoreAssets({
+    accountAddress,
+    scope,
+    assets,
+    ledger,
+  }: {
+    accountAddress: string;
+    scope: KnownCaip2ChainId;
+    assets: CoreAsset[];
+    ledger?: AccountLedgerMeta;
+  }): OnChainAccountSerializableFull {
+    try {
+      const balances: SerializableSpendableBalance[] = [];
+      let rawNativeBalance = ledger?.rawNativeBalance ?? '0';
+      let subentryCount = 0;
+
+      for (const asset of assets) {
+        if (asset.chainId !== scope) {
+          continue;
+        }
+
+        const assetId = asset.id;
+        const { decimals, symbol } = asset.metadata;
+        const balance = toSmallestUnit(
+          new BigNumber(asset.balance.amount),
+          decimals,
+        ).toFixed(0);
+
+        if (isCoreNativeAsset(asset)) {
+          // When RPC ledger meta is missing, derive subentryCount from Core
+          // `minimumReserveBalance` (stroops), assuming sponsoring fields are 0.
+          if (ledger === undefined) {
+            rawNativeBalance = balance;
+            const { minimumReserveBalance } = asset.balance.metadata;
+            subentryCount = subentryCountFromMinimumReserveStroops(
+              minimumReserveBalance,
+            );
+          }
+          continue;
+        }
+
+        if (isCoreClassicAsset(asset)) {
+          const { limit, authorized, sponsored } = asset.balance.metadata;
+          const { assetIssuer: address } = parseClassicAssetCodeIssuer(
+            getAssetReference(assetId),
+          );
+          balances.push(
+            SerializableClassicSpendableBalanceStruct.create({
+              assetId,
+              symbol,
+              balance,
+              limit,
+              address,
+              authorized,
+              sponsored,
+            }),
+          );
+          continue;
+        }
+
+        if (isCoreSep41Asset(asset)) {
+          balances.push(
+            SerializableSep41SpendableBalanceStruct.create({
+              assetId,
+              symbol,
+              balance,
+              decimals,
+            }),
+          );
+        }
+      }
+
+      return OnChainAccountSerializableFullStruct.create({
+        accountId: accountAddress,
+        sequenceNumber: ledger?.sequenceNumber ?? '0',
+        scope,
+        meta: {
+          subentryCount: ledger?.subentryCount ?? subentryCount,
+          numSponsoring: ledger?.numSponsoring ?? 0,
+          numSponsored: ledger?.numSponsored ?? 0,
+        },
+        balances,
+        rawNativeBalance,
+      });
+    } catch (error: unknown) {
+      this.#logger.debug(
+        'Error serializing on-chain account from core assets',
+        {
+          error,
+          accountAddress,
+          scope,
+          assets,
+          ledger,
+        },
+      );
+      trackError(
+        new Error('Error serializing on-chain account from core assets', {
+          cause: error,
+        }),
+      );
+      throw error;
+    }
+  }
+
+  async #getAccountLedgerMetaSafe(
+    accountAddress: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<AccountLedgerMeta | undefined> {
+    try {
+      return await this.#networkService.getAccountLedgerMeta(
+        accountAddress,
+        scope,
+      );
+    } catch (error: unknown) {
+      if (error instanceof AccountNotActivatedException) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Enriches accounts with SEP-41 balances, persists snapshots, then notifies the keyring when
    * balances or the tracked asset set changed. Delegates to {@link OnChainAccountSynchronizeService}.
+   *
+   * When the Stellar assets migration flag is on, skips persist and keyring events;
+   * AssetsController owns fungible holdings.
    *
    * @param activatedAccountPairs - Activated account pairs to synchronize.
    * @param scope - CAIP-2 network.
@@ -120,6 +366,13 @@ export class OnChainAccountService {
     scope: KnownCaip2ChainId,
     sep41Assets: StellarAssetMetadata[],
   ): Promise<void> {
+    if (await this.#assetsService.isMigrationEnabled()) {
+      this.#logger.debug(
+        'Skipping on-chain account synchronization; Core migration is on',
+      );
+      return;
+    }
+
     await this.#onChainAccountSynchronizeService.synchronize(
       activatedAccountPairs,
       scope,

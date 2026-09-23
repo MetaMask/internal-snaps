@@ -3,12 +3,14 @@ import { buildUrl } from '@metamask/snap-networks-utils';
 import { AssetType, KnownCaip2ChainId } from '../../api';
 import type { KnownCaip19AssetId } from '../../api';
 import { getSlip44AssetId, logger } from '../../utils';
+import { createMockAssetsService } from '../assets/__mocks__/assetsService.fixtures';
 import type { NetworkService } from '../network';
 import type { StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataService } from './AssetMetadataService';
 import type { TokenMetadata } from './token-api/api';
 import { TokenApiClient } from './token-api/TokenApiClient';
+import { toStellarAssetMetadata } from './utils';
 
 /** Mainnet classic USDC (matches CAIP-19 pattern used across Stellar fixtures). */
 const MAINNET_CLASSIC_USDC =
@@ -80,14 +82,17 @@ function createService(deps: {
     getAssetsByChainId: mockGetAssetsByChainId,
   }));
 
+  const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
     networkService: network,
     assetMetadataRepository: repo,
     logger,
+    assetsService,
   });
 
   return {
     service,
+    assetsService,
     getByAssetIds: repo.getByAssetIds as jest.MockedFunction<
       AssetMetadataRepository['getByAssetIds']
     >,
@@ -120,7 +125,7 @@ describe('AssetMetadataService', () => {
     const result = await service.resolve(slipId);
 
     expect(result.assetId).toBe(slipId);
-    expect(getByAssetIds).toHaveBeenCalledWith([]);
+    expect(getByAssetIds).not.toHaveBeenCalled();
     expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
   });
 
@@ -286,5 +291,64 @@ describe('AssetMetadataService', () => {
         chainId: KnownCaip2ChainId.Mainnet,
       }),
     ]);
+  });
+
+  it('skips catalog persist during synchronize when Core migration is on', async () => {
+    const { service, assetsService, saveMany } = createService({});
+    jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+
+    await service.synchronize(KnownCaip2ChainId.Mainnet);
+
+    expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('maps Core catalog metadata into StellarAssetMetadata without reading snap state', async () => {
+    const classicId = MAINNET_CLASSIC_USDC;
+    const { service, assetsService, getByAssetIds, saveMany } = createService(
+      {},
+    );
+    const getAssetMetadata = jest
+      .spyOn(assetsService, 'getAssetMetadata')
+      .mockResolvedValue({
+        symbol: 'USDC',
+        decimals: 7,
+        name: 'USD Coin',
+      });
+
+    const result = await service.resolve(classicId);
+
+    expect(result).toStrictEqual(
+      toStellarAssetMetadata({
+        assetId: classicId,
+        decimals: 7,
+        symbol: 'USDC',
+        name: 'USD Coin',
+      }),
+    );
+    expect(getAssetMetadata).toHaveBeenCalledWith(classicId);
+    expect(getByAssetIds).not.toHaveBeenCalled();
+    expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('falls back to snap catalog when Core misses', async () => {
+    const classicId = MAINNET_CLASSIC_USDC;
+    const cached = createCachedRow(classicId, KnownCaip2ChainId.Mainnet);
+    const { service, assetsService, getByAssetIds } = createService({
+      repo: {
+        getByAssetIds: jest.fn().mockResolvedValue([cached]),
+      },
+    });
+    const getAssetMetadata = jest
+      .spyOn(assetsService, 'getAssetMetadata')
+      .mockResolvedValue(null);
+
+    const result = await service.resolve(classicId);
+
+    expect(result).toStrictEqual(cached);
+    expect(getAssetMetadata).toHaveBeenCalledWith(classicId);
+    expect(getByAssetIds).toHaveBeenCalledWith([classicId]);
+    expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
   });
 });

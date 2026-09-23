@@ -503,6 +503,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     const onChainAccount =
       await this.#onChainAccountService.resolveOnChainAccountByKeyringAccountId(
         accountId,
+        account.address,
         scope,
       );
 

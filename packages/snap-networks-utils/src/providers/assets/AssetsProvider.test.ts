@@ -81,4 +81,17 @@ describe('AssetsProvider', () => {
       });
     });
   });
+
+  describe('getAssetMetadata', () => {
+    it('calls AssetsController:getAssetMetadata', async () => {
+      await withAssetsProvider(async ({ assetsProvider, mockMessenger }) => {
+        await assetsProvider.getAssetMetadata(ASSET_ID);
+
+        expect(mockMessenger.call).toHaveBeenCalledWith(
+          'AssetsController:getAssetMetadata',
+          ASSET_ID,
+        );
+      });
+    });
+  });
 });

@@ -1,6 +1,9 @@
 import { BigNumber } from 'bignumber.js';
 
-import { BASE_RESERVE_STROOPS } from '../../constants';
+import {
+  ACCOUNT_MINIMUM_BASE_RESERVE_UNIT,
+  BASE_RESERVE_STROOPS,
+} from '../../constants';
 
 type CalculateSpendableBalanceParams = {
   nativeBalance: BigNumber;
@@ -24,11 +27,32 @@ type MinimumBalanceLedgerMeta = {
 export function minimumBalanceStroops(
   meta: MinimumBalanceLedgerMeta,
 ): BigNumber {
-  return new BigNumber(2)
+  return new BigNumber(ACCOUNT_MINIMUM_BASE_RESERVE_UNIT)
     .plus(meta.subentryCount)
     .plus(meta.numSponsoring)
     .minus(meta.numSponsored)
     .times(BASE_RESERVE_STROOPS);
+}
+
+/**
+ * Best-effort `subentry_count` from Core native `minimumReserveBalance` (stroops).
+ *
+ * Inverts {@link minimumBalanceStroops} when `numSponsoring` and `numSponsored`
+ * are 0: `subentryCount = minimumReserve / BASE_RESERVE − 2`. Clamped at 0.
+ *
+ * @param minimumReserveBalanceStroops - Core `minimumReserveBalance` (integer stroops).
+ * @returns Estimated Horizon `subentry_count`.
+ */
+export function subentryCountFromMinimumReserveStroops(
+  minimumReserveBalanceStroops: string,
+): number {
+  const reserveUnits = new BigNumber(minimumReserveBalanceStroops).div(
+    BASE_RESERVE_STROOPS,
+  );
+  return BigNumber.maximum(
+    reserveUnits.minus(ACCOUNT_MINIMUM_BASE_RESERVE_UNIT),
+    0,
+  ).toNumber();
 }
 
 /**

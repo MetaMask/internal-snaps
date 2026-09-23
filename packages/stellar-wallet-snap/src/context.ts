@@ -1,10 +1,18 @@
 import {
   AnalyticsService,
   State,
+  AssetsProvider,
+  RemoteFeatureFlagsProvider,
   InMemoryCache,
 } from '@metamask/snap-networks-utils';
+import type {
+  AssetsProviderMessenger,
+  RemoteFeatureFlagsProviderMessenger,
+} from '@metamask/snap-networks-utils';
+import { getMessenger } from '@metamask/snaps-sdk';
 import { assert, object } from '@metamask/superstruct';
 
+import type { CoreMessenger } from './api/core-messenger';
 import { AppConfig } from './config';
 import { KeyringHandler, CronjobHandler, UserInputHandler } from './handlers';
 import { AccountResolver } from './handlers/accountResolver';
@@ -44,6 +52,7 @@ import {
   AssetMetadataRepository,
   AssetMetadataService,
 } from './services/asset-metadata';
+import { AssetsService, CoreAssetsAdapter } from './services/assets';
 import { NetworkService } from './services/network';
 import {
   OnChainAccountRepository,
@@ -86,10 +95,31 @@ const analyticsService = new AnalyticsService({
 const appCache = new InMemoryCache(noOpLogger);
 const networkService = new NetworkService({ logger, cache: appCache });
 
+const coreMessenger = getMessenger<CoreMessenger>();
+const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
+  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
+});
+const assetsProvider = new AssetsProvider({
+  messenger: coreMessenger as AssetsProviderMessenger,
+});
+const coreAssetsAdapter = new CoreAssetsAdapter({
+  logger,
+  getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
+  getAccountAssetsByIDs:
+    assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
+  getAccountAssetsByScope:
+    assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+  getAssetMetadata: assetsProvider.getAssetMetadata.bind(assetsProvider),
+});
+const assetsService = new AssetsService({
+  coreAdapter: coreAssetsAdapter,
+  remoteFeatureFlagsProvider,
+});
 const assetMetadataService = new AssetMetadataService({
   networkService,
   assetMetadataRepository,
   logger,
+  assetsService,
 });
 
 const transactionBuilder = new TransactionBuilder();
@@ -107,6 +137,7 @@ const onChainAccountService = new OnChainAccountService({
   logger,
   networkService,
   onChainAccountRepository,
+  assetsService,
 });
 
 const transactionService = new TransactionService({
@@ -326,6 +357,7 @@ const clientRequestHandler = new ClientRequestHandler({
 
 /** ------------------------------ Export Handlers ------------------------------ */
 export {
+  assetsService,
   clientRequestHandler,
   cronjobHandler,
   keyringHandler,
