@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `getKeys` to `State` to allow for fetching of multiple keys from snap state ([#356](https://github.com/MetaMask/internal-snaps/pull/356))
 - Add `wrapSnapHandlers` to wrap any Snap entrypoint handlers with `withCatchAndThrowSnapError`, with optional per-handler `logError` overrides ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add `noopAssetHandlers`, the no-op asset entrypoints network Snaps must export to keep the `endowment:assets` permission ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add a shared `AnalyticsService` and typed event properties for network Snap telemetry. ([#327](https://github.com/MetaMask/internal-snaps/pull/327))
