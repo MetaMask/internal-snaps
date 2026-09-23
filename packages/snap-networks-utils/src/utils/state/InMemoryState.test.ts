@@ -7,13 +7,24 @@ type MockStateValue = {
 describe('InMemoryState', () => {
   it('gets, sets, and deletes keys', async () => {
     const state = new InMemoryState<MockStateValue>({
-      users: [{ name: 'John', age: 30 }],
+      users: [
+        { name: 'John', age: 30 },
+        { name: 'Jane', age: 20 },
+        { name: 'Jim', age: 10 },
+      ],
     });
 
     expect(await state.get()).toStrictEqual({
       users: [{ name: 'John', age: 30 }],
     });
     expect(await state.getKey('users.0.name')).toBe('John');
+
+    expect(await state.getKeys(['users.0.name', 'users.2.name'])).toStrictEqual(
+      {
+        'users.0.name': 'John',
+        'users.2.name': 'Jim',
+      },
+    );
 
     await state.setKey('users.0.name', 'Jane');
     expect(await state.getKey('users.0.name')).toBe('Jane');

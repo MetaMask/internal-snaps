@@ -26,6 +26,13 @@ export class InMemoryState<
     return get(this.#state, key) as TResponse | undefined;
   }
 
+  async getKeys(keys: string[]): Promise<Record<string, Serializable>> {
+    return keys.reduce<Record<string, Serializable>>((acc, key) => {
+      acc[key] = get(this.#state, key) as Serializable;
+      return acc;
+    }, {});
+  }
+
   async setKey(key: string, value: Serializable): Promise<void> {
     set(this.#state, key, value);
   }
