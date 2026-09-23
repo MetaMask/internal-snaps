@@ -61,3 +61,43 @@ export function buildAuthEntryPreimageXdr({
     }),
   ).toXdr('base64');
 }
+
+/**
+ * Builds a `CONTRACT_ID_PREIMAGE_FROM_ADDRESS` for create-contract tests.
+ *
+ * @param address - Account or contract strkey used as the preimage address.
+ * @returns Contract id preimage XDR.
+ */
+export function buildContractIdPreimageFromAddress(
+  address: string,
+): xdr.ContractIdPreimage {
+  return xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+    new xdr.ContractIdPreimageFromAddress({
+      address: Address.fromString(address).toScAddress(),
+      // A 32-byte salt is required for contract id preimages.
+      salt: bufferToUint8Array(
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        'hex',
+      ),
+    }),
+  );
+}
+
+/**
+ * Builds a CAP-85 `CONTRACT_EXECUTABLE_EXTERNAL_REF`.
+ *
+ * @param owner - Executable owner contract strkey.
+ * @param tag - Executable tag.
+ * @returns Contract executable XDR.
+ */
+export function buildExternalRefExecutable(
+  owner: string,
+  tag: string,
+): xdr.ContractExecutable {
+  return xdr.ContractExecutable.contractExecutableExternalRef(
+    new xdr.ContractExecutableExternalRef({
+      executableOwner: Address.fromString(owner).toScAddress(),
+      tag,
+    }),
+  );
+}
