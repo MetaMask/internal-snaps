@@ -37,7 +37,9 @@ describe('InMemoryState', () => {
     expect(await state.getKey('users.0.age')).toBe(31);
 
     await state.deleteKey('users.0.age');
-    expect(await state.get()).toStrictEqual({ users: [{ name: 'Jane' }] });
+    expect(await state.get()).toStrictEqual({
+      users: [{ name: 'Jane' }, { name: 'Jim', age: 10 }],
+    });
 
     await state.deleteKeys(['users']);
     expect(await state.get()).toStrictEqual({});
