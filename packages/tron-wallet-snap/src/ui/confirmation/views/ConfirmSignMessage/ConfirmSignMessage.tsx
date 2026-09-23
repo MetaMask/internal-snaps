@@ -1,9 +1,6 @@
-import type {
-  ExtendedKeyringAccount,
-  SelfReportedOriginMetadata,
-} from '@metamask/snap-networks-utils';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { resolveOrigin } from '@metamask/snap-networks-utils';
-import type { ComponentOrElement } from '@metamask/snaps-sdk';
+import type { ComponentOrElement, OriginMetadata } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
@@ -31,7 +28,7 @@ export type ConfirmSignMessageProps = {
   locale: Locale;
   networkImage: string | null;
   origin: string;
-  originMetadata: SelfReportedOriginMetadata | null;
+  originMetadata: OriginMetadata | null;
 };
 
 export const ConfirmSignMessage = ({
