@@ -11,14 +11,14 @@ SEP-43: show a confirmation, then return a **signed** transaction XDR to the dap
 
 ## Participants
 
-| Component                  | Path                        | Role                                                   |
-| -------------------------- | --------------------------- | ------------------------------------------------------ |
-| `SignTransactionHandler`   | `handlers/keyring`          | Decode, confirm, sign                                  |
-| `AccountResolver`          | `handlers/`                 | Load keyring account + wallet                          |
-| `Wallet`                   | `services/wallet`           | `signTransaction`                                      |
+| Component                  | Path                        | Role                                                      |
+| -------------------------- | --------------------------- | --------------------------------------------------------- |
+| `SignTransactionHandler`   | `handlers/keyring`          | Decode, confirm, sign                                     |
+| `AccountResolver`          | `handlers/`                 | Load keyring account + wallet                             |
+| `Wallet`                   | `services/wallet`           | `signTransaction`                                         |
 | `OperationMapper`          | `services/transaction`      | Decode envelope ops + Soroban auth into confirmation rows |
-| `ConfirmationUXController` | `ui/confirmation`           | Sign-transaction dialog                                |
-| `TransactionScanService`   | `services/transaction-scan` | Security scan + remote simulation while dialog is open |
+| `ConfirmationUXController` | `ui/confirmation`           | Sign-transaction dialog                                   |
+| `TransactionScanService`   | `services/transaction-scan` | Security scan + remote simulation while dialog is open    |
 
 ## Request / response
 
@@ -45,13 +45,13 @@ Classic operations render as a type heading plus labeled params (amounts, assets
 
 `invokeHostFunction` is decoded per host-function arm (not a generic Soroban note):
 
-| Host function            | Confirmation rows                                                                                          |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `invokeContract`         | Contract id, function name, args                                                                           |
-| `createContract`         | Function name; deployer + salt (`fromAddress`) or asset (`fromAsset` / SAC); executable (wasm hash or CAP-85 `externalRef` owner + tag) |
-| `createContractV2`       | Same as `createContract`, plus constructor args when present                                               |
-| `uploadContractWasm`     | Function name + wasm SHA-256                                                                               |
-| Unknown arm              | `functionName` only                                                                                        |
+| Host function        | Confirmation rows                                                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `invokeContract`     | Contract id, function name, args                                                                                                        |
+| `createContract`     | Function name; deployer + salt (`fromAddress`) or asset (`fromAsset` / SAC); executable (wasm hash or CAP-85 `externalRef` owner + tag) |
+| `createContractV2`   | Same as `createContract`, plus constructor args when present                                                                            |
+| `uploadContractWasm` | Function name + wasm SHA-256                                                                                                            |
+| Unknown arm          | `functionName` only                                                                                                                     |
 
 Invoke-host-function ops with a known contract / function show those two fields in `InvocationSummary`; remaining rows (args, salt, executable, …) are listed below via `ReadableParamsList`. Auth entries on the same op use `AuthorizationMapper` (shared create-contract / invoke row mapping) in the Authorizations section. Token prices apply to classic amount / asset rows, not auth rows. Mapping failures are swallowed so signing is not blocked.
 
