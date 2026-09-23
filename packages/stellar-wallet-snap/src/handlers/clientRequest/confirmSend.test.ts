@@ -590,7 +590,7 @@ describe('ConfirmSendHandler', () => {
       },
     );
 
-    it('opens a recoverable send confirmation when the destination requires a memo', async () => {
+    it('opens a send confirmation when the destination requires a memo', async () => {
       const {
         handler,
         account,

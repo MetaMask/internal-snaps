@@ -74,7 +74,7 @@ export type TransactionSimulatorOptions = {
   preloadedAccounts?: OnChainAccount[];
   /**
    * Validation exception constructors to suppress during simulation
-   * (e.g. `[RequiresMemoException]` for recoverable RequiresMemo drafts).
+   * (e.g. `[RequiresMemoException]` for RequiresMemo drafts).
    * Uses the same `AnyErrorConstructor` list shape as `rethrowIfInstanceElseThrow`.
    */
   skipExceptions?: readonly AnyErrorConstructor[];

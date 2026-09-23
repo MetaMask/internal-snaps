@@ -110,7 +110,7 @@ async function onSaveSubmit(
   // Only restart validation/scan when this confirmation actually has a live
   // refresh pipeline. Hard pre-submit error dialogs have `request` but no
   // `transaction` / localSimulation — still allow saving the memo onto
-  // context for display, without fighting a halted cron.
+  // context for display, without fighting a paused cron.
   const canRestartRefresh =
     typeof context.transaction === 'string' &&
     typeof context.accountId === 'string' &&

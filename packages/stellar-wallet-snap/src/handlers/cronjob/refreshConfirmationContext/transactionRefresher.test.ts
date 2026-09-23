@@ -274,12 +274,12 @@ describe('ConfirmationTransactionRefresher', () => {
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        halt: true,
+        pause: true,
       });
     },
   );
 
-  it('marks RequiresMemo as recoverable without nulling securityScanRequest', async () => {
+  it('pauses on RequiresMemo without nulling securityScanRequest', async () => {
     const { refresher, transactionService } = setup();
     transactionService.createValidatedSendTransaction.mockRejectedValueOnce(
       new RequiresMemoException(toAddress),
@@ -294,7 +294,7 @@ describe('ConfirmationTransactionRefresher', () => {
         scanFetchStatus: FetchStatus.Error,
       },
       reschedule: false,
-      recoverable: true,
+      pause: true,
     });
     expect(result?.result.securityScanRequest).toBeUndefined();
   });

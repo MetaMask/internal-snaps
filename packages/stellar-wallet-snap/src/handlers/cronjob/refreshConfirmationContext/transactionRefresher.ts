@@ -4,7 +4,6 @@ import { BigNumber } from 'bignumber.js';
 
 import { getMemoStrOrUndefined } from '../../../api';
 import type { AssetMetadataService } from '../../../services/asset-metadata';
-import { RequiresMemoException } from '../../../services/transaction';
 import type {
   Transaction,
   TransactionService,
@@ -177,7 +176,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
             scope,
             transaction: rebuiltTransactionXdr,
           },
-          // Clear a prior recoverable validation error (e.g. RequiresMemo after memo added).
+          // Clear a prior validation error (e.g. RequiresMemo after memo added).
           transactionsFetchStatus: FetchStatus.Fetched,
         },
         reschedule: true,
@@ -187,7 +186,6 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
         'Error re-validating confirmation transaction:',
         error,
       );
-      const recoverable = error instanceof RequiresMemoException;
       return {
         result: {
           transactionsFetchStatus: FetchStatus.Error,
@@ -196,7 +194,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        ...(recoverable ? { recoverable: true } : { halt: true }),
+        pause: true,
       };
     }
   }

@@ -28,33 +28,25 @@ export type ConfirmationContextRefreshResult = {
   /** Vote to schedule another refresh cycle. */
   reschedule: boolean;
   /**
-   * When true, the handler does not reschedule after this cycle.
-   * But other refreshers may still run (e.g. prices).
-   * Use for hard validation failures the user cannot fix in-dialog.
+   * When true, omit the security scan this cycle and do not auto-reschedule.
+   * Other refreshers may still run (e.g. prices). The UI may call
+   * `scheduleBackgroundEvent` again after the user fixes an in-dialog issue
+   * (e.g. adds a memo for RequiresMemo).
    */
-  halt?: boolean;
-  /**
-   * Soft validation failure (e.g. SEP-29 RequiresMemo): omit the security scan
-   * this cycle and do not auto-reschedule, but keep `securityScanRequest` intact
-   * so a later UI-triggered `scheduleBackgroundEvent` (after the user fixes the
-   * issue) can rebuild and re-scan without reconstructing the scan request.
-   * Distinct from {@link ConfirmationContextRefreshResult.halt} — not a permanent
-   * hard-stop signal for unrecoverable errors.
-   */
-  recoverable?: boolean;
+  pause?: boolean;
 } | null;
 
 /**
- * Whether a refresher outcome should pause auto-cron (omit further reschedule).
- * Covers hard fail (`halt`) and soft fail (`recoverable`, e.g. RequiresMemo).
+ * Whether a refresher outcome should pause auto-cron (omit further reschedule
+ * and, for the transaction refresher, omit Scan this cycle).
  *
  * @param result - One refresher cycle result.
- * @returns True when auto-reschedule should stop.
+ * @returns True when auto-refresh should pause.
  */
 export function shouldPauseRefresh(
   result: ConfirmationContextRefreshResult,
 ): boolean {
-  return result?.halt === true || result?.recoverable === true;
+  return result?.pause === true;
 }
 
 /**

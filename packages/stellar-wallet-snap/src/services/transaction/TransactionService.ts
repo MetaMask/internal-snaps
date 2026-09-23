@@ -146,7 +146,7 @@ export class TransactionService {
    * Creates a validated send transaction.
    *
    * When `skipExceptions` includes {@link RequiresMemoException}, SEP-29 is skipped
-   * during simulation so a draft envelope is available (e.g. recoverable RequiresMemo
+   * during simulation so a draft envelope is available (e.g. RequiresMemo
    * confirmation). Prefer {@link createDraftSendTransactionForConfirm} when the caller
    * also needs to know whether memo recovery UI is required.
    *
