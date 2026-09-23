@@ -170,7 +170,9 @@ export const {
     _logger.log('Running cronjob', { method });
 
     const handler =
-      onCronjobHandlers[method as CronjobMethod | ScheduleBackgroundEventMethod];
+      onCronjobHandlers[
+        method as CronjobMethod | ScheduleBackgroundEventMethod
+      ];
 
     if (!handler) {
       throw new MethodNotFoundError(
