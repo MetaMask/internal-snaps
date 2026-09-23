@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accept CAP-71 v2 Soroban authorization preimages (`envelopeTypeSorobanAuthorizationWithAddress`) in `signAuthEntry` ([#307](https://github.com/MetaMask/internal-snaps/pull/307))
   - Reject when the v2 bound address is not the signing account
   - Show `ADDRESS_V2` credential addresses on invoke-host-function confirmation
+- Show decoded `createContract` / `createContractV2` confirmation rows (deployer, salt, wasm hash, CAP-85 external ref, constructor args) instead of the generic invoke-host-function note ([349](https://github.com/MetaMask/internal-snaps/pull/349))
 
 ### Changed
 
