@@ -170,7 +170,7 @@ export class SignAuthEntryHandler extends BaseSep43KeyringHandler<
       };
     }
 
-    // Safe guard: 
+    // Safe guard:
     // The request struct already accepted only v1/v2 Soroban auth preimages.
     throw new Sep43Error({
       code: Sep43ErrorCode.InvalidRequest,
