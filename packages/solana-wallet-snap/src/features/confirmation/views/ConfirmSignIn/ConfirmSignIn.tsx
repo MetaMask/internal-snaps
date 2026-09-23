@@ -1,5 +1,5 @@
-import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
 import { resolveOrigin } from '@metamask/snap-networks-utils';
+import type { OriginMetadata } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
@@ -43,7 +43,7 @@ export type ConfirmSignInProps = {
     resources: string[];
   }>;
   origin: string;
-  originMetadata: SelfReportedOriginMetadata | null;
+  originMetadata: OriginMetadata | null;
   account: SolanaKeyringAccount;
   accountDomain: string | null;
   scope: Network;

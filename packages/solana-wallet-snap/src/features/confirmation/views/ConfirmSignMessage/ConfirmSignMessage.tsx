@@ -1,5 +1,5 @@
-import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
 import { resolveOrigin } from '@metamask/snap-networks-utils';
+import type { OriginMetadata } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
@@ -32,7 +32,7 @@ export type ConfirmSignMessageProps = {
   locale: Locale;
   networkImage: string | null;
   origin: string;
-  originMetadata: SelfReportedOriginMetadata | null;
+  originMetadata: OriginMetadata | null;
 };
 
 export const ConfirmSignMessage: SnapComponent<ConfirmSignMessageProps> = ({

@@ -1,5 +1,5 @@
-import type { SelfReportedOriginMetadata } from '@metamask/snap-networks-utils';
 import { resolveOrigin } from '@metamask/snap-networks-utils';
+import type { OriginMetadata } from '@metamask/snaps-sdk';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
   Address,
@@ -35,7 +35,7 @@ type TransactionDetailsProps = {
   preferences: Preferences;
   networkImage: string | null;
   origin: string;
-  originMetadata: SelfReportedOriginMetadata | null;
+  originMetadata: OriginMetadata | null;
 };
 
 export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
