@@ -107,6 +107,8 @@ export function wrapSnapHandlers<HandlerName extends keyof SnapHandlers>(
     ]),
   ) as Pick<SnapHandlers, HandlerName>;
 }
+
+/**
  * No-op asset handlers that network Snaps must export to keep the
  * `endowment:assets` permission, since assets are provided through the
  * Assets API instead.
