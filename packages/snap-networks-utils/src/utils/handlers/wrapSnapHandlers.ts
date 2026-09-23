@@ -91,24 +91,22 @@ export type SnapHandlers = {
  *   onAssetsMarketData,
  * } = noopAssetHandlers;
  */
-export function wrapSnapHandlers<Handlers extends Partial<SnapHandlers>>(
+export function wrapSnapHandlers<HandlerName extends keyof SnapHandlers>(
   withCatchAndThrowSnapError: WithCatchAndThrowSnapError,
-  handlers: Handlers,
-  logError: Partial<Record<keyof Handlers, LogErrorFn>> = {},
-): Pick<SnapHandlers, keyof Handlers & keyof SnapHandlers> {
+  handlers: { [Name in HandlerName]: SnapHandlers[Name] },
+  logError: Partial<Record<HandlerName, LogErrorFn>> = {},
+): Pick<SnapHandlers, HandlerName> {
   return Object.fromEntries(
     Object.entries(handlers).map(([name, handler]) => [
       name,
       async (args: unknown): Promise<unknown> =>
         withCatchAndThrowSnapError(
           async () => (handler as (args: unknown) => Promise<unknown>)(args),
-          logError[name as keyof Handlers],
+          logError[name as HandlerName],
         ),
     ]),
-  ) as Pick<SnapHandlers, keyof Handlers & keyof SnapHandlers>;
+  ) as Pick<SnapHandlers, HandlerName>;
 }
-
-/**
  * No-op asset handlers that network Snaps must export to keep the
  * `endowment:assets` permission, since assets are provided through the
  * Assets API instead.
