@@ -6,13 +6,18 @@ import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientReque
 import { getMemoValidationErrorKey } from '../../../../handlers/clientRequest/utils';
 import {
   ConfirmationContextRefresherKey,
+  type ConfirmationDataContext,
   RefreshConfirmationContextHandler,
 } from '../../../../handlers/cronjob/refreshConfirmationContext';
 import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
-import { Duration, updateInterfaceIfExists } from '../../../../utils';
+import {
+  Duration,
+  getInterfaceContextIfExists,
+  updateInterfaceIfExists,
+} from '../../../../utils';
 import type { ConfirmationInterfaceKey } from '../../api';
 import { FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
@@ -36,6 +41,23 @@ async function reRender(
     id,
     renderConfirmationView(interfaceKey, nextContext),
     nextContext,
+  );
+}
+
+/**
+ * Whether this confirmation has a live refresh pipeline to restart.
+ *
+ * Hard pre-submit error dialogs have `request` but no transaction /
+ * localSimulation refresh — still allow saving the memo onto context.
+ *
+ * @param context - Confirmation interface context.
+ * @returns True when Save should cancel-and-replace Transaction+Scan+Prices.
+ */
+function canRestartRefresh(context: Record<string, Json>): boolean {
+  return (
+    typeof context.transaction === 'string' &&
+    typeof context.accountId === 'string' &&
+    context.transactionsFetchStatus !== undefined
   );
 }
 
@@ -73,8 +95,9 @@ function memoFromSubmitEvent(event: UserInputEvent): string {
 }
 
 /**
- * Saves the memo onto confirmation context and restarts validation + scan when
- * a live refresh pipeline is present.
+ * Saves the memo onto confirmation context and always restarts validation +
+ * scan when a live refresh pipeline is present, so clearing a required memo
+ * cannot leave Confirm enabled on a stale success.
  *
  * @param options - The user input handler context.
  */
@@ -98,13 +121,6 @@ async function onSaveSubmit(
     return;
   }
 
-  const nextContext = {
-    ...context,
-    memo,
-    memoScreen: false,
-    memoError: null,
-  };
-
   const { interfaceKey } = context as {
     interfaceKey?: ConfirmationInterfaceKey;
   };
@@ -112,31 +128,37 @@ async function onSaveSubmit(
     return;
   }
 
-  // Only restart validation/scan when this confirmation actually has a live
-  // refresh pipeline. Hard pre-submit error dialogs have `request` but no
-  // `transaction` / localSimulation — still allow saving the memo onto
-  // context for display, without fighting a paused cron.
-  const canRestartRefresh =
-    typeof context.transaction === 'string' &&
-    typeof context.accountId === 'string' &&
-    context.transactionsFetchStatus !== undefined;
+  // Prefer the latest interface snapshot — click-time `context` can lag a
+  // prices/scan write between Open and Save.
+  const interfaceContext =
+    await getInterfaceContextIfExists<ConfirmationDataContext>(id);
+  const baseContext = interfaceContext ?? context;
 
-  const refreshedContext = canRestartRefresh
-    ? {
-        ...nextContext,
-        transactionsFetchStatus: FetchStatus.Fetched,
-        scanFetchStatus: FetchStatus.Fetching,
-      }
-    : nextContext;
+  const nextContext = {
+    ...baseContext,
+    memo,
+    memoScreen: false,
+    memoError: null,
+  };
 
-  const { scope } = context;
-  if (canRestartRefresh && typeof scope === 'string') {
+  const { scope } = baseContext;
+  if (canRestartRefresh(baseContext) && typeof scope === 'string') {
     const previousEventId =
-      typeof context.backgroundEventId === 'string'
-        ? context.backgroundEventId
-        : undefined;
-    // Cancel any pending open/prices cron first, then schedule Transaction+Scan
-    // restart (bitcoin-style replace — avoids stacked refresh chains).
+      typeof baseContext.backgroundEventId === 'string'
+        ? baseContext.backgroundEventId
+        : typeof context.backgroundEventId === 'string'
+          ? context.backgroundEventId
+          : undefined;
+
+    const refreshedContext = {
+      ...nextContext,
+      // Clear any prior banner; the restarted transaction refresher will set a
+      // new error (e.g. RequiresMemo again) or leave it cleared on success.
+      errorMessage: null,
+      transactionsFetchStatus: FetchStatus.Fetched,
+      scanFetchStatus: FetchStatus.Fetching,
+    };
+
     const backgroundEventId =
       await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
         {
@@ -163,8 +185,8 @@ async function onSaveSubmit(
 
   await updateInterfaceIfExists(
     id,
-    renderConfirmationView(interfaceKey, refreshedContext),
-    refreshedContext,
+    renderConfirmationView(interfaceKey, nextContext),
+    nextContext,
   );
 }
 
