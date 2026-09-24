@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@metamask/assets-controller": "^13.0.0",
-    "@metamask/auto-changelog": "^6.1.1",
+    "@metamask/auto-changelog": "^6.2.1",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^24.1.0",
     "@metamask/keyring-snap-sdk": "^10.0.0",
