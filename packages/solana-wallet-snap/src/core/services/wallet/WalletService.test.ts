@@ -22,6 +22,7 @@ import type { SolanaConnection } from '../connection';
 import { MOCK_EXECUTION_SCENARIOS } from '../signer/mocks/scenarios';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
+import type { TransactionsService } from '../transactions';
 import {
   MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST,
   MOCK_SIGN_IN_REQUEST,
@@ -47,6 +48,7 @@ describe('WalletService', () => {
   let mockSigner: Signer;
   let mockSignatureMonitor: SignatureMonitor;
   let mockAnalyticsService: AnalyticsService;
+  let mockTransactionsService: TransactionsService;
   let service: WalletService;
   const mockAccounts = [...MOCK_SOLANA_KEYRING_ACCOUNTS];
   let onCommitmentReachedCallback: (params: any) => Promise<void>;
@@ -75,11 +77,16 @@ describe('WalletService', () => {
       trackTransactionSubmitted: jest.fn(),
     } as unknown as AnalyticsService;
 
+    mockTransactionsService = {
+      save: jest.fn(),
+    } as unknown as TransactionsService;
+
     service = new WalletService(
       mockConnection,
       mockSigner,
       mockSignatureMonitor,
       mockAnalyticsService,
+      mockTransactionsService,
       logger,
     );
 
@@ -385,6 +392,66 @@ describe('WalletService', () => {
             chainIdCaip: scope,
             origin: 'https://metamask.io',
           });
+        });
+
+        it('saves a pending unconfirmed transaction after broadcasting', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            'https://metamask.io',
+          );
+
+          expect(mockTransactionsService.save).toHaveBeenCalledTimes(1);
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: signature,
+              account: fromAccount.id,
+              chain: scope,
+              status: 'unconfirmed',
+              type: 'unknown',
+              from: [
+                expect.objectContaining({
+                  address: fromAccount.address,
+                }),
+              ],
+            }),
+          );
+        });
+
+        it('saves the pending transaction before monitoring the signature', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            'https://metamask.io',
+          );
+
+          const saveCallOrder = (mockTransactionsService.save as jest.Mock).mock
+            .invocationCallOrder[0] as number;
+          const monitorCallOrder = (mockSignatureMonitor.monitor as jest.Mock)
+            .mock.invocationCallOrder[0] as number;
+
+          expect(saveCallOrder).toBeLessThan(monitorCallOrder);
+        });
+
+        it('does not fail when saving the pending transaction fails', async () => {
+          (mockTransactionsService.save as jest.Mock).mockRejectedValue(
+            new Error('Failed to persist pending transaction'),
+          );
+
+          const result = await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            'https://metamask.io',
+          );
+
+          // The transaction is already broadcast at this point, so a failure to
+          // persist the pending record must not fail the request, and the
+          // signature must still be monitored.
+          expect(result).toStrictEqual({ signature });
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledTimes(1);
         });
       });
 

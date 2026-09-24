@@ -41,6 +41,8 @@ import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
+import { TransactionMapper } from '../transactions';
+import type { TransactionsService } from '../transactions';
 import {
   SolanaSignAndSendTransactionResponseStruct,
   SolanaSignInResponseStruct,
@@ -90,6 +92,8 @@ export class WalletService {
 
   readonly #analyticsService: AnalyticsService;
 
+  readonly #transactionsService: TransactionsService;
+
   readonly #logger: Logger;
 
   constructor(
@@ -97,12 +101,14 @@ export class WalletService {
     signer: Signer,
     signatureMonitor: SignatureMonitor,
     analyticsService: AnalyticsService,
+    transactionsService: TransactionsService,
     _logger = logger,
   ) {
     this.#connection = connection;
     this.#signer = signer;
     this.#signatureMonitor = signatureMonitor;
     this.#analyticsService = analyticsService;
+    this.#transactionsService = transactionsService;
     this.#logger = _logger.withPrefix('[👛 WalletService]');
   }
 
@@ -338,6 +344,24 @@ export class WalletService {
       accountType: account.type,
       chainIdCaip: scope,
     });
+
+    // Immediately save and emit a pending transaction, so the client can show
+    // the transaction (and a "submitted" toast) before it is confirmed. The
+    // signature monitor replaces it with the fully mapped transaction once the
+    // signature reaches the desired commitment.
+    try {
+      await this.#transactionsService.save(
+        TransactionMapper.createPendingTransaction({
+          signature,
+          account,
+          scope,
+        }),
+      );
+    } catch (error) {
+      // The transaction is already broadcast, so we don't fail the request.
+      // The signature monitor will still save the confirmed transaction.
+      this.#logger.warn('Failed to save pending transaction', error);
+    }
 
     await this.#signatureMonitor.monitor(
       signature,
