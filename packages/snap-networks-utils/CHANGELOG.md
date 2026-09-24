@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
+  - Takes translated `labels`, display-ready `assets` (`EstimatedChangesAsset`), and a `scanFetchStatus` (`EstimatedChangesFetchStatus`)
 - Add `wrapSnapHandlers` to wrap any Snap entrypoint handlers with `withCatchAndThrowSnapError`, with optional per-handler `logError` overrides ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add `noopAssetHandlers`, the no-op asset entrypoints network Snaps must export to keep the `endowment:assets` permission ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add a shared `AnalyticsService` and typed event properties for network Snap telemetry. ([#327](https://github.com/MetaMask/internal-snaps/pull/327))
