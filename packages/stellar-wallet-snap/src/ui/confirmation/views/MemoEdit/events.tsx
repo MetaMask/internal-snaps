@@ -1,4 +1,5 @@
-import type { FormSubmitEvent } from '@metamask/snaps-sdk';
+import { FormSubmitEventStruct } from '@metamask/snaps-sdk';
+import type { UserInputEvent } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
@@ -62,9 +63,13 @@ async function onOpenClick(
  * @param event - The form submit event.
  * @returns Trimmed memo string, or empty when absent.
  */
-function memoFromSubmitEvent(event: FormSubmitEvent): string {
-  const rawValue = event.value[MemoEditFormNames.Input];
-  return typeof rawValue === 'string' ? rawValue.trim() : '';
+function memoFromSubmitEvent(event: UserInputEvent): string {
+  if (!FormSubmitEventStruct.is(event)) {
+    return '';
+  }
+
+  const value = event.value[MemoEditFormNames.Input];
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 /**
@@ -81,7 +86,7 @@ async function onSaveSubmit(
     return;
   }
 
-  const memo = memoFromSubmitEvent(event as FormSubmitEvent);
+  const memo = memoFromSubmitEvent(event);
   const memoValidationError = getMemoValidationErrorKey(memo);
   if (memoValidationError) {
     // Keep the submitted text in `memo` so the input is not reset when we

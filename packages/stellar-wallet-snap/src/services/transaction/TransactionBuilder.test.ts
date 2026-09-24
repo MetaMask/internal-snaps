@@ -22,6 +22,7 @@ import type { Wallet } from '../wallet/Wallet';
 import { buildMockClassicTransaction } from './__mocks__/transaction.fixtures';
 import {
   InvalidAssetForCreateAccountException,
+  InvalidMemoException,
   TransactionBuilderException,
   TransactionValidationException,
 } from './exceptions';
@@ -307,7 +308,7 @@ describe('TransactionBuilder', () => {
       expect((transaction.getRaw() as StellarTransaction).memo.type).toBe('id');
     });
 
-    it('throws TransactionBuilderException when the memo is invalid', () => {
+    it('throws InvalidMemoException when the memo is invalid', () => {
       const testDestination = getTestWallet();
 
       expect(() =>
@@ -323,7 +324,7 @@ describe('TransactionBuilder', () => {
           baseFee: new BigNumber(100),
           memo: 'é'.repeat(15),
         }),
-      ).toThrow(TransactionBuilderException);
+      ).toThrow(InvalidMemoException);
     });
 
     it('builds a create account transaction', () => {

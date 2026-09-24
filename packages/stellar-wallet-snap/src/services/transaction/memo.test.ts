@@ -1,12 +1,7 @@
 import { Memo } from '@stellar/stellar-sdk';
 
-import {
-  getMemoStrOrUndefined,
-  InvalidMemoException,
-  isMemoId,
-  isMemoText,
-  resolveStellarMemo,
-} from './memo';
+import { InvalidMemoException } from './exceptions';
+import { isMemoId, isMemoText, resolveStellarMemo } from './memo';
 
 describe('isMemoId', () => {
   it.each(['0', '12345', '18446744073709551615'])(
@@ -35,26 +30,14 @@ describe('isMemoText', () => {
   });
 });
 
-describe('getMemoStrOrUndefined', () => {
-  it('returns the string when memo is a string', () => {
-    expect(getMemoStrOrUndefined('deposit-ref')).toBe('deposit-ref');
-    expect(getMemoStrOrUndefined('')).toBe('');
-  });
-
-  it('returns undefined for non-string values', () => {
-    expect(getMemoStrOrUndefined(undefined)).toBeUndefined();
-    expect(getMemoStrOrUndefined(null)).toBeUndefined();
-    expect(getMemoStrOrUndefined(true)).toBeUndefined();
-    expect(getMemoStrOrUndefined({ memo: 'x' })).toBeUndefined();
-  });
-});
-
 describe('resolveStellarMemo', () => {
-  it('returns null for empty or whitespace-only values', () => {
+  it('returns null for empty, whitespace-only, or non-string values', () => {
     expect(resolveStellarMemo(undefined)).toBeNull();
     expect(resolveStellarMemo(null)).toBeNull();
     expect(resolveStellarMemo('')).toBeNull();
     expect(resolveStellarMemo('   ')).toBeNull();
+    expect(resolveStellarMemo(true)).toBeNull();
+    expect(resolveStellarMemo({ memo: 'x' })).toBeNull();
   });
 
   it('builds a text memo for non-numeric values', () => {
@@ -79,5 +62,14 @@ describe('resolveStellarMemo', () => {
     expect(() => resolveStellarMemo('é'.repeat(15))).toThrow(
       InvalidMemoException,
     );
+  });
+
+  it('throws InvalidMemoException when the Stellar SDK rejects the memo', () => {
+    const idSpy = jest.spyOn(Memo, 'id').mockImplementation(() => {
+      throw new Error('sdk');
+    });
+
+    expect(() => resolveStellarMemo('123')).toThrow(InvalidMemoException);
+    idSpy.mockRestore();
   });
 });
