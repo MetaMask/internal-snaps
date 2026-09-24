@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `sanitizeControlCharacters` and `sanitizeUri` utilities for validating and sanitizing user-provided strings and URIs. ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
 - Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- Add `resolveOrigin`, which resolves a request origin (plus the `originMetadata` that rides along requests relayed over WalletConnect or the SDK) into what a snap may display and what may feed security logic ([#275](https://github.com/MetaMask/internal-snaps/pull/275))
 
 ### Changed
 

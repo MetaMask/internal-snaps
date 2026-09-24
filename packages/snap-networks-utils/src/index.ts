@@ -100,6 +100,8 @@ export { State } from './utils/state/State';
 export type { StateConfig } from './utils/state/State';
 export { InMemoryState } from './utils/state/InMemoryState';
 export type { IStateManager } from './utils/state/IStateManager';
+export { resolveOrigin } from './utils/origin/resolveOrigin';
+export type { ResolvedOrigin } from './utils/origin/resolveOrigin';
 export {
   createSnapErrorHandling,
   createTrackError,
