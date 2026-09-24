@@ -14,8 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Wrap every entry point with `withCatchAndThrowSnapError` through `@metamask/snap-networks-utils` `wrapSnapHandlers`, and use its `noopAssetHandlers` for the no-op asset entry points
-  - Origin validation, unknown RPC and cronjob methods, and user input routing now run inside the wrapper, so their errors are tracked and returned as Snap RPC errors
 - Reduce `snap_getBip32Entropy` calls in `createAccounts` from two to one for `bip44:discover` by deriving the activity-check address locally from the already-fetched coin-type node, and parallelize the entropy fetch with the existing-accounts state read for all creation paths ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
 - Coalesce concurrent `AccountsSynchronizer.synchronize` calls for the same account set so duplicate in-flight syncs (e.g. simultaneous connection-recovery events across mainnet and devnet) share one run instead of fanning out redundant asset and transaction fetches ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
 - **BREAKING:** Bump `@solana/kit` from `^6.9.0` to `^8.3.0` and the `@solana-program/*` clients (`compute-budget` `^0.18.1`, `system` `^0.14.1`, `token` `^0.16.1`, `token-2022` `^0.17.0`) to their Kit 8-compatible versions. ([#303](https://github.com/MetaMask/internal-snaps/pull/303))
