@@ -31,11 +31,13 @@ describe('isMemoText', () => {
 });
 
 describe('resolveStellarMemo', () => {
-  it('returns null for empty or whitespace-only values', () => {
+  it('returns null for empty, whitespace-only, or non-string values', () => {
     expect(resolveStellarMemo(undefined)).toBeNull();
     expect(resolveStellarMemo(null)).toBeNull();
     expect(resolveStellarMemo('')).toBeNull();
     expect(resolveStellarMemo('   ')).toBeNull();
+    expect(resolveStellarMemo(true)).toBeNull();
+    expect(resolveStellarMemo({ memo: 'x' })).toBeNull();
   });
 
   it('builds a text memo for non-numeric values', () => {
@@ -60,5 +62,14 @@ describe('resolveStellarMemo', () => {
     expect(() => resolveStellarMemo('é'.repeat(15))).toThrow(
       InvalidMemoException,
     );
+  });
+
+  it('throws InvalidMemoException when the Stellar SDK rejects the memo', () => {
+    const idSpy = jest.spyOn(Memo, 'id').mockImplementation(() => {
+      throw new Error('sdk');
+    });
+
+    expect(() => resolveStellarMemo('123')).toThrow(InvalidMemoException);
+    idSpy.mockRestore();
   });
 });
