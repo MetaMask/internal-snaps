@@ -31,6 +31,7 @@ import { NetworkRow } from '../../components/Network';
 import {
   getAccountExplorerUrl,
   getAccountName,
+  isFetchInProgress,
   requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
@@ -67,6 +68,11 @@ export const ConfirmSendTransaction = ({
     scanFetchStatus,
     transactionsFetchStatus,
   });
+  // Keep Add/Update available on RequiresMemo (Error); only block while a
+  // scan or re-validation is still in flight.
+  const shouldDisableMemoEdit =
+    isFetchInProgress(scanFetchStatus) ||
+    isFetchInProgress(transactionsFetchStatus);
   const memo =
     typeof contextMemo === 'string' && contextMemo.trim()
       ? contextMemo.trim()
@@ -165,7 +171,10 @@ export const ConfirmSendTransaction = ({
             </SnapText>
             <Box direction="horizontal" alignment="end">
               <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
-              <Button name={MemoEditFormNames.Open}>
+              <Button
+                name={MemoEditFormNames.Open}
+                disabled={shouldDisableMemoEdit}
+              >
                 {memo
                   ? t('confirmation.memo.update')
                   : t('confirmation.memo.add')}
