@@ -177,6 +177,7 @@ const keyringHandler = new KeyringHandler({
   logger,
   accountService,
   onChainAccountService,
+  assetMetadataService,
   transactionService,
   walletService,
   handlers: keyringMethodHandlers,

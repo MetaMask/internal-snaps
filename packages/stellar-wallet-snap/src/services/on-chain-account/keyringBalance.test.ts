@@ -118,7 +118,7 @@ describe('getDefaultBalanceEntry', () => {
     });
   });
 
-  it('returns a zero classic balance entry shaped from the asset code', () => {
+  it('returns a zero classic balance entry with authorized false when not held', () => {
     expect(
       getDefaultBalanceEntry(
         'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
@@ -128,20 +128,34 @@ describe('getDefaultBalanceEntry', () => {
       amount: '0',
       metadata: {
         limit: '0',
-        authorized: true,
+        authorized: false,
         sponsor: '',
       },
     });
   });
 
-  it('returns a zero standard balance entry shaped from the SEP-41 asset reference', () => {
+  it('returns a zero SEP-41 balance entry using asset metadata symbol and decimals', () => {
     expect(
       getDefaultBalanceEntry(
         'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+        {
+          assetMetadata: {
+            symbol: 'USDC',
+            units: [{ name: 'USDC', symbol: 'USDC', decimals: 7 }],
+          },
+        },
       ),
     ).toStrictEqual({
-      unit: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+      unit: 'USDC',
       amount: '0',
     });
+  });
+
+  it('throws when SEP-41 default is requested without asset metadata', () => {
+    expect(() =>
+      getDefaultBalanceEntry(
+        'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+      ),
+    ).toThrow('Asset metadata is required for default SEP-41 balance entry');
   });
 });

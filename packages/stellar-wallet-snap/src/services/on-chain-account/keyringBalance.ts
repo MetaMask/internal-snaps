@@ -21,7 +21,16 @@ import {
   parseClassicAssetCodeIssuer,
   toDisplayBalance,
 } from '../../utils';
+import type { StellarAssetMetadata } from '../asset-metadata';
 import type { SpendableBalance } from './api';
+
+/**
+ * Optional metadata for building a default SEP-41 balance entry.
+ * Callers should resolve this via {@link AssetMetadataService.resolve}.
+ */
+export type DefaultBalanceEntryOptions = {
+  assetMetadata: Pick<StellarAssetMetadata, 'symbol' | 'units'>;
+};
 
 export const StandardBalanceEntryStruct = object({
   unit: string(),
@@ -138,13 +147,15 @@ export function toStandardBalanceEntry(
 /**
  * Zero balance entry when an asset is missing from the on-chain snapshot
  * (inactive account, tombstone / zero SEP-41, or unknown asset id).
- *
+ * 
  * @param assetId - Asset to shape the default for. When omitted, returns the
- * native (slip44) zero entry.
+ *                  native (slip44) zero entry.
+ * @param options - Required for SEP-41: resolved asset metadata.
  * @returns Default keyring balance entry for the asset type.
  */
 export function getDefaultBalanceEntry(
   assetId?: KnownCaip19AssetIdOrSlip44Id,
+  options?: DefaultBalanceEntryOptions,
 ): KeyringBalanceEntry {
   if (assetId === undefined || isSlip44Id(assetId)) {
     return toNativeBalanceEntry({
@@ -163,14 +174,21 @@ export function getDefaultBalanceEntry(
       balance: new BigNumber(0),
       decimals: STELLAR_DECIMAL_PLACES,
       limit: new BigNumber(0),
-      authorized: true,
+      authorized: false,
       sponsor: '',
     });
   }
 
+  if (options?.assetMetadata === undefined) {
+    throw new Error(
+      `Asset metadata is required for default SEP-41 balance entry: ${assetId}`,
+    );
+  }
+
+  const { decimals, symbol } = options.assetMetadata.units[0];
   return toStandardBalanceEntry({
-    symbol: getAssetReference(assetId),
+    symbol: options.assetMetadata.symbol || symbol,
     balance: new BigNumber(0),
-    decimals: 0,
+    decimals,
   });
 }

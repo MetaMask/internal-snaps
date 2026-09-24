@@ -43,6 +43,7 @@ import type {
   StellarKeyringAccount,
 } from '../../services/account';
 import { AccountNotFoundException } from '../../services/account/exceptions';
+import type { AssetMetadataService } from '../../services/asset-metadata';
 import type {
   OnChainAccount,
   OnChainAccountService,
@@ -53,12 +54,14 @@ import {
   toNativeBalanceEntry,
   toStandardBalanceEntry,
 } from '../../services/on-chain-account';
+import type { KeyringBalanceEntry } from '../../services/on-chain-account';
 import type { TransactionService } from '../../services/transaction/TransactionService';
 import type { WalletService } from '../../services/wallet';
 import {
   Duration,
   getSlip44AssetId,
   isClassicAssetId,
+  isSep41Id,
   isSlip44Id,
   rethrowIfInstanceElseThrow,
   validateRequest,
@@ -88,6 +91,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   readonly #onChainAccountService: OnChainAccountService;
 
+  readonly #assetMetadataService: AssetMetadataService;
+
   readonly #transactionService: TransactionService;
 
   readonly #walletService: WalletService;
@@ -98,6 +103,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     logger,
     accountService,
     onChainAccountService,
+    assetMetadataService,
     transactionService,
     walletService,
     handlers,
@@ -105,6 +111,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     logger: Logger;
     accountService: AccountService;
     onChainAccountService: OnChainAccountService;
+    assetMetadataService: AssetMetadataService;
     transactionService: TransactionService;
     walletService: WalletService;
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
@@ -112,6 +119,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
+    this.#assetMetadataService = assetMetadataService;
     this.#transactionService = transactionService;
     this.#walletService = walletService;
     this.#handlers = handlers;
@@ -331,33 +339,58 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     // If the account is not activated or not yet synced, return zero defaults for each asked asset.
     if (onChainAccount === null) {
-      for (const assetId of knownAssets) {
-        assetBalances[assetId] = getDefaultBalanceEntry(assetId);
-      }
+      await Promise.all(
+        knownAssets.map(async (assetId) => {
+          assetBalances[assetId] = await this.#toDefaultBalanceEntry(assetId);
+        }),
+      );
       return assetBalances;
     }
 
-    for (const assetId of knownAssets) {
-      const asset = onChainAccount.getAsset(assetId);
-      // Missing / not visible (tombstone, zero SEP-41, or unknown id) → default zero shape.
-      if (asset === undefined) {
-        assetBalances[assetId] = getDefaultBalanceEntry(assetId);
-        continue;
-      }
+    await Promise.all(
+      knownAssets.map(async (assetId) => {
+        const asset = onChainAccount.getAsset(assetId);
+        // Missing / not visible (tombstone, zero SEP-41, or unknown id) → default zero shape.
+        if (asset === undefined) {
+          assetBalances[assetId] = await this.#toDefaultBalanceEntry(assetId);
+          return;
+        }
 
-      if (isSlip44Id(assetId)) {
-        assetBalances[assetId] = toNativeBalanceEntry({
-          nativeBalance: onChainAccount.nativeRawBalance,
-          spendableBalance: onChainAccount.nativeSpendableBalance,
-          minimumReserveBalance: onChainAccount.minimumReserveBalance,
-        });
-      } else if (isClassicAssetId(assetId)) {
-        assetBalances[assetId] = toClassicBalanceEntry(asset);
-      } else {
+        if (isSlip44Id(assetId)) {
+          assetBalances[assetId] = toNativeBalanceEntry({
+            nativeBalance: onChainAccount.nativeRawBalance,
+            spendableBalance: onChainAccount.nativeSpendableBalance,
+            minimumReserveBalance: onChainAccount.minimumReserveBalance,
+          });
+          return;
+        }
+
+        if (isClassicAssetId(assetId)) {
+          assetBalances[assetId] = toClassicBalanceEntry(asset);
+          return;
+        }
+
         assetBalances[assetId] = toStandardBalanceEntry(asset);
-      }
-    }
+      }),
+    );
     return assetBalances;
+  }
+
+  /**
+   * Builds a typed zero balance entry for a requested asset id.
+   * SEP-41 decimals / symbol come from {@link AssetMetadataService}.
+   *
+   * @param assetId - Requested CAIP-19 / slip44 asset id.
+   * @returns Default keyring balance entry.
+   */
+  async #toDefaultBalanceEntry(
+    assetId: KnownCaip19AssetIdOrSlip44Id,
+  ): Promise<KeyringBalanceEntry> {
+    if (isSep41Id(assetId)) {
+      const assetMetadata = await this.#assetMetadataService.resolve(assetId);
+      return getDefaultBalanceEntry(assetId, { assetMetadata });
+    }
+    return getDefaultBalanceEntry(assetId);
   }
 
   async resolveAccountAddress(

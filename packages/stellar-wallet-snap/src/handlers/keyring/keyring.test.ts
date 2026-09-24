@@ -24,6 +24,10 @@ import {
 import type { MockAccountWithBalancesData } from '../../services/on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../../services/on-chain-account/OnChainAccount';
 import {
+  createMockAssetMetadataService,
+  USDC_SEP41,
+} from '../../services/asset-metadata/__mocks__/assets.fixtures';
+import {
   createMockTransactionService,
   generateMockTransactions,
 } from '../../services/transaction/__mocks__/transaction.fixtures';
@@ -109,10 +113,12 @@ describe('KeyringHandler', () => {
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
     const { transactionService } = createMockTransactionService();
+    const { service: assetMetadataService } = createMockAssetMetadataService();
     keyringHandler = new KeyringHandler({
       logger,
       accountService,
       onChainAccountService,
+      assetMetadataService,
       transactionService,
       walletService,
       handlers: {
@@ -631,8 +637,7 @@ describe('KeyringHandler', () => {
       const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
       const classicId =
         'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as const;
-      const sep41Id =
-        'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75' as const;
+      const sep41Id = USDC_SEP41;
       const { resolveAccountSpy } = getAccountServiceSpies();
       resolveAccountSpy.mockResolvedValue({ account: mockAccount });
       const onChainAccount = createTestOnChainAccount(mockAccount.address, {
@@ -667,12 +672,12 @@ describe('KeyringHandler', () => {
           amount: '0',
           metadata: {
             limit: '0',
-            authorized: true,
+            authorized: false,
             sponsor: '',
           },
         },
         [sep41Id]: {
-          unit: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+          unit: 'USDC',
           amount: '0',
         },
       });
@@ -700,7 +705,7 @@ describe('KeyringHandler', () => {
           amount: '0',
           metadata: {
             limit: '0',
-            authorized: true,
+            authorized: false,
             sponsor: '',
           },
         },
