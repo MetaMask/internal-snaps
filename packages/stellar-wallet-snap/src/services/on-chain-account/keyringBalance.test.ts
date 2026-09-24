@@ -106,7 +106,7 @@ describe('toStandardBalanceEntry', () => {
 });
 
 describe('getDefaultBalanceEntry', () => {
-  it('returns a zero native balance entry with zero metadata', () => {
+  it('returns a zero native balance entry with zero metadata when no asset id is given', () => {
     expect(getDefaultBalanceEntry()).toStrictEqual({
       unit: NATIVE_ASSET_SYMBOL,
       amount: '0',
@@ -115,6 +115,33 @@ describe('getDefaultBalanceEntry', () => {
         minimumReserveBalance: '0',
         decimal: STELLAR_DECIMAL_PLACES,
       },
+    });
+  });
+
+  it('returns a zero classic balance entry shaped from the asset code', () => {
+    expect(
+      getDefaultBalanceEntry(
+        'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+      ),
+    ).toStrictEqual({
+      unit: 'USDC',
+      amount: '0',
+      metadata: {
+        limit: '0',
+        authorized: true,
+        sponsor: '',
+      },
+    });
+  });
+
+  it('returns a zero standard balance entry shaped from the SEP-41 asset reference', () => {
+    expect(
+      getDefaultBalanceEntry(
+        'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+      ),
+    ).toStrictEqual({
+      unit: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+      amount: '0',
     });
   });
 });

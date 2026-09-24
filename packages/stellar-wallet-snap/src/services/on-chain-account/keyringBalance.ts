@@ -14,7 +14,13 @@ import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
-import { toDisplayBalance } from '../../utils';
+import {
+  getAssetReference,
+  isClassicAssetId,
+  isSlip44Id,
+  parseClassicAssetCodeIssuer,
+  toDisplayBalance,
+} from '../../utils';
 import type { SpendableBalance } from './api';
 
 export const StandardBalanceEntryStruct = object({
@@ -130,14 +136,41 @@ export function toStandardBalanceEntry(
 }
 
 /**
- * Zero native balance entry for inactive / not-yet-synced accounts.
+ * Zero balance entry when an asset is missing from the on-chain snapshot
+ * (inactive account, tombstone / zero SEP-41, or unknown asset id).
  *
- * @returns Default native balance change entry.
+ * @param assetId - Asset to shape the default for. When omitted, returns the
+ * native (slip44) zero entry.
+ * @returns Default keyring balance entry for the asset type.
  */
-export function getDefaultBalanceEntry(): KeyringBalanceEntry {
-  return toNativeBalanceEntry({
-    nativeBalance: new BigNumber(0),
-    spendableBalance: new BigNumber(0),
-    minimumReserveBalance: new BigNumber(0),
+export function getDefaultBalanceEntry(
+  assetId?: KnownCaip19AssetIdOrSlip44Id,
+): KeyringBalanceEntry {
+  if (assetId === undefined || isSlip44Id(assetId)) {
+    return toNativeBalanceEntry({
+      nativeBalance: new BigNumber(0),
+      spendableBalance: new BigNumber(0),
+      minimumReserveBalance: new BigNumber(0),
+    });
+  }
+
+  if (isClassicAssetId(assetId)) {
+    const { assetCode } = parseClassicAssetCodeIssuer(
+      getAssetReference(assetId),
+    );
+    return toClassicBalanceEntry({
+      symbol: assetCode,
+      balance: new BigNumber(0),
+      decimals: STELLAR_DECIMAL_PLACES,
+      limit: new BigNumber(0),
+      authorized: true,
+      sponsor: '',
+    });
+  }
+
+  return toStandardBalanceEntry({
+    symbol: getAssetReference(assetId),
+    balance: new BigNumber(0),
+    decimals: 0,
   });
 }

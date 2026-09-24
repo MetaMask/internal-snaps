@@ -627,6 +627,86 @@ describe('KeyringHandler', () => {
       });
     });
 
+    it('returns typed zero defaults when a requested asset id is not on the account', async () => {
+      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+      const classicId =
+        'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as const;
+      const sep41Id =
+        'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75' as const;
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const onChainAccount = createTestOnChainAccount(mockAccount.address, {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 2,
+      });
+      jest
+        .spyOn(
+          OnChainAccountService.prototype,
+          'resolveOnChainAccountByKeyringAccountId',
+        )
+        .mockResolvedValue(onChainAccount);
+
+      const result = await keyringHandler.getAccountBalances(mockAccountId, [
+        slipId,
+        classicId,
+        sep41Id,
+      ]);
+
+      expect(result).toStrictEqual({
+        [slipId]: {
+          unit: 'XLM',
+          amount: '2',
+          metadata: {
+            spendableBalance: '10000000',
+            minimumReserveBalance: '10000000',
+            decimal: 7,
+          },
+        },
+        [classicId]: {
+          unit: 'USDC',
+          amount: '0',
+          metadata: {
+            limit: '0',
+            authorized: true,
+            sponsor: '',
+          },
+        },
+        [sep41Id]: {
+          unit: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
+          amount: '0',
+        },
+      });
+    });
+
+    it('returns typed zero defaults for non-native assets when the account is not activated', async () => {
+      const classicId =
+        'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as const;
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      jest
+        .spyOn(
+          OnChainAccountService.prototype,
+          'resolveOnChainAccountByKeyringAccountId',
+        )
+        .mockResolvedValue(null);
+
+      const result = await keyringHandler.getAccountBalances(mockAccountId, [
+        classicId,
+      ]);
+
+      expect(result).toStrictEqual({
+        [classicId]: {
+          unit: 'USDC',
+          amount: '0',
+          metadata: {
+            limit: '0',
+            authorized: true,
+            sponsor: '',
+          },
+        },
+      });
+    });
+
     it('propagates errors when balance resolution fails for another reason', async () => {
       const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
       const { resolveAccountSpy } = getAccountServiceSpies();

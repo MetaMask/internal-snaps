@@ -329,19 +329,19 @@ export class KeyringHandler implements KeyringSnapRpc {
       scope,
     );
 
-    // If the account is not activated or not yet synced, return the native asset with zero balance
+    // If the account is not activated or not yet synced, return zero defaults for each asked asset.
     if (onChainAccount === null) {
-      const nativeAssetId = knownAssets.find(isSlip44Id);
-      if (nativeAssetId !== undefined) {
-        assetBalances[nativeAssetId] = getDefaultBalanceEntry();
+      for (const assetId of knownAssets) {
+        assetBalances[assetId] = getDefaultBalanceEntry(assetId);
       }
       return assetBalances;
     }
 
     for (const assetId of knownAssets) {
       const asset = onChainAccount.getAsset(assetId);
-      // Skip when the asset is not visible (tombstone, zero SEP-41, or missing entry).
+      // Missing / not visible (tombstone, zero SEP-41, or unknown id) → default zero shape.
       if (asset === undefined) {
+        assetBalances[assetId] = getDefaultBalanceEntry(assetId);
         continue;
       }
 
