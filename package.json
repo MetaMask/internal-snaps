@@ -83,7 +83,7 @@
   },
   "resolutions": {
     "@metamask/snaps-execution-environments": "11.3.0",
-    "@metamask/snaps-sdk": "12.0.1",
+    "@metamask/snaps-sdk": "12.1.0",
     "@metamask/snaps-utils": "12.6.0",
     "@solana-name-service/sns-sdk-kit/@solana-program/token": "^0.16.1",
     "@stellar/stellar-sdk/axios": "^1.18.1",

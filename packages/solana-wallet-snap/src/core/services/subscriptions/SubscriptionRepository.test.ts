@@ -23,6 +23,7 @@ describe('SubscriptionRepository', () => {
     mockStateManager = {
       get: jest.fn(),
       getKey: jest.fn(),
+      getKeys: jest.fn(),
       setKey: jest.fn(),
       setKeyWith: jest.fn(),
       update: jest.fn(),
