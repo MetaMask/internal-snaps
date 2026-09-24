@@ -119,6 +119,14 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       return;
     }
 
+    // Event id this tick was armed with. If MemoEdit Save (or another owner)
+    // replaces `backgroundEventId` while we are in flight, we must not write or
+    // schedule — that is what stacked parallel refresh chains.
+    const startedWithEventId =
+      typeof interfaceContext.backgroundEventId === 'string'
+        ? interfaceContext.backgroundEventId
+        : null;
+
     const results = await this.#runRefreshers(
       interfaceContext,
       activeRefreshers,
@@ -136,6 +144,22 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       activeRefreshers,
     });
     if (latestContext === null) {
+      return;
+    }
+
+    const latestEventId =
+      typeof latestContext.backgroundEventId === 'string'
+        ? latestContext.backgroundEventId
+        : null;
+    // Another writer took the chain (e.g. Save cancelled/replaced while we ran).
+    if (
+      startedWithEventId !== null &&
+      latestEventId !== null &&
+      latestEventId !== startedWithEventId
+    ) {
+      this.logger.info(
+        'Confirmation refresh ownership lost; skipping write and reschedule',
+      );
       return;
     }
 

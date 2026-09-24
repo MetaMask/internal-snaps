@@ -4,9 +4,9 @@ import type { Json } from '@metamask/utils';
 
 import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
 import { getMemoValidationErrorKey } from '../../../../handlers/clientRequest/utils';
+import type { ConfirmationDataContext } from '../../../../handlers/cronjob/refreshConfirmationContext';
 import {
   ConfirmationContextRefresherKey,
-  type ConfirmationDataContext,
   RefreshConfirmationContextHandler,
 } from '../../../../handlers/cronjob/refreshConfirmationContext';
 import type {
@@ -143,12 +143,12 @@ async function onSaveSubmit(
 
   const { scope } = baseContext;
   if (canRestartRefresh(baseContext) && typeof scope === 'string') {
-    const previousEventId =
-      typeof baseContext.backgroundEventId === 'string'
-        ? baseContext.backgroundEventId
-        : typeof context.backgroundEventId === 'string'
-          ? context.backgroundEventId
-          : undefined;
+    let previousEventId: string | undefined;
+    if (typeof baseContext.backgroundEventId === 'string') {
+      previousEventId = baseContext.backgroundEventId;
+    } else if (typeof context.backgroundEventId === 'string') {
+      previousEventId = context.backgroundEventId;
+    }
 
     const refreshedContext = {
       ...nextContext,
