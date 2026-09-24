@@ -138,7 +138,7 @@ describe('MemoEdit event handlers', () => {
       );
     });
 
-    it('Save during in-flight tick replaces the live event id so cron ownership aborts', async () => {
+    it('replaces the live event id during an in-flight tick so cron ownership aborts', async () => {
       // Click/open still see the in-flight tick id; Save must cancel that id and
       // persist a new one so the orphan tick observes ownership loss.
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
