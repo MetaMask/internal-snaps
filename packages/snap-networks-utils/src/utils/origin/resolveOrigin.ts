@@ -52,19 +52,19 @@ export function resolveOrigin(
   originMetadata?: OriginMetadata | null,
 ): ResolvedOrigin {
   if (origin) {
+    if (origin.toLowerCase() === DEFAULT_METAMASK_ORIGIN) {
+      return {
+        displayOrigin: 'MetaMask',
+        isSelfReported: false,
+        verifiedOrigin: null,
+      };
+    }
     const verifiedHostname = httpsHostname(origin);
     if (verifiedHostname) {
       return {
         displayOrigin: verifiedHostname,
         isSelfReported: false,
         verifiedOrigin: origin,
-      };
-    }
-    if (origin.toLowerCase() === DEFAULT_METAMASK_ORIGIN) {
-      return {
-        displayOrigin: 'MetaMask',
-        isSelfReported: false,
-        verifiedOrigin: null,
       };
     }
   }
