@@ -1,5 +1,6 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
-import type { ComponentOrElement } from '@metamask/snaps-sdk';
+import { resolveOrigin } from '@metamask/snap-networks-utils';
+import type { ComponentOrElement, OriginMetadata } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
@@ -7,11 +8,9 @@ import {
   Container,
   Footer,
   Heading,
-  Icon,
   Image,
   Section,
   Text as SnapText,
-  Tooltip,
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
@@ -19,6 +18,7 @@ import type { Network } from '../../../../constants';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import type { Locale } from '../../../../utils/i18n';
 import { i18n } from '../../../../utils/i18n';
+import { OriginRow } from '../../components/OriginRow';
 import { ConfirmSignMessageFormNames } from './events';
 
 export type ConfirmSignMessageProps = {
@@ -28,6 +28,7 @@ export type ConfirmSignMessageProps = {
   locale: Locale;
   networkImage: string | null;
   origin: string;
+  originMetadata: OriginMetadata | null;
 };
 
 export const ConfirmSignMessage = ({
@@ -37,9 +38,14 @@ export const ConfirmSignMessage = ({
   locale,
   networkImage,
   origin,
+  originMetadata,
 }: ConfirmSignMessageProps): ComponentOrElement => {
   const translate = i18n(locale);
   const { address } = account;
+  const { displayOrigin, isSelfReported } = resolveOrigin(
+    origin,
+    originMetadata,
+  );
   const addressCaip10 = `${scope}:${address}` as
     | `0x${string}`
     | `${string}:${string}:${string}`;
@@ -63,19 +69,11 @@ export const ConfirmSignMessage = ({
         </Section>
 
         <Section>
-          {origin ? (
-            <Box alignment="space-between" direction="horizontal">
-              <Box direction="horizontal" alignment="start">
-                <SnapText fontWeight="medium" color="alternative">
-                  {translate('confirmation.origin')}
-                </SnapText>
-                <Tooltip content={translate('confirmation.origin.tooltip')}>
-                  <Icon name="question" color="muted" />
-                </Tooltip>
-              </Box>
-              <SnapText>{origin}</SnapText>
-            </Box>
-          ) : null}
+          <OriginRow
+            displayOrigin={displayOrigin}
+            isSelfReported={isSelfReported}
+            locale={locale}
+          />
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
               {translate('confirmation.account')}

@@ -1,3 +1,4 @@
+import { resolveOrigin } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -18,10 +19,10 @@ import { Networks } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
-import { formatOrigin } from '../../../../utils/formatOrigin';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
+import { OriginRow } from '../../components/OriginRow';
 import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
 import { ConfirmSignTransactionFormNames } from './events';
 import type { ConfirmSignTransactionContext } from './types';
@@ -36,6 +37,7 @@ export const ConfirmSignTransaction = ({
     account,
     scope,
     origin,
+    originMetadata,
     networkImage,
     preferences,
     scan,
@@ -58,6 +60,11 @@ export const ConfirmSignTransaction = ({
     isInsufficientBalance;
 
   const addressCaip10 = account ? `${scope}:${account.address}` : null;
+
+  const { displayOrigin, isSelfReported } = resolveOrigin(
+    origin,
+    originMetadata,
+  );
 
   let estimatedChangesSection: ComponentOrElement | null = null;
   if (preferences.simulateOnChainActions) {
@@ -133,19 +140,11 @@ export const ConfirmSignTransaction = ({
         {/* Transaction Details */}
         <Section>
           {/* Request from */}
-          {origin ? (
-            <Box alignment="space-between" direction="horizontal">
-              <Box direction="horizontal" alignment="start">
-                <SnapText fontWeight="medium" color="alternative">
-                  {translate('confirmation.origin')}
-                </SnapText>
-                <Tooltip content={translate('confirmation.origin.tooltip')}>
-                  <Icon name="question" color="muted" />
-                </Tooltip>
-              </Box>
-              <SnapText>{formatOrigin(origin)}</SnapText>
-            </Box>
-          ) : null}
+          <OriginRow
+            displayOrigin={displayOrigin}
+            isSelfReported={isSelfReported}
+            locale={preferences.locale}
+          />
 
           {/* Account */}
           <Box alignment="space-between" direction="horizontal">
