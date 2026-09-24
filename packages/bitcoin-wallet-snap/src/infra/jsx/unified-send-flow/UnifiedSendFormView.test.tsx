@@ -39,66 +39,88 @@ const collectTexts = (node: unknown): string[] => {
   return [];
 };
 
+const messages: Messages = {
+  'confirmation.requestOrigin': { message: 'Request from' },
+};
+
+const buildContext = (origin?: string): ConfirmSendFormContext => ({
+  from: 'bc1qfrom',
+  explorerUrl: 'https://mempool.space',
+  network: 'bitcoin',
+  currency: 'BTC',
+  recipient: 'bc1qto',
+  amount: '1000',
+  locale: 'en',
+  psbt: 'cHNidP8B',
+  isMine: false,
+  origin,
+});
+
+/**
+ * Wraps tests for UnifiedSendFormView by rendering it with fresh
+ * bitcoindevkit mocks (restored per call, which `resetMocks` clears after
+ * each test). The callback receives the text strings of the rendered tree.
+ *
+ * @param testFunction - The test body receiving the rendered texts.
+ * @param options - Rendering options.
+ * @param options.origin - The request origin, as received by the snap.
+ * @returns The return value of the callback.
+ */
+async function withUnifiedSendFormView<ReturnValue>(
+  testFunction: ({
+    texts,
+  }: {
+    /** All text strings of the rendered view. */
+    texts: string[];
+  }) => ReturnValue | Promise<ReturnValue>,
+  { origin }: { origin?: string } = {},
+): Promise<ReturnValue> {
+  jest
+    .mocked(Amount.from_sat)
+    .mockImplementation(
+      (): Amount => ({ to_btc: (): string => '0.00001' }) as unknown as Amount,
+    );
+  jest.mocked(Psbt.from_string).mockImplementation(
+    (): Psbt =>
+      ({
+        fee: (): { to_sat: () => bigint } => ({
+          to_sat: (): bigint => 1000n,
+        }),
+      }) as unknown as Psbt,
+  );
+
+  const view = UnifiedSendFormView({
+    context: buildContext(origin),
+    messages,
+  });
+
+  return testFunction({ texts: collectTexts(view) });
+}
+
 describe('UnifiedSendFormView', () => {
-  const messages: Messages = {
-    'confirmation.requestOrigin': { message: 'Request from' },
-  };
-
-  const mockAmount = { to_btc: (): string => '0.00001' } as unknown as Amount;
-  const mockPsbt = {
-    fee: (): { to_sat: () => bigint } => ({
-      to_sat: (): bigint => 1000n,
-    }),
-  } as unknown as Psbt;
-
-  // `resetMocks` clears the module-factory implementations, so they are
-  // restored before each test.
-  beforeEach(() => {
-    jest.mocked(Amount.from_sat).mockImplementation((): Amount => mockAmount);
-    jest.mocked(Psbt.from_string).mockImplementation((): Psbt => mockPsbt);
+  it('renders the origin row with the hostname of a verifiable origin', async () => {
+    await withUnifiedSendFormView(
+      ({ texts }) => {
+        expect(texts).toContain('Request from');
+        expect(texts).toContain('app.uniswap.org');
+      },
+      { origin: 'https://app.uniswap.org' },
+    );
   });
 
-  const buildContext = (origin?: string): ConfirmSendFormContext => ({
-    from: 'bc1qfrom',
-    explorerUrl: 'https://mempool.space',
-    network: 'bitcoin',
-    currency: 'BTC',
-    recipient: 'bc1qto',
-    amount: '1000',
-    locale: 'en',
-    psbt: 'cHNidP8B',
-    isMine: false,
-    origin,
+  it('hides the origin row for a WalletConnect channel id', async () => {
+    await withUnifiedSendFormView(
+      ({ texts }) => {
+        expect(texts).not.toContain('Request from');
+      },
+      { origin: '4f3a1b2c-0000-4000-8000-000000000000' },
+    );
   });
 
-  it('renders the origin row with the hostname of a verifiable origin', () => {
-    const view = UnifiedSendFormView({
-      context: buildContext('https://app.uniswap.org'),
-      messages,
+  it('labels the MetaMask origin when none is provided', async () => {
+    await withUnifiedSendFormView(({ texts }) => {
+      expect(texts).toContain('Request from');
+      expect(texts).toContain('MetaMask');
     });
-
-    const texts = collectTexts(view);
-    expect(texts).toContain('Request from');
-    expect(texts).toContain('app.uniswap.org');
-  });
-
-  it('hides the origin row for a WalletConnect channel id', () => {
-    const view = UnifiedSendFormView({
-      context: buildContext('4f3a1b2c-0000-4000-8000-000000000000'),
-      messages,
-    });
-
-    expect(collectTexts(view)).not.toContain('Request from');
-  });
-
-  it('labels the MetaMask origin when none is provided', () => {
-    const view = UnifiedSendFormView({
-      context: buildContext(undefined),
-      messages,
-    });
-
-    const texts = collectTexts(view);
-    expect(texts).toContain('Request from');
-    expect(texts).toContain('MetaMask');
   });
 });
