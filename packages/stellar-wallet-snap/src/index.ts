@@ -1,13 +1,7 @@
-import type {
-  OnUserInputHandler,
-  OnKeyringRequestHandler,
-  OnClientRequestHandler,
-  OnCronjobHandler,
-  OnAssetHistoricalPriceHandler,
-  OnAssetsConversionHandler,
-  OnAssetsLookupHandler,
-  OnAssetsMarketDataHandler,
-} from '@metamask/snaps-sdk';
+import {
+  noopAssetHandlers,
+  wrapSnapHandlers,
+} from '@metamask/snap-networks-utils';
 
 import {
   keyringHandler,
@@ -15,32 +9,31 @@ import {
   clientRequestHandler,
   cronjobHandler,
 } from './context';
+import { logger, withCatchAndThrowSnapError } from './utils';
 
-export const onAssetsLookup: OnAssetsLookupHandler = async () => ({
-  assets: {},
-});
+const keyringLogger = logger.withPrefix('[🔑 KeyringHandler]');
+const clientRequestLogger = logger.withPrefix('[👋 ClientRequestHandler]');
 
-export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
-  conversionRates: {},
-});
+export const { onKeyringRequest, onUserInput, onClientRequest, onCronjob } =
+  wrapSnapHandlers(
+    withCatchAndThrowSnapError,
+    {
+      onKeyringRequest: async ({ origin, request }) =>
+        keyringHandler.handle(origin, request),
+      onUserInput: async (params) => userInputHandler.handle(params),
+      onClientRequest: async ({ request }) =>
+        clientRequestHandler.handle(request),
+      onCronjob: async ({ request }) => cronjobHandler.handle(request),
+    },
+    {
+      onKeyringRequest: keyringLogger.error.bind(keyringLogger),
+      onClientRequest: clientRequestLogger.error.bind(clientRequestLogger),
+    },
+  );
 
-export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async () =>
-  null;
-
-export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
-  marketData: {},
-});
-
-export const onKeyringRequest: OnKeyringRequestHandler = async ({
-  origin,
-  request,
-}) => keyringHandler.handle(origin, request);
-
-export const onUserInput: OnUserInputHandler = async (params) =>
-  userInputHandler.handle(params);
-
-export const onClientRequest: OnClientRequestHandler = async ({ request }) =>
-  clientRequestHandler.handle(request);
-
-export const onCronjob: OnCronjobHandler = async ({ request }) =>
-  cronjobHandler.handle(request);
+export const {
+  onAssetsLookup,
+  onAssetsConversion,
+  onAssetHistoricalPrice,
+  onAssetsMarketData,
+} = noopAssetHandlers;

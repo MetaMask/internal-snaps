@@ -62,7 +62,6 @@ import {
   isSlip44Id,
   rethrowIfInstanceElseThrow,
   validateRequest,
-  withCatchAndThrowSnapError,
 } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
 import { SyncAccountsHandler } from '../cronjob/syncAccounts';
@@ -118,22 +117,17 @@ export class KeyringHandler implements KeyringSnapRpc {
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
-    const result =
-      (await withCatchAndThrowSnapError(async () => {
-        this.#logger.debug('Handle keyring request', {
-          origin,
-          method: request.method,
-        });
-        validateOrigin(origin, request.method, originPermissions);
-        const keyringRequestResult = await handleKeyringRequest(this, request);
-        this.#logger.debug('Keyring request handled', {
-          origin,
-          method: request.method,
-        });
-        return keyringRequestResult;
-      }, this.#logger.error.bind(this.#logger))) ?? null;
-
-    return result;
+    this.#logger.debug('Handle keyring request', {
+      origin,
+      method: request.method,
+    });
+    validateOrigin(origin, request.method, originPermissions);
+    const result = await handleKeyringRequest(this, request);
+    this.#logger.debug('Keyring request handled', {
+      origin,
+      method: request.method,
+    });
+    return result ?? null;
   }
 
   async getAccount(accountId: GetAccountRequest): Promise<KeyringAccount> {

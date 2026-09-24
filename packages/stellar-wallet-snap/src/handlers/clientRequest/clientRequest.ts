@@ -1,26 +1,19 @@
-import type { Logger } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
 import { ensureError } from '@metamask/utils';
 
-import { withCatchAndThrowSnapError } from '../../utils';
 import type { ClientRequestMethod } from './api';
 import { ClientRequestMethodStruct } from './api';
 import type { IClientRequestHandler } from './base';
 
 export class ClientRequestHandler {
-  readonly #logger: Logger;
-
   readonly #handlers: Record<ClientRequestMethod, IClientRequestHandler>;
 
   constructor({
-    logger,
     handlers,
   }: {
-    logger: Logger;
     handlers: Record<ClientRequestMethod, IClientRequestHandler>;
   }) {
-    this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#handlers = handlers;
   }
 
@@ -35,12 +28,7 @@ export class ClientRequestHandler {
    * @throws {InvalidParamsError} If the params are invalid.
    */
   async handle(request: JsonRpcRequest): Promise<Json> {
-    const result =
-      (await withCatchAndThrowSnapError(async () => {
-        return this.#handleClientRequest(request);
-      }, this.#logger.error.bind(this.#logger))) ?? null;
-
-    return result;
+    return (await this.#handleClientRequest(request)) ?? null;
   }
 
   /**
