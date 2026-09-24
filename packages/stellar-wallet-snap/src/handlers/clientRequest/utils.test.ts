@@ -1,4 +1,3 @@
-import { InvalidMemoException } from '../../api';
 import { USDC_CLASSIC } from '../../services/asset-metadata/__mocks__/assets.fixtures';
 import {
   InsufficientBalanceException,
@@ -6,6 +5,7 @@ import {
   InsufficientBalanceToCoverFeeException,
   InvalidAmountForCreateAccountException,
   InvalidAssetForCreateAccountException,
+  InvalidMemoException,
   RemoveTrustlineWithNonZeroBalanceException,
   RequiresMemoException,
   TransactionExpireException,

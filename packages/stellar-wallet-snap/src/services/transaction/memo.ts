@@ -1,20 +1,10 @@
 import { Memo } from '@stellar/stellar-sdk';
 
+import { InvalidMemoException } from './exceptions';
+
 const STELLAR_TEXT_MEMO_MAX_BYTES = 28;
 const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_ID_PATTERN = /^\d+$/u;
-
-/**
- * Thrown when a memo string cannot be attached as a Stellar text or id memo.
- */
-export class InvalidMemoException extends Error {
-  constructor(
-    message = `Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`,
-  ) {
-    super(message);
-    this.name = 'InvalidMemoException';
-  }
-}
 
 /**
  * Whether `value` is a non-negative decimal uint64 memo id.
@@ -38,16 +28,6 @@ export function isMemoId(value: string): boolean {
  */
 export function isMemoText(value: string): boolean {
   return new TextEncoder().encode(value).length <= STELLAR_TEXT_MEMO_MAX_BYTES;
-}
-
-/**
- * Narrows an unknown dialog/context memo value to a string when present.
- *
- * @param memo - Raw memo from dialog result or confirmation context.
- * @returns The memo string, or `undefined` when not a string.
- */
-export function getMemoStrOrUndefined(memo: unknown): string | undefined {
-  return typeof memo === 'string' ? memo : undefined;
 }
 
 /**

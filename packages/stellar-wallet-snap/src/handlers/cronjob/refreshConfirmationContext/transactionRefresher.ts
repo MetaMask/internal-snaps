@@ -2,7 +2,6 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
-import { getMemoStrOrUndefined } from '../../../api';
 import type { AssetMetadataService } from '../../../services/asset-metadata';
 import type {
   Transaction,
@@ -142,7 +141,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
               assetId: request.params.assetId,
               destination: request.params.toAddress,
               amount,
-              memo: getMemoStrOrUndefined(memo),
+              memo,
             });
           break;
         }

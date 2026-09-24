@@ -1,7 +1,6 @@
 import { parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
 
-import { InvalidMemoException, resolveStellarMemo } from '../../api';
 import { StellarAddressStruct } from '../../api/address';
 import type { Transaction } from '../../services/transaction';
 import {
@@ -10,6 +9,7 @@ import {
   InsufficientBalanceToCoverFeeException,
   InvalidAmountForCreateAccountException,
   InvalidAssetForCreateAccountException,
+  InvalidMemoException,
   RemoveTrustlineWithNonZeroBalanceException,
   RequiresMemoException,
   TransactionExpireException,
@@ -18,6 +18,7 @@ import {
   TrustlineNotAuthorizedException,
   TrustlineNotFoundException,
   UpdateTrustlineException,
+  resolveStellarMemo,
 } from '../../services/transaction';
 import type { LocalizedMessage } from '../../utils';
 
