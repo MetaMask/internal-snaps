@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Allow Confirm on `TriggerSmartContract` scans when the Security Alerts simulator returns `Unsupported call type` (such as JustLend energy rental / TRX staking), treating them as skipped estimates instead of a hard-block revert ([#301](https://github.com/MetaMask/internal-snaps/pull/301))
 - Emit `Transaction Submitted` from the Wallet Standard `signAndSendTransaction` path so its transactions no longer reach `Transaction Finalized` without a matching submit event ([#343](https://github.com/MetaMask/internal-snaps/pull/343))
 - Tolerate unknown fields in the Token API metadata response so that new fields added by the API no longer fail validation and fall back to default token metadata ([#320](https://github.com/MetaMask/internal-snaps/pull/320))
 
