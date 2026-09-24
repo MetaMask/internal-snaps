@@ -138,6 +138,51 @@ describe('MemoEdit event handlers', () => {
       );
     });
 
+    it('Save during in-flight tick replaces the live event id so cron ownership aborts', async () => {
+      // Click/open still see the in-flight tick id; Save must cancel that id and
+      // persist a new one so the orphan tick observes ownership loss.
+      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+        scope: 'stellar:pubnet',
+        transaction: 'xdr',
+        accountId: 'account-id',
+        transactionsFetchStatus: FetchStatus.Fetched,
+        scanFetchStatus: FetchStatus.Fetched,
+        memoScreen: true,
+        backgroundEventId: 'in-flight-tick-event',
+      });
+
+      await handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: formSubmitEvent('during-flight'),
+        context: {
+          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+          scope: 'stellar:pubnet',
+          transaction: 'xdr',
+          accountId: 'account-id',
+          transactionsFetchStatus: FetchStatus.Fetched,
+          scanFetchStatus: FetchStatus.Fetched,
+          memoScreen: true,
+          backgroundEventId: 'in-flight-tick-event',
+        },
+      });
+
+      expect(scheduleSpy).toHaveBeenCalledWith(
+        scheduleArgs,
+        expect.anything(),
+        { replaceEventId: 'in-flight-tick-event' },
+      );
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.objectContaining({
+          memo: 'during-flight',
+          memoScreen: false,
+          backgroundEventId: 'new-event-id',
+        }),
+      );
+    });
+
     it('restarts when clearing a memo so Confirm cannot stay enabled on stale success', async () => {
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
         interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,

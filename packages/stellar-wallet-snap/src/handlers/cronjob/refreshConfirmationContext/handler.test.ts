@@ -529,4 +529,82 @@ describe('RefreshConfirmationContextHandler', () => {
     );
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
   });
+
+  describe('ownership abort (Save during in-flight tick)', () => {
+    it('skips write and reschedule when backgroundEventId changed mid-tick', async () => {
+      const startedContext = createConfirmationDataContext({
+        backgroundEventId: 'tick-event-in-flight',
+      });
+      const afterSaveContext = createConfirmationDataContext({
+        backgroundEventId: 'save-replacement-event',
+        memo: 'exchange-ref',
+        memoScreen: false,
+      });
+      jest
+        .mocked(getInterfaceContextIfExists)
+        .mockResolvedValueOnce(startedContext)
+        .mockResolvedValueOnce(afterSaveContext);
+
+      const refresher = createMockRefresher(
+        ConfirmationContextRefresherKey.Prices,
+        {
+          refresh: jest.fn().mockResolvedValue({
+            result: { tokenPricesFetchStatus: FetchStatus.Fetched },
+            reschedule: true,
+          }),
+        },
+      );
+      const { handler, updateConfirmation } = setup([refresher]);
+
+      await handler.handle({
+        jsonrpc: '2.0',
+        id: '1',
+        method: BackgroundEventMethod.RefreshConfirmationContext,
+        params: confirmationContextRequestParams,
+      });
+
+      expect(refresher.refresh).toHaveBeenCalledTimes(1);
+      expect(updateConfirmation).not.toHaveBeenCalled();
+      expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
+    });
+
+    it('writes and reschedules when backgroundEventId is unchanged', async () => {
+      const context = createConfirmationDataContext({
+        backgroundEventId: 'same-chain-event',
+      });
+      jest
+        .mocked(getInterfaceContextIfExists)
+        .mockResolvedValueOnce(context)
+        .mockResolvedValueOnce(context);
+
+      const refresher = createMockRefresher(
+        ConfirmationContextRefresherKey.Prices,
+        {
+          refresh: jest.fn().mockResolvedValue({
+            result: { tokenPricesFetchStatus: FetchStatus.Fetched },
+            reschedule: true,
+          }),
+        },
+      );
+      const { handler, updateConfirmation } = setup([refresher]);
+
+      await handler.handle({
+        jsonrpc: '2.0',
+        id: '1',
+        method: BackgroundEventMethod.RefreshConfirmationContext,
+        params: confirmationContextRequestParams,
+      });
+
+      expect(updateConfirmation).toHaveBeenCalledTimes(1);
+      expect(scheduleBackgroundEvent).toHaveBeenCalledTimes(1);
+      expect(updateConfirmation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          updatedContext: expect.objectContaining({
+            backgroundEventId: 'scheduled',
+            tokenPricesFetchStatus: FetchStatus.Fetched,
+          }),
+        }),
+      );
+    });
+  });
 });
