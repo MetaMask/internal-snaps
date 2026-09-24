@@ -34,6 +34,7 @@ import {
   deriveSolanaKeypair,
   deriveSolanaKeypairFromCoinTypeNode,
 } from '../../utils/deriveSolanaKeypair';
+import { trackError } from '../../utils/errors';
 import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
@@ -360,6 +361,7 @@ export class WalletService {
     } catch (error) {
       // The transaction is already broadcast, so we don't fail the request.
       // The signature monitor will still save the confirmed transaction.
+      await trackError(error);
       this.#logger.warn('Failed to save pending transaction', error);
     }
 

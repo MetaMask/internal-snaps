@@ -16,6 +16,7 @@ import {
   getBip32EntropyMock,
   getSolanaCoinTypeNodeMock,
 } from '../../test/mocks/utils/getBip32Entropy';
+import { trackError } from '../../utils/errors';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { SolanaConnection } from '../connection';
@@ -41,6 +42,10 @@ jest.mock('../../utils/getBip32Entropy', () => ({
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   emitSnapKeyringEvent: jest.fn(),
+}));
+
+jest.mock('../../utils/errors', () => ({
+  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
 }));
 
 describe('WalletService', () => {
@@ -452,6 +457,11 @@ describe('WalletService', () => {
           // signature must still be monitored.
           expect(result).toStrictEqual({ signature });
           expect(mockSignatureMonitor.monitor).toHaveBeenCalledTimes(1);
+          expect(trackError).toHaveBeenCalledWith(
+            expect.objectContaining({
+              message: 'Failed to persist pending transaction',
+            }),
+          );
         });
       });
 
