@@ -12,13 +12,12 @@ describe('displayOrigin', () => {
     expect(displayOrigin('metamask')).toBe('MetaMask');
   });
 
-  it('returns the known label for the "wallet-connect" origin', () => {
-    expect(displayOrigin('wallet-connect')).toBe('WalletConnect');
+  it('matches the internal origin case-insensitively', () => {
+    expect(displayOrigin('MetaMask')).toBe('MetaMask');
   });
 
-  it('matches known origins case-insensitively', () => {
-    expect(displayOrigin('MetaMask')).toBe('MetaMask');
-    expect(displayOrigin('Wallet-Connect')).toBe('WalletConnect');
+  it('returns an empty string for the legacy "wallet-connect" origin', () => {
+    expect(displayOrigin('wallet-connect')).toBe('');
   });
 
   it('returns the hostname for a valid https URL', () => {

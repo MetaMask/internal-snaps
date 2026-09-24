@@ -22,6 +22,7 @@ import {
   displayExchangeAmount,
   displayExplorerUrl,
   displayNetwork,
+  displayOrigin,
   isValidSnapLinkProtocol,
   translate,
 } from '../format';
@@ -103,7 +104,7 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
             <SnapText fontWeight="medium" color="alternative">
               {t('confirmation.requestOrigin')}
             </SnapText>
-            <SnapText>{origin ?? 'MetaMask'}</SnapText>
+            <SnapText>{displayOrigin(origin ?? 'metamask')}</SnapText>
           </Box>
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
