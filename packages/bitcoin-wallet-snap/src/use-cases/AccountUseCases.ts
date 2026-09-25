@@ -161,9 +161,9 @@ export type BroadcastResult = {
 };
 
 /**
- * Maximum number of concurrent indexer lookups when resolving the funding
- * addresses of receive transactions. Each lookup is a separate HTTP request,
- * so this bounds both latency and pressure on the indexer.
+ * Maximum number of indexer lookups in flight at once, shared across every
+ * account. Each lookup is a separate HTTP request, so this bounds both latency
+ * and pressure on the indexer regardless of how many accounts sync together.
  */
 export const SENDER_LOOKUP_CONCURRENCY = 5;
 
@@ -179,6 +179,48 @@ export const SENDER_LOOKUP_CONCURRENCY = 5;
  * which is already bounded by the requested page.
  */
 export const SENDER_RESOLUTION_LIMIT = 25;
+
+/**
+ * Caps the number of indexer lookups in flight across every account.
+ *
+ * `synchronize` runs for all selected accounts concurrently, and each account
+ * resolves its own receives in waves. A limit applied per call therefore
+ * multiplies by the number of accounts syncing at once; sharing one budget for
+ * the lifetime of the instance keeps the total request count bounded no matter
+ * how many accounts are active.
+ */
+class SenderLookupLimiter {
+  #available: number;
+
+  readonly #waiting: (() => void)[] = [];
+
+  constructor(limit: number) {
+    this.#available = limit;
+  }
+
+  async run<Result>(task: () => Promise<Result>): Promise<Result> {
+    if (this.#available === 0) {
+      await new Promise<void>((resolve) => {
+        this.#waiting.push(resolve);
+      });
+    } else {
+      this.#available -= 1;
+    }
+
+    try {
+      return await task();
+    } finally {
+      // Hand the slot straight to the next waiter rather than releasing it, so
+      // a queued lookup cannot be overtaken by a newly arriving one.
+      const next = this.#waiting.shift();
+      if (next) {
+        next();
+      } else {
+        this.#available += 1;
+      }
+    }
+  }
+}
 
 export class AccountUseCases {
   readonly #logger: Logger;
@@ -196,6 +238,8 @@ export class AccountUseCases {
   readonly #fallbackFeeRate: number;
 
   readonly #targetBlocksConfirmation: number;
+
+  readonly #senderLookups = new SenderLookupLimiter(SENDER_LOOKUP_CONCURRENCY);
 
   #accountMutationQueue: Promise<void> = Promise.resolve();
 
@@ -1126,17 +1170,16 @@ export class AccountUseCases {
       );
     }
 
-    // Each lookup is one indexer request (~1s); run them in bounded waves so a
-    // long history cannot serialize into a multi-minute scan or burst past the
-    // indexer's rate limit.
+    // Each lookup is one indexer request (~1s). The limiter is shared across
+    // accounts, so a long history cannot serialize into a multi-minute scan and
+    // a multi-account sync cannot burst past the indexer's rate limit.
     const settled = await batchesAllSettled(
       requested,
       SENDER_LOOKUP_CONCURRENCY,
       async (tx) => {
         const txid = tx.txid.toString();
-        const senders = await this.#chain.getTransactionSenders(
-          account.network,
-          txid,
+        const senders = await this.#senderLookups.run(() =>
+          this.#chain.getTransactionSenders(account.network, txid),
         );
         return { txid, senders };
       },

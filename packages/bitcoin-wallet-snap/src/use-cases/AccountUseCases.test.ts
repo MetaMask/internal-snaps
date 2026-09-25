@@ -971,6 +971,68 @@ describe('AccountUseCases', () => {
       expect(peak).toBeGreaterThan(1);
     });
 
+    it('shares the concurrency budget across accounts', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+
+      let inFlight = 0;
+      let peak = 0;
+      mockChain.getTransactionSenders.mockImplementation(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await Promise.resolve();
+        inFlight -= 1;
+        return ['bc1qsender'];
+      });
+
+      const mockOtherAccount = mock<BitcoinAccount>({
+        id: 'other-id',
+        network: 'bitcoin',
+      });
+      mockOtherAccount.sentAndReceived.mockReturnValue([
+        mockSentAmount,
+        mockReceivedAmount,
+      ]);
+
+      const txs = Array.from(
+        { length: SENDER_LOOKUP_CONCURRENCY * 2 },
+        (_, index) => createTx(`txid-${index}`),
+      );
+
+      // `synchronize` runs concurrently for every selected account, so two
+      // accounts resolving at once must not reach 2x the shared budget.
+      await Promise.all([
+        useCases.resolveTransactionSenders(mockAccount2, txs),
+        useCases.resolveTransactionSenders(mockOtherAccount, txs),
+      ]);
+
+      expect(peak).toBeLessThanOrEqual(SENDER_LOOKUP_CONCURRENCY);
+    });
+
+    it('releases the concurrency slot when a lookup fails', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockRejectedValue(
+        new Error('indexer unavailable'),
+      );
+
+      const failingTxs = Array.from(
+        { length: SENDER_LOOKUP_CONCURRENCY },
+        (_, index) => createTx(`txid-fail-${index}`),
+      );
+
+      await useCases.resolveTransactionSenders(mockAccount2, failingTxs);
+
+      // A limiter that leaks a slot on rejection would drain the budget and
+      // hang every later lookup.
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+      const result = await useCases.resolveTransactionSenders(mockAccount2, [
+        createTx('txid-after-failure'),
+      ]);
+
+      expect(result).toStrictEqual(
+        new Map([['txid-after-failure', ['bc1qsender']]]),
+      );
+    });
+
     it('caps the lookups at the given limit', async () => {
       jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
