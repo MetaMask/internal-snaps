@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Populate the `from` address of receive transactions by resolving the addresses that funded them through the chain indexer. Bitcoin inputs only reference a previous outpoint, so the sender was previously left empty. ([#45238](https://github.com/MetaMask/metamask-extension/issues/45238))
+- Populate the `from` address of receive transactions by resolving the addresses that funded them through the chain indexer. Bitcoin inputs only reference a previous outpoint, so the sender was previously left empty. ([#372](https://github.com/MetaMask/internal-snaps/pull/372))
 
 ## [3.0.0]
 
