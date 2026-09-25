@@ -883,9 +883,7 @@ describe('AccountUseCases', () => {
         'bitcoin',
         'txid-receive',
       );
-      expect(result).toStrictEqual(
-        new Map([['txid-receive', ['bc1qsender']]]),
-      );
+      expect(result).toStrictEqual(new Map([['txid-receive', ['bc1qsender']]]));
     });
 
     it('does not query the indexer for sends', async () => {
