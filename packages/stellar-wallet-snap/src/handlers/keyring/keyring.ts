@@ -62,7 +62,6 @@ import {
   isSlip44Id,
   rethrowIfInstanceElseThrow,
   validateRequest,
-  withCatchAndThrowSnapError,
 } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
 import { SyncAccountsHandler } from '../cronjob/syncAccounts';
@@ -80,6 +79,8 @@ import {
 } from './api';
 import type { IKeyringRequestHandler } from './base';
 import { ExportAccountException } from './exceptions';
+
+export const KEYRING_HANDLER_LOGGER_PREFIX = '[🔑 KeyringHandler]';
 
 export class KeyringHandler implements KeyringSnapRpc {
   readonly #logger: Logger;
@@ -109,7 +110,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     walletService: WalletService;
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
-    this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
+    this.#logger = logger.withPrefix(KEYRING_HANDLER_LOGGER_PREFIX);
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;
@@ -118,22 +119,17 @@ export class KeyringHandler implements KeyringSnapRpc {
   }
 
   async handle(origin: string, request: JsonRpcRequest): Promise<Json> {
-    const result =
-      (await withCatchAndThrowSnapError(async () => {
-        this.#logger.debug('Handle keyring request', {
-          origin,
-          method: request.method,
-        });
-        validateOrigin(origin, request.method, originPermissions);
-        const keyringRequestResult = await handleKeyringRequest(this, request);
-        this.#logger.debug('Keyring request handled', {
-          origin,
-          method: request.method,
-        });
-        return keyringRequestResult;
-      }, this.#logger.error.bind(this.#logger))) ?? null;
-
-    return result;
+    this.#logger.debug('Handle keyring request', {
+      origin,
+      method: request.method,
+    });
+    validateOrigin(origin, request.method, originPermissions);
+    const result = await handleKeyringRequest(this, request);
+    this.#logger.debug('Keyring request handled', {
+      origin,
+      method: request.method,
+    });
+    return result ?? null;
   }
 
   async getAccount(accountId: GetAccountRequest): Promise<KeyringAccount> {
