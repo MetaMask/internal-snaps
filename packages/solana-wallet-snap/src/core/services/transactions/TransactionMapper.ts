@@ -44,6 +44,60 @@ export class TransactionMapper {
   }
 
   /**
+   * Creates a minimal pending transaction for a broadcast signature.
+   *
+   * This is saved right after broadcasting, so the client can show the
+   * transaction (and a "submitted" toast) before the transaction is
+   * confirmed. It is replaced by the fully mapped transaction once the
+   * signature reaches the desired commitment.
+   *
+   * @param params - The parameters.
+   * @param params.signature - The signature of the broadcast transaction.
+   * @param params.account - The account that initiated the transaction.
+   * @param params.scope - The scope of the transaction.
+   * @returns A minimal pending transaction in the keyring API format.
+   */
+  static createPendingTransaction({
+    signature,
+    account,
+    scope,
+  }: {
+    signature: string;
+    account: ExtendedKeyringAccount;
+    scope: Network;
+  }): Transaction {
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    return {
+      id: signature,
+      account: account.id,
+      chain: scope,
+      status: TransactionStatus.Unconfirmed,
+      type: TransactionType.Unknown,
+      timestamp,
+      from: [
+        {
+          address: account.address,
+          asset: {
+            unit: Networks[scope].nativeToken.symbol,
+            type: Networks[scope].nativeToken.caip19Id,
+            amount: '0',
+            fungible: true,
+          },
+        },
+      ],
+      to: [],
+      fees: [],
+      events: [
+        {
+          status: TransactionStatus.Unconfirmed,
+          timestamp,
+        },
+      ],
+    };
+  }
+
+  /**
    * Maps RPC transaction data to a standardized format.
    *
    * @param transactionData - The raw transaction data from the RPC response.

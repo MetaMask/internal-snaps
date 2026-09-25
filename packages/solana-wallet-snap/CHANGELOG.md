@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent signing dapp transactions with expired blockhashes, and refresh the blockhash for MetaMask-originated transactions before signing. ([#183](https://github.com/MetaMask/internal-snaps/pull/183))
 - Tolerate unknown fields in the Price API spot price and Token API metadata responses so that new fields
   added by the API no longer fail validation ([#321](https://github.com/MetaMask/internal-snaps/pull/321))
+- Emit an `AccountTransactionsUpdated` keyring event with a pending `unconfirmed` transaction immediately after broadcasting.
 
 ## [6.0.0]
 
