@@ -1,4 +1,6 @@
 export { createSnapErrorHandling, createTrackError } from './trackError';
+export { SynchronizationError, formatAccountSyncFailures } from './syncError';
+export type { AccountSyncFailure } from './syncError';
 export { createWithCatchAndThrowSnapError, normalizeError } from './errors';
 export { isSnapRpcError } from './snapRpcError';
 export type {

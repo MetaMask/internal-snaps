@@ -104,8 +104,10 @@ export {
   createSnapErrorHandling,
   createTrackError,
   createWithCatchAndThrowSnapError,
+  formatAccountSyncFailures,
   isSnapRpcError,
   normalizeError,
+  SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
 export { InMemoryCache } from './utils/cache/InMemoryCache';
@@ -137,6 +139,7 @@ export type {
   WithCatchAndThrowSnapError,
 } from './utils/handlers/wrapSnapHandlers';
 export type {
+  AccountSyncFailure,
   CreateSnapErrorHandlingOptions,
   CreateTrackErrorOptions,
   CreateWithCatchAndThrowSnapErrorOptions,
