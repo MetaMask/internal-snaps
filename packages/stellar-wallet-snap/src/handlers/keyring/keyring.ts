@@ -80,6 +80,8 @@ import {
 import type { IKeyringRequestHandler } from './base';
 import { ExportAccountException } from './exceptions';
 
+export const KEYRING_HANDLER_LOGGER_PREFIX = '[🔑 KeyringHandler]';
+
 export class KeyringHandler implements KeyringSnapRpc {
   readonly #logger: Logger;
 
@@ -108,7 +110,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     walletService: WalletService;
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
-    this.#logger = logger.withPrefix('[🔑 KeyringHandler]');
+    this.#logger = logger.withPrefix(KEYRING_HANDLER_LOGGER_PREFIX);
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;

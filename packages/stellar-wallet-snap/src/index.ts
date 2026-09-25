@@ -9,9 +9,10 @@ import {
   clientRequestHandler,
   cronjobHandler,
 } from './context';
+import { KEYRING_HANDLER_LOGGER_PREFIX } from './handlers';
 import { logger, withCatchAndThrowSnapError } from './utils';
 
-const keyringLogger = logger.withPrefix('[🔑 KeyringHandler]');
+const keyringLogger = logger.withPrefix(KEYRING_HANDLER_LOGGER_PREFIX);
 const clientRequestLogger = logger.withPrefix('[👋 ClientRequestHandler]');
 
 export const { onKeyringRequest, onUserInput, onClientRequest, onCronjob } =
