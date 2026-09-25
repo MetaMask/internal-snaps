@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore(solana): ratchet coverage thresholds with jest-it-up ([#351](https://github.com/MetaMask/internal-snaps/pull/351))
+- feat(tron): use shared baseconfig ([#311](https://github.com/MetaMask/internal-snaps/pull/311))
+- feat(solana-wallet-snap): use shared analytics lib ([#335](https://github.com/MetaMask/internal-snaps/pull/335))
+- chore(solana): extend the shared jest config ([#340](https://github.com/MetaMask/internal-snaps/pull/340))
+- test(solana): cover transaction approved/rejected scheduling ([#332](https://github.com/MetaMask/internal-snaps/pull/332))
+- Release/11.0.0 ([#325](https://github.com/MetaMask/internal-snaps/pull/325))
+- feat(solana): use shared baseconfig ([#310](https://github.com/MetaMask/internal-snaps/pull/310))
+- fix(solana): tolerate unknown fields in external API responses ([#321](https://github.com/MetaMask/internal-snaps/pull/321))
+- feat(solana-wallet-snap): use shared keyring account ([#317](https://github.com/MetaMask/internal-snaps/pull/317))
+- Release/10.0.0 ([#305](https://github.com/MetaMask/internal-snaps/pull/305))
+- chore(solana): use shared cache utils ([#292](https://github.com/MetaMask/internal-snaps/pull/292))
+- feat(solana-wallet-snap): use shareable state management lib ([#294](https://github.com/MetaMask/internal-snaps/pull/294))
+- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
+- chore: snap build tooling cleanup (babel config, preinstalled builds, manifest locales) ([#264](https://github.com/MetaMask/internal-snaps/pull/264))
+- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
+- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
+- feat: add shared trackError util ([#246](https://github.com/MetaMask/internal-snaps/pull/246))
+- feat(solana-wallet-snap): use shareable UuidStruct ([#249](https://github.com/MetaMask/internal-snaps/pull/249))
+- feat: move errors helpers into shared pkg ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
+- feat(solana-wallet-snap): use shareable serialization in Solana snap ([#230](https://github.com/MetaMask/internal-snaps/pull/230))
+- refactor(solana-wallet-snap): convert enums to `as const` objects ([#217](https://github.com/MetaMask/internal-snaps/pull/217))
+- feat: move batch utils into shared pkg ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
+- feat(solana-wallet-snap): use shareable permissions helpers in Solana snap ([#207](https://github.com/MetaMask/internal-snaps/pull/207))
+- feat: move buildUrl into shared util pkg ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
+- test(solana-wallet-snap): use a non-zero TTL in the fiat cache test ([#194](https://github.com/MetaMask/internal-snaps/pull/194))
+- feat: move sanitize utils into shared pkg ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
+- chore: move UrlStruct to shared lib ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: add safeMerge shared util ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
+- fix: mocklogger types in solana snap ([#164](https://github.com/MetaMask/internal-snaps/pull/164))
+- chore: disable eslint rules `jest/no-mocks-import` for test file ([#163](https://github.com/MetaMask/internal-snaps/pull/163))
+- chore: replace solana logger with shared util ([#148](https://github.com/MetaMask/internal-snaps/pull/148))
+
 ### Added
 
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#256](https://github.com/MetaMask/internal-snaps/pull/256))

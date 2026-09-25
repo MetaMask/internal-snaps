@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(stellar-wallet-snap): use the shared wrapSnapHandlers and noopAssetHandlers ([#366](https://github.com/MetaMask/internal-snaps/pull/366))
+- fix(stellar): prevent double cron job spin out due to memo save ([#358](https://github.com/MetaMask/internal-snaps/pull/358))
+- chore(stellar): refine memo change ([#357](https://github.com/MetaMask/internal-snaps/pull/357))
+- chore(stellar): ratchet coverage thresholds with jest-it-up ([#352](https://github.com/MetaMask/internal-snaps/pull/352))
+- chore(stellar): Add address v2 support on `SignAuthEntry` wallet API ([#307](https://github.com/MetaMask/internal-snaps/pull/307))
+- chore(stellar): extend the shared jest config ([#344](https://github.com/MetaMask/internal-snaps/pull/344))
+- feat(stellar-wallet-snap): use shared analytics lib ([#336](https://github.com/MetaMask/internal-snaps/pull/336))
+- feat(stellar): use shared baseconfig ([#315](https://github.com/MetaMask/internal-snaps/pull/315))
+- chore(stellar): use shared cache utils ([#290](https://github.com/MetaMask/internal-snaps/pull/290))
+- Release/11.0.0 ([#325](https://github.com/MetaMask/internal-snaps/pull/325))
+- feat(stellar-wallet-snap): use shared keyring account ([#318](https://github.com/MetaMask/internal-snaps/pull/318))
+
 ### Added
 
 - Add send confirmation memo edit UI for SEP-29 RequiresMemo recovery: store memo on confirmation context (`context.memo`), resolve dialog as `{ confirmed, memo? }`, and rebuild with `skipExceptions: [RequiresMemoException]` / post-confirm memo attach (no client wire `memo` / `memoType` params). Live refresh pauses on RequiresMemo (omit scan / pause auto-cron); MemoEdit Save cancel-and-replaces to restart validation and scanning ([#323](https://github.com/MetaMask/internal-snaps/pull/323))

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(tron-wallet-snap): use the shared wrapSnapHandlers and noopAssetHandlers ([#368](https://github.com/MetaMask/internal-snaps/pull/368))
+- chore(tron): ratchet coverage thresholds with jest-it-up ([#350](https://github.com/MetaMask/internal-snaps/pull/350))
+- feat(tron-wallet-snap): use shared analytics lib ([#339](https://github.com/MetaMask/internal-snaps/pull/339))
+- feat(tron): use shared baseconfig ([#311](https://github.com/MetaMask/internal-snaps/pull/311))
+- chore(tron): extend the shared jest config ([#338](https://github.com/MetaMask/internal-snaps/pull/338))
+- Release/11.0.0 ([#325](https://github.com/MetaMask/internal-snaps/pull/325))
+- feat(tron-wallet-snap): use shared keyring account ([#319](https://github.com/MetaMask/internal-snaps/pull/319))
+- Release/10.0.0 ([#305](https://github.com/MetaMask/internal-snaps/pull/305))
+- feat(tron-wallet-snap): use shareable state management lib ([#295](https://github.com/MetaMask/internal-snaps/pull/295))
+- chore(tron): use shared cache utils ([#293](https://github.com/MetaMask/internal-snaps/pull/293))
+- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
+- fix: restore `endowment:assets` permission to Bitcoin, Solana, and Tron snaps ([#274](https://github.com/MetaMask/internal-snaps/pull/274))
+- chore: snap build tooling cleanup (babel config, preinstalled builds, manifest locales) ([#264](https://github.com/MetaMask/internal-snaps/pull/264))
+- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
+- feat: use shared trackError in tron ([#253](https://github.com/MetaMask/internal-snaps/pull/253))
+- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
+- feat(tron-wallet-snap): use shareable UuidStruct ([#252](https://github.com/MetaMask/internal-snaps/pull/252))
+- feat: move errors helpers into shared pkg ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
+
 ### Added
 
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#265](https://github.com/MetaMask/internal-snaps/pull/265))
