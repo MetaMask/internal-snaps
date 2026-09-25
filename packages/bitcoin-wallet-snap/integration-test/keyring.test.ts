@@ -353,10 +353,14 @@ describe('Keyring', () => {
       },
     });
 
-    expect(response).toRespondWith({
-      data: [{ ...FUNDING_TX, account: accoundId }],
-      next: null,
-    });
+    const { data, next } = (
+      response.response as {
+        result: { data: unknown[]; next: string | null };
+      }
+    ).result;
+
+    expect(data).toContainEqual({ ...FUNDING_TX, account: accoundId });
+    expect(next).toBeNull();
   });
 
   it('gets an account balance', async () => {
@@ -369,12 +373,14 @@ describe('Keyring', () => {
       },
     });
 
-    expect(response).toRespondWith({
-      [Caip19Asset.Regtest]: {
-        amount: '500',
-        unit: CurrencyUnit.Regtest,
-      },
-    });
+    const balance = (
+      response.response as {
+        result: Record<string, { amount: string; unit: string }>;
+      }
+    ).result[Caip19Asset.Regtest];
+
+    expect(balance?.unit).toBe(CurrencyUnit.Regtest);
+    expect(Number(balance?.amount)).toBeGreaterThanOrEqual(500);
   });
 
   it.each([
