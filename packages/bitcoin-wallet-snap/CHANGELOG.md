@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#266](https://github.com/MetaMask/internal-snaps/pull/266))
 - Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` tracking events from Bitcoin transaction confirmations ([#328](https://github.com/MetaMask/internal-snaps/pull/328), [#329](https://github.com/MetaMask/internal-snaps/pull/329))
 
+### Fixed
+
+- Populate the `from` address of receive transactions by resolving the addresses that funded them through the chain indexer. Bitcoin inputs only reference a previous outpoint, so the sender was previously left empty. ([#45238](https://github.com/MetaMask/metamask-extension/issues/45238))
+
 ## [3.0.0]
 
 ### Added

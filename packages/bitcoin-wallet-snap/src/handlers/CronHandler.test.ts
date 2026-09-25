@@ -105,6 +105,25 @@ describe('CronHandler', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
+    it('forwards resolved senders when emitting transaction events', async () => {
+      const mockTx = mock<WalletTx>();
+      const senders = new Map([['txid-1', ['bc1qsender']]]);
+      const mockResult1: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [mockTx],
+        transactionSenders: senders,
+      };
+      (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+      mockAccountUseCases.list.mockResolvedValue([mockAccount1]);
+      mockAccountUseCases.synchronize.mockResolvedValueOnce(mockResult1);
+
+      await handler.route(request);
+
+      expect(
+        mockSnapClient.emitAccountTransactionsUpdatedEvent,
+      ).toHaveBeenCalledWith(mockAccount1, [mockTx], senders);
+    });
+
     it('propagates errors from list', async () => {
       const error = new Error();
       (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);

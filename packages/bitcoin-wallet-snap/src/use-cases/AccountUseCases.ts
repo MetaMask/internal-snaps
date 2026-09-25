@@ -10,7 +10,10 @@ import type {
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  batchesAllSettled,
+  normalizeError,
+} from '@metamask/snap-networks-utils';
 import { Signer } from 'bip322-js';
 import { encode } from 'wif';
 
@@ -156,6 +159,13 @@ export type BroadcastResult = {
   txid: Txid;
   canBeMalleable: boolean;
 };
+
+/**
+ * Maximum number of concurrent indexer lookups when resolving the funding
+ * addresses of receive transactions. Each lookup is a separate HTTP request,
+ * so this bounds both latency and pressure on the indexer.
+ */
+export const SENDER_LOOKUP_CONCURRENCY = 5;
 
 export class AccountUseCases {
   readonly #logger: Logger;
@@ -484,6 +494,10 @@ export class AccountUseCases {
     return {
       account,
       transactionsToNotify: txsToNotify,
+      transactionSenders: await this.resolveTransactionSenders(
+        account,
+        txsToNotify,
+      ),
     };
   }
 
@@ -497,6 +511,8 @@ export class AccountUseCases {
       : [];
     await this.#repository.update(account, inscriptions);
 
+    const transactionsToNotify = account.listTransactions();
+
     this.#logger.info(
       'initial full scan performed successfully: %s',
       account.id,
@@ -504,7 +520,11 @@ export class AccountUseCases {
 
     return {
       account,
-      transactionsToNotify: account.listTransactions(),
+      transactionsToNotify,
+      transactionSenders: await this.resolveTransactionSenders(
+        account,
+        transactionsToNotify,
+      ),
     };
   }
 
@@ -1042,6 +1062,67 @@ export class AccountUseCases {
       txid,
       canBeMalleable: canAccountTxidBeMalleated(account.addressType),
     };
+  }
+
+  /**
+   * Resolves the funding addresses for the given transactions, one indexer
+   * lookup per receive.
+   *
+   * Bitcoin inputs only carry a previous outpoint, so a receive from an
+   * external sender requires the chain indexer to resolve the counterparty.
+   * Resolution is best-effort: a failure (rate limit, outage) leaves the
+   * transaction without a counterparty rather than failing the caller.
+   *
+   * @param account - The Bitcoin account the transactions belong to.
+   * @param txs - The transactions to resolve senders for.
+   * @returns A map of txid to funding addresses, only for resolved receives.
+   */
+  async resolveTransactionSenders(
+    account: BitcoinAccount,
+    txs: WalletTx[],
+  ): Promise<Map<string, string[]> | undefined> {
+    const sendersByTxid = new Map<string, string[]>();
+
+    // Sends are displayed as "Sent from Bitcoin Account", so only receives
+    // need a counterparty.
+    const receives = txs.filter((tx) => {
+      const [sent] = account.sentAndReceived(tx.tx);
+      return sent.to_btc() <= 0;
+    });
+    if (receives.length === 0) {
+      return undefined;
+    }
+
+    // Each lookup is one indexer request (~1s); run them in bounded waves so a
+    // long history cannot serialize into a multi-minute scan or burst past the
+    // indexer's rate limit.
+    const settled = await batchesAllSettled(
+      receives,
+      SENDER_LOOKUP_CONCURRENCY,
+      async (tx) => {
+        const txid = tx.txid.toString();
+        const senders = await this.#chain.getTransactionSenders(
+          account.network,
+          txid,
+        );
+        return { txid, senders };
+      },
+    );
+
+    for (const result of settled) {
+      if (result.status === 'rejected') {
+        this.#logger.debug(
+          'Failed to resolve transaction senders: %o',
+          result.reason,
+        );
+        continue;
+      }
+      if (result.value.senders.length > 0) {
+        sendersByTxid.set(result.value.txid, result.value.senders);
+      }
+    }
+
+    return sendersByTxid.size > 0 ? sendersByTxid : undefined;
   }
 
   async #runAccountMutation<Result>(
