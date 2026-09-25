@@ -5,7 +5,7 @@ import { assertIsConfirmationDialog, installSnap } from '@metamask/snaps-jest';
 
 import { AccountCapability } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
-import type { FillPsbtResponse } from '../src/handlers/KeyringRequestHandler';
+import type { SignPsbtResponse } from '../src/handlers/KeyringRequestHandler';
 import { BlockchainTestUtils } from './blockchain-utils';
 import { MNEMONIC, ORIGIN } from './constants';
 
@@ -572,7 +572,7 @@ describe('KeyringRequestHandler', () => {
 
       const signResult = await signResponse;
 
-      const { result } = signResult.response as { result: FillPsbtResponse };
+      const { result } = signResult.response as { result: SignPsbtResponse };
 
       const response = await snap.onKeyringRequest({
         origin: ORIGIN,
