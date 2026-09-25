@@ -501,6 +501,51 @@ describe('AssetsService', () => {
           },
         );
       });
+
+      it('tracks unexpected account info failures that are treated as inactive', async () => {
+        await withAssetsService(
+          async ({
+            assetsService,
+            mockTrongridApiClient,
+            mockTronHttpClient,
+            mockSnapClient,
+          }) => {
+            // An HTTP failure is not an "account not found", but the flow
+            // still treats it as an inactive account; it must be tracked.
+            const fetchError = new Error('HTTP error! status: 500');
+            mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+              fetchError,
+            );
+            mockTronHttpClient.getAccountResources.mockResolvedValue(
+              emptyAccountResources,
+            );
+            mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue(
+              [],
+            );
+
+            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
+              Network.Mainnet,
+              mockAccount,
+            );
+
+            expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
+            const tracked = (mockSnapClient.trackError as jest.Mock).mock
+              .calls[0][0] as Error;
+            expect(tracked.message).toBe(
+              'Account info request failed; treating as inactive account',
+            );
+            // The original error is preserved as the cause.
+            expect((tracked as Error & { cause?: unknown }).cause).toBe(
+              fetchError,
+            );
+            // The inactive-account flow is unchanged.
+            expect(
+              mockTrongridApiClient.getTrc20BalancesByAddress,
+            ).toHaveBeenCalledWith(Network.Mainnet, mockAccount.address);
+            expect(assets.length).toBeGreaterThan(0);
+          },
+        );
+      });
     });
 
     describe('partial failure handling', () => {

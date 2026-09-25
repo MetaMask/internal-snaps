@@ -20,12 +20,18 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
 import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
+import { trackError } from '../../utils/errors';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
 import { AccountsService, SUPPORTED_SCOPES } from './AccountsService';
+
+jest.mock('../../utils/errors', () => ({
+  ...jest.requireActual('../../utils/errors'),
+  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
+}));
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
   getSelectedAccounts: jest.fn().mockResolvedValue([]),
@@ -1015,8 +1021,8 @@ describe('AccountsService', () => {
     });
   });
 
-  describe('synchronizeAssets', () => {
-    it('calls fetch for each account and scope, then saveMany', async () => {
+  describe('synchronize (assets)', () => {
+    it('fetches assets for each account and scope, then saves', async () => {
       const account: ExtendedKeyringAccount = {
         id: 'sync-asset-id',
         address: 'TSyncAsset12345678901234567',
@@ -1051,7 +1057,7 @@ describe('AccountsService', () => {
             mockAssets,
           );
 
-          await accountsService.synchronizeAssets([account]);
+          await accountsService.synchronize([account]);
 
           expect(
             mockAssetsService.fetchAssetsAndBalancesForAccount,
@@ -1064,6 +1070,149 @@ describe('AccountsService', () => {
           ).toHaveBeenCalledWith(Network.Shasta, account);
           expect(mockAssetsService.saveMany).toHaveBeenCalledWith(
             expect.arrayContaining(mockAssets),
+          );
+          expect(trackError).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('tracks save failures standalone, without failing', async () => {
+      const account: ExtendedKeyringAccount = {
+        id: 'sync-asset-fail-id',
+        address: 'TSyncFail123456789012345678',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet, Network.Shasta],
+          };
+          const saveError = new Error('storage full');
+          mockAssetsService.saveMany.mockRejectedValue(saveError);
+
+          // Save failures are batch-level: tracked as their own error (not
+          // attributed to individual accounts), and the method still resolves.
+          await accountsService.synchronize([account]);
+
+          expect(trackError).toHaveBeenCalledTimes(1);
+          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(tracked.message).toBe('Failed to save assets');
+          expect((tracked as Error & { cause?: unknown }).cause).toBe(
+            saveError,
+          );
+        },
+      );
+    });
+
+    it('points at the specific account whose fetch failed', async () => {
+      const failingAccount: ExtendedKeyringAccount = {
+        id: 'sync-fail-id',
+        address: 'TSyncFail123456789012345678',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+      const healthyAccount: ExtendedKeyringAccount = {
+        id: 'sync-healthy-id',
+        address: 'TSyncHealthy123456789012345',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/1",
+        index: 1,
+      };
+      const healthyAssets: NativeAsset[] = [
+        {
+          assetType: `${Network.Mainnet}/slip44:195`,
+          keyringAccountId: 'sync-healthy-id',
+          network: Network.Mainnet,
+          symbol: 'TRX',
+          decimals: 6,
+          rawAmount: '1000000',
+          uiAmount: '1',
+          iconUrl: '',
+        },
+      ];
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          mockAssetsService.fetchAssetsAndBalancesForAccount
+            .mockRejectedValueOnce(new Error('grpc unavailable'))
+            .mockResolvedValueOnce(healthyAssets);
+
+          await accountsService.synchronize([failingAccount, healthyAccount]);
+
+          expect(trackError).toHaveBeenCalledTimes(1);
+          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(tracked.name).toBe('SynchronizationError');
+          expect(tracked.message).toBe(
+            'Account synchronization failures (1 failed): ' +
+              'sync-fail-id: Error: grpc unavailable',
+          );
+          // The healthy account's assets are still saved.
+          expect(mockAssetsService.saveMany).toHaveBeenCalledWith(
+            healthyAssets,
+          );
+        },
+      );
+    });
+
+    it('survives a hostile rejection reason that cannot be stringified', async () => {
+      const account: ExtendedKeyringAccount = {
+        id: 'sync-hostile-id',
+        address: 'TSyncHostile12345678901234567',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          const hostileReason = {
+            toString: (): never => {
+              throw new Error('toString boom');
+            },
+          };
+          mockAssetsService.fetchAssetsAndBalancesForAccount.mockRejectedValue(
+            hostileReason,
+          );
+
+          // The hostile reason is defused to a placeholder and the failure is
+          // still reported; the sync completes and the save still runs.
+          await accountsService.synchronize([account]);
+
+          expect(mockAssetsService.saveMany).toHaveBeenCalledWith([]);
+          expect(trackError).toHaveBeenCalledTimes(1);
+          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(tracked.message).toBe(
+            `Account synchronization failures (1 failed): ` +
+              `${account.id}: Unknown error`,
           );
         },
       );
@@ -1086,7 +1235,7 @@ describe('AccountsService', () => {
             index: 0,
           };
 
-          await accountsService.synchronizeAssets([account]);
+          await accountsService.synchronize([account]);
 
           expect(
             mockAssetsService.fetchAssetsAndBalancesForAccount,
@@ -1147,13 +1296,96 @@ describe('AccountsService', () => {
           expect(mockTransactionsService.saveMany).toHaveBeenCalledWith(
             mockTransactions,
           );
+          expect(trackError).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('tracks the failing account when a fetch fails, without failing', async () => {
+      const account: ExtendedKeyringAccount = {
+        id: 'sync-tx-fail-id',
+        address: 'TSyncTxFail12345678901234567',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockConfigProvider,
+          mockTransactionsService,
+        }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          mockTransactionsService.fetchNewTransactionsForAccount.mockRejectedValue(
+            new Error('grpc unavailable'),
+          );
+
+          // Per-fetch failures are reported (attributed to the account), but
+          // the method still resolves.
+          expect(
+            await accountsService.synchronizeTransactions([account]),
+          ).toBeUndefined();
+          expect(mockTransactionsService.saveMany).toHaveBeenCalledWith([]);
+          expect(trackError).toHaveBeenCalledTimes(1);
+          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(tracked.name).toBe('SynchronizationError');
+          expect(tracked.message).toBe(
+            `Account synchronization failures (1 failed): ` +
+              `${account.id}: Error: grpc unavailable`,
+          );
+        },
+      );
+    });
+
+    it('tracks save failures standalone, without failing', async () => {
+      const account: ExtendedKeyringAccount = {
+        id: 'sync-tx-save-fail-id',
+        address: 'TSyncTxSaveFail12345678901234',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockConfigProvider,
+          mockTransactionsService,
+        }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          const saveError = new Error('storage full');
+          mockTransactionsService.saveMany.mockRejectedValue(saveError);
+
+          await accountsService.synchronizeTransactions([account]);
+
+          expect(trackError).toHaveBeenCalledTimes(1);
+          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(tracked.message).toBe('Failed to save transactions');
+          expect((tracked as Error & { cause?: unknown }).cause).toBe(
+            saveError,
+          );
         },
       );
     });
   });
 
   describe('synchronize', () => {
-    it('calls both synchronizeAssets and synchronizeTransactions', async () => {
+    it('fetches both assets and transactions', async () => {
       const account: ExtendedKeyringAccount = {
         id: 'sync-id',
         address: 'TSync12345678901234567890',
