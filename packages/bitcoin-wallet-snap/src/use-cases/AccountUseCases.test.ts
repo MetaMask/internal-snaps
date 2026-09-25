@@ -40,7 +40,11 @@ import type {
   CreateAccountParams,
   DiscoverAccountParams,
 } from './AccountUseCases';
-import { AccountUseCases, SENDER_LOOKUP_CONCURRENCY } from './AccountUseCases';
+import {
+  AccountUseCases,
+  SENDER_LOOKUP_CONCURRENCY,
+  SENDER_RESOLUTION_LIMIT,
+} from './AccountUseCases';
 
 describe('AccountUseCases', () => {
   const mockLogger = mock<Logger>();
@@ -850,6 +854,22 @@ describe('AccountUseCases', () => {
         new Map([['txid-receive', ['bc1qsender']]]),
       );
     });
+
+    it('caps the sender lookups so the scan does not resolve the whole history', async () => {
+      const scannedTxs = Array.from(
+        { length: SENDER_RESOLUTION_LIMIT + 5 },
+        (_, index) =>
+          mock<WalletTx>({ txid: { toString: () => `txid-${index}` } }),
+      );
+      mockAccount.listTransactions.mockReturnValue(scannedTxs);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      await useCases.fullScan(mockAccount);
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(
+        SENDER_RESOLUTION_LIMIT,
+      );
+    });
   });
 
   describe('resolveTransactionSenders', () => {
@@ -949,6 +969,48 @@ describe('AccountUseCases', () => {
       expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(txs.length);
       expect(peak).toBeLessThanOrEqual(SENDER_LOOKUP_CONCURRENCY);
       expect(peak).toBeGreaterThan(1);
+    });
+
+    it('caps the lookups at the given limit', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const txs = [createTx('txid-1'), createTx('txid-2'), createTx('txid-3')];
+
+      const result = await useCases.resolveTransactionSenders(
+        mockAccount2,
+        txs,
+        2,
+      );
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(2);
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledWith(
+        'bitcoin',
+        'txid-1',
+      );
+      expect(mockChain.getTransactionSenders).not.toHaveBeenCalledWith(
+        'bitcoin',
+        'txid-3',
+      );
+      expect(result).toStrictEqual(
+        new Map([
+          ['txid-1', ['bc1qsender']],
+          ['txid-2', ['bc1qsender']],
+        ]),
+      );
+    });
+
+    it('resolves every receive when no limit is given', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const txs = Array.from({ length: SENDER_RESOLUTION_LIMIT + 5 }, (_, i) =>
+        createTx(`txid-${i}`),
+      );
+
+      await useCases.resolveTransactionSenders(mockAccount2, txs);
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(txs.length);
     });
   });
 

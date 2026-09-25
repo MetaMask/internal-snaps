@@ -167,6 +167,19 @@ export type BroadcastResult = {
  */
 export const SENDER_LOOKUP_CONCURRENCY = 5;
 
+/**
+ * Maximum number of receives enriched with a counterparty while synchronizing
+ * or scanning an account.
+ *
+ * Those paths notify the whole account history at once, so resolving every
+ * receive would issue one indexer request per receive before the event can be
+ * emitted — on a long history that risks the Snap execution deadline. Only a
+ * bounded prefix of the receives is enriched, as a best-effort pre-warm;
+ * clients resolve whatever is left lazily through `getAccountTransactions`,
+ * which is already bounded by the requested page.
+ */
+export const SENDER_RESOLUTION_LIMIT = 25;
+
 export class AccountUseCases {
   readonly #logger: Logger;
 
@@ -497,6 +510,7 @@ export class AccountUseCases {
       transactionSenders: await this.resolveTransactionSenders(
         account,
         txsToNotify,
+        SENDER_RESOLUTION_LIMIT,
       ),
     };
   }
@@ -524,6 +538,7 @@ export class AccountUseCases {
       transactionSenders: await this.resolveTransactionSenders(
         account,
         transactionsToNotify,
+        SENDER_RESOLUTION_LIMIT,
       ),
     };
   }
@@ -1075,11 +1090,17 @@ export class AccountUseCases {
    *
    * @param account - The Bitcoin account the transactions belong to.
    * @param txs - The transactions to resolve senders for.
+   * @param limit - Maximum number of receives to look up. Omit to resolve every
+   * receive, which is safe for a paginated caller such as transaction listing;
+   * callers that pass a whole history should bound the cost with
+   * {@link SENDER_RESOLUTION_LIMIT}. The remainder is left unresolved so a
+   * client can still resolve it later through the paginated listing path.
    * @returns A map of txid to funding addresses, only for resolved receives.
    */
   async resolveTransactionSenders(
     account: BitcoinAccount,
     txs: WalletTx[],
+    limit?: number,
   ): Promise<Map<string, string[]> | undefined> {
     const sendersByTxid = new Map<string, string[]>();
 
@@ -1093,11 +1114,23 @@ export class AccountUseCases {
       return undefined;
     }
 
+    // Callers that pass a whole history cap the number of lookups so emitting
+    // the event cannot wait on one request per historical receive.
+    const requested = limit === undefined ? receives : receives.slice(0, limit);
+
+    if (requested.length < receives.length) {
+      this.#logger.debug(
+        'Resolving senders for %d of %d receives',
+        requested.length,
+        receives.length,
+      );
+    }
+
     // Each lookup is one indexer request (~1s); run them in bounded waves so a
     // long history cannot serialize into a multi-minute scan or burst past the
     // indexer's rate limit.
     const settled = await batchesAllSettled(
-      receives,
+      requested,
       SENDER_LOOKUP_CONCURRENCY,
       async (tx) => {
         const txid = tx.txid.toString();
