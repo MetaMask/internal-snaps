@@ -12,9 +12,12 @@ import {
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import {
   InFlightCoalescer,
+  SynchronizationError,
   asStrictKeyringAccount,
+  getSyncFailuresFromSettledResult,
 } from '@metamask/snap-networks-utils';
 import type {
+  AccountSyncFailure,
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
@@ -31,7 +34,7 @@ import {
   createTronBip44AddressDeriver,
   createTronBip44KeypairDeriver,
 } from '../../utils/deriveTronFromCoinTypeNode';
-import { sanitizeSensitiveError } from '../../utils/errors';
+import { sanitizeSensitiveError, trackError } from '../../utils/errors';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
@@ -507,6 +510,10 @@ export class AccountsService {
    * Synchronizes only assets for the given accounts.
    * This method can be called independently to sync assets without syncing transactions.
    *
+   * Fetch failures are reported to Sentry in one `SynchronizationError`,
+   * attributed to their account; save failures are tracked standalone. Neither
+   * is thrown.
+   *
    * @param accounts - The accounts to synchronize assets for.
    */
   async synchronizeAssets(accounts: ExtendedKeyringAccount[]): Promise<void> {
@@ -528,9 +535,30 @@ export class AccountsService {
       response.status === 'fulfilled' ? response.value : [],
     );
 
-    await this.#assetsService.saveMany(assets);
+    const failures = getSyncFailuresFromSettledResult(
+      assetResponses,
+      combinations.map(({ account }) => account.id),
+    );
+    await this.#reportSyncFailures(failures);
+
+    try {
+      await this.#assetsService.saveMany(assets);
+    } catch (error) {
+      // Save failures are batch-level (not attributable to one account), so
+      // they are tracked standalone.
+      await trackError(new Error('Failed to save assets', { cause: error }));
+    }
   }
 
+  /**
+   * Synchronizes only transactions for the given accounts.
+   *
+   * Fetch failures are reported to Sentry in one `SynchronizationError`,
+   * attributed to their account; save failures are tracked standalone. Neither
+   * is thrown.
+   *
+   * @param accounts - The accounts to synchronize transactions for.
+   */
   async synchronizeTransactions(
     accounts: ExtendedKeyringAccount[],
   ): Promise<void> {
@@ -539,7 +567,7 @@ export class AccountsService {
       scopes.map((scope) => ({ account, scope })),
     );
 
-    const transactionResponses = await Promise.allSettled(
+    const trxResponses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
         return this.#transactionsService.fetchNewTransactionsForAccount(
           scope,
@@ -548,13 +576,33 @@ export class AccountsService {
       }),
     );
 
-    const transactions = transactionResponses.flatMap((response) =>
+    const transactions = trxResponses.flatMap((response) =>
       response.status === 'fulfilled' ? response.value : [],
     );
 
-    await this.#transactionsService.saveMany(transactions);
+    const failures = getSyncFailuresFromSettledResult(
+      trxResponses,
+      combinations.map(({ account }) => account.id),
+    );
+    await this.#reportSyncFailures(failures);
+
+    try {
+      await this.#transactionsService.saveMany(transactions);
+    } catch (error) {
+      // Save failures are batch-level (not attributable to one account), so
+      // they are tracked standalone.
+      await trackError(
+        new Error('Failed to save transactions', { cause: error }),
+      );
+    }
   }
 
+  /**
+   * Synchronizes assets and transactions for the given accounts. Each sync
+   * reports its own failures to Sentry, attributed per account.
+   *
+   * @param accounts - The accounts to synchronize.
+   */
   async synchronize(accounts: ExtendedKeyringAccount[]): Promise<void> {
     // Sync triggers stack up (60s cronjob, a background event scheduled by
     // every `setSelectedAccounts` call, post-transaction refreshes), so
@@ -571,6 +619,33 @@ export class AccountsService {
         this.synchronizeTransactions(accounts),
       ]);
     });
+  }
+
+  /**
+   * Reports account synchronization failures to Sentry, with the failure
+   * reasons embedded in the message: error tracking (`snap_trackError`) does
+   * not preserve custom error properties, so the message is the only reliable
+   * channel for the details.
+   *
+   * @param failures - The account synchronization failures to report.
+   */
+  async #reportSyncFailures(failures: AccountSyncFailure[]): Promise<void> {
+    try {
+      if (failures.length === 0) {
+        return;
+      }
+
+      const error = new SynchronizationError(
+        'Account synchronization failures',
+        failures,
+      );
+
+      await trackError(error);
+    } catch (reportingError) {
+      this.#logger.warn('Failed to report synchronization failures', {
+        reportingError,
+      });
+    }
   }
 
   async #createTronAddressDeriver(
