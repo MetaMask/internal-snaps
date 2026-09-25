@@ -105,8 +105,10 @@ export {
   createTrackError,
   createWithCatchAndThrowSnapError,
   formatAccountSyncFailures,
+  getSyncFailuresFromSettledResult,
   isSnapRpcError,
   normalizeError,
+  stringifyReason,
   SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';

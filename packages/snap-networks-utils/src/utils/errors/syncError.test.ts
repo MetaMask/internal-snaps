@@ -1,4 +1,8 @@
-import { SynchronizationError, formatAccountSyncFailures } from './syncError';
+import {
+  SynchronizationError,
+  formatAccountSyncFailures,
+  getSyncFailuresFromSettledResult,
+} from './syncError';
 
 describe('formatAccountSyncFailures', () => {
   it('formats a single failure', () => {
@@ -42,6 +46,56 @@ describe('formatAccountSyncFailures', () => {
 
   it('returns an empty string for no failures', () => {
     expect(formatAccountSyncFailures([])).toBe('');
+  });
+});
+
+describe('getSyncFailuresFromSettledResult', () => {
+  it('maps rejections to failures with stringified reasons', () => {
+    const results = [
+      { status: 'fulfilled', value: 'ok' },
+      {
+        status: 'rejected',
+        reason: new Error('Failed to synchronize account', {
+          cause: new Error('502 Bad Gateway'),
+        }),
+      },
+      { status: 'rejected', reason: 42 },
+    ] as PromiseSettledResult<unknown>[];
+
+    expect(
+      getSyncFailuresFromSettledResult(results, [
+        'account-1',
+        'account-2',
+        'account-3',
+      ]),
+    ).toStrictEqual([
+      {
+        accountId: 'account-2',
+        reason: 'Error: Failed to synchronize account (Error: 502 Bad Gateway)',
+      },
+      { accountId: 'account-3', reason: '42' },
+    ]);
+  });
+
+  it('skips rejections without a matching account ID', () => {
+    const results = [
+      { status: 'rejected', reason: new Error('boom') },
+      { status: 'rejected', reason: new Error('also boom') },
+    ] as PromiseSettledResult<unknown>[];
+
+    expect(
+      getSyncFailuresFromSettledResult(results, ['account-1']),
+    ).toStrictEqual([{ accountId: 'account-1', reason: 'Error: boom' }]);
+  });
+
+  it('returns an empty list when nothing is rejected', () => {
+    const results = [
+      { status: 'fulfilled', value: 'ok' },
+    ] as PromiseSettledResult<unknown>[];
+
+    expect(
+      getSyncFailuresFromSettledResult(results, ['account-1']),
+    ).toStrictEqual([]);
   });
 });
 

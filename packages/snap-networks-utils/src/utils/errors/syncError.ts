@@ -1,3 +1,5 @@
+import { stringifyReason } from './stringifyReason';
+
 /**
  * A single account synchronization failure, with enough context to understand
  * which account failed and why.
@@ -8,6 +10,37 @@ export type AccountSyncFailure = {
   /** The failure reason, as a human-readable string. */
   reason: string;
 };
+
+/**
+ * Maps settled synchronization results to account synchronization failures:
+ * each rejection is attributed to the account ID at the same index
+ * (`Promise.allSettled` preserves order).
+ *
+ * Rejection reasons are stringified with {@link stringifyReason}, so wrapped
+ * errors report their cause as well.
+ *
+ * @param results - The settled synchronization results.
+ * @param accountIds - The account IDs, in the same order as `results`.
+ * @returns The collected failures, in results order.
+ */
+export function getSyncFailuresFromSettledResult(
+  results: PromiseSettledResult<unknown>[],
+  accountIds: string[],
+): AccountSyncFailure[] {
+  const failures: AccountSyncFailure[] = [];
+
+  results.forEach((result, index) => {
+    const accountId = accountIds[index];
+    if (accountId && result.status === 'rejected') {
+      failures.push({
+        accountId,
+        reason: stringifyReason(result.reason),
+      });
+    }
+  });
+
+  return failures;
+}
 
 /**
  * Maximum number of characters kept from each failure reason. Reasons can be
