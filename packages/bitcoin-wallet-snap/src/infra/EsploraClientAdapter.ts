@@ -43,6 +43,14 @@ function toEsploraRestUrl(url: string): string {
   return url.replace(/\/+$/u, '').replace(/\/v1$/u, '');
 }
 
+/**
+ * Upper bound on a single sender lookup request. A stalled connection would
+ * otherwise never settle, blocking the sync that awaits it and suppressing the
+ * transaction event; the WASM client applies its own retry budget, so the raw
+ * REST lookup needs an equivalent bound.
+ */
+export const SENDER_REQUEST_TIMEOUT_MS = 10_000;
+
 export class EsploraClientAdapter implements BlockchainClient {
   // Should be a Repository but we don't support custom networks so we can save in memory from config values
   readonly #clients: Record<Network, EsploraClient>;
@@ -173,7 +181,9 @@ export class EsploraClientAdapter implements BlockchainClient {
    * Fetches the funding addresses of a transaction from the Esplora REST API.
    *
    * Unlike the WASM client's `get_tx`, the REST endpoint resolves each input's
-   * `prevout`, so all senders are returned in a single request.
+   * `prevout`, so all senders are returned in a single request. The request is
+   * bounded by {@link SENDER_REQUEST_TIMEOUT_MS} so a stalled indexer surfaces
+   * as a best-effort failure instead of hanging the caller.
    *
    * @param network - Network the transaction belongs to.
    * @param txid - Transaction id.
@@ -183,7 +193,9 @@ export class EsploraClientAdapter implements BlockchainClient {
     network: Network,
     txid: string,
   ): Promise<string[]> {
-    const response = await fetch(`${this.#restUrls[network]}/tx/${txid}`);
+    const response = await fetch(`${this.#restUrls[network]}/tx/${txid}`, {
+      signal: AbortSignal.timeout(SENDER_REQUEST_TIMEOUT_MS),
+    });
 
     if (!response.ok) {
       throw new ExternalServiceError(`Failed to fetch transaction`, {
