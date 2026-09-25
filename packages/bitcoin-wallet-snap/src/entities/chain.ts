@@ -56,4 +56,18 @@ export type BlockchainClient = {
    * @returns the base url of the explorer
    */
   getExplorerUrl(network: Network): string;
+
+  /**
+   * Resolve the distinct addresses that funded a transaction (the addresses of
+   * the outputs its inputs spend).
+   *
+   * Bitcoin inputs only reference the previous outpoint, so this requires the
+   * chain indexer and cannot be derived from the transaction alone. Used to
+   * populate the counterparty of receive transactions.
+   *
+   * @param network - Network the transaction belongs to.
+   * @param txid - Transaction id.
+   * @returns The funding addresses, deduped, in input order.
+   */
+  getTransactionSenders(network: Network, txid: string): Promise<string[]>;
 };

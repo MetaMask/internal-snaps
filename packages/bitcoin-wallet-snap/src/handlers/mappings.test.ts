@@ -403,6 +403,7 @@ describe('mapToTransaction', () => {
     return mock<Transaction>({
       compute_txid: () => mockTxid,
       output: outputs,
+      input: [],
     });
   }
 
@@ -530,5 +531,90 @@ describe('mapToTransaction', () => {
     expect(result.to[0]?.address).toBe(
       'bc1qstku2y3pfh9av50lxj55arm8r5gj8tf2yv5nxz',
     );
+  });
+
+  it('populates from for a receive using the indexer-provided senders', () => {
+    const account = createMockAccount(0); // received: sent amount is 0
+    const output = createMockOutput(5000);
+    const transaction = createMockTransaction('receive111', [output]);
+
+    jest.spyOn(account, 'isMine').mockReturnValue(true);
+    jest.mocked(Address.from_script).mockImplementationOnce(
+      () =>
+        ({
+          toString: () => 'bc1qreceiveoutput',
+        }) as unknown as Address,
+    );
+
+    const result = mapToTransaction(
+      account,
+      {
+        tx: transaction,
+        txid: transaction.compute_txid(),
+        chain_position: { anchor: undefined, last_seen: undefined },
+      } as unknown as WalletTx,
+      ['bc1qsender1', 'bc1qsender2'],
+    );
+
+    expect(result.type).toBe('receive');
+    expect(result.from.map((movement) => movement.address)).toStrictEqual([
+      'bc1qsender1',
+      'bc1qsender2',
+    ]);
+    expect(result.from[0]?.asset).toStrictEqual({
+      amount: '0',
+      fungible: true,
+      unit: 'BTC',
+      type: Caip19Asset.Bitcoin,
+    });
+  });
+
+  it('deduplicates and ignores empty senders for a receive', () => {
+    const account = createMockAccount(0);
+    const output = createMockOutput(5000);
+    const transaction = createMockTransaction('receive222', [output]);
+
+    jest.spyOn(account, 'isMine').mockReturnValue(true);
+    jest
+      .mocked(Address.from_script)
+      .mockImplementationOnce(
+        () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
+      );
+
+    const result = mapToTransaction(
+      account,
+      {
+        tx: transaction,
+        txid: transaction.compute_txid(),
+        chain_position: { anchor: undefined, last_seen: undefined },
+      } as unknown as WalletTx,
+      ['bc1qsender1', 'bc1qsender1', 'bc1qsender2'],
+    );
+
+    expect(result.from.map((movement) => movement.address)).toStrictEqual([
+      'bc1qsender1',
+      'bc1qsender2',
+    ]);
+  });
+
+  it('leaves from empty for a receive when no senders were resolved', () => {
+    const account = createMockAccount(0);
+    const output = createMockOutput(5000);
+    const transaction = createMockTransaction('receive333', [output]);
+
+    jest.spyOn(account, 'isMine').mockReturnValue(true);
+    jest
+      .mocked(Address.from_script)
+      .mockImplementationOnce(
+        () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
+      );
+
+    const result = mapToTransaction(account, {
+      tx: transaction,
+      txid: transaction.compute_txid(),
+      chain_position: { anchor: undefined, last_seen: undefined },
+    } as unknown as WalletTx);
+
+    expect(result.from).toStrictEqual([]);
   });
 });

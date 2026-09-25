@@ -10,7 +10,10 @@ import type {
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  batchesAllSettled,
+  normalizeError,
+} from '@metamask/snap-networks-utils';
 import { Signer } from 'bip322-js';
 import { encode } from 'wif';
 
@@ -157,6 +160,68 @@ export type BroadcastResult = {
   canBeMalleable: boolean;
 };
 
+/**
+ * Maximum number of indexer lookups in flight at once, shared across every
+ * account. Each lookup is a separate HTTP request, so this bounds both latency
+ * and pressure on the indexer regardless of how many accounts sync together.
+ */
+export const SENDER_LOOKUP_CONCURRENCY = 5;
+
+/**
+ * Maximum number of receives enriched with a counterparty while synchronizing
+ * or scanning an account.
+ *
+ * Those paths notify the whole account history at once, so resolving every
+ * receive would issue one indexer request per receive before the event can be
+ * emitted — on a long history that risks the Snap execution deadline. Only a
+ * bounded prefix of the receives is enriched, as a best-effort pre-warm;
+ * clients resolve whatever is left lazily through `getAccountTransactions`,
+ * which is already bounded by the requested page.
+ */
+export const SENDER_RESOLUTION_LIMIT = 25;
+
+/**
+ * Caps the number of indexer lookups in flight across every account.
+ *
+ * `synchronize` runs for all selected accounts concurrently, and each account
+ * resolves its own receives in waves. A limit applied per call therefore
+ * multiplies by the number of accounts syncing at once; sharing one budget for
+ * the lifetime of the instance keeps the total request count bounded no matter
+ * how many accounts are active.
+ */
+class SenderLookupLimiter {
+  #available: number;
+
+  readonly #waiting: (() => void)[] = [];
+
+  constructor(limit: number) {
+    this.#available = limit;
+  }
+
+  async run<Result>(task: () => Promise<Result>): Promise<Result> {
+    if (this.#available === 0) {
+      await new Promise<void>((resolve) => {
+        this.#waiting.push(resolve);
+      });
+    } else {
+      this.#available -= 1;
+    }
+
+    try {
+      return await task();
+    } finally {
+      // Hand the slot straight to the next waiter rather than releasing it, so
+      // a queued lookup cannot be overtaken by a newly arriving one.
+      const next = this.#waiting.shift();
+      if (next) {
+        next();
+      } else {
+        this.#available += 1;
+      }
+    }
+  }
+}
+
 export class AccountUseCases {
   readonly #logger: Logger;
 
@@ -173,6 +238,8 @@ export class AccountUseCases {
   readonly #fallbackFeeRate: number;
 
   readonly #targetBlocksConfirmation: number;
+
+  readonly #senderLookups = new SenderLookupLimiter(SENDER_LOOKUP_CONCURRENCY);
 
   #accountMutationQueue: Promise<void> = Promise.resolve();
 
@@ -484,6 +551,11 @@ export class AccountUseCases {
     return {
       account,
       transactionsToNotify: txsToNotify,
+      transactionSenders: await this.resolveTransactionSenders(
+        account,
+        txsToNotify,
+        SENDER_RESOLUTION_LIMIT,
+      ),
     };
   }
 
@@ -497,6 +569,8 @@ export class AccountUseCases {
       : [];
     await this.#repository.update(account, inscriptions);
 
+    const transactionsToNotify = account.listTransactions();
+
     this.#logger.info(
       'initial full scan performed successfully: %s',
       account.id,
@@ -504,7 +578,12 @@ export class AccountUseCases {
 
     return {
       account,
-      transactionsToNotify: account.listTransactions(),
+      transactionsToNotify,
+      transactionSenders: await this.resolveTransactionSenders(
+        account,
+        transactionsToNotify,
+        SENDER_RESOLUTION_LIMIT,
+      ),
     };
   }
 
@@ -1042,6 +1121,84 @@ export class AccountUseCases {
       txid,
       canBeMalleable: canAccountTxidBeMalleated(account.addressType),
     };
+  }
+
+  /**
+   * Resolves the funding addresses for the given transactions, one indexer
+   * lookup per receive.
+   *
+   * Bitcoin inputs only carry a previous outpoint, so a receive from an
+   * external sender requires the chain indexer to resolve the counterparty.
+   * Resolution is best-effort: a failure (rate limit, outage) leaves the
+   * transaction without a counterparty rather than failing the caller.
+   *
+   * @param account - The Bitcoin account the transactions belong to.
+   * @param txs - The transactions to resolve senders for.
+   * @param limit - Maximum number of receives to look up. Omit to resolve every
+   * receive, which is safe for a paginated caller such as transaction listing;
+   * callers that pass a whole history should bound the cost with
+   * {@link SENDER_RESOLUTION_LIMIT}. The remainder is left unresolved so a
+   * client can still resolve it later through the paginated listing path.
+   * @returns A map of txid to funding addresses, only for resolved receives.
+   */
+  async resolveTransactionSenders(
+    account: BitcoinAccount,
+    txs: WalletTx[],
+    limit?: number,
+  ): Promise<Map<string, string[]> | undefined> {
+    const sendersByTxid = new Map<string, string[]>();
+
+    // Sends are displayed as "Sent from Bitcoin Account", so only receives
+    // need a counterparty.
+    const receives = txs.filter((tx) => {
+      const [sent] = account.sentAndReceived(tx.tx);
+      return sent.to_btc() <= 0;
+    });
+    if (receives.length === 0) {
+      return undefined;
+    }
+
+    // Callers that pass a whole history cap the number of lookups so emitting
+    // the event cannot wait on one request per historical receive.
+    const requested = limit === undefined ? receives : receives.slice(0, limit);
+
+    if (requested.length < receives.length) {
+      this.#logger.debug(
+        'Resolving senders for %d of %d receives',
+        requested.length,
+        receives.length,
+      );
+    }
+
+    // Each lookup is one indexer request (~1s). The limiter is shared across
+    // accounts, so a long history cannot serialize into a multi-minute scan and
+    // a multi-account sync cannot burst past the indexer's rate limit.
+    const settled = await batchesAllSettled(
+      requested,
+      SENDER_LOOKUP_CONCURRENCY,
+      async (tx) => {
+        const txid = tx.txid.toString();
+        const senders = await this.#senderLookups.run(() =>
+          this.#chain.getTransactionSenders(account.network, txid),
+        );
+        return { txid, senders };
+      },
+    );
+
+    for (const result of settled) {
+      if (result.status === 'rejected') {
+        this.#logger.debug(
+          'Failed to resolve transaction senders: %o',
+          result.reason,
+        );
+        continue;
+      }
+      if (result.value.senders.length > 0) {
+        sendersByTxid.set(result.value.txid, result.value.senders);
+      }
+    }
+
+    return sendersByTxid.size > 0 ? sendersByTxid : undefined;
   }
 
   async #runAccountMutation<Result>(
