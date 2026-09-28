@@ -1,15 +1,26 @@
 #!/bin/bash
 
-set -e  
+set -e
+
+# Docker Compose v1 is deprecated and no longer present on GitHub-hosted
+# runners (ubuntu-24.04+), which only ship the Compose v2 CLI plugin.
+if docker compose version > /dev/null 2>&1; then
+  COMPOSE=(docker compose)
+elif command -v docker-compose > /dev/null 2>&1; then
+  COMPOSE=(docker-compose)
+else
+  echo "Error: neither 'docker compose' nor 'docker-compose' is available" >&2
+  exit 1
+fi
 
 cleanup() {
   echo "Stopping Docker services..."
-  docker-compose -f integration-test/docker-compose.yml down
+  "${COMPOSE[@]}" -f integration-test/docker-compose.yml down
 }
 trap cleanup EXIT
 
 echo "Starting Docker services..."
-docker-compose -f integration-test/docker-compose.yml up -d
+"${COMPOSE[@]}" -f integration-test/docker-compose.yml up -d
 
 # Check if Docker services started successfully
 if [ $? -ne 0 ]; then
@@ -20,7 +31,7 @@ fi
 echo "Docker services started successfully."
 
 # Show Docker service status
-docker-compose -f integration-test/docker-compose.yml ps
+"${COMPOSE[@]}" -f integration-test/docker-compose.yml ps
 
 echo "Waiting for Esplora to be ready..."
 sleep 5
