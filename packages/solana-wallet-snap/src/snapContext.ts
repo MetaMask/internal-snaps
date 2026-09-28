@@ -223,6 +223,7 @@ const walletService = new WalletService(
   signer,
   signatureMonitor,
   analyticsService,
+  transactionsService,
   logger,
 );
 

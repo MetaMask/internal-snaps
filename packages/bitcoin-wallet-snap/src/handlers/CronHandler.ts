@@ -228,11 +228,16 @@ export class CronHandler {
     );
 
     // Emit transaction events per account
-    for (const { account, transactionsToNotify } of results) {
+    for (const {
+      account,
+      transactionsToNotify,
+      transactionSenders,
+    } of results) {
       if (transactionsToNotify.length > 0) {
         await this.#snapClient.emitAccountTransactionsUpdatedEvent(
           account,
           transactionsToNotify,
+          ...(transactionSenders ? [transactionSenders] : []),
         );
       }
     }

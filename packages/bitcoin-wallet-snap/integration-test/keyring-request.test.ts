@@ -5,7 +5,7 @@ import { assertIsConfirmationDialog, installSnap } from '@metamask/snaps-jest';
 
 import { AccountCapability } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
-import type { FillPsbtResponse } from '../src/handlers/KeyringRequestHandler';
+import type { SignPsbtResponse } from '../src/handlers/KeyringRequestHandler';
 import { BlockchainTestUtils } from './blockchain-utils';
 import { MNEMONIC, ORIGIN } from './constants';
 
@@ -132,24 +132,20 @@ describe('KeyringRequestHandler', () => {
         } as KeyringRequest,
       });
 
-      expect(response).toRespondWith({
-        pending: false,
-        result: [
-          {
-            address: 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
-            derivationIndex: 0,
-            outpoint: expect.any(String),
-            scriptPubkey:
-              'OP_0 OP_PUSHBYTES_20 82932f60427f769dfab2f449c91b4d9e94a8edb4',
-            scriptPubkeyHex: '001482932f60427f769dfab2f449c91b4d9e94a8edb4',
-            value: '1000000000',
-          },
-        ],
-      });
+      expect(response).toRespondWith([
+        {
+          address: 'bcrt1qs2fj7czz0amfm74j73yujx6dn6223md56gkkuy',
+          derivationIndex: 0,
+          outpoint: expect.any(String),
+          scriptPubkey:
+            'OP_0 OP_PUSHBYTES_20 82932f60427f769dfab2f449c91b4d9e94a8edb4',
+          scriptPubkeyHex: '001482932f60427f769dfab2f449c91b4d9e94a8edb4',
+          value: '1000000000',
+        },
+      ]);
 
-      const utxos = (
-        response.response as { result: { result: { outpoint: string }[] } }
-      ).result.result;
+      const utxos = (response.response as { result: { outpoint: string }[] })
+        .result;
 
       response = await snap.onKeyringRequest({
         origin: ORIGIN,
@@ -169,10 +165,7 @@ describe('KeyringRequestHandler', () => {
         } as KeyringRequest,
       });
 
-      expect(response).toRespondWith({
-        pending: false,
-        result: utxos[0],
-      });
+      expect(response).toRespondWith(utxos[0]);
     });
 
     it('publicDescriptor', async () => {
@@ -190,11 +183,9 @@ describe('KeyringRequestHandler', () => {
         } as KeyringRequest,
       });
 
-      expect(response).toRespondWith({
-        pending: false,
-        result:
-          "wpkh([27f9035f/84'/1'/0']tpubDCkv2fHDfPg5ok9EPv6CDozH72rvY2jgEPm79szMeBwCBwUf2T6n5nLrWFfhuuD48SgzrELezoiyDM9KbZaVen4wuuGwrqQANDhzB7E8yDh/0/*)#sx899xk6",
-      });
+      expect(response).toRespondWith(
+        "wpkh([27f9035f/84'/1'/0']tpubDCkv2fHDfPg5ok9EPv6CDozH72rvY2jgEPm79szMeBwCBwUf2T6n5nLrWFfhuuD48SgzrELezoiyDM9KbZaVen4wuuGwrqQANDhzB7E8yDh/0/*)#sx899xk6",
+      );
     });
   });
 
@@ -236,11 +227,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          psbt: SIGNED_PSBT,
-          txid: null,
-        },
+        psbt: SIGNED_PSBT,
+        txid: null,
       });
     });
 
@@ -275,11 +263,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          psbt: expect.any(String), // non deterministic
-          txid: null,
-        },
+        psbt: expect.any(String), // non deterministic
+        txid: null,
       });
     });
 
@@ -314,12 +299,9 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          psbt: expect.any(String), // non deterministic
-          txid: expect.any(String),
-          canBeMalleable: false,
-        },
+        psbt: expect.any(String), // non deterministic
+        txid: expect.any(String),
+        canBeMalleable: false,
       });
 
       // Regression for issue #597: after broadcasting a partial-spend tx
@@ -466,10 +448,7 @@ describe('KeyringRequestHandler', () => {
       });
 
       expect(response).toRespondWith({
-        pending: false,
-        result: {
-          psbt: expect.any(String), // non deterministic
-        },
+        psbt: expect.any(String), // non deterministic
       });
     });
 
@@ -526,10 +505,7 @@ describe('KeyringRequestHandler', () => {
       });
 
       expect(response).toRespondWith({
-        pending: false,
-        result: {
-          fee: '632',
-        },
+        fee: '632',
       });
     });
 
@@ -596,9 +572,7 @@ describe('KeyringRequestHandler', () => {
 
       const signResult = await signResponse;
 
-      const { result } = (
-        signResult.response as { result: { result: FillPsbtResponse } }
-      ).result;
+      const { result } = signResult.response as { result: SignPsbtResponse };
 
       const response = await snap.onKeyringRequest({
         origin: ORIGIN,
@@ -619,11 +593,8 @@ describe('KeyringRequestHandler', () => {
       });
 
       expect(response).toRespondWith({
-        pending: false,
-        result: {
-          txid: expect.any(String),
-          canBeMalleable: false,
-        },
+        txid: expect.any(String),
+        canBeMalleable: false,
       });
     });
 
@@ -687,11 +658,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          txid: expect.any(String),
-          canBeMalleable: false,
-        },
+        txid: expect.any(String),
+        canBeMalleable: false,
       });
     });
 
@@ -749,11 +717,8 @@ describe('KeyringRequestHandler', () => {
       const result = await response;
 
       expect(result).toRespondWith({
-        pending: false,
-        result: {
-          signature:
-            'AkcwRAIgZxodJQ60t9Rr/hABEHZ1zPUJ4m5hdM5QLpysH8fDSzgCIENOEuZtYf9/Nn/ZW15PcImkknol403dmZrgoOQ+6K+TASECwDKypXm/ElmVTxTLJ7nao6X5mB/iGbU2Q2qtot0QRL4=',
-        },
+        signature:
+          'AkcwRAIgZxodJQ60t9Rr/hABEHZ1zPUJ4m5hdM5QLpysH8fDSzgCIENOEuZtYf9/Nn/ZW15PcImkknol403dmZrgoOQ+6K+TASECwDKypXm/ElmVTxTLJ7nao6X5mB/iGbU2Q2qtot0QRL4=',
       });
     });
   });

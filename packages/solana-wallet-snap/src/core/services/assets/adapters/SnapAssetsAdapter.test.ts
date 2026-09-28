@@ -1,22 +1,38 @@
 import type { Serializable, ICache } from '@metamask/snap-networks-utils';
-import { InMemoryCache } from '@metamask/snap-networks-utils';
+import {
+  InMemoryCache,
+  SynchronizationError,
+} from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
 import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from '../../../clients/nft-api/mocks/mockNftsListResponseMapped';
 import type { NftApiClient } from '../../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../../clients/token-api-client/TokenApiClient';
+import { Network } from '../../../constants/solana';
 import {
   MOCK_ASSET_ENTITY_0,
   MOCK_ASSET_ENTITY_1,
   MOCK_ASSET_ENTITY_2,
 } from '../../../test/mocks/asset-entities';
+import {
+  MOCK_SOLANA_KEYRING_ACCOUNT_0,
+  MOCK_SOLANA_KEYRING_ACCOUNT_1,
+} from '../../../test/mocks/solana-keyring-accounts';
+import { trackError } from '../../../utils/errors';
 import { mockLogger } from '../../__mocks__/logger';
 import { createMockConnection } from '../../__mocks__/mockConnection';
+import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../../__mocks__/mockSolanaRpcResponses';
+import {
+  MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE,
+  MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_AS_SDK_RESPONSE,
+} from '../../__mocks__/mockSolanaRpcResponses';
 import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import type { SolanaConnection } from '../../connection';
 import type { AssetsRepository } from '../AssetsRepository';
 import { SnapAssetsAdapter } from './SnapAssetsAdapter';
+
+jest.mock('../../../utils/errors');
 
 describe('SnapAssetsAdapter', () => {
   let snapAssetsAdapter: SnapAssetsAdapter;
@@ -105,6 +121,142 @@ describe('SnapAssetsAdapter', () => {
       const assetsLookup = [MOCK_ASSET_ENTITY_0];
 
       expect(SnapAssetsAdapter.hasChanged(asset, assetsLookup)).toBe(false);
+    });
+  });
+
+  describe('fetch', () => {
+    it('aggregates token accounts for the same mint', async () => {
+      jest
+        .spyOn(mockConfigProvider, 'getActiveNetworks')
+        .mockImplementation()
+        .mockResolvedValue([Network.Mainnet]);
+      jest
+        .spyOn(mockTokenApiClient, 'getTokensMetadata')
+        .mockImplementation()
+        .mockResolvedValue({});
+
+      const [firstTokenAccount] =
+        MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE.result.value;
+      if (!firstTokenAccount) {
+        throw new Error('Missing token account fixture');
+      }
+      const secondTokenAccount = cloneDeep(firstTokenAccount);
+      secondTokenAccount.pubkey =
+        '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
+      secondTokenAccount.account.data.parsed.info.tokenAmount.amount =
+        '1000000';
+      secondTokenAccount.account.data.parsed.info.tokenAmount.uiAmountString =
+        '1';
+
+      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getBalance: jest.fn().mockReturnValue({
+          send: jest.fn().mockResolvedValue({ value: 1000000000 }),
+        }),
+        getTokenAccountsByOwner: jest
+          .fn()
+          .mockReturnValueOnce({
+            send: jest.fn().mockResolvedValue({
+              value: [firstTokenAccount, secondTokenAccount],
+            }),
+          })
+          .mockReturnValue({
+            send: jest.fn().mockResolvedValue({ value: [] }),
+          }),
+      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+
+      expect(
+        await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0),
+      ).toStrictEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+            rawAmount: '124456789',
+            uiAmount: '124.456789',
+          }),
+        ]),
+      );
+    });
+  });
+
+  describe('fetch degradation tracking', () => {
+    beforeEach(() => {
+      (mockConfigProvider.getActiveNetworks as jest.Mock).mockResolvedValue([
+        Network.Mainnet,
+      ]);
+    });
+
+    it('tracks token-account fetch failures and keeps the successful results', async () => {
+      (mockConnection.getRpc as jest.Mock).mockReturnValue({
+        getBalance: jest.fn().mockReturnValue({
+          send: jest
+            .fn()
+            .mockResolvedValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
+        }),
+        getTokenAccountsByOwner: jest.fn().mockReturnValue({
+          send: jest.fn().mockRejectedValue(new Error('502 Bad Gateway')),
+        }),
+      });
+
+      await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+
+      expect(trackError).toHaveBeenCalledTimes(1);
+      const error = (trackError as jest.Mock).mock.calls[0][0] as Error;
+      expect(error).toBeInstanceOf(SynchronizationError);
+      expect(error.message).toBe(
+        'Failed to fetch token accounts (2 failed): ' +
+          `${MOCK_SOLANA_KEYRING_ACCOUNT_0.id}: Error: 502 Bad Gateway; ` +
+          `${MOCK_SOLANA_KEYRING_ACCOUNT_0.id}: Error: 502 Bad Gateway`,
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to fetch token accounts',
+        expect.anything(),
+      );
+    });
+
+    it('tracks native balance fetch failures', async () => {
+      (mockConnection.getRpc as jest.Mock).mockReturnValue({
+        getBalance: jest.fn().mockReturnValue({
+          send: jest.fn().mockRejectedValue(new Error('rpc down')),
+        }),
+        getTokenAccountsByOwner: jest.fn().mockReturnValue({
+          send: jest
+            .fn()
+            .mockResolvedValue(
+              MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_AS_SDK_RESPONSE,
+            ),
+        }),
+      });
+
+      await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_1);
+
+      expect(trackError).toHaveBeenCalledTimes(1);
+      const error = (trackError as jest.Mock).mock.calls[0][0] as Error;
+      expect(error).toBeInstanceOf(SynchronizationError);
+      expect(error.message).toBe(
+        'Failed to fetch native balances (1 failed): ' +
+          `${MOCK_SOLANA_KEYRING_ACCOUNT_1.id}: Error: rpc down`,
+      );
+    });
+
+    it('does not throw when tracking itself fails', async () => {
+      (mockConnection.getRpc as jest.Mock).mockReturnValue({
+        getBalance: jest.fn().mockReturnValue({
+          send: jest
+            .fn()
+            .mockResolvedValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
+        }),
+        getTokenAccountsByOwner: jest.fn().mockReturnValue({
+          send: jest.fn().mockRejectedValue(new Error('502 Bad Gateway')),
+        }),
+      });
+      (trackError as jest.Mock).mockRejectedValue(new Error('tracking down'));
+
+      await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to track error',
+        expect.anything(),
+      );
     });
   });
 });

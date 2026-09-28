@@ -88,12 +88,7 @@ export class AssetsService {
     account: KeyringAccount,
   ): Promise<AssetEntity[]> {
     if (await this.#shouldReturnAssetsFromCore()) {
-      const assetsAndBalances =
-        await this.#coreAdapter.fetchAssetsAndBalancesForAccount(
-          scope,
-          account,
-        );
-      return assetsAndBalances;
+      return this.#coreAdapter.fetchAssetsAndBalancesForAccount(scope, account);
     }
 
     return this.#snapAdapter.fetchAssetsAndBalancesForAccount(scope, account);

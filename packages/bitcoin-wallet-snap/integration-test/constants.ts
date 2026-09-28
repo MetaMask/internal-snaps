@@ -18,7 +18,20 @@ export const FUNDING_TX = {
     { status: 'confirmed', timestamp: expect.any(Number) },
   ],
   fees: [],
-  from: [],
+  // The receive counterparty is resolved from the chain indexer, so the sender
+  // address depends on the funding wallet used by the regtest fixture. A tx
+  // can be funded by more than one address, so match a subset.
+  from: expect.arrayContaining([
+    {
+      address: expect.any(String),
+      asset: {
+        amount: '0',
+        fungible: true,
+        type: Caip19Asset.Regtest,
+        unit: CurrencyUnit.Regtest,
+      },
+    },
+  ]),
   id: expect.any(String),
   status: 'confirmed',
   timestamp: expect.any(Number),

@@ -320,7 +320,6 @@ const clientRequestMethodHandlers: Record<
 };
 
 const clientRequestHandler = new ClientRequestHandler({
-  logger,
   handlers: clientRequestMethodHandlers,
 });
 
