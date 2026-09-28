@@ -6,6 +6,10 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import {
+  SynchronizationError,
+  getSyncFailuresFromSettledResult,
+} from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   ICache,
@@ -41,6 +45,7 @@ import type {
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
 import { useCache } from '../../../utils/caching';
+import { trackError } from '../../../utils/errors';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';
@@ -238,6 +243,35 @@ export class SnapAssetsAdapter {
   }
 
   /**
+   * Reports synchronization failures to Sentry without ever throwing: the
+   * failures are attributed to their accounts, logged, and tracked; tracking
+   * failures are logged and swallowed, so they never break the caller's flow.
+   *
+   * @param message - The error message describing the degraded operation.
+   * @param results - The settled fetch results.
+   * @param accountIds - The account IDs, in the same order as `results`.
+   */
+  async #reportSyncFailures(
+    message: string,
+    results: PromiseSettledResult<unknown>[],
+    accountIds: string[],
+  ): Promise<void> {
+    try {
+      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+
+      if (failures.length === 0) {
+        return;
+      }
+
+      this.#logger.warn(message, { failures });
+
+      await trackError(new SynchronizationError(message, failures));
+    } catch (trackingError) {
+      this.#logger.warn('Failed to track error', { trackingError });
+    }
+  }
+
+  /**
    * Matrix-fetches all token accounts owned by the given address on the specified networks and program ids,
    * and merges the results into a single array. Each individual token is augmented with the scope and the caip-19 asset type for convenience.
    *
@@ -290,6 +324,12 @@ export class SnapAssetsAdapter {
         );
         return response;
       }),
+    );
+
+    await this.#reportSyncFailures(
+      'Failed to fetch token accounts',
+      responses,
+      combinations.map(({ account }) => account.id),
     );
 
     return responses.flatMap((item) =>
@@ -438,11 +478,17 @@ export class SnapAssetsAdapter {
       };
     });
 
-    const results = (await Promise.allSettled(balancePromises)).flatMap(
-      (item) => (item.status === 'fulfilled' ? item.value : []),
+    const results = await Promise.allSettled(balancePromises);
+
+    await this.#reportSyncFailures(
+      'Failed to fetch native balances',
+      results,
+      results.map(() => account.id),
     );
 
-    return results;
+    return results.flatMap((item) =>
+      item.status === 'fulfilled' ? item.value : [],
+    );
   }
 
   async #fetchNftAssets(
