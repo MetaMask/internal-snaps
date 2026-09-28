@@ -23,7 +23,17 @@ const { inspect } = require('util');
  * Only intended as temporary measures to faciliate upgrades and releases.
  * This should trend towards empty.
  */
-const ALLOWED_INCONSISTENT_DEPENDENCIES = {};
+const ALLOWED_INCONSISTENT_DEPENDENCIES = {
+  // `snap-networks-utils` uses `^17.0.0` because `AssetsProvider.getAssets`
+  // needs the `bypassServerCache` option that only exists in 17. The Tron Snap
+  // stays on `^13.0.0` for now: 17 is ESM-only, and requiring it from Jest's
+  // CommonJS test runtime fails on CI with `ERR_REQUIRE_ESM` (Jest skips its
+  // `transformIgnorePatterns` handling for packages whose `package.json` says
+  // `type: "module"` when the runtime supports VM modules). Align the Tron
+  // Snap to `^17.0.0` when it actually calls the new action, together with
+  // ESM-capable Jest test support.
+  '@metamask/assets-controller': ['^13.0.0', '^17.0.0'],
+};
 
 /**
  * These packages are allowed as peer dependencies without requiring installation as

@@ -4,19 +4,8 @@ module.exports = {
   ...baseConfig,
   preset: '@metamask/snaps-jest',
   transform: {
-    '^.+\\.(t|j)sx?$': ['ts-jest', { tsconfig: { allowJs: true } }],
+    '^.+\\.(t|j)sx?$': 'ts-jest',
   },
-  transformIgnorePatterns: [
-    // Published `@metamask/*` packages are increasingly ESM-only: they have
-    // no `main` field, just an `exports` map, sometimes nested inside other
-    // packages' `node_modules`. Jest runs tests as CommonJS and leaves
-    // `node_modules` untransformed by default, so requiring those packages
-    // fails with a syntax error. Transform every `@metamask/*` package at
-    // any nesting depth so ESM-only releases are transpiled to CommonJS like
-    // the rest of the code. `lodash-es` is ESM-only by design and comes with
-    // them.
-    'node_modules/(?!(@metamask/|lodash-es/))',
-  ],
   moduleNameMapper: {
     ...baseConfig.moduleNameMapper,
     '\\.svg$': 'jest-transform-stub',
