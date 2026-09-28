@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING** Bump `@metamask/assets-controller` from `^13.0.0` to `^17.0.0`, aligning the Snap's host action types with `@metamask/snap-networks-utils` ([#284](https://github.com/MetaMask/internal-snaps/pull/284))
+- **BREAKING** Bump `@metamask/assets-controller` from `^13.0.0` to `^17.0.0`, aligning the Snap's host action types with `@metamask/snap-networks-utils` ([#284](https://github.com/MetaMask/internal-snaps/pull/379))
 - **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))

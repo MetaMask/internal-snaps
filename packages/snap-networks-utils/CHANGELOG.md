@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `InMemoryCache`, a TTL-backed in-memory cache
   - `StateCache`, a cache backed by a snap state manager
   - `useCache` and `useCacheUntil` for wrapping functions with fixed-TTL and dynamic-expiry caching
-- Add `AssetsProvider.getAssets` to fetch assets from the host `AssetsController` with a `bypassServerCache` option, which forces an update so the host also skips its Accounts API server-side cache and returns the most up-to-date data ([#284](https://github.com/MetaMask/internal-snaps/pull/284))
+- Add `AssetsProvider.getAssets` to fetch assets from the host `AssetsController` with a `bypassServerCache` option, which forces an update so the host also skips its Accounts API server-side cache and returns the most up-to-date data ([#284](https://github.com/MetaMask/internal-snaps/pull/379))
 - Add shared proof-of-ownership message parsing utilities, batch request/response structs, and batch request/response types. ([#268](https://github.com/MetaMask/internal-snaps/pull/268))
 - Add a `UuidStruct` Superstruct for validating UUID v4 strings. ([#243](https://github.com/MetaMask/internal-snaps/pull/243))
 - Add helpers `serialize`, `deserialize`, and `Serializable` for round-tripping `BigNumber`, `bigint`, `Uint8Array`, and `undefined` through snap state ([#197](https://github.com/MetaMask/internal-snaps/pull/197))
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING** Bump `@metamask/assets-controller` from `^13.0.0` to `^17.0.0`, required for `AssetsProvider.getAssets`'s `bypassServerCache` option. Version 17 is ESM-only, so the type-only import of the host action types now carries a `resolution-mode: "import"` attribute; the emitted `dist/*.d.cts` requires TypeScript 5.3 or later to read. ([#284](https://github.com/MetaMask/internal-snaps/pull/284))
+- **BREAKING** Bump `@metamask/assets-controller` from `^13.0.0` to `^17.0.0`, required for `AssetsProvider.getAssets`'s `bypassServerCache` option. Version 17 is ESM-only, so the type-only import of the host action types now carries a `resolution-mode: "import"` attribute; the emitted `dist/*.d.cts` requires TypeScript 5.3 or later to read. ([#284](https://github.com/MetaMask/internal-snaps/pull/379))
 - **BREAKING** Replace the logger utilities with a configurable `Logger` class that requires a log level and supports level filtering, per-instance prefixes, and method decorators. ([#136](https://github.com/MetaMask/internal-snaps/pull/136))
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
 - **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
