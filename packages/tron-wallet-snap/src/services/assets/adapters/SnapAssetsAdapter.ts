@@ -16,6 +16,7 @@ import type { SnapClient } from '../../../clients/snap/SnapClient';
 import type { TokenApiClient } from '../../../clients/token-api/TokenApiClient';
 import type { AccountResources } from '../../../clients/tron-http';
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
+import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import type {
   Trc20Balance,
@@ -163,6 +164,10 @@ export class SnapAssetsAdapter {
    * 5. Enrich assets with metadata via `#enrichAssetsWithMetadata`
    * 6. Filter spam tokens via `#filterTokensWithoutPriceData`
    *
+   * Degradations along the way (unexpected account info failures, TRC20
+   * fallback failures, spot price failures) are tracked to Sentry; the request
+   * itself only rejects when assets cannot be built at all.
+   *
    * @param scope - The network to query.
    * @param account - The keyring account.
    * @returns Promise<AssetEntity[]> - Array of assets with balances.
@@ -188,17 +193,38 @@ export class SnapAssetsAdapter {
 
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     if (isInactiveAccount) {
-      this.#logger.info(
-        'Account info request failed, treating as inactive account',
-        { account, scope },
-      );
+      const { reason } = tronAccountInfoRequest;
+      if (reason instanceof TrongridAccountNotFoundError) {
+        this.#logger.info(
+          'Account not found on-chain, treating as inactive account',
+          { account, scope },
+        );
+      } else {
+        // Any rejection is currently treated as an inactive account. A
+        // rejection that is not "account not found" (HTTP error, timeout)
+        // zeroes the account's balances, so track it for visibility.
+        await this.#snapClient.trackError(
+          new Error(
+            'Account info request failed; treating as inactive account',
+            { cause: reason },
+          ),
+        );
+        this.#logger.warn(
+          'Account info request failed; treating as inactive account',
+          { error: reason, account, scope },
+        );
+      }
     }
 
     const trc20BalancesFallback = isInactiveAccount
       ? await this.#trongridApiClient
           .getTrc20BalancesByAddress(scope, account.address)
           .catch(async (error) => {
-            await this.#snapClient.trackError(error as Error);
+            await this.#snapClient.trackError(
+              new Error('Failed to fetch TRC20 balances for inactive account', {
+                cause: error,
+              }),
+            );
             this.#logger.warn(
               'Failed to fetch TRC20 balances for inactive account',
               { error, account, scope },
@@ -224,7 +250,12 @@ export class SnapAssetsAdapter {
       this.#priceApiClient
         .getMultipleSpotPrices(priceableAssetTypes, 'usd')
         .catch(async (error) => {
-          await this.#snapClient.trackError(error as Error);
+          await this.#snapClient.trackError(
+            new Error(
+              'Failed to fetch spot prices; filtering tokens without price data',
+              { cause: error },
+            ),
+          );
           return {};
         }),
     ]);
