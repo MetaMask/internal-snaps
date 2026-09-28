@@ -6,9 +6,7 @@ import type {
   ChangeTrustOptJsonRpcRequest,
   ConfirmSendJsonRpcRequest,
 } from '../../handlers/clientRequest/api';
-import {
-  RefreshConfirmationContextHandler,
-} from '../../handlers/cronjob/refreshConfirmationContext';
+import { RefreshConfirmationContextHandler } from '../../handlers/cronjob/refreshConfirmationContext';
 import type {
   SecurityScanRequest,
   TransactionScanResult,
@@ -30,7 +28,8 @@ import {
   formatOrigin,
   getPreferencesWithFallback,
   resolveRefresherKeys,
-} from './utils';import { renderConfirmationView } from './views/render';
+} from './utils';
+import { renderConfirmationView } from './views/render';
 import type { ConfirmationViewProps } from './views/render';
 
 type ConfirmationRenderOptions = {
