@@ -272,17 +272,17 @@ export class ConfirmationUXController {
     // Ungated keys are persisted so MemoEdit Save can restart the full
     // preference-enabled set (prefs fixed for the dialog lifetime).
     const enabledRefresherKeys = resolveRefresherKeys({
-      enablePricing,
+      enablePricing: enablePricing ?? false,
       enableSecurityScan,
-      enableLocalSimulation,
+      enableLocalSimulation: enableLocalSimulation ?? false,
     });
     const refresherKeys = resolveRefresherKeys({
-      enablePricing,
+      enablePricing: enablePricing ?? false,
       enableSecurityScan,
-      enableLocalSimulation,
+      enableLocalSimulation: enableLocalSimulation ?? false,
       statusGates: {
-        scanFetchStatus: renderContext.scanFetchStatus,
-        transactionsFetchStatus: renderContext.transactionsFetchStatus,
+        scanFetchStatus: (renderContext.scanFetchStatus as FetchStatus) ?? FetchStatus.Fetched,
+        transactionsFetchStatus: (renderContext.transactionsFetchStatus as FetchStatus) ?? FetchStatus.Fetched,
       },
     });
 
