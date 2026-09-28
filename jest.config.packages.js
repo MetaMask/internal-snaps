@@ -81,15 +81,14 @@ module.exports = {
   // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`.
   moduleNameMapper: {
     '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
-    // Matches bare package specifiers only (e.g. `@metamask/foo`), so subpath
-    // exports such as `@metamask/foo/node` keep resolving through the package
-    // `exports` map instead of being redirected to a non-existent source path.
-    '^@metamask/([^/]+)$': [
+    // Matches bare package specifiers of this monorepo's own packages only
+    // (e.g. `@metamask/snap-networks-utils`), so they resolve to package
+    // sources. Published `@metamask/*` packages must not be matched here:
+    // their specifiers have to resolve through the package `exports` map,
+    // which a directory target cannot do for packages without a `main`
+    // field, such as ESM-only releases.
+    '^(?:@metamask/(bitcoin-wallet-snap|snap-networks-utils|solana-wallet-snap|stellar-wallet-snap|tron-wallet-snap))$':
       '<rootDir>/../$1/src',
-      // Some @metamask/* packages we are referencing aren't in this monorepo,
-      // so in that case use their published versions
-      '<rootDir>/../../node_modules/@metamask/$1',
-    ],
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
