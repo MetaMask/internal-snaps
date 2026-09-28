@@ -875,6 +875,7 @@ describe('KeyringHandler', () => {
       mockAccounts.get.mockResolvedValue(mockAccount);
       mockAccount.sentAndReceived.mockReturnValue([mockAmount, mockAmount]);
       mockAccount.listTransactions.mockReturnValue([mockWalletTx]);
+      mockAccounts.resolveTransactionSenders.mockResolvedValue(new Map());
       (Address.from_script as jest.Mock).mockReturnValue(mockAddress);
     });
 
@@ -924,6 +925,37 @@ describe('KeyringHandler', () => {
       expect(mockAccounts.get).toHaveBeenCalledWith(id);
       expect(result.data).toStrictEqual([
         { ...expectedResult, type: 'receive', fees: [] },
+      ]);
+    });
+
+    it('populates the receive counterparty from resolved senders', async () => {
+      const id = 'some-id';
+
+      mockAccount.sentAndReceived.mockReturnValueOnce([
+        { ...mockAmount, to_btc: (): number => 0 },
+        mockAmount,
+      ]);
+      mockAccount.isMine.mockReturnValueOnce(true);
+      mockAccounts.resolveTransactionSenders.mockResolvedValue(
+        new Map([['txid', ['bc1qsender']]]),
+      );
+
+      const result = await handler.getAccountTransactions(id, pagination);
+
+      expect(mockAccounts.resolveTransactionSenders).toHaveBeenCalledWith(
+        mockAccount,
+        [mockWalletTx],
+      );
+      expect(result.data[0]?.from).toStrictEqual([
+        {
+          address: 'bc1qsender',
+          asset: {
+            amount: '0',
+            fungible: true,
+            type: Caip19Asset.Bitcoin,
+            unit: CurrencyUnit.Bitcoin,
+          },
+        },
       ]);
     });
 

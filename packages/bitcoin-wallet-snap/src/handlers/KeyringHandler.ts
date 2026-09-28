@@ -320,8 +320,19 @@ export class KeyringHandler implements KeyringSnapRpc {
         ? (paginatedTxs[paginatedTxs.length - 1]?.txid.toString() ?? null)
         : null;
 
+    // Resolve the counterparty for receives from external senders. Only done
+    // for the returned page so the cost stays bounded, and best-effort so a
+    // transient indexer failure cannot break transaction listing.
+    const sendersByTxid =
+      await this.#accountsUseCases.resolveTransactionSenders(
+        account,
+        paginatedTxs,
+      );
+
     return {
-      data: paginatedTxs.map((tx) => mapToTransaction(account, tx)),
+      data: paginatedTxs.map((tx) =>
+        mapToTransaction(account, tx, sendersByTxid?.get(tx.txid.toString())),
+      ),
       next: nextCursor,
     };
   }

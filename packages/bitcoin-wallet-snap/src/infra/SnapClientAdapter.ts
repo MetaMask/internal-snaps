@@ -121,10 +121,17 @@ export class SnapClientAdapter implements SnapClient {
   async emitAccountTransactionsUpdatedEvent(
     account: BitcoinAccount,
     txs: WalletTx[],
+    sendersByTxid?: Map<string, string[]>,
   ): Promise<void> {
     return emitSnapKeyringEvent(snap, KeyringEvent.AccountTransactionsUpdated, {
       transactions: {
-        [account.id]: txs.map((tx) => mapToTransaction(account, tx)),
+        [account.id]: txs.map((tx) =>
+          mapToTransaction(
+            account,
+            tx,
+            sendersByTxid?.get(tx.txid.toString()) ?? [],
+          ),
+        ),
       },
     });
   }
