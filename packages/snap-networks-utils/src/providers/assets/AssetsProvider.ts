@@ -3,8 +3,9 @@ import type {
   AssetsControllerGetAccountAssetByIDAction,
   AssetsControllerGetAccountAssetsByIDsAction,
   AssetsControllerGetAccountAssetsByScopeAction,
+  AssetsControllerGetAssetsAction,
   Caip19AssetId,
-} from '@metamask/assets-controller';
+} from '@metamask/assets-controller' with { 'resolution-mode': 'import' };
 import type { Messenger } from '@metamask/messenger';
 import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { CaipChainId } from '@metamask/utils';
@@ -14,13 +15,41 @@ import type { CaipChainId } from '@metamask/utils';
  */
 export const ASSETS_PROVIDER_NAME = 'AssetsProvider' as const;
 
+type GetAssetsParameters = Parameters<
+  AssetsControllerGetAssetsAction['handler']
+>;
+
+/**
+ * Accounts accepted by {@link AssetsProvider.getAssets}, as expected by the
+ * host `AssetsController`.
+ */
+export type GetAssetsAccounts = GetAssetsParameters[0];
+
+/**
+ * Options accepted by {@link AssetsProvider.getAssets}.
+ *
+ * This is the host's own `AssetsController:getAssets` options, so it supports
+ * `bypassServerCache` to fetch the most up-to-date data, for example the TRX
+ * asset and its metadata straight after it changes on chain.
+ */
+export type GetAssetsOptions = NonNullable<GetAssetsParameters[1]>;
+
+/**
+ * Assets returned by {@link AssetsProvider.getAssets}, keyed by account ID and
+ * then by CAIP-19 asset ID.
+ */
+export type GetAssetsResult = Awaited<
+  ReturnType<AssetsControllerGetAssetsAction['handler']>
+>;
+
 /**
  * Actions from other messengers that {@link AssetsProvider} calls.
  */
 export type AssetsProviderAllowedActions =
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
-  | AssetsControllerGetAccountAssetsByScopeAction;
+  | AssetsControllerGetAccountAssetsByScopeAction
+  | AssetsControllerGetAssetsAction;
 
 /**
  * Messenger restricted to actions consumed by {@link AssetsProvider}.
@@ -92,5 +121,38 @@ export class AssetsProvider {
       accountId,
       scope,
     );
+  }
+
+  /**
+   * Fetches combined assets (balance + metadata + price + computed
+   * `fiatValue`) for the given accounts, keyed by account ID and then by
+   * CAIP-19 asset ID.
+   *
+   * Unlike the other reads on this provider, this one can trigger a request to
+   * the host's data sources when a forced update is requested. Pass
+   * `bypassServerCache: true` to also skip the Accounts API's server-side
+   * cache, so the returned data is the most up-to-date available.
+   *
+   * @param accounts - Host accounts to fetch assets for.
+   * @param options - Fetch options forwarded to the host.
+   * @param options.bypassServerCache - Whether to skip the host's server-side
+   * caches. Implies `forceUpdate: true`.
+   * @returns Assets keyed by account ID and then by CAIP-19 asset ID.
+   */
+  async getAssets(
+    accounts: GetAssetsAccounts,
+    options?: GetAssetsOptions,
+  ): Promise<GetAssetsResult> {
+    const { bypassServerCache, ...hostOptions } = options ?? {};
+
+    return this.#messenger.call('AssetsController:getAssets', accounts, {
+      ...hostOptions,
+      // The host only documents `bypassServerCache` as meaningful alongside
+      // `forceUpdate`, and only contacts its data sources at all when it is
+      // forced to. So an explicit `forceUpdate: false` cannot be honoured
+      // together with the bypass: the bypass wins.
+      forceUpdate: bypassServerCache ? true : hostOptions.forceUpdate,
+      bypassServerCache,
+    });
   }
 }

@@ -2,6 +2,9 @@ export {
   ASSETS_PROVIDER_NAME,
   AssetsProvider,
   type AssetsProviderMessenger,
+  type GetAssetsAccounts,
+  type GetAssetsOptions,
+  type GetAssetsResult,
 } from './providers/assets/AssetsProvider';
 export {
   REMOTE_FEATURE_FLAGS_PROVIDER_NAME,
