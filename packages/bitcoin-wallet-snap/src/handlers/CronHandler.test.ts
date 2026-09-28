@@ -173,7 +173,7 @@ describe('CronHandler', () => {
       const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
       expect(error).toBeInstanceOf(SynchronizationError);
       expect(error.message).toBe(
-        'Account synchronization failures (1 failed): account-2: Error: error',
+        'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Error: error',
       );
 
       expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(
@@ -201,7 +201,7 @@ describe('CronHandler', () => {
       const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
       expect(error).toBeInstanceOf(SynchronizationError);
       expect(error.message).toBe(
-        'Account synchronization failures (2 failed): account-1: Error: esplora down; account-2: Error: rate limited',
+        'synchronizeAccounts: Account synchronization failures (2 failed): account-1: Error: esplora down; account-2: Error: rate limited',
       );
     });
 
@@ -229,7 +229,7 @@ describe('CronHandler', () => {
 
       const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
       expect(error.message).toBe(
-        'Account synchronization failures (1 failed): account-2: Error: Failed to synchronize account (Error: 502 Bad Gateway)',
+        'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Error: Failed to synchronize account (Error: 502 Bad Gateway)',
       );
     });
 
@@ -255,7 +255,7 @@ describe('CronHandler', () => {
 
       const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
       expect(error.message).toBe(
-        'Account synchronization failures (1 failed): account-2: Unknown error',
+        'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Unknown error',
       );
     });
 
@@ -564,7 +564,7 @@ describe('CronHandler', () => {
       ];
       expect(trackedError).toBeInstanceOf(SynchronizationError);
       expect(trackedError.message).toBe(
-        'Account synchronization failures (1 failed): account-2: Error: scan failed',
+        'syncSelectedAccounts: Account synchronization failures (1 failed): account-2: Error: scan failed',
       );
 
       // Should emit for successful account only
@@ -589,7 +589,7 @@ describe('CronHandler', () => {
       ];
       expect(trackedError).toBeInstanceOf(SynchronizationError);
       expect(trackedError.message).toBe(
-        'Account synchronization failures (2 failed): account-1: Error: esplora down; account-2: Error: rate limited',
+        'syncSelectedAccounts: Account synchronization failures (2 failed): account-1: Error: esplora down; account-2: Error: rate limited',
       );
     });
 
@@ -614,7 +614,7 @@ describe('CronHandler', () => {
         Error,
       ];
       expect(trackedError.message).toBe(
-        'Account synchronization failures (1 failed): account-2: Error: Failed to synchronize account (Error: 502 Bad Gateway)',
+        'syncSelectedAccounts: Account synchronization failures (1 failed): account-2: Error: Failed to synchronize account (Error: 502 Bad Gateway)',
       );
     });
 

@@ -159,7 +159,7 @@ export class CronHandler {
       await this.#finishSync(results);
 
       await this.#reportSyncFailures(
-        'Account synchronization failures',
+        'synchronizeAccounts: Account synchronization failures',
         results,
         accounts.map(({ id }) => id),
       );
@@ -217,7 +217,7 @@ export class CronHandler {
       await this.#emitSyncEvents(successfulResults);
 
       await this.#reportSyncFailures(
-        'Account synchronization failures',
+        'syncSelectedAccounts: Account synchronization failures',
         results,
         selectedAccounts.map(({ id }) => id),
       );
