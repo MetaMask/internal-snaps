@@ -51,7 +51,7 @@ async function reRender(
  * localSimulation refresh — still allow saving the memo onto context.
  *
  * @param context - Confirmation interface context.
- * @returns True when Save should cancel-and-replace Transaction+Scan+Prices.
+ * @returns True when Save should cancel-and-replace the refresh pipeline.
  */
 function canRestartRefresh(context: Record<string, Json>): boolean {
   return (
@@ -95,9 +95,9 @@ function memoFromSubmitEvent(event: UserInputEvent): string {
 }
 
 /**
- * Saves the memo onto confirmation context and always restarts validation +
- * scan when a live refresh pipeline is present, so clearing a required memo
- * cannot leave Confirm enabled on a stale success.
+ * Saves the memo onto confirmation context and restarts the open-time
+ * preference-enabled refreshers when a live refresh pipeline is present, so
+ * clearing a required memo cannot leave Confirm enabled on a stale success.
  *
  * @param options - The user input handler context.
  */
@@ -142,7 +142,17 @@ async function onSaveSubmit(
   };
 
   const { scope } = baseContext;
-  if (canRestartRefresh(baseContext) && typeof scope === 'string') {
+  // Prefs are fixed for the dialog lifetime: reuse the open-path snapshot from
+  // `resolveRefresherKeys` (ungated) instead of hardcoding or re-fetching prefs.
+  const refresherKeys = Array.isArray(baseContext.enabledRefresherKeys)
+    ? (baseContext.enabledRefresherKeys as ConfirmationContextRefresherKey[])
+    : [];
+
+  if (
+    canRestartRefresh(baseContext) &&
+    typeof scope === 'string' &&
+    refresherKeys.length > 0
+  ) {
     let previousEventId: string | undefined;
     if (typeof baseContext.backgroundEventId === 'string') {
       previousEventId = baseContext.backgroundEventId;
@@ -155,8 +165,12 @@ async function onSaveSubmit(
       // Clear any prior banner; the restarted transaction refresher will set a
       // new error (e.g. RequiresMemo again) or leave it cleared on success.
       errorMessage: null,
-      transactionsFetchStatus: FetchStatus.Fetched,
-      scanFetchStatus: FetchStatus.Fetching,
+      ...(refresherKeys.includes(ConfirmationContextRefresherKey.Transaction)
+        ? { transactionsFetchStatus: FetchStatus.Fetched }
+        : {}),
+      ...(refresherKeys.includes(ConfirmationContextRefresherKey.Scan)
+        ? { scanFetchStatus: FetchStatus.Fetching }
+        : {}),
     };
 
     const backgroundEventId =
@@ -165,11 +179,7 @@ async function onSaveSubmit(
           scope: scope as ConfirmSendJsonRpcRequest['params']['scope'],
           interfaceId: id,
           interfaceKey,
-          refresherKeys: [
-            ConfirmationContextRefresherKey.Transaction,
-            ConfirmationContextRefresherKey.Scan,
-            ConfirmationContextRefresherKey.Prices,
-          ],
+          refresherKeys,
         },
         Duration.OneSecond,
         { replaceEventId: previousEventId },

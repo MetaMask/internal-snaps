@@ -7,7 +7,6 @@ import type {
   ConfirmSendJsonRpcRequest,
 } from '../../handlers/clientRequest/api';
 import {
-  ConfirmationContextRefresherKey,
   RefreshConfirmationContextHandler,
 } from '../../handlers/cronjob/refreshConfirmationContext';
 import type {
@@ -30,8 +29,8 @@ import {
   formatFeeData,
   formatOrigin,
   getPreferencesWithFallback,
-} from './utils';
-import { renderConfirmationView } from './views/render';
+  resolveRefresherKeys,
+} from './utils';import { renderConfirmationView } from './views/render';
 import type { ConfirmationViewProps } from './views/render';
 
 type ConfirmationRenderOptions = {
@@ -271,41 +270,50 @@ export class ConfirmationUXController {
     // Read the Error overrides from `renderContext` (not merged `context`):
     // `defaultContext` only ever sets Fetched/Fetching, so TS narrows those
     // fields and rejects a comparison against Error on the merged object.
-    const refresherKeys: ConfirmationContextRefresherKey[] = [];
-    if (enablePricing) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Prices);
-    }
-    if (
-      enableSecurityScan &&
-      renderContext.scanFetchStatus !== FetchStatus.Error
-    ) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Scan);
-    }
-    if (
-      enableLocalSimulation &&
-      renderContext.transactionsFetchStatus !== FetchStatus.Error
-    ) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
-    }
+    // Ungated keys are persisted so MemoEdit Save can restart the full
+    // preference-enabled set (prefs fixed for the dialog lifetime).
+    const enabledRefresherKeys = resolveRefresherKeys({
+      enablePricing,
+      enableSecurityScan,
+      enableLocalSimulation,
+    });
+    const refresherKeys = resolveRefresherKeys({
+      enablePricing,
+      enableSecurityScan,
+      enableLocalSimulation,
+      statusGates: {
+        scanFetchStatus: renderContext.scanFetchStatus,
+        transactionsFetchStatus: renderContext.transactionsFetchStatus,
+      },
+    });
 
-    if (refresherKeys.length > 0) {
-      const backgroundEventId =
-        await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-          {
-            scope,
-            interfaceId: id,
-            interfaceKey,
-            refresherKeys,
-          },
-          Duration.OneSecond,
-        );
-      // Persist the pending event id so MemoEdit (or a later replace) can cancel
-      // it before scheduling another chain — bitcoin send-flow pattern.
-      const contextWithEventId = { ...context, backgroundEventId };
+    if (enabledRefresherKeys.length > 0) {
+      let contextWithRefreshMeta = {
+        ...context,
+        enabledRefresherKeys,
+      };
+      if (refresherKeys.length > 0) {
+        const backgroundEventId =
+          await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+            {
+              scope,
+              interfaceId: id,
+              interfaceKey,
+              refresherKeys,
+            },
+            Duration.OneSecond,
+          );
+        // Persist the pending event id so MemoEdit (or a later replace) can cancel
+        // it before scheduling another chain — bitcoin send-flow pattern.
+        contextWithRefreshMeta = {
+          ...contextWithRefreshMeta,
+          backgroundEventId,
+        };
+      }
       await updateInterfaceIfExists(
         id,
-        renderConfirmationView(interfaceKey, contextWithEventId),
-        contextWithEventId,
+        renderConfirmationView(interfaceKey, contextWithRefreshMeta),
+        contextWithRefreshMeta,
       );
     }
 

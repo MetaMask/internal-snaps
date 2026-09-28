@@ -164,4 +164,10 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
    * of stacking parallel refresh chains (e.g. MemoEdit Save vs open cron).
    */
   backgroundEventId?: string;
+  /**
+   * Preference- and flow-enabled refresher keys resolved at dialog open
+   * (ungated by terminal Error status). MemoEdit Save reuses this snapshot so
+   * restart matches open-path policy without re-fetching live preferences.
+   */
+  enabledRefresherKeys?: string[];
 };

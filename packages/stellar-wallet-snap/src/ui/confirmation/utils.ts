@@ -5,6 +5,7 @@ import { BigNumber } from 'bignumber.js';
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
+import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
 import { getNativeAssetMetadata } from '../../services/asset-metadata/utils';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
 import type { TransactionScanResult } from '../../services/transaction-scan';
@@ -116,6 +117,65 @@ export async function getPreferencesWithFallback(): Promise<GetPreferencesResult
     useExternalPricingData: true,
     showTestnets: true,
   }));
+}
+
+/**
+ * Params for {@link resolveRefresherKeys}.
+ *
+ * `enable*` flags are already preference- and flow-gated by the caller
+ * (open-path controller). Status gates optionally omit Scan / Transaction when
+ * those slices are already in terminal Error (open-path race avoidance). Pass no
+ * gates on intentional restart (e.g. MemoEdit Save after RequiresMemo).
+ */
+export type ResolveRefresherKeysParams = {
+  enablePricing: boolean;
+  enableSecurityScan: boolean;
+  enableLocalSimulation: boolean;
+  statusGates?: {
+    scanFetchStatus?: FetchStatus;
+    transactionsFetchStatus?: FetchStatus;
+  };
+};
+
+/**
+ * Derives which confirmation context refreshers to schedule.
+ *
+ * Shared by dialog open ({@link ConfirmationUXController}) and MemoEdit Save
+ * restart so preference / flow policy cannot drift between the two paths.
+ * Preferences are treated as fixed for the life of an open dialog: resolve once
+ * at open (and persist), or re-resolve from the frozen context snapshot — do
+ * not re-fetch live prefs on Save.
+ *
+ * @param params - Preference-gated enable flags and optional status gates.
+ * @returns Refresher keys to pass to `scheduleBackgroundEvent`.
+ */
+export function resolveRefresherKeys(
+  params: ResolveRefresherKeysParams,
+): ConfirmationContextRefresherKey[] {
+  const {
+    enablePricing,
+    enableSecurityScan,
+    enableLocalSimulation,
+    statusGates,
+  } = params;
+
+  const refresherKeys: ConfirmationContextRefresherKey[] = [];
+  if (enablePricing) {
+    refresherKeys.push(ConfirmationContextRefresherKey.Prices);
+  }
+  if (
+    enableSecurityScan &&
+    statusGates?.scanFetchStatus !== FetchStatus.Error
+  ) {
+    refresherKeys.push(ConfirmationContextRefresherKey.Scan);
+  }
+  if (
+    enableLocalSimulation &&
+    statusGates?.transactionsFetchStatus !== FetchStatus.Error
+  ) {
+    refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
+  }
+  return refresherKeys;
 }
 
 /**

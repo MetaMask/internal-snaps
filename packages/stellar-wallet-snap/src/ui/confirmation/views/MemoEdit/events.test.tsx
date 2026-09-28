@@ -35,15 +35,17 @@ const buttonEvent = (name: string): UserInputEvent => ({
   name,
 });
 
+const allRefresherKeys = [
+  ConfirmationContextRefresherKey.Prices,
+  ConfirmationContextRefresherKey.Scan,
+  ConfirmationContextRefresherKey.Transaction,
+];
+
 const scheduleArgs = {
   scope: 'stellar:pubnet',
   interfaceId: 'interface-id',
   interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-  refresherKeys: [
-    ConfirmationContextRefresherKey.Transaction,
-    ConfirmationContextRefresherKey.Scan,
-    ConfirmationContextRefresherKey.Prices,
-  ],
+  refresherKeys: allRefresherKeys,
 };
 
 describe('MemoEdit event handlers', () => {
@@ -95,13 +97,14 @@ describe('MemoEdit event handlers', () => {
   });
 
   describe('Save', () => {
-    it('always restarts Transaction+Scan+Prices using the latest event id', async () => {
+    it('restarts open-time enabled refresher keys using the latest event id', async () => {
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
         interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
         scope: 'stellar:pubnet',
         transaction: 'xdr',
         accountId: 'account-id',
         transactionsFetchStatus: FetchStatus.Fetched,
+        enabledRefresherKeys: allRefresherKeys,
         backgroundEventId: 'latest-event',
       });
 
@@ -138,6 +141,57 @@ describe('MemoEdit event handlers', () => {
       );
     });
 
+    it('schedules only preference-enabled keys from the open-time snapshot', async () => {
+      const transactionOnly = [ConfirmationContextRefresherKey.Transaction];
+      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+        scope: 'stellar:pubnet',
+        transaction: 'xdr',
+        accountId: 'account-id',
+        transactionsFetchStatus: FetchStatus.Error,
+        enabledRefresherKeys: transactionOnly,
+        backgroundEventId: 'live-event',
+      });
+
+      await handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: formSubmitEvent('memo-only-tx'),
+        context: {
+          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+          scope: 'stellar:pubnet',
+          transaction: 'xdr',
+          accountId: 'account-id',
+          transactionsFetchStatus: FetchStatus.Error,
+          backgroundEventId: 'live-event',
+        },
+      });
+
+      expect(scheduleSpy).toHaveBeenCalledWith(
+        {
+          ...scheduleArgs,
+          refresherKeys: transactionOnly,
+        },
+        expect.anything(),
+        { replaceEventId: 'live-event' },
+      );
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.objectContaining({
+          memo: 'memo-only-tx',
+          transactionsFetchStatus: FetchStatus.Fetched,
+          backgroundEventId: 'new-event-id',
+        }),
+      );
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.not.objectContaining({
+          scanFetchStatus: FetchStatus.Fetching,
+        }),
+      );
+    });
+
     it('replaces the live event id during an in-flight tick so cron ownership aborts', async () => {
       // Click/open still see the in-flight tick id; Save must cancel that id and
       // persist a new one so the orphan tick observes ownership loss.
@@ -149,6 +203,7 @@ describe('MemoEdit event handlers', () => {
         transactionsFetchStatus: FetchStatus.Fetched,
         scanFetchStatus: FetchStatus.Fetched,
         memoScreen: true,
+        enabledRefresherKeys: allRefresherKeys,
         backgroundEventId: 'in-flight-tick-event',
       });
 
@@ -192,6 +247,7 @@ describe('MemoEdit event handlers', () => {
         transactionsFetchStatus: FetchStatus.Fetched,
         scanFetchStatus: FetchStatus.Fetched,
         memo: 'exchange-ref',
+        enabledRefresherKeys: allRefresherKeys,
         backgroundEventId: 'live-event',
       });
 
@@ -243,6 +299,39 @@ describe('MemoEdit event handlers', () => {
         'RENDERED',
         expect.objectContaining({
           memo: 'optional-ref',
+          memoScreen: false,
+        }),
+      );
+    });
+
+    it('persists the memo without rescheduling when no refresher keys were enabled at open', async () => {
+      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+        scope: 'stellar:pubnet',
+        transaction: 'xdr',
+        accountId: 'account-id',
+        transactionsFetchStatus: FetchStatus.Error,
+        enabledRefresherKeys: [],
+      });
+
+      await handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: formSubmitEvent('no-refreshers'),
+        context: {
+          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+          scope: 'stellar:pubnet',
+          transaction: 'xdr',
+          accountId: 'account-id',
+          transactionsFetchStatus: FetchStatus.Error,
+        },
+      });
+
+      expect(scheduleSpy).not.toHaveBeenCalled();
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.objectContaining({
+          memo: 'no-refreshers',
           memoScreen: false,
         }),
       );
