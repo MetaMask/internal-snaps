@@ -30,7 +30,10 @@ export const EstimatedChanges: SnapComponent<EstimatedChangesProps> = ({
     <SharedEstimatedChanges
       assets={(changes?.assets ?? []).map((asset) => ({
         type: asset.type,
-        value: formatCryptoBalance(asset.value ?? 0, locale),
+        value:
+          asset.value === null
+            ? null
+            : formatCryptoBalance(asset.value, locale),
         symbol: asset.symbol,
         logo: asset.logo,
         fiat: asset.price
