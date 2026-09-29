@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Release/12.0.0 ([#373](https://github.com/MetaMask/internal-snaps/pull/373))
+- ci: run bitcoin-wallet-snap integration tests on pull requests ([#377](https://github.com/MetaMask/internal-snaps/pull/377))
+- fix(bitcoin): repair bitcoin-wallet-snap integration tests ([#371](https://github.com/MetaMask/internal-snaps/pull/371))
+- chore(bitcoin): ratchet coverage thresholds with jest-it-up ([#348](https://github.com/MetaMask/internal-snaps/pull/348))
+- feat(bitcoin): use shared baseconfig ([#312](https://github.com/MetaMask/internal-snaps/pull/312))
+- chore(bitcoin): extend the shared jest config ([#337](https://github.com/MetaMask/internal-snaps/pull/337))
+
 ### Added
 
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#266](https://github.com/MetaMask/internal-snaps/pull/266))

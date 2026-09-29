@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Release/12.0.0 ([#373](https://github.com/MetaMask/internal-snaps/pull/373))
+- refactor(solana): remove asset pubkeys ([#245](https://github.com/MetaMask/internal-snaps/pull/245))
+- fix(solana): create solana pending transactions ([#370](https://github.com/MetaMask/internal-snaps/pull/370))
+- feat(solana-wallet-snap): use the shared wrapSnapHandlers and noopAssetHandlers ([#354](https://github.com/MetaMask/internal-snaps/pull/354))
+- chore(solana): ratchet coverage thresholds with jest-it-up ([#351](https://github.com/MetaMask/internal-snaps/pull/351))
+- feat(tron): use shared baseconfig ([#311](https://github.com/MetaMask/internal-snaps/pull/311))
+- feat(solana-wallet-snap): use shared analytics lib ([#335](https://github.com/MetaMask/internal-snaps/pull/335))
+- chore(solana): extend the shared jest config ([#340](https://github.com/MetaMask/internal-snaps/pull/340))
+- test(solana): cover transaction approved/rejected scheduling ([#332](https://github.com/MetaMask/internal-snaps/pull/332))
+- Release/11.0.0 ([#325](https://github.com/MetaMask/internal-snaps/pull/325))
+- feat(solana): use shared baseconfig ([#310](https://github.com/MetaMask/internal-snaps/pull/310))
+- fix(solana): tolerate unknown fields in external API responses ([#321](https://github.com/MetaMask/internal-snaps/pull/321))
+- feat(solana-wallet-snap): use shared keyring account ([#317](https://github.com/MetaMask/internal-snaps/pull/317))
+- Release/10.0.0 ([#305](https://github.com/MetaMask/internal-snaps/pull/305))
+- chore(solana): use shared cache utils ([#292](https://github.com/MetaMask/internal-snaps/pull/292))
+- feat(solana-wallet-snap): use shareable state management lib ([#294](https://github.com/MetaMask/internal-snaps/pull/294))
+- chore: drop Node 20 and target ES2023 ([#283](https://github.com/MetaMask/internal-snaps/pull/283))
+- chore: snap build tooling cleanup (babel config, preinstalled builds, manifest locales) ([#264](https://github.com/MetaMask/internal-snaps/pull/264))
+- chore: reorganize `tsconfig` files for clarity ([#257](https://github.com/MetaMask/internal-snaps/pull/257))
+- chore: enable Snap TypeScript checking ([#237](https://github.com/MetaMask/internal-snaps/pull/237))
+- feat: add shared trackError util ([#246](https://github.com/MetaMask/internal-snaps/pull/246))
+- feat(solana-wallet-snap): use shareable UuidStruct ([#249](https://github.com/MetaMask/internal-snaps/pull/249))
+- feat: move errors helpers into shared pkg ([#241](https://github.com/MetaMask/internal-snaps/pull/241))
+- feat(solana-wallet-snap): use shareable serialization in Solana snap ([#230](https://github.com/MetaMask/internal-snaps/pull/230))
+- refactor(solana-wallet-snap): convert enums to `as const` objects ([#217](https://github.com/MetaMask/internal-snaps/pull/217))
+- feat: move batch utils into shared pkg ([#211](https://github.com/MetaMask/internal-snaps/pull/211))
+- feat(solana-wallet-snap): use shareable permissions helpers in Solana snap ([#207](https://github.com/MetaMask/internal-snaps/pull/207))
+- feat: move buildUrl into shared util pkg ([#195](https://github.com/MetaMask/internal-snaps/pull/195))
+- test(solana-wallet-snap): use a non-zero TTL in the fiat cache test ([#194](https://github.com/MetaMask/internal-snaps/pull/194))
+- feat: move sanitize utils into shared pkg ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
+- chore: move UrlStruct to shared lib ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- fix: resolve `@metamask/snap-networks-utils` to source for typechecking ([#171](https://github.com/MetaMask/internal-snaps/pull/171))
+- chore: add safeMerge shared util ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
+- fix: mocklogger types in solana snap ([#164](https://github.com/MetaMask/internal-snaps/pull/164))
+- chore: disable eslint rules `jest/no-mocks-import` for test file ([#163](https://github.com/MetaMask/internal-snaps/pull/163))
+- chore: replace solana logger with shared util ([#148](https://github.com/MetaMask/internal-snaps/pull/148))
+
 ### Added
 
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#256](https://github.com/MetaMask/internal-snaps/pull/256))
@@ -15,17 +54,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Reduce `snap_getBip32Entropy` calls in `createAccounts` from two to one for `bip44:discover` by deriving the activity-check address locally from the already-fetched coin-type node, and parallelize the entropy fetch with the existing-accounts state read for all creation paths ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
-- Coalesce concurrent `AccountsSynchronizer.synchronize` calls for the same account set so duplicate in-flight syncs (e.g. simultaneous connection-recovery events across mainnet and devnet) share one run instead of fanning out redundant asset and transaction fetches ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
 - **BREAKING:** Bump `@solana/kit` from `^6.9.0` to `^8.3.0` and the `@solana-program/*` clients (`compute-budget` `^0.18.1`, `system` `^0.14.1`, `token` `^0.16.1`, `token-2022` `^0.17.0`) to their Kit 8-compatible versions. ([#303](https://github.com/MetaMask/internal-snaps/pull/303))
 - **BREAKING:** Update the Solana Name Service integration to SNS SDK v1 and the Kit 6.9-compatible Solana program clients ([#271](https://github.com/MetaMask/internal-snaps/pull/271))
+- **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
+- Reduce `snap_getBip32Entropy` calls in `createAccounts` from two to one for `bip44:discover` by deriving the activity-check address locally from the already-fetched coin-type node, and parallelize the entropy fetch with the existing-accounts state read for all creation paths ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
+- Coalesce concurrent `AccountsSynchronizer.synchronize` calls for the same account set so duplicate in-flight syncs (e.g. simultaneous connection-recovery events across mainnet and devnet) share one run instead of fanning out redundant asset and transaction fetches ([#304](https://github.com/MetaMask/internal-snaps/pull/304))
 - Migrate `trackError` and `withCatchAndThrowSnapError` to `@metamask/snap-networks-utils` `createSnapErrorHandling`, and add `getSnapProvider` for Snap RPC access
 - Extract Snap-owned assets domain logic into `SnapAssetsAdapter`; `AssetsService` is a thin facade that delegates metadata, market data, fetch, persist, and account asset reads through the adapter (no Core routing yet). ([#121](https://github.com/MetaMask/internal-snaps/pull/121))
 - Align `AssetsService` read API with `snap-networks-utils` / AssetsController shapes by adding `getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, and `getAccountAssets`, and routing Keyring and Send through them (still Snap-owned storage). ([#120](https://github.com/MetaMask/internal-snaps/pull/120))
 - Bump `@metamask/utils` from `^11.9.0` to `^11.11.9` ([#161](https://github.com/MetaMask/internal-snaps/pull/161))
-- **BREAKING** Bump `@metamask/keyring-api` from `^23.7.0` to `^24.1.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
-- **BREAKING** Bump `@metamask/keyring-snap-sdk` from `^9.2.1` to `^10.0.0` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
-- **BREAKING** Bump `@metamask/snaps-sdk` from `^11.2.0` to `^12.0.1` ([#214](https://github.com/MetaMask/internal-snaps/pull/214))
 
 ### Removed
 
