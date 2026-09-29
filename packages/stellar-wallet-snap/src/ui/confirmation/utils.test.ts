@@ -1,4 +1,5 @@
 import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
+import { KnownCaip2ChainId } from '../../api';
 import { FieldType } from '../../services/transaction';
 import type { ReadableOperationField } from '../../services/transaction';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
@@ -9,6 +10,7 @@ import {
 import { FetchStatus } from './api';
 import {
   ConfirmationBanner,
+  getNetworkName,
   getParam,
   getInvocationDetailParams,
   isFetchInProgress,
@@ -31,6 +33,28 @@ const warningScan = {
 };
 
 describe('confirmation utils', () => {
+  describe('getNetworkName', () => {
+    it.each([
+      {
+        testcase: '"Stellar Mainnet" for mainnet',
+        input: KnownCaip2ChainId.Mainnet,
+        expected: 'Stellar Mainnet',
+      },
+      {
+        testcase: '"Stellar Testnet" for testnet',
+        input: KnownCaip2ChainId.Testnet,
+        expected: 'Stellar Testnet',
+      },
+      {
+        testcase: '"Unknown" for an unrecognized scope',
+        input: 'stellar:unknown' as KnownCaip2ChainId,
+        expected: 'Unknown',
+      },
+    ])('returns $testcase', ({ input, expected }) => {
+      expect(getNetworkName(input)).toBe(expected);
+    });
+  });
+
   describe('isFetchInProgress', () => {
     it.each([FetchStatus.Initial, FetchStatus.Fetching])(
       'returns true for %s',
