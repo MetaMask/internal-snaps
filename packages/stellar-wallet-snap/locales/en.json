@@ -179,7 +179,7 @@
       "message": "Update Send Amount. A new account requires 1 XLM minimum."
     },
     "confirmation.txnError.invalidCreateAccountAsset": {
-      "message": "Update Send Asset. New accounts must first be funded by 1 XLM."
+      "message": "The recipient's account must hold 1 XLM before it can receive this asset."
     },
     "confirmation.txnError.trustlineNotAuthorized": {
       "message": "The destination is not authorized to receive this asset."
