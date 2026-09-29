@@ -33,6 +33,7 @@ const render = (
       assets: [],
       labels,
       scanFetchStatus: 'fetched',
+      scanError: false,
       ...props,
     }),
   );
@@ -53,6 +54,13 @@ describe('EstimatedChanges', () => {
 
     expect(serialized).toContain('Not available');
     expect(serialized).not.toContain('-10 XLM');
+  });
+
+  it('renders not available when a fetched scan reports an error', () => {
+    const serialized = render({ scanError: true });
+
+    expect(serialized).toContain('Not available');
+    expect(serialized).not.toContain('No changes');
   });
 
   it('renders no changes when fetched without assets', () => {

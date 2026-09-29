@@ -39,6 +39,8 @@ export type EstimatedChangesProps = {
   assets: EstimatedChangesAsset[];
   labels: EstimatedChangesLabels;
   scanFetchStatus: EstimatedChangesFetchStatus;
+  /** Whether the completed scan itself reported an error (e.g. simulation failure). */
+  scanError: boolean;
 };
 
 const Header = ({
@@ -124,12 +126,14 @@ const AssetGroup = ({
  * @param props.assets - The display-ready asset changes.
  * @param props.labels - The translated labels.
  * @param props.scanFetchStatus - The fetch status of the scan producing the changes.
+ * @param props.scanError - Whether the completed scan itself reported an error.
  * @returns The estimated changes section.
  */
 export const EstimatedChanges = ({
   assets,
   labels,
   scanFetchStatus,
+  scanError,
 }: EstimatedChangesProps): ComponentOrElement => {
   if (scanFetchStatus === 'loading' || scanFetchStatus === 'fetching') {
     return (
@@ -143,7 +147,7 @@ export const EstimatedChanges = ({
     );
   }
 
-  if (scanFetchStatus === 'error') {
+  if (scanFetchStatus === 'error' || (scanFetchStatus === 'fetched' && scanError)) {
     return <MessageSection labels={labels} message={labels.notAvailable} />;
   }
 
