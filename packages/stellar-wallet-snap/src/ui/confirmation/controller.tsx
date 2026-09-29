@@ -281,8 +281,11 @@ export class ConfirmationUXController {
       enableSecurityScan,
       enableLocalSimulation: enableLocalSimulation ?? false,
       statusGates: {
-        scanFetchStatus: (renderContext.scanFetchStatus as FetchStatus) ?? FetchStatus.Fetched,
-        transactionsFetchStatus: (renderContext.transactionsFetchStatus as FetchStatus) ?? FetchStatus.Fetched,
+        scanFetchStatus:
+          (renderContext.scanFetchStatus as FetchStatus) ?? FetchStatus.Fetched,
+        transactionsFetchStatus:
+          (renderContext.transactionsFetchStatus as FetchStatus) ??
+          FetchStatus.Fetched,
       },
     });
 
