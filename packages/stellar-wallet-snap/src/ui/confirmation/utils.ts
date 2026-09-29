@@ -22,8 +22,8 @@ import { FetchStatus } from './api';
 import type { FeeData } from './api';
 
 const NetworkName = {
-  [KnownCaip2ChainId.Mainnet]: 'Mainnet',
-  [KnownCaip2ChainId.Testnet]: 'Testnet',
+  [KnownCaip2ChainId.Mainnet]: 'Stellar Mainnet',
+  [KnownCaip2ChainId.Testnet]: 'Stellar Testnet',
 };
 
 /**

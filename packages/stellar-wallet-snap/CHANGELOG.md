@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` from the `signTransaction` confirmation.
   - Emit `Transaction Submitted` from the `ConfirmSend` and `ChangeTrustOpt` flows.
 
+### Fixed
+
+- Rename confirmation network labels from `Mainnet` and `Testnet` to `Stellar Mainnet` and `Stellar Testnet` ([#382](https://github.com/MetaMask/internal-snaps/pull/382))
+
 ## [1.0.0]
 
 ### Added
