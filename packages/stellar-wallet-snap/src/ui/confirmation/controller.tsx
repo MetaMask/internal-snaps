@@ -262,56 +262,30 @@ export class ConfirmationUXController {
       return dialogPromise;
     }
 
-    // 5. Schedule background context refresh for enabled refreshers only.
-    // Skip Scan / Transaction when renderContext already marked them Error
-    // (e.g. RequiresMemo on open): a pending open cron would race
-    // MemoEdit's restart and double-hit Blockaid after the user saves a memo.
-    // Read the Error overrides from `renderContext` (not merged `context`):
-    // `defaultContext` only ever sets Fetched/Fetching, so TS narrows those
-    // fields and rejects a comparison against Error on the merged object.
-    // Ungated keys are persisted so MemoEdit Save can restart the full
-    // preference-enabled set (prefs fixed for the dialog lifetime).
-    const enabledRefresherKeys = resolveRefresherKeys({
-      enablePricing: enablePricing ?? false,
-      enableSecurityScan,
-      enableLocalSimulation: enableLocalSimulation ?? false,
-    });
+    // 5. Persist preference-enabled refresher keys and schedule the open cron.
+    // Refreshers already no-op when their slice is Error (e.g. RequiresMemo).
     const refresherKeys = resolveRefresherKeys({
       enablePricing: enablePricing ?? false,
       enableSecurityScan,
       enableLocalSimulation: enableLocalSimulation ?? false,
-      statusGates: {
-        scanFetchStatus:
-          (renderContext.scanFetchStatus as FetchStatus) ?? FetchStatus.Fetched,
-        transactionsFetchStatus:
-          (renderContext.transactionsFetchStatus as FetchStatus) ??
-          FetchStatus.Fetched,
-      },
     });
 
-    if (enabledRefresherKeys.length > 0) {
-      let contextWithRefreshMeta = {
+    if (refresherKeys.length > 0) {
+      const backgroundEventId =
+        await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+          {
+            scope,
+            interfaceId: id,
+            interfaceKey,
+            refresherKeys,
+          },
+          Duration.OneSecond,
+        );
+      const contextWithRefreshMeta = {
         ...context,
-        enabledRefresherKeys,
+        refresherKeys,
+        backgroundEventId,
       };
-      if (refresherKeys.length > 0) {
-        const backgroundEventId =
-          await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-            {
-              scope,
-              interfaceId: id,
-              interfaceKey,
-              refresherKeys,
-            },
-            Duration.OneSecond,
-          );
-        // Persist the pending event id so MemoEdit (or a later replace) can cancel
-        // it before scheduling another chain — bitcoin send-flow pattern.
-        contextWithRefreshMeta = {
-          ...contextWithRefreshMeta,
-          backgroundEventId,
-        };
-      }
       await updateInterfaceIfExists(
         id,
         renderConfirmationView(interfaceKey, contextWithRefreshMeta),

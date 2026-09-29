@@ -428,33 +428,6 @@ describe('confirmation utils', () => {
       ]);
     });
 
-    it('skips scan and transaction when status gates are Error (open path)', () => {
-      expect(
-        resolveRefresherKeys({
-          enablePricing: true,
-          enableSecurityScan: true,
-          enableLocalSimulation: true,
-          statusGates: {
-            scanFetchStatus: FetchStatus.Error,
-            transactionsFetchStatus: FetchStatus.Error,
-          },
-        }),
-      ).toStrictEqual([ConfirmationContextRefresherKey.Prices]);
-    });
-
-    it('re-arms scan and transaction when status gates are omitted (Save restart)', () => {
-      expect(
-        resolveRefresherKeys({
-          enablePricing: false,
-          enableSecurityScan: true,
-          enableLocalSimulation: true,
-        }),
-      ).toStrictEqual([
-        ConfirmationContextRefresherKey.Scan,
-        ConfirmationContextRefresherKey.Transaction,
-      ]);
-    });
-
     it('returns an empty list when nothing is enabled', () => {
       expect(
         resolveRefresherKeys({

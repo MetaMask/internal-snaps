@@ -142,10 +142,8 @@ async function onSaveSubmit(
   };
 
   const { scope } = baseContext;
-  // Prefs are fixed for the dialog lifetime: reuse the open-path snapshot from
-  // `resolveRefresherKeys` (ungated) instead of hardcoding or re-fetching prefs.
-  const refresherKeys = Array.isArray(baseContext.enabledRefresherKeys)
-    ? (baseContext.enabledRefresherKeys as ConfirmationContextRefresherKey[])
+  const refresherKeys = Array.isArray(baseContext.refresherKeys)
+    ? (baseContext.refresherKeys as ConfirmationContextRefresherKey[])
     : [];
 
   if (

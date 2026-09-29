@@ -104,7 +104,7 @@ describe('MemoEdit event handlers', () => {
         transaction: 'xdr',
         accountId: 'account-id',
         transactionsFetchStatus: FetchStatus.Fetched,
-        enabledRefresherKeys: allRefresherKeys,
+        refresherKeys: allRefresherKeys,
         backgroundEventId: 'latest-event',
       });
 
@@ -149,7 +149,7 @@ describe('MemoEdit event handlers', () => {
         transaction: 'xdr',
         accountId: 'account-id',
         transactionsFetchStatus: FetchStatus.Error,
-        enabledRefresherKeys: transactionOnly,
+        refresherKeys: transactionOnly,
         backgroundEventId: 'live-event',
       });
 
@@ -203,7 +203,7 @@ describe('MemoEdit event handlers', () => {
         transactionsFetchStatus: FetchStatus.Fetched,
         scanFetchStatus: FetchStatus.Fetched,
         memoScreen: true,
-        enabledRefresherKeys: allRefresherKeys,
+        refresherKeys: allRefresherKeys,
         backgroundEventId: 'in-flight-tick-event',
       });
 
@@ -247,7 +247,7 @@ describe('MemoEdit event handlers', () => {
         transactionsFetchStatus: FetchStatus.Fetched,
         scanFetchStatus: FetchStatus.Fetched,
         memo: 'exchange-ref',
-        enabledRefresherKeys: allRefresherKeys,
+        refresherKeys: allRefresherKeys,
         backgroundEventId: 'live-event',
       });
 
@@ -311,7 +311,7 @@ describe('MemoEdit event handlers', () => {
         transaction: 'xdr',
         accountId: 'account-id',
         transactionsFetchStatus: FetchStatus.Error,
-        enabledRefresherKeys: [],
+        refresherKeys: [],
       });
 
       await handlers[MemoEditFormNames.Form]?.({
