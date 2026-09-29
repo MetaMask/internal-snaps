@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#385](https://github.com/MetaMask/internal-snaps/pull/385))
+- Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#386](https://github.com/MetaMask/internal-snaps/pull/386))
 
 ## [1.1.0]
 
