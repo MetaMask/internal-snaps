@@ -9,9 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fail closed when sending a SEP-41 asset to a memo-required destination or with a memo attached (WPN-2196)
-  - Soroban transfers do not support memos; show a specific confirmation error instead of RequiresMemo recovery.
-  - Hide memo Add/Update controls on SEP-41 send confirmations.
+- Fail closed when sending a SEP-41 asset to a memo-required destination or with a memo attached, ([#385](https://github.com/MetaMask/internal-snaps/pull/385))
 
 ## [1.1.0]
 
