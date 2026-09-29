@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Abort confirmation-context refresh write and reschedule when MemoEdit Save replaces `backgroundEventId` during an in-flight cron tick, and resolve the live event id from the latest interface context so Save cancel-and-replace owns the chain ([#360](https://github.com/MetaMask/internal-snaps/pull/360))
 - Emit `Transaction Submitted` from the unified send and change-trust flows so their transactions no longer reach `Transaction Finalized` without a matching submit event ([#345](https://github.com/MetaMask/internal-snaps/pull/345))
   - Previously only the swap/bridge `signAndSendTransaction` path emitted `Transaction Submitted`.
+- Rename confirmation network labels from `Mainnet` and `Testnet` to `Stellar Mainnet` and `Stellar Testnet` ([#382](https://github.com/MetaMask/internal-snaps/pull/382))
+
 
 ## [1.0.0]
 
