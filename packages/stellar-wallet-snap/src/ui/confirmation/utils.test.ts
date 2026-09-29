@@ -1,5 +1,5 @@
-import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
 import { KnownCaip2ChainId } from '../../api';
+import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
 import { FieldType } from '../../services/transaction';
 import type { ReadableOperationField } from '../../services/transaction';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
