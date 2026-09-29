@@ -147,7 +147,10 @@ export const EstimatedChanges = ({
     );
   }
 
-  if (scanFetchStatus === 'error' || (scanFetchStatus === 'fetched' && scanError)) {
+  if (
+    scanFetchStatus === 'error' ||
+    (scanFetchStatus === 'fetched' && scanError)
+  ) {
     return <MessageSection labels={labels} message={labels.notAvailable} />;
   }
 
