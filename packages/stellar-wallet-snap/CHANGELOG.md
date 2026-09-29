@@ -32,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previously only the swap/bridge `signAndSendTransaction` path emitted `Transaction Submitted`.
 - Rename confirmation network labels from `Mainnet` and `Testnet` to `Stellar Mainnet` and `Stellar Testnet` ([#382](https://github.com/MetaMask/internal-snaps/pull/382))
 
-
 ## [1.0.0]
 
 ### Added
