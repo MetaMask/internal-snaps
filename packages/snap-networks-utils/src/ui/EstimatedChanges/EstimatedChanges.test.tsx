@@ -40,20 +40,14 @@ const render = (
 
 describe('EstimatedChanges', () => {
   it.each(['loading', 'fetching'] as const)(
-    'renders a skeleton while %s',
+    'renders a skeleton while %s and nothing is seeded',
     (scanFetchStatus) => {
-      const serialized = render({ assets: [out], scanFetchStatus });
-
-      expect(serialized).toContain('"type":"Skeleton"');
-      expect(serialized).not.toContain('-10 XLM');
+      expect(render({ scanFetchStatus })).toContain('"type":"Skeleton"');
     },
   );
 
-  it('renders not available on error', () => {
-    const serialized = render({ assets: [out], scanFetchStatus: 'error' });
-
-    expect(serialized).toContain('Not available');
-    expect(serialized).not.toContain('-10 XLM');
+  it('renders not available on error when nothing is seeded', () => {
+    expect(render({ scanFetchStatus: 'error' })).toContain('Not available');
   });
 
   it('renders not available when a fetched scan reports an error', () => {
@@ -61,6 +55,19 @@ describe('EstimatedChanges', () => {
 
     expect(serialized).toContain('Not available');
     expect(serialized).not.toContain('No changes');
+  });
+
+  it.each([
+    { scanFetchStatus: 'loading' },
+    { scanFetchStatus: 'fetching' },
+    { scanFetchStatus: 'error' },
+    { scanFetchStatus: 'fetched', scanError: true },
+  ] as const)('keeps seeded rows visible for %o', (props) => {
+    const serialized = render({ assets: [out], ...props });
+
+    expect(serialized).toContain('-10 XLM');
+    expect(serialized).not.toContain('"type":"Skeleton"');
+    expect(serialized).not.toContain('Not available');
   });
 
   it('renders no changes when fetched without assets', () => {

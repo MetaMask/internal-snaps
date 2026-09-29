@@ -76,9 +76,13 @@ const AssetRow = ({
 }): ComponentOrElement => {
   const isOut = asset.type === 'out';
   const isUnknownValue = asset.value === null;
-  const label = isUnknownValue
-    ? `– ${asset.symbol}`
-    : `${isOut ? '-' : '+'}${asset.value} ${asset.symbol}`;
+  let label: string;
+  if (isUnknownValue) {
+    label = `– ${asset.symbol}`;
+  } else {
+    const sign = isOut ? '-' : '+';
+    label = `${sign}${asset.value} ${asset.symbol}`;
+  }
   const successOrError = isOut ? 'error' : 'success';
 
   return (
@@ -135,7 +139,14 @@ export const EstimatedChanges = ({
   scanFetchStatus,
   scanError,
 }: EstimatedChangesProps): ComponentOrElement => {
-  if (scanFetchStatus === 'loading' || scanFetchStatus === 'fetching') {
+  // Rows seeded locally by the caller are final, so they are never replaced by
+  // the loading/error states driven by the remote scan.
+  const hasAssets = assets.length > 0;
+
+  if (
+    !hasAssets &&
+    (scanFetchStatus === 'loading' || scanFetchStatus === 'fetching')
+  ) {
     return (
       <Section direction="vertical">
         <Header labels={labels} />
@@ -148,13 +159,14 @@ export const EstimatedChanges = ({
   }
 
   if (
-    scanFetchStatus === 'error' ||
-    (scanFetchStatus === 'fetched' && scanError)
+    !hasAssets &&
+    (scanFetchStatus === 'error' ||
+      (scanFetchStatus === 'fetched' && scanError))
   ) {
     return <MessageSection labels={labels} message={labels.notAvailable} />;
   }
 
-  if (scanFetchStatus === 'fetched' && assets.length === 0) {
+  if (scanFetchStatus === 'fetched' && !hasAssets) {
     return <MessageSection labels={labels} message={labels.noChanges} />;
   }
 
