@@ -40,6 +40,7 @@ import {
 } from './__mocks__/transaction.fixtures';
 import {
   InvalidAssetForCreateAccountException,
+  Sep41MemoNotSupportedException,
   TransactionScopeNotMatchException,
 } from './exceptions';
 import { KeyringTransactionType } from './KeyringTransactionBuilder';
@@ -821,6 +822,112 @@ describe('TransactionService', () => {
       expect(
         (error as InvalidAssetForCreateAccountException).message,
       ).toContain(USDC_SEP41);
+    });
+
+    it('throws Sep41MemoNotSupportedException when destination requires a memo', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      const destWallet = getTestWallet();
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(destWallet.address, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = OnChainAccount.fromHorizon(
+        mockHorizonAccountResponse(destAcc, {
+          [MEMO_REQUIRED_KEY]: ACCOUNT_REQUIRES_MEMO,
+        }),
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      const simulateSpy = jest
+        .spyOn(NetworkService.prototype, 'simulateTransaction')
+        .mockImplementation(async (transaction) => transaction);
+
+      const error = await transactionService
+        .createValidatedSendTransaction({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('100'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: USDC_SEP41,
+          destination: destWallet.address,
+        })
+        .then(
+          () => {
+            throw new Error('expected rejection');
+          },
+          (rejection: unknown) => rejection,
+        );
+
+      expect(error).toBeInstanceOf(Sep41MemoNotSupportedException);
+      expect(simulateSpy).not.toHaveBeenCalled();
+    });
+
+    it('throws Sep41MemoNotSupportedException when a memo is provided', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      const destWallet = getTestWallet();
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(destWallet.address, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = new OnChainAccount(
+        destAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      const simulateSpy = jest
+        .spyOn(NetworkService.prototype, 'simulateTransaction')
+        .mockImplementation(async (transaction) => transaction);
+
+      const error = await transactionService
+        .createValidatedSendTransaction({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('100'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: USDC_SEP41,
+          destination: destWallet.address,
+          memo: 'exchange-ref',
+        })
+        .then(
+          () => {
+            throw new Error('expected rejection');
+          },
+          (rejection: unknown) => rejection,
+        );
+
+      expect(error).toBeInstanceOf(Sep41MemoNotSupportedException);
+      expect(simulateSpy).not.toHaveBeenCalled();
     });
   });
 
