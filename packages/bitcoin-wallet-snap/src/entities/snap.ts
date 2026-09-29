@@ -55,6 +55,9 @@ export type SyncResult = {
   account: BitcoinAccount;
   // Transactions that changed and should be notified.
   transactionsToNotify: WalletTx[];
+  // Funding addresses per txid, resolved by the chain indexer. Only populated
+  // for receives; used to display the counterparty.
+  transactionSenders?: Map<string, string[]>;
 };
 
 export const TrackingSnapEvent = {
@@ -140,10 +143,13 @@ export type SnapClient = {
    *
    * @param account - The Bitcoin account.
    * @param txs - The transactions included in the event.
+   * @param sendersByTxid - Optional funding addresses per txid, used to
+   * populate the counterparty of receive transactions.
    */
   emitAccountTransactionsUpdatedEvent(
     account: BitcoinAccount,
     txs: WalletTx[],
+    sendersByTxid?: Map<string, string[]>,
   ): Promise<void>;
 
   /**

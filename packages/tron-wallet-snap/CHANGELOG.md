@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#265](https://github.com/MetaMask/internal-snaps/pull/265))
 - Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` for `signTransaction` confirmations ([#333](https://github.com/MetaMask/internal-snaps/pull/333))
   - Only dApp-initiated transaction confirmations were affected; the unified send flow already emitted these events.
+- Report account synchronization failures to Sentry with the failing account IDs and their failure reasons ([#374](https://github.com/MetaMask/internal-snaps/pull/374))
 
 ### Changed
 

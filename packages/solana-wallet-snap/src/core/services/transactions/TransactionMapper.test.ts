@@ -1854,4 +1854,49 @@ describe('TransactionMapper', () => {
       });
     });
   });
+
+  describe('createPendingTransaction', () => {
+    it('creates a minimal unconfirmed transaction for the signature', () => {
+      const before = Math.floor(Date.now() / 1000);
+
+      const result = TransactionMapper.createPendingTransaction({
+        signature: 'signature-1',
+        account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        scope: Network.Mainnet,
+      });
+
+      const after = Math.floor(Date.now() / 1000);
+
+      expect(result).toStrictEqual({
+        id: 'signature-1',
+        account: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        chain: Network.Mainnet,
+        status: 'unconfirmed',
+        type: 'unknown',
+        timestamp: expect.any(Number),
+        from: [
+          {
+            address: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+            asset: {
+              unit: 'SOL',
+              type: KnownCaip19Id.SolMainnet,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ],
+        to: [],
+        fees: [],
+        events: [
+          {
+            status: 'unconfirmed',
+            timestamp: expect.any(Number),
+          },
+        ],
+      });
+
+      expect(result.timestamp).toBeGreaterThanOrEqual(before);
+      expect(result.timestamp).toBeLessThanOrEqual(after);
+    });
+  });
 });
