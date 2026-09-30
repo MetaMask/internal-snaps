@@ -120,6 +120,17 @@ const AssetGroup = ({
  * Renders the estimated balance changes of a transaction, grouped into
  * "send" and "receive" rows, with loading, error and empty states.
  *
+ * The header is always rendered. The body depends on the props:
+ *
+ * 1. No assets and `isFetching` → loading skeleton (takes precedence over
+ * `isUnavailable`).
+ * 2. No assets and `isUnavailable` → "not available" message.
+ * 3. No assets otherwise → "no changes" message (an empty result means the
+ * transaction does not change any balance).
+ * 4. Assets present → "send" and/or "receive" groups; a group with no assets
+ * is omitted. `isFetching` and `isUnavailable` are ignored in this case, as
+ * rows seeded locally by the caller are final.
+ *
  * @param props - The component props.
  * @param props.assets - The display-ready asset changes.
  * @param props.labels - The translated labels.
