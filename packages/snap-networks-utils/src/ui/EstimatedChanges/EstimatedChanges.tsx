@@ -28,19 +28,13 @@ export type EstimatedChangesLabels = {
   noChanges: string;
 };
 
-export type EstimatedChangesFetchStatus =
-  | 'initial'
-  | 'loading'
-  | 'fetching'
-  | 'fetched'
-  | 'error';
-
 export type EstimatedChangesProps = {
   assets: EstimatedChangesAsset[];
   labels: EstimatedChangesLabels;
-  scanFetchStatus: EstimatedChangesFetchStatus;
-  /** Whether the completed scan itself reported an error (e.g. simulation failure). */
-  scanError: boolean;
+  /** Whether the estimate is still being fetched. */
+  isFetching: boolean;
+  /** Whether the estimate could not be produced (e.g. fetch or simulation failure). */
+  isUnavailable: boolean;
 };
 
 const Header = ({
@@ -126,48 +120,51 @@ const AssetGroup = ({
  * Renders the estimated balance changes of a transaction, grouped into
  * "send" and "receive" rows, with loading, error and empty states.
  *
+ * The header is always rendered. The body depends on the props:
+ *
+ * 1. No assets and `isFetching` → loading skeleton (takes precedence over
+ * `isUnavailable`).
+ * 2. No assets and `isUnavailable` → "not available" message.
+ * 3. No assets otherwise → "no changes" message (an empty result means the
+ * transaction does not change any balance).
+ * 4. Assets present → "send" and/or "receive" groups; a group with no assets
+ * is omitted. `isFetching` and `isUnavailable` are ignored in this case, as
+ * rows seeded locally by the caller are final.
+ *
  * @param props - The component props.
  * @param props.assets - The display-ready asset changes.
  * @param props.labels - The translated labels.
- * @param props.scanFetchStatus - The fetch status of the scan producing the changes.
- * @param props.scanError - Whether the completed scan itself reported an error.
+ * @param props.isFetching - Whether the estimate is still being fetched.
+ * @param props.isUnavailable - Whether the estimate could not be produced.
  * @returns The estimated changes section.
  */
 export const EstimatedChanges = ({
   assets,
   labels,
-  scanFetchStatus,
-  scanError,
+  isFetching,
+  isUnavailable,
 }: EstimatedChangesProps): ComponentOrElement => {
   // Rows seeded locally by the caller are final, so they are never replaced by
-  // the loading/error states driven by the remote scan.
-  const hasAssets = assets.length > 0;
+  // the loading/unavailable states.
+  if (assets.length === 0) {
+    if (isFetching) {
+      return (
+        <Section direction="vertical">
+          <Header labels={labels} />
+          <Box alignment="space-between" direction="horizontal">
+            <Skeleton width={60} />
+            <Skeleton width={100} />
+          </Box>
+        </Section>
+      );
+    }
 
-  if (
-    !hasAssets &&
-    (scanFetchStatus === 'loading' || scanFetchStatus === 'fetching')
-  ) {
     return (
-      <Section direction="vertical">
-        <Header labels={labels} />
-        <Box alignment="space-between" direction="horizontal">
-          <Skeleton width={60} />
-          <Skeleton width={100} />
-        </Box>
-      </Section>
+      <MessageSection
+        labels={labels}
+        message={isUnavailable ? labels.notAvailable : labels.noChanges}
+      />
     );
-  }
-
-  if (
-    !hasAssets &&
-    (scanFetchStatus === 'error' ||
-      (scanFetchStatus === 'fetched' && scanError))
-  ) {
-    return <MessageSection labels={labels} message={labels.notAvailable} />;
-  }
-
-  if (scanFetchStatus === 'fetched' && !hasAssets) {
-    return <MessageSection labels={labels} message={labels.noChanges} />;
   }
 
   return (

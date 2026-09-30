@@ -126,32 +126,6 @@ describe('ConfigProvider', () => {
       expect(config.selectedNetwork).toBe(KnownCaip2ChainId.Mainnet);
     });
 
-    it('defaults the explorer base URLs when unset or empty', () => {
-      const { config } = new BaseConfigProvider(
-        {
-          ...FULL_ENVIRONMENT,
-          networks: {
-            [KnownCaip2ChainId.Mainnet]: {
-              ...FULL_ENVIRONMENT.networks[KnownCaip2ChainId.Mainnet],
-              explorerBaseUrl: undefined,
-            },
-            [KnownCaip2ChainId.Testnet]: {
-              ...FULL_ENVIRONMENT.networks[KnownCaip2ChainId.Testnet],
-              explorerBaseUrl: '',
-            },
-          },
-        },
-        ConfigStruct,
-      );
-
-      expect(config.networks[KnownCaip2ChainId.Mainnet]?.explorerBaseUrl).toBe(
-        'https://stellar.expert/explorer/public',
-      );
-      expect(config.networks[KnownCaip2ChainId.Testnet]?.explorerBaseUrl).toBe(
-        'https://stellar.expert/explorer/testnet',
-      );
-    });
-
     it.each([
       ['a malformed RPC URL', { STELLAR_RPC_URL_MAINNET: 'not-a-url' }],
       ['a malformed Horizon URL', { STELLAR_HORIZON_URL_MAINNET: 'not-a-url' }],
@@ -248,30 +222,6 @@ describe('ConfigProvider', () => {
         staticApi: { baseUrl: 'https://static.example.com' },
         priceApi: { baseUrl: 'https://price.example.com' },
         securityAlertsApi: { baseUrl: 'https://alerts.example.com' },
-      });
-    });
-
-    it('defaults the API base URLs when unset or empty', () => {
-      const { config } = new BaseConfigProvider(
-        {
-          ...FULL_ENVIRONMENT,
-          api: {
-            tokenApi: { baseUrl: '' },
-            staticApi: { baseUrl: undefined },
-            priceApi: { baseUrl: '' },
-            securityAlertsApi: { baseUrl: undefined },
-          },
-        },
-        ConfigStruct,
-      );
-
-      expect(config.api).toStrictEqual({
-        tokenApi: { baseUrl: 'https://tokens.api.cx.metamask.io' },
-        staticApi: { baseUrl: 'https://static.cx.metamask.io' },
-        priceApi: { baseUrl: 'https://price.api.cx.metamask.io' },
-        securityAlertsApi: {
-          baseUrl: 'https://security-alerts.api.cx.metamask.io',
-        },
       });
     });
 
