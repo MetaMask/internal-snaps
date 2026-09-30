@@ -1253,11 +1253,6 @@
       "count": 1
     }
   },
-  "packages/stellar-wallet-snap/src/ui/confirmation/components/EstimatedChanges/EstimatedChanges.tsx": {
-    "id-length": {
-      "count": 2
-    }
-  },
   "packages/stellar-wallet-snap/src/ui/confirmation/views/ConfirmSendTransaction/ConfirmSendTransaction.tsx": {
     "id-length": {
       "count": 1

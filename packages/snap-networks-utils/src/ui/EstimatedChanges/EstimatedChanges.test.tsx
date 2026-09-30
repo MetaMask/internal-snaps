@@ -32,53 +32,37 @@ const render = (
     EstimatedChanges({
       assets: [],
       labels,
-      scanFetchStatus: 'fetched',
-      scanError: false,
+      isFetching: false,
+      isUnavailable: false,
       ...props,
     }),
   );
 
 describe('EstimatedChanges', () => {
-  it.each(['loading', 'fetching'] as const)(
-    'renders a skeleton while %s and nothing is seeded',
-    (scanFetchStatus) => {
-      expect(render({ scanFetchStatus })).toContain('"type":"Skeleton"');
-    },
-  );
-
-  it('renders not available on error when nothing is seeded', () => {
-    expect(render({ scanFetchStatus: 'error' })).toContain('Not available');
+  it('renders a skeleton while fetching and nothing is seeded', () => {
+    expect(render({ isFetching: true })).toContain('"type":"Skeleton"');
   });
 
-  it('renders not available when a fetched scan reports an error', () => {
-    const serialized = render({ scanError: true });
+  it('renders not available when unavailable and nothing is seeded', () => {
+    const serialized = render({ isUnavailable: true });
 
     expect(serialized).toContain('Not available');
     expect(serialized).not.toContain('No changes');
   });
 
-  it.each([
-    { scanFetchStatus: 'loading' },
-    { scanFetchStatus: 'fetching' },
-    { scanFetchStatus: 'error' },
-    { scanFetchStatus: 'fetched', scanError: true },
-  ] as const)('keeps seeded rows visible for %o', (props) => {
-    const serialized = render({ assets: [out], ...props });
+  it.each([{ isFetching: true }, { isUnavailable: true }])(
+    'keeps seeded rows visible for %o',
+    (props) => {
+      const serialized = render({ assets: [out], ...props });
 
-    expect(serialized).toContain('-10 XLM');
-    expect(serialized).not.toContain('"type":"Skeleton"');
-    expect(serialized).not.toContain('Not available');
-  });
+      expect(serialized).toContain('-10 XLM');
+      expect(serialized).not.toContain('"type":"Skeleton"');
+      expect(serialized).not.toContain('Not available');
+    },
+  );
 
-  it('renders no changes when fetched without assets', () => {
+  it('renders no changes when there are no assets', () => {
     expect(render({})).toContain('No changes');
-  });
-
-  it('renders only the header before the first fetch', () => {
-    const serialized = render({ scanFetchStatus: 'initial' });
-
-    expect(serialized).toContain('Estimated changes');
-    expect(serialized).not.toContain('No changes');
   });
 
   it('renders send and receive rows', () => {
