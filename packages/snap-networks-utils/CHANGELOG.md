@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the shared Security Alerts API HTTP client for transaction scans (`SecurityAlertsApiClient` posting a typed body to a single `scanUrl`, `SecurityAlertsHttpError`, `SECURITY_ALERTS_REQUEST_HEADERS`), the common scan request wire type (`SecurityAlertsScanRequestBase`), and the scan vocabulary shared by network snaps (`SecurityAlertsScanOption`, `SecurityAlertsScanStatus`, `SecurityAlertResponse`, `normalizeScanOrigin`)
+
 - Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
 - Add `SynchronizationError`, `formatAccountSyncFailures`, and the `AccountSyncFailure` type, for reporting account synchronization failures with per-account failure details embedded in the error message (details must live in the message because `snap_trackError` only serializes `name`, `message`, `stack`, and `cause`). ([#374](https://github.com/MetaMask/internal-snaps/pull/374))
 - Add `wrapSnapHandlers` to wrap any Snap entrypoint handlers with `withCatchAndThrowSnapError`, with optional per-handler `logError` overrides ([#341](https://github.com/MetaMask/internal-snaps/pull/341))

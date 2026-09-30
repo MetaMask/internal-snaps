@@ -1,17 +1,22 @@
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
+  SecurityAlertsApiClient,
 } from '@metamask/snap-networks-utils';
-import { Types as TronwebTypes } from 'tronweb';
+import {
+  SecurityAlertResponse,
+  SecurityAlertsScanStatus,
+} from '@metamask/snap-networks-utils';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
-import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
+import { SecurityAlertResponseStruct } from '../../clients/security-alerts-api/structs';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { METAMASK_ORIGIN, Network } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionScanService } from './TransactionScanService';
 import type { TransactionScanResult } from './types';
-import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
+import { SimulationStatus } from './types';
 
 const mockAnalyticsService = {
   trackSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
@@ -593,16 +598,13 @@ describe('TransactionScanService', () => {
       });
 
       expect(result).toMatchObject({
-        status: ScanStatus.ERROR,
+        status: SecurityAlertsScanStatus.ERROR,
         simulationStatus: SimulationStatus.Failed,
         error: { type: 'MALFORMED_TRANSACTION' },
       });
     });
 
     it('skips unsupported contract types', async () => {
-      const isContractTypeSupported = jest
-        .spyOn(SecurityAlertsApiClient, 'isContractTypeSupported')
-        .mockReturnValue(false);
       const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
         simulation: { status: 'Success' },
         validation: { status: 'Success', result_type: 'Benign' },
@@ -616,19 +618,68 @@ describe('TransactionScanService', () => {
 
       const result = await service.scanTransaction({
         accountAddress: mockAccount.address,
-        transactionRawData: createWellFormedTransactionRawData(),
+        transactionRawData: {
+          ...createWellFormedTransactionRawData(),
+          contract: [
+            {
+              type: 'FreezeBalanceContract' as TronwebTypes.ContractType,
+              parameter: {
+                type_url: 'type.googleapis.com/protocol.FreezeBalanceContract',
+                value: {
+                  owner_address: `41${'a'.repeat(40)}`,
+                  frozen_balance: 1000,
+                },
+              },
+            },
+          ],
+        },
         origin: 'https://example.com',
         scope: Network.Mainnet,
       });
 
       expect(result).toMatchObject({
-        status: ScanStatus.SUCCESS,
+        status: SecurityAlertsScanStatus.SUCCESS,
         simulationStatus: SimulationStatus.Skipped,
       });
       expect(
         mockSecurityAlertsApiClient.scanTransaction,
       ).not.toHaveBeenCalled();
-      isContractTypeSupported.mockRestore();
+    });
+
+    it('posts the scan body extracted from the transaction data', async () => {
+      const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
+        simulation: { status: 'Success' },
+        validation: { status: 'Success', result_type: 'Benign' },
+      });
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        createMockSnapClient() as unknown as SnapClient,
+        mockLogger,
+        mockAnalyticsService,
+      );
+
+      await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+        options: ['validation'],
+      });
+
+      expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
+        {
+          account_address: mockAccount.address,
+          metadata: { domain: 'https://example.com' },
+          data: {
+            from: TronWeb.address.fromHex(`41${'a'.repeat(40)}`),
+            to: TronWeb.address.fromHex(`41${'b'.repeat(40)}`),
+            data: null,
+            value: 990000,
+          },
+          options: ['validation'],
+        },
+        SecurityAlertResponseStruct,
+      );
     });
 
     it('ignores asset diffs without changes', async () => {
@@ -742,7 +793,7 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.SUCCESS,
+        scanStatus: SecurityAlertsScanStatus.SUCCESS,
         hasSecurityAlerts: false,
       });
     });
@@ -765,7 +816,7 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.SUCCESS,
+        scanStatus: SecurityAlertsScanStatus.SUCCESS,
         hasSecurityAlerts: true,
       });
       expect(
@@ -793,7 +844,7 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.ERROR,
+        scanStatus: SecurityAlertsScanStatus.ERROR,
         hasSecurityAlerts: false,
       });
     });
@@ -815,7 +866,7 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.ERROR,
+        scanStatus: SecurityAlertsScanStatus.ERROR,
         hasSecurityAlerts: false,
       });
     });
@@ -854,7 +905,10 @@ describe('TransactionScanService', () => {
       });
 
       expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ origin: 'https://metamask.io' }),
+        expect.objectContaining({
+          metadata: { domain: 'https://metamask.io' },
+        }),
+        SecurityAlertResponseStruct,
       );
     });
 
@@ -869,7 +923,10 @@ describe('TransactionScanService', () => {
       });
 
       expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ origin: 'https://example.com' }),
+        expect.objectContaining({
+          metadata: { domain: 'https://example.com' },
+        }),
+        SecurityAlertResponseStruct,
       );
     });
   });
