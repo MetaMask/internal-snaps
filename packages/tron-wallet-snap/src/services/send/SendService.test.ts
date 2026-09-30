@@ -7,6 +7,7 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import {
   FEE_LIMIT,
+  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -164,7 +165,7 @@ describe('SendService', () => {
       expect(
         mockAnalyticsService.trackTransactionSubmitted,
       ).toHaveBeenCalledWith({
-        origin: 'MetaMask',
+        origin: METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
       });

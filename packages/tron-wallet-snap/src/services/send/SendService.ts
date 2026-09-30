@@ -6,7 +6,12 @@ import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
+import {
+  METAMASK_ORIGIN,
+  Networks,
+  TRACK_TX_INTERVAL,
+  ZERO,
+} from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
@@ -382,7 +387,7 @@ export class SendService {
     scope,
     fromAccountId,
     transaction,
-    origin = 'MetaMask',
+    origin = METAMASK_ORIGIN,
   }: {
     scope: Network;
     fromAccountId: string;

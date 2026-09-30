@@ -14,6 +14,7 @@ import type {
 } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
+import { METAMASK_ORIGIN } from '../../constants';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -23,7 +24,6 @@ import type {
 } from './types';
 import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
 
-const METAMASK_ORIGIN = 'metamask';
 const METAMASK_ORIGIN_URL = 'https://metamask.io';
 
 export class TransactionScanService {

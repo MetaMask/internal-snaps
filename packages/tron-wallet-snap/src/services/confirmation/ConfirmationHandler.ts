@@ -11,7 +11,7 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Networks, ZERO } from '../../constants';
+import { Networks, METAMASK_ORIGIN, ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
@@ -25,7 +25,6 @@ import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/v
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import { formatOrigin } from '../../utils/formatOrigin';
 import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
@@ -210,7 +209,12 @@ export class ConfirmationHandler {
         amount,
         fees,
         asset,
-        origin: formatOrigin(origin),
+        /**
+         * Pass the raw origin: the confirmation view formats it for display
+         * itself, and the security scan needs the unformatted value so it can
+         * still recognize the MetaMask origin.
+         */
+        origin,
         accountType,
         transactionRawData,
       },
@@ -289,7 +293,7 @@ export class ConfirmationHandler {
       scope,
       account,
       transaction: { rawDataHex: '', type: '' },
-      origin: 'MetaMask',
+      origin: METAMASK_ORIGIN,
       preferences,
       networkImage: TRX_IMAGE_SVG,
       scan: null,
