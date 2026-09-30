@@ -19,6 +19,7 @@ import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
+import { formatOrigin } from '../../../../utils/formatOrigin';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
@@ -121,7 +122,7 @@ export const ConfirmTransactionRequest = ({
                 <Icon name="question" color="muted" />
               </Tooltip>
             </Box>
-            <SnapText>{origin}</SnapText>
+            <SnapText>{formatOrigin(origin)}</SnapText>
           </Box>
           <Box>{null}</Box>
           {/* From */}

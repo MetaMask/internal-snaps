@@ -7,7 +7,13 @@ import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { KnownCaip19Id, Network, Networks, ZERO } from '../../constants';
+import {
+  KnownCaip19Id,
+  METAMASK_ORIGIN,
+  Network,
+  Networks,
+  ZERO,
+} from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
@@ -420,7 +426,7 @@ describe('ConfirmationHandler', () => {
       fees: defaultFees,
       asset: mockAsset,
       accountType: 'tron:eoa',
-      origin: 'MetaMask',
+      origin: METAMASK_ORIGIN,
       transactionRawData: mockTransactionRawData,
     };
 
@@ -433,7 +439,7 @@ describe('ConfirmationHandler', () => {
         expect(result).toBe(true);
         expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
           {
-            origin: 'MetaMask',
+            origin: METAMASK_ORIGIN,
             accountType: 'tron:eoa',
             chainIdCaip: Network.Mainnet,
           },
@@ -441,7 +447,7 @@ describe('ConfirmationHandler', () => {
         expect(
           mockAnalyticsService.trackTransactionApproved,
         ).toHaveBeenCalledWith({
-          origin: 'MetaMask',
+          origin: METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });
@@ -461,7 +467,7 @@ describe('ConfirmationHandler', () => {
         expect(
           mockAnalyticsService.trackTransactionRejected,
         ).toHaveBeenCalledWith({
-          origin: 'MetaMask',
+          origin: METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
         });

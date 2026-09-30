@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Report the MetaMask origin as lowercase `metamask` instead of `MetaMask` for MetaMask-initiated operations, so transaction scan requests are correctly attributed to `https://metamask.io` and the origin matches the value used by the other non-EVM snaps and granted to the keyring methods. The confirmation UI keeps displaying `MetaMask`.
+
 ## [4.0.0]
 
 ### Added

@@ -6,7 +6,7 @@ import {
   extractScanParametersFromTransactionData,
 } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
-import { Network } from '../../../../constants';
+import { METAMASK_ORIGIN, Network } from '../../../../constants';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
@@ -127,7 +127,7 @@ const defaultIncomingContext = {
   amount: '1',
   fees: [] as never[],
   asset: mockAsset,
-  origin: 'MetaMask',
+  origin: METAMASK_ORIGIN,
   accountType: 'tron:eoa',
   transactionRawData: defaultTransactionRawData,
 };
@@ -259,7 +259,7 @@ describe('ConfirmTransactionRequest render', () => {
           expect.objectContaining({
             accountAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
             transactionRawData: expect.any(Object),
-            origin: 'MetaMask',
+            origin: METAMASK_ORIGIN,
             scope: Network.Mainnet,
             options: ['simulation', 'validation'],
           }),

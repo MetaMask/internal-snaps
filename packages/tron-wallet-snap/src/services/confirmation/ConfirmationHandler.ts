@@ -11,7 +11,7 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Networks, ZERO } from '../../constants';
+import { Networks, METAMASK_ORIGIN, ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
@@ -289,7 +289,7 @@ export class ConfirmationHandler {
       scope,
       account,
       transaction: { rawDataHex: '', type: '' },
-      origin: 'MetaMask',
+      origin: METAMASK_ORIGIN,
       preferences,
       networkImage: TRX_IMAGE_SVG,
       scan: null,

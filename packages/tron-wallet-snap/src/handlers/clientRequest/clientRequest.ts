@@ -26,6 +26,7 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FALLBACK_FEE,
   FEE_LIMIT,
+  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -411,12 +412,13 @@ export class ClientRequestHandler {
     await this.#transactionsService.save(pendingTransaction);
 
     /**
-     * Origin is 'MetaMask' because client requests come from MetaMask's own
-     * unified send flow, matching the unified send path and the background
-     * transaction tracker.
+     * Client requests come from MetaMask's own unified send flow, matching the
+     * unified send path and the background transaction tracker. The origin is
+     * lowercased so it is recognized as MetaMask by the security alerts scan
+     * and stays consistent with the other non-EVM snaps.
      */
     await this.#analyticsService.trackTransactionSubmitted({
-      origin: 'MetaMask',
+      origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
     });
@@ -692,7 +694,8 @@ export class ClientRequestHandler {
 
     /**
      * Show the confirmation UI.
-     * Origin is 'MetaMask' because client requests come from MetaMask's own unified send flow.
+     * Client requests come from MetaMask's own unified send flow, so the origin
+     * is reported as MetaMask.
      */
     const confirmed = await this.#confirmationHandler.confirmTransactionRequest(
       {
@@ -703,7 +706,7 @@ export class ClientRequestHandler {
         fees,
         asset,
         accountType: account.type,
-        origin: 'MetaMask',
+        origin: METAMASK_ORIGIN,
         transactionRawData: freshTransactionRawData,
       },
     );

@@ -7,7 +7,7 @@ import { Types as TronwebTypes } from 'tronweb';
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
-import { Network } from '../../constants';
+import { METAMASK_ORIGIN, Network } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionScanService } from './TransactionScanService';
 import type { TransactionScanResult } from './types';
@@ -818,6 +818,63 @@ describe('TransactionScanService', () => {
         scanStatus: ScanStatus.ERROR,
         hasSecurityAlerts: false,
       });
+    });
+  });
+
+  describe('origin normalization', () => {
+    const createService = (): {
+      service: TransactionScanService;
+      mockSecurityAlertsApiClient: jest.Mocked<
+        Pick<SecurityAlertsApiClient, 'scanTransaction'>
+      >;
+    } => {
+      const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
+        simulation: { status: 'Success' },
+        validation: { status: 'Success', result_type: 'Benign' },
+      });
+      const mockSnapClient = createMockSnapClient();
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        mockSnapClient as unknown as SnapClient,
+        mockLogger,
+        mockAnalyticsService,
+      );
+
+      return { service, mockSecurityAlertsApiClient };
+    };
+
+    it('resolves the MetaMask origin to its URL for the scan', async () => {
+      const { service, mockSecurityAlertsApiClient } = createService();
+
+      await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: METAMASK_ORIGIN,
+        scope: Network.Mainnet,
+      });
+
+      expect(
+        mockSecurityAlertsApiClient.scanTransaction,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'https://metamask.io' }),
+      );
+    });
+
+    it('leaves dApp origins untouched for the scan', async () => {
+      const { service, mockSecurityAlertsApiClient } = createService();
+
+      await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(
+        mockSecurityAlertsApiClient.scanTransaction,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'https://example.com' }),
+      );
     });
   });
 });

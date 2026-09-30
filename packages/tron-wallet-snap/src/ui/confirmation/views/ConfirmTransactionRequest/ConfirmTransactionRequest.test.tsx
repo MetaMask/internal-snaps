@@ -1,4 +1,4 @@
-import { Network } from '../../../../constants';
+import { METAMASK_ORIGIN, Network } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { FetchStatus } from '../../../../types/snap';
@@ -55,7 +55,7 @@ describe('ConfirmTransactionRequest', () => {
   };
 
   const baseContext: ConfirmTransactionRequestContext = {
-    origin: 'MetaMask',
+    origin: METAMASK_ORIGIN,
     scope: Network.Mainnet,
     fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     toAddress: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',

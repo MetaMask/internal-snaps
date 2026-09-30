@@ -8,6 +8,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
+  METAMASK_ORIGIN,
   Network,
   TRACK_TX_INTERVAL,
   TRACK_TX_MAX_ATTEMPTS,
@@ -138,7 +139,7 @@ function buildMockInterfaceContext(
   overrides: Partial<ConfirmTransactionRequestContext> = {},
 ): ConfirmTransactionRequestContext {
   return {
-    origin: 'MetaMask',
+    origin: METAMASK_ORIGIN,
     scope: Network.Mainnet,
     fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     toAddress: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
@@ -1029,7 +1030,7 @@ describe('CronHandler', () => {
           expect(
             mockAnalyticsService.trackTransactionFinalized,
           ).toHaveBeenCalledWith({
-            origin: 'MetaMask',
+            origin: METAMASK_ORIGIN,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
           });
