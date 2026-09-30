@@ -47,16 +47,19 @@ describe('EstimatedChanges', () => {
     logo: 'https://example.com/usdc.png',
   };
 
-  it('renders a skeleton while the remote scan is fetching and nothing is seeded', () => {
-    const component = EstimatedChanges({
-      changes: { assets: [] },
-      preferences,
-      scanFetchStatus: FetchStatus.Fetching,
-    });
+  it.each([FetchStatus.Initial, FetchStatus.Fetching])(
+    'renders a skeleton while the remote scan is %s and nothing is seeded',
+    (scanFetchStatus) => {
+      const component = EstimatedChanges({
+        changes: { assets: [] },
+        preferences,
+        scanFetchStatus,
+      });
 
-    expect(JSON.stringify(component)).toContain('"type":"Skeleton"');
-    expect(JSON.stringify(component)).not.toContain('-10 XLM');
-  });
+      expect(JSON.stringify(component)).toContain('"type":"Skeleton"');
+      expect(JSON.stringify(component)).not.toContain('-10 XLM');
+    },
+  );
 
   it('keeps locally-seeded rows visible while the remote scan is fetching', () => {
     const component = EstimatedChanges({

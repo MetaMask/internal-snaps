@@ -115,7 +115,6 @@ export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
 export { EstimatedChanges } from './ui/EstimatedChanges/EstimatedChanges';
 export type {
   EstimatedChangesAsset,
-  EstimatedChangesFetchStatus,
   EstimatedChangesLabels,
   EstimatedChangesProps,
 } from './ui/EstimatedChanges/EstimatedChanges';

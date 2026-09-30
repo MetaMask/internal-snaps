@@ -8,7 +8,8 @@ import { NATIVE_ASSET_SYMBOL } from '../../../../constants';
 import type { TransactionScanEstimatedChanges } from '../../../../services/transaction-scan';
 import { i18n } from '../../../../utils';
 import { xlmIcon } from '../../../images';
-import type { FetchStatus } from '../../api';
+import { FetchStatus } from '../../api';
+import { isFetchInProgress } from '../../utils';
 
 type EstimatedChangesProps = {
   changes: TransactionScanEstimatedChanges | null;
@@ -51,8 +52,8 @@ export const EstimatedChanges = ({
         notAvailable: translate('confirmation.estimatedChanges.notAvailable'),
         noChanges: translate('confirmation.estimatedChanges.noChanges'),
       }}
-      scanFetchStatus={scanFetchStatus}
-      scanError={false}
+      isFetching={isFetchInProgress(scanFetchStatus)}
+      isUnavailable={scanFetchStatus === FetchStatus.Error}
     />
   );
 };
