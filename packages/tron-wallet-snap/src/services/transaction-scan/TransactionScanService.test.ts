@@ -853,9 +853,7 @@ describe('TransactionScanService', () => {
         scope: Network.Mainnet,
       });
 
-      expect(
-        mockSecurityAlertsApiClient.scanTransaction,
-      ).toHaveBeenCalledWith(
+      expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
         expect.objectContaining({ origin: 'https://metamask.io' }),
       );
     });
@@ -870,9 +868,7 @@ describe('TransactionScanService', () => {
         scope: Network.Mainnet,
       });
 
-      expect(
-        mockSecurityAlertsApiClient.scanTransaction,
-      ).toHaveBeenCalledWith(
+      expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
         expect.objectContaining({ origin: 'https://example.com' }),
       );
     });
