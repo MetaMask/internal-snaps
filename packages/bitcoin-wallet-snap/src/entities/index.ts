@@ -4,7 +4,7 @@ export type * from './config';
 export * from './chain';
 export * from './currency';
 export * from './send-flow';
-export type * from './transaction';
+export * from './transaction';
 export * from './snap';
 export type * from './meta-protocols';
 export type * from './translator';

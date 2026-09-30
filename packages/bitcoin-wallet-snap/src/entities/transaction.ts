@@ -1,4 +1,27 @@
-import type { Amount, Psbt, ScriptBuf } from '@metamask/bitcoindevkit';
+import type { Amount, Psbt, ScriptBuf, Transaction } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
+
+import type { BitcoinAccount } from './account';
+
+/**
+ * Resolves the transaction classification for a Bitcoin transaction.
+ *
+ * Bitcoin has no contract calls, so a transaction is either outgoing (`send`,
+ * including self-sends and consolidations) or incoming (`receive`). Used both
+ * for the keyring transaction payload and for the `transaction_type` analytics
+ * dimension, so the two can never disagree.
+ *
+ * @param account - The account the transaction belongs to.
+ * @param tx - The raw Bitcoin transaction.
+ * @returns The transaction type.
+ */
+export function mapToTransactionType(
+  account: BitcoinAccount,
+  tx: Transaction,
+): TransactionType {
+  const [sent] = account.sentAndReceived(tx);
+  return sent.to_btc() > 0 ? TransactionType.Send : TransactionType.Receive;
+}
 
 /**
  * A Bitcoin transaction builder.

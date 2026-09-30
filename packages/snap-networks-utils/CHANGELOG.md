@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` events tracked by `AnalyticsService`, matching the existing behaviour of `Transaction Finalized`. This identifies the operation that produced a lifecycle event using the `@metamask/keyring-api` `TransactionType` vocabulary, so the event can be attributed to a specific flow together with `origin`.
 - Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
   - Takes translated `labels`, display-ready `assets` (`EstimatedChangesAsset`), a `scanFetchStatus` (`EstimatedChangesFetchStatus`), and a `scanError`
 - Add `SynchronizationError`, `formatAccountSyncFailures`, and the `AccountSyncFailure` type, for reporting account synchronization failures with per-account failure details embedded in the error message (details must live in the message because `snap_trackError` only serializes `name`, `message`, `stack`, and `cause`). ([#374](https://github.com/MetaMask/internal-snaps/pull/374))

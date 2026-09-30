@@ -1,4 +1,5 @@
 import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import { getJsonError } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -68,6 +69,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Receive,
         ),
       ).toBeUndefined();
 
@@ -81,6 +83,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction received',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'receive',
               tx_id: 'txid-123',
             },
           },
@@ -111,6 +114,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Send,
         ),
       ).toBeUndefined();
 
@@ -124,6 +128,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap discovered missed transaction',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
               transaction_hash: 'txid-123',
             },
           },
@@ -155,6 +160,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Receive,
         ),
       ).toBeUndefined();
 
@@ -184,6 +190,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Send,
         ),
       ).toBeUndefined();
     });
@@ -200,7 +207,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockResolvedValue(undefined);
 
       expect(
-        await snapClient.trackTransactionAdded(account, 'https://dapp.test'),
+        await snapClient.trackTransactionAdded(
+          account,
+          'https://dapp.test',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockRequest).toHaveBeenCalledWith({
@@ -213,6 +224,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction added',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
             },
           },
         },
@@ -231,7 +243,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockRejectedValue(trackingError);
 
       expect(
-        await snapClient.trackTransactionAdded(account, 'metamask'),
+        await snapClient.trackTransactionAdded(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -252,7 +268,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockResolvedValue(undefined);
 
       expect(
-        await snapClient.trackTransactionApproved(account, 'metamask'),
+        await snapClient.trackTransactionApproved(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockRequest).toHaveBeenCalledWith({
@@ -265,6 +285,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction approved',
               chain_id_caip: 'bip122:000000000933ea01ad0ee984209779ba',
               account_type: 'bip122:p2tr',
+              transaction_type: 'send',
             },
           },
         },
@@ -283,7 +304,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockRejectedValue(trackingError);
 
       expect(
-        await snapClient.trackTransactionApproved(account, 'metamask'),
+        await snapClient.trackTransactionApproved(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -304,7 +329,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockResolvedValue(undefined);
 
       expect(
-        await snapClient.trackTransactionRejected(account, 'metamask'),
+        await snapClient.trackTransactionRejected(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockRequest).toHaveBeenCalledWith({
@@ -317,6 +346,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction rejected',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
             },
           },
         },
@@ -335,7 +365,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockRejectedValue(trackingError);
 
       expect(
-        await snapClient.trackTransactionRejected(account, 'metamask'),
+        await snapClient.trackTransactionRejected(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockLogger.error).toHaveBeenCalledWith(

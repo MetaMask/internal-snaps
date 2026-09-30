@@ -7,7 +7,7 @@ import {
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, is, object, string } from 'superstruct';
 
-import { InexistentMethodError, TrackingSnapEvent } from '../entities';
+import { InexistentMethodError, mapToTransactionType, TrackingSnapEvent } from '../entities';
 import type { Logger, SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
@@ -301,6 +301,7 @@ export class CronHandler {
           account,
           tx,
           'cron',
+          mapToTransactionType(account, tx.tx),
         );
       }
     }

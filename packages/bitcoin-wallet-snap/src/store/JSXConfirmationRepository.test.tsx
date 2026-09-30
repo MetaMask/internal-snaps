@@ -7,6 +7,7 @@ import type {
   TxOut,
 } from '@metamask/bitcoindevkit';
 import { Address as BdkAddress } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -236,6 +237,7 @@ describe('JSXConfirmationRepository', () => {
       expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
         mockAccount,
         origin,
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
     });
@@ -246,10 +248,12 @@ describe('JSXConfirmationRepository', () => {
       expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
         mockAccount,
         origin,
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
         mockAccount,
         origin,
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
 
@@ -455,6 +459,7 @@ describe('JSXConfirmationRepository', () => {
       expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
         mockAccount,
         origin,
+        TransactionType.Unknown,
       );
       expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
     });
@@ -465,10 +470,12 @@ describe('JSXConfirmationRepository', () => {
       expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
         mockAccount,
         origin,
+        TransactionType.Unknown,
       );
       expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
         mockAccount,
         origin,
+        TransactionType.Unknown,
       );
       expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
 

@@ -36,6 +36,7 @@ import {
   NotFoundError,
   PermissionError,
   TrackingSnapEvent,
+  mapToTransactionType,
   ValidationError,
   WalletError,
 } from '../entities';
@@ -510,6 +511,7 @@ export class AccountUseCases {
           account,
           tx,
           origin,
+          mapToTransactionType(account, tx.tx),
         );
 
         continue;
@@ -530,6 +532,7 @@ export class AccountUseCases {
             account,
             tx,
             origin,
+            mapToTransactionType(account, tx.tx),
           );
         } else {
           // if the status was changed, and now it's NOT confirmed
@@ -541,6 +544,7 @@ export class AccountUseCases {
             account,
             tx,
             origin,
+            mapToTransactionType(account, tx.tx),
           );
         }
       }
@@ -1114,6 +1118,7 @@ export class AccountUseCases {
         account,
         walletTx,
         origin,
+        mapToTransactionType(account, tx),
       );
     }
 
