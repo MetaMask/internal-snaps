@@ -1100,6 +1100,9 @@ export class AccountUseCases {
     origin: string,
   ): Promise<BroadcastResult> {
     const txid = tx.compute_txid();
+    // Resolve the classification before `applyUnconfirmedTx` takes ownership of
+    // the underlying wasm transaction; reading `tx` afterwards panics.
+    const transactionType = mapToTransactionType(account, tx);
     await this.#chain.broadcast(account.network, tx.clone());
     account.applyUnconfirmedTx(tx, getCurrentUnixTimestamp());
     await this.#repository.update(account);
@@ -1118,7 +1121,7 @@ export class AccountUseCases {
         account,
         walletTx,
         origin,
-        mapToTransactionType(account, tx),
+        transactionType,
       );
     }
 
