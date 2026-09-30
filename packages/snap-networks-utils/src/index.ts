@@ -23,6 +23,20 @@ export type {
   TransactionFinalizedEventProperties,
   WebSocketConnectionClosedEventProperties,
 } from './services/analytics/AnalyticsService';
+export {
+  SecurityAlertsApiClient,
+  SecurityAlertsHttpError,
+  SECURITY_ALERTS_REQUEST_HEADERS,
+} from './services/security-alerts/SecurityAlertsApiClient';
+export type { SecurityAlertsApiClientOptions } from './services/security-alerts/SecurityAlertsApiClient';
+export {
+  METAMASK_ORIGIN_URL,
+  normalizeScanOrigin,
+  SecurityAlertResponse,
+  SecurityAlertsScanOption,
+  SecurityAlertsScanStatus,
+} from './services/security-alerts/types';
+export type { SecurityAlertsScanRequestBase } from './services/security-alerts/types';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export { buildUrl } from './utils/buildUrl/buildUrl';
 export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
