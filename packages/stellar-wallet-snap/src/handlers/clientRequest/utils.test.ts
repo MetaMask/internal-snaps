@@ -8,6 +8,7 @@ import {
   InvalidMemoException,
   RemoveTrustlineWithNonZeroBalanceException,
   RequiresMemoException,
+  Sep41MemoNotSupportedException,
   TransactionExpireException,
   TransactionValidationException,
   TrustlineExceedLimitException,
@@ -43,6 +44,10 @@ describe('getTxnErrorMessageKey', () => {
     {
       error: new RequiresMemoException(destinationAddress),
       message: 'confirmation.txnError.requiresMemo',
+    },
+    {
+      error: new Sep41MemoNotSupportedException(),
+      message: 'confirmation.txnError.sep41MemoNotSupported',
     },
     {
       error: new InvalidAmountForCreateAccountException('0.5'),
