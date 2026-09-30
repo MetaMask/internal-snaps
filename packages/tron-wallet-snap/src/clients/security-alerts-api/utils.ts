@@ -4,9 +4,40 @@ import { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { SecurityScanPayload } from './types';
 
 /**
+ * Contract types for which the Security Alerts API can produce reliable
+ * simulation results.
+ */
+const SUPPORTED_CONTRACT_TYPES: TronwebTypes.ContractType[] = [
+  TronwebTypes.ContractType.TransferContract,
+  TronwebTypes.ContractType.CreateSmartContract,
+  TronwebTypes.ContractType.TriggerSmartContract,
+];
+
+/**
+ * Checks whether the first contract type in the transaction is supported
+ * by the Security Alerts API simulation.
+ *
+ * Only the first contract in `raw_data.contract` is considered because
+ * the Tron protocol currently only executes one contract per
+ * transaction (see {@link extractScanParametersFromTransactionData}).
+ *
+ * @param rawData - The raw transaction data.
+ * @returns True if the contract type is supported for simulation.
+ */
+export function isContractTypeSupported(
+  rawData: TronwebTypes.Transaction['raw_data'],
+): boolean {
+  const [contractInteraction] = rawData.contract;
+  if (!contractInteraction) {
+    return false;
+  }
+  return SUPPORTED_CONTRACT_TYPES.includes(contractInteraction.type);
+}
+
+/**
  * Extracts scan parameters from the raw transaction data. This function
  * can be used as adapter between a Tron transaction and the payload
- * supported by SecurityAlertsApiClient.
+ * supported by the Security Alerts API scan request.
  *
  * Only the first contract in `raw_data.contract` is used because
  * the Tron protocol currently only executes one contract per
