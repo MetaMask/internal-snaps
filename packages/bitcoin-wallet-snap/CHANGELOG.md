@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` tracking events, matching the existing behaviour of `Transaction Finalized`. Together with `origin`, this identifies which flow produced a lifecycle event: `origin` says who initiated it and `transaction_type` says what kind of operation it was.
+- Populate the optional `transaction_type` property on the transaction lifecycle tracking events. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
 
 ## [3.1.0]
 
