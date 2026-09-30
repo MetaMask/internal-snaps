@@ -39,7 +39,6 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS } from '../../constants';
-import type { Network } from '../../constants';
 import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -56,6 +55,7 @@ import {
   ListAccountAssetsStruct,
   ListAccountTransactionsStruct,
   PrivateKeyHexStruct,
+  ResolveAccountAddressStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
 } from '../../validation/structs';
@@ -321,6 +321,9 @@ export class KeyringHandler implements KeyringSnapRpc {
     scope: CaipChainId,
     request: JsonRpcRequest,
   ): Promise<ResolvedAccountAddress> {
+    const params = { scope };
+    validateRequest(params, ResolveAccountAddressStruct);
+
     this.#logger.info('Resolving account address', { scope, request });
 
     // Get all keyring accounts
@@ -329,7 +332,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     // Resolve the address using the wallet service
     const caip10Address = await this.#walletService.resolveAccountAddress(
       keyringAccounts,
-      scope as Network,
+      params.scope,
       request,
     );
 

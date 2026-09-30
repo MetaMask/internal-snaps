@@ -72,6 +72,10 @@ export const ExportAccountRequestStruct = object({
 
 export const NetworkStruct = enums(Object.values(Network));
 
+export const ResolveAccountAddressStruct = object({
+  scope: NetworkStruct,
+});
+
 /**
  * Validates createAccount options.
  * - entropySource: Optional string for the entropy source (UUID or ULID format)

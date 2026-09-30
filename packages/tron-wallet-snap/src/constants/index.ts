@@ -1,3 +1,4 @@
+import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { BigNumber } from 'bignumber.js';
 
 export const ZERO = BigNumber(0);
@@ -65,6 +66,19 @@ export const Network = {
 } as const;
 
 export type Network = (typeof Network)[keyof typeof Network];
+
+const NETWORK_SCOPES: readonly string[] = Object.values(Network);
+
+export const isSupportedNetwork = (scope: string): scope is Network =>
+  NETWORK_SCOPES.includes(scope);
+
+export const assertSupportedNetwork = (scope: string): Network => {
+  if (!isSupportedNetwork(scope)) {
+    throw new InvalidParamsError(`Unsupported network: "${scope}"`) as Error;
+  }
+
+  return scope;
+};
 
 export const KnownCaip19Id = {
   TrxMainnet: `${Network.Mainnet}/slip44:195`,

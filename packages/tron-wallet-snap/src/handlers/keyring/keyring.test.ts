@@ -5,10 +5,12 @@ import type {
 } from '@metamask/keyring-api';
 import type { ExportAccountOptions } from '@metamask/keyring-api/v2';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
+import type { CaipChainId } from '@metamask/utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
@@ -94,6 +96,7 @@ describe('KeyringHandler', () => {
       handleKeyringRequest: jest
         .fn()
         .mockResolvedValue({ signature: '0xsignature123' }),
+      resolveAccountAddress: jest.fn().mockResolvedValue('tron:TB...caip10'),
     } as unknown as jest.Mocked<WalletService>;
     mockConfirmationHandler = {
       handleKeyringRequest: jest.fn().mockResolvedValue(true),
@@ -777,6 +780,39 @@ describe('KeyringHandler', () => {
       await expect(
         keyringHandler.exportAccount(mockAccount.id),
       ).rejects.toThrow('Error exporting account');
+    });
+  });
+
+  describe('resolveAccountAddress', () => {
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: 'resolveAccountAddress',
+      params: [],
+    } as unknown as JsonRpcRequest;
+
+    it('resolves the account address for a supported scope', async () => {
+      const result = await keyringHandler.resolveAccountAddress(
+        Network.Mainnet,
+        request,
+      );
+
+      expect(result).toBe('tron:TB...caip10');
+      expect(mockWalletService.resolveAccountAddress).toHaveBeenCalledWith(
+        [mockAccount],
+        Network.Mainnet,
+        request,
+      );
+    });
+
+    it('throws InvalidParamsError for a scope not controlled by the snap', async () => {
+      await expect(
+        keyringHandler.resolveAccountAddress(
+          'eip155:1' as CaipChainId,
+          request,
+        ),
+      ).rejects.toThrow(InvalidParamsError);
+      expect(mockWalletService.resolveAccountAddress).not.toHaveBeenCalled();
     });
   });
 });

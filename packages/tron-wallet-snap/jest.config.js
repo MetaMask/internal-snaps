@@ -16,13 +16,16 @@ module.exports = {
     '<rootDir>/jest.setup.ts',
   ],
 
+  // Measure index.ts barrels (e.g. src/constants/index.ts) so SonarCloud new-code coverage sees them; the shared base config's blanket index.ts exclusion zeroes them in lcov.
+  coveragePathIgnorePatterns: ['jest\\.setup\\.ts$'],
+
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 72.49,
-      functions: 79.91,
-      lines: 85.79,
-      statements: 85.79,
+branches: 72.66,
+      functions: 80.17,
+      lines: 86.15,
+      statements: 86.15,
     },
   },
 };

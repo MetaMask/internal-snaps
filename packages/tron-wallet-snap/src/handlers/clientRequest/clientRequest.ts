@@ -24,6 +24,7 @@ import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
+  assertSupportedNetwork,
   FALLBACK_FEE,
   FEE_LIMIT,
   METAMASK_ORIGIN,
@@ -498,7 +499,7 @@ export class ClientRequestHandler {
        * Check if we have enough of the asset we want to send...
        */
       const { chainId } = parseCaipAssetType(assetId);
-      const scope = chainId as Network;
+      const scope = assertSupportedNetwork(chainId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
         await this.#assetsService.getAccountAssetsByIDs(accountId, [
@@ -627,7 +628,7 @@ export class ClientRequestHandler {
     }
 
     const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const scope = assertSupportedNetwork(chainId);
 
     const amountBN = new BigNumber(amount);
 
@@ -1154,7 +1155,7 @@ export class ClientRequestHandler {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const scope = assertSupportedNetwork(chainId);
 
     const confirmed = await this.#confirmationHandler.confirmClaimUnstakedTrx({
       account,
@@ -1192,7 +1193,7 @@ export class ClientRequestHandler {
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
     const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const scope = assertSupportedNetwork(chainId);
 
     await this.#stakingService.claimTrxStakingRewards({ account, scope });
 

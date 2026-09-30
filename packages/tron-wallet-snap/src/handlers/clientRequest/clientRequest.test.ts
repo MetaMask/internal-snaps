@@ -1869,7 +1869,9 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     await expect(
       clientRequestHandler.handle(request as JsonRpcRequest),
     ).rejects.toThrow(
-      `Transaction owner_address (${TronWeb.address.fromHex(WRONG_OWNER_ADDRESS_HEX)}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
+      `Transaction owner_address (${TronWeb.address.fromHex(
+        WRONG_OWNER_ADDRESS_HEX,
+      )}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
     );
   });
 
@@ -2122,6 +2124,30 @@ describe('ClientRequestHandler - onAmountInput', () => {
         expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
       },
     );
+  });
+
+  it('returns invalid for an asset from a non-Tron chain', async () => {
+    await withClientRequestHandler(async ({ handler, mockAccountsService }) => {
+      mockAccountsService.findById.mockResolvedValue(mockAccount);
+
+      const request: OnAmountInputRequest = {
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: ClientRequestMethod.OnAmountInput,
+        params: {
+          accountId: TEST_ACCOUNT_ID,
+          assetId: 'eip155:1/slip44:60',
+          value: '10',
+        },
+      };
+
+      const result = await handler.handle(request);
+
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.Invalid }],
+      });
+    });
   });
 
   it('uses provided toAddress when building the transaction for fee estimation', async () => {
@@ -2943,6 +2969,24 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
     );
   });
 
+  it('throws InvalidParamsError for a non-Tron asset chain', async () => {
+    await withClientRequestHandler(async ({ handler }) => {
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: ClientRequestMethod.ClaimUnstakedTrx,
+        params: {
+          fromAccountId: TEST_ACCOUNT_ID,
+          assetId: 'eip155:1/slip44:60',
+        },
+      };
+
+      await expect(handler.handle(request)).rejects.toThrow(
+        'Invalid method parameter(s)',
+      );
+    });
+  });
+
   it('throws when user rejects the confirmation', async () => {
     await withClientRequestHandler(
       async ({
@@ -3041,6 +3085,24 @@ describe('ClientRequestHandler - claimTrxStakingRewards', () => {
         params: {
           fromAccountId: 'not-a-uuid',
           assetId: 'invalid-asset',
+        },
+      };
+
+      await expect(handler.handle(request)).rejects.toThrow(
+        'Invalid method parameter(s)',
+      );
+    });
+  });
+
+  it('throws InvalidParamsError for a non-Tron asset chain', async () => {
+    await withClientRequestHandler(async ({ handler }) => {
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: 'claimTrxStakingRewards',
+        params: {
+          fromAccountId: TEST_ACCOUNT_ID,
+          assetId: 'eip155:1/slip44:60',
         },
       };
 
