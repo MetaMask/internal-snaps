@@ -20,16 +20,16 @@ describe('mapToTransactionType', () => {
   it('classifies a transaction that spends funds as a send', () => {
     const account = createAccount(1);
 
-    expect(
-      mapToTransactionType(account, mock<Transaction>()),
-    ).toBe(TransactionType.Send);
+    expect(mapToTransactionType(account, mock<Transaction>())).toBe(
+      TransactionType.Send,
+    );
   });
 
   it('classifies a transaction that spends nothing as a receive', () => {
     const account = createAccount(0);
 
-    expect(
-      mapToTransactionType(account, mock<Transaction>()),
-    ).toBe(TransactionType.Receive);
+    expect(mapToTransactionType(account, mock<Transaction>())).toBe(
+      TransactionType.Receive,
+    );
   });
 });

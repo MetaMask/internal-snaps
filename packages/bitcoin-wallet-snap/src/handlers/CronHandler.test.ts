@@ -1,6 +1,7 @@
 import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
-import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';import { SynchronizationError } from '@metamask/snap-networks-utils';
+import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import { SynchronizationError } from '@metamask/snap-networks-utils';
 import type { SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 

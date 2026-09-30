@@ -1,4 +1,9 @@
-import type { Amount, Psbt, ScriptBuf, Transaction } from '@metamask/bitcoindevkit';
+import type {
+  Amount,
+  Psbt,
+  ScriptBuf,
+  Transaction,
+} from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 
 import type { BitcoinAccount } from './account';

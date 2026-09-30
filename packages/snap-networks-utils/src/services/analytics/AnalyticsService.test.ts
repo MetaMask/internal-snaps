@@ -85,30 +85,33 @@ describe('AnalyticsService', () => {
       TransactionEventType.TransactionSubmitted,
       'Snap transaction submitted',
     ],
-  ] as const)('tracks %s with a transaction type', async (method, event, message) => {
-    await analytics[method]({
-      origin: 'metamask',
-      accountType: 'bip122:p2wpkh',
-      chainIdCaip: 'bip122:000000000019d6689c085ae165831e93',
-      transactionType: 'send',
-    });
+  ] as const)(
+    'tracks %s with a transaction type',
+    async (method, event, message) => {
+      await analytics[method]({
+        origin: 'metamask',
+        accountType: 'bip122:p2wpkh',
+        chainIdCaip: 'bip122:000000000019d6689c085ae165831e93',
+        transactionType: 'send',
+      });
 
-    expect(request).toHaveBeenCalledWith({
-      method: 'snap_trackEvent',
-      params: {
-        event: {
-          event,
-          properties: {
-            message,
-            origin: 'metamask',
-            account_type: 'bip122:p2wpkh',
-            chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
-            transaction_type: 'send',
+      expect(request).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event,
+            properties: {
+              message,
+              origin: 'metamask',
+              account_type: 'bip122:p2wpkh',
+              chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
+              transaction_type: 'send',
+            },
           },
         },
-      },
-    });
-  });
+      });
+    },
+  );
 
   it('tracks finalized transactions with optional transaction details', async () => {
     await analytics.trackTransactionFinalized({

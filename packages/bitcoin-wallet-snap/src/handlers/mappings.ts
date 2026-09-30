@@ -12,7 +12,11 @@ import type {
   KeyringAccount,
   Transaction as KeyringTransaction,
 } from '@metamask/keyring-api';
-import { FeeType, TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import {
+  FeeType,
+  TransactionStatus,
+  TransactionType,
+} from '@metamask/keyring-api';
 
 import { canAccountTxidBeMalleated, networkToCurrencyUnit } from '../entities';
 import type { BitcoinAccount } from '../entities';
