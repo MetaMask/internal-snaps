@@ -2,6 +2,7 @@ import type {
   AssetsControllerGetAccountAssetByIDAction,
   AssetsControllerGetAccountAssetsByIDsAction,
   AssetsControllerGetAccountAssetsByScopeAction,
+  AssetsControllerGetAssetsAction,
 } from '@metamask/assets-controller';
 import type { Messenger } from '@metamask/messenger';
 import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
@@ -16,7 +17,8 @@ export type CoreMessengerActions =
   | RemoteFeatureFlagControllerGetStateAction
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
-  | AssetsControllerGetAccountAssetsByScopeAction;
+  | AssetsControllerGetAccountAssetsByScopeAction
+  | AssetsControllerGetAssetsAction;
 
 /**
  * Messenger type passed to `getMessenger` for Core controller actions.

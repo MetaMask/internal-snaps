@@ -134,6 +134,7 @@ const coreAssetsAdapter = new CoreAssetsAdapter({
     assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
   getAccountAssetsByScope:
     assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+  getAssets: assetsProvider.getAssets.bind(assetsProvider),
   getAddressInfo:
     trongridApiClient.getAccountInfoByAddress.bind(trongridApiClient),
   getAddressResources: tronHttpClient.getAccountResources.bind(tronHttpClient),

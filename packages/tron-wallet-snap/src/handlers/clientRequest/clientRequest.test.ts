@@ -112,7 +112,13 @@ type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
     Pick<AccountsService, 'findById' | 'findByIdOrThrow' | 'deriveTronKeypair'>
   >;
   mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAccountAssetsByIDs' | 'getAccountAssetByID'>
+    Pick<
+      AssetsService,
+      | 'getAccountAssetsByIDs'
+      | 'getAccountAssetByID'
+      | 'getFreshAccountAssetsByIDs'
+      | 'getFreshAccountAssetByID'
+    >
   >;
   mockSendService: jest.Mocked<
     Pick<
@@ -162,10 +168,18 @@ async function withClientRequestHandler<ReturnValue>(
   };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAccountAssetsByIDs' | 'getAccountAssetByID'>
+    Pick<
+      AssetsService,
+      | 'getAccountAssetsByIDs'
+      | 'getAccountAssetByID'
+      | 'getFreshAccountAssetsByIDs'
+      | 'getFreshAccountAssetByID'
+    >
   > = {
     getAccountAssetsByIDs: jest.fn(),
     getAccountAssetByID: jest.fn(),
+    getFreshAccountAssetsByIDs: jest.fn(),
+    getFreshAccountAssetByID: jest.fn(),
   };
 
   const mockSendService: jest.Mocked<
@@ -318,6 +332,8 @@ describe('ClientRequestHandler', () => {
 
       mockAssetsService = {
         getAccountAssetsByIDs: jest.fn(),
+        getFreshAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
+        getFreshAccountAssetByID: jest.fn().mockResolvedValue(null),
       } as unknown as jest.Mocked<AssetsService>;
 
       mockSendService = {} as unknown as jest.Mocked<SendService>;
@@ -752,7 +768,7 @@ describe('ClientRequestHandler', () => {
         mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
 
         // Mock available resources
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
           { rawAmount: '5000' }, // Bandwidth
           { rawAmount: '100000' }, // Energy
         ] as any);
@@ -797,8 +813,10 @@ describe('ClientRequestHandler', () => {
         ).toHaveBeenCalledWith('TriggerSmartContract', expect.any(String));
         // trx.sign is NOT called - fee computation uses unsigned transactions
         expect(mockTronWeb.trx.sign).not.toHaveBeenCalled();
-        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
+        expect(
+          mockAssetsService.getFreshAccountAssetsByIDs,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({ id: TEST_ACCOUNT_ID }),
           [Networks[scope].bandwidth.id, Networks[scope].energy.id],
         );
         // computeFee receives unsigned transaction (no signature field)
@@ -889,7 +907,7 @@ describe('ClientRequestHandler', () => {
         };
         mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
 
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
           { rawAmount: '1000' }, // Bandwidth
           { rawAmount: '0' }, // Energy (not needed for native transfer)
         ] as any);
@@ -982,7 +1000,7 @@ describe('ClientRequestHandler', () => {
         });
 
         // No resources available
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
           undefined, // No bandwidth asset
           undefined, // No energy asset
         ] as any);
@@ -1754,6 +1772,8 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     mockAssetsService = {
       getAccountAssetsByIDs: jest.fn(),
+      getFreshAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
+      getFreshAccountAssetByID: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<AssetsService>;
 
     mockSendService = {} as unknown as jest.Mocked<SendService>;
@@ -2105,7 +2125,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
         ];
 
         mockAccountsService.findById.mockResolvedValue(mockAccount);
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue(
+          mockAssets,
+        );
 
         const result = await handler.handle(request);
 
@@ -2163,7 +2185,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
         ];
 
         mockAccountsService.findById.mockResolvedValue(mockAccount);
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue(
+          mockAssets,
+        );
         mockSendService.buildTransaction.mockResolvedValue(builtTransaction);
         mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
 
@@ -2235,7 +2259,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
         ];
 
         mockAccountsService.findById.mockResolvedValue(mockAccount);
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue(
+          mockAssets,
+        );
         mockSendService.buildTransaction.mockResolvedValue(builtTransaction);
         mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
 
@@ -2286,7 +2312,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
         ];
 
         mockAccountsService.findById.mockResolvedValue(mockAccount);
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue(
+          mockAssets,
+        );
 
         const result = await handler.handle(request);
 
@@ -2347,7 +2375,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
         ];
 
         mockAccountsService.findById.mockResolvedValue(mockAccount);
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue(
+          mockAssets,
+        );
         mockSendService.buildTransaction.mockResolvedValue(builtTransaction);
         mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
 
@@ -2436,14 +2466,12 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         // Native TRX asset for mainnet
         const nativeAssetId = Networks[scope].nativeToken.id;
 
-        // Mock native balance and resources
-        mockAssetsService.getAccountAssetByID.mockResolvedValue({
-          uiAmount: '100',
-        } as AssetEntity);
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+        // Mock native balance and resources (single fresh fetch)
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
+          { uiAmount: '100' }, // Native TRX
           { rawAmount: '5000' }, // Bandwidth
           { rawAmount: '100000' }, // Energy
-        ] as AssetEntity[]);
+        ] as unknown as AssetEntity[]);
 
         const feeResult = [
           {
@@ -2473,13 +2501,15 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           'ENERGY',
           'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
         );
-        expect(mockAssetsService.getAccountAssetByID).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
-          nativeAssetId,
-        );
-        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
-          [Networks[scope].bandwidth.id, Networks[scope].energy.id],
+        expect(
+          mockAssetsService.getFreshAccountAssetsByIDs,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({ id: TEST_ACCOUNT_ID }),
+          [
+            nativeAssetId,
+            Networks[scope].bandwidth.id,
+            Networks[scope].energy.id,
+          ],
         );
         // computeFee receives unsigned transaction (no signature field)
         expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
@@ -2522,9 +2552,9 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         } as any);
 
         // Account has only 5 TRX
-        mockAssetsService.getAccountAssetByID.mockResolvedValue({
-          uiAmount: '5',
-        } as AssetEntity);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
+          { uiAmount: '5' }, // Native TRX
+        ] as unknown as AssetEntity[]);
 
         const result = await handler.handle(request as JsonRpcRequest);
 
@@ -2580,7 +2610,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           uiAmount: '100',
           rawAmount: '100000000',
         } as NativeAsset;
-        mockAssetsService.getAccountAssetByID.mockResolvedValue(mockAsset);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
+          mockAsset,
+        ]);
 
         // validateSend returns insufficient balance
         mockSendService.validateSend.mockResolvedValue({
@@ -2649,7 +2681,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           uiAmount: '100',
           rawAmount: '100000000',
         } as NativeAsset;
-        mockAssetsService.getAccountAssetByID.mockResolvedValue(mockAsset);
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
+          mockAsset,
+        ]);
 
         // validateSend returns insufficient balance to cover fee
         mockSendService.validateSend.mockResolvedValue({
@@ -2711,13 +2745,12 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           uiAmount: '100',
           rawAmount: '100000000',
         } as NativeAsset;
-        mockAssetsService.getAccountAssetByID.mockResolvedValue(mockAsset);
-
         // validateSend returns valid.
         mockSendService.validateSend.mockResolvedValue({ valid: true });
 
         // Mock the rest of the flow.
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+        mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
+          mockAsset,
           { rawAmount: '1000' }, // Bandwidth
           { rawAmount: '50000' }, // Energy
         ] as any);
@@ -2873,9 +2906,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         } as any);
 
         // Asset not found
-        (mockAssetsService.getAccountAssetByID as jest.Mock).mockResolvedValue(
-          null,
-        );
+        (
+          mockAssetsService.getFreshAccountAssetsByIDs as jest.Mock
+        ).mockResolvedValue([null, null, null]);
 
         const result = await handler.handle(request);
 

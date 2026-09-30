@@ -110,7 +110,9 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
       };
     };
   };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
+  mockAssetsService: jest.Mocked<
+    Pick<AssetsService, 'getFreshAccountAssetsByIDs'>
+  >;
   mockFeeCalculatorService: jest.Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   >;
@@ -146,9 +148,9 @@ async function withConfirmationHandler<ReturnValue>(
     };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAccountAssetsByIDs'>
+    Pick<AssetsService, 'getFreshAccountAssetsByIDs'>
   > = {
-    getAccountAssetsByIDs: jest.fn().mockResolvedValue([null, null]),
+    getFreshAccountAssetsByIDs: jest.fn().mockResolvedValue([null, null]),
   };
 
   const mockFeeCalculatorService: jest.Mocked<
@@ -261,20 +263,19 @@ describe('ConfirmationHandler', () => {
           scope: Network.Mainnet,
         });
 
-        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
-          [
-            Networks[Network.Mainnet].bandwidth.id,
-            Networks[Network.Mainnet].energy.id,
-          ],
-        );
+        expect(
+          mockAssetsService.getFreshAccountAssetsByIDs,
+        ).toHaveBeenCalledWith(mockAccount, [
+          Networks[Network.Mainnet].bandwidth.id,
+          Networks[Network.Mainnet].energy.id,
+        ]);
       });
     });
 
     it('uses ZERO when bandwidth and energy assets are null', async () => {
       await withConfirmationHandler(
         async ({ handler, mockAssetsService, mockFeeCalculatorService }) => {
-          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+          mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
             null,
             null,
           ]);
@@ -318,7 +319,7 @@ describe('ConfirmationHandler', () => {
             uiAmount: '3000',
             iconUrl: '',
           };
-          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+          mockAssetsService.getFreshAccountAssetsByIDs.mockResolvedValue([
             bandwidthAsset,
             energyAsset,
           ]);
