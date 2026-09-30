@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fail closed when sending a SEP-41 asset to a memo-required destination or with a memo attached, ([#385](https://github.com/MetaMask/internal-snaps/pull/385))
+- Hide send-confirmation memo controls for SEP-41 assets and skip SEP-29 RequiresMemo recovery on `invokeHostFunction` transactions ([#385](https://github.com/MetaMask/internal-snaps/pull/385))
 
 ## [1.1.0]
 

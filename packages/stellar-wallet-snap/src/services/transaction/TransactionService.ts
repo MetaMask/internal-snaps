@@ -24,7 +24,6 @@ import {
   InsufficientBalanceException,
   InvalidAssetForCreateAccountException,
   RequiresMemoException,
-  Sep41MemoNotSupportedException,
 } from './exceptions';
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
@@ -334,12 +333,6 @@ export class TransactionService {
       useCache,
     } = params;
 
-    // Soroban rejects memos; fail closed before simulate.
-    const hasMemo = typeof memo === 'string' && /\S/u.test(memo);
-    if (destinationAccount.requiresMemo || hasMemo) {
-      throw new Sep41MemoNotSupportedException();
-    }
-
     const baseFee = await this.getBaseFee(scope);
 
     let transaction = this.#transactionBuilder.sep41Transfer({
@@ -349,6 +342,7 @@ export class TransactionService {
       amount,
       destination,
       baseFee,
+      memo,
     });
 
     // Use getRawAsset so we only fetch when the asset is absent from the State.

@@ -12,7 +12,6 @@ import {
   InvalidMemoException,
   RemoveTrustlineWithNonZeroBalanceException,
   RequiresMemoException,
-  Sep41MemoNotSupportedException,
   TransactionExpireException,
   TransactionValidationException,
   TrustlineExceedLimitException,
@@ -79,9 +78,6 @@ export function getTxnErrorMessageKey(
   }
   if (error instanceof RequiresMemoException) {
     return 'confirmation.txnError.requiresMemo';
-  }
-  if (error instanceof Sep41MemoNotSupportedException) {
-    return 'confirmation.txnError.sep41MemoNotSupported';
   }
   if (error instanceof InvalidAmountForCreateAccountException) {
     return 'confirmation.txnError.invalidCreateAccountAmount';

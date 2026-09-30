@@ -173,9 +173,6 @@
   "confirmation.txnError.requiresMemo": {
     "message": "This account requires a memo. Add a memo to continue."
   },
-  "confirmation.txnError.sep41MemoNotSupported": {
-    "message": "This asset cannot be sent with a memo."
-  },
   "confirmation.txnError.invalidCreateAccountAmount": {
     "message": "Update Send Amount. A new account requires 1 XLM minimum."
   },

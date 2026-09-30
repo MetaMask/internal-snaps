@@ -72,13 +72,6 @@ export class RequiresMemoException extends TransactionValidationException {
   }
 }
 
-/** Thrown when a SEP-41 send includes a memo or targets a memo-required destination. */
-export class Sep41MemoNotSupportedException extends TransactionValidationException {
-  constructor() {
-    super('SEP-41 transfers do not support memos');
-  }
-}
-
 /**
  * Thrown when `Operation.createAccount` starting balance is below 1 XLM (no sponsorship modeled).
  */
