@@ -201,6 +201,29 @@ describe('ConfirmTransactionRequest', () => {
     expect(result).toBeDefined();
   });
 
+  it('renders the MetaMask label for the canonical origin', () => {
+    const result = ConfirmTransactionRequest({ context: baseContext });
+    const serialized = JSON.stringify(result);
+
+    // The stored origin is the canonical lowercase one, but the user must see
+    // the MetaMask label.
+    expect(serialized).toContain('MetaMask');
+    expect(serialized).not.toContain('"metamask"');
+  });
+
+  it('renders the hostname for a dApp origin', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      origin: 'https://dapp.example.com',
+    };
+
+    const result = ConfirmTransactionRequest({ context });
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).toContain('dapp.example.com');
+    expect(serialized).not.toContain('https://dapp.example.com');
+  });
+
   it('renders with Malicious validation', () => {
     const maliciousScanResult: TransactionScanResult = {
       ...mockScanResult,

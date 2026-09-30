@@ -477,7 +477,7 @@ describe('ConfirmationHandler', () => {
       });
     });
 
-    it('passes formatted origin and transactionRawData to render', async () => {
+    it('passes the raw origin and transactionRawData to render', async () => {
       await withConfirmationHandler(
         async ({ handler, mockSnapClient, mockState }) => {
           mockRenderConfirmTransactionRequest.mockResolvedValue(true);
@@ -491,9 +491,28 @@ describe('ConfirmationHandler', () => {
             mockSnapClient,
             mockState,
             expect.objectContaining({
-              origin: 'example.com',
+              origin: 'https://example.com',
               transactionRawData: mockTransactionRawData,
             }),
+          );
+        },
+      );
+    });
+
+    it('passes the raw MetaMask origin to render so the scan can recognize it', async () => {
+      await withConfirmationHandler(
+        async ({ handler, mockSnapClient, mockState }) => {
+          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+
+          await handler.confirmTransactionRequest({
+            ...defaultParams,
+            origin: METAMASK_ORIGIN,
+          });
+
+          expect(mockRenderConfirmTransactionRequest).toHaveBeenCalledWith(
+            mockSnapClient,
+            mockState,
+            expect.objectContaining({ origin: METAMASK_ORIGIN }),
           );
         },
       );
