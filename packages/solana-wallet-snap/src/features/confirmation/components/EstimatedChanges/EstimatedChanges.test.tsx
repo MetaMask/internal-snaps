@@ -45,6 +45,18 @@ describe('EstimatedChanges', () => {
     expect(serialized).not.toContain('$');
   });
 
+  it('renders a skeleton while fetching and nothing is estimated yet', () => {
+    expect(render({ changes: null, scanFetchStatus: 'fetching' })).toContain(
+      '"type":"Skeleton"',
+    );
+  });
+
+  it('renders not available when the scan fetch fails', () => {
+    expect(render({ changes: null, scanFetchStatus: 'error' })).toContain(
+      'Not available',
+    );
+  });
+
   it('renders not available when the scan result is an error', () => {
     const serialized = render({ changes: null, scanStatus: 'ERROR' });
 
