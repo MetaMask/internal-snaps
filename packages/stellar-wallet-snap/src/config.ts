@@ -1,22 +1,15 @@
 import {
   BaseConfigProvider,
-  defaultedUrlStruct,
   LogLevelStruct,
   parseIntegerStruct,
   parseFloatStruct,
   UrlStruct,
 } from '@metamask/snap-networks-utils';
-import type { Infer, Struct } from '@metamask/superstruct';
-import {
-  assign,
-  coerce,
-  defaulted,
-  enums,
-  object,
-  string,
-} from '@metamask/superstruct';
+import type { Infer } from '@metamask/superstruct';
+import { enums, object } from '@metamask/superstruct';
 
 /* eslint-disable no-restricted-globals */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { Environment, KnownCaip2ChainId } from './api';
 import { getSupportedScopes } from './utils/scopes';
 
@@ -47,55 +40,16 @@ const networkConfigStruct = object({
 export type NetworkConfig = Infer<typeof networkConfigStruct>;
 
 /**
- * A struct for validating the network config, with a fallback explorer base
- * URL for unset or empty values.
- *
- * @param explorerBaseUrl - The explorer URL to use when the variable is unset
- * or empty.
- * @returns A struct for validating the network config.
- */
-const createNetworkConfigStruct = (
-  explorerBaseUrl: string,
-): Struct<NetworkConfig> =>
-  assign(
-    networkConfigStruct,
-    object({
-      explorerBaseUrl: defaultedUrlStruct(explorerBaseUrl),
-    }),
-  );
-
-const mainnetNetworkConfigStruct = createNetworkConfigStruct(
-  DEFAULT_EXPLORER_MAINNET_BASE_URL,
-);
-
-const testnetNetworkConfigStruct = createNetworkConfigStruct(
-  DEFAULT_EXPLORER_TESTNET_BASE_URL,
-);
-
-/**
- * A struct to validate and coerce the selected network from env.
- * Converts the selected network to lowercase and checks if it is a valid selected network.
- * If the selected network is empty, it returns the default selected network.
- *
- * @returns A struct for validating the selected network.
- */
-const selectedNetworkStruct = coerce(
-  defaulted(enums(getSupportedScopes()), KnownCaip2ChainId.Mainnet),
-  string(),
-  (value: string) => (value === '' ? undefined : value.toLowerCase()),
-);
-
-/**
  * A struct for validating the config.
  */
 export const ConfigStruct = object({
   environment: enums(Object.values(Environment)),
   logLevel: LogLevelStruct,
   networks: object({
-    [KnownCaip2ChainId.Mainnet]: mainnetNetworkConfigStruct,
-    [KnownCaip2ChainId.Testnet]: testnetNetworkConfigStruct,
+    [KnownCaip2ChainId.Mainnet]: networkConfigStruct,
+    [KnownCaip2ChainId.Testnet]: networkConfigStruct,
   }),
-  selectedNetwork: selectedNetworkStruct,
+  selectedNetwork: enums(getSupportedScopes()),
   transaction: object({
     timeout: parseIntegerStruct(100, 180),
     pollingAttempts: parseIntegerStruct(0, 10),
@@ -134,16 +88,16 @@ export const ConfigStruct = object({
   }),
   api: object({
     tokenApi: object({
-      baseUrl: defaultedUrlStruct(DEFAULT_TOKEN_API_BASE_URL),
+      baseUrl: UrlStruct,
     }),
     staticApi: object({
-      baseUrl: defaultedUrlStruct(DEFAULT_STATIC_API_BASE_URL),
+      baseUrl: UrlStruct,
     }),
     priceApi: object({
-      baseUrl: defaultedUrlStruct(DEFAULT_PRICE_API_BASE_URL),
+      baseUrl: UrlStruct,
     }),
     securityAlertsApi: object({
-      baseUrl: defaultedUrlStruct(DEFAULT_SECURITY_ALERTS_API_BASE_URL),
+      baseUrl: UrlStruct,
     }),
   }),
   cache: object({
@@ -178,12 +132,16 @@ const ENVIRONMENT = {
     [KnownCaip2ChainId.Mainnet]: {
       rpcUrl: process.env.STELLAR_RPC_URL_MAINNET,
       horizonUrl: process.env.STELLAR_HORIZON_URL_MAINNET,
-      explorerBaseUrl: process.env.STELLAR_EXPLORER_MAINNET_BASE_URL,
+      explorerBaseUrl:
+        process.env.STELLAR_EXPLORER_MAINNET_BASE_URL ||
+        DEFAULT_EXPLORER_MAINNET_BASE_URL,
     },
     [KnownCaip2ChainId.Testnet]: {
       rpcUrl: process.env.STELLAR_RPC_URL_TESTNET,
       horizonUrl: process.env.STELLAR_HORIZON_URL_TESTNET,
-      explorerBaseUrl: process.env.STELLAR_EXPLORER_TESTNET_BASE_URL,
+      explorerBaseUrl:
+        process.env.STELLAR_EXPLORER_TESTNET_BASE_URL ||
+        DEFAULT_EXPLORER_TESTNET_BASE_URL,
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
@@ -199,16 +157,18 @@ const ENVIRONMENT = {
   },
   api: {
     tokenApi: {
-      baseUrl: process.env.TOKEN_API_BASE_URL,
+      baseUrl: process.env.TOKEN_API_BASE_URL || DEFAULT_TOKEN_API_BASE_URL,
     },
     staticApi: {
-      baseUrl: process.env.STATIC_API_BASE_URL,
+      baseUrl: process.env.STATIC_API_BASE_URL || DEFAULT_STATIC_API_BASE_URL,
     },
     priceApi: {
-      baseUrl: process.env.PRICE_API_BASE_URL,
+      baseUrl: process.env.PRICE_API_BASE_URL || DEFAULT_PRICE_API_BASE_URL,
     },
     securityAlertsApi: {
-      baseUrl: process.env.SECURITY_ALERTS_API_BASE_URL,
+      baseUrl:
+        process.env.SECURITY_ALERTS_API_BASE_URL ||
+        DEFAULT_SECURITY_ALERTS_API_BASE_URL,
     },
   },
   cache: {
@@ -242,3 +202,5 @@ export const configProvider = new BaseConfigProvider(ENVIRONMENT, ConfigStruct);
  * set when building the Snap.
  */
 export const AppConfig = configProvider.config;
+
+/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
