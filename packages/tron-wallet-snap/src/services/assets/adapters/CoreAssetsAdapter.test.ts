@@ -115,6 +115,7 @@ function createCoreAssetsAdapterContext(): {
       | 'getAssets'
     >
   >;
+  mockFetchSnapOwnedAssets: jest.Mock;
 } {
   const mockAssetsProvider = {
     getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
@@ -123,16 +124,20 @@ function createCoreAssetsAdapterContext(): {
     getAssets: jest.fn().mockResolvedValue({}),
   };
 
+  const mockFetchSnapOwnedAssets = jest.fn().mockResolvedValue([]);
+
   const adapter = new CoreAssetsAdapter({
     getAccountAssetByID: mockAssetsProvider.getAccountAssetByID,
     getAccountAssetsByIDs: mockAssetsProvider.getAccountAssetsByIDs,
     getAccountAssetsByScope: mockAssetsProvider.getAccountAssetsByScope,
     getAssets: mockAssetsProvider.getAssets,
+    fetchSnapOwnedAssets: mockFetchSnapOwnedAssets,
   });
 
   return {
     adapter,
     mockAssetsProvider,
+    mockFetchSnapOwnedAssets,
   };
 }
 
@@ -435,6 +440,132 @@ describe('CoreAssetsAdapter', () => {
           },
         );
       });
+    });
+  });
+
+  describe('getFreshAccountAssetsByIDs', () => {
+    it('fetches controller-tracked assets from a forced, cache-bypassing one-time fetch', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockAssetsProvider, mockFetchSnapOwnedAssets }) => {
+          mockFetchSnapOwnedAssets.mockResolvedValue([]);
+          (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+            [ACCOUNT_ID]: {
+              [MAINNET_ASSET_ID]: createControllerAsset({
+                id: MAINNET_ASSET_ID,
+                amount: '1',
+              }),
+            },
+          });
+
+          const [asset] = await adapter.getFreshAccountAssetsByIDs(
+            mockAccount,
+            [MAINNET_ASSET_ID],
+          );
+
+          expect(mockAssetsProvider.getAssets).toHaveBeenCalledWith(
+            [expect.objectContaining({ id: ACCOUNT_ID })],
+            {
+              chainIds: [Network.Mainnet],
+              forceUpdate: true,
+              bypassServerCache: true,
+            },
+          );
+          expect(asset?.assetType).toBe(MAINNET_ASSET_ID);
+          expect(asset?.uiAmount).toBe('1');
+        },
+      );
+    });
+
+    it('resolves snap-owned assets from the direct RPC fetch', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockFetchSnapOwnedAssets, mockAssetsProvider }) => {
+          const energy = createAssetEntity({
+            assetType: KnownCaip19Id.EnergyMainnet,
+            rawAmount: '200',
+            uiAmount: '200',
+          });
+          const bandwidth = createAssetEntity({
+            assetType: KnownCaip19Id.BandwidthMainnet,
+            rawAmount: '4000',
+            uiAmount: '4000',
+          });
+          mockFetchSnapOwnedAssets.mockResolvedValue([energy, bandwidth]);
+          (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({});
+
+          const [energyAsset, bandwidthAsset] = await adapter
+            .getFreshAccountAssetsByIDs(mockAccount, [
+              KnownCaip19Id.EnergyMainnet,
+              KnownCaip19Id.BandwidthMainnet,
+            ])
+            .then((assets) => assets);
+
+          expect(energyAsset?.rawAmount).toBe('200');
+          expect(bandwidthAsset?.rawAmount).toBe('4000');
+        },
+      );
+    });
+
+    it('returns null for requested asset IDs that could not be resolved', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockFetchSnapOwnedAssets, mockAssetsProvider }) => {
+          mockFetchSnapOwnedAssets.mockResolvedValue([]);
+          (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+            [ACCOUNT_ID]: {},
+          });
+
+          const assets = await adapter.getFreshAccountAssetsByIDs(mockAccount, [
+            MAINNET_ASSET_ID,
+            USDT_ASSET_ID,
+          ]);
+
+          expect(assets).toStrictEqual([null, null]);
+        },
+      );
+    });
+
+    it('deduplicates scopes across the requested asset IDs', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockAssetsProvider, mockFetchSnapOwnedAssets }) => {
+          mockFetchSnapOwnedAssets.mockResolvedValue([]);
+          (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({});
+
+          await adapter.getFreshAccountAssetsByIDs(mockAccount, [
+            MAINNET_ASSET_ID,
+            USDT_ASSET_ID,
+          ]);
+
+          expect(mockAssetsProvider.getAssets).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ chainIds: [Network.Mainnet] }),
+          );
+        },
+      );
+    });
+  });
+
+  describe('getFreshAccountAssetByID', () => {
+    it('returns the single fresh asset', async () => {
+      await withCoreAssetsAdapter(
+        async ({ adapter, mockAssetsProvider, mockFetchSnapOwnedAssets }) => {
+          mockFetchSnapOwnedAssets.mockResolvedValue([]);
+          (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+            [ACCOUNT_ID]: {
+              [MAINNET_ASSET_ID]: createControllerAsset({
+                id: MAINNET_ASSET_ID,
+                amount: '2',
+              }),
+            },
+          });
+
+          const asset = await adapter.getFreshAccountAssetByID(
+            mockAccount,
+            MAINNET_ASSET_ID,
+          );
+
+          expect(asset?.assetType).toBe(MAINNET_ASSET_ID);
+          expect(asset?.uiAmount).toBe('2');
+        },
+      );
     });
   });
 });

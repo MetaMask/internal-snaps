@@ -135,6 +135,8 @@ const coreAssetsAdapter = new CoreAssetsAdapter({
   getAccountAssetsByScope:
     assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
   getAssets: assetsProvider.getAssets.bind(assetsProvider),
+  fetchSnapOwnedAssets:
+    snapAssetsAdapter.fetchAssetsAndBalancesForAccount.bind(snapAssetsAdapter),
 });
 
 // Business Services

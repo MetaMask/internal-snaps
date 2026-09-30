@@ -493,7 +493,7 @@ export class ClientRequestHandler {
       const { chainId: scope } = parseTronCaipAssetType(assetId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
-        await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        await this.#assetsService.getFreshAccountAssetsByIDs(account, [
           assetId,
           Networks[scope].nativeToken.id,
           Networks[scope].bandwidth.id,
@@ -606,10 +606,18 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      assetId,
-    );
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    /**
+     * Fetch the sent asset and the account resources fresh, so the
+     * validation and fee estimation below never act on stale balances.
+     */
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getFreshAccountAssetsByIDs(account, [
+        assetId,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     if (!asset) {
       return {
@@ -618,9 +626,7 @@ export class ClientRequestHandler {
       };
     }
 
-    const { chainId: scope } = parseTronCaipAssetType(assetId);
-
-    const amountBN = new BigNumber(amount);
+const amountBN = new BigNumber(amount);
 
     /**
      * Validate that the user has enough funds to cover both the amount
@@ -645,27 +651,13 @@ export class ClientRequestHandler {
       };
     }
 
-    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
-      /**
-       * Get available Energy and Bandwidth from account assets.
-       */
-      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]),
-      /**
-       * Build the unsigned transaction.
-       * Fee estimation uses a constant overhead for the signature (134 bytes).
-       * Signing happens after user confirmation in sendTransaction().
-       */
-      this.#sendService.buildTransaction({
-        fromAccountId,
-        toAddress,
-        asset,
-        amount: amountBN,
-        feeLimit: FEE_LIMIT,
-      }),
-    ]);
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amountBN,
+      feeLimit: FEE_LIMIT,
+    });
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -768,7 +760,7 @@ export class ClientRequestHandler {
      * Recreate the transaction object from base64-encoded raw data.
      * No signing needed - fee calculation uses constant overhead for signature.
      */
-    await this.#accountsService.findByIdOrThrow(accountId);
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
@@ -793,10 +785,11 @@ export class ClientRequestHandler {
     };
 
     /**
-     * Get available Energy and Bandwidth from account assets.
+     * Get available Energy and Bandwidth from account assets, fetched fresh
+     * so the fee breakdown reflects the latest account resources.
      */
     const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(accountId, [
+      await this.#assetsService.getFreshAccountAssetsByIDs(account, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
@@ -851,10 +844,12 @@ export class ClientRequestHandler {
 
     const scope = Network.Mainnet;
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      Networks[scope].nativeToken.id,
-    );
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getFreshAccountAssetsByIDs(account, [
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     const accountBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
     const requestBalance = BigNumber(value);
@@ -877,15 +872,6 @@ export class ClientRequestHandler {
       purpose,
       account.address,
     );
-
-    /**
-     * Get available Energy and Bandwidth from account assets.
-     */
-    const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]);
 
     const availableEnergy = energyAsset
       ? BigNumber(energyAsset.rawAmount)
@@ -926,9 +912,9 @@ export class ClientRequestHandler {
 
     const { accountId, assetId, value } = request.params;
 
-    await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -974,8 +960,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -1035,9 +1021,9 @@ export class ClientRequestHandler {
      */
     const stakedAssetId = `${assetId}-staked-for-${purpose.toLowerCase()}`;
 
-    await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       stakedAssetId,
     );
 
@@ -1090,8 +1076,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       stakedAssetId,
     );
 
