@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `getAssets` to `AssetsProvider`, mapping to the `AssetsController:getAssets` one-time fetch so Snaps can fetch uncached combined assets (balance, metadata, price, and `fiatValue`) and update controller state, with `forceUpdate` and `bypassServerCache` support for post-transaction freshness
 - Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
   - Takes translated `labels`, display-ready `assets` (`EstimatedChangesAsset`), a `scanFetchStatus` (`EstimatedChangesFetchStatus`), and a `scanError`
 - Add `SynchronizationError`, `formatAccountSyncFailures`, and the `AccountSyncFailure` type, for reporting account synchronization failures with per-account failure details embedded in the error message (details must live in the message because `snap_trackError` only serializes `name`, `message`, `stack`, and `cause`). ([#374](https://github.com/MetaMask/internal-snaps/pull/374))
