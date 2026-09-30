@@ -53,6 +53,7 @@ function createMessengerCallMock(
   getAccountAssetByID: jest.Mock,
   getAccountAssetsByIDs: jest.Mock = jest.fn().mockResolvedValue({}),
   getAccountAssetsByScope: jest.Mock = jest.fn().mockResolvedValue({}),
+  getAssets: jest.Mock = jest.fn().mockResolvedValue({}),
 ): CoreMessengerCaller['call'] {
   return async (actionType, ...args) => {
     switch (actionType) {
@@ -64,6 +65,8 @@ function createMessengerCallMock(
         return getAccountAssetsByIDs(...args);
       case 'AssetsController:getAccountAssetsByScope':
         return getAccountAssetsByScope(...args);
+      case 'AssetsController:getAssets':
+        return getAssets(...args);
       default:
         return undefined;
     }
@@ -350,6 +353,7 @@ async function withAssetsService<ReturnValue>(
       assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
     getAccountAssetsByScope:
       assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+    getAssets: assetsProvider.getAssets.bind(assetsProvider),
     getAddressInfo: mockTrongridApiClient.getAccountInfoByAddress,
     getAddressResources: mockTronHttpClient.getAccountResources,
     getAddressStakingRewards: mockTronHttpClient.getReward,
@@ -3097,6 +3101,165 @@ describe('AssetsService', () => {
           expect(
             await assetsService.getAccountAssetsByIDs(mockAccount.id, []),
           ).toStrictEqual([]);
+        },
+      );
+    });
+  });
+
+  describe('getFreshAccountAssetsByIDs', () => {
+    it('returns an empty array when no asset IDs are requested', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockTrongridApiClient }) => {
+          expect(
+            await assetsService.getFreshAccountAssetsByIDs(mockAccount, []),
+          ).toStrictEqual([]);
+          expect(
+            mockTrongridApiClient.getAccountInfoByAddress,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('syncs, saves, and reads fresh values when migration is off', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          mockAssetsRepository,
+        }) => {
+          mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+            new TrongridAccountNotFoundError(),
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+          mockTronHttpClient.getReward.mockResolvedValue(0);
+          mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue([]);
+
+          const asset: AssetEntity = {
+            iconUrl: '',
+            assetType: KnownCaip19Id.TrxMainnet,
+            keyringAccountId: mockAccount.id,
+            network: Network.Mainnet,
+            symbol: 'TRX',
+            decimals: 6,
+            rawAmount: '1000000',
+            uiAmount: '1',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
+            asset,
+          ]);
+
+          const results = await assetsService.getFreshAccountAssetsByIDs(
+            mockAccount,
+            [KnownCaip19Id.TrxMainnet],
+          );
+
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalled();
+          expect(results[0]).toStrictEqual(asset);
+        },
+      );
+    });
+
+    it('routes through the Core adapter when migration is active', async () => {
+      const activeMigrationStage =
+        SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback;
+
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockCoreMessenger,
+          mockTrongridApiClient,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(activeMigrationStage);
+
+          mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+            new TrongridAccountNotFoundError(),
+          );
+
+          const trx = KnownCaip19Id.TrxMainnet as Caip19AssetId;
+          mockCoreMessenger.call.mockImplementation(
+            createMessengerCallMock(
+              () => ({
+                remoteFeatureFlags: {
+                  [TRON_FLAG_KEY]: { stage: activeMigrationStage },
+                },
+              }),
+              jest.fn(),
+              jest.fn(),
+              jest.fn(),
+              jest.fn().mockResolvedValue({
+                'test-account-id': {
+                  [trx]: buildControllerAsset(trx, '1', {
+                    symbol: 'TRX',
+                    name: 'TRON',
+                    decimals: 6,
+                  }),
+                },
+              }),
+            ),
+          );
+
+          const results = await assetsService.getFreshAccountAssetsByIDs(
+            mockAccount,
+            [trx],
+          );
+
+          expect(mockCoreMessenger.call).toHaveBeenCalledWith(
+            'AssetsController:getAssets',
+            expect.anything(),
+            {
+              chainIds: [Network.Mainnet],
+              forceUpdate: true,
+              bypassServerCache: true,
+            },
+          );
+          expect(results[0]?.rawAmount).toBe('1000000');
+        },
+      );
+    });
+  });
+
+  describe('getFreshAccountAssetByID', () => {
+    it('returns the single fresh asset', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          mockAssetsRepository,
+        }) => {
+          mockTrongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+            new TrongridAccountNotFoundError(),
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+          mockTronHttpClient.getReward.mockResolvedValue(0);
+          mockTrongridApiClient.getTrc20BalancesByAddress.mockResolvedValue([]);
+
+          const asset: AssetEntity = {
+            iconUrl: '',
+            assetType: KnownCaip19Id.TrxMainnet,
+            keyringAccountId: mockAccount.id,
+            network: Network.Mainnet,
+            symbol: 'TRX',
+            decimals: 6,
+            rawAmount: '1000000',
+            uiAmount: '1',
+          };
+          mockAssetsRepository.getByAccountIdAndAssetTypes.mockResolvedValue([
+            asset,
+          ]);
+
+          const result = await assetsService.getFreshAccountAssetByID(
+            mockAccount,
+            KnownCaip19Id.TrxMainnet,
+          );
+
+          expect(result).toStrictEqual(asset);
         },
       );
     });

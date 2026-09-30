@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Fetch fresh asset data before send, stake, unstake, and claim flows so validation, fee estimation, and confirmations never act on stale balances. When the assets migration is active, controller-tracked assets come from an `AssetsController` one-time fetch with `forceUpdate` and `bypassServerCache`, while snap-owned assets (staking positions, energy, bandwidth) are fetched directly from Tron RPC
+
 ## [4.0.0]
 
 ### Added
