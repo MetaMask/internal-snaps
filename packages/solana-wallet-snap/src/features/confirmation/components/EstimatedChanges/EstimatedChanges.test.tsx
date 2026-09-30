@@ -64,6 +64,18 @@ describe('EstimatedChanges', () => {
     expect(serialized).not.toContain('No changes');
   });
 
+  it.each([
+    { scanFetchStatus: 'fetching' },
+    { scanFetchStatus: 'error' },
+    { scanStatus: 'ERROR' },
+  ] as const)('keeps previously estimated rows visible for %o', (props) => {
+    const serialized = render(props);
+
+    expect(serialized).toContain('-1.5 SOL');
+    expect(serialized).not.toContain('"type":"Skeleton"');
+    expect(serialized).not.toContain('Not available');
+  });
+
   it('renders no changes when there are no estimated changes', () => {
     expect(render({ changes: null })).toContain('No changes');
   });
