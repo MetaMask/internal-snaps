@@ -9,6 +9,7 @@ import type { Infer } from '@metamask/superstruct';
 import { enums, object } from '@metamask/superstruct';
 
 /* eslint-disable no-restricted-globals */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { Environment, KnownCaip2ChainId } from './api';
 import { getSupportedScopes } from './utils/scopes';
 
@@ -201,3 +202,5 @@ export const configProvider = new BaseConfigProvider(ENVIRONMENT, ConfigStruct);
  * set when building the Snap.
  */
 export const AppConfig = configProvider.config;
+
+/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
