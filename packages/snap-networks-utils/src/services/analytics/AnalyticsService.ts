@@ -44,19 +44,30 @@ export type AnalyticsServiceOptions<
   trackError: TrackErrorFn;
 };
 
-export type TransactionEventProperties = {
+/**
+ * Fields shared by every event tied to an account on a chain.
+ */
+export type AccountEventProperties = {
   origin: string;
   accountType: string;
   chainIdCaip: string;
-  /**
-   * Optional transaction classification, using the `@metamask/keyring-api`
-   * `TransactionType` vocabulary (`send`, `swap`, `bridge:send`, ...).
-   *
-   * Together with `origin` this identifies which flow produced a lifecycle
-   * event: `origin` says who initiated it, `transactionType` says what kind of
-   * operation it was. Omitted when the emitting Snap cannot classify the
-   * transaction.
-   */
+};
+
+/**
+ * Properties of a transaction lifecycle event.
+ *
+ * `transactionType` is the optional classification of the transaction, using
+ * the `@metamask/keyring-api` `TransactionType` vocabulary (`send`, `swap`,
+ * `bridge:send`, ...). Together with `origin` it identifies which flow produced
+ * the event: `origin` says who initiated it, `transactionType` says what kind of
+ * operation it was. It is omitted when the emitting Snap cannot classify the
+ * transaction.
+ *
+ * Security events intentionally do not extend this type: they are not tied to a
+ * transaction classification, so advertising `transactionType` there would let
+ * callers pass a value that is silently discarded.
+ */
+export type TransactionEventProperties = AccountEventProperties & {
   transactionType?: string;
 };
 
@@ -64,18 +75,16 @@ export type TransactionFinalizedEventProperties = TransactionEventProperties & {
   transactionStatus?: string;
 };
 
-export type SecurityAlertDetectedEventProperties =
-  TransactionEventProperties & {
-    securityAlertResponse: string;
-    securityAlertReason: string | null;
-    securityAlertDescription: string;
-  };
+export type SecurityAlertDetectedEventProperties = AccountEventProperties & {
+  securityAlertResponse: string;
+  securityAlertReason: string | null;
+  securityAlertDescription: string;
+};
 
-export type SecurityScanCompletedEventProperties =
-  TransactionEventProperties & {
-    scanStatus: string;
-    hasSecurityAlerts: boolean;
-  };
+export type SecurityScanCompletedEventProperties = AccountEventProperties & {
+  scanStatus: string;
+  hasSecurityAlerts: boolean;
+};
 
 export type WebSocketConnectionClosedEventProperties = {
   origin: string;

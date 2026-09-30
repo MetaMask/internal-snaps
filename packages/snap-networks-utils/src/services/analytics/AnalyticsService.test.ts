@@ -208,6 +208,24 @@ describe('AnalyticsService', () => {
     });
   });
 
+  it('does not emit transaction_type on security events', async () => {
+    // `SecurityAlertDetectedEventProperties` and
+    // `SecurityScanCompletedEventProperties` must not advertise
+    // `transactionType`, otherwise a type-valid caller value is discarded.
+    await analytics.trackSecurityScanCompleted({
+      origin: 'https://example.com',
+      accountType: 'eip155:eoa',
+      chainIdCaip: 'eip155:1',
+      scanStatus: 'success',
+      hasSecurityAlerts: false,
+      // @ts-expect-error - transactionType is not a security event property.
+      transactionType: 'send',
+    });
+
+    const event = request.mock.calls[0]?.[0].params.event;
+    expect(event.properties).not.toHaveProperty('transaction_type');
+  });
+
   it('tracks WebSocket connection failures', async () => {
     await analytics.trackWebSocketConnectionClosedNotCleanly({
       origin: 'metamask',
