@@ -1,18 +1,10 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
-import { KeyringEvent } from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { AssetsProvider } from '@metamask/snap-networks-utils';
 
 import { KnownCaip19Id, Network } from '../../../constants';
-import type { AssetEntity } from '../../../entities/assets';
+import { AssetFetchError } from '../errors';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
-
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-
-(globalThis as { snap?: unknown }).snap = {};
 
 const ACCOUNT_ID = 'test-account-id';
 const MAINNET_ASSET_ID = KnownCaip19Id.TrxMainnet as Caip19AssetId;
@@ -76,27 +68,6 @@ function createControllerAsset(options: {
     },
     fiatValue: 0,
   } as Asset;
-}
-
-/**
- * Builds a snap-owned asset entity for `saveManyAndEmit` tests.
- *
- * @param overrides - Fields to override on the asset entity.
- * @returns An `AssetEntity`.
- */
-function createAssetEntity(
-  overrides: Partial<AssetEntity> & Pick<AssetEntity, 'assetType'>,
-): AssetEntity {
-  return {
-    keyringAccountId: ACCOUNT_ID,
-    network: Network.Mainnet,
-    symbol: 'ENERGY',
-    decimals: 0,
-    rawAmount: '100',
-    uiAmount: '100',
-    iconUrl: '',
-    ...overrides,
-  } as AssetEntity;
 }
 
 /**
@@ -311,10 +282,21 @@ describe('CoreAssetsAdapter', () => {
     });
   });
 
-  describe('fetchAccountAssets', () => {
-    it('fetches through the controller with forced update and no server cache', async () => {
+  describe('fetchAccountAssetsByIDs', () => {
+    it('fetches all assets, including special assets, from a forced, cache-bypassing one-time fetch', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        await adapter.fetchAccountAssets(mockAccount);
+        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+          [ACCOUNT_ID]: {
+            [MAINNET_ASSET_ID]: createControllerAsset({
+              id: MAINNET_ASSET_ID,
+              amount: '1',
+            }),
+          },
+        });
+
+        const [asset] = await adapter.fetchAccountAssetsByIDs(mockAccount, [
+          MAINNET_ASSET_ID,
+        ]);
 
         expect(mockAssetsProvider.getAssets).toHaveBeenCalledWith(
           [expect.objectContaining({ id: ACCOUNT_ID })],
@@ -324,116 +306,87 @@ describe('CoreAssetsAdapter', () => {
             bypassServerCache: true,
           },
         );
+        expect(asset?.assetType).toBe(MAINNET_ASSET_ID);
+        expect(asset?.uiAmount).toBe('1');
       });
     });
 
-    it('maps the fetched controller assets for the account', async () => {
+    it('returns null for requested asset IDs that could not be resolved', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        const mainnetAsset = createControllerAsset({ id: MAINNET_ASSET_ID });
-        const usdtAsset = createControllerAsset({
-          id: USDT_ASSET_ID,
-          symbol: 'USDT',
+        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+          [ACCOUNT_ID]: {},
         });
-        mockAssetsProvider.getAssets.mockResolvedValue({
-          [ACCOUNT_ID]: {
-            [MAINNET_ASSET_ID]: mainnetAsset,
-            [USDT_ASSET_ID]: usdtAsset,
-          },
-        } as never);
 
-        const assets = await adapter.fetchAccountAssets(mockAccount);
+        const assets = await adapter.fetchAccountAssetsByIDs(mockAccount, [
+          MAINNET_ASSET_ID,
+          USDT_ASSET_ID,
+        ]);
 
-        expect(assets.map((asset) => asset.assetType).sort()).toStrictEqual(
-          [MAINNET_ASSET_ID, USDT_ASSET_ID].sort(),
-        );
-        expect(
-          assets.every((asset) => asset.keyringAccountId === ACCOUNT_ID),
-        ).toBe(true);
+        expect(assets).toStrictEqual([null, null]);
       });
     });
 
-    it('returns an empty list when the controller returns nothing for the account', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
-        const assets = await adapter.fetchAccountAssets(mockAccount);
-
-        expect(assets).toStrictEqual([]);
-      });
-    });
-
-    it('rejects when the controller fetch fails', async () => {
+    it('deduplicates scopes across the requested asset IDs', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        mockAssetsProvider.getAssets.mockRejectedValue(
+        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({});
+
+        await adapter.fetchAccountAssetsByIDs(mockAccount, [
+          MAINNET_ASSET_ID,
+          USDT_ASSET_ID,
+        ]);
+
+        expect(mockAssetsProvider.getAssets).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ chainIds: [Network.Mainnet] }),
+        );
+      });
+    });
+
+    it('rejects with AssetFetchError when the controller fetch fails', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        (mockAssetsProvider.getAssets as jest.Mock).mockRejectedValue(
           new Error('fetch failed'),
         );
 
-        await expect(adapter.fetchAccountAssets(mockAccount)).rejects.toThrow(
-          'fetch failed',
+        await expect(
+          adapter.fetchAccountAssetsByIDs(mockAccount, [MAINNET_ASSET_ID]),
+        ).rejects.toThrow(AssetFetchError);
+      });
+    });
+
+    it('rethrows AssetFetchError as-is when the controller fetch fails', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        const fetchError = new AssetFetchError('fetch failed');
+        (mockAssetsProvider.getAssets as jest.Mock).mockRejectedValue(
+          fetchError,
         );
+
+        await expect(
+          adapter.fetchAccountAssetsByIDs(mockAccount, [MAINNET_ASSET_ID]),
+        ).rejects.toBe(fetchError);
       });
     });
   });
 
-  describe('saveManyAndEmit', () => {
-    it('does nothing when there are no snap-owned assets', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
-        await adapter.saveManyAndEmit([
-          createAssetEntity({
-            assetType: KnownCaip19Id.TrxMainnet,
-            symbol: 'TRX',
-            decimals: 6,
-            rawAmount: '1000000',
-            uiAmount: '1',
-          }),
-        ]);
-
-        expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
-      });
-    });
-
-    it('publishes only snap-owned assets as added with balance updates', async () => {
-      await withCoreAssetsAdapter(async ({ adapter }) => {
-        await adapter.saveManyAndEmit([
-          createAssetEntity({
-            assetType: KnownCaip19Id.TrxMainnet,
-            symbol: 'TRX',
-            decimals: 6,
-            rawAmount: '1000000',
-            uiAmount: '1',
-          }),
-          createAssetEntity({
-            assetType: KnownCaip19Id.EnergyMainnet,
-            symbol: 'ENERGY',
-            rawAmount: '100',
-            uiAmount: '100',
-          }),
-        ]);
-
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountAssetListUpdated,
-          {
-            assets: {
-              [ACCOUNT_ID]: {
-                added: [KnownCaip19Id.EnergyMainnet],
-                removed: [],
-              },
-            },
+  describe('fetchAccountAssetByID', () => {
+    it('returns the single fresh asset', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+          [ACCOUNT_ID]: {
+            [MAINNET_ASSET_ID]: createControllerAsset({
+              id: MAINNET_ASSET_ID,
+              amount: '2',
+            }),
           },
+        });
+
+        const asset = await adapter.fetchAccountAssetByID(
+          mockAccount,
+          MAINNET_ASSET_ID,
         );
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
-          expect.anything(),
-          KeyringEvent.AccountBalancesUpdated,
-          {
-            balances: {
-              [ACCOUNT_ID]: {
-                [KnownCaip19Id.EnergyMainnet]: {
-                  unit: 'ENERGY',
-                  amount: '100',
-                },
-              },
-            },
-          },
-        );
+
+        expect(asset?.assetType).toBe(MAINNET_ASSET_ID);
+        expect(asset?.uiAmount).toBe('2');
       });
     });
   });
