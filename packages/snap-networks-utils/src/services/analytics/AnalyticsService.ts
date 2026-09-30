@@ -163,21 +163,14 @@ export class AnalyticsService<
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
    */
-  async trackTransactionAdded({
-    origin,
-    accountType,
-    chainIdCaip,
-    transactionType,
-  }: TransactionEventProperties): Promise<void> {
-    await this.trackEvent(TransactionEventType.TransactionAdded, {
-      message: 'Snap transaction added',
-      origin,
-      account_type: accountType,
-      chain_id_caip: chainIdCaip,
-      ...(transactionType === undefined
-        ? {}
-        : { transaction_type: transactionType }),
-    });
+  async trackTransactionAdded(
+    properties: TransactionEventProperties,
+  ): Promise<void> {
+    await this.#trackTransactionEvent(
+      TransactionEventType.TransactionAdded,
+      'Snap transaction added',
+      properties,
+    );
   }
 
   /**
@@ -189,21 +182,14 @@ export class AnalyticsService<
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
    */
-  async trackTransactionRejected({
-    origin,
-    accountType,
-    chainIdCaip,
-    transactionType,
-  }: TransactionEventProperties): Promise<void> {
-    await this.trackEvent(TransactionEventType.TransactionRejected, {
-      message: 'Snap transaction rejected',
-      origin,
-      account_type: accountType,
-      chain_id_caip: chainIdCaip,
-      ...(transactionType === undefined
-        ? {}
-        : { transaction_type: transactionType }),
-    });
+  async trackTransactionRejected(
+    properties: TransactionEventProperties,
+  ): Promise<void> {
+    await this.#trackTransactionEvent(
+      TransactionEventType.TransactionRejected,
+      'Snap transaction rejected',
+      properties,
+    );
   }
 
   /**
@@ -215,21 +201,14 @@ export class AnalyticsService<
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
    */
-  async trackTransactionApproved({
-    origin,
-    accountType,
-    chainIdCaip,
-    transactionType,
-  }: TransactionEventProperties): Promise<void> {
-    await this.trackEvent(TransactionEventType.TransactionApproved, {
-      message: 'Snap transaction approved',
-      origin,
-      account_type: accountType,
-      chain_id_caip: chainIdCaip,
-      ...(transactionType === undefined
-        ? {}
-        : { transaction_type: transactionType }),
-    });
+  async trackTransactionApproved(
+    properties: TransactionEventProperties,
+  ): Promise<void> {
+    await this.#trackTransactionEvent(
+      TransactionEventType.TransactionApproved,
+      'Snap transaction approved',
+      properties,
+    );
   }
 
   /**
@@ -241,21 +220,14 @@ export class AnalyticsService<
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
    */
-  async trackTransactionSubmitted({
-    origin,
-    accountType,
-    chainIdCaip,
-    transactionType,
-  }: TransactionEventProperties): Promise<void> {
-    await this.trackEvent(TransactionEventType.TransactionSubmitted, {
-      message: 'Snap transaction submitted',
-      origin,
-      account_type: accountType,
-      chain_id_caip: chainIdCaip,
-      ...(transactionType === undefined
-        ? {}
-        : { transaction_type: transactionType }),
-    });
+  async trackTransactionSubmitted(
+    properties: TransactionEventProperties,
+  ): Promise<void> {
+    await this.#trackTransactionEvent(
+      TransactionEventType.TransactionSubmitted,
+      'Snap transaction submitted',
+      properties,
+    );
   }
 
   /**
@@ -367,6 +339,42 @@ export class AnalyticsService<
       origin,
       code,
       reason,
+    });
+  }
+
+  /**
+   * Track a transaction lifecycle event.
+   *
+   * Centralizes the shared payload so the common properties only have to change
+   * in one place. `transaction_type` is added only when the emitting Snap could
+   * classify the transaction.
+   *
+   * @param event - Event name.
+   * @param message - Human-readable event message.
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - Optional transaction type.
+   */
+  async #trackTransactionEvent(
+    event: TransactionEventType,
+    message: string,
+    {
+      origin,
+      accountType,
+      chainIdCaip,
+      transactionType,
+    }: TransactionEventProperties,
+  ): Promise<void> {
+    await this.trackEvent(event, {
+      message,
+      origin,
+      account_type: accountType,
+      chain_id_caip: chainIdCaip,
+      ...(transactionType === undefined
+        ? {}
+        : { transaction_type: transactionType }),
     });
   }
 }
