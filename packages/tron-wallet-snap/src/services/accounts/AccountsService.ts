@@ -522,10 +522,7 @@ export class AccountsService {
 
     const assetResponses = await Promise.allSettled(
       combinations.map(async ({ account, scope }) => {
-        return this.#assetsService.fetchAssetsAndBalancesForAccount(
-          scope,
-          account,
-        );
+        return this.#assetsService.fetchAccountAssetsByScope(account, scope);
       }),
     );
 

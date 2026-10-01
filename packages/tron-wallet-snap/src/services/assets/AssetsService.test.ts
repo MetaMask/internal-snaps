@@ -376,7 +376,36 @@ async function withAssetsService<ReturnValue>(
 }
 
 describe('AssetsService', () => {
-  describe('fetchAssetsAndBalancesForAccount', () => {
+  describe('fetchAccountAssets', () => {
+    it('fetches live assets for all the account scopes', async () => {
+      await withAssetsService(async ({ assetsService }) => {
+        const mainnetAsset = {
+          assetType: KnownCaip19Id.TrxMainnet,
+        } as AssetEntity;
+        const shastaAsset = {
+          assetType: KnownCaip19Id.TrxShasta,
+        } as AssetEntity;
+        const account: KeyringAccount = {
+          ...mockAccount,
+          scopes: [Network.Mainnet, Network.Shasta],
+        };
+        const spy = jest
+          .spyOn(assetsService, 'fetchAccountAssetsByScope')
+          .mockResolvedValueOnce([mainnetAsset])
+          .mockResolvedValueOnce([shastaAsset]);
+
+        expect(await assetsService.fetchAccountAssets(account)).toStrictEqual([
+          mainnetAsset,
+          shastaAsset,
+        ]);
+        expect(spy).toHaveBeenCalledTimes(2);
+        expect(spy).toHaveBeenNthCalledWith(1, account, Network.Mainnet);
+        expect(spy).toHaveBeenNthCalledWith(2, account, Network.Shasta);
+      });
+    });
+  });
+
+  describe('fetchAccountAssetsByScope', () => {
     describe('inactive account fallback', () => {
       it('falls back to TRC20 balance endpoint when account info fails (inactive account)', async () => {
         await withAssetsService(
@@ -409,9 +438,9 @@ describe('AssetsService', () => {
               }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -451,9 +480,9 @@ describe('AssetsService', () => {
               [],
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const bandwidthAsset = assets.find(
@@ -487,9 +516,9 @@ describe('AssetsService', () => {
               [],
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(assets.length).toBeGreaterThan(0);
@@ -523,9 +552,9 @@ describe('AssetsService', () => {
               [],
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(mockSnapClient.trackError).toHaveBeenCalledTimes(1);
@@ -582,9 +611,9 @@ describe('AssetsService', () => {
               }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -624,9 +653,9 @@ describe('AssetsService', () => {
               new Error('Resources endpoint unavailable'),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -660,9 +689,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -686,9 +715,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ freeNetUsed: 200 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -712,9 +741,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ freeNetUsed: 326, NetLimit: 16 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -742,9 +771,9 @@ describe('AssetsService', () => {
               }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -768,9 +797,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -795,9 +824,9 @@ describe('AssetsService', () => {
               getMockAccountResources({}),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -822,9 +851,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ NetLimit: 48 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -852,9 +881,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -885,9 +914,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -921,9 +950,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -956,9 +985,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -994,9 +1023,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const readyForWithdrawalAsset = findAsset(
@@ -1026,9 +1055,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1062,9 +1091,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1098,9 +1127,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1139,9 +1168,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1177,9 +1206,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1207,9 +1236,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const inLockPeriodAsset = findAsset(
@@ -1236,9 +1265,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1262,9 +1291,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 329 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1288,9 +1317,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 5000, EnergyUsed: 4383 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1314,9 +1343,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 46, EnergyUsed: 6511 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1340,9 +1369,9 @@ describe('AssetsService', () => {
             );
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1366,9 +1395,9 @@ describe('AssetsService', () => {
               getMockAccountResources({ EnergyLimit: 329 }),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1393,9 +1422,9 @@ describe('AssetsService', () => {
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
             mockTronHttpClient.getReward.mockResolvedValue(0);
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -1419,9 +1448,9 @@ describe('AssetsService', () => {
             mockTronHttpClient.getAccountResources.mockResolvedValue({});
             mockTronHttpClient.getReward.mockResolvedValue(5000000);
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             const stakingRewardsAsset = findAsset(
@@ -1450,9 +1479,9 @@ describe('AssetsService', () => {
               new Error('API Error'),
             );
 
-            const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
+            const assets = await assetsService.fetchAccountAssetsByScope(
               mockAccount,
+              Network.Mainnet,
             );
 
             expect(
@@ -2991,9 +3020,9 @@ describe('AssetsService', () => {
           });
           mockTronHttpClient.getReward.mockResolvedValue(0);
 
-          const assets = await assetsService.fetchAssetsAndBalancesForAccount(
-            Network.Mainnet,
+          const assets = await assetsService.fetchAccountAssetsByScope(
             mockAccount,
+            Network.Mainnet,
           );
 
           expect(
