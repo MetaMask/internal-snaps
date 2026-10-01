@@ -147,6 +147,7 @@ export class CronHandler {
             scope: Network;
             accountIds: string[];
             attempt: number;
+            transactionType?: string;
           },
         );
         break;
@@ -661,17 +662,20 @@ export class CronHandler {
    * @param params.scope - The network scope (e.g., 'mainnet', 'shasta')
    * @param params.accountIds - Account IDs to sync after confirmation (first account is always the sender)
    * @param params.attempt - Current attempt number (for retry logic)
+   * @param params.transactionType - Classification resolved at submit time, carried so the finalized event reports the same flow
    */
   async trackTransaction({
     txId,
     scope,
     accountIds,
     attempt = 0,
+    transactionType,
   }: {
     txId: string;
     scope: Network;
     accountIds: string[];
     attempt: number;
+    transactionType?: string;
   }): Promise<void> {
     this.#logger.info(
       `[Attempt ${attempt + 1}] Tracking transaction ${txId} on ${scope}...`,
@@ -709,6 +713,7 @@ export class CronHandler {
             scope,
             accountIds,
             attempt: attempt + 1,
+            ...(transactionType === undefined ? {} : { transactionType }),
           },
           duration: TRACK_TX_INTERVAL,
         });
@@ -742,6 +747,7 @@ export class CronHandler {
         origin: METAMASK_ORIGIN,
         accountType: senderAccount.type,
         chainIdCaip: scope,
+        transactionType,
       });
     } catch (error) {
       this.#logger.error(
@@ -766,6 +772,7 @@ export class CronHandler {
           scope,
           accountIds,
           attempt: attempt + 1,
+          ...(transactionType === undefined ? {} : { transactionType }),
         },
         duration: TRACK_TX_INTERVAL,
       });

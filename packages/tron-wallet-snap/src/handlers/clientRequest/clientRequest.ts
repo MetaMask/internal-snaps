@@ -48,6 +48,7 @@ import { TransactionMapper } from '../../services/transactions/TransactionsMappe
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
 import { trxToSun } from '../../utils/conversion';
+import { mapRawTransactionType } from '../../utils/transactionType';
 import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
@@ -417,10 +418,13 @@ export class ClientRequestHandler {
      * lowercased so it is recognized as MetaMask by the security alerts scan
      * and stays consistent with the other non-EVM snaps.
      */
+    const transactionType = mapRawTransactionType(rawData);
+
     await this.#analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType,
     });
 
     await this.#snapClient.scheduleBackgroundEvent({
@@ -430,6 +434,7 @@ export class ClientRequestHandler {
         scope,
         accountIds: [accountId],
         attempt: 0,
+        transactionType,
       },
       duration: TRACK_TX_INTERVAL,
     });

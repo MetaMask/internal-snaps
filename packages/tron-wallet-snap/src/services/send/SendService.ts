@@ -16,6 +16,7 @@ import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
+import { mapRawTransactionType } from '../../utils/transactionType';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
@@ -421,6 +422,13 @@ export class SendService {
       });
 
     /**
+     * Resolve the classification before signing so the submitted event and the
+     * background tracker both carry it. A broadcast transaction has no
+     * account-balance context, so it is derived from the contract type.
+     */
+    const transactionType = mapRawTransactionType(freshTransaction.raw_data);
+
+    /**
      * Sign and send the transaction atomically after user confirmation
      */
     const signedTransaction = await tronWeb.trx.sign(freshTransaction);
@@ -434,6 +442,7 @@ export class SendService {
       origin,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType,
     });
 
     await this.#snapClient.scheduleBackgroundEvent({
@@ -443,6 +452,7 @@ export class SendService {
         scope,
         accountIds: [fromAccountId],
         attempt: 0,
+        transactionType,
       },
       duration: TRACK_TX_INTERVAL,
     });
