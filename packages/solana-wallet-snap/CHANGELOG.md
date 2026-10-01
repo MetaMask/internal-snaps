@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Emit `transaction_type` on the transaction lifecycle events. A MetaMask-originated transaction is reported as `send`, a card token approval as `token:approve`, and a dApp transaction as `unknown` until it is classified from on-chain data.
+- Emit `transaction_type` on the transaction lifecycle events. ([#401](https://github.com/MetaMask/internal-snaps/pull/401))
 
 ### Changed
 
