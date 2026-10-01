@@ -159,16 +159,6 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/core/clients/security-alerts-api/SecurityAlertsApiClient.test.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/clients/security-alerts-api/types.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
-  },
   "packages/solana-wallet-snap/src/core/fees/FeeCalculator.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
@@ -482,7 +472,7 @@
   },
   "packages/solana-wallet-snap/src/core/services/transaction-scan/TransactionScan.ts": {
     "no-restricted-syntax": {
-      "count": 5
+      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/core/services/transactions/TransactionMapper.test.ts": {
