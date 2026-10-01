@@ -1,9 +1,22 @@
 /* eslint-disable jest/require-to-throw-message */
 import { assert, is } from '@metamask/superstruct';
 
+import { Network, Networks } from '../constants';
+import { parseTronCaipAssetType } from '../utils/caip';
 import { Base58Struct, Base64Struct } from './structs';
 
 describe('structs', () => {
+  describe('parseTronCaipAssetType', () => {
+    it('accepts Tron asset IDs and returns a local network scope', () => {
+      const parsed = parseTronCaipAssetType(Networks[Network.Mainnet].nativeToken.id);
+
+      expect(parsed.chainId).toBe(Network.Mainnet);
+    });
+
+    it('rejects foreign CAIP asset IDs', () => {
+      expect(() => parseTronCaipAssetType('eip155:1/slip44:60')).toThrow();
+    });
+  });
   describe('Base58Struct', () => {
     it('validates valid Base58 strings', () => {
       const validBase58Strings = [

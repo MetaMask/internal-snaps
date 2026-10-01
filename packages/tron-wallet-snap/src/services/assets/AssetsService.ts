@@ -6,10 +6,9 @@ import {
 } from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
-import type { CaipAssetType } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type { Network } from '../../constants';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import type { AssetEntity } from '../../entities/assets';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
@@ -59,6 +58,10 @@ export class AssetsService {
       return [];
     }
 
+    assetIds.forEach((assetId) => {
+      parseTronCaipAssetType(assetId);
+    });
+
     if (await this.#shouldReturnAssetsFromCore()) {
       const assets = await this.#coreAdapter.getAccountAssetsByIDs(
         accountId,
@@ -74,6 +77,8 @@ export class AssetsService {
     accountId: string,
     assetId: string,
   ): Promise<AssetEntity | null> {
+    parseTronCaipAssetType(assetId);
+
     if (await this.#shouldReturnAssetsFromCore()) {
       const asset = await this.#coreAdapter.getAccountAssetByID(
         accountId,
@@ -143,9 +148,7 @@ export class AssetsService {
 
     const scopes = [
       ...new Set(
-        assetIds.map(
-          (assetId) => parseCaipAssetType(assetId as CaipAssetType).chainId,
-        ),
+        assetIds.map((assetId) => parseTronCaipAssetType(assetId).chainId),
       ),
     ] as Network[];
 

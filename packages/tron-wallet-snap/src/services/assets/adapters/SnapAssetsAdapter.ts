@@ -8,7 +8,7 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
 import type { AssetMetadata, FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
+import { parseTronCaipAssetType } from '../../../utils/caip';
 
 import type { PriceApiClient } from '../../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../../clients/price-api/types';
@@ -1118,12 +1118,12 @@ export class SnapAssetsAdapter {
     keyringAccountId: string,
   ): AssetEntity {
     const metadata = TokenMetadata[assetId as keyof typeof TokenMetadata];
-    const { chainId } = parseCaipAssetType(assetId);
+    const { chainId: network } = parseTronCaipAssetType(assetId);
 
     return {
       assetType: metadata.id,
       keyringAccountId,
-      network: chainId as Network,
+      network,
       symbol: metadata.symbol,
       decimals: metadata.decimals,
       rawAmount: '0',

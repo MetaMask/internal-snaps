@@ -3023,6 +3023,28 @@ describe('ClientRequestHandler - claimUnstakedTrx', () => {
       );
     });
   });
+
+  it('rejects foreign CAIP asset IDs at the boundary', async () => {
+    await withClientRequestHandler(async ({ handler, mockAccountsService }) => {
+      mockAccountsService.findById.mockResolvedValue(mockAccount);
+
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: ClientRequestMethod.OnAmountInput,
+        params: {
+          accountId: TEST_ACCOUNT_ID,
+          assetId: 'eip155:1/slip44:60',
+          value: '10',
+        },
+      };
+
+      await expect(handler.handle(request)).resolves.toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.Invalid }],
+      });
+    });
+  });
 });
 
 describe('ClientRequestHandler - claimTrxStakingRewards', () => {

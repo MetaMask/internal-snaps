@@ -12,12 +12,8 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import {
-  bytesToHex,
-  hexToBytes,
-  parseCaipAssetType,
-  sha256,
-} from '@metamask/utils';
+import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
@@ -490,8 +486,7 @@ export class ClientRequestHandler {
       /**
        * Check if we have enough of the asset we want to send...
        */
-      const { chainId } = parseCaipAssetType(assetId);
-      const scope = chainId as Network;
+      const { chainId: scope } = parseTronCaipAssetType(assetId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
         await this.#assetsService.getFreshAccountAssetsByIDs(account, [
@@ -607,8 +602,7 @@ export class ClientRequestHandler {
       };
     }
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     /**
      * Fetch the sent asset and the account resources fresh, so the
@@ -1131,8 +1125,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const confirmed = await this.#confirmationHandler.confirmClaimUnstakedTrx({
       account,
@@ -1169,8 +1162,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     await this.#stakingService.claimTrxStakingRewards({ account, scope });
 

@@ -1,6 +1,6 @@
 import type { Asset } from '@metamask/assets-controller';
 
-import { Network } from '../../../constants';
+import type { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toRawAmount } from '../../../utils/conversion';
 

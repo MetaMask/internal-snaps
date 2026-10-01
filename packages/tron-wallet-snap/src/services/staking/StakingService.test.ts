@@ -452,7 +452,7 @@ describe('StakingService', () => {
           assetId: invalidAssetId,
           amount,
         }),
-      ).rejects.toThrow('Invalid asset ID');
+      ).rejects.toThrow('Expected the value to satisfy a union');
     });
 
     it('correctly derives keypair for unstaking', async () => {

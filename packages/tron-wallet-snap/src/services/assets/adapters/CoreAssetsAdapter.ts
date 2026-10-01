@@ -10,7 +10,8 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import { Logger } from '@metamask/snap-networks-utils';
 import type { CaipChainId } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
+
+import { parseTronCaipAssetType } from '../../../utils/caip';
 
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
@@ -193,11 +194,9 @@ export class CoreAssetsAdapter {
     account: KeyringAccount,
     assetIds: Caip19AssetId[],
   ): Promise<(AssetEntity | null)[]> {
-    const scopes = [
-      ...new Set(
-        assetIds.map((assetId) => parseCaipAssetType(assetId).chainId),
-      ),
-    ];
+    const scopes = Array.from(
+      new Set(assetIds.map((assetId) => parseTronCaipAssetType(assetId).chainId)),
+    ) as Network[];
 
     const [snapOwnedFetches, controllerAssets] = await Promise.all([
       Promise.all(
