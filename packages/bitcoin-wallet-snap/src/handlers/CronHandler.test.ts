@@ -1,4 +1,5 @@
-import type { WalletTx } from '@metamask/bitcoindevkit';
+import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import { SynchronizationError } from '@metamask/snap-networks-utils';
 import type { SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -50,6 +51,17 @@ describe('CronHandler', () => {
     const mockAccount2 = mock<BitcoinAccount>({ id: 'account-2' });
     const mockAccounts = [mockAccount1, mockAccount2];
     const request = { method: 'synchronizeAccounts' } as JsonRpcRequest;
+
+    beforeEach(() => {
+      // Transactions built from these accounts are classified as receives.
+      const receivedAmount = mock<Amount>();
+      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      for (const account of mockAccounts) {
+        jest
+          .mocked(account.sentAndReceived)
+          .mockReturnValue([receivedAmount, receivedAmount]);
+      }
+    });
 
     it('synchronizes all selected accounts and emits batched events', async () => {
       const mockResult1: SyncResult = {
@@ -306,6 +318,7 @@ describe('CronHandler', () => {
           mockAccount1,
           txNew,
           'cron',
+          TransactionType.Receive,
         );
         expect(
           mockSnapClient.emitAccountBalancesUpdatedEvent,

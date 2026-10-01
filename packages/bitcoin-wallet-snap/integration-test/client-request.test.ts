@@ -1,5 +1,10 @@
 import type { KeyringAccount } from '@metamask/keyring-api';
-import { FeeType, BtcAccountType, BtcScope } from '@metamask/keyring-api';
+import {
+  FeeType,
+  BtcAccountType,
+  BtcScope,
+  TransactionType,
+} from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
 
@@ -97,6 +102,7 @@ describe('OnClientRequestHandler', () => {
         chain_id_caip: BtcScope.Regtest,
         message: 'Snap transaction submitted',
         origin: ORIGIN,
+        transaction_type: TransactionType.Send,
         tx_id: transactionId,
       },
     });
@@ -117,6 +123,7 @@ describe('OnClientRequestHandler', () => {
         message: 'Snap transaction finalized',
         chain_id_caip: BtcScope.Regtest,
         account_type: BtcAccountType.P2wpkh,
+        transaction_type: TransactionType.Send,
         tx_id: transactionId,
       },
     });

@@ -16,6 +16,7 @@ import {
   mnemonicPhraseToBytes,
   SLIP10Node as RealSlip10Node,
 } from '@metamask/key-tree';
+import { TransactionType } from '@metamask/keyring-api';
 import { Signer } from 'bip322-js';
 import { mock } from 'jest-mock-extended';
 
@@ -66,6 +67,21 @@ describe('AccountUseCases', () => {
     targetBlocksConfirmation,
     mockMetaProtocols,
   );
+
+  /**
+   * Stubs the sent amount on an account so that transactions built from it are
+   * classified as sends by `mapToTransactionType`.
+   *
+   * @param account - The account to stub.
+   * @param sentBtc - The sent amount in BTC.
+   */
+  const stubSentAmount = (account: BitcoinAccount, sentBtc = 1): void => {
+    const sentAmount = mock<Amount>();
+    jest.spyOn(sentAmount, 'to_btc').mockReturnValue(sentBtc);
+    jest
+      .mocked(account.sentAndReceived)
+      .mockReturnValue([sentAmount, mock<Amount>()]);
+  };
 
   describe('get', () => {
     it('returns account', async () => {
@@ -483,6 +499,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTransaction,
         'test',
+        TransactionType.Receive,
       );
       expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
       expect(result).toStrictEqual({
@@ -540,6 +557,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxConfirmed,
         'test',
+        TransactionType.Receive,
       );
       expect(result).toStrictEqual({
         account: mockAccount,
@@ -601,6 +619,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxConfirmed,
         origin,
+        TransactionType.Receive,
       );
 
       // Check for TransactionReceived event for new transaction
@@ -609,6 +628,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxNew,
         origin,
+        TransactionType.Receive,
       );
 
       // Check for TransactionReorged event for reorged transaction
@@ -617,6 +637,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxReorged,
         origin,
+        TransactionType.Receive,
       );
 
       expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(3);
@@ -647,6 +668,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxReorged,
         'test',
+        TransactionType.Receive,
       );
       expect(result).toStrictEqual({
         account: mockAccount,
@@ -735,6 +757,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTransaction,
         'test',
+        TransactionType.Receive,
       );
 
       // error should be logged
@@ -1175,6 +1198,7 @@ describe('AccountUseCases', () => {
       mockTxBuilder.finish.mockReturnValue(mockFilledPsbt);
       mockTxBuilder.unspendable.mockReturnThis();
       mockChain.getFeeEstimates.mockResolvedValue(mockFeeEstimates);
+      stubSentAmount(mockAccount);
     });
 
     it('throws error if account is not found', async () => {
@@ -1241,6 +1265,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
@@ -1310,6 +1335,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
@@ -1394,6 +1420,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
 
       // Error should be logged
@@ -2186,6 +2213,7 @@ describe('AccountUseCases', () => {
       mockTxBuilder.unspendable.mockReturnThis();
       mockChain.getFeeEstimates.mockResolvedValue(mockFeeEstimates);
       mockRepository.getFrozenUTXOs.mockResolvedValue([]);
+      stubSentAmount(mockAccount);
     });
 
     it('throws error if there are multiple recipients', async () => {
@@ -2249,6 +2277,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
       expect(result.txid).toBe(mockTxid);
       expect(result.canBeMalleable).toBe(false);
@@ -2321,6 +2350,7 @@ describe('AccountUseCases', () => {
       mockTransaction.compute_txid.mockReturnValue(mockTxid);
       mockTransaction.clone.mockReturnThis();
       mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      stubSentAmount(mockAccount);
     });
 
     it('throws error if account is not found', async () => {

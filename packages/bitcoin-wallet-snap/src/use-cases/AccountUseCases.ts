@@ -36,6 +36,7 @@ import {
   NotFoundError,
   PermissionError,
   TrackingSnapEvent,
+  mapToTransactionType,
   ValidationError,
   WalletError,
 } from '../entities';
@@ -510,6 +511,7 @@ export class AccountUseCases {
           account,
           tx,
           origin,
+          mapToTransactionType(account, tx.tx),
         );
 
         continue;
@@ -530,6 +532,7 @@ export class AccountUseCases {
             account,
             tx,
             origin,
+            mapToTransactionType(account, tx.tx),
           );
         } else {
           // if the status was changed, and now it's NOT confirmed
@@ -541,6 +544,7 @@ export class AccountUseCases {
             account,
             tx,
             origin,
+            mapToTransactionType(account, tx.tx),
           );
         }
       }
@@ -1096,6 +1100,9 @@ export class AccountUseCases {
     origin: string,
   ): Promise<BroadcastResult> {
     const txid = tx.compute_txid();
+    // Resolve the classification before `applyUnconfirmedTx` takes ownership of
+    // the underlying wasm transaction; reading `tx` afterwards panics.
+    const transactionType = mapToTransactionType(account, tx);
     await this.#chain.broadcast(account.network, tx.clone());
     account.applyUnconfirmedTx(tx, getCurrentUnixTimestamp());
     await this.#repository.update(account);
@@ -1114,6 +1121,7 @@ export class AccountUseCases {
         account,
         walletTx,
         origin,
+        transactionType,
       );
     }
 

@@ -12,10 +12,15 @@ import type {
   KeyringAccount,
   Transaction as KeyringTransaction,
 } from '@metamask/keyring-api';
-import { FeeType, TransactionStatus } from '@metamask/keyring-api';
+import {
+  FeeType,
+  TransactionStatus,
+  TransactionType,
+} from '@metamask/keyring-api';
 
 import { canAccountTxidBeMalleated, networkToCurrencyUnit } from '../entities';
 import type { BitcoinAccount } from '../entities';
+import { mapToTransactionType } from '../entities/transaction';
 import type { Caip19Asset } from './caip';
 import { addressTypeToCaip, networkToCaip19, networkToScope } from './caip';
 
@@ -169,11 +174,11 @@ export function mapToTransaction(
   const { network } = account;
 
   const [events, timestamp, status] = mapToEvents(chainPosition);
-  const [sent] = account.sentAndReceived(tx);
-  const isSend = sent.to_btc() > 0;
+  const type = mapToTransactionType(account, tx);
+  const isSend = type === TransactionType.Send;
 
   const transaction: KeyringTransaction = {
-    type: isSend ? 'send' : 'receive',
+    type,
     id: txid.toString(),
     account: account.id,
     chain: networkToScope[network],
