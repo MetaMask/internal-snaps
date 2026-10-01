@@ -1,3 +1,4 @@
+import type { TransactionType } from '@metamask/keyring-api';
 import type { Json } from '@metamask/snaps-sdk';
 
 import type { TrackErrorFn } from '../../utils/errors';
@@ -68,7 +69,7 @@ export type AccountEventProperties = {
  * callers pass a value that is silently discarded.
  */
 export type TransactionEventProperties = AccountEventProperties & {
-  transactionType?: string;
+  transactionType?: TransactionType;
 };
 
 export type TransactionFinalizedEventProperties = TransactionEventProperties & {

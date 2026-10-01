@@ -1,3 +1,5 @@
+import { TransactionType } from '@metamask/keyring-api';
+
 import { mockLogger } from '../../utils/logger/__mocks__/Logger';
 import {
   AnalyticsService,
@@ -92,7 +94,7 @@ describe('AnalyticsService', () => {
         origin: 'metamask',
         accountType: 'bip122:p2wpkh',
         chainIdCaip: 'bip122:000000000019d6689c085ae165831e93',
-        transactionType: 'send',
+        transactionType: TransactionType.Send,
       });
 
       expect(request).toHaveBeenCalledWith({
@@ -119,7 +121,7 @@ describe('AnalyticsService', () => {
       accountType: 'eip155:eoa',
       chainIdCaip: 'eip155:1',
       transactionStatus: 'confirmed',
-      transactionType: 'send',
+      transactionType: TransactionType.Send,
     });
 
     expect(request).toHaveBeenCalledWith({
@@ -219,7 +221,7 @@ describe('AnalyticsService', () => {
       scanStatus: 'success',
       hasSecurityAlerts: false,
       // @ts-expect-error - transactionType is not a security event property.
-      transactionType: 'send',
+      transactionType: TransactionType.Send,
     });
 
     const event = request.mock.calls[0]?.[0].params.event;
