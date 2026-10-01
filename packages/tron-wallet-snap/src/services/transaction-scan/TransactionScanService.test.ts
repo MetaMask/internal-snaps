@@ -538,6 +538,119 @@ describe('TransactionScanService', () => {
     });
   });
 
+  const createTriggerSmartContractRawData =
+    (): TronwebTypes.Transaction['raw_data'] => ({
+      ...createWellFormedTransactionRawData(),
+      contract: [
+        {
+          type: TronwebTypes.ContractType.TriggerSmartContract,
+          parameter: {
+            type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+            value: {
+              owner_address: `41${'a'.repeat(40)}`,
+              contract_address: `41${'c'.repeat(40)}`,
+              data: 'deadbeef',
+            },
+          },
+        },
+      ],
+    });
+
+  describe('unsupported simulator call types', () => {
+    const scanTriggerSmartContract = async (
+      mockApiResponse: SecurityAlertSimulationValidationResponse,
+      options: string[] = ['simulation', 'validation'],
+    ): Promise<TransactionScanResult | null> => {
+      const mockSecurityAlertsApiClient =
+        createMockSecurityAlertsApiClient(mockApiResponse);
+      const mockSnapClient = createMockSnapClient();
+      const service = new TransactionScanService(
+        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
+        mockSnapClient as unknown as SnapClient,
+        mockLogger,
+        mockAnalyticsService,
+      );
+
+      return service.scanTransaction({
+        accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+        transactionRawData: createTriggerSmartContractRawData(),
+        origin: 'https://justlend.org',
+        scope: Network.Mainnet,
+        options,
+      });
+    };
+
+    it('skips JustLend DelegateResource energy rental unsupported call types', async () => {
+      const result = await scanTriggerSmartContract({
+        simulation: {
+          status: 'Error',
+          error: 'Unsupported call type: delegateresourceofenergy',
+        },
+        validation: {
+          status: 'Success',
+          result_type: 'Benign',
+        },
+      });
+
+      expect(result?.status).toBe('SUCCESS');
+      expect(result?.simulationStatus).toBe(SimulationStatus.Skipped);
+      expect(result?.error).toBeNull();
+    });
+
+    it('skips FreezeBalanceV2 bandwidth unsupported call types', async () => {
+      const result = await scanTriggerSmartContract({
+        simulation: {
+          status: 'Error',
+          error: 'Unsupported call type: freezebalancev2forbandwidth',
+        },
+        validation: {
+          status: 'Success',
+          result_type: 'Benign',
+        },
+      });
+
+      expect(result?.status).toBe('SUCCESS');
+      expect(result?.simulationStatus).toBe(SimulationStatus.Skipped);
+      expect(result?.error).toBeNull();
+    });
+
+    it('ignores leftover simulation errors on validation-only scans', async () => {
+      const result = await scanTriggerSmartContract(
+        {
+          simulation: {
+            status: 'Error',
+            error: 'Unsupported call type: delegateresourceofenergy',
+          },
+          validation: {
+            status: 'Success',
+            result_type: 'Benign',
+          },
+        },
+        ['validation'],
+      );
+
+      expect(result?.simulationStatus).not.toBe(SimulationStatus.Failed);
+      expect(result?.error).toBeNull();
+    });
+
+    it('keeps genuine simulation reverts as failed', async () => {
+      const result = await scanTriggerSmartContract({
+        simulation: {
+          status: 'Error',
+          error: 'Reverted: insufficient balance',
+        },
+        validation: {
+          status: 'Success',
+          result_type: 'Benign',
+        },
+      });
+
+      expect(result?.status).toBe('ERROR');
+      expect(result?.simulationStatus).toBe(SimulationStatus.Failed);
+      expect(result?.error?.message).toBe('Reverted: insufficient balance');
+    });
+  });
+
   describe('failed transaction scan', () => {
     it('tracks the error', async () => {
       const error = new Error('Scan failed');
