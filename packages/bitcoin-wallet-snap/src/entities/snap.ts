@@ -277,6 +277,7 @@ export type SnapClient = {
    * @param account The correlated bitcoin account
    * @param tx The transaction we want to capture metrics for
    * @param origin The origin/source that triggered this event
+   * @param transactionType The classification of the transaction.
    */
   emitTrackingEvent(
     eventType: TransactionBroadcastEventType,
