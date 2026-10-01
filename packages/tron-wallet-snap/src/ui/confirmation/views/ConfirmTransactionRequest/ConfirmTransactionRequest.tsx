@@ -79,6 +79,7 @@ export const ConfirmTransactionRequest = ({
         <EstimatedChanges
           scanFetchStatus={scanFetchStatus}
           changes={scan?.estimatedChanges ?? null}
+          scanStatus={scan?.status ?? null}
           preferences={preferences}
         />
       );

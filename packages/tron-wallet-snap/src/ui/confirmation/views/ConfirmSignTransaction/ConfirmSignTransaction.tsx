@@ -87,6 +87,7 @@ export const ConfirmSignTransaction = ({
         <EstimatedChanges
           scanFetchStatus={scanFetchStatus}
           changes={scan?.estimatedChanges ?? null}
+          scanStatus={scan?.status ?? null}
           preferences={preferences}
         />
       );
