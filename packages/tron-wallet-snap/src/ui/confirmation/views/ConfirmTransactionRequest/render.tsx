@@ -6,7 +6,7 @@ import type { DialogResult, Json } from '@metamask/snaps-sdk';
 import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
-import { Network } from '../../../../constants';
+import { METAMASK_ORIGIN, Network } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
@@ -35,7 +35,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
     uiAmount: '0',
     iconUrl: '',
   },
-  origin: 'MetaMask',
+  origin: METAMASK_ORIGIN,
   networkImage: TRX_IMAGE_SVG,
   tokenPrices: {},
   tokenPricesFetchStatus: FetchStatus.Initial,

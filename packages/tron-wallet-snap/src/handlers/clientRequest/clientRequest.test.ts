@@ -14,6 +14,7 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FALLBACK_FEE,
   FEE_LIMIT,
+  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -1962,7 +1963,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
       {
-        origin: 'MetaMask',
+        origin: METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: scope,
       },

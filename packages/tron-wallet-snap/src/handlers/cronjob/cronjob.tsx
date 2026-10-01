@@ -10,7 +10,11 @@ import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { Network } from '../../constants';
-import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../../constants';
+import {
+  METAMASK_ORIGIN,
+  TRACK_TX_INTERVAL,
+  TRACK_TX_MAX_ATTEMPTS,
+} from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
@@ -735,7 +739,7 @@ export class CronHandler {
 
       // Track Transaction Finalized event now that transaction is confirmed
       await this.#analyticsService.trackTransactionFinalized({
-        origin: 'MetaMask',
+        origin: METAMASK_ORIGIN,
         accountType: senderAccount.type,
         chainIdCaip: scope,
       });
