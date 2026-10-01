@@ -14,7 +14,7 @@ import { mapKeys } from 'lodash';
 import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import logger from '../../utils/logger';
-import type { SpotPrices, VsCurrencyParam } from './types';
+import type { SpotPrice, SpotPrices, VsCurrencyParam } from './types';
 import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
 
 export class PriceApiClient {
@@ -189,13 +189,16 @@ export class PriceApiClient {
 
     // Cache the data
     await this.#cache.mset(
-      Object.entries(nonCachedSpotPrices).map(
-        ([tokenCaipAssetType, spotPrice]) => ({
-          key: toCacheKey(tokenCaipAssetType as CaipAssetType),
-          value: spotPrice,
-          ttlMilliseconds: this.cacheTtlsMilliseconds.spotPrices,
-        }),
-      ),
+      (
+        Object.entries(nonCachedSpotPrices) as [
+          CaipAssetType,
+          SpotPrice | null,
+        ][]
+      ).map(([tokenCaipAssetType, spotPrice]) => ({
+        key: toCacheKey(tokenCaipAssetType),
+        value: spotPrice,
+        ttlMilliseconds: this.cacheTtlsMilliseconds.spotPrices,
+      })),
     );
 
     return {

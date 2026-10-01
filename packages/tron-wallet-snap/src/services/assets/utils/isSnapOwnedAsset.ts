@@ -2,9 +2,7 @@ import type { CaipAssetType } from '@metamask/utils';
 
 import { SNAP_OWNED_ASSETS } from '../../../constants';
 
-const SNAP_OWNED_ASSET_IDS = new Set<CaipAssetType>(
-  SNAP_OWNED_ASSETS as CaipAssetType[],
-);
+const SNAP_OWNED_ASSET_IDS = new Set<CaipAssetType>(SNAP_OWNED_ASSETS);
 
 /**
  * Returns whether an asset remains exclusively managed by the Snap.

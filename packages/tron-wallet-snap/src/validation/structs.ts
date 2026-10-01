@@ -2,6 +2,7 @@ import {
   CaipAssetTypeStruct,
   KeyringRequestStruct,
   SolMethod,
+  TransactionType,
   TrxAccountType,
 } from '@metamask/keyring-api';
 import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
@@ -28,11 +29,14 @@ import { TronWeb } from 'tronweb';
 import { Network } from '../constants';
 import { TronMultichainMethod } from '../handlers/keyring/keyring-types';
 import {
+  InLockPeriodCaipAssetTypeStruct,
   MaximumResourceCaipAssetTypeStruct,
   NativeCaipAssetTypeStruct,
   NftCaipAssetTypeStruct,
+  ReadyForWithdrawalCaipAssetTypeStruct,
   ResourceCaipAssetTypeStruct,
   StakedCaipAssetTypeStruct,
+  StakingRewardsCaipAssetTypeStruct,
   TokenCaipAssetTypeStruct,
 } from '../services/assets/types';
 
@@ -71,6 +75,18 @@ export const ExportAccountRequestStruct = object({
 });
 
 export const NetworkStruct = enums(Object.values(Network));
+
+export const ResolveAccountAddressStruct = object({
+  scope: NetworkStruct,
+});
+
+export const TrackTransactionParamsStruct = object({
+  txId: string(),
+  scope: NetworkStruct,
+  accountIds: array(string()),
+  attempt: integer(),
+  transactionType: optional(enums(Object.values(TransactionType))),
+});
 
 /**
  * Validates createAccount options.
@@ -263,6 +279,9 @@ export const TronAddressStruct: Struct<string, null> = define(
 export const TronCaipAssetTypeStruct = union([
   NativeCaipAssetTypeStruct,
   StakedCaipAssetTypeStruct,
+  ReadyForWithdrawalCaipAssetTypeStruct,
+  StakingRewardsCaipAssetTypeStruct,
+  InLockPeriodCaipAssetTypeStruct,
   TokenCaipAssetTypeStruct,
   NftCaipAssetTypeStruct,
   ResourceCaipAssetTypeStruct,
