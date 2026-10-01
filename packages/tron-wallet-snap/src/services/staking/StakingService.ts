@@ -2,6 +2,7 @@ import type {
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -11,7 +12,6 @@ import type { Network } from '../../constants';
 import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
 import { trxToSun } from '../../utils/conversion';
 import { executeOnChainActions } from '../../utils/executeOnChainActions';
-import { getAssetNetwork } from '../../utils/getAssetNetwork';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { NativeCaipAssetType, StakedCaipAssetType } from '../assets/types';
 
@@ -58,15 +58,13 @@ export class StakingService {
      */
     srNodeAddress?: string;
   }): Promise<void> {
-    const scope = getAssetNetwork(assetId);
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
     const amountInSun = Number(trxToSun(amount));
     const availableVotes = amount.integerValue(BigNumber.ROUND_DOWN).toNumber();
     const voteRecipient = srNodeAddress ?? CONSENSYS_SR_NODE_ADDRESS;
 
     this.#logger.info(
-      `Staking ${amount.toString()} ${assetId} for ${purpose} for ${
-        account.address
-      } on ${scope}...`,
+      `Staking ${amount.toString()} ${assetId} for ${purpose} for ${account.address} on ${scope}...`,
     );
 
     await executeOnChainActions({
@@ -98,7 +96,7 @@ export class StakingService {
     assetId: StakedCaipAssetType;
     amount: BigNumber;
   }): Promise<void> {
-    const scope = getAssetNetwork(assetId);
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     /**
      * Check which resource we are unstaking.
@@ -136,9 +134,7 @@ export class StakingService {
     const amountInSun = Number(trxToSun(amount));
 
     this.#logger.info(
-      `Unstaking ${amount.toString()} ${assetId} for ${
-        account.address
-      } on ${scope}...`,
+      `Unstaking ${amount.toString()} ${assetId} for ${account.address} on ${scope}...`,
     );
 
     await executeOnChainActions({

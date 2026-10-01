@@ -5,9 +5,13 @@ import type {
   AccountBalancesUpdatedEvent,
   KeyringAccount,
 } from '@metamask/keyring-api';
+import type { InternalAccount } from '@metamask/keyring-internal-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import { Logger } from '@metamask/snap-networks-utils';
+import type { CaipChainId } from '@metamask/utils';
+
+import { parseTronCaipAssetType } from '../../../utils/caip';
 
 import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
 import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
@@ -29,10 +33,38 @@ export type CoreAssetsAdapterOptions = {
   getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
   getAccountAssetsByIDs: AssetsProvider['getAccountAssetsByIDs'];
   getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
+  getAssets: AssetsProvider['getAssets'];
   getAddressInfo: TrongridApiClient['getAccountInfoByAddress'];
   getAddressResources: TronHttpClient['getAccountResources'];
   getAddressStakingRewards: TronHttpClient['getReward'];
 };
+
+/**
+ * Builds the account descriptor the controller's one-time fetch pipeline
+ * expects. The controller only consumes `id`, `address`, and `scopes` from it,
+ * so the keyring account's shape is sufficient and the metadata is a stub.
+ *
+ * @param account - The keyring account.
+ * @param scopes - The CAIP-2 chain IDs to scope the fetch to.
+ * @returns An InternalAccount-compatible descriptor.
+ */
+function toInternalAccount(
+  account: KeyringAccount,
+  scopes: CaipChainId[],
+): InternalAccount {
+  return {
+    id: account.id,
+    address: account.address,
+    type: account.type,
+    scopes,
+    methods: account.methods,
+    options: account.options,
+    metadata: {
+      name: 'Tron Account',
+      keyring: { type: 'Snap Keyring' },
+    },
+  } as unknown as InternalAccount;
+}
 
 /**
  * Uses the AssetsController for fungible reads. Snap-owned (special) assets are
@@ -47,6 +79,8 @@ export class CoreAssetsAdapter {
 
   readonly #getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
 
+  readonly #getAssets: AssetsProvider['getAssets'];
+
   readonly #getAddressInfo: TrongridApiClient['getAccountInfoByAddress'];
 
   readonly #getAddressResources: TronHttpClient['getAccountResources'];
@@ -58,6 +92,7 @@ export class CoreAssetsAdapter {
       getAccountAssetByID,
       getAccountAssetsByIDs,
       getAccountAssetsByScope,
+      getAssets,
       getAddressInfo,
       getAddressResources,
       getAddressStakingRewards,
@@ -67,6 +102,7 @@ export class CoreAssetsAdapter {
     this.#getAccountAssetByID = getAccountAssetByID;
     this.#getAccountAssetsByIDs = getAccountAssetsByIDs;
     this.#getAccountAssetsByScope = getAccountAssetsByScope;
+    this.#getAssets = getAssets;
     this.#getAddressInfo = getAddressInfo;
     this.#getAddressResources = getAddressResources;
     this.#getAddressStakingRewards = getAddressStakingRewards;
@@ -134,6 +170,74 @@ export class CoreAssetsAdapter {
     );
 
     return allAssets;
+  }
+
+  /**
+   * Fetches fresh assets for the requested asset IDs, guaranteeing up-to-date
+   * data for flows that act on-chain or display actionable values.
+   *
+   * Combines both freshness strategies:
+   * - Controller-tracked assets (native TRX, TRC20) come from the controller's
+   *   one-time fetch pipeline (`AssetsController:getAssets` with
+   *   `forceUpdate` and `bypassServerCache`), reading the fresh fetch result
+   *   directly.
+   * - Snap-owned assets (staking positions, energy, bandwidth) are fetched
+   *   directly from Tron RPC via the Snap's own sync flow, since the
+   *   controller only sees them through asynchronously published updates.
+   *
+   * @param account - The keyring account to fetch assets for.
+   * @param assetIds - CAIP-19 asset IDs to resolve fresh values for.
+   * @returns Assets keyed in the same order as the requested asset IDs, with
+   * `null` for asset IDs that could not be resolved.
+   */
+  async getFreshAccountAssetsByIDs(
+    account: KeyringAccount,
+    assetIds: Caip19AssetId[],
+  ): Promise<(AssetEntity | null)[]> {
+    const scopes = Array.from(
+      new Set(assetIds.map((assetId) => parseTronCaipAssetType(assetId).chainId)),
+    ) as Network[];
+
+    const [snapOwnedFetches, controllerAssets] = await Promise.all([
+      Promise.all(
+        scopes.map((scope) =>
+          this.fetchAssetsAndBalancesForAccount(scope as Network, account),
+        ),
+      ),
+      this.#getAssets([toInternalAccount(account, scopes)], {
+        chainIds: scopes,
+        forceUpdate: true,
+        bypassServerCache: true,
+      }),
+    ]);
+
+    const snapOwnedAssets = snapOwnedFetches.flat();
+
+    return assetIds.map((assetId) => {
+      if (isSnapOwnedAsset(assetId)) {
+        return (
+          snapOwnedAssets.find((asset) => asset.assetType === assetId) ?? null
+        );
+      }
+
+      const asset = controllerAssets[account.id]?.[assetId];
+      return asset ? mapControllerAsset(account.id, asset) : null;
+    });
+  }
+
+  /**
+   * Fetches a single fresh asset for the given asset ID.
+   *
+   * @param account - The keyring account to fetch the asset for.
+   * @param assetId - CAIP-19 asset ID to resolve a fresh value for.
+   * @returns The fresh asset, or `null` if it could not be resolved.
+   */
+  async getFreshAccountAssetByID(
+    account: KeyringAccount,
+    assetId: Caip19AssetId,
+  ): Promise<AssetEntity | null> {
+    const [asset] = await this.getFreshAccountAssetsByIDs(account, [assetId]);
+    return asset ?? null;
   }
 
   /**

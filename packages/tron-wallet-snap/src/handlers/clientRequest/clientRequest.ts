@@ -1,6 +1,10 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  ExtendedKeyringAccount,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -8,28 +12,21 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import {
-  bytesToHex,
-  hexToBytes,
-  parseCaipAssetType,
-  sha256,
-} from '@metamask/utils';
+import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
-  assertSupportedNetwork,
   FALLBACK_FEE,
   FEE_LIMIT,
-  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
 import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -86,7 +83,7 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
 type SigningRequest = {
   index: number;
   accountId: string;
-  account: TronKeyringAccount;
+  account: ExtendedKeyringAccount;
   message: string;
 };
 
@@ -116,9 +113,9 @@ function getUniqueAccountIds(items: { accountId: string }[]): string[] {
 }
 
 function getAccountsByNormalizedId(
-  accounts: TronKeyringAccount[],
-): Map<string, TronKeyringAccount> {
-  const accountsByNormalizedId = new Map<string, TronKeyringAccount>();
+  accounts: ExtendedKeyringAccount[],
+): Map<string, ExtendedKeyringAccount> {
+  const accountsByNormalizedId = new Map<string, ExtendedKeyringAccount>();
 
   accounts.forEach((account) => {
     accountsByNormalizedId.set(account.id.toLowerCase(), account);
@@ -136,7 +133,7 @@ function validateSigningRequest(
     message: string;
   },
   index: number,
-  accountsById: Map<string, TronKeyringAccount>,
+  accountsById: Map<string, ExtendedKeyringAccount>,
 ): SigningRequestValidation {
   const account = accountsById.get(accountId.toLowerCase());
   if (account === undefined) {
@@ -411,15 +408,14 @@ export class ClientRequestHandler {
     await this.#transactionsService.save(pendingTransaction);
 
     /**
-     * Client requests come from MetaMask's own unified send flow, matching the
-     * unified send path and the background transaction tracker. The origin is
-     * lowercased so it is recognized as MetaMask by the security alerts scan
-     * and stays consistent with the other non-EVM snaps.
+     * Origin is 'MetaMask' because client requests come from MetaMask's own
+     * unified send flow, matching the unified send path and the background
+     * transaction tracker.
      */
     const transactionType = mapRawTransactionType(rawData);
 
     await this.#analyticsService.trackTransactionSubmitted({
-      origin: METAMASK_ORIGIN,
+      origin: 'MetaMask',
       accountType: account.type,
       chainIdCaip: scope,
       transactionType,
@@ -495,11 +491,10 @@ export class ClientRequestHandler {
       /**
        * Check if we have enough of the asset we want to send...
        */
-      const { chainId } = parseCaipAssetType(assetId);
-      const scope = assertSupportedNetwork(chainId);
+      const { chainId: scope } = parseTronCaipAssetType(assetId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
-        await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        await this.#assetsService.getFreshAccountAssetsByIDs(account, [
           assetId,
           Networks[scope].nativeToken.id,
           Networks[scope].bandwidth.id,
@@ -612,10 +607,18 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      assetId,
-    );
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    /**
+     * Fetch the sent asset and the account resources fresh, so the
+     * validation and fee estimation below never act on stale balances.
+     */
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getFreshAccountAssetsByIDs(account, [
+        assetId,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     if (!asset) {
       return {
@@ -623,9 +626,6 @@ export class ClientRequestHandler {
         errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
-
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = assertSupportedNetwork(chainId);
 
     const amountBN = new BigNumber(amount);
 
@@ -652,27 +652,13 @@ export class ClientRequestHandler {
       };
     }
 
-    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
-      /**
-       * Get available Energy and Bandwidth from account assets.
-       */
-      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]),
-      /**
-       * Build the unsigned transaction.
-       * Fee estimation uses a constant overhead for the signature (134 bytes).
-       * Signing happens after user confirmation in sendTransaction().
-       */
-      this.#sendService.buildTransaction({
-        fromAccountId,
-        toAddress,
-        asset,
-        amount: amountBN,
-        feeLimit: FEE_LIMIT,
-      }),
-    ]);
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amountBN,
+      feeLimit: FEE_LIMIT,
+    });
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -697,8 +683,7 @@ export class ClientRequestHandler {
 
     /**
      * Show the confirmation UI.
-     * Client requests come from MetaMask's own unified send flow, so the origin
-     * is reported as MetaMask.
+     * Origin is 'MetaMask' because client requests come from MetaMask's own unified send flow.
      */
     const confirmed = await this.#confirmationHandler.confirmTransactionRequest(
       {
@@ -709,7 +694,7 @@ export class ClientRequestHandler {
         fees,
         asset,
         accountType: account.type,
-        origin: METAMASK_ORIGIN,
+        origin: 'MetaMask',
         transactionRawData: freshTransactionRawData,
       },
     );
@@ -775,7 +760,7 @@ export class ClientRequestHandler {
      * Recreate the transaction object from base64-encoded raw data.
      * No signing needed - fee calculation uses constant overhead for signature.
      */
-    await this.#accountsService.findByIdOrThrow(accountId);
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
 
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
@@ -800,10 +785,11 @@ export class ClientRequestHandler {
     };
 
     /**
-     * Get available Energy and Bandwidth from account assets.
+     * Get available Energy and Bandwidth from account assets, fetched fresh
+     * so the fee breakdown reflects the latest account resources.
      */
     const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(accountId, [
+      await this.#assetsService.getFreshAccountAssetsByIDs(account, [
         Networks[scope].bandwidth.id,
         Networks[scope].energy.id,
       ]);
@@ -858,10 +844,12 @@ export class ClientRequestHandler {
 
     const scope = Network.Mainnet;
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      Networks[scope].nativeToken.id,
-    );
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getFreshAccountAssetsByIDs(account, [
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     const accountBalance = asset ? new BigNumber(asset.uiAmount) : ZERO;
     const requestBalance = BigNumber(value);
@@ -884,15 +872,6 @@ export class ClientRequestHandler {
       purpose,
       account.address,
     );
-
-    /**
-     * Get available Energy and Bandwidth from account assets.
-     */
-    const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]);
 
     const availableEnergy = energyAsset
       ? BigNumber(energyAsset.rawAmount)
@@ -933,9 +912,9 @@ export class ClientRequestHandler {
 
     const { accountId, assetId, value } = request.params;
 
-    await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -981,8 +960,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -1042,9 +1021,9 @@ export class ClientRequestHandler {
      */
     const stakedAssetId = `${assetId}-staked-for-${purpose.toLowerCase()}`;
 
-    await this.#accountsService.findByIdOrThrow(accountId);
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       stakedAssetId,
     );
 
@@ -1097,8 +1076,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const asset = await this.#assetsService.getFreshAccountAssetByID(
+      account,
       stakedAssetId,
     );
 
@@ -1151,8 +1130,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = assertSupportedNetwork(chainId);
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const confirmed = await this.#confirmationHandler.confirmClaimUnstakedTrx({
       account,
@@ -1189,8 +1167,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = assertSupportedNetwork(chainId);
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     await this.#stakingService.claimTrxStakingRewards({ account, scope });
 
@@ -1336,7 +1313,7 @@ export class ClientRequestHandler {
       items.length,
     );
     const signingRequests: SigningRequest[] = [];
-    const accountsToDerive: TronKeyringAccount[] = [];
+    const accountsToDerive: ExtendedKeyringAccount[] = [];
 
     items.forEach((item, index) => {
       const validationResult = validateSigningRequest(

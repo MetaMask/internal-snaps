@@ -1,6 +1,6 @@
 import type { Asset } from '@metamask/assets-controller';
 
-import { assertSupportedNetwork } from '../../../constants';
+import type { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toRawAmount } from '../../../utils/conversion';
 
@@ -15,7 +15,6 @@ import { toRawAmount } from '../../../utils/conversion';
  * @param accountId - Keyring account ID.
  * @param asset - Asset returned by AssetsController.
  * @returns Mapped asset entity.
- * @throws If the asset is not on a supported network.
  */
 export function mapControllerAsset(
   accountId: string,
@@ -30,7 +29,7 @@ export function mapControllerAsset(
   return {
     assetType: assetId,
     keyringAccountId: accountId,
-    network: assertSupportedNetwork(asset.chainId),
+    network: asset.chainId as Network,
     symbol,
     decimals,
     rawAmount: toRawAmount(amount, decimals),

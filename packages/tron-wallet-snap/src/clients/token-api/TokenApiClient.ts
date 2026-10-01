@@ -3,13 +3,10 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
-import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
+import { CaipAssetTypeStruct } from '@metamask/utils';
+import { parseTronCaipAssetType } from '../../utils/caip';
 
-import {
-  isSupportedNetwork,
-  Network,
-  SNAP_OWNED_ASSETS,
-} from '../../constants';
+import { Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
@@ -100,18 +97,13 @@ export class TokenApiClient {
         if (SNAP_OWNED_ASSETS.includes(assetType)) {
           return false;
         }
-        const { chainId } = parseCaipAssetType(assetType);
-        return (
-          isSupportedNetwork(chainId) &&
-          TokenApiClient.supportedNetworks.includes(chainId)
-        );
+        const { chainId } = parseTronCaipAssetType(assetType);
+        return TokenApiClient.supportedNetworks.includes(chainId);
       });
 
       if (supportedAssetTypes.length !== assetTypes.length) {
         this.#logger.warn(
-          `[TokenApiClient] Received some asset types that are either not supported by the Token API or are excluded resource/staked tokens. They will be ignored. Supported networks: ${TokenApiClient.supportedNetworks.join(
-            ', ',
-          )}`,
+          `[TokenApiClient] Received some asset types that are either not supported by the Token API or are excluded resource/staked tokens. They will be ignored. Supported networks: ${TokenApiClient.supportedNetworks.join(', ')}`,
         );
       }
 

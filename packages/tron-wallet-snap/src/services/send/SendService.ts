@@ -1,17 +1,12 @@
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
-import { parseCaipAssetType } from '@metamask/utils';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import {
-  METAMASK_ORIGIN,
-  Networks,
-  TRACK_TX_INTERVAL,
-  ZERO,
-} from '../../constants';
+import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
@@ -233,10 +228,8 @@ export class SendService {
     | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
     | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>
   > {
-    const { assetNamespace, assetReference } = parseCaipAssetType(
-      asset.assetType,
-    );
-    const scope = asset.network;
+    const { chainId: scope, assetNamespace, assetReference } =
+      parseTronCaipAssetType(asset.assetType);
 
     try {
       switch (assetNamespace) {
@@ -280,9 +273,7 @@ export class SendService {
     } catch (error) {
       this.#logger.error({ error }, 'Failed to send asset');
       throw new Error(
-        `Failed to send asset: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
+        `Failed to send asset: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -391,7 +382,7 @@ export class SendService {
     scope,
     fromAccountId,
     transaction,
-    origin = METAMASK_ORIGIN,
+    origin = 'MetaMask',
   }: {
     scope: Network;
     fromAccountId: string;
