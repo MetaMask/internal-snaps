@@ -6,8 +6,7 @@ import type {
 } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
-import type { Network } from '../../constants';
-import { isSupportedNetwork } from '../../constants';
+import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
@@ -81,18 +80,14 @@ export class TrongridApiClient {
     const { baseUrls } = configProvider.config.trongridApi;
 
     // Initialize clients for all networks
-    Object.entries(baseUrls).forEach(([network, baseUrl]) => {
-      if (!isSupportedNetwork(network)) {
-        return;
-      }
-
+    Object.values(Network).forEach((network) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Allow-Origin': '*',
       };
 
-      this.#clients.set(network, { baseUrl, headers });
+      this.#clients.set(network, { baseUrl: baseUrls[network], headers });
     });
 
     this.#tronHttpClient = tronHttpClient;
