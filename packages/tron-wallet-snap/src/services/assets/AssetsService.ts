@@ -83,15 +83,40 @@ export class AssetsService {
     return this.#snapAdapter.getAccountAssetByID(accountId, assetId);
   }
 
-  async fetchAssetsAndBalancesForAccount(
-    scope: Network,
+  /**
+   * Fetches live assets and balances for the given account from the chain,
+   * for a single scope.
+   *
+   * @param account - The account to fetch live assets for.
+   * @param scope - The scope to fetch live assets for.
+   * @returns The live assets.
+   */
+  async fetchAccountAssetsByScope(
     account: KeyringAccount,
+    scope: Network,
   ): Promise<AssetEntity[]> {
     if (await this.#shouldReturnAssetsFromCore()) {
       return this.#coreAdapter.fetchAssetsAndBalancesForAccount(scope, account);
     }
 
     return this.#snapAdapter.fetchAssetsAndBalancesForAccount(scope, account);
+  }
+
+  /**
+   * Fetches live assets and balances for the given account across all its
+   * scopes from the chain.
+   *
+   * @param account - The account to fetch live assets for.
+   * @returns The live assets.
+   */
+  async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
+    const results = await Promise.all(
+      account.scopes.map((scope) =>
+        this.fetchAccountAssetsByScope(account, scope as Network),
+      ),
+    );
+
+    return results.flat();
   }
 
   async saveMany(assets: AssetEntity[]): Promise<void> {
