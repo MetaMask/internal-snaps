@@ -1,8 +1,9 @@
-import { SolMethod } from '@metamask/keyring-api';
+import { SolMethod, TransactionType } from '@metamask/keyring-api';
 
 import { render as renderConfirmSignIn } from '../../../features/confirmation/views/ConfirmSignIn/render';
 import { render as renderConfirmSignMessage } from '../../../features/confirmation/views/ConfirmSignMessage/render';
 import { render as renderConfirmTransactionRequest } from '../../../features/confirmation/views/ConfirmTransactionRequest/render';
+import { METAMASK_ORIGIN } from '../../constants/solana';
 import { ScheduleBackgroundEventMethod } from '../../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import type { SolanaKeyringRequest } from '../../handlers/onKeyringRequest/structs';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
@@ -59,6 +60,7 @@ type ScheduledEventCall = {
         metadata: {
           scope: SolanaKeyringRequest['scope'];
           origin: string;
+          transactionType: TransactionType;
         };
       };
     };
@@ -94,9 +96,15 @@ describe('ConfirmationHandler', () => {
    * keeps `Added` covered exactly like the terminal events.
    *
    * @param method - The lifecycle event method name.
+   * @param origin - The origin carried in the event metadata.
+   * @param transactionType - The classification carried in the event metadata.
    * @returns The expected `snap.request` call.
    */
-  const expectedScheduleCall = (method: string): ScheduledEventCall => ({
+  const expectedScheduleCall = (
+    method: string,
+    origin = MOCK_ORIGIN,
+    transactionType = TransactionType.Unknown,
+  ): ScheduledEventCall => ({
     method: 'snap_scheduleBackgroundEvent',
     params: {
       duration: 'PT1S',
@@ -106,7 +114,8 @@ describe('ConfirmationHandler', () => {
           accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
           metadata: {
             scope: mockTransactionRequest.scope,
-            origin: MOCK_ORIGIN,
+            origin,
+            transactionType,
           },
         },
       },
@@ -218,6 +227,32 @@ describe('ConfirmationHandler', () => {
         ]);
       },
     );
+
+    it('reports a MetaMask-originated transaction as a send', async () => {
+      mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+
+      await confirmationHandler.handleKeyringRequest(
+        { ...request, origin: METAMASK_ORIGIN },
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+
+      expect(mockSnapRequest.mock.calls).toStrictEqual([
+        [
+          expectedScheduleCall(
+            ScheduleBackgroundEventMethod.OnTransactionAdded,
+            METAMASK_ORIGIN,
+            TransactionType.Send,
+          ),
+        ],
+        [
+          expectedScheduleCall(
+            ScheduleBackgroundEventMethod.OnTransactionApproved,
+            METAMASK_ORIGIN,
+            TransactionType.Send,
+          ),
+        ],
+      ]);
+    });
 
     it('does not schedule Approved when the user rejects', async () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue(false);

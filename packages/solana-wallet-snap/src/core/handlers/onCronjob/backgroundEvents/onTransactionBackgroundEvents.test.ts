@@ -1,3 +1,5 @@
+import { TransactionType } from '@metamask/keyring-api';
+
 import { analyticsService, keyring } from '../../../../snapContext';
 import { Network } from '../../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyring-accounts';
@@ -53,6 +55,7 @@ describe('transaction background events', () => {
           metadata: {
             scope: Network.Mainnet,
             origin,
+            transactionType: TransactionType.Send,
           },
         },
       },
@@ -63,6 +66,7 @@ describe('transaction background events', () => {
       origin,
       accountType: account.type,
       chainIdCaip: Network.Mainnet,
+      transactionType: TransactionType.Send,
     });
   });
 });

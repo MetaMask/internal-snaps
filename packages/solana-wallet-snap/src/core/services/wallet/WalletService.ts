@@ -1,5 +1,6 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
+import type { TransactionType } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
@@ -38,6 +39,7 @@ import { trackError } from '../../utils/errors';
 import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
+import { resolveTransactionType } from '../../utils/transactionType';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
@@ -275,6 +277,7 @@ export class WalletService {
    * @param options.preflightCommitment - The preflight commitment.
    * @param options.maxRetries - The maximum number of retries.
    * @param options.commitment - The commitment.
+   * @param transactionType - A classification already known by the caller. When omitted, it is derived from the origin.
    * @returns A Promise that resolves to the signed transaction.
    */
   async signAndSendTransaction(
@@ -283,6 +286,7 @@ export class WalletService {
     scope: Network,
     origin: string,
     options?: SolanaSignAndSendTransactionOptions,
+    transactionType?: TransactionType,
   ): Promise<SolanaSignAndSendTransactionResponse> {
     this.#logger.log('Signing and sending transaction', account);
 
@@ -344,6 +348,7 @@ export class WalletService {
       origin,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType: resolveTransactionType({ origin, transactionType }),
     });
 
     // Immediately save and emit a pending transaction, so the client can show

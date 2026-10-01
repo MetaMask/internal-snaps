@@ -1,4 +1,4 @@
-import { SolMethod } from '@metamask/keyring-api';
+import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 
 import { METAMASK_ORIGIN, Network } from '../../constants/solana';
@@ -396,7 +396,45 @@ describe('WalletService', () => {
             accountType: fromAccount.type,
             chainIdCaip: scope,
             origin: 'https://metamask.io',
+            transactionType: TransactionType.Unknown,
           });
+        });
+
+        it('reports a MetaMask-originated transaction as a send', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              origin: METAMASK_ORIGIN,
+              transactionType: TransactionType.Send,
+            }),
+          );
+        });
+
+        it('uses a caller-supplied classification over the origin', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            undefined,
+            TransactionType.TokenApprove,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionType: TransactionType.TokenApprove,
+            }),
+          );
         });
 
         it('saves a pending unconfirmed transaction after broadcasting', async () => {
