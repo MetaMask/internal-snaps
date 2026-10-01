@@ -57,19 +57,14 @@ export type AccountEventProperties = {
 /**
  * Properties of a transaction lifecycle event.
  *
- * `transactionType` is the optional classification of the transaction, using
- * the `@metamask/keyring-api` `TransactionType` vocabulary (`send`, `swap`,
- * `bridge:send`, ...). Together with `origin` it identifies which flow produced
- * the event: `origin` says who initiated it, `transactionType` says what kind of
- * operation it was. It is omitted when the emitting Snap cannot classify the
- * transaction.
+ * `transactionType` is the optional classification of the transaction.
  *
  * Security events intentionally do not extend this type: they are not tied to a
  * transaction classification, so advertising `transactionType` there would let
  * callers pass a value that is silently discarded.
  */
 export type TransactionEventProperties = AccountEventProperties & {
-  transactionType?: TransactionType;
+  transactionType?: `${TransactionType}`;
 };
 
 export type TransactionFinalizedEventProperties = TransactionEventProperties & {
