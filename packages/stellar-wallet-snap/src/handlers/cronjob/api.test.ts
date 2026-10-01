@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import { assert, StructError } from '@metamask/superstruct';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -252,6 +253,21 @@ describe('Cronjob API structs', () => {
         senderAccountId,
         receiverAddress,
       ]);
+    });
+
+    it('accepts a transaction type resolved at submit time', () => {
+      const value = {
+        ...jsonRpcBase,
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId,
+          scope: KnownCaip2ChainId.Mainnet,
+          accountIdsOrAddresses: [senderAccountId],
+          transactionType: TransactionType.Send,
+        },
+      };
+      assert(value, TrackTransactionJsonRpcRequestStruct);
+      expect(value.params.transactionType).toBe(TransactionType.Send);
     });
 
     it('rejects invalid accountIdsOrAddresses values', () => {

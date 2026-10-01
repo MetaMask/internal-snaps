@@ -1,4 +1,4 @@
-import { TransactionStatus } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -168,6 +168,32 @@ describe('TrackTransactionHandler', () => {
     expect(synchronize).toHaveBeenCalledTimes(1);
     expect(synchronize).toHaveBeenCalledWith([account], { scope });
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
+  });
+
+  it('reports the classification carried from submit time', async () => {
+    const { handler, getTransaction } = setup();
+    getTransaction.mockResolvedValue(
+      createNetworkTransaction(TransactionStatus.Confirmed),
+    );
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        transactionType: TransactionType.Send,
+      },
+    });
+
+    expect(trackTransactionFinalized).toHaveBeenCalledWith({
+      origin: METAMASK_ORIGIN,
+      accountType: KEYRING_ACCOUNT_TYPE,
+      chainIdCaip: scope,
+      transactionType: TransactionType.Send,
+    });
   });
 
   it('reschedules when transaction is not found on first attempt', async () => {

@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { Networks } from '@stellar/stellar-sdk';
@@ -313,6 +314,7 @@ describe('ChangeTrustOptHandler', () => {
       txId: '7d4b0c5ef7498b223f45a10f461060fb64f53eb13caf18e8dc7de95a8cf9c0e1',
       scope,
       accountIdsOrAddresses: [account.id],
+      transactionType: TransactionType.TokenApprove,
     });
   });
 
@@ -595,6 +597,7 @@ describe('ChangeTrustOptHandler', () => {
       txId: '7d4b0c5ef7498b223f45a10f461060fb64f53eb13caf18e8dc7de95a8cf9c0e1',
       scope,
       accountIdsOrAddresses: [account.id],
+      transactionType: TransactionType.TokenDisapprove,
     });
   });
 
@@ -717,6 +720,7 @@ describe('ChangeTrustOptHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.TokenApprove,
       });
     });
 
@@ -737,6 +741,7 @@ describe('ChangeTrustOptHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.TokenApprove,
       });
     });
 
@@ -747,6 +752,7 @@ describe('ChangeTrustOptHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.TokenApprove,
       });
     });
 
@@ -763,6 +769,7 @@ describe('ChangeTrustOptHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.TokenApprove,
       });
 
       const submittedOrder =

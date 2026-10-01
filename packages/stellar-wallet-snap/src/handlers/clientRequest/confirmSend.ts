@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   Logger,
@@ -202,6 +203,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
+        transactionType: TransactionType.Send,
       };
 
       await this.#analyticsService.trackTransactionAdded(trackingProperties);
@@ -272,6 +274,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         txId: transactionId,
         accountIdsOrAddresses: [stellarKeyringAccount.id, toAddress],
         scope,
+        transactionType: TransactionType.Send,
       });
 
       return {
