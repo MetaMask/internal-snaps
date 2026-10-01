@@ -1,3 +1,4 @@
+import type { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -147,7 +148,7 @@ export class CronHandler {
             scope: Network;
             accountIds: string[];
             attempt: number;
-            transactionType?: string;
+            transactionType?: TransactionType;
           },
         );
         break;
@@ -675,7 +676,7 @@ export class CronHandler {
     scope: Network;
     accountIds: string[];
     attempt: number;
-    transactionType?: string;
+    transactionType?: TransactionType;
   }): Promise<void> {
     this.#logger.info(
       `[Attempt ${attempt + 1}] Tracking transaction ${txId} on ${scope}...`,
