@@ -1,5 +1,4 @@
 import { CaipAssetTypeStruct } from '@metamask/keyring-api';
-import type { TrxScope } from '@metamask/keyring-api';
 import { pattern } from '@metamask/superstruct';
 
 import type { TronAccount } from '../../clients/trongrid/types';
@@ -12,17 +11,19 @@ export type StakedData = {
 };
 
 export type NativeCaipAssetType = `${Network}/slip44:195`;
-export type StakedCaipAssetType =
-  `${TrxScope}/slip44:195-staked-for-${'energy' | 'bandwidth'}`;
+export type StakedCaipAssetType = `${Network}/slip44:195-staked-for-${
+  | 'energy'
+  | 'bandwidth'}`;
 export type ReadyForWithdrawalCaipAssetType =
-  `${TrxScope}/slip44:195-ready-for-withdrawal`;
+  `${Network}/slip44:195-ready-for-withdrawal`;
 export type StakingRewardsCaipAssetType =
-  `${TrxScope}/slip44:195-staking-rewards`;
-export type InLockPeriodCaipAssetType = `${TrxScope}/slip44:195-in-lock-period`;
-export type ResourceCaipAssetType =
-  `${TrxScope}/slip44:${'energy' | 'bandwidth'}`;
-export type TokenCaipAssetType = `${TrxScope}/${'trc10' | 'trc20'}:${string}`;
-export type NftCaipAssetType = `${TrxScope}/trc721:${string}`;
+  `${Network}/slip44:195-staking-rewards`;
+export type InLockPeriodCaipAssetType = `${Network}/slip44:195-in-lock-period`;
+export type ResourceCaipAssetType = `${Network}/slip44:${
+  | 'energy'
+  | 'bandwidth'}`;
+export type TokenCaipAssetType = `${Network}/${'trc10' | 'trc20'}:${string}`;
+export type NftCaipAssetType = `${Network}/trc721:${string}`;
 
 /**
  * Validates a TRON native CAIP-19 ID (e.g., "tron:728126428/slip44:195")

@@ -1,4 +1,3 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { bytesToBase64, stringToBytes } from '@metamask/utils';
 
@@ -6,6 +5,7 @@ import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import type { Preferences } from '../../../../types/snap';
+import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { render } from './render';
 
 /**
@@ -66,7 +66,7 @@ describe('ConfirmSignMessage render', () => {
     const testOrigin = 'https://example.com';
     const testMessage = 'Hello, Tron!';
 
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000001',
       origin: testOrigin,
       account: mockAccount.id,
@@ -97,7 +97,7 @@ describe('ConfirmSignMessage render', () => {
   it('decodes base64 message correctly', async () => {
     const testMessage = 'Test message with special chars: 你好 🚀';
 
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000002',
       origin: 'https://test.com',
       account: mockAccount.id,
@@ -122,7 +122,7 @@ describe('ConfirmSignMessage render', () => {
       new Error('Failed to load'),
     );
 
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000003',
       origin: 'https://test.com',
       account: mockAccount.id,
@@ -144,7 +144,7 @@ describe('ConfirmSignMessage render', () => {
   });
 
   it('handles missing origin gracefully', async () => {
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000004',
       origin: undefined as any,
       account: mockAccount.id,
@@ -165,7 +165,7 @@ describe('ConfirmSignMessage render', () => {
   });
 
   it('uses correct network scope', async () => {
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000005',
       origin: 'https://test.com',
       account: mockAccount.id,
@@ -189,7 +189,7 @@ describe('ConfirmSignMessage render', () => {
     const expectedResult = true;
     mockSnapClient.showDialog.mockResolvedValue(expectedResult);
 
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000006',
       origin: 'https://test.com',
       account: mockAccount.id,
@@ -209,7 +209,7 @@ describe('ConfirmSignMessage render', () => {
   });
 
   it('passes TRX_IMAGE_SVG as network image', async () => {
-    const request: KeyringRequest = {
+    const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000007',
       origin: 'https://test.com',
       account: mockAccount.id,

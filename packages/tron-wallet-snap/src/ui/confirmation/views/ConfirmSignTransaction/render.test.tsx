@@ -1,4 +1,4 @@
-import type { FeeType, KeyringRequest } from '@metamask/keyring-api';
+import type { FeeType } from '@metamask/keyring-api';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 
@@ -20,6 +20,7 @@ import type {
 import { SimulationStatus } from '../../../../services/transaction-scan';
 import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
+import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { render } from './render';
 
 // Mock the context module
@@ -246,7 +247,7 @@ describe('ConfirmSignTransaction render', () => {
         const testOrigin = 'https://example.com';
         const testTransaction = toHex('mock-transaction-data');
 
-        const request: KeyringRequest = {
+        const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000001',
           origin: testOrigin,
           account: mockAccount.id,
@@ -313,7 +314,7 @@ describe('ConfirmSignTransaction render', () => {
       async ({ snapContext, mockSnapClient, mockFeeCalculatorService }) => {
         mockFeeCalculatorService.computeFee.mockResolvedValue([]);
 
-        const request: KeyringRequest = {
+        const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000002',
           origin: 'https://test.com',
           account: mockAccount.id,
@@ -358,7 +359,7 @@ describe('ConfirmSignTransaction render', () => {
           new Error('Scan failed'),
         );
 
-        const request: KeyringRequest = {
+        const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000003',
           origin: 'https://test.com',
           account: mockAccount.id,
@@ -397,7 +398,7 @@ describe('ConfirmSignTransaction render', () => {
           simulateOnChainActions: false,
         });
 
-        const request: KeyringRequest = {
+        const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000004',
           origin: 'https://test.com',
           account: mockAccount.id,
@@ -434,7 +435,7 @@ describe('ConfirmSignTransaction render', () => {
         new Error('Failed to load'),
       );
 
-      const request: KeyringRequest = {
+      const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000005',
         origin: 'https://test.com',
         account: mockAccount.id,
@@ -462,7 +463,7 @@ describe('ConfirmSignTransaction render', () => {
 
   it('handles missing origin gracefully', async () => {
     await withSnapContext(async ({ mockSnapClient }) => {
-      const request: KeyringRequest = {
+      const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000006',
         origin: undefined as any,
         account: mockAccount.id,
@@ -492,7 +493,7 @@ describe('ConfirmSignTransaction render', () => {
 
   it('returns the dialog promise result', async () => {
     await withSnapContext(async () => {
-      const request: KeyringRequest = {
+      const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000007',
         origin: 'https://test.com',
         account: mockAccount.id,
@@ -526,7 +527,7 @@ describe('ConfirmSignTransaction render', () => {
           true,
         );
 
-        const request: KeyringRequest = {
+        const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000008',
           origin: 'https://test.com',
           account: mockAccount.id,
@@ -570,7 +571,7 @@ describe('ConfirmSignTransaction render', () => {
         new Error('schedule failed'),
       );
 
-      const request: KeyringRequest = {
+      const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000009',
         origin: 'https://test.com',
         account: mockAccount.id,
@@ -616,7 +617,7 @@ describe('ConfirmSignTransaction render', () => {
         throw new Error('update failed');
       });
 
-      const request: KeyringRequest = {
+      const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000010',
         origin: 'https://test.com',
         account: mockAccount.id,
@@ -658,7 +659,7 @@ describe('ConfirmSignTransaction render', () => {
           new Error('tapos check failed'),
         );
 
-        const request: KeyringRequest = {
+        const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000011',
           origin: 'https://test.com',
           account: mockAccount.id,
@@ -711,7 +712,7 @@ describe('ConfirmSignTransaction render', () => {
         ...mockAssets.slice(1),
       ]);
 
-      const request: KeyringRequest = {
+      const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000012',
         origin: 'https://example.com',
         account: mockAccount.id,

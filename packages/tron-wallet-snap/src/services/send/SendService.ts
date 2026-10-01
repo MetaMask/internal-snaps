@@ -233,16 +233,17 @@ export class SendService {
     | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
     | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>
   > {
-    const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
+    const { assetNamespace, assetReference } = parseCaipAssetType(
       asset.assetType,
     );
+    const scope = asset.network;
 
     try {
       switch (assetNamespace) {
         case 'slip44':
           this.#logger.log('Sending TRX transaction');
           return this.buildSendTrxTransaction({
-            scope: chainId as Network,
+            scope,
             fromAccountId,
             toAddress,
             amount,
@@ -252,7 +253,7 @@ export class SendService {
         case 'trc10':
           this.#logger.log(`Sending TRC10 token: ${assetReference}`);
           return this.buildSendTrc10Transaction({
-            scope: chainId as Network,
+            scope,
             fromAccountId,
             toAddress,
             amount,
@@ -264,7 +265,7 @@ export class SendService {
         case 'trc20':
           this.#logger.log(`Sending TRC20 token: ${assetReference}`);
           return this.buildSendTrc20Transaction({
-            scope: chainId as Network,
+            scope,
             fromAccountId,
             toAddress,
             contractAddress: assetReference,
@@ -279,7 +280,9 @@ export class SendService {
     } catch (error) {
       this.#logger.error({ error }, 'Failed to send asset');
       throw new Error(
-        `Failed to send asset: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to send asset: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       );
     }
   }

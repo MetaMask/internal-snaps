@@ -19,10 +19,7 @@ import {
   asStrictKeyringAccount,
   validateOrigin,
 } from '@metamask/snap-networks-utils';
-import type {
-  ExtendedKeyringAccount,
-  Logger,
-} from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,
@@ -39,6 +36,7 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/keyringAccount';
 import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -111,7 +109,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     return result ?? null;
   }
 
-  async #listAccounts(): Promise<ExtendedKeyringAccount[]> {
+  async #listAccounts(): Promise<TronKeyringAccount[]> {
     try {
       const keyringAccounts = await this.#accountsService.getAll();
 
@@ -133,7 +131,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   async #getAccount(
     accountId: string,
-  ): Promise<ExtendedKeyringAccount | undefined> {
+  ): Promise<TronKeyringAccount | undefined> {
     try {
       const account =
         (await this.#accountsService.findById(accountId)) ?? undefined;
@@ -158,7 +156,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     }
   }
 
-  async #getAccountOrThrow(accountId: string): Promise<ExtendedKeyringAccount> {
+  async #getAccountOrThrow(accountId: string): Promise<TronKeyringAccount> {
     const account = await this.#getAccount(accountId);
 
     if (!account) {

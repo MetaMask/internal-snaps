@@ -2,6 +2,7 @@ import {
   CaipAssetTypeStruct,
   KeyringRequestStruct,
   SolMethod,
+  TransactionType,
   TrxAccountType,
 } from '@metamask/keyring-api';
 import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
@@ -74,6 +75,14 @@ export const NetworkStruct = enums(Object.values(Network));
 
 export const ResolveAccountAddressStruct = object({
   scope: NetworkStruct,
+});
+
+export const TrackTransactionParamsStruct = object({
+  txId: string(),
+  scope: NetworkStruct,
+  accountIds: array(string()),
+  attempt: integer(),
+  transactionType: optional(enums(Object.values(TransactionType))),
 });
 
 /**

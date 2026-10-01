@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reject scopes that are not supported Tron networks instead of accepting them unchecked ([#394](https://github.com/MetaMask/internal-snaps/pull/394))
+  - `onAmountInput`, `confirmSend`, `claimUnstakedTrx`, `claimTrxStakingRewards` and `resolveAccountAddress` now throw an `InvalidParamsError` for an asset or scope on an unsupported chain.
+  - Assets returned by the AssetsController on an unsupported chain now throw instead of being mapped.
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 

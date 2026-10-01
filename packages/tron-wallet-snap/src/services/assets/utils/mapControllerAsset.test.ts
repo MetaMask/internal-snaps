@@ -58,4 +58,19 @@ describe('mapControllerAsset', () => {
       iconUrl: '',
     });
   });
+
+  it('throws when the asset is not on a supported network', () => {
+    const asset = {
+      id: 'eip155:1/slip44:60',
+      chainId: 'eip155:1',
+      balance: { amount: '1' },
+      metadata: { type: 'native', symbol: 'ETH', name: 'Ether', decimals: 18 },
+      price: { price: 0, lastUpdated: 0 },
+      fiatValue: 0,
+    } as unknown as Asset;
+
+    expect(() => mapControllerAsset(accountId, asset)).toThrow(
+      'Unsupported network: "eip155:1"',
+    );
+  });
 });

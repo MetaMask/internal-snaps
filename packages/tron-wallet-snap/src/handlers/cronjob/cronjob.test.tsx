@@ -3,6 +3,7 @@ import type {
   AnalyticsService,
   IStateManager,
 } from '@metamask/snap-networks-utils';
+import { InvalidParamsError } from '@metamask/snaps-sdk';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -975,6 +976,54 @@ describe('CronHandler', () => {
         mockTronHttpClient,
       });
     }
+
+    it('tracks the transaction when the background event params are valid', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
+
+          await cronHandler.handle({
+            jsonrpc: '2.0',
+            id: 1,
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: TX_ID,
+              scope: Network.Mainnet,
+              accountIds: ACCOUNT_IDS,
+              attempt: 0,
+            },
+          });
+
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).toHaveBeenCalledWith(Network.Mainnet, TX_ID);
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('rejects background event params with an unsupported scope', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockTronHttpClient }) => {
+          await expect(
+            cronHandler.handle({
+              jsonrpc: '2.0',
+              id: 1,
+              method: BackgroundEventMethod.TrackTransaction,
+              params: {
+                txId: TX_ID,
+                scope: 'eip155:1',
+                accountIds: ACCOUNT_IDS,
+                attempt: 0,
+              },
+            }),
+          ).rejects.toThrow(InvalidParamsError);
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
 
     it('schedules next attempt when transaction is not yet confirmed', async () => {
       await withTrackTransactionCronHandler(

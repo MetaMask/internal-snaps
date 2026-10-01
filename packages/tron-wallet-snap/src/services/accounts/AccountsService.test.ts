@@ -10,15 +10,13 @@ import type {
 } from '@metamask/keyring-api';
 import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
-import type {
-  ExtendedKeyringAccount,
-  Logger,
-} from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { LogLevel } from '@metamask/snap-networks-utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
+import type { TronKeyringAccount } from '../../entities/keyringAccount';
 import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../../utils/mockLogger';
@@ -141,9 +139,9 @@ async function withAccountsService(
     configurable: true,
   });
 
-  const keyringAccounts: ExtendedKeyringAccount[] = [];
+  const keyringAccounts: TronKeyringAccount[] = [];
 
-  const getAccountIndexKey = (account: ExtendedKeyringAccount): string =>
+  const getAccountIndexKey = (account: TronKeyringAccount): string =>
     `${account.entropySource}:${account.index}`;
 
   const mockAccountsRepository: jest.Mocked<
@@ -187,7 +185,7 @@ async function withAccountsService(
       ),
     create: jest
       .fn()
-      .mockImplementation(async (account: ExtendedKeyringAccount) => {
+      .mockImplementation(async (account: TronKeyringAccount) => {
         const conflicting = keyringAccounts.find(
           (existing) =>
             getAccountIndexKey(existing) === getAccountIndexKey(account),
@@ -203,9 +201,9 @@ async function withAccountsService(
     mergeKeyringAccounts: jest
       .fn()
       .mockImplementation(
-        async (newAccounts: Record<string, ExtendedKeyringAccount>) => {
+        async (newAccounts: Record<string, TronKeyringAccount>) => {
           const occupied = new Set(keyringAccounts.map(getAccountIndexKey));
-          const added: Record<string, ExtendedKeyringAccount> = {};
+          const added: Record<string, TronKeyringAccount> = {};
 
           for (const [id, account] of Object.entries(newAccounts)) {
             const indexKey = getAccountIndexKey(account);
@@ -339,7 +337,7 @@ describe('AccountsService', () => {
   });
 
   describe('deriveTronKeypairs', () => {
-    const createAccount = (index: number): ExtendedKeyringAccount =>
+    const createAccount = (index: number): TronKeyringAccount =>
       ({
         id: `account-${index}`,
         entropySource: 'test-entropy',
@@ -347,10 +345,10 @@ describe('AccountsService', () => {
         index,
         address: `TAccount${index}`,
         type: TrxAccountType.Eoa,
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        scopes: [...SUPPORTED_SCOPES],
         options: {},
         methods: ['signMessage', 'signTransaction'],
-      }) as unknown as ExtendedKeyringAccount;
+      }) as unknown as TronKeyringAccount;
 
     it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
       const coinJson = await getTronTestCoinTypeJson();
@@ -444,7 +442,7 @@ describe('AccountsService', () => {
             mockAccountsRepository.mergeKeyringAccounts,
           ).toHaveBeenCalledTimes(1);
           const merged = mockAccountsRepository.mergeKeyringAccounts.mock
-            .calls[0]?.[0] as Record<string, ExtendedKeyringAccount>;
+            .calls[0]?.[0] as Record<string, TronKeyringAccount>;
           expect(Object.keys(merged)).toHaveLength(2);
         },
         coinJson,
@@ -476,7 +474,7 @@ describe('AccountsService', () => {
           ).toHaveBeenCalledTimes(1);
 
           const mergedAccounts = mockAccountsRepository.mergeKeyringAccounts
-            .mock.calls[0]?.[0] as Record<string, ExtendedKeyringAccount>;
+            .mock.calls[0]?.[0] as Record<string, TronKeyringAccount>;
 
           expect(Object.keys(mergedAccounts)).toHaveLength(101);
           expect(
@@ -491,14 +489,14 @@ describe('AccountsService', () => {
 
     it('returns persisted accounts when merge skips indices taken concurrently', async () => {
       const coinJson = await getTronTestCoinTypeJson();
-      const concurrentAccount: ExtendedKeyringAccount = {
+      const concurrentAccount: TronKeyringAccount = {
         id: 'concurrent-0',
         entropySource: 'test-entropy',
         derivationPath: "m/44'/195'/0'/0/0",
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TConcurrent0',
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        scopes: [...SUPPORTED_SCOPES],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -541,25 +539,25 @@ describe('AccountsService', () => {
 
     it('does not merge when accounts already exist for the range', async () => {
       const coinJson = await getTronTestCoinTypeJson();
-      const existing0: ExtendedKeyringAccount = {
+      const existing0: TronKeyringAccount = {
         id: 'existing-0',
         entropySource: 'test-entropy',
         derivationPath: "m/44'/195'/0'/0/0",
         index: 0,
         type: TrxAccountType.Eoa,
         address: 'TExisting0',
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        scopes: [...SUPPORTED_SCOPES],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
-      const existing1: ExtendedKeyringAccount = {
+      const existing1: TronKeyringAccount = {
         id: 'existing-1',
         entropySource: 'test-entropy',
         derivationPath: "m/44'/195'/0'/0/1",
         index: 1,
         type: TrxAccountType.Eoa,
         address: 'TExisting1',
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
+        scopes: [...SUPPORTED_SCOPES],
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
@@ -784,7 +782,7 @@ describe('AccountsService', () => {
 
   describe('getAll', () => {
     it('delegates to repository and returns result', async () => {
-      const accounts: ExtendedKeyringAccount[] = [
+      const accounts: TronKeyringAccount[] = [
         {
           id: 'a1',
           address: 'TAddr1',
@@ -813,7 +811,7 @@ describe('AccountsService', () => {
 
   describe('getAllSelected', () => {
     it('returns only accounts whose IDs are in getSelectedAccounts', async () => {
-      const account1: ExtendedKeyringAccount = {
+      const account1: TronKeyringAccount = {
         id: 'selected-1',
         address: 'TAddr1',
         type: TrxAccountType.Eoa,
@@ -824,7 +822,7 @@ describe('AccountsService', () => {
         derivationPath: "m/44'/195'/0'/0/0",
         index: 0,
       };
-      const account2: ExtendedKeyringAccount = {
+      const account2: TronKeyringAccount = {
         id: 'not-selected',
         address: 'TAddr2',
         type: TrxAccountType.Eoa,
@@ -865,7 +863,7 @@ describe('AccountsService', () => {
 
   describe('findById', () => {
     it('delegates to repository', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'find-id',
         address: 'TFind',
         type: TrxAccountType.Eoa,
@@ -894,7 +892,7 @@ describe('AccountsService', () => {
 
   describe('findByIdOrThrow', () => {
     it('returns account when found', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'throw-found',
         address: 'TFound',
         type: TrxAccountType.Eoa,
@@ -932,7 +930,7 @@ describe('AccountsService', () => {
 
   describe('findByIds', () => {
     it('returns accounts from repository', async () => {
-      const accounts: ExtendedKeyringAccount[] = [
+      const accounts: TronKeyringAccount[] = [
         {
           id: 'id1',
           address: 'T1',
@@ -978,7 +976,7 @@ describe('AccountsService', () => {
 
   describe('findByAddress', () => {
     it('delegates to repository', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'addr-id',
         address: 'TByAddress123456789012345678',
         type: TrxAccountType.Eoa,
@@ -1023,7 +1021,7 @@ describe('AccountsService', () => {
 
   describe('synchronize (assets)', () => {
     it('fetches assets for each account and scope, then saves', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-asset-id',
         address: 'TSyncAsset12345678901234567',
         type: TrxAccountType.Eoa,
@@ -1077,7 +1075,7 @@ describe('AccountsService', () => {
     });
 
     it('tracks save failures standalone, without failing', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-asset-fail-id',
         address: 'TSyncFail123456789012345678',
         type: TrxAccountType.Eoa,
@@ -1113,7 +1111,7 @@ describe('AccountsService', () => {
     });
 
     it('points at the specific account whose fetch failed', async () => {
-      const failingAccount: ExtendedKeyringAccount = {
+      const failingAccount: TronKeyringAccount = {
         id: 'sync-fail-id',
         address: 'TSyncFail123456789012345678',
         type: TrxAccountType.Eoa,
@@ -1124,7 +1122,7 @@ describe('AccountsService', () => {
         derivationPath: "m/44'/195'/0'/0/0",
         index: 0,
       };
-      const healthyAccount: ExtendedKeyringAccount = {
+      const healthyAccount: TronKeyringAccount = {
         id: 'sync-healthy-id',
         address: 'TSyncHealthy123456789012345',
         type: TrxAccountType.Eoa,
@@ -1176,7 +1174,7 @@ describe('AccountsService', () => {
     });
 
     it('survives a hostile rejection reason that cannot be stringified', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-hostile-id',
         address: 'TSyncHostile12345678901234567',
         type: TrxAccountType.Eoa,
@@ -1223,7 +1221,7 @@ describe('AccountsService', () => {
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
           mockConfigProvider.config = MOCK_CONFIG;
 
-          const account: ExtendedKeyringAccount = {
+          const account: TronKeyringAccount = {
             id: 'empty-id',
             address: 'TEmpty12345678901234567890',
             type: TrxAccountType.Eoa,
@@ -1248,7 +1246,7 @@ describe('AccountsService', () => {
 
   describe('synchronizeTransactions', () => {
     it('calls fetch for each account and scope, then saveMany', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-tx-id',
         address: 'TSyncTx123456789012345678',
         type: TrxAccountType.Eoa,
@@ -1302,7 +1300,7 @@ describe('AccountsService', () => {
     });
 
     it('tracks the failing account when a fetch fails, without failing', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-tx-fail-id',
         address: 'TSyncTxFail12345678901234567',
         type: TrxAccountType.Eoa,
@@ -1346,7 +1344,7 @@ describe('AccountsService', () => {
     });
 
     it('tracks save failures standalone and propagates them to synchronize', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-tx-save-fail-id',
         address: 'TSyncTxSaveFail12345678901234',
         type: TrxAccountType.Eoa,
@@ -1390,7 +1388,7 @@ describe('AccountsService', () => {
 
   describe('synchronize', () => {
     it('fetches both assets and transactions', async () => {
-      const account: ExtendedKeyringAccount = {
+      const account: TronKeyringAccount = {
         id: 'sync-id',
         address: 'TSync12345678901234567890',
         type: TrxAccountType.Eoa,
@@ -1429,7 +1427,7 @@ describe('AccountsService', () => {
     const makeSyncAccount = (
       id: string,
       index: number,
-    ): ExtendedKeyringAccount => ({
+    ): TronKeyringAccount => ({
       id,
       address: `TCoalesce${index}2345678901234567890`,
       type: TrxAccountType.Eoa,

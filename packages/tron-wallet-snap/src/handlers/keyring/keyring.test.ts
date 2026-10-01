@@ -4,16 +4,15 @@ import type {
   KeyringRequest,
 } from '@metamask/keyring-api';
 import type { ExportAccountOptions } from '@metamask/keyring-api/v2';
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
-import type { CaipChainId } from '@metamask/utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/keyringAccount';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
@@ -44,7 +43,7 @@ function toHex(str: string): string {
 }
 
 describe('KeyringHandler', () => {
-  const mockAccount: ExtendedKeyringAccount = {
+  const mockAccount: TronKeyringAccount = {
     id: '123e4567-e89b-42d3-a456-426614174000',
     address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     options: {},
@@ -420,7 +419,7 @@ describe('KeyringHandler', () => {
 
     describe('multiple accounts', () => {
       it('handles different accounts correctly', async () => {
-        const account2: ExtendedKeyringAccount = {
+        const account2: TronKeyringAccount = {
           ...mockAccount,
           id: '987e6543-e89b-42d3-a456-426614174999',
           address: 'TGehVcNhud84JDCGrNHKVz9jEAVKUpbuiv',
@@ -807,10 +806,7 @@ describe('KeyringHandler', () => {
 
     it('throws InvalidParamsError for a scope not controlled by the snap', async () => {
       await expect(
-        keyringHandler.resolveAccountAddress(
-          'eip155:1' as CaipChainId,
-          request,
-        ),
+        keyringHandler.resolveAccountAddress('eip155:1', request),
       ).rejects.toThrow(InvalidParamsError);
       expect(mockWalletService.resolveAccountAddress).not.toHaveBeenCalled();
     });

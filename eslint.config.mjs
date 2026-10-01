@@ -44,6 +44,27 @@ const NO_MESSENGER_ACTIONS_IN_CONSTRUCTORS_SELECTOR_OBJECTS = [
 ];
 
 /**
+ * Argument to the `no-restricted-syntax` rule that prohibits enums.
+ */
+const NO_ENUMS_SELECTOR_OBJECT = {
+  selector: 'TSEnumDeclaration',
+  message:
+    "Don't use enums. There are a number of reasons why they are problematic, but the most important is that TypeScript treats them nominally, not structurally, and this can cause unexpected breaking changes. Instead, use an object + type, an array + type, or just a type. Learn more here: https://github.com/MetaMask/eslint-config/issues/417",
+};
+
+/**
+ * Arguments to the `no-restricted-syntax` rule that prevent the Tron snap from
+ * casting values to its supported network types.
+ */
+const TRON_NETWORK_TYPE_NAMES = '/^(Network|TrxScope)$/u';
+const NO_TRON_NETWORK_CASTS_MESSAGE =
+  'Do not cast to `Network` or `TrxScope`. Narrow the value with `assertSupportedNetwork` or `isSupportedNetwork`, or carry the `Network` type from where it was validated.';
+const NO_TRON_NETWORK_CASTS_SELECTOR_OBJECTS = [
+  `TSAsExpression > TSTypeReference.typeAnnotation[typeName.name=${TRON_NETWORK_TYPE_NAMES}]`,
+  `TSAsExpression > .typeAnnotation TSTypeReference[typeName.name=${TRON_NETWORK_TYPE_NAMES}]`,
+].map((selector) => ({ selector, message: NO_TRON_NETWORK_CASTS_MESSAGE }));
+
+/**
  * Collects all options for a given array-valued rule across one or more flat
  * config arrays, excluding the leading severity element.
  *
@@ -162,11 +183,7 @@ const config = createConfig([
           typescript,
         ]),
         ...NO_CONTROLLER_STATE_CHANGE_SELECTOR_OBJECTS,
-        {
-          selector: 'TSEnumDeclaration',
-          message:
-            "Don't use enums. There are a number of reasons why they are problematic, but the most important is that TypeScript treats them nominally, not structurally, and this can cause unexpected breaking changes. Instead, use an object + type, an array + type, or just a type. Learn more here: https://github.com/MetaMask/eslint-config/issues/417",
-        },
+        NO_ENUMS_SELECTOR_OBJECT,
       ],
     },
   },
@@ -253,6 +270,22 @@ const config = createConfig([
         ]),
         ...NO_CONTROLLER_STATE_CHANGE_SELECTOR_OBJECTS,
         ...NO_MESSENGER_ACTIONS_IN_CONSTRUCTORS_SELECTOR_OBJECTS,
+      ],
+    },
+  },
+  {
+    files: ['packages/tron-wallet-snap/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...collectExistingRuleOptions('no-restricted-syntax', [
+          base,
+          typescript,
+        ]),
+        ...NO_CONTROLLER_STATE_CHANGE_SELECTOR_OBJECTS,
+        ...NO_MESSENGER_ACTIONS_IN_CONSTRUCTORS_SELECTOR_OBJECTS,
+        NO_ENUMS_SELECTOR_OBJECT,
+        ...NO_TRON_NETWORK_CASTS_SELECTOR_OBJECTS,
       ],
     },
   },

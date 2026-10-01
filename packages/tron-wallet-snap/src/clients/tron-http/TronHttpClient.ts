@@ -2,6 +2,7 @@ import { buildUrl } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import type { Network } from '../../constants';
+import { isSupportedNetwork } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { hexToString } from '../../utils/hex';
 import {
@@ -44,13 +45,17 @@ export class TronHttpClient {
 
     // Initialize clients for all networks
     Object.entries(baseUrls).forEach(([network, baseUrl]) => {
+      if (!isSupportedNetwork(network)) {
+        return;
+      }
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Allow-Origin': '*',
       };
 
-      this.#clients.set(network as Network, { baseUrl, headers });
+      this.#clients.set(network, { baseUrl, headers });
     });
   }
 

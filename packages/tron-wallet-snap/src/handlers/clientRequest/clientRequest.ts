@@ -1,10 +1,6 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
-import type {
-  AnalyticsService,
-  ExtendedKeyringAccount,
-  Logger,
-} from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -33,6 +29,7 @@ import {
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/keyringAccount';
 import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -89,7 +86,7 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
 type SigningRequest = {
   index: number;
   accountId: string;
-  account: ExtendedKeyringAccount;
+  account: TronKeyringAccount;
   message: string;
 };
 
@@ -119,9 +116,9 @@ function getUniqueAccountIds(items: { accountId: string }[]): string[] {
 }
 
 function getAccountsByNormalizedId(
-  accounts: ExtendedKeyringAccount[],
-): Map<string, ExtendedKeyringAccount> {
-  const accountsByNormalizedId = new Map<string, ExtendedKeyringAccount>();
+  accounts: TronKeyringAccount[],
+): Map<string, TronKeyringAccount> {
+  const accountsByNormalizedId = new Map<string, TronKeyringAccount>();
 
   accounts.forEach((account) => {
     accountsByNormalizedId.set(account.id.toLowerCase(), account);
@@ -139,7 +136,7 @@ function validateSigningRequest(
     message: string;
   },
   index: number,
-  accountsById: Map<string, ExtendedKeyringAccount>,
+  accountsById: Map<string, TronKeyringAccount>,
 ): SigningRequestValidation {
   const account = accountsById.get(accountId.toLowerCase());
   if (account === undefined) {
@@ -1339,7 +1336,7 @@ export class ClientRequestHandler {
       items.length,
     );
     const signingRequests: SigningRequest[] = [];
-    const accountsToDerive: ExtendedKeyringAccount[] = [];
+    const accountsToDerive: TronKeyringAccount[] = [];
 
     items.forEach((item, index) => {
       const validationResult = validateSigningRequest(
