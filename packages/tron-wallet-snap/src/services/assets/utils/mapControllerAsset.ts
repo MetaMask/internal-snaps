@@ -1,6 +1,6 @@
 import type { Asset } from '@metamask/assets-controller';
 
-import { Network } from '../../../constants';
+import { assertSupportedNetwork } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { toRawAmount } from '../../../utils/conversion';
 
@@ -29,7 +29,7 @@ export function mapControllerAsset(
   return {
     assetType: assetId,
     keyringAccountId: accountId,
-    network: asset.chainId as Network,
+    network: assertSupportedNetwork(asset.chainId),
     symbol,
     decimals,
     rawAmount: toRawAmount(amount, decimals),
