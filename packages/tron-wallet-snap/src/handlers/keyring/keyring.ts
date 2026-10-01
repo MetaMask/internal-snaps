@@ -36,7 +36,7 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';

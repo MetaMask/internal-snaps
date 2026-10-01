@@ -12,7 +12,7 @@ import {
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';

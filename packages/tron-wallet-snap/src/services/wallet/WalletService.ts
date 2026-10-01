@@ -6,7 +6,7 @@ import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import {
   TronMultichainErrors,
   TronMultichainMethod,

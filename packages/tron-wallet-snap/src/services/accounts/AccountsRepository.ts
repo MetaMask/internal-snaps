@@ -1,7 +1,7 @@
 import type { EntropySourceId } from '@metamask/keyring-api';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 
 /**

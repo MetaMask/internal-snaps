@@ -4,7 +4,7 @@ import { TronWeb } from 'tronweb';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import {
   TronMultichainErrors,
   TronMultichainMethod,

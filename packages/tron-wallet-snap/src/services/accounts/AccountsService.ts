@@ -26,7 +26,7 @@ import snapManifest from '../../../snap.manifest.json';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { assertSupportedNetwork } from '../../constants';
 import type { Network } from '../../constants';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import type { DerivedTronKeypair } from '../../utils/deriveTronFromCoinTypeNode';
 import {
   createTronBip44AddressDeriver,

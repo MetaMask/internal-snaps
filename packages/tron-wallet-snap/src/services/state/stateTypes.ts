@@ -1,7 +1,7 @@
 import type { Transaction } from '@metamask/keyring-api';
 
 import type { AssetEntity } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 
 export type UnencryptedStateValue = {
   keyringAccounts: Record<string, TronKeyringAccount>;

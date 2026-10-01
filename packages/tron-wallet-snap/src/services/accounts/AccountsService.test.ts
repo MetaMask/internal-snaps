@@ -16,7 +16,7 @@ import { LogLevel } from '@metamask/snap-networks-utils';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
-import type { TronKeyringAccount } from '../../entities/keyringAccount';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../../utils/mockLogger';

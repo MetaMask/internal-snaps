@@ -1,17 +1,12 @@
-<<<<<<< HEAD
 import {
   FeeType,
   TransactionType,
   TrxAccountType,
 } from '@metamask/keyring-api';
-import type { AnalyticsService } from '@metamask/snap-networks-utils';
-=======
-import { FeeType, TrxAccountType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
 } from '@metamask/snap-networks-utils';
->>>>>>> 53b044eb (fix(tron-wallet-snap): validate tron caip asset ids)
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
