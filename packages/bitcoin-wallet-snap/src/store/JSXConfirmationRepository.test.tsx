@@ -349,6 +349,10 @@ describe('JSXConfirmationRepository', () => {
     const origin = 'https://dapp.example.com';
 
     beforeEach(() => {
+      mockAccount.sentAndReceived.mockReturnValue([
+        mock<Amount>({ to_sat: () => BigInt(0) }),
+        mock(),
+      ]);
       mockSnapClient.createInterface.mockResolvedValue('psbt-interface-id');
       mockSnapClient.displayConfirmation.mockResolvedValue(true);
       mockTranslator.load.mockResolvedValue(mockMessages);
@@ -398,6 +402,10 @@ describe('JSXConfirmationRepository', () => {
         network: 'bitcoin',
         publicAddress: mock<Address>({ toString: () => 'myAddress' }),
         isMine: () => true,
+        sentAndReceived: () => [
+          mock<Amount>({ to_sat: () => BigInt(0) }),
+          mock(),
+        ],
       });
 
       await repo.insertSignPsbt(changeAccount, mockSignPsbt, origin, options);
@@ -489,6 +497,44 @@ describe('JSXConfirmationRepository', () => {
       expect(displayOrder).toBeLessThan(approvedOrder as number);
     });
 
+    it('classifies a PSBT that spends the account inputs as a send', async () => {
+      mockAccount.sentAndReceived.mockReturnValue([
+        mock<Amount>({ to_sat: () => BigInt(1500) }),
+        mock(),
+      ]);
+
+      await repo.insertSignPsbt(mockAccount, mockSignPsbt, origin, options);
+
+      expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+        TransactionType.Send,
+      );
+      expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+        TransactionType.Send,
+      );
+    });
+
+    it('classifies a rejected PSBT that spends the account inputs as a send', async () => {
+      mockAccount.sentAndReceived.mockReturnValue([
+        mock<Amount>({ to_sat: () => BigInt(1500) }),
+        mock(),
+      ]);
+      mockSnapClient.displayConfirmation.mockResolvedValue(false);
+
+      await expect(
+        repo.insertSignPsbt(mockAccount, mockSignPsbt, origin, options),
+      ).rejects.toThrow('User canceled the confirmation');
+
+      expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
+        mockAccount,
+        origin,
+        TransactionType.Send,
+      );
+    });
+
     it('handles PSBT without fee information gracefully', async () => {
       const psbtNoFee = mock<Psbt>({
         toString: () => 'psbt-no-fee',
@@ -533,6 +579,10 @@ describe('JSXConfirmationRepository', () => {
         network: 'testnet',
         publicAddress: mock<Address>({ toString: () => 'myAddress' }),
         isMine: () => false,
+        sentAndReceived: () => [
+          mock<Amount>({ to_sat: () => BigInt(0) }),
+          mock(),
+        ],
       });
 
       await repo.insertSignPsbt(testnetAccount, mockSignPsbt, origin, options);

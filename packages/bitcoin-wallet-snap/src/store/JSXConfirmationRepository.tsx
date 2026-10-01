@@ -213,10 +213,17 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
       context,
     );
 
+    // A PSBT that spends this account's inputs is a send. Anything else
+    // (a cosign, or a PSBT this account does not fund) stays unknown:
+    // signing it is not a receive.
+    const [sent] = account.sentAndReceived(psbt.unsigned_tx);
+    const transactionType =
+      sent.to_sat() > 0n ? TransactionType.Send : TransactionType.Unknown;
+
     await this.#snapClient.trackTransactionAdded(
       account,
       origin,
-      TransactionType.Unknown,
+      transactionType,
     );
 
     const confirmed =
@@ -225,7 +232,7 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
       await this.#snapClient.trackTransactionRejected(
         account,
         origin,
-        TransactionType.Unknown,
+        transactionType,
       );
       throw new UserActionError('User canceled the confirmation');
     }
@@ -233,7 +240,7 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
     await this.#snapClient.trackTransactionApproved(
       account,
       origin,
-      TransactionType.Unknown,
+      transactionType,
     );
   }
 
