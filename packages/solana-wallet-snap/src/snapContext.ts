@@ -2,12 +2,12 @@ import type { IStateManager } from '@metamask/snap-networks-utils';
 import {
   AnalyticsService,
   InMemoryCache,
+  SecurityAlertsApiClient,
   State,
 } from '@metamask/snap-networks-utils';
 
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
-import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
 import { TokenApiClient } from './core/clients/token-api-client/TokenApiClient';
 import { ClientRequestHandler } from './core/handlers';
 import { SolanaKeyring } from './core/handlers/onKeyringRequest/Keyring';
@@ -183,8 +183,12 @@ const accountsSynchronizer = new AccountsSynchronizer(
   logger,
 );
 
+const securityAlertsApiClient = new SecurityAlertsApiClient({
+  scanUrl: `${configProvider.config.securityAlertsApi.baseUrl}/solana/message/scan`,
+});
+
 const transactionScanService = new TransactionScanService(
-  new SecurityAlertsApiClient(configProvider),
+  securityAlertsApiClient,
   analyticsService,
   logger,
 );

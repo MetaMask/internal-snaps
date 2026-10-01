@@ -2,15 +2,45 @@ import type {
   AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
+  SecurityAlertsApiClient,
+  SecurityAlertsScanRequestBase,
 } from '@metamask/snap-networks-utils';
+import {
+  normalizeScanOrigin,
+  SecurityAlertResponse,
+  SecurityAlertsScanStatus,
+} from '@metamask/snap-networks-utils';
+import bs58 from 'bs58';
 
-import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
-import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
-import { METAMASK_ORIGIN, METAMASK_ORIGIN_URL } from '../../constants/solana';
-import type { Network } from '../../constants/solana';
+import { SecurityAlertResponseStruct } from '../../clients/security-alerts-api/structs';
+import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
+import { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import type { TransactionScanResult, TransactionScanValidation } from './types';
-import { ScanStatus, SecurityAlertResponse } from './types';
+
+/**
+ * The Security Alerts API chain identifier for each Solana scope.
+ */
+const SCOPE_TO_CHAIN: Record<Network, string> = {
+  [Network.Mainnet]: 'mainnet',
+  [Network.Devnet]: 'devnet',
+  [Network.Testnet]: 'testnet',
+  [Network.Localnet]: 'localnet',
+};
+
+/**
+ * JSON body sent to the Solana scan endpoint.
+ */
+type SolanaScanRequestBody = SecurityAlertsScanRequestBase & {
+  /** The signing method that produced the transaction. */
+  method: string;
+  /** The wire encoding of the transaction payload. */
+  encoding: 'base64';
+  /** The origin of the request, reported by Blockaid as a URL. */
+  metadata: { url: string };
+  /** The transactions to scan, in the wire encoding. */
+  transactions: string[];
+};
 
 export class TransactionScanService {
   readonly #securityAlertsApiClient: SecurityAlertsApiClient;
@@ -60,14 +90,27 @@ export class TransactionScanService {
     account?: ExtendedKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     try {
-      const result = await this.#securityAlertsApiClient.scanTransactions({
-        method,
-        accountAddress,
-        transactions: [transaction],
-        scope,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
-        options,
-      });
+      // eslint-disable-next-line no-restricted-globals
+      const base64AccountAddress = Buffer.from(
+        bs58.decode(accountAddress),
+      ).toString('base64');
+
+      this.#logger.info('Scanning transaction');
+
+      const result = await this.#securityAlertsApiClient.scanTransaction(
+        {
+          method,
+          encoding: 'base64',
+          account_address: base64AccountAddress,
+          metadata: {
+            url: normalizeScanOrigin(origin),
+          },
+          chain: SCOPE_TO_CHAIN[scope],
+          transactions: [transaction],
+          options,
+        } satisfies SolanaScanRequestBody,
+        SecurityAlertResponseStruct,
+      );
 
       const scan = this.#mapScan(result);
 
@@ -81,7 +124,7 @@ export class TransactionScanService {
             origin,
             accountType: account.type,
             chainIdCaip: scope,
-            scanStatus: ScanStatus.ERROR,
+            scanStatus: SecurityAlertsScanStatus.ERROR,
             hasSecurityAlerts: false,
           });
         }
@@ -91,12 +134,12 @@ export class TransactionScanService {
 
       // The security scan is completed
       if (account) {
-        const isValidScanStatus = Object.values(ScanStatus).includes(
-          scan.status as ScanStatus,
-        );
+        const isValidScanStatus = Object.values(
+          SecurityAlertsScanStatus,
+        ).includes(scan.status as SecurityAlertsScanStatus);
         const scanStatus = isValidScanStatus
-          ? (scan.status as ScanStatus)
-          : ScanStatus.ERROR;
+          ? (scan.status as SecurityAlertsScanStatus)
+          : SecurityAlertsScanStatus.ERROR;
 
         const hasSecurityAlert = Boolean(
           scan.validation?.type &&
@@ -154,7 +197,7 @@ export class TransactionScanService {
           origin,
           accountType: account.type,
           chainIdCaip: scope,
-          scanStatus: ScanStatus.ERROR,
+          scanStatus: SecurityAlertsScanStatus.ERROR,
           hasSecurityAlerts: false,
         });
       }
@@ -216,10 +259,9 @@ export class TransactionScanService {
           result.result?.simulation?.account_summary?.account_assets_diff?.map(
             (asset) => ({
               type: asset.in ? 'in' : 'out',
-              symbol:
-                'symbol' in asset.asset ? asset.asset.symbol : asset.asset_type,
-              name: 'name' in asset.asset ? asset.asset.name : asset.asset_type,
-              logo: ('logo' in asset.asset ? asset.asset.logo : null) ?? null,
+              symbol: asset.asset.symbol ?? asset.asset_type,
+              name: asset.asset.name ?? asset.asset_type,
+              logo: asset.asset.logo ?? null,
               value: asset.in?.value ?? asset.out?.value ?? null,
               price: asset.in?.usd_price ?? asset.out?.usd_price ?? null,
             }),
