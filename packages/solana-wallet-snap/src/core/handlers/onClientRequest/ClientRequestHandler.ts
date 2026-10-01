@@ -1,4 +1,4 @@
-import { FeeType } from '@metamask/keyring-api';
+import { FeeType, TransactionType } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
@@ -463,6 +463,8 @@ export class ClientRequestHandler {
       base64EncodedTransaction,
       network,
       METAMASK_ORIGIN,
+      undefined,
+      TransactionType.TokenApprove,
     );
 
     const result = { signature };
