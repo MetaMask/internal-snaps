@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#394](https://github.com/MetaMask/internal-snaps/pull/394))
+- Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 
 ### Fixed
 
-- Show "Estimated changes are not available" instead of "No estimated changes" when the transaction scan returns an error result, such as for a malformed transaction ([#394](https://github.com/MetaMask/internal-snaps/pull/394))
+- Show "Estimated changes are not available" instead of "No estimated changes" when the transaction scan returns an error result, such as for a malformed transaction ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
 - Report the MetaMask origin as lowercase `metamask` instead of `MetaMask` for MetaMask-initiated operations, so the origin matches the value used by the other non-EVM snaps and granted to the keyring methods, and so transaction scan requests are attributed to `https://metamask.io`. The confirmation UI keeps displaying `MetaMask`. ([#392](https://github.com/MetaMask/internal-snaps/pull/392))
+- Show "Estimated changes are not available" instead of "No estimated changes" when the transaction scan returns an error result, such as for a malformed transaction ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
 
 ## [4.0.0]
 
