@@ -1,4 +1,8 @@
-import { FeeType, TrxAccountType } from '@metamask/keyring-api';
+import {
+  FeeType,
+  TransactionType,
+  TrxAccountType,
+} from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -481,6 +485,7 @@ describe('ClientRequestHandler', () => {
             scope,
             accountIds: [TEST_ACCOUNT_ID],
             attempt: 0,
+            transactionType: TransactionType.Unknown,
           },
           duration: TRACK_TX_INTERVAL,
         });
@@ -1966,6 +1971,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         origin: METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: scope,
+        transactionType: TransactionType.Unknown,
       },
     );
 
@@ -1976,6 +1982,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         scope,
         accountIds: [TEST_ACCOUNT_ID],
         attempt: 0,
+        transactionType: TransactionType.Unknown,
       },
       duration: TRACK_TX_INTERVAL,
     });

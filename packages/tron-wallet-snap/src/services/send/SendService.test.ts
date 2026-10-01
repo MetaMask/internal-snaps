@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { FeeType } from '@metamask/keyring-api';
+import { FeeType, TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
@@ -168,6 +168,7 @@ describe('SendService', () => {
         origin: METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
+        transactionType: TransactionType.Send,
       });
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         method: BackgroundEventMethod.TrackTransaction,
@@ -176,6 +177,7 @@ describe('SendService', () => {
           scope: Network.Mainnet,
           accountIds: [TEST_ACCOUNT_ID],
           attempt: 0,
+          transactionType: TransactionType.Send,
         },
         duration: TRACK_TX_INTERVAL,
       });

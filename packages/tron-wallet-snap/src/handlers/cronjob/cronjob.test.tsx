@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   IStateManager,
@@ -1020,6 +1021,7 @@ describe('CronHandler', () => {
             scope: Network.Mainnet,
             accountIds: ACCOUNT_IDS,
             attempt: 0,
+            transactionType: TransactionType.Send,
           });
 
           expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
@@ -1033,6 +1035,7 @@ describe('CronHandler', () => {
             origin: METAMASK_ORIGIN,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           });
         },
       );

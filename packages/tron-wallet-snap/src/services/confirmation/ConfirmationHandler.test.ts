@@ -1,4 +1,4 @@
-import { FeeType } from '@metamask/keyring-api';
+import { FeeType, TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -442,6 +442,7 @@ describe('ConfirmationHandler', () => {
             origin: METAMASK_ORIGIN,
             accountType: 'tron:eoa',
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           },
         );
         expect(
@@ -450,6 +451,7 @@ describe('ConfirmationHandler', () => {
           origin: METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionRejected,
@@ -470,6 +472,7 @@ describe('ConfirmationHandler', () => {
           origin: METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionApproved,
@@ -638,6 +641,7 @@ describe('ConfirmationHandler', () => {
             origin: request.origin,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           },
         );
         expect(
@@ -646,6 +650,7 @@ describe('ConfirmationHandler', () => {
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionRejected,
@@ -679,6 +684,7 @@ describe('ConfirmationHandler', () => {
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionApproved,
@@ -709,6 +715,7 @@ describe('ConfirmationHandler', () => {
             origin: request.origin,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           });
         });
       },
