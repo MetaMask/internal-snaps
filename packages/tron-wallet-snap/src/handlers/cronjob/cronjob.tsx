@@ -144,8 +144,7 @@ export class CronHandler {
         await this.refreshSignTransaction();
         break;
       case BackgroundEventMethod.TrackTransaction:
-        validateRequest(params, TrackTransactionParamsStruct);
-        await this.trackTransaction(params);
+        await this.handleTrackTransaction(request);
         break;
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
@@ -647,6 +646,11 @@ export class CronHandler {
     if (accounts.length > 0) {
       await this.#accountsService.synchronize(accounts);
     }
+  }
+
+  async handleTrackTransaction(request: JsonRpcRequest): Promise<void> {
+    validateRequest(request.params, TrackTransactionParamsStruct);
+    await this.trackTransaction(request.params);
   }
 
   /**

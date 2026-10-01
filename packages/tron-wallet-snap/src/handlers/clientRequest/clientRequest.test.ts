@@ -118,12 +118,9 @@ type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
   mockAssetsService: jest.Mocked<
     Pick<
       AssetsService,
-      | 'getAccountAssetsByIDs'
-      | 'getAccountAssetByID'
       | 'getFreshAccountAssetsByIDs'
       | 'getFreshAccountAssetByID'
-    >
-  >;
+    >;
   mockSendService: jest.Mocked<
     Pick<
       SendService,
@@ -174,14 +171,10 @@ async function withClientRequestHandler<ReturnValue>(
   const mockAssetsService: jest.Mocked<
     Pick<
       AssetsService,
-      | 'getAccountAssetsByIDs'
-      | 'getAccountAssetByID'
       | 'getFreshAccountAssetsByIDs'
       | 'getFreshAccountAssetByID'
     >
   > = {
-    getAccountAssetsByIDs: jest.fn(),
-    getAccountAssetByID: jest.fn(),
     getFreshAccountAssetsByIDs: jest.fn(),
     getFreshAccountAssetByID: jest.fn(),
   };
@@ -335,7 +328,6 @@ describe('ClientRequestHandler', () => {
       } as unknown as jest.Mocked<AccountsService>;
 
       mockAssetsService = {
-        getAccountAssetsByIDs: jest.fn(),
         getFreshAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
         getFreshAccountAssetByID: jest.fn().mockResolvedValue(null),
       } as unknown as jest.Mocked<AssetsService>;
@@ -1776,7 +1768,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     } as unknown as jest.Mocked<AccountsService>;
 
     mockAssetsService = {
-      getAccountAssetsByIDs: jest.fn(),
+      getFreshAccountAssetsByIDs: jest.fn(),
       getFreshAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
       getFreshAccountAssetByID: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<AssetsService>;

@@ -977,30 +977,7 @@ describe('CronHandler', () => {
       });
     }
 
-    it('tracks the transaction when the background event params are valid', async () => {
-      await withTrackTransactionCronHandler(
-        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
-          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
 
-          await cronHandler.handle({
-            jsonrpc: '2.0',
-            id: 1,
-            method: BackgroundEventMethod.TrackTransaction,
-            params: {
-              txId: TX_ID,
-              scope: Network.Mainnet,
-              accountIds: ACCOUNT_IDS,
-              attempt: 0,
-            },
-          });
-
-          expect(
-            mockTronHttpClient.getTransactionInfoById,
-          ).toHaveBeenCalledWith(Network.Mainnet, TX_ID);
-          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
-        },
-      );
-    });
 
     it('rejects background event params with an unsupported scope', async () => {
       await withTrackTransactionCronHandler(
@@ -1021,6 +998,26 @@ describe('CronHandler', () => {
           expect(
             mockTronHttpClient.getTransactionInfoById,
           ).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('tracks the transaction through the shared method when params are valid', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+          });
+
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).toHaveBeenCalledWith(Network.Mainnet, TX_ID);
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
         },
       );
     });
