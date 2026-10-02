@@ -1,10 +1,6 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
-import type {
-  AnalyticsService,
-  ExtendedKeyringAccount,
-  Logger,
-} from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -12,12 +8,7 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import {
-  bytesToHex,
-  hexToBytes,
-  parseCaipAssetType,
-  sha256,
-} from '@metamask/utils';
+import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
@@ -32,6 +23,7 @@ import {
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -47,6 +39,7 @@ import type { TransactionExpirationRefresherService } from '../../services/trans
 import { TransactionMapper } from '../../services/transactions/TransactionsMapper';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
 import { mapRawTransactionType } from '../../utils/transactionType';
 import {
@@ -88,7 +81,7 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
 type SigningRequest = {
   index: number;
   accountId: string;
-  account: ExtendedKeyringAccount;
+  account: TronKeyringAccount;
   message: string;
 };
 
@@ -118,9 +111,9 @@ function getUniqueAccountIds(items: { accountId: string }[]): string[] {
 }
 
 function getAccountsByNormalizedId(
-  accounts: ExtendedKeyringAccount[],
-): Map<string, ExtendedKeyringAccount> {
-  const accountsByNormalizedId = new Map<string, ExtendedKeyringAccount>();
+  accounts: TronKeyringAccount[],
+): Map<string, TronKeyringAccount> {
+  const accountsByNormalizedId = new Map<string, TronKeyringAccount>();
 
   accounts.forEach((account) => {
     accountsByNormalizedId.set(account.id.toLowerCase(), account);
@@ -138,7 +131,7 @@ function validateSigningRequest(
     message: string;
   },
   index: number,
-  accountsById: Map<string, ExtendedKeyringAccount>,
+  accountsById: Map<string, TronKeyringAccount>,
 ): SigningRequestValidation {
   const account = accountsById.get(accountId.toLowerCase());
   if (account === undefined) {
@@ -497,8 +490,7 @@ export class ClientRequestHandler {
       /**
        * Check if we have enough of the asset we want to send...
        */
-      const { chainId } = parseCaipAssetType(assetId);
-      const scope = chainId as Network;
+      const { chainId: scope } = parseTronCaipAssetType(assetId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
         await this.#assetsService.getAccountAssetsByIDs(accountId, [
@@ -626,8 +618,7 @@ export class ClientRequestHandler {
       };
     }
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const amountBN = new BigNumber(amount);
 
@@ -1153,8 +1144,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const confirmed = await this.#confirmationHandler.confirmClaimUnstakedTrx({
       account,
@@ -1191,8 +1181,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     await this.#stakingService.claimTrxStakingRewards({ account, scope });
 
@@ -1338,7 +1327,7 @@ export class ClientRequestHandler {
       items.length,
     );
     const signingRequests: SigningRequest[] = [];
-    const accountsToDerive: ExtendedKeyringAccount[] = [];
+    const accountsToDerive: TronKeyringAccount[] = [];
 
     items.forEach((item, index) => {
       const validationResult = validateSigningRequest(

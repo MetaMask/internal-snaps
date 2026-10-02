@@ -1,5 +1,4 @@
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
-import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
@@ -15,6 +14,7 @@ import {
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { mapRawTransactionType } from '../../utils/transactionType';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
@@ -233,7 +233,7 @@ export class SendService {
     | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
     | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>
   > {
-    const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
+    const { chainId, assetNamespace, assetReference } = parseTronCaipAssetType(
       asset.assetType,
     );
 
@@ -242,7 +242,7 @@ export class SendService {
         case 'slip44':
           this.#logger.log('Sending TRX transaction');
           return this.buildSendTrxTransaction({
-            scope: chainId as Network,
+            scope: chainId,
             fromAccountId,
             toAddress,
             amount,
@@ -252,7 +252,7 @@ export class SendService {
         case 'trc10':
           this.#logger.log(`Sending TRC10 token: ${assetReference}`);
           return this.buildSendTrc10Transaction({
-            scope: chainId as Network,
+            scope: chainId,
             fromAccountId,
             toAddress,
             amount,
@@ -264,7 +264,7 @@ export class SendService {
         case 'trc20':
           this.#logger.log(`Sending TRC20 token: ${assetReference}`);
           return this.buildSendTrc20Transaction({
-            scope: chainId as Network,
+            scope: chainId,
             fromAccountId,
             toAddress,
             contractAddress: assetReference,

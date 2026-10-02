@@ -32,6 +32,8 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { TrackTransactionParamsStruct } from '../../validation/structs';
+import { validateRequest } from '../../validation/validators';
 
 export const CronjobMethod = {
   ContinuouslySynchronizeSelectedAccounts:
@@ -142,15 +144,7 @@ export class CronHandler {
         await this.refreshSignTransaction();
         break;
       case BackgroundEventMethod.TrackTransaction:
-        await this.trackTransaction(
-          params as {
-            txId: string;
-            scope: Network;
-            accountIds: string[];
-            attempt: number;
-            transactionType?: TransactionType;
-          },
-        );
+        await this.handleTrackTransaction(request);
         break;
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
@@ -652,6 +646,11 @@ export class CronHandler {
     if (accounts.length > 0) {
       await this.#accountsService.synchronize(accounts);
     }
+  }
+
+  async handleTrackTransaction(request: JsonRpcRequest): Promise<void> {
+    validateRequest(request.params, TrackTransactionParamsStruct);
+    await this.trackTransaction(request.params);
   }
 
   /**
