@@ -171,6 +171,7 @@ describe('TrackTransactionHandler', () => {
       origin: METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,
+      transactionStatus: TransactionStatus.Confirmed,
     });
     expect(synchronize).toHaveBeenCalledTimes(1);
     expect(synchronize).toHaveBeenCalledWith([account], { scope });
@@ -199,6 +200,7 @@ describe('TrackTransactionHandler', () => {
       origin: METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,
+      transactionStatus: TransactionStatus.Confirmed,
       transactionType: TransactionType.Send,
     });
   });
@@ -367,6 +369,12 @@ describe('TrackTransactionHandler', () => {
       },
     });
 
+    expect(trackTransactionFinalized).toHaveBeenCalledWith({
+      origin: METAMASK_ORIGIN,
+      accountType: KEYRING_ACCOUNT_TYPE,
+      chainIdCaip: scope,
+      transactionStatus: TransactionStatus.Failed,
+    });
     expect(synchronize).toHaveBeenCalledTimes(1);
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
   });

@@ -1,4 +1,4 @@
-import type { TransactionType } from '@metamask/keyring-api';
+import type { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 
 import type { KnownCaip2ChainId } from '../../api';
@@ -104,7 +104,12 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
 
       // Only synchronize once Horizon reports a terminal status.
       if (isCompletedTransactionStatus(transaction.status)) {
-        await this.#synchronize(scope, accountIdsOrAddresses, transactionType);
+        await this.#synchronize(
+          scope,
+          accountIdsOrAddresses,
+          transactionType,
+          transaction.status,
+        );
       } else {
         this.logger.warn(
           'Transaction is neither confirmed nor failed; skipping synchronization',
@@ -193,10 +198,20 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
     });
   }
 
+  /**
+   * Emits the finalized event and synchronizes the affected keyring accounts.
+   *
+   * @param scope - CAIP-2 chain id for the network.
+   * @param accountIdsOrAddresses - Sender account id and optional receiver address.
+   * @param transactionType - Classification resolved at submit time, forwarded when present.
+   * @param transactionStatus - Terminal Horizon status (confirmed or failed), forwarded so the
+   * finalized event distinguishes a failed transaction from a successful one.
+   */
   async #synchronize(
     scope: KnownCaip2ChainId,
     accountIdsOrAddresses: TrackTransactionParams['accountIdsOrAddresses'],
-    transactionType?: TransactionType,
+    transactionType: TransactionType | undefined,
+    transactionStatus: TransactionStatus,
   ): Promise<void> {
     // The first entry is the sender account UUID (validated by Superstruct).
     const senderAccountId = accountIdsOrAddresses[0];
@@ -213,6 +228,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       origin: METAMASK_ORIGIN,
       accountType: senderAccount.type,
       chainIdCaip: scope,
+      transactionStatus,
       ...(transactionType === undefined ? {} : { transactionType }),
     });
 
