@@ -6,10 +6,7 @@ import type {
   ChangeTrustOptJsonRpcRequest,
   ConfirmSendJsonRpcRequest,
 } from '../../handlers/clientRequest/api';
-import {
-  ConfirmationContextRefresherKey,
-  RefreshConfirmationContextHandler,
-} from '../../handlers/cronjob/refreshConfirmationContext';
+import { RefreshConfirmationContextHandler } from '../../handlers/cronjob/refreshConfirmationContext';
 import type {
   SecurityScanRequest,
   TransactionScanResult,
@@ -30,6 +27,7 @@ import {
   formatFeeData,
   formatOrigin,
   getPreferencesWithFallback,
+  resolveRefresherKeys,
 } from './utils';
 import { renderConfirmationView } from './views/render';
 import type { ConfirmationViewProps } from './views/render';
@@ -264,29 +262,13 @@ export class ConfirmationUXController {
       return dialogPromise;
     }
 
-    // 5. Schedule background context refresh for enabled refreshers only.
-    // Skip Scan / Transaction when renderContext already marked them Error
-    // (e.g. RequiresMemo on open): a pending open cron would race
-    // MemoEdit's restart and double-hit Blockaid after the user saves a memo.
-    // Read the Error overrides from `renderContext` (not merged `context`):
-    // `defaultContext` only ever sets Fetched/Fetching, so TS narrows those
-    // fields and rejects a comparison against Error on the merged object.
-    const refresherKeys: ConfirmationContextRefresherKey[] = [];
-    if (enablePricing) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Prices);
-    }
-    if (
-      enableSecurityScan &&
-      renderContext.scanFetchStatus !== FetchStatus.Error
-    ) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Scan);
-    }
-    if (
-      enableLocalSimulation &&
-      renderContext.transactionsFetchStatus !== FetchStatus.Error
-    ) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
-    }
+    // 5. Persist preference-enabled refresher keys and schedule the open cron.
+    // Refreshers already no-op when their slice is Error (e.g. RequiresMemo).
+    const refresherKeys = resolveRefresherKeys({
+      enablePricing: enablePricing ?? false,
+      enableSecurityScan,
+      enableLocalSimulation: enableLocalSimulation ?? false,
+    });
 
     if (refresherKeys.length > 0) {
       const backgroundEventId =
@@ -299,13 +281,15 @@ export class ConfirmationUXController {
           },
           Duration.OneSecond,
         );
-      // Persist the pending event id so MemoEdit (or a later replace) can cancel
-      // it before scheduling another chain — bitcoin send-flow pattern.
-      const contextWithEventId = { ...context, backgroundEventId };
+      const contextWithRefreshMeta = {
+        ...context,
+        refresherKeys,
+        backgroundEventId,
+      };
       await updateInterfaceIfExists(
         id,
-        renderConfirmationView(interfaceKey, contextWithEventId),
-        contextWithEventId,
+        renderConfirmationView(interfaceKey, contextWithRefreshMeta),
+        contextWithRefreshMeta,
       );
     }
 

@@ -5,6 +5,7 @@ import { BigNumber } from 'bignumber.js';
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
+import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
 import { getNativeAssetMetadata } from '../../services/asset-metadata/utils';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
 import type { TransactionScanResult } from '../../services/transaction-scan';
@@ -116,6 +117,43 @@ export async function getPreferencesWithFallback(): Promise<GetPreferencesResult
     useExternalPricingData: true,
     showTestnets: true,
   }));
+}
+
+/**
+ * Params for {@link resolveRefresherKeys}.
+ *
+ * `enable*` flags are preference- and flow-gated by the caller.
+ */
+export type ResolveRefresherKeysParams = {
+  enablePricing: boolean;
+  enableSecurityScan: boolean;
+  enableLocalSimulation: boolean;
+};
+
+/**
+ * Derives which confirmation context refreshers to schedule.
+ *
+ * Shared by dialog open ({@link ConfirmationUXController}) and MemoEdit Save.
+ *
+ * @param params - Preference-gated enable flags.
+ * @returns Refresher keys to pass to `scheduleBackgroundEvent`.
+ */
+export function resolveRefresherKeys(
+  params: ResolveRefresherKeysParams,
+): ConfirmationContextRefresherKey[] {
+  const { enablePricing, enableSecurityScan, enableLocalSimulation } = params;
+
+  const refresherKeys: ConfirmationContextRefresherKey[] = [];
+  if (enablePricing) {
+    refresherKeys.push(ConfirmationContextRefresherKey.Prices);
+  }
+  if (enableSecurityScan) {
+    refresherKeys.push(ConfirmationContextRefresherKey.Scan);
+  }
+  if (enableLocalSimulation) {
+    refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
+  }
+  return refresherKeys;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { KnownCaip2ChainId } from '../../api';
+import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
 import { FieldType } from '../../services/transaction';
 import type { ReadableOperationField } from '../../services/transaction';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
@@ -18,6 +19,7 @@ import {
   isRemoteTransactionScanLoading,
   requiresMaliciousAcknowledgement,
   resolveConfirmationBanner,
+  resolveRefresherKeys,
   shouldDisableConfirmation,
 } from './utils';
 
@@ -369,6 +371,71 @@ describe('confirmation utils', () => {
           { key: 'salt', value: 'aa', type: FieldType.copyable },
         ]),
       ).toStrictEqual([{ key: 'salt', value: 'aa', type: FieldType.copyable }]);
+    });
+  });
+
+  describe('resolveRefresherKeys', () => {
+    it('returns all keys when pricing, scan, and local simulation are enabled', () => {
+      expect(
+        resolveRefresherKeys({
+          enablePricing: true,
+          enableSecurityScan: true,
+          enableLocalSimulation: true,
+        }),
+      ).toStrictEqual([
+        ConfirmationContextRefresherKey.Prices,
+        ConfirmationContextRefresherKey.Scan,
+        ConfirmationContextRefresherKey.Transaction,
+      ]);
+    });
+
+    it('omits prices when pricing is disabled', () => {
+      expect(
+        resolveRefresherKeys({
+          enablePricing: false,
+          enableSecurityScan: true,
+          enableLocalSimulation: true,
+        }),
+      ).toStrictEqual([
+        ConfirmationContextRefresherKey.Scan,
+        ConfirmationContextRefresherKey.Transaction,
+      ]);
+    });
+
+    it('omits scan when security scanning is disabled', () => {
+      expect(
+        resolveRefresherKeys({
+          enablePricing: true,
+          enableSecurityScan: false,
+          enableLocalSimulation: true,
+        }),
+      ).toStrictEqual([
+        ConfirmationContextRefresherKey.Prices,
+        ConfirmationContextRefresherKey.Transaction,
+      ]);
+    });
+
+    it('omits transaction when local simulation is disabled', () => {
+      expect(
+        resolveRefresherKeys({
+          enablePricing: true,
+          enableSecurityScan: true,
+          enableLocalSimulation: false,
+        }),
+      ).toStrictEqual([
+        ConfirmationContextRefresherKey.Prices,
+        ConfirmationContextRefresherKey.Scan,
+      ]);
+    });
+
+    it('returns an empty list when nothing is enabled', () => {
+      expect(
+        resolveRefresherKeys({
+          enablePricing: false,
+          enableSecurityScan: false,
+          enableLocalSimulation: false,
+        }),
+      ).toStrictEqual([]);
     });
   });
 });
