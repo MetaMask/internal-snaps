@@ -3,6 +3,7 @@ import {
   FeeType,
   BtcAccountType,
   BtcScope,
+  TransactionStatus,
   TransactionType,
 } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
@@ -124,6 +125,7 @@ describe('OnClientRequestHandler', () => {
         chain_id_caip: BtcScope.Regtest,
         account_type: BtcAccountType.P2wpkh,
         transaction_type: TransactionType.Send,
+        transaction_status: TransactionStatus.Confirmed,
         tx_id: transactionId,
       },
     });
