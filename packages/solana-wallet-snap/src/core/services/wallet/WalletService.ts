@@ -382,7 +382,9 @@ export class WalletService {
       options?.commitment ?? 'confirmed',
       scope,
       origin,
-      resolvedTransactionType,
+      // Only the explicit caller classification may override the on-chain
+      // type on `Transaction Finalized`; origin-derived defaults must not.
+      transactionType,
     );
 
     const result = {

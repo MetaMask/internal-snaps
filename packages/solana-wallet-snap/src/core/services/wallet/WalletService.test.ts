@@ -379,7 +379,25 @@ describe('WalletService', () => {
             'confirmed',
             scope,
             'https://metamask.io',
-            TransactionType.Unknown,
+            undefined,
+          );
+        });
+
+        it('does not monitor with an origin-derived classification, so the on-chain type wins on finalized', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+          );
+
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            undefined,
           );
         });
 
