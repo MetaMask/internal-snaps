@@ -1,4 +1,3 @@
-import { ListAccountAssetsResponseStruct } from '@metamask/keyring-api';
 import type {
   Balance,
   CreateAccountOptions as KeyringBatchCreateAccountOptions,
@@ -53,11 +52,12 @@ import {
   GetAccounBalancesResponseStruct,
   GetAccountBalancesStruct,
   GetAccountStruct,
-  ListAccountAssetsStruct,
-  ListAccountTransactionsStruct,
+  GetAccountAssetsStruct,
+  GetAccountAssetsResponseStruct,
   PrivateKeyHexStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
+  GetAccountTransactionsStruct,
 } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { validateRequest, validateResponse } from '../../validation/validators';
@@ -181,14 +181,14 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
     try {
-      validateRequest({ accountId }, ListAccountAssetsStruct);
+      validateRequest({ accountId }, GetAccountAssetsStruct);
 
       const account = await this.#getAccountOrThrow(accountId);
 
-      this.#logger.info('Listing account assets', { accountId });
+      this.#logger.info('Getting account assets', { accountId });
 
       const assetEntities =
-        await this.#assetsService.fetchAccountAssets(account);
+        await this.#assetsService.fetchAccountAssetsFromTrongrid(account);
       const result = assetEntities
         .filter(
           (asset) =>
@@ -199,7 +199,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       this.#logger.info('Account assets', { accountId, result });
 
-      validateResponse(result, ListAccountAssetsResponseStruct);
+      validateResponse(result, GetAccountAssetsResponseStruct);
       return result;
     } catch (error: unknown) {
       this.#logger.error({ error }, 'Error listing account assets');
@@ -224,9 +224,9 @@ export class KeyringHandler implements KeyringSnapRpc {
     next: string | null;
   }> {
     try {
-      validateRequest({ accountId, pagination }, ListAccountTransactionsStruct);
+      validateRequest({ accountId, pagination }, GetAccountTransactionsStruct);
 
-      this.#logger.info('Listing account transactions...');
+      this.#logger.info('Getting account transactions...');
       const { limit, next } = pagination;
 
       const keyringAccount = await this.#getAccount(accountId);
@@ -277,7 +277,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       const account = await this.#getAccountOrThrow(accountId);
 
-      const assetsList = await this.#assetsService.fetchAccountAssets(account);
+      const assetsList =
+        await this.#assetsService.fetchAccountAssetsFromTrongrid(account);
 
       const assetsToUse = assetsList
         .filter((asset) => assets.includes(asset.assetType))

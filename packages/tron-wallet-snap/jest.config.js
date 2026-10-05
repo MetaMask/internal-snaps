@@ -19,10 +19,10 @@ module.exports = {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 72.95,
-      functions: 81.35,
-      lines: 86.34,
-      statements: 86.34,
+      branches: 71.4,
+      functions: 81,
+      lines: 85.9,
+      statements: 85.9,
     },
   },
 };

@@ -102,7 +102,7 @@ describe('KeyringHandler', () => {
       }),
     } as unknown as jest.Mocked<AccountsService>;
     mockAssetsService = {
-      fetchAccountAssets: jest
+      fetchAccountAssetsFromTrongrid: jest
         .fn()
         .mockResolvedValue([mockLiveAsset, mockShastaAsset]),
     } as unknown as jest.Mocked<AssetsService>;
@@ -697,13 +697,13 @@ describe('KeyringHandler', () => {
         KnownCaip19Id.TrxMainnet,
         KnownCaip19Id.TrxShasta,
       ]);
-      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
-        mockAccount,
-      );
+      expect(
+        mockAssetsService.fetchAccountAssetsFromTrongrid,
+      ).toHaveBeenCalledWith(mockAccount);
     });
 
     it('propagates fetch failures', async () => {
-      mockAssetsService.fetchAccountAssets.mockRejectedValue(
+      mockAssetsService.fetchAccountAssetsFromTrongrid.mockRejectedValue(
         new Error('network error'),
       );
 
@@ -733,9 +733,9 @@ describe('KeyringHandler', () => {
           unit: 'TRX',
         },
       });
-      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
-        mockAccount,
-      );
+      expect(
+        mockAssetsService.fetchAccountAssetsFromTrongrid,
+      ).toHaveBeenCalledWith(mockAccount);
     });
 
     it('excludes token assets with zero balance', async () => {
@@ -746,7 +746,7 @@ describe('KeyringHandler', () => {
         uiAmount: '0',
       };
 
-      mockAssetsService.fetchAccountAssets.mockResolvedValue([
+      mockAssetsService.fetchAccountAssetsFromTrongrid.mockResolvedValue([
         mockLiveAsset,
         zeroBalanceToken,
       ]);
@@ -765,7 +765,7 @@ describe('KeyringHandler', () => {
     });
 
     it('propagates fetch failures', async () => {
-      mockAssetsService.fetchAccountAssets.mockRejectedValue(
+      mockAssetsService.fetchAccountAssetsFromTrongrid.mockRejectedValue(
         new Error('network error'),
       );
 
