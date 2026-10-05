@@ -16,7 +16,7 @@ import {
   mnemonicPhraseToBytes,
   SLIP10Node as RealSlip10Node,
 } from '@metamask/key-tree';
-import { TransactionType } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { Signer } from 'bip322-js';
 import { mock } from 'jest-mock-extended';
 
@@ -558,6 +558,7 @@ describe('AccountUseCases', () => {
         mockTxConfirmed,
         'test',
         TransactionType.Receive,
+        TransactionStatus.Confirmed,
       );
       expect(result).toStrictEqual({
         account: mockAccount,
@@ -620,6 +621,7 @@ describe('AccountUseCases', () => {
         mockTxConfirmed,
         origin,
         TransactionType.Receive,
+        TransactionStatus.Confirmed,
       );
 
       // Check for TransactionReceived event for new transaction
