@@ -29,6 +29,28 @@ describe('resolveTransactionType', () => {
     );
   });
 
+  it('reports a self path payment as a swap', () => {
+    const transaction = buildMockClassicTransaction(
+      [
+        {
+          type: 'pathPaymentStrictSend',
+          params: {
+            sendAsset: 'native',
+            sendAmount: '1',
+            destination: accountAddress,
+            destAsset: { code: 'USDC', issuer: otherAddress },
+            destMin: '1',
+          },
+        },
+      ],
+      { networkPassphrase: Networks.PUBLIC, source },
+    );
+
+    expect(resolveTransactionType(transaction, accountAddress)).toBe(
+      TransactionType.Swap,
+    );
+  });
+
   it('reports an incoming payment as a receive', () => {
     const transaction = buildMockClassicTransaction(
       [
