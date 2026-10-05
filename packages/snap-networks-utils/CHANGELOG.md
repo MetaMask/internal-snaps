@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add a shared `TransactionAlert` Snaps JSX component for transaction confirmations, rendering a single scan banner for the in-progress, scan-failed, scan-error, and malicious/warning security validation states ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+- Add a shared `TransactionAlert` Snaps JSX component for transaction confirmations, rendering a single scan banner for the in-progress, scan-failed, scan-error, and malicious/warning security validation states ([#408](https://github.com/MetaMask/internal-snaps/pull/408))
   - Takes translated `labels` (`TransactionAlertLabels`), `isFetching` and `isFetchError` flags, a resolved `error` (`TransactionAlertError`), and a `validation` (`TransactionAlertValidation`)
 - Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` events tracked by `AnalyticsService`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
 - Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
