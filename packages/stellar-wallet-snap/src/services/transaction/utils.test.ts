@@ -6,7 +6,8 @@ import { RequiresMemoException } from './exceptions';
 import { assertMemoWhenDestinationRequires } from './utils';
 
 describe('assertMemoWhenDestinationRequires', () => {
-  const destination = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+  const destination =
+    'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 
   it('enforces SEP-29 for classic payments and skips it for invokeHostFunction', () => {
     const classic = buildMockClassicTransaction([
