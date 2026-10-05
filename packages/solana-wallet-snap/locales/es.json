@@ -196,6 +196,12 @@
     "confirmation.validationErrorSecurityAdviced": {
       "message": "Asesoramiento de seguridad por"
     },
+    "confirmation.securityScanInProgressTitle": {
+      "message": "Comprobando problemas de seguridad"
+    },
+    "confirmation.securityScanInProgressMessage": {
+      "message": "Esto suele tardar unos segundos."
+    },
     "confirmation.signMessage.title": {
       "message": "Firmar mensaje"
     },
