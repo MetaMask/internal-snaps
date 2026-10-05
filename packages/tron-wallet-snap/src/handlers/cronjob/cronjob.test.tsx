@@ -1,4 +1,4 @@
-import { TransactionType } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   IStateManager,
@@ -1013,6 +1013,7 @@ describe('CronHandler', () => {
           const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
           } as any);
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
@@ -1035,8 +1036,37 @@ describe('CronHandler', () => {
             origin: METAMASK_ORIGIN,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
             transactionType: TransactionType.Send,
           });
+        },
+      );
+    });
+
+    it('reports a failed status when the transaction reverted on-chain', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'REVERT' },
+          });
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionStatus: TransactionStatus.Failed,
+            }),
+          );
         },
       );
     });

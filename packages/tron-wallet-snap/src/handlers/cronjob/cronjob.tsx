@@ -32,6 +32,7 @@ import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/
 import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { mapTransactionInfoStatus } from '../../utils/transactionStatus';
 
 export const CronjobMethod = {
   ContinuouslySynchronizeSelectedAccounts:
@@ -727,6 +728,8 @@ export class CronHandler {
         '✅ Transaction confirmed on-chain',
       );
 
+      const transactionStatus = mapTransactionInfoStatus(txInfo);
+
       // Get the sender account to determine account type
       const accounts = await this.#accountsService.findByIds(accountIds);
       const senderAccount = accounts[0];
@@ -748,6 +751,7 @@ export class CronHandler {
         origin: METAMASK_ORIGIN,
         accountType: senderAccount.type,
         chainIdCaip: scope,
+        transactionStatus,
         transactionType,
       });
     } catch (error) {
