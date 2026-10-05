@@ -1,7 +1,8 @@
+import { TransactionType } from '@metamask/keyring-api';
 import { UuidStruct } from '@metamask/snap-networks-utils';
 import { InternalError } from '@metamask/snaps-sdk';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
-import { assert, literal, object, string } from '@metamask/superstruct';
+import { assert, enums, literal, object, string } from '@metamask/superstruct';
 
 import { analyticsService, keyring } from '../../../../snapContext';
 import logger from '../../../utils/logger';
@@ -17,6 +18,7 @@ export const OnTransactionAddedRequestStruct = object({
     metadata: object({
       scope: NetworkStruct,
       origin: string(),
+      transactionType: enums(Object.values(TransactionType)),
     }),
   }),
 });
@@ -42,6 +44,7 @@ export const onTransactionAdded: OnCronjobHandler = async ({ request }) => {
       origin: metadata.origin,
       accountType: account.type,
       chainIdCaip: metadata.scope,
+      transactionType: metadata.transactionType,
     });
   } catch (error) {
     logger.error(error);

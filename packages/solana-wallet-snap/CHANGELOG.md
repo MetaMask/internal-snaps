@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Emit `transaction_type` on the transaction lifecycle events. ([#401](https://github.com/MetaMask/internal-snaps/pull/401))
+
 ### Changed
 
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#384](https://github.com/MetaMask/internal-snaps/pull/384))
