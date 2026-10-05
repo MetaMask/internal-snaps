@@ -152,4 +152,16 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   acknowledgementScreen?: boolean;
   // Whether the user has checked the "I acknowledge the risk" box on that screen.
   acknowledged?: boolean;
+  // True while the memo edit screen is shown over send confirmation.
+  memoScreen?: boolean;
+  // Saved memo for the pending send (UI-owned; not on confirmSend RPC params).
+  memo?: string;
+  // Locale key for memo validation errors on the edit screen.
+  memoError?: LocalizedMessage | null;
+  /**
+   * Pending `snap_scheduleBackgroundEvent` id for confirmation context refresh.
+   * Stored so callers can cancel-and-replace (bitcoin send-flow pattern) instead
+   * of stacking parallel refresh chains (e.g. MemoEdit Save vs open cron).
+   */
+  backgroundEventId?: string;
 };

@@ -1,36 +1,33 @@
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import { Box, Copyable, Text as SnapText } from '@metamask/snaps-sdk/jsx';
-import type { Json } from '@metamask/utils';
 
 import { i18n } from '../../../utils';
-import { JsonParamsSummary } from './JsonParamsSummary';
 
 export type InvocationSummaryProps = {
   locale: string;
   contractAddress: string | null;
   functionName: string | null;
-  args: Json;
 };
 
 /**
- * Shared Soroban call layout for sign-transaction and sign-auth-entry:
+ * Shared Soroban call header for sign-transaction and sign-auth-entry:
  *
  * - Contract Address (copyable), when present
- * - Function
- * - Argument 1…N (copyable)
+ * - Function name, when present
  *
- * @param props - Contract / function / args and i18n helper.
+ * Extra fields (args, salt, executable, …) are rendered by the parent
+ * line-by-line so create-contract details are never dropped.
+ *
+ * @param props - Contract / function and i18n helper.
  * @param props.locale - The locale to use for the translation.
  * @param props.contractAddress - Contract `C…` strkey, or `null` for deploy.
- * @param props.functionName - Contract function name, if any.
- * @param props.args - Decoded argument display strings.
- * @returns Vertical confirmation rows for one contract invocation.
+ * @param props.functionName - Contract or host-function name, if any.
+ * @returns Vertical confirmation rows for the invocation header.
  */
 export const InvocationSummary = ({
   locale,
   contractAddress,
   functionName,
-  args,
 }: InvocationSummaryProps): ComponentOrElement => {
   const translate = i18n(locale);
   return (
@@ -51,9 +48,6 @@ export const InvocationSummary = ({
           </SnapText>
           <SnapText>{functionName}</SnapText>
         </Box>
-      )}
-      {args === null ? null : (
-        <JsonParamsSummary value={args} locale={locale} />
       )}
     </Box>
   );

@@ -1,8 +1,30 @@
 import type { OperationRecord } from '@stellar/stellar-sdk';
+import { BigNumber } from 'bignumber.js';
 
+import type { AnyErrorConstructor } from '../../../utils';
 import { calculateSpendableBalance } from '../../on-chain-account/utils';
 import { TransactionValidationException } from '../exceptions';
 import type { AccountState, SimulationState } from './api';
+
+/**
+ * Whether `exceptionClass` (or a subclass thereof) is listed in `skipExceptions`.
+ *
+ * @param skipExceptions - Optional list of validation exception constructors to suppress.
+ * @param exceptionClass - The exception class about to be thrown / checked.
+ * @returns True when validation should skip throwing this exception type.
+ */
+export function shouldSkipValidationException(
+  skipExceptions: readonly AnyErrorConstructor[] | undefined,
+  exceptionClass: AnyErrorConstructor,
+): boolean {
+  if (!skipExceptions?.length) {
+    return false;
+  }
+  return skipExceptions.some(
+    (skipped) =>
+      skipped === exceptionClass || exceptionClass.prototype instanceof skipped,
+  );
+}
 
 /**
  * Gets the effective source account ID from the operation.

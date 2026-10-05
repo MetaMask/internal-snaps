@@ -44,7 +44,7 @@ export const Asset = (props: AssetProps): ComponentOrElement => {
   const assetText = amount === undefined ? symbol : `${amount} ${symbol}`;
 
   return (
-    <Box direction="horizontal" alignment="center">
+    <Box direction="horizontal" alignment="end">
       {showSkeleton ? <Skeleton width={80} /> : null}
       {showFiat ? <SnapText color="muted">{fiatValue}</SnapText> : null}
 

@@ -1,3 +1,4 @@
+import type { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -10,7 +11,11 @@ import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { Network } from '../../constants';
-import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../../constants';
+import {
+  METAMASK_ORIGIN,
+  TRACK_TX_INTERVAL,
+  TRACK_TX_MAX_ATTEMPTS,
+} from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
@@ -143,6 +148,7 @@ export class CronHandler {
             scope: Network;
             accountIds: string[];
             attempt: number;
+            transactionType?: TransactionType;
           },
         );
         break;
@@ -657,17 +663,20 @@ export class CronHandler {
    * @param params.scope - The network scope (e.g., 'mainnet', 'shasta')
    * @param params.accountIds - Account IDs to sync after confirmation (first account is always the sender)
    * @param params.attempt - Current attempt number (for retry logic)
+   * @param params.transactionType - Classification resolved at submit time, carried so the finalized event reports the same flow
    */
   async trackTransaction({
     txId,
     scope,
     accountIds,
     attempt = 0,
+    transactionType,
   }: {
     txId: string;
     scope: Network;
     accountIds: string[];
     attempt: number;
+    transactionType?: TransactionType;
   }): Promise<void> {
     this.#logger.info(
       `[Attempt ${attempt + 1}] Tracking transaction ${txId} on ${scope}...`,
@@ -705,6 +714,7 @@ export class CronHandler {
             scope,
             accountIds,
             attempt: attempt + 1,
+            ...(transactionType === undefined ? {} : { transactionType }),
           },
           duration: TRACK_TX_INTERVAL,
         });
@@ -735,9 +745,10 @@ export class CronHandler {
 
       // Track Transaction Finalized event now that transaction is confirmed
       await this.#analyticsService.trackTransactionFinalized({
-        origin: 'MetaMask',
+        origin: METAMASK_ORIGIN,
         accountType: senderAccount.type,
         chainIdCaip: scope,
+        transactionType,
       });
     } catch (error) {
       this.#logger.error(
@@ -762,6 +773,7 @@ export class CronHandler {
           scope,
           accountIds,
           attempt: attempt + 1,
+          ...(transactionType === undefined ? {} : { transactionType }),
         },
         duration: TRACK_TX_INTERVAL,
       });

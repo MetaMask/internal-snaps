@@ -17,7 +17,6 @@ import type {
   KnownCaip19ClassicAssetId,
   KnownCaip19Slip44Id,
 } from '../../api';
-import { resolveStellarMemo } from '../../api';
 import { AppConfig } from '../../config';
 import {
   isSep41Id,
@@ -30,7 +29,9 @@ import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
   InvalidAssetForCreateAccountException,
   TransactionBuilderException,
+  TransactionValidationException,
 } from './exceptions';
+import { resolveStellarMemo } from './memo';
 import { Transaction } from './Transaction';
 import { assertAssetScopeMatch, caip19ToStellarAsset } from './utils';
 
@@ -149,9 +150,13 @@ export class TransactionBuilder {
         memo,
       });
     } catch (error: unknown) {
-      throw new TransactionBuilderException(
-        'Failed to build sep41 transfer transaction',
-        { cause: error },
+      return rethrowIfInstanceElseThrow(
+        error,
+        [TransactionValidationException, TransactionBuilderException],
+        new TransactionBuilderException(
+          'Failed to build sep41 transfer transaction',
+          { cause: error },
+        ),
       );
     }
   }
@@ -226,6 +231,7 @@ export class TransactionBuilder {
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
    * @returns An unsigned transaction ready for signing.
    * @throws {InvalidAssetForCreateAccountException} When the destination is unfunded and the asset is not native.
+   * @throws {InvalidMemoException} When the optional memo cannot be attached as text or id.
    * @throws {TransactionBuilderException} If building fails.
    */
   transfer(params: {
@@ -295,13 +301,9 @@ export class TransactionBuilder {
         memo,
       });
     } catch (error: unknown) {
-      if (error instanceof InvalidAssetForCreateAccountException) {
-        throw error;
-      }
-
       return rethrowIfInstanceElseThrow(
         error,
-        [TransactionBuilderException],
+        [TransactionValidationException, TransactionBuilderException],
         new TransactionBuilderException(
           'Failed to build transfer transaction',
           { cause: error },
@@ -368,15 +370,7 @@ export class TransactionBuilder {
     );
 
     const networkPassphrase = caip2ChainIdToNetwork(scope);
-    let resolvedMemo;
-    try {
-      resolvedMemo = resolveStellarMemo(memo);
-    } catch (error: unknown) {
-      throw new TransactionBuilderException(
-        error instanceof Error ? error.message : 'Invalid memo',
-        { cause: error },
-      );
-    }
+    const resolvedMemo = resolveStellarMemo(memo);
     const builder = new StellarSdkTransactionBuilder(accountInstance, {
       fee,
       networkPassphrase,

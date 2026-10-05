@@ -264,27 +264,48 @@ export class ConfirmationUXController {
       return dialogPromise;
     }
 
-    // 5. Schedule background context refresh for enabled refreshers only
+    // 5. Schedule background context refresh for enabled refreshers only.
+    // Skip Scan / Transaction when renderContext already marked them Error
+    // (e.g. RequiresMemo on open): a pending open cron would race
+    // MemoEdit's restart and double-hit Blockaid after the user saves a memo.
+    // Read the Error overrides from `renderContext` (not merged `context`):
+    // `defaultContext` only ever sets Fetched/Fetching, so TS narrows those
+    // fields and rejects a comparison against Error on the merged object.
     const refresherKeys: ConfirmationContextRefresherKey[] = [];
     if (enablePricing) {
       refresherKeys.push(ConfirmationContextRefresherKey.Prices);
     }
-    if (enableSecurityScan) {
+    if (
+      enableSecurityScan &&
+      renderContext.scanFetchStatus !== FetchStatus.Error
+    ) {
       refresherKeys.push(ConfirmationContextRefresherKey.Scan);
     }
-    if (enableLocalSimulation) {
+    if (
+      enableLocalSimulation &&
+      renderContext.transactionsFetchStatus !== FetchStatus.Error
+    ) {
       refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
     }
 
     if (refresherKeys.length > 0) {
-      await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-        {
-          scope,
-          interfaceId: id,
-          interfaceKey,
-          refresherKeys,
-        },
-        Duration.OneSecond,
+      const backgroundEventId =
+        await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+          {
+            scope,
+            interfaceId: id,
+            interfaceKey,
+            refresherKeys,
+          },
+          Duration.OneSecond,
+        );
+      // Persist the pending event id so MemoEdit (or a later replace) can cancel
+      // it before scheduling another chain — bitcoin send-flow pattern.
+      const contextWithEventId = { ...context, backgroundEventId };
+      await updateInterfaceIfExists(
+        id,
+        renderConfirmationView(interfaceKey, contextWithEventId),
+        contextWithEventId,
       );
     }
 

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` events tracked by `AnalyticsService`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
+- Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
+- Add `SynchronizationError`, `formatAccountSyncFailures`, and the `AccountSyncFailure` type, for reporting account synchronization failures with per-account failure details embedded in the error message (details must live in the message because `snap_trackError` only serializes `name`, `message`, `stack`, and `cause`). ([#374](https://github.com/MetaMask/internal-snaps/pull/374))
+- Add `wrapSnapHandlers` to wrap any Snap entrypoint handlers with `withCatchAndThrowSnapError`, with optional per-handler `logError` overrides ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
+- Add `noopAssetHandlers`, the no-op asset entrypoints network Snaps must export to keep the `endowment:assets` permission ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add a shared `AnalyticsService` and typed event properties for network Snap telemetry. ([#327](https://github.com/MetaMask/internal-snaps/pull/327))
 - Add shared configuration utilities for network snaps ([#309](https://github.com/MetaMask/internal-snaps/pull/309))
   - `BaseConfigProvider`, a base class owning the configuration lifecycle (parse the explicitly passed environment once against a Superstruct, frozen config, fail-fast on invalid environments)

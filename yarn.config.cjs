@@ -201,11 +201,13 @@ module.exports = defineConfig({
         );
 
         // All non-root packages must run Jest with the silent reporter. Extra
-        // prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
+        // prefixes (e.g. `NODE_OPTIONS=...`) are allowed. An optional
+        // `&& yarn coverage:ratchet` suffix is allowed so snaps can bump
+        // coverageThreshold after a passing local run.
         expectWorkspaceFieldRegex(
           workspace,
           'scripts.test',
-          /jest --reporters=jest-silent-reporter$/u,
+          /jest --reporters=jest-silent-reporter(?: && yarn coverage:ratchet)?$/u,
         );
 
         // All non-root packages must have a "test:clean" script that clears the

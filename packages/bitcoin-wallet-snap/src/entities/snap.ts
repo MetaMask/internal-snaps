@@ -1,5 +1,6 @@
 import type { AddressType, Network, WalletTx } from '@metamask/bitcoindevkit';
 import type { JsonSLIP10Node, SLIP10Node } from '@metamask/key-tree';
+import type { TransactionType } from '@metamask/keyring-api';
 import type {
   ComponentOrElement,
   GetClientStatusResult,
@@ -55,6 +56,9 @@ export type SyncResult = {
   account: BitcoinAccount;
   // Transactions that changed and should be notified.
   transactionsToNotify: WalletTx[];
+  // Funding addresses per txid, resolved by the chain indexer. Only populated
+  // for receives; used to display the counterparty.
+  transactionSenders?: Map<string, string[]>;
 };
 
 export const TrackingSnapEvent = {
@@ -140,10 +144,13 @@ export type SnapClient = {
    *
    * @param account - The Bitcoin account.
    * @param txs - The transactions included in the event.
+   * @param sendersByTxid - Optional funding addresses per txid, used to
+   * populate the counterparty of receive transactions.
    */
   emitAccountTransactionsUpdatedEvent(
     account: BitcoinAccount,
     txs: WalletTx[],
+    sendersByTxid?: Map<string, string[]>,
   ): Promise<void>;
 
   /**
@@ -270,12 +277,14 @@ export type SnapClient = {
    * @param account The correlated bitcoin account
    * @param tx The transaction we want to capture metrics for
    * @param origin The origin/source that triggered this event
+   * @param transactionType The classification of the transaction.
    */
   emitTrackingEvent(
     eventType: TransactionBroadcastEventType,
     account: BitcoinAccount,
     tx: WalletTx,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void>;
 
   /**
@@ -285,8 +294,13 @@ export type SnapClient = {
    *
    * @param account The account the transaction belongs to.
    * @param origin The origin/source that triggered this event.
+   * @param transactionType The classification of the transaction.
    */
-  trackTransactionAdded(account: BitcoinAccount, origin: string): Promise<void>;
+  trackTransactionAdded(
+    account: BitcoinAccount,
+    origin: string,
+    transactionType: TransactionType,
+  ): Promise<void>;
 
   /**
    * Track a "Transaction Approved" event when the user approves a transaction.
@@ -295,10 +309,12 @@ export type SnapClient = {
    *
    * @param account The account the transaction belongs to.
    * @param origin The origin/source that triggered this event.
+   * @param transactionType The classification of the transaction.
    */
   trackTransactionApproved(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void>;
 
   /**
@@ -308,10 +324,12 @@ export type SnapClient = {
    *
    * @param account The account the transaction belongs to.
    * @param origin The origin/source that triggered this event.
+   * @param transactionType The classification of the transaction.
    */
   trackTransactionRejected(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void>;
 
   /**

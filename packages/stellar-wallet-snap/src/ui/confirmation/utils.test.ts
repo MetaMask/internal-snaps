@@ -1,3 +1,4 @@
+import { KnownCaip2ChainId } from '../../api';
 import { FieldType } from '../../services/transaction';
 import type { ReadableOperationField } from '../../services/transaction';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
@@ -8,7 +9,9 @@ import {
 import { FetchStatus } from './api';
 import {
   ConfirmationBanner,
+  getNetworkName,
   getParam,
+  getInvocationDetailParams,
   isFetchInProgress,
   formatOrigin,
   isLocalTransactionValidationFailed,
@@ -28,6 +31,28 @@ const warningScan = {
 };
 
 describe('confirmation utils', () => {
+  describe('getNetworkName', () => {
+    it.each([
+      {
+        testcase: '"Stellar Mainnet" for mainnet',
+        input: KnownCaip2ChainId.Mainnet,
+        expected: 'Stellar Mainnet',
+      },
+      {
+        testcase: '"Stellar Testnet" for testnet',
+        input: KnownCaip2ChainId.Testnet,
+        expected: 'Stellar Testnet',
+      },
+      {
+        testcase: '"Unknown" for an unrecognized scope',
+        input: 'stellar:unknown' as KnownCaip2ChainId,
+        expected: 'Unknown',
+      },
+    ])('returns $testcase', ({ input, expected }) => {
+      expect(getNetworkName(input)).toBe(expected);
+    });
+  });
+
   describe('isFetchInProgress', () => {
     it.each([FetchStatus.Initial, FetchStatus.Fetching])(
       'returns true for %s',
@@ -323,6 +348,27 @@ describe('confirmation utils', () => {
 
     it('returns null for an empty params list', () => {
       expect(getParam([], 'functionName')).toBeNull();
+    });
+  });
+
+  describe('getInvocationDetailParams', () => {
+    it('drops header keys and keeps the rest in order', () => {
+      expect(
+        getInvocationDetailParams([
+          {
+            key: 'authorizedAddress',
+            value: 'GABC',
+            type: FieldType.copyable,
+          },
+          { key: 'contractId', value: 'CABC', type: FieldType.copyable },
+          {
+            key: 'functionName',
+            value: 'createContract',
+            type: FieldType.text,
+          },
+          { key: 'salt', value: 'aa', type: FieldType.copyable },
+        ]),
+      ).toStrictEqual([{ key: 'salt', value: 'aa', type: FieldType.copyable }]);
     });
   });
 });

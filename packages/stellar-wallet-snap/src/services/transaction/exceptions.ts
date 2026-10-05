@@ -2,8 +2,8 @@ import type {
   KnownCaip19AssetIdOrSlip44Id,
   KnownCaip2ChainId,
 } from '../../api';
-import type { StellarSnapExceptionOptions } from '../../utils';
-import { StellarSnapException } from '../../utils';
+import type { StellarSnapExceptionOptions } from '../../utils/errors';
+import { StellarSnapException } from '../../utils/errors';
 
 export class TransactionServiceException extends StellarSnapException {}
 
@@ -225,6 +225,16 @@ export class InvalidInvokeContractStructureException extends TransactionValidati
     super(`Invoke host function transaction must have exactly one operation`);
   }
 }
+
+/**
+ * Thrown when a memo string cannot be attached as a Stellar text or id memo.
+ */
+export class InvalidMemoException extends TransactionValidationException {
+  constructor() {
+    super('Memo is too long or invalid');
+  }
+}
+
 /** Thrown when the keyring transaction builder fails to create a transaction. */
 export class KeyringTransactionBuilderException extends TransactionServiceException {}
 

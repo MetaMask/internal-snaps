@@ -3,6 +3,15 @@ import type {
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
 import { resolveInterface } from '../../../../utils';
+import { getMemoFromContext } from '../../utils';
+
+export const ConfirmSendTransactionFormNames = {
+  Cancel: 'confirm-send-transaction-cancel',
+  Confirm: 'confirm-send-transaction-confirm',
+} as const;
+
+export type ConfirmSendTransactionFormNames =
+  (typeof ConfirmSendTransactionFormNames)[keyof typeof ConfirmSendTransactionFormNames];
 
 /**
  * Handles the click event for the cancel button.
@@ -14,7 +23,7 @@ async function onCancelButtonClick(
   options: UserInputUiEventHandlerContext,
 ): Promise<void> {
   const { id } = options;
-  await resolveInterface(id, false);
+  await resolveInterface(id, { confirmed: false });
 }
 
 /**
@@ -26,17 +35,12 @@ async function onCancelButtonClick(
 async function onConfirmButtonClick(
   options: UserInputUiEventHandlerContext,
 ): Promise<void> {
-  const { id } = options;
-  await resolveInterface(id, true);
+  const { id, context } = options;
+  await resolveInterface(id, {
+    confirmed: true,
+    memo: getMemoFromContext(context),
+  });
 }
-
-export const ConfirmSendTransactionFormNames = {
-  Cancel: 'confirm-send-transaction-cancel',
-  Confirm: 'confirm-send-transaction-confirm',
-} as const;
-
-export type ConfirmSendTransactionFormNames =
-  (typeof ConfirmSendTransactionFormNames)[keyof typeof ConfirmSendTransactionFormNames];
 
 /**
  * Create event handlers bound to a SnapClient instance.

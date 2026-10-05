@@ -2,7 +2,7 @@ import type { WalletTx } from '@metamask/bitcoindevkit';
 import { Amount } from '@metamask/bitcoindevkit';
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
-import { KeyringEvent } from '@metamask/keyring-api';
+import { KeyringEvent, TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type {
   GetClientStatusResult,
@@ -121,10 +121,17 @@ export class SnapClientAdapter implements SnapClient {
   async emitAccountTransactionsUpdatedEvent(
     account: BitcoinAccount,
     txs: WalletTx[],
+    sendersByTxid?: Map<string, string[]>,
   ): Promise<void> {
     return emitSnapKeyringEvent(snap, KeyringEvent.AccountTransactionsUpdated, {
       transactions: {
-        [account.id]: txs.map((tx) => mapToTransaction(account, tx)),
+        [account.id]: txs.map((tx) =>
+          mapToTransaction(
+            account,
+            tx,
+            sendersByTxid?.get(tx.txid.toString()) ?? [],
+          ),
+        ),
       },
     });
   }
@@ -252,6 +259,7 @@ export class SnapClientAdapter implements SnapClient {
     account: BitcoinAccount,
     tx: WalletTx,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void> {
     const transactionKey =
       eventType === TrackingSnapEvent.MissedTransactionsDiscovered
@@ -263,6 +271,7 @@ export class SnapClientAdapter implements SnapClient {
       message: this.#getTrackingMessage(eventType),
       chain_id_caip: networkToScope[account.network],
       account_type: addressTypeToCaip[account.addressType],
+      transaction_type: transactionType,
       [transactionKey]: tx.txid.toString(),
     }));
   }
@@ -270,33 +279,39 @@ export class SnapClientAdapter implements SnapClient {
   async trackTransactionAdded(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void> {
     await this.#trackConfirmationEvent(
       TrackingSnapEvent.TransactionAdded,
       account,
       origin,
+      transactionType,
     );
   }
 
   async trackTransactionApproved(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void> {
     await this.#trackConfirmationEvent(
       TrackingSnapEvent.TransactionApproved,
       account,
       origin,
+      transactionType,
     );
   }
 
   async trackTransactionRejected(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void> {
     await this.#trackConfirmationEvent(
       TrackingSnapEvent.TransactionRejected,
       account,
       origin,
+      transactionType,
     );
   }
 
@@ -307,17 +322,20 @@ export class SnapClientAdapter implements SnapClient {
    * @param eventType - The confirmation event type.
    * @param account - The account the transaction belongs to.
    * @param origin - The origin/source that triggered this event.
+   * @param transactionType - The classification of the transaction.
    */
   async #trackConfirmationEvent(
     eventType: TransactionConfirmationEventType,
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void> {
     await this.#trackEvent(eventType, () => ({
       origin,
       message: this.#getTrackingMessage(eventType),
       chain_id_caip: networkToScope[account.network],
       account_type: addressTypeToCaip[account.addressType],
+      transaction_type: transactionType,
     }));
   }
 

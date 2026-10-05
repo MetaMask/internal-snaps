@@ -1,4 +1,4 @@
-import { FeeType } from '@metamask/keyring-api';
+import { FeeType, TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -7,7 +7,13 @@ import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { KnownCaip19Id, Network, Networks, ZERO } from '../../constants';
+import {
+  KnownCaip19Id,
+  METAMASK_ORIGIN,
+  Network,
+  Networks,
+  ZERO,
+} from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
@@ -420,7 +426,7 @@ describe('ConfirmationHandler', () => {
       fees: defaultFees,
       asset: mockAsset,
       accountType: 'tron:eoa',
-      origin: 'MetaMask',
+      origin: METAMASK_ORIGIN,
       transactionRawData: mockTransactionRawData,
     };
 
@@ -433,17 +439,19 @@ describe('ConfirmationHandler', () => {
         expect(result).toBe(true);
         expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
           {
-            origin: 'MetaMask',
+            origin: METAMASK_ORIGIN,
             accountType: 'tron:eoa',
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           },
         );
         expect(
           mockAnalyticsService.trackTransactionApproved,
         ).toHaveBeenCalledWith({
-          origin: 'MetaMask',
+          origin: METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionRejected,
@@ -461,9 +469,10 @@ describe('ConfirmationHandler', () => {
         expect(
           mockAnalyticsService.trackTransactionRejected,
         ).toHaveBeenCalledWith({
-          origin: 'MetaMask',
+          origin: METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionApproved,
@@ -471,7 +480,7 @@ describe('ConfirmationHandler', () => {
       });
     });
 
-    it('passes formatted origin and transactionRawData to render', async () => {
+    it('passes the raw origin and transactionRawData to render', async () => {
       await withConfirmationHandler(
         async ({ handler, mockSnapClient, mockState }) => {
           mockRenderConfirmTransactionRequest.mockResolvedValue(true);
@@ -485,9 +494,28 @@ describe('ConfirmationHandler', () => {
             mockSnapClient,
             mockState,
             expect.objectContaining({
-              origin: 'example.com',
+              origin: 'https://example.com',
               transactionRawData: mockTransactionRawData,
             }),
+          );
+        },
+      );
+    });
+
+    it('passes the raw MetaMask origin to render so the scan can recognize it', async () => {
+      await withConfirmationHandler(
+        async ({ handler, mockSnapClient, mockState }) => {
+          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+
+          await handler.confirmTransactionRequest({
+            ...defaultParams,
+            origin: METAMASK_ORIGIN,
+          });
+
+          expect(mockRenderConfirmTransactionRequest).toHaveBeenCalledWith(
+            mockSnapClient,
+            mockState,
+            expect.objectContaining({ origin: METAMASK_ORIGIN }),
           );
         },
       );
@@ -613,6 +641,7 @@ describe('ConfirmationHandler', () => {
             origin: request.origin,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           },
         );
         expect(
@@ -621,6 +650,7 @@ describe('ConfirmationHandler', () => {
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionRejected,
@@ -654,6 +684,7 @@ describe('ConfirmationHandler', () => {
           origin: request.origin,
           accountType: mockAccount.type,
           chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
         });
         expect(
           mockAnalyticsService.trackTransactionApproved,
@@ -684,6 +715,7 @@ describe('ConfirmationHandler', () => {
             origin: request.origin,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           });
         });
       },

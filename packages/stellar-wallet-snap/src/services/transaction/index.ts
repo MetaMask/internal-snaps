@@ -7,3 +7,4 @@ export * from './TransactionService';
 export * from './TransactionSimulator';
 export * from './KeyringTransactionBuilder';
 export * from './api';
+export * from './memo';

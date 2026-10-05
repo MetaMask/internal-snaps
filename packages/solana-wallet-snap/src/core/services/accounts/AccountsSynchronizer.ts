@@ -1,9 +1,15 @@
-import { InFlightCoalescer } from '@metamask/snap-networks-utils';
+import type { Transaction } from '@metamask/keyring-api';
+import {
+  InFlightCoalescer,
+  SynchronizationError,
+  getSyncFailuresFromSettledResult,
+} from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
 
+import { trackError } from '../../utils/errors';
 import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionsService } from '../transactions';
 import type { AccountsService } from './AccountsService';
@@ -40,22 +46,92 @@ export class AccountsSynchronizer {
     return this.#coalescer.run(key, async () => {
       this.#logger.info('Synchronizing accounts', accountsToSync);
 
-      const assets = (
-        await Promise.allSettled(
-          accountsToSync.map(async (account) =>
-            this.#assetsService.fetch(account),
-          ),
-        )
-      ).flatMap((item) => (item.status === 'fulfilled' ? item.value : []));
+      const responses = await Promise.allSettled(
+        accountsToSync.map(async (account) =>
+          this.#assetsService.fetch(account),
+        ),
+      );
 
-      await this.#assetsService.saveMany(assets);
+      const assets = responses.flatMap((item) =>
+        item.status === 'fulfilled' ? item.value : [],
+      );
 
-      const transactions =
-        await this.#transactionsService.fetchAssetsTransactions(assets, {
-          limit: 20,
-        });
+      await this.#reportSyncFailures(
+        'Account synchronization failures',
+        responses,
+        accountsToSync.map(({ id }) => id),
+      );
 
-      await this.#transactionsService.saveMany(transactions);
+      try {
+        await this.#assetsService.saveMany(assets);
+      } catch (error) {
+        // Save failures are batch-level (not attributable to one account), so
+        // they are tracked standalone. The error is rethrown to preserve the
+        // original behavior.
+        await trackError(new Error('Failed to save assets', { cause: error }));
+
+        throw error;
+      }
+
+      let transactions: Transaction[];
+      try {
+        transactions = await this.#transactionsService.fetchAssetsTransactions(
+          assets,
+          { limit: 20 },
+        );
+      } catch (error) {
+        // Fetch failures are batch-level (not attributable to one account), so
+        // they are tracked standalone.
+        await trackError(
+          new Error('Failed to fetch transactions', { cause: error }),
+        );
+
+        throw error;
+      }
+
+      try {
+        await this.#transactionsService.saveMany(transactions);
+      } catch (error) {
+        // Save failures are batch-level (not attributable to one account), so
+        // they are tracked standalone.
+        await trackError(
+          new Error('Failed to save transactions', { cause: error }),
+        );
+
+        throw error;
+      }
     });
+  }
+
+  /**
+   * Reports account synchronization failures to Sentry, with the failure
+   * reasons embedded in the message: error tracking (`snap_trackError`) does
+   * not preserve custom error properties, so the message is the only reliable
+   * channel for the details.
+   *
+   * @param message - The message to include in the error report.
+   * @param results - The settled fetch results.
+   * @param accountIds - The account IDs, in the same order as `results`.
+   */
+  async #reportSyncFailures(
+    message: string,
+    results: PromiseSettledResult<unknown>[],
+    accountIds: string[],
+  ): Promise<void> {
+    try {
+      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+
+      if (failures.length === 0) {
+        return;
+      }
+
+      const error = new SynchronizationError(message, failures);
+
+      await trackError(error);
+    } catch (reportingError) {
+      this.#logger.warn('Failed to report synchronization failures', {
+        reportingError,
+      });
+    }
   }
 }

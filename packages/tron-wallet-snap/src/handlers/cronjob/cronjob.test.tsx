@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   IStateManager,
@@ -8,6 +9,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
+  METAMASK_ORIGIN,
   Network,
   TRACK_TX_INTERVAL,
   TRACK_TX_MAX_ATTEMPTS,
@@ -138,7 +140,7 @@ function buildMockInterfaceContext(
   overrides: Partial<ConfirmTransactionRequestContext> = {},
 ): ConfirmTransactionRequestContext {
   return {
-    origin: 'MetaMask',
+    origin: METAMASK_ORIGIN,
     scope: Network.Mainnet,
     fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     toAddress: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
@@ -1019,6 +1021,7 @@ describe('CronHandler', () => {
             scope: Network.Mainnet,
             accountIds: ACCOUNT_IDS,
             attempt: 0,
+            transactionType: TransactionType.Send,
           });
 
           expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
@@ -1029,9 +1032,10 @@ describe('CronHandler', () => {
           expect(
             mockAnalyticsService.trackTransactionFinalized,
           ).toHaveBeenCalledWith({
-            origin: 'MetaMask',
+            origin: METAMASK_ORIGIN,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionType: TransactionType.Send,
           });
         },
       );

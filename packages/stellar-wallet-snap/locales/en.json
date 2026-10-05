@@ -103,6 +103,30 @@
     "confirmation.memo.none": {
       "message": "None"
     },
+    "confirmation.memo.add": {
+      "message": "Add"
+    },
+    "confirmation.memo.update": {
+      "message": "Update"
+    },
+    "confirmation.memo.title": {
+      "message": "Transaction memo"
+    },
+    "confirmation.memo.description": {
+      "message": "Some accounts require a memo. Without it, your transfer may be delayed or lost."
+    },
+    "confirmation.memo.placeholder": {
+      "message": "Enter memo"
+    },
+    "confirmation.memo.save": {
+      "message": "Save"
+    },
+    "confirmation.memo.back": {
+      "message": "Back"
+    },
+    "confirmation.memo.error.tooLong": {
+      "message": "Memo must be 28 bytes or fewer"
+    },
     "confirmation.asset": {
       "message": "Asset"
     },
@@ -149,13 +173,13 @@
       "message": "{reason}"
     },
     "confirmation.txnError.requiresMemo": {
-      "message": "This account requires a memo. Sends to it are not supported."
+      "message": "This account requires a memo. Add a memo to continue."
     },
     "confirmation.txnError.invalidCreateAccountAmount": {
       "message": "Update Send Amount. A new account requires 1 XLM minimum."
     },
     "confirmation.txnError.invalidCreateAccountAsset": {
-      "message": "Update Send Asset. New accounts must first be funded by 1 XLM."
+      "message": "The recipient's account must hold 1 XLM before it can receive this asset."
     },
     "confirmation.txnError.trustlineNotAuthorized": {
       "message": "The destination is not authorized to receive this asset."
@@ -369,6 +393,24 @@
     },
     "confirmation.transaction.param.functionName": {
       "message": "Function"
+    },
+    "confirmation.transaction.param.deployer": {
+      "message": "Deployer"
+    },
+    "confirmation.transaction.param.salt": {
+      "message": "Salt"
+    },
+    "confirmation.transaction.param.executableType": {
+      "message": "Executable Type"
+    },
+    "confirmation.transaction.param.executableWasmHash": {
+      "message": "Executable Wasm Hash"
+    },
+    "confirmation.transaction.param.executableOwner": {
+      "message": "Executable Owner"
+    },
+    "confirmation.transaction.param.executableTag": {
+      "message": "Executable Tag"
     },
     "confirmation.transaction.param.arguments": {
       "message": "Arguments"

@@ -8,6 +8,7 @@ import { logger } from '../../../utils/logger';
 import {
   getInterfaceContextIfExists,
   scheduleBackgroundEvent,
+  cancelBackgroundEventIfExists,
 } from '../../../utils/snap';
 import { BackgroundEventMethod } from '../api';
 import {
@@ -28,11 +29,20 @@ jest.mock('../../../utils/snap', () => {
     ...actual,
     getInterfaceContextIfExists: jest.fn(),
     scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
+    cancelBackgroundEvent: jest.fn().mockResolvedValue(undefined),
+    cancelBackgroundEventIfExists: jest.fn().mockResolvedValue(undefined),
   };
 });
 
 describe('RefreshConfirmationContextHandler', () => {
   const baseContext = createConfirmationDataContext();
+
+  beforeEach(() => {
+    jest.mocked(scheduleBackgroundEvent).mockClear();
+    jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
+    jest.mocked(cancelBackgroundEventIfExists).mockClear();
+    jest.mocked(getInterfaceContextIfExists).mockReset();
+  });
 
   function createMockRefresher(
     key: ConfirmationContextRefresherKey,
@@ -64,16 +74,32 @@ describe('RefreshConfirmationContextHandler', () => {
   }
 
   it('schedules refresh confirmation context background event', async () => {
-    await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
-      confirmationContextRequestParams,
-      Duration.FiveSeconds,
-    );
+    const eventId =
+      await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+        confirmationContextRequestParams,
+        Duration.FiveSeconds,
+      );
 
+    expect(eventId).toBe('scheduled');
     expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
       method: BackgroundEventMethod.RefreshConfirmationContext,
       params: confirmationContextRequestParams,
       duration: Duration.FiveSeconds,
     });
+    expect(cancelBackgroundEventIfExists).not.toHaveBeenCalled();
+  });
+
+  it('cancels a prior event id when replaceEventId is provided', async () => {
+    await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
+      confirmationContextRequestParams,
+      Duration.OneSecond,
+      { replaceEventId: 'previous-event' },
+    );
+
+    expect(cancelBackgroundEventIfExists).toHaveBeenCalledWith(
+      'previous-event',
+    );
+    expect(scheduleBackgroundEvent).toHaveBeenCalled();
   });
 
   it('returns early when the interface no longer exists', async () => {
@@ -241,6 +267,7 @@ describe('RefreshConfirmationContextHandler', () => {
         ...latestContext,
         tokenPricesFetchStatus: FetchStatus.Fetched,
         extraField: 'patched',
+        backgroundEventId: 'scheduled',
       },
     });
     expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
@@ -429,7 +456,7 @@ describe('RefreshConfirmationContextHandler', () => {
     expect(updateConfirmation).toHaveBeenCalled();
   });
 
-  it('skips the security scan and does not reschedule when a refresher halts', async () => {
+  it('skips the security scan and does not reschedule when a refresher pauses', async () => {
     jest
       .mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
@@ -444,7 +471,7 @@ describe('RefreshConfirmationContextHandler', () => {
             scanFetchStatus: FetchStatus.Error,
           },
           reschedule: false,
-          halt: true,
+          pause: true,
         }),
       },
     );
@@ -501,5 +528,83 @@ describe('RefreshConfirmationContextHandler', () => {
       }),
     );
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
+  });
+
+  describe('ownership abort (Save during in-flight tick)', () => {
+    it('skips write and reschedule when backgroundEventId changed mid-tick', async () => {
+      const startedContext = createConfirmationDataContext({
+        backgroundEventId: 'tick-event-in-flight',
+      });
+      const afterSaveContext = createConfirmationDataContext({
+        backgroundEventId: 'save-replacement-event',
+        memo: 'exchange-ref',
+        memoScreen: false,
+      });
+      jest
+        .mocked(getInterfaceContextIfExists)
+        .mockResolvedValueOnce(startedContext)
+        .mockResolvedValueOnce(afterSaveContext);
+
+      const refresher = createMockRefresher(
+        ConfirmationContextRefresherKey.Prices,
+        {
+          refresh: jest.fn().mockResolvedValue({
+            result: { tokenPricesFetchStatus: FetchStatus.Fetched },
+            reschedule: true,
+          }),
+        },
+      );
+      const { handler, updateConfirmation } = setup([refresher]);
+
+      await handler.handle({
+        jsonrpc: '2.0',
+        id: '1',
+        method: BackgroundEventMethod.RefreshConfirmationContext,
+        params: confirmationContextRequestParams,
+      });
+
+      expect(refresher.refresh).toHaveBeenCalledTimes(1);
+      expect(updateConfirmation).not.toHaveBeenCalled();
+      expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
+    });
+
+    it('writes and reschedules when backgroundEventId is unchanged', async () => {
+      const context = createConfirmationDataContext({
+        backgroundEventId: 'same-chain-event',
+      });
+      jest
+        .mocked(getInterfaceContextIfExists)
+        .mockResolvedValueOnce(context)
+        .mockResolvedValueOnce(context);
+
+      const refresher = createMockRefresher(
+        ConfirmationContextRefresherKey.Prices,
+        {
+          refresh: jest.fn().mockResolvedValue({
+            result: { tokenPricesFetchStatus: FetchStatus.Fetched },
+            reschedule: true,
+          }),
+        },
+      );
+      const { handler, updateConfirmation } = setup([refresher]);
+
+      await handler.handle({
+        jsonrpc: '2.0',
+        id: '1',
+        method: BackgroundEventMethod.RefreshConfirmationContext,
+        params: confirmationContextRequestParams,
+      });
+
+      expect(updateConfirmation).toHaveBeenCalledTimes(1);
+      expect(scheduleBackgroundEvent).toHaveBeenCalledTimes(1);
+      expect(updateConfirmation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          updatedContext: expect.objectContaining({
+            backgroundEventId: 'scheduled',
+            tokenPricesFetchStatus: FetchStatus.Fetched,
+          }),
+        }),
+      );
+    });
   });
 });

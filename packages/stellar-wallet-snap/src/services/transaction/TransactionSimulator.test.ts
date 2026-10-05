@@ -562,6 +562,39 @@ describe('TransactionSimulator', () => {
       ).toThrow(RequiresMemoException);
     });
 
+    it('skips SEP-29 memo checks when RequiresMemoException is in skipExceptions', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 0,
+        assets: [],
+      });
+
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              source: wallet.address,
+              destination: destinationAddress,
+              asset: 'native',
+              amount: '10',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(
+        simulator.simulate(tx, onChainAccount, {
+          preloadedAccounts: [
+            destOnChainAccountRequiresMemo(destinationAddress),
+          ],
+          skipExceptions: [RequiresMemoException],
+        }),
+      ).toHaveLength(2);
+    });
+
     it('succeeds when destination requires memo and payment envelope has a text memo', () => {
       const wallet = getTestWallet();
       const onChainAccount = onChainFromMockBalances(wallet.address, '1', {

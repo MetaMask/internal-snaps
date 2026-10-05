@@ -1,9 +1,16 @@
-import type { WalletTx } from '@metamask/bitcoindevkit';
+import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import { SynchronizationError } from '@metamask/snap-networks-utils';
 import type { SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
-import type { BitcoinAccount, SnapClient, SyncResult } from '../entities';
+import type {
+  BitcoinAccount,
+  Logger,
+  SnapClient,
+  SyncResult,
+} from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 import { CronHandler, CronMethod } from './CronHandler';
 
@@ -16,12 +23,14 @@ describe('CronHandler', () => {
   const mockAccountUseCases = mock<AccountUseCases>();
   const mockSnapClient = mock<SnapClient>();
   const mockSnap = mock<SnapsProvider>();
+  const mockLogger = mock<Logger>();
 
   const handler = new CronHandler(
     mockAccountUseCases,
     mockSendFlowUseCases,
     mockSnapClient,
     mockSnap,
+    mockLogger,
   );
 
   beforeEach(() => {
@@ -42,6 +51,17 @@ describe('CronHandler', () => {
     const mockAccount2 = mock<BitcoinAccount>({ id: 'account-2' });
     const mockAccounts = [mockAccount1, mockAccount2];
     const request = { method: 'synchronizeAccounts' } as JsonRpcRequest;
+
+    beforeEach(() => {
+      // Transactions built from these accounts are classified as receives.
+      const receivedAmount = mock<Amount>();
+      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      for (const account of mockAccounts) {
+        jest
+          .mocked(account.sentAndReceived)
+          .mockReturnValue([receivedAmount, receivedAmount]);
+      }
+    });
 
     it('synchronizes all selected accounts and emits batched events', async () => {
       const mockResult1: SyncResult = {
@@ -105,6 +125,25 @@ describe('CronHandler', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
+    it('forwards resolved senders when emitting transaction events', async () => {
+      const mockTx = mock<WalletTx>();
+      const senders = new Map([['txid-1', ['bc1qsender']]]);
+      const mockResult1: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [mockTx],
+        transactionSenders: senders,
+      };
+      (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+      mockAccountUseCases.list.mockResolvedValue([mockAccount1]);
+      mockAccountUseCases.synchronize.mockResolvedValueOnce(mockResult1);
+
+      await handler.route(request);
+
+      expect(
+        mockSnapClient.emitAccountTransactionsUpdatedEvent,
+      ).toHaveBeenCalledWith(mockAccount1, [mockTx], senders);
+    });
+
     it('propagates errors from list', async () => {
       const error = new Error();
       (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
@@ -125,7 +164,60 @@ describe('CronHandler', () => {
       expect(mockAccountUseCases.synchronize).not.toHaveBeenCalled();
     });
 
-    it('throws error if some account fails but still emits for successful ones', async () => {
+    it('reports failed accounts but still emits for successful ones', async () => {
+      const mockResult: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [],
+      };
+      const syncError = new Error('error');
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+        'account-1',
+        'account-2',
+      ]);
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockResolvedValueOnce(mockResult)
+        .mockRejectedValueOnce(syncError);
+
+      await handler.route(request);
+
+      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledTimes(1);
+      const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
+      expect(error).toBeInstanceOf(SynchronizationError);
+      expect(error.message).toBe(
+        'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Error: error',
+      );
+
+      expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(
+        mockAccounts.length,
+      );
+      // Should still emit for successful account
+      expect(
+        mockSnapClient.emitAccountBalancesUpdatedEvent,
+      ).toHaveBeenCalledWith([mockAccounts[0]]);
+    });
+
+    it('reports every failed account with its reason when several fail', async () => {
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+        'account-1',
+        'account-2',
+      ]);
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockRejectedValueOnce(new Error('esplora down'))
+        .mockRejectedValueOnce(new Error('rate limited'));
+
+      await handler.route(request);
+
+      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledTimes(1);
+      const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
+      expect(error).toBeInstanceOf(SynchronizationError);
+      expect(error.message).toBe(
+        'synchronizeAccounts: Account synchronization failures (2 failed): account-1: Error: esplora down; account-2: Error: rate limited',
+      );
+    });
+
+    it('reports the wrapper error message as the failure reason', async () => {
       const mockResult: SyncResult = {
         account: mockAccount1,
         transactionsToNotify: [],
@@ -137,19 +229,46 @@ describe('CronHandler', () => {
       mockAccountUseCases.list.mockResolvedValue(mockAccounts);
       mockAccountUseCases.synchronize
         .mockResolvedValueOnce(mockResult)
-        .mockRejectedValueOnce(new Error('error'));
+        // Wrapped errors report the wrapper's message together with the
+        // cause's message.
+        .mockRejectedValueOnce(
+          new Error('Failed to synchronize account', {
+            cause: new Error('502 Bad Gateway'),
+          }),
+        );
 
-      await expect(handler.route(request)).rejects.toThrow(
-        'Account synchronization failures',
-      );
+      await handler.route(request);
 
-      expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(
-        mockAccounts.length,
+      const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
+      expect(error.message).toBe(
+        'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Error: Failed to synchronize account (Error: 502 Bad Gateway)',
       );
-      // Should still emit for successful account
-      expect(
-        mockSnapClient.emitAccountBalancesUpdatedEvent,
-      ).toHaveBeenCalledWith([mockAccounts[0]]);
+    });
+
+    it('stringifies non-error rejection reasons defensively', async () => {
+      const mockResult: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [],
+      };
+      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+        'account-1',
+        'account-2',
+      ]);
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockResolvedValueOnce(mockResult)
+        .mockRejectedValueOnce({
+          toString() {
+            throw new Error('hostile toString');
+          },
+        });
+
+      await handler.route(request);
+
+      const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [Error];
+      expect(error.message).toBe(
+        'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Unknown error',
+      );
     });
 
     describe('repair rescan', () => {
@@ -199,6 +318,7 @@ describe('CronHandler', () => {
           mockAccount1,
           txNew,
           'cron',
+          TransactionType.Receive,
         );
         expect(
           mockSnapClient.emitAccountBalancesUpdatedEvent,
@@ -263,6 +383,19 @@ describe('CronHandler', () => {
         expect(pruneOrder).toBeLessThan(scanOrder as number);
       });
 
+      it('does not scan when every pending account has been deleted', async () => {
+        mockSnapClient.getState.mockResolvedValue({ pending: ['gone'] });
+
+        await handler.route(request);
+
+        // The pending list is pruned to nothing, and the repair pass ends
+        // without scanning anything.
+        expect(mockSnapClient.setState).toHaveBeenCalledWith('rescanV1', {
+          pending: [],
+        });
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+      });
+
       it('does nothing when nothing is pending, short-circuiting before list()', async () => {
         mockSnapClient.getState.mockResolvedValue({ pending: [] });
 
@@ -287,11 +420,12 @@ describe('CronHandler', () => {
 
         expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
           expect.objectContaining({
-            name: 'SynchronizationError',
             message: 'Account repair scan failed',
             cause: scanError,
           }),
         );
+        // The failure is contained: the pending list is not shortened and
+        // the regular sync still runs.
         expect(mockSnapClient.setState).not.toHaveBeenCalledWith('rescanV1', {
           pending: ['account-2'],
         });
@@ -438,18 +572,88 @@ describe('CronHandler', () => {
 
       expect(result).toBeUndefined();
       expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
-      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'SynchronizationError',
-          message: 'Failed to synchronize 1 selected accounts',
-          cause: syncError,
-        }),
+      const [trackedError] = mockSnapClient.emitTrackingError.mock.calls[0] as [
+        Error,
+      ];
+      expect(trackedError).toBeInstanceOf(SynchronizationError);
+      expect(trackedError.message).toBe(
+        'syncSelectedAccounts: Account synchronization failures (1 failed): account-2: Error: scan failed',
       );
 
       // Should emit for successful account only
       expect(
         mockSnapClient.emitAccountBalancesUpdatedEvent,
       ).toHaveBeenCalledWith([mockAccounts[0]]);
+    });
+
+    it('reports every failed account with its reason when several fail', async () => {
+      const syncError1 = new Error('esplora down');
+      const syncError2 = new Error('rate limited');
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockRejectedValueOnce(syncError1)
+        .mockRejectedValueOnce(syncError2);
+
+      await handler.route(request);
+
+      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledTimes(1);
+      const [trackedError] = mockSnapClient.emitTrackingError.mock.calls[0] as [
+        Error,
+      ];
+      expect(trackedError).toBeInstanceOf(SynchronizationError);
+      expect(trackedError.message).toBe(
+        'syncSelectedAccounts: Account synchronization failures (2 failed): account-1: Error: esplora down; account-2: Error: rate limited',
+      );
+    });
+
+    it('reports the wrapper error message as the failure reason', async () => {
+      const mockResult: SyncResult = {
+        account: mockAccount1,
+        transactionsToNotify: [],
+      };
+      // Wrapped errors report the wrapper's message together with the
+      // cause's message.
+      const wrappedError = new Error('Failed to synchronize account', {
+        cause: new Error('502 Bad Gateway'),
+      });
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockResolvedValueOnce(mockResult)
+        .mockRejectedValueOnce(wrappedError);
+
+      await handler.route(request);
+
+      const [trackedError] = mockSnapClient.emitTrackingError.mock.calls[0] as [
+        Error,
+      ];
+      expect(trackedError.message).toBe(
+        'syncSelectedAccounts: Account synchronization failures (1 failed): account-2: Error: Failed to synchronize account (Error: 502 Bad Gateway)',
+      );
+    });
+
+    it('does not throw when reporting fails', async () => {
+      const syncError = new Error('scan failed');
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize
+        .mockRejectedValueOnce(syncError)
+        .mockResolvedValueOnce({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+      mockSnapClient.emitTrackingError.mockRejectedValueOnce(
+        new Error('tracking down'),
+      );
+
+      await handler.route(request);
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to report error',
+        expect.anything(),
+      );
+      // The successful account's events are still emitted.
+      expect(
+        mockSnapClient.emitAccountBalancesUpdatedEvent,
+      ).toHaveBeenCalledWith([mockAccount2]);
     });
   });
 
@@ -477,7 +681,7 @@ describe('CronHandler', () => {
       expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
     });
 
-    it('rejects all coalesced synchronizeAccounts callers on a shared failure', async () => {
+    it('reports failures once for coalesced synchronizeAccounts callers', async () => {
       const mockAccount = mock<BitcoinAccount>({ id: 'account-1' });
       (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
       mockAccountUseCases.list.mockResolvedValue([mockAccount]);
@@ -485,12 +689,13 @@ describe('CronHandler', () => {
         new Error('sync failed'),
       );
 
-      const first = handler.synchronizeAccounts();
-      const second = handler.synchronizeAccounts();
+      await Promise.all([
+        handler.synchronizeAccounts(),
+        handler.synchronizeAccounts(),
+      ]);
 
-      await expect(first).rejects.toThrow('Account synchronization failures');
-      await expect(second).rejects.toThrow('Account synchronization failures');
       expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(1);
+      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledTimes(1);
     });
 
     it('coalesces concurrent syncSelectedAccounts calls for the same accounts regardless of order', async () => {
@@ -587,6 +792,14 @@ describe('CronHandler', () => {
       mockAccountUseCases.fullScan.mockRejectedValue(error);
 
       await expect(handler.route(request)).rejects.toThrow(error);
+    });
+  });
+
+  describe('route', () => {
+    it('throws error if unrecognized method', async () => {
+      await expect(
+        handler.route({ method: 'randomMethod' } as JsonRpcRequest),
+      ).rejects.toThrow('Method not found: randomMethod');
     });
   });
 });

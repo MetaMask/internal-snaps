@@ -1,5 +1,6 @@
 import { Memo } from '@stellar/stellar-sdk';
 
+import { InvalidMemoException } from './exceptions';
 import { isMemoId, isMemoText, resolveStellarMemo } from './memo';
 
 describe('isMemoId', () => {
@@ -30,11 +31,13 @@ describe('isMemoText', () => {
 });
 
 describe('resolveStellarMemo', () => {
-  it('returns null for empty or whitespace-only values', () => {
+  it('returns null for empty, whitespace-only, or non-string values', () => {
     expect(resolveStellarMemo(undefined)).toBeNull();
     expect(resolveStellarMemo(null)).toBeNull();
     expect(resolveStellarMemo('')).toBeNull();
     expect(resolveStellarMemo('   ')).toBeNull();
+    expect(resolveStellarMemo(true)).toBeNull();
+    expect(resolveStellarMemo({ memo: 'x' })).toBeNull();
   });
 
   it('builds a text memo for non-numeric values', () => {
@@ -55,9 +58,18 @@ describe('resolveStellarMemo', () => {
     );
   });
 
-  it('throws when text memo exceeds 28 UTF-8 bytes', () => {
+  it('throws InvalidMemoException when text memo exceeds 28 UTF-8 bytes', () => {
     expect(() => resolveStellarMemo('é'.repeat(15))).toThrow(
-      'Memo must be 28 bytes or fewer',
+      InvalidMemoException,
     );
+  });
+
+  it('throws InvalidMemoException when the Stellar SDK rejects the memo', () => {
+    const idSpy = jest.spyOn(Memo, 'id').mockImplementation(() => {
+      throw new Error('sdk');
+    });
+
+    expect(() => resolveStellarMemo('123')).toThrow(InvalidMemoException);
+    idSpy.mockRestore();
   });
 });

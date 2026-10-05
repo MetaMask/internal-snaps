@@ -24,4 +24,13 @@ module.exports = {
   // `true` requires reworking those mocks first.
   resetMocks: false,
   restoreMocks: false,
+
+  coverageThreshold: {
+    global: {
+      branches: 69,
+      functions: 79.01,
+      lines: 87.2,
+      statements: 87.37,
+    },
+  },
 };

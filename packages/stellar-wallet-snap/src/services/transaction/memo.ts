@@ -1,5 +1,7 @@
 import { Memo } from '@stellar/stellar-sdk';
 
+import { InvalidMemoException } from './exceptions';
+
 const STELLAR_TEXT_MEMO_MAX_BYTES = 28;
 const STELLAR_MEMO_ID_MAX = 18446744073709551615n;
 const STELLAR_MEMO_ID_PATTERN = /^\d+$/u;
@@ -34,23 +36,33 @@ export function isMemoText(value: string): boolean {
  * All-digit uint64 values → {@link Memo.id}; otherwise {@link Memo.text}.
  * Empty / whitespace-only values are treated as absent.
  *
- * @param value - Raw memo string (e.g. from confirmation UI).
- * @returns SDK memo, or `null` when the value is empty / whitespace-only.
- * @throws {Error} When the value is neither a valid memo id nor text memo.
+ * Used on the transaction build path (TransactionBuilder), not only UI.
+ *
+ * @param value - Raw memo from confirmation UI or interface context.
+ * @returns SDK memo, or `null` when the value is missing, non-string, or whitespace-only.
+ * @throws {InvalidMemoException} When the value is neither a valid memo id nor text memo.
  */
-export function resolveStellarMemo(value?: string | null): Memo | null {
-  const trimmed = value?.trim() ?? '';
+export function resolveStellarMemo(value: unknown): Memo | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
   if (trimmed.length === 0) {
     return null;
   }
 
-  if (isMemoId(trimmed)) {
-    return Memo.id(trimmed);
-  }
+  try {
+    if (isMemoId(trimmed)) {
+      return Memo.id(trimmed);
+    }
 
-  if (isMemoText(trimmed)) {
-    return Memo.text(trimmed);
-  }
+    if (isMemoText(trimmed)) {
+      return Memo.text(trimmed);
+    }
 
-  throw new Error(`Memo must be ${STELLAR_TEXT_MEMO_MAX_BYTES} bytes or fewer`);
+    throw new Error('Invalid memo');
+  } catch {
+    throw new InvalidMemoException();
+  }
 }

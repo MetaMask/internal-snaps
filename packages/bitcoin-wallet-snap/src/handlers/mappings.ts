@@ -12,10 +12,15 @@ import type {
   KeyringAccount,
   Transaction as KeyringTransaction,
 } from '@metamask/keyring-api';
-import { FeeType, TransactionStatus } from '@metamask/keyring-api';
+import {
+  FeeType,
+  TransactionStatus,
+  TransactionType,
+} from '@metamask/keyring-api';
 
 import { canAccountTxidBeMalleated, networkToCurrencyUnit } from '../entities';
 import type { BitcoinAccount } from '../entities';
+import { mapToTransactionType } from '../entities/transaction';
 import type { Caip19Asset } from './caip';
 import { addressTypeToCaip, networkToCaip19, networkToScope } from './caip';
 
@@ -155,21 +160,25 @@ export function mapToTransactionFees(
  *
  * @param account - The account account.
  * @param walletTx - The Bitcoin transaction managed by this account.
+ * @param senders - Funding addresses of the transaction, resolved by the chain
+ * indexer. Only used for receives: Bitcoin inputs reference a previous outpoint
+ * rather than an address, so the counterparty cannot be derived locally.
  * @returns The Keyring transaction.
  */
 export function mapToTransaction(
   account: BitcoinAccount,
   walletTx: WalletTx,
+  senders: string[] = [],
 ): KeyringTransaction {
   const { tx, chain_position: chainPosition, txid } = walletTx;
   const { network } = account;
 
   const [events, timestamp, status] = mapToEvents(chainPosition);
-  const [sent] = account.sentAndReceived(tx);
-  const isSend = sent.to_btc() > 0;
+  const type = mapToTransactionType(account, tx);
+  const isSend = type === TransactionType.Send;
 
   const transaction: KeyringTransaction = {
-    type: isSend ? 'send' : 'receive',
+    type,
     id: txid.toString(),
     account: account.id,
     chain: networkToScope[network],
@@ -188,7 +197,9 @@ export function mapToTransaction(
   // - from: empty as irrelevant because we might be sending from multiple addresses. Sufficient to say "Sent from Bitcoin Account".
   // If it's a Receive transaction:
   // - to: all the outputs spending to addresses we own.
-  // - from: empty as irrevelant because we might have hundreds of inputs in a tx. Point to explorer for details.
+  // - from: the addresses that funded the transaction, so the counterparty can
+  //   be displayed instead of "Unavailable"/blank. Sourced from the chain
+  //   indexer (`senders`), since inputs only reference a previous outpoint.
   if (isSend) {
     for (const txout of tx.output) {
       // Only the change output is filtered out. Outputs to an address we own
@@ -209,6 +220,20 @@ export function mapToTransaction(
         }
       }
     }
+
+    transaction.from = [...new Set(senders)].map((address) => ({
+      address,
+      // Bitcoin has a single fee paid by the sender; the received amount is
+      // already surfaced through `to`. The counterparty only needs its
+      // address, so a zero amount keeps the movement shape valid without
+      // implying the sender spent nothing.
+      asset: {
+        amount: '0',
+        fungible: true,
+        unit: networkToCurrencyUnit[network],
+        type: networkToCaip19[network],
+      },
+    }));
   }
 
   return transaction;

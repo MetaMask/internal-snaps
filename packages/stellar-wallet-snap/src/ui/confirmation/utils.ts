@@ -22,8 +22,8 @@ import { FetchStatus } from './api';
 import type { FeeData } from './api';
 
 const NetworkName = {
-  [KnownCaip2ChainId.Mainnet]: 'Mainnet',
-  [KnownCaip2ChainId.Testnet]: 'Testnet',
+  [KnownCaip2ChainId.Mainnet]: 'Stellar Mainnet',
+  [KnownCaip2ChainId.Testnet]: 'Stellar Testnet',
 };
 
 /**
@@ -410,4 +410,40 @@ export function getParam<Response extends Json>(
 ): Response | null {
   const value = params.find((param) => param.key === key)?.value;
   return (value ?? null) as Response | null;
+}
+
+/**
+ * Reads a trimmed memo from confirmation interface context (UI-owned, not RPC params).
+ *
+ * @param context - The interface context.
+ * @returns Trimmed memo string, or `null` when missing/blank.
+ */
+export function getMemoFromContext(
+  context: Record<string, Json> | null | undefined,
+): string | null {
+  if (typeof context?.memo === 'string' && context.memo.trim()) {
+    return context.memo.trim();
+  }
+  return null;
+}
+
+/**
+ * Keys rendered above the flat param list (authorized address, contract, function).
+ */
+export const INVOCATION_HEADER_KEYS = new Set([
+  'authorizedAddress',
+  'contractId',
+  'functionName',
+]);
+
+/**
+ * Remaining confirmation rows after the invocation header.
+ *
+ * @param params - Mapped operation or authorization fields.
+ * @returns Params that should render line-by-line.
+ */
+export function getInvocationDetailParams(
+  params: ReadableOperationField[],
+): ReadableOperationField[] {
+  return params.filter((param) => !INVOCATION_HEADER_KEYS.has(param.key));
 }

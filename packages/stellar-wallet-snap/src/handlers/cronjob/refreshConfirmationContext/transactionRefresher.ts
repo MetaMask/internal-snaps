@@ -36,6 +36,8 @@ type TransactionValidationContext = ConfirmationDataContext &
     // origin is always present on the rendered confirmation context
     // (ConfirmationBaseProps.origin), but isn't part of the validation struct.
     origin?: string;
+    // UI-owned memo saved via MemoEdit (not on confirmSend RPC params).
+    memo?: string;
   };
 
 /**
@@ -99,7 +101,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
     ctx: ConfirmationDataContext,
   ): Promise<ConfirmationContextRefreshResult> {
     const validationCtx = ctx as TransactionValidationContext;
-    const { request, accountId, scope, securityScanRequest, origin } =
+    const { request, accountId, scope, securityScanRequest, origin, memo } =
       validationCtx;
     // Use the scan request address as Default if it is present.
     let accountAddress = securityScanRequest?.accountAddress ?? '';
@@ -139,6 +141,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
               assetId: request.params.assetId,
               destination: request.params.toAddress,
               amount,
+              memo,
             });
           break;
         }
@@ -188,7 +191,7 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
           scanFetchStatus: FetchStatus.Error,
         },
         reschedule: false,
-        halt: true,
+        pause: true,
       };
     }
   }

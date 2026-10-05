@@ -70,7 +70,7 @@ describe('ConfirmationAlerts', () => {
     });
     expect(
       getProps(getProps(component)?.children as ComponentOrElement)?.children,
-    ).toBe('This account requires a memo. Sends to it are not supported.');
+    ).toBe('This account requires a memo. Add a memo to continue.');
   });
 
   it('shows the validation banner (not the scan banner) when both would apply', () => {

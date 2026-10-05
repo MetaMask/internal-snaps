@@ -1,3 +1,4 @@
+import type { TransactionType } from '@metamask/keyring-api';
 import type { Json } from '@metamask/snaps-sdk';
 
 import type { TrackErrorFn } from '../../utils/errors';
@@ -44,29 +45,42 @@ export type AnalyticsServiceOptions<
   trackError: TrackErrorFn;
 };
 
-export type TransactionEventProperties = {
+/**
+ * Fields shared by every event tied to an account on a chain.
+ */
+export type AccountEventProperties = {
   origin: string;
   accountType: string;
   chainIdCaip: string;
 };
 
-export type TransactionFinalizedEventProperties = TransactionEventProperties & {
-  transactionStatus?: string;
-  transactionType?: string;
+/**
+ * Properties of a transaction lifecycle event.
+ *
+ * `transactionType` is the optional classification of the transaction.
+ *
+ * Security events intentionally do not extend this type: they are not tied to a
+ * transaction classification, so advertising `transactionType` there would let
+ * callers pass a value that is silently discarded.
+ */
+export type TransactionEventProperties = AccountEventProperties & {
+  transactionType?: `${TransactionType}`;
 };
 
-export type SecurityAlertDetectedEventProperties =
-  TransactionEventProperties & {
-    securityAlertResponse: string;
-    securityAlertReason: string | null;
-    securityAlertDescription: string;
-  };
+export type TransactionFinalizedEventProperties = TransactionEventProperties & {
+  transactionStatus?: string;
+};
 
-export type SecurityScanCompletedEventProperties =
-  TransactionEventProperties & {
-    scanStatus: string;
-    hasSecurityAlerts: boolean;
-  };
+export type SecurityAlertDetectedEventProperties = AccountEventProperties & {
+  securityAlertResponse: string;
+  securityAlertReason: string | null;
+  securityAlertDescription: string;
+};
+
+export type SecurityScanCompletedEventProperties = AccountEventProperties & {
+  scanStatus: string;
+  hasSecurityAlerts: boolean;
+};
 
 export type WebSocketConnectionClosedEventProperties = {
   origin: string;
@@ -143,6 +157,7 @@ export class AnalyticsService<
    * @param properties.origin - The origin of the request.
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - Optional transaction type.
    */
   async trackTransactionAdded(
     properties: TransactionEventProperties,
@@ -161,6 +176,7 @@ export class AnalyticsService<
    * @param properties.origin - The origin of the request.
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - Optional transaction type.
    */
   async trackTransactionRejected(
     properties: TransactionEventProperties,
@@ -179,6 +195,7 @@ export class AnalyticsService<
    * @param properties.origin - The origin of the request.
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - Optional transaction type.
    */
   async trackTransactionApproved(
     properties: TransactionEventProperties,
@@ -197,6 +214,7 @@ export class AnalyticsService<
    * @param properties.origin - The origin of the request.
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - Optional transaction type.
    */
   async trackTransactionSubmitted(
     properties: TransactionEventProperties,
@@ -320,16 +338,39 @@ export class AnalyticsService<
     });
   }
 
+  /**
+   * Track a transaction lifecycle event.
+   *
+   * Centralizes the shared payload so the common properties only have to change
+   * in one place. `transaction_type` is added only when the emitting Snap could
+   * classify the transaction.
+   *
+   * @param event - Event name.
+   * @param message - Human-readable event message.
+   * @param properties - Event properties.
+   * @param properties.origin - The origin of the request.
+   * @param properties.accountType - The type of account.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID.
+   * @param properties.transactionType - Optional transaction type.
+   */
   async #trackTransactionEvent(
     event: TransactionEventType,
     message: string,
-    { origin, accountType, chainIdCaip }: TransactionEventProperties,
+    {
+      origin,
+      accountType,
+      chainIdCaip,
+      transactionType,
+    }: TransactionEventProperties,
   ): Promise<void> {
     await this.trackEvent(event, {
       message,
       origin,
       account_type: accountType,
       chain_id_caip: chainIdCaip,
+      ...(transactionType === undefined
+        ? {}
+        : { transaction_type: transactionType }),
     });
   }
 }

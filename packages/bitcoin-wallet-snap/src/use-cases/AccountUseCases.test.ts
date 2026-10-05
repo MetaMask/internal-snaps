@@ -16,6 +16,7 @@ import {
   mnemonicPhraseToBytes,
   SLIP10Node as RealSlip10Node,
 } from '@metamask/key-tree';
+import { TransactionType } from '@metamask/keyring-api';
 import { Signer } from 'bip322-js';
 import { mock } from 'jest-mock-extended';
 
@@ -40,7 +41,11 @@ import type {
   CreateAccountParams,
   DiscoverAccountParams,
 } from './AccountUseCases';
-import { AccountUseCases } from './AccountUseCases';
+import {
+  AccountUseCases,
+  SENDER_LOOKUP_CONCURRENCY,
+  SENDER_RESOLUTION_LIMIT,
+} from './AccountUseCases';
 
 describe('AccountUseCases', () => {
   const mockLogger = mock<Logger>();
@@ -62,6 +67,21 @@ describe('AccountUseCases', () => {
     targetBlocksConfirmation,
     mockMetaProtocols,
   );
+
+  /**
+   * Stubs the sent amount on an account so that transactions built from it are
+   * classified as sends by `mapToTransactionType`.
+   *
+   * @param account - The account to stub.
+   * @param sentBtc - The sent amount in BTC.
+   */
+  const stubSentAmount = (account: BitcoinAccount, sentBtc = 1): void => {
+    const sentAmount = mock<Amount>();
+    jest.spyOn(sentAmount, 'to_btc').mockReturnValue(sentBtc);
+    jest
+      .mocked(account.sentAndReceived)
+      .mockReturnValue([sentAmount, mock<Amount>()]);
+  };
 
   describe('get', () => {
     it('returns account', async () => {
@@ -425,11 +445,19 @@ describe('AccountUseCases', () => {
   describe('synchronize', () => {
     const mockAccount = mock<BitcoinAccount>({
       id: 'some-id',
+      network: 'bitcoin',
       listTransactions: jest.fn(),
     });
 
     beforeEach(() => {
+      const receivedAmount = mock<Amount>();
+      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
       mockAccount.listTransactions.mockReturnValue([]);
+      mockAccount.sentAndReceived.mockReturnValue([
+        receivedAmount,
+        receivedAmount,
+      ]);
+      mockChain.getTransactionSenders.mockResolvedValue([]);
     });
 
     it('synchronizes', async () => {
@@ -443,6 +471,7 @@ describe('AccountUseCases', () => {
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: [],
+        transactionSenders: undefined,
       });
     });
 
@@ -470,11 +499,35 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTransaction,
         'test',
+        TransactionType.Receive,
       );
       expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: [mockTransaction],
+        transactionSenders: undefined,
+      });
+    });
+
+    it('resolves senders for newly received transactions', async () => {
+      const mockTransaction2 = mock<WalletTx>({
+        txid: { toString: () => 'txid-receive' },
+      });
+      mockAccount.listTransactions
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockTransaction2]);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const result = await useCases.synchronize(mockAccount, 'test');
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledWith(
+        'bitcoin',
+        'txid-receive',
+      );
+      expect(result).toStrictEqual({
+        account: mockAccount,
+        transactionsToNotify: [mockTransaction2],
+        transactionSenders: new Map([['txid-receive', ['bc1qsender']]]),
       });
     });
 
@@ -504,10 +557,12 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxConfirmed,
         'test',
+        TransactionType.Receive,
       );
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: [mockTxConfirmed],
+        transactionSenders: undefined,
       });
     });
 
@@ -564,6 +619,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxConfirmed,
         origin,
+        TransactionType.Receive,
       );
 
       // Check for TransactionReceived event for new transaction
@@ -572,6 +628,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxNew,
         origin,
+        TransactionType.Receive,
       );
 
       // Check for TransactionReorged event for reorged transaction
@@ -580,12 +637,14 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxReorged,
         origin,
+        TransactionType.Receive,
       );
 
       expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(3);
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: [mockTxConfirmed, mockTxNew, mockTxReorged],
+        transactionSenders: undefined,
       });
     });
 
@@ -609,10 +668,12 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTxReorged,
         'test',
+        TransactionType.Receive,
       );
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: [mockTxReorged],
+        transactionSenders: undefined,
       });
     });
 
@@ -696,6 +757,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockTransaction,
         'test',
+        TransactionType.Receive,
       );
 
       // error should be logged
@@ -707,6 +769,7 @@ describe('AccountUseCases', () => {
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: [mockTransaction],
+        transactionSenders: undefined,
       });
     });
   });
@@ -716,11 +779,22 @@ describe('AccountUseCases', () => {
       id: 'some-id',
     });
     const mockInscriptions = mock<Inscription[]>();
-    const mockTransactions = mock<WalletTx[]>();
+    const mockTransactions: WalletTx[] = [mock<WalletTx>()];
+
+    beforeEach(() => {
+      const receivedAmount = mock<Amount>();
+      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      mockAccount.sentAndReceived.mockReturnValue([
+        receivedAmount,
+        receivedAmount,
+      ]);
+      mockAccount.listTransactions.mockReturnValue([]);
+    });
 
     it('performs a full scan', async () => {
       mockAccount.listTransactions.mockReturnValue(mockTransactions);
       mockMetaProtocols.fetchInscriptions.mockResolvedValue(mockInscriptions);
+      mockChain.getTransactionSenders.mockResolvedValue([]);
 
       const result = await useCases.fullScan(mockAccount);
 
@@ -735,6 +809,7 @@ describe('AccountUseCases', () => {
       expect(result).toStrictEqual({
         account: mockAccount,
         transactionsToNotify: mockTransactions,
+        transactionSenders: undefined,
       });
     });
 
@@ -786,6 +861,241 @@ describe('AccountUseCases', () => {
       await testUseCases.fullScan(mockAccount);
 
       expect(mockMetaProtocols.fetchInscriptions).not.toHaveBeenCalled();
+    });
+
+    it('resolves senders for the scanned transactions', async () => {
+      const scannedTx = mock<WalletTx>({
+        txid: { toString: () => 'txid-receive' },
+      });
+      mockAccount.listTransactions.mockReturnValue([scannedTx]);
+      mockMetaProtocols.fetchInscriptions.mockResolvedValue(mockInscriptions);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const result = await useCases.fullScan(mockAccount);
+
+      expect(result.transactionSenders).toStrictEqual(
+        new Map([['txid-receive', ['bc1qsender']]]),
+      );
+    });
+
+    it('caps the sender lookups so the scan does not resolve the whole history', async () => {
+      const scannedTxs = Array.from(
+        { length: SENDER_RESOLUTION_LIMIT + 5 },
+        (_, index) =>
+          mock<WalletTx>({ txid: { toString: () => `txid-${index}` } }),
+      );
+      mockAccount.listTransactions.mockReturnValue(scannedTxs);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      await useCases.fullScan(mockAccount);
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(
+        SENDER_RESOLUTION_LIMIT,
+      );
+    });
+  });
+
+  describe('resolveTransactionSenders', () => {
+    const createTx = (txid: string): WalletTx =>
+      mock<WalletTx>({ txid: { toString: () => txid } });
+
+    const mockAccount2 = mock<BitcoinAccount>({
+      id: 'some-id',
+      network: 'bitcoin',
+    });
+
+    const mockSentAmount = mock<Amount>();
+    const mockReceivedAmount = mock<Amount>();
+
+    beforeEach(() => {
+      mockAccount2.sentAndReceived.mockReturnValue([
+        mockSentAmount,
+        mockReceivedAmount,
+      ]);
+    });
+
+    it('resolves the funding addresses of receives', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const result = await useCases.resolveTransactionSenders(mockAccount2, [
+        createTx('txid-receive'),
+      ]);
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledWith(
+        'bitcoin',
+        'txid-receive',
+      );
+      expect(result).toStrictEqual(new Map([['txid-receive', ['bc1qsender']]]));
+    });
+
+    it('does not query the indexer for sends', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0.5);
+
+      const result = await useCases.resolveTransactionSenders(mockAccount2, [
+        createTx('txid-send'),
+      ]);
+
+      expect(mockChain.getTransactionSenders).not.toHaveBeenCalled();
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined when receives have no senders', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockResolvedValue([]);
+
+      const result = await useCases.resolveTransactionSenders(mockAccount2, [
+        createTx('txid-receive'),
+      ]);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('skips a failed lookup without failing the others', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders
+        .mockRejectedValueOnce(new Error('indexer unavailable'))
+        .mockResolvedValueOnce(['bc1qsender']);
+
+      const result = await useCases.resolveTransactionSenders(mockAccount2, [
+        createTx('txid-fail'),
+        createTx('txid-ok'),
+      ]);
+
+      expect(result).toStrictEqual(new Map([['txid-ok', ['bc1qsender']]]));
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Failed to resolve transaction senders: %o',
+        expect.any(Error),
+      );
+    });
+
+    it('bounds concurrent indexer lookups', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+
+      let inFlight = 0;
+      let peak = 0;
+      mockChain.getTransactionSenders.mockImplementation(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await Promise.resolve();
+        inFlight -= 1;
+        return ['bc1qsender'];
+      });
+
+      const txs = Array.from(
+        { length: SENDER_LOOKUP_CONCURRENCY * 2 + 1 },
+        (_, index) => createTx(`txid-${index}`),
+      );
+
+      await useCases.resolveTransactionSenders(mockAccount2, txs);
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(txs.length);
+      expect(peak).toBeLessThanOrEqual(SENDER_LOOKUP_CONCURRENCY);
+      expect(peak).toBeGreaterThan(1);
+    });
+
+    it('shares the concurrency budget across accounts', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+
+      let inFlight = 0;
+      let peak = 0;
+      mockChain.getTransactionSenders.mockImplementation(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await Promise.resolve();
+        inFlight -= 1;
+        return ['bc1qsender'];
+      });
+
+      const mockOtherAccount = mock<BitcoinAccount>({
+        id: 'other-id',
+        network: 'bitcoin',
+      });
+      mockOtherAccount.sentAndReceived.mockReturnValue([
+        mockSentAmount,
+        mockReceivedAmount,
+      ]);
+
+      const txs = Array.from(
+        { length: SENDER_LOOKUP_CONCURRENCY * 2 },
+        (_, index) => createTx(`txid-${index}`),
+      );
+
+      // `synchronize` runs concurrently for every selected account, so two
+      // accounts resolving at once must not reach 2x the shared budget.
+      await Promise.all([
+        useCases.resolveTransactionSenders(mockAccount2, txs),
+        useCases.resolveTransactionSenders(mockOtherAccount, txs),
+      ]);
+
+      expect(peak).toBeLessThanOrEqual(SENDER_LOOKUP_CONCURRENCY);
+    });
+
+    it('releases the concurrency slot when a lookup fails', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockRejectedValue(
+        new Error('indexer unavailable'),
+      );
+
+      const failingTxs = Array.from(
+        { length: SENDER_LOOKUP_CONCURRENCY },
+        (_, index) => createTx(`txid-fail-${index}`),
+      );
+
+      await useCases.resolveTransactionSenders(mockAccount2, failingTxs);
+
+      // A limiter that leaks a slot on rejection would drain the budget and
+      // hang every later lookup.
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+      const result = await useCases.resolveTransactionSenders(mockAccount2, [
+        createTx('txid-after-failure'),
+      ]);
+
+      expect(result).toStrictEqual(
+        new Map([['txid-after-failure', ['bc1qsender']]]),
+      );
+    });
+
+    it('caps the lookups at the given limit', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const txs = [createTx('txid-1'), createTx('txid-2'), createTx('txid-3')];
+
+      const result = await useCases.resolveTransactionSenders(
+        mockAccount2,
+        txs,
+        2,
+      );
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(2);
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledWith(
+        'bitcoin',
+        'txid-1',
+      );
+      expect(mockChain.getTransactionSenders).not.toHaveBeenCalledWith(
+        'bitcoin',
+        'txid-3',
+      );
+      expect(result).toStrictEqual(
+        new Map([
+          ['txid-1', ['bc1qsender']],
+          ['txid-2', ['bc1qsender']],
+        ]),
+      );
+    });
+
+    it('resolves every receive when no limit is given', async () => {
+      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
+
+      const txs = Array.from({ length: SENDER_RESOLUTION_LIMIT + 5 }, (_, i) =>
+        createTx(`txid-${i}`),
+      );
+
+      await useCases.resolveTransactionSenders(mockAccount2, txs);
+
+      expect(mockChain.getTransactionSenders).toHaveBeenCalledTimes(txs.length);
     });
   });
 
@@ -888,6 +1198,7 @@ describe('AccountUseCases', () => {
       mockTxBuilder.finish.mockReturnValue(mockFilledPsbt);
       mockTxBuilder.unspendable.mockReturnThis();
       mockChain.getFeeEstimates.mockResolvedValue(mockFeeEstimates);
+      stubSentAmount(mockAccount);
     });
 
     it('throws error if account is not found', async () => {
@@ -954,6 +1265,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
@@ -1023,6 +1335,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
@@ -1107,6 +1420,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
 
       // Error should be logged
@@ -1899,6 +2213,7 @@ describe('AccountUseCases', () => {
       mockTxBuilder.unspendable.mockReturnThis();
       mockChain.getFeeEstimates.mockResolvedValue(mockFeeEstimates);
       mockRepository.getFrozenUTXOs.mockResolvedValue([]);
+      stubSentAmount(mockAccount);
     });
 
     it('throws error if there are multiple recipients', async () => {
@@ -1962,6 +2277,7 @@ describe('AccountUseCases', () => {
         mockAccount,
         mockWalletTx,
         'metamask',
+        TransactionType.Send,
       );
       expect(result.txid).toBe(mockTxid);
       expect(result.canBeMalleable).toBe(false);
@@ -2034,6 +2350,7 @@ describe('AccountUseCases', () => {
       mockTransaction.compute_txid.mockReturnValue(mockTxid);
       mockTransaction.clone.mockReturnThis();
       mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      stubSentAmount(mockAccount);
     });
 
     it('throws error if account is not found', async () => {

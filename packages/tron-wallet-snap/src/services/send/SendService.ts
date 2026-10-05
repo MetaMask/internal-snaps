@@ -6,11 +6,17 @@ import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
+import {
+  METAMASK_ORIGIN,
+  Networks,
+  TRACK_TX_INTERVAL,
+  ZERO,
+} from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
+import { mapRawTransactionType } from '../../utils/transactionType';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
@@ -382,7 +388,7 @@ export class SendService {
     scope,
     fromAccountId,
     transaction,
-    origin = 'MetaMask',
+    origin = METAMASK_ORIGIN,
   }: {
     scope: Network;
     fromAccountId: string;
@@ -416,6 +422,13 @@ export class SendService {
       });
 
     /**
+     * Resolve the classification before signing so the submitted event and the
+     * background tracker both carry it. A broadcast transaction has no
+     * account-balance context, so it is derived from the contract type.
+     */
+    const transactionType = mapRawTransactionType(freshTransaction.raw_data);
+
+    /**
      * Sign and send the transaction atomically after user confirmation
      */
     const signedTransaction = await tronWeb.trx.sign(freshTransaction);
@@ -429,6 +442,7 @@ export class SendService {
       origin,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType,
     });
 
     await this.#snapClient.scheduleBackgroundEvent({
@@ -438,6 +452,7 @@ export class SendService {
         scope,
         accountIds: [fromAccountId],
         attempt: 0,
+        transactionType,
       },
       duration: TRACK_TX_INTERVAL,
     });

@@ -20,5 +20,7 @@ export const {
   getPreferences,
   resolveInterface,
   scheduleBackgroundEvent,
+  cancelBackgroundEvent,
+  cancelBackgroundEventIfExists,
   Duration,
 } = actual;

@@ -1,14 +1,7 @@
-import type {
-  OnAssetHistoricalPriceHandler,
-  OnAssetsConversionHandler,
-  OnAssetsLookupHandler,
-  OnAssetsMarketDataHandler,
-  OnClientRequestHandler,
-  OnCronjobHandler,
-  OnKeyringRequestHandler,
-  OnRpcRequestHandler,
-  OnUserInputHandler,
-} from '@metamask/snaps-sdk';
+import {
+  noopAssetHandlers,
+  wrapSnapHandlers,
+} from '@metamask/snap-networks-utils';
 
 import {
   clientRequestHandler,
@@ -23,37 +16,25 @@ import { withCatchAndThrowSnapError } from './utils/errors';
  * Register all handlers
  */
 
-export const onClientRequest: OnClientRequestHandler = async ({ request }) =>
-  withCatchAndThrowSnapError(async () => clientRequestHandler.handle(request));
-
-export const onCronjob: OnCronjobHandler = async ({ request }) =>
-  withCatchAndThrowSnapError(async () => cronHandler.handle(request));
-
-export const onKeyringRequest: OnKeyringRequestHandler = async ({
-  origin,
-  request,
-}) =>
-  withCatchAndThrowSnapError(async () =>
+export const {
+  onClientRequest,
+  onCronjob,
+  onKeyringRequest,
+  onRpcRequest,
+  onUserInput,
+} = wrapSnapHandlers(withCatchAndThrowSnapError, {
+  onClientRequest: async ({ request }) => clientRequestHandler.handle(request),
+  onCronjob: async ({ request }) => cronHandler.handle(request),
+  onKeyringRequest: async ({ origin, request }) =>
     keyringHandler.handle(origin, request),
-  );
-
-export const onRpcRequest: OnRpcRequestHandler = async ({ origin, request }) =>
-  withCatchAndThrowSnapError(async () => rpcHandler.handle(origin, request));
-
-export const onUserInput: OnUserInputHandler = async (params) =>
-  withCatchAndThrowSnapError(async () => userInputHandler.handle(params));
-
-export const onAssetsLookup: OnAssetsLookupHandler = async () => ({
-  assets: {},
+  onRpcRequest: async ({ origin, request }) =>
+    rpcHandler.handle(origin, request),
+  onUserInput: async (params) => userInputHandler.handle(params),
 });
 
-export const onAssetsConversion: OnAssetsConversionHandler = async () => ({
-  conversionRates: {},
-});
-
-export const onAssetHistoricalPrice: OnAssetHistoricalPriceHandler = async () =>
-  null;
-
-export const onAssetsMarketData: OnAssetsMarketDataHandler = async () => ({
-  marketData: {},
-});
+export const {
+  onAssetsLookup,
+  onAssetsConversion,
+  onAssetHistoricalPrice,
+  onAssetsMarketData,
+} = noopAssetHandlers;

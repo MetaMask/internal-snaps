@@ -21,6 +21,7 @@ import {
   InvalidAmountForCreateAccountException,
   InvalidTrustlineException,
   RemoveTrustlineWithNonZeroBalanceException,
+  RequiresMemoException,
   TransactionValidationException,
   TrustlineExceedLimitException,
   TrustlineNotAuthorizedException,
@@ -35,7 +36,12 @@ import type {
   ValidateContext,
   AccountState,
 } from './api';
-import { getAccount, effectiveSource, getSpendableNative } from './utils';
+import {
+  getAccount,
+  effectiveSource,
+  getSpendableNative,
+  shouldSkipValidationException,
+} from './utils';
 
 type ClassicAssetId = KnownCaip19ClassicAssetId | KnownCaip19Slip44Id;
 
@@ -223,7 +229,10 @@ export class PaymentOPSimulator implements OperationSimulator {
     }
 
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
-    if (sourceId !== destId) {
+    if (
+      sourceId !== destId &&
+      !shouldSkipValidationException(ctx.skipExceptions, RequiresMemoException)
+    ) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
         destId,
@@ -312,7 +321,10 @@ export class PathPaymentOPSimulator implements OperationSimulator {
     );
 
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
-    if (sourceId !== destId) {
+    if (
+      sourceId !== destId &&
+      !shouldSkipValidationException(ctx.skipExceptions, RequiresMemoException)
+    ) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
         destId,

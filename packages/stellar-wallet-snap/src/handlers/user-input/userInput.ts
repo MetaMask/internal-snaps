@@ -8,7 +8,7 @@ import { createEventHandlers as createSignChangeTrustOptOutEvents } from '../../
 import { createEventHandlers as createSignMessageEvents } from '../../ui/confirmation/views/ConfirmSignMessage/events';
 import { createEventHandlers as createSignTransactionEvents } from '../../ui/confirmation/views/ConfirmSignTransaction/events';
 import { createEventHandlers as createMaliciousAcknowledgementEvents } from '../../ui/confirmation/views/MaliciousAcknowledgement/events';
-import { withCatchAndThrowSnapError } from '../../utils';
+import { createEventHandlers as createMemoEditEvents } from '../../ui/confirmation/views/MemoEdit/events';
 import type { UserInputUiEventHandler } from './api';
 
 export class UserInputHandler {
@@ -50,6 +50,7 @@ export class UserInputHandler {
       ...createSignChangeTrustOptOutEvents(),
       ...createConfirmSendTransactionEvents(),
       ...createMaliciousAcknowledgementEvents(),
+      ...createMemoEditEvents(),
     };
 
     /**
@@ -61,8 +62,6 @@ export class UserInputHandler {
       return;
     }
 
-    await withCatchAndThrowSnapError(async () =>
-      handler({ id, event, context }),
-    );
+    await handler({ id, event, context });
   }
 }

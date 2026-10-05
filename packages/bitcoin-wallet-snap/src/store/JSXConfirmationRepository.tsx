@@ -1,5 +1,6 @@
 import type { Psbt } from '@metamask/bitcoindevkit';
 import { Address as BdkAddress } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
 
 import type {
@@ -120,16 +121,28 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
       context,
     );
 
-    await this.#snapClient.trackTransactionAdded(account, origin);
+    await this.#snapClient.trackTransactionAdded(
+      account,
+      origin,
+      TransactionType.Send,
+    );
 
     const confirmed =
       await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
-      await this.#snapClient.trackTransactionRejected(account, origin);
+      await this.#snapClient.trackTransactionRejected(
+        account,
+        origin,
+        TransactionType.Send,
+      );
       throw new UserActionError('User canceled the confirmation');
     }
 
-    await this.#snapClient.trackTransactionApproved(account, origin);
+    await this.#snapClient.trackTransactionApproved(
+      account,
+      origin,
+      TransactionType.Send,
+    );
   }
 
   async insertSignPsbt(
@@ -200,16 +213,35 @@ export class JSXConfirmationRepository implements ConfirmationRepository {
       context,
     );
 
-    await this.#snapClient.trackTransactionAdded(account, origin);
+    // A PSBT that spends this account's inputs is a send. Anything else
+    // (a cosign, or a PSBT this account does not fund) stays unknown:
+    // signing it is not a receive.
+    const [sent] = account.sentAndReceived(psbt.unsigned_tx);
+    const transactionType =
+      sent.to_sat() > 0n ? TransactionType.Send : TransactionType.Unknown;
+
+    await this.#snapClient.trackTransactionAdded(
+      account,
+      origin,
+      transactionType,
+    );
 
     const confirmed =
       await this.#snapClient.displayConfirmation<boolean>(interfaceId);
     if (!confirmed) {
-      await this.#snapClient.trackTransactionRejected(account, origin);
+      await this.#snapClient.trackTransactionRejected(
+        account,
+        origin,
+        transactionType,
+      );
       throw new UserActionError('User canceled the confirmation');
     }
 
-    await this.#snapClient.trackTransactionApproved(account, origin);
+    await this.#snapClient.trackTransactionApproved(
+      account,
+      origin,
+      transactionType,
+    );
   }
 
   async #getExchangeRate(

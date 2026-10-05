@@ -1,4 +1,5 @@
-import type { WalletTx } from '@metamask/bitcoindevkit';
+import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import { getJsonError } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -68,6 +69,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Receive,
         ),
       ).toBeUndefined();
 
@@ -81,6 +83,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction received',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'receive',
               tx_id: 'txid-123',
             },
           },
@@ -111,6 +114,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Send,
         ),
       ).toBeUndefined();
 
@@ -124,6 +128,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap discovered missed transaction',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
               transaction_hash: 'txid-123',
             },
           },
@@ -155,6 +160,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Receive,
         ),
       ).toBeUndefined();
 
@@ -184,6 +190,7 @@ describe('SnapClientAdapter', () => {
           account,
           tx,
           'metamask',
+          TransactionType.Send,
         ),
       ).toBeUndefined();
     });
@@ -200,7 +207,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockResolvedValue(undefined);
 
       expect(
-        await snapClient.trackTransactionAdded(account, 'https://dapp.test'),
+        await snapClient.trackTransactionAdded(
+          account,
+          'https://dapp.test',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockRequest).toHaveBeenCalledWith({
@@ -213,6 +224,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction added',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
             },
           },
         },
@@ -231,7 +243,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockRejectedValue(trackingError);
 
       expect(
-        await snapClient.trackTransactionAdded(account, 'metamask'),
+        await snapClient.trackTransactionAdded(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -252,7 +268,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockResolvedValue(undefined);
 
       expect(
-        await snapClient.trackTransactionApproved(account, 'metamask'),
+        await snapClient.trackTransactionApproved(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockRequest).toHaveBeenCalledWith({
@@ -265,6 +285,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction approved',
               chain_id_caip: 'bip122:000000000933ea01ad0ee984209779ba',
               account_type: 'bip122:p2tr',
+              transaction_type: 'send',
             },
           },
         },
@@ -283,7 +304,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockRejectedValue(trackingError);
 
       expect(
-        await snapClient.trackTransactionApproved(account, 'metamask'),
+        await snapClient.trackTransactionApproved(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -304,7 +329,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockResolvedValue(undefined);
 
       expect(
-        await snapClient.trackTransactionRejected(account, 'metamask'),
+        await snapClient.trackTransactionRejected(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockRequest).toHaveBeenCalledWith({
@@ -317,6 +346,7 @@ describe('SnapClientAdapter', () => {
               message: 'Snap transaction rejected',
               chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
               account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
             },
           },
         },
@@ -335,7 +365,11 @@ describe('SnapClientAdapter', () => {
       mockRequest.mockRejectedValue(trackingError);
 
       expect(
-        await snapClient.trackTransactionRejected(account, 'metamask'),
+        await snapClient.trackTransactionRejected(
+          account,
+          'metamask',
+          TransactionType.Send,
+        ),
       ).toBeUndefined();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -424,6 +458,87 @@ describe('SnapClientAdapter', () => {
         'Failed to end trace',
         traceError,
       );
+    });
+  });
+
+  describe('emitAccountTransactionsUpdatedEvent', () => {
+    const createWalletTx = (txid: string): WalletTx =>
+      mock<WalletTx>({
+        txid: { toString: () => txid },
+        tx: { output: [] },
+        chain_position: { is_confirmed: false },
+      });
+
+    /**
+     * Creates an account whose transactions are treated as receives, so the
+     * mapper takes the counterparty path under test.
+     *
+     * @returns A mocked Bitcoin account receiving funds.
+     */
+    const createReceiveAccount = (): BitcoinAccount => {
+      const account = mock<BitcoinAccount>({
+        id: 'account-1',
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const receivedAmount = mock<Amount>();
+      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      account.sentAndReceived.mockReturnValue([receivedAmount, mock<Amount>()]);
+      account.isMine.mockReturnValue(true);
+      return account;
+    };
+
+    it('maps senders onto the emitted transactions', async () => {
+      const { snapClient, mockRequest } = setupTest();
+      mockRequest.mockResolvedValue(undefined);
+
+      await snapClient.emitAccountTransactionsUpdatedEvent(
+        createReceiveAccount(),
+        [createWalletTx('txid-receive')],
+        new Map([['txid-receive', ['bc1qsender']]]),
+      );
+
+      const emitted = mockRequest.mock.calls[0]?.[0] as {
+        params: {
+          params: {
+            transactions: Record<string, { from: { address: string }[] }[]>;
+          };
+        };
+      };
+      expect(
+        emitted.params.params.transactions['account-1']?.[0]?.from,
+      ).toStrictEqual([
+        {
+          address: 'bc1qsender',
+          asset: {
+            amount: '0',
+            fungible: true,
+            unit: 'BTC',
+            type: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+          },
+        },
+      ]);
+    });
+
+    it('emits transactions without a counterparty when no senders are given', async () => {
+      const { snapClient, mockRequest } = setupTest();
+      mockRequest.mockResolvedValue(undefined);
+
+      await snapClient.emitAccountTransactionsUpdatedEvent(
+        createReceiveAccount(),
+        [createWalletTx('txid-receive')],
+      );
+
+      const emitted = mockRequest.mock.calls[0]?.[0] as {
+        params: {
+          params: {
+            transactions: Record<string, { from: unknown[] }[]>;
+          };
+        };
+      };
+      expect(
+        emitted.params.params.transactions['account-1']?.[0]?.from,
+      ).toStrictEqual([]);
     });
   });
 });

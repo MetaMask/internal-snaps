@@ -147,6 +147,37 @@ export async function scheduleBackgroundEvent({
 }
 
 /**
+ * Cancels a previously scheduled background event.
+ *
+ * @param id - The background event id returned by {@link scheduleBackgroundEvent}.
+ */
+export async function cancelBackgroundEvent(id: string): Promise<void> {
+  await getSnapProvider().request({
+    method: 'snap_cancelBackgroundEvent',
+    params: { id },
+  });
+}
+
+/**
+ * Cancels a background event when an id is present. Ignores failures (e.g. the
+ * event already fired), matching the bitcoin send-flow replace pattern.
+ *
+ * @param id - Optional background event id to cancel.
+ */
+export async function cancelBackgroundEventIfExists(
+  id: string | undefined,
+): Promise<void> {
+  if (!id) {
+    return;
+  }
+  try {
+    await cancelBackgroundEvent(id);
+  } catch {
+    // Event may have already executed or been cancelled.
+  }
+}
+
+/**
  * Checks if an error is an "interface not found" error.
  * Detects JSON-RPC errors thrown when an interface has been dismissed by the user.
  *
