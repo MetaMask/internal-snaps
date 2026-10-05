@@ -55,16 +55,19 @@ export class TransactionMapper {
    * @param params.signature - The signature of the broadcast transaction.
    * @param params.account - The account that initiated the transaction.
    * @param params.scope - The scope of the transaction.
+   * @param params.transactionType - The classification resolved by the caller, if any.
    * @returns A minimal pending transaction in the keyring API format.
    */
   static createPendingTransaction({
     signature,
     account,
     scope,
+    transactionType,
   }: {
     signature: string;
     account: ExtendedKeyringAccount;
     scope: Network;
+    transactionType?: TransactionType;
   }): Transaction {
     const timestamp = Math.floor(Date.now() / 1000);
 
@@ -73,7 +76,7 @@ export class TransactionMapper {
       account: account.id,
       chain: scope,
       status: TransactionStatus.Unconfirmed,
-      type: TransactionType.Unknown,
+      type: transactionType ?? TransactionType.Unknown,
       timestamp,
       from: [
         {

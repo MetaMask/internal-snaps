@@ -344,11 +344,16 @@ export class WalletService {
       sendConfig,
     );
 
+    const resolvedTransactionType = resolveTransactionType({
+      origin,
+      transactionType,
+    });
+
     await this.#analyticsService.trackTransactionSubmitted({
       origin,
       accountType: account.type,
       chainIdCaip: scope,
-      transactionType: resolveTransactionType({ origin, transactionType }),
+      transactionType: resolvedTransactionType,
     });
 
     // Immediately save and emit a pending transaction, so the client can show
@@ -361,6 +366,7 @@ export class WalletService {
           signature,
           account,
           scope,
+          transactionType: resolvedTransactionType,
         }),
       );
     } catch (error) {
@@ -376,6 +382,7 @@ export class WalletService {
       options?.commitment ?? 'confirmed',
       scope,
       origin,
+      resolvedTransactionType,
     );
 
     const result = {

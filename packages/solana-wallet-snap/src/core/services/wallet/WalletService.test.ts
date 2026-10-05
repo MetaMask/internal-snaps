@@ -379,6 +379,7 @@ describe('WalletService', () => {
             'confirmed',
             scope,
             'https://metamask.io',
+            TransactionType.Unknown,
           );
         });
 
@@ -459,6 +460,29 @@ describe('WalletService', () => {
                 }),
               ],
             }),
+          );
+        });
+
+        it('carries the caller classification into the pending transaction and the monitor', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            undefined,
+            TransactionType.TokenApprove,
+          );
+
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({ type: TransactionType.TokenApprove }),
+          );
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            TransactionType.TokenApprove,
           );
         });
 
