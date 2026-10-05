@@ -1,5 +1,9 @@
 import type { KeyringAccount } from '@metamask/keyring-api';
-import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
+import {
+  BtcAccountType,
+  BtcScope,
+  TransactionType,
+} from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
 
@@ -93,6 +97,7 @@ describe('CronHandler', () => {
         message: 'Snap transaction received',
         chain_id_caip: BtcScope.Regtest,
         account_type: BtcAccountType.P2wpkh,
+        transaction_type: TransactionType.Receive,
         tx_id: txid,
       },
     });
@@ -116,6 +121,7 @@ describe('CronHandler', () => {
         message: 'Snap transaction received',
         chain_id_caip: BtcScope.Regtest,
         account_type: BtcAccountType.P2wpkh,
+        transaction_type: TransactionType.Receive,
         tx_id: txid,
       },
     });

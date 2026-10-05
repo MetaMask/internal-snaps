@@ -1,4 +1,8 @@
-import { FeeType, TrxAccountType } from '@metamask/keyring-api';
+import {
+  FeeType,
+  TransactionType,
+  TrxAccountType,
+} from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -14,6 +18,7 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FALLBACK_FEE,
   FEE_LIMIT,
+  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -480,6 +485,7 @@ describe('ClientRequestHandler', () => {
             scope,
             accountIds: [TEST_ACCOUNT_ID],
             attempt: 0,
+            transactionType: TransactionType.Unknown,
           },
           duration: TRACK_TX_INTERVAL,
         });
@@ -1962,9 +1968,10 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
       {
-        origin: 'MetaMask',
+        origin: METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: scope,
+        transactionType: TransactionType.Unknown,
       },
     );
 
@@ -1975,6 +1982,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         scope,
         accountIds: [TEST_ACCOUNT_ID],
         attempt: 0,
+        transactionType: TransactionType.Unknown,
       },
       duration: TRACK_TX_INTERVAL,
     });

@@ -4,6 +4,7 @@ import type {
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -1059,10 +1060,12 @@ describe('SendFlowUseCases', () => {
       expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
         mockAccount,
         'metamask',
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
         mockAccount,
         'metamask',
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
     });
@@ -1077,6 +1080,7 @@ describe('SendFlowUseCases', () => {
       expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
         mockAccount,
         'metamask',
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
     });

@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Emit `transaction_type` and `transaction_status` on the transaction lifecycle events, with `transaction_type` derived from the contract type (so a flow can be attributed by combining `origin` and `transaction_type`) and `transaction_status` reporting the on-chain outcome on `Transaction Finalized`. ([#399](https://github.com/MetaMask/internal-snaps/pull/399), [#405](https://github.com/MetaMask/internal-snaps/pull/405))
+
+### Changed
+
+- Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
+  - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
+
+### Fixed
+
+- Show "Estimated changes are not available" instead of "No estimated changes" when the transaction scan returns an error result, such as for a malformed transaction ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
+- Report the MetaMask origin as lowercase `metamask` instead of `MetaMask` for MetaMask-initiated operations, so the origin matches the value used by the other non-EVM snaps and granted to the keyring methods, and so transaction scan requests are attributed to `https://metamask.io`. The confirmation UI keeps displaying `MetaMask`. ([#392](https://github.com/MetaMask/internal-snaps/pull/392))
+- Show "Estimated changes are not available" instead of "No estimated changes" when the transaction scan returns an error result, such as for a malformed transaction ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
+
+## [4.0.0]
+
+### Added
+
 - Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#265](https://github.com/MetaMask/internal-snaps/pull/265))
 - Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` for `signTransaction` confirmations ([#333](https://github.com/MetaMask/internal-snaps/pull/333))
   - Only dApp-initiated transaction confirmations were affected; the unified send flow already emitted these events.
@@ -83,7 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...HEAD
+[4.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.2.0...@metamask/tron-wallet-snap@4.0.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...@metamask/tron-wallet-snap@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.0.0...@metamask/tron-wallet-snap@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@2.0.0...@metamask/tron-wallet-snap@3.0.0

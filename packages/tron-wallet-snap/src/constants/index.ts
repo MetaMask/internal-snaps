@@ -1,6 +1,14 @@
 import { BigNumber } from 'bignumber.js';
 
 export const ZERO = BigNumber(0);
+
+/**
+ * Origin used for operations initiated by MetaMask itself (unified send,
+ * background tracking), as opposed to a dApp origin. Must stay lowercase to
+ * match the origin granted to the keyring methods and the other non-EVM snaps.
+ */
+export const METAMASK_ORIGIN = 'metamask';
+
 export const ACCOUNT_ACTIVATION_FEE_TRX = BigNumber(1);
 export const MEMO_FEE_TRX = BigNumber(1);
 export const SUN_IN_TRX = 1_000_000;

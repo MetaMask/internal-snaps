@@ -112,6 +112,12 @@ export {
   SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export { EstimatedChanges } from './ui/EstimatedChanges/EstimatedChanges';
+export type {
+  EstimatedChangesAsset,
+  EstimatedChangesLabels,
+  EstimatedChangesProps,
+} from './ui/EstimatedChanges/EstimatedChanges';
 export { InMemoryCache } from './utils/cache/InMemoryCache';
 export { StateCache } from './utils/cache/StateCache';
 export { useCache } from './utils/cache/useCache';

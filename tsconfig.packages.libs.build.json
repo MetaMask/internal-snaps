@@ -15,5 +15,5 @@
     "noEmit": false,
     "sourceMap": true
   },
-  "exclude": ["**/*.test.ts", "**/tests"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/tests"]
 }
