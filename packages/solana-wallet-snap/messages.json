@@ -70,6 +70,8 @@
   "confirmation.validationErrorSubtitle": "If you approve this request, a third party known for scams will take all your assets.",
   "confirmation.validationErrorLearnMore": "Learn more",
   "confirmation.validationErrorSecurityAdviced": "Security advice by",
+  "confirmation.securityScanInProgressTitle": "Checking for security issues",
+  "confirmation.securityScanInProgressMessage": "This usually takes a few seconds.",
   "confirmation.signMessage.title": "Sign message",
   "confirmation.signMessage.message": "Message",
   "confirmation.signIn.title": "Sign-in request",
