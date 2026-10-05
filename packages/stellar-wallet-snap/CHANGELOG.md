@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#386](https://github.com/MetaMask/internal-snaps/pull/386))
 
+### Fixed
+
+- Hide send-confirmation memo controls for SEP-41 assets and skip SEP-29 RequiresMemo recovery on `invokeHostFunction` transactions ([#385](https://github.com/MetaMask/internal-snaps/pull/385))
+
 ## [1.1.0]
 
 ### Added
