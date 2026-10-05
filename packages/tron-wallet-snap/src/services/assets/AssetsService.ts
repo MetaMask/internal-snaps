@@ -85,7 +85,9 @@ export class AssetsService {
 
   /**
    * Fetches live assets and balances for the given account from the chain,
-   * for a single scope.
+   * for a single scope. Used by the asset synchronization flow, which stays
+   * migration-aware: when the migration is active this only returns
+   * snap-owned assets.
    *
    * @param account - The account to fetch live assets for.
    * @param scope - The scope to fetch live assets for.
@@ -104,7 +106,9 @@ export class AssetsService {
 
   /**
    * Fetches live assets and balances for the given account across all its
-   * scopes from the chain.
+   * scopes from the chain. This always hits TronGrid through the Snap
+   * adapter regardless of the assets migration state, so the keyring
+   * methods get a consistent response no matter the feature flag.
    *
    * @param account - The account to fetch live assets for.
    * @returns The live assets.
@@ -112,7 +116,10 @@ export class AssetsService {
   async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
     const results = await Promise.all(
       account.scopes.map((scope) =>
-        this.fetchAccountAssetsByScope(account, scope as Network),
+        this.#snapAdapter.fetchAssetsAndBalancesForAccount(
+          scope as Network,
+          account,
+        ),
       ),
     );
 

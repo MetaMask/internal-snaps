@@ -377,31 +377,109 @@ async function withAssetsService<ReturnValue>(
 
 describe('AssetsService', () => {
   describe('fetchAccountAssets', () => {
-    it('fetches live assets for all the account scopes', async () => {
-      await withAssetsService(async ({ assetsService }) => {
-        const mainnetAsset = {
-          assetType: KnownCaip19Id.TrxMainnet,
-        } as AssetEntity;
-        const shastaAsset = {
-          assetType: KnownCaip19Id.TrxShasta,
-        } as AssetEntity;
-        const account: KeyringAccount = {
-          ...mockAccount,
-          scopes: [Network.Mainnet, Network.Shasta],
-        };
-        const spy = jest
-          .spyOn(assetsService, 'fetchAccountAssetsByScope')
-          .mockResolvedValueOnce([mainnetAsset])
-          .mockResolvedValueOnce([shastaAsset]);
+    it('fetches live assets from the chain for all the account scopes', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+        }) => {
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+          mockTrongridApiClient.getAccountInfoByAddress
+            .mockResolvedValueOnce(
+              createMockTronAccount({
+                address: mockAccount.address,
+                balance: 1_000_000,
+              }),
+            )
+            .mockResolvedValueOnce(
+              createMockTronAccount({
+                address: mockAccount.address,
+                balance: 2_000_000,
+              }),
+            );
 
-        expect(await assetsService.fetchAccountAssets(account)).toStrictEqual([
-          mainnetAsset,
-          shastaAsset,
-        ]);
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenNthCalledWith(1, account, Network.Mainnet);
-        expect(spy).toHaveBeenNthCalledWith(2, account, Network.Shasta);
-      });
+          const account: KeyringAccount = {
+            ...mockAccount,
+            scopes: [Network.Mainnet, Network.Shasta],
+          };
+
+          const assets = await assetsService.fetchAccountAssets(account);
+
+          expect(
+            mockTrongridApiClient.getAccountInfoByAddress,
+          ).toHaveBeenCalledTimes(2);
+          expect(
+            mockTrongridApiClient.getAccountInfoByAddress,
+          ).toHaveBeenNthCalledWith(1, Network.Mainnet, mockAccount.address);
+          expect(
+            mockTrongridApiClient.getAccountInfoByAddress,
+          ).toHaveBeenNthCalledWith(2, Network.Shasta, mockAccount.address);
+          expect(findAsset(assets, KnownCaip19Id.TrxMainnet)?.rawAmount).toBe(
+            '1000000',
+          );
+          expect(findAsset(assets, KnownCaip19Id.TrxShasta)?.rawAmount).toBe(
+            '2000000',
+          );
+        },
+      );
+    });
+
+    it('always hits the chain through the Snap adapter regardless of the migration stage', async () => {
+      await withAssetsService(
+        async ({
+          assetsService,
+          mockTrongridApiClient,
+          mockTronHttpClient,
+          mockPriceApiClient,
+          setMigrationStage,
+        }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            createMockTronAccount({
+              address: mockAccount.address,
+              balance: 1_000_000,
+              trc20: [{ TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' }],
+            }),
+          );
+          mockTronHttpClient.getAccountResources.mockResolvedValue(
+            emptyAccountResources,
+          );
+
+          const usdtAssetId =
+            `${String(Network.Mainnet)}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
+          mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue(
+            createSpotPrices({
+              [KnownCaip19Id.TrxMainnet]: {
+                id: KnownCaip19Id.TrxMainnet,
+                price: 1.0,
+              },
+              [usdtAssetId]: { id: usdtAssetId, price: 1.0 },
+            }),
+          );
+
+          const assets = await assetsService.fetchAccountAssets(mockAccount);
+
+          // Fungible assets are returned even though the migration is
+          // active: the keyring methods must not depend on the flag state.
+          expect(
+            assets.some(
+              (asset: AssetEntity) =>
+                asset.assetType === KnownCaip19Id.TrxMainnet,
+            ),
+          ).toBe(true);
+          expect(
+            assets.some(
+              (asset: AssetEntity) => asset.assetType === usdtAssetId,
+            ),
+          ).toBe(true);
+        },
+      );
     });
   });
 
