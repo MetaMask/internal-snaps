@@ -73,7 +73,9 @@ export const ConfirmSendTransaction = ({
   // scan or re-validation is still in flight.
   const shouldDisableMemoEdit =
     isFetchInProgress(scanFetchStatus) ||
-    isFetchInProgress(transactionsFetchStatus);
+    isFetchInProgress(transactionsFetchStatus) ||
+    (transactionsFetchStatus === FetchStatus.Error &&
+      errorMessage !== 'confirmation.txnError.requiresMemo');
   const memo =
     typeof contextMemo === 'string' && contextMemo.trim()
       ? contextMemo.trim()
