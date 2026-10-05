@@ -4,11 +4,6 @@ import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { AssetsProvider } from '@metamask/snap-networks-utils';
 
-import type { AccountResources } from '../../../clients/tron-http';
-import {
-  TrongridAccountNotFoundError,
-  TrongridHttpError,
-} from '../../../clients/trongrid/errors';
 import { KnownCaip19Id, Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
@@ -31,18 +26,6 @@ const mockAccount: KeyringAccount = {
   options: {},
   methods: [],
   scopes: [Network.Mainnet],
-};
-
-const emptyAccountResources: AccountResources = {
-  freeNetUsed: 0,
-  freeNetLimit: 0,
-  NetLimit: 0,
-  TotalNetLimit: 0,
-  TotalNetWeight: 0,
-  tronPowerUsed: 0,
-  tronPowerLimit: 0,
-  TotalEnergyLimit: 0,
-  TotalEnergyWeight: 0,
 };
 
 /**
@@ -129,41 +112,27 @@ function createCoreAssetsAdapterContext(): {
       | 'getAccountAssetByID'
       | 'getAccountAssetsByIDs'
       | 'getAccountAssetsByScope'
+      | 'getAssets'
     >
   >;
-  mockGetAddressInfo: jest.Mock;
-  mockGetAddressResources: jest.Mock;
-  mockGetAddressStakingRewards: jest.Mock;
 } {
   const mockAssetsProvider = {
     getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
     getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
     getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+    getAssets: jest.fn().mockResolvedValue({}),
   };
-
-  const mockGetAddressInfo = jest
-    .fn()
-    .mockRejectedValue(new TrongridAccountNotFoundError());
-  const mockGetAddressResources = jest
-    .fn()
-    .mockResolvedValue(emptyAccountResources);
-  const mockGetAddressStakingRewards = jest.fn().mockResolvedValue(0);
 
   const adapter = new CoreAssetsAdapter({
     getAccountAssetByID: mockAssetsProvider.getAccountAssetByID,
     getAccountAssetsByIDs: mockAssetsProvider.getAccountAssetsByIDs,
     getAccountAssetsByScope: mockAssetsProvider.getAccountAssetsByScope,
-    getAddressInfo: mockGetAddressInfo,
-    getAddressResources: mockGetAddressResources,
-    getAddressStakingRewards: mockGetAddressStakingRewards,
+    getAssets: mockAssetsProvider.getAssets,
   });
 
   return {
     adapter,
     mockAssetsProvider,
-    mockGetAddressInfo,
-    mockGetAddressResources,
-    mockGetAddressStakingRewards,
   };
 }
 
@@ -342,104 +311,65 @@ describe('CoreAssetsAdapter', () => {
     });
   });
 
-  describe('fetchAssetsAndBalancesForAccount', () => {
-    it('returns zero snap-owned assets when the account is inactive', async () => {
-      await withCoreAssetsAdapter(async ({ adapter, mockGetAddressInfo }) => {
-        mockGetAddressInfo.mockRejectedValue(
-          new TrongridAccountNotFoundError(),
-        );
+  describe('fetchAccountAssets', () => {
+    it('fetches through the controller with forced update and no server cache', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        await adapter.fetchAccountAssets(mockAccount);
 
-        const assets = await adapter.fetchAssetsAndBalancesForAccount(
-          Network.Mainnet,
-          mockAccount,
+        expect(mockAssetsProvider.getAssets).toHaveBeenCalledWith(
+          [expect.objectContaining({ id: ACCOUNT_ID })],
+          {
+            chainIds: [Network.Mainnet],
+            forceUpdate: true,
+            bypassServerCache: true,
+          },
         );
-
-        const assetTypes = assets.map((asset) => asset.assetType);
-        const expectedAssetTypes = [
-          KnownCaip19Id.TrxStakedForBandwidthMainnet,
-          KnownCaip19Id.TrxStakedForEnergyMainnet,
-          KnownCaip19Id.TrxReadyForWithdrawalMainnet,
-          KnownCaip19Id.TrxStakingRewardsMainnet,
-          KnownCaip19Id.TrxInLockPeriodMainnet,
-          KnownCaip19Id.BandwidthMainnet,
-          KnownCaip19Id.MaximumBandwidthMainnet,
-          KnownCaip19Id.EnergyMainnet,
-          KnownCaip19Id.MaximumEnergyMainnet,
-        ];
-        expect(assetTypes).toHaveLength(9);
-        expect([...assetTypes].sort()).toStrictEqual(
-          [...expectedAssetTypes].sort(),
-        );
-        expect(assetTypes).not.toContain(KnownCaip19Id.TrxMainnet);
-        expect(assets.every((asset) => asset.rawAmount === '0')).toBe(true);
       });
     });
 
-    it('throws when account info fails with an HTTP error', async () => {
-      await withCoreAssetsAdapter(async ({ adapter, mockGetAddressInfo }) => {
-        mockGetAddressInfo.mockRejectedValue(new TrongridHttpError(500));
+    it('maps the fetched controller assets for the account', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        const mainnetAsset = createControllerAsset({ id: MAINNET_ASSET_ID });
+        const usdtAsset = createControllerAsset({
+          id: USDT_ASSET_ID,
+          symbol: 'USDT',
+        });
+        mockAssetsProvider.getAssets.mockResolvedValue({
+          [ACCOUNT_ID]: {
+            [MAINNET_ASSET_ID]: mainnetAsset,
+            [USDT_ASSET_ID]: usdtAsset,
+          },
+        } as never);
 
-        await expect(
-          adapter.fetchAssetsAndBalancesForAccount(
-            Network.Mainnet,
-            mockAccount,
-          ),
-        ).rejects.toThrow(TrongridHttpError);
+        const assets = await adapter.fetchAccountAssets(mockAccount);
+
+        expect(assets.map((asset) => asset.assetType).sort()).toStrictEqual(
+          [MAINNET_ASSET_ID, USDT_ASSET_ID].sort(),
+        );
+        expect(
+          assets.every((asset) => asset.keyringAccountId === ACCOUNT_ID),
+        ).toBe(true);
       });
     });
 
-    it('throws when account resources request rejects', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockGetAddressResources }) => {
-          mockGetAddressResources.mockRejectedValue(
-            new Error('HTTP error! status: 500'),
-          );
+    it('returns an empty list when the controller returns nothing for the account', async () => {
+      await withCoreAssetsAdapter(async ({ adapter }) => {
+        const assets = await adapter.fetchAccountAssets(mockAccount);
 
-          await expect(
-            adapter.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
-            ),
-          ).rejects.toThrow('HTTP error! status: 500');
-        },
-      );
+        expect(assets).toStrictEqual([]);
+      });
     });
 
-    it('throws when staking rewards request rejects', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockGetAddressStakingRewards }) => {
-          mockGetAddressStakingRewards.mockRejectedValue(
-            new Error('HTTP error! status: 503'),
-          );
+    it('rejects when the controller fetch fails', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        mockAssetsProvider.getAssets.mockRejectedValue(
+          new Error('fetch failed'),
+        );
 
-          await expect(
-            adapter.fetchAssetsAndBalancesForAccount(
-              Network.Mainnet,
-              mockAccount,
-            ),
-          ).rejects.toThrow('HTTP error! status: 503');
-        },
-      );
-    });
-
-    it('maps staking rewards from a successful reward request', async () => {
-      await withCoreAssetsAdapter(
-        async ({ adapter, mockGetAddressStakingRewards }) => {
-          mockGetAddressStakingRewards.mockResolvedValue(1_000_000);
-
-          const assets = await adapter.fetchAssetsAndBalancesForAccount(
-            Network.Mainnet,
-            mockAccount,
-          );
-          const stakingRewards = assets.find(
-            (asset) =>
-              asset.assetType === KnownCaip19Id.TrxStakingRewardsMainnet,
-          );
-
-          expect(stakingRewards?.rawAmount).toBe('1000000');
-          expect(stakingRewards?.uiAmount).toBe('1');
-        },
-      );
+        await expect(adapter.fetchAccountAssets(mockAccount)).rejects.toThrow(
+          'fetch failed',
+        );
+      });
     });
   });
 
