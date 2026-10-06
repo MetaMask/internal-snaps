@@ -25,10 +25,7 @@ import type { CoreAsset } from '../assets/api';
 import { AccountNotActivatedException } from '../network';
 import type { AccountLedgerMeta, NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
-import {
-  OnChainAccountBalanceNotAvailableException,
-  OnChainAccountSep41BalanceNotFoundException,
-} from './exceptions';
+import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountRepository } from './OnChainAccountRepository';
 import {
@@ -118,12 +115,11 @@ export class OnChainAccountService {
    * @param scope - CAIP-2 network to load the account from (Horizon `loadAccount`).
    * @param options - Optional extra loads.
    * @param options.resolveWithFullBalance - When true, also read SEP-41 balances for the
-   * persisted catalog and bind them onto the Horizon account.
+   * persisted catalog and bind them onto the Horizon account. Unread cells (`null` or missing)
+   * are skipped. A zero balance is bound.
    * @returns Loaded {@link OnChainAccount} for simulation, fees, and sequence.
    * @throws {AccountNotActivatedException} When the account is not funded (from {@link NetworkService.loadOnChainAccount}).
    * @throws {DerivedAccountAddressMismatchException} When loaded id does not match `accountAddress`.
-   * @throws {OnChainAccountBalanceNotAvailableException} When `resolveWithFullBalance` is set and a
-   * SEP-41 cell comes back unread (`null` or missing). A zero balance is bound.
    * @throws {OnChainAccountSep41BalanceNotFoundException} When `resolveWithFullBalance` is set and
    * mainnet returns no SEP-41 map for the account. An empty catalog, or testnet, leaves SEP-41
    * unbound and does not throw.
@@ -150,10 +146,10 @@ export class OnChainAccountService {
 
   /**
    * Reads SEP-41 balances for the persisted catalog and binds them onto `onChainAccount`.
+   * Unread cells (`null` or missing) are skipped.
    *
    * @param onChainAccount - Horizon account to attach SEP-41 entries to.
    * @param scope - CAIP-2 network.
-   * @throws {OnChainAccountBalanceNotAvailableException} When a SEP-41 cell is `null` or missing.
    * @throws {OnChainAccountSep41BalanceNotFoundException} When mainnet returns no map for the account.
    */
   async #bindSep41Balances(
@@ -209,13 +205,13 @@ export class OnChainAccountService {
 
   /**
    * Binds one fetched SEP-41 balance, including zero, onto an account.
+   * Returns without binding when the cell was not read.
    *
    * @param params - Account, one SEP-41 id, its balance, and its metadata.
    * @param params.onChainAccount - Horizon account that receives the entry.
    * @param params.assetId - SEP-41 asset id to bind.
    * @param params.balance - Balance in smallest units. `null` or `undefined` means the cell was not read.
    * @param params.assetMetadata - Metadata for `assetId`, including symbol and decimals.
-   * @throws {OnChainAccountBalanceNotAvailableException} When the cell is `null` or missing.
    */
   #setSep41BalanceForAccount({
     onChainAccount,
@@ -228,9 +224,11 @@ export class OnChainAccountService {
     balance: BigNumber | null | undefined;
     assetMetadata: StellarAssetMetadata;
   }): void {
-    // Unread cell, not a zero balance. Omitting it would look like the token was removed.
+    // A cell can fail without failing the batch, for example reading a
+    // trustline asset through its SEP-41 contract when the account is not
+    // authorized to hold it. Skip that asset and keep the rest.
     if (balance === null || balance === undefined) {
-      throw new OnChainAccountBalanceNotAvailableException(assetId);
+      return;
     }
 
     const { decimals } = assetMetadata.units[0];

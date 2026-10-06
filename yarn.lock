@@ -3813,7 +3813,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/stellar-wallet-snap@workspace:packages/stellar-wallet-snap"
   dependencies:
-    "@metamask/assets-controller": "npm:^13.0.0"
+    "@metamask/assets-controller": "npm:^15.0.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"

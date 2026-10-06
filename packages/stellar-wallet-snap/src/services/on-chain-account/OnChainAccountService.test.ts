@@ -29,10 +29,7 @@ import {
   horizonSource,
   mockOnChainAccountService,
 } from './__mocks__/onChainAccount.fixtures';
-import {
-  OnChainAccountBalanceNotAvailableException,
-  OnChainAccountSep41BalanceNotFoundException,
-} from './exceptions';
+import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountSerializableFull } from './OnChainAccountSerializable';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
@@ -348,7 +345,7 @@ describe('OnChainAccountService', () => {
       getSep41AssetBalancesSpy.mockRestore();
     });
 
-    it('throws when a requested SEP-41 balance cell was not read', async () => {
+    it('skips an unread SEP-41 cell and binds the rest', async () => {
       const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
       const loadedAcc = createMockAccountWithBalances(
         signer.publicKey(),
@@ -385,20 +382,19 @@ describe('OnChainAccountService', () => {
         });
 
       const { onChainAccountService } = mockOnChainAccountService();
-      await expect(
-        onChainAccountService.resolveOnChainAccount(
-          signer.publicKey(),
-          KnownCaip2ChainId.Mainnet,
-          { resolveWithFullBalance: true },
-        ),
-      ).rejects.toThrow(
-        new OnChainAccountBalanceNotAvailableException(usdc.assetId),
+      const result = await onChainAccountService.resolveOnChainAccount(
+        signer.publicKey(),
+        KnownCaip2ChainId.Mainnet,
+        { resolveWithFullBalance: true },
       );
+
+      expect(result.getRawAsset(USDC_SEP41)).toBeUndefined();
+      expect(result.getRawAsset(USDT_SEP41)?.balance.toFixed()).toBe('1');
       fetchSep41Spy.mockRestore();
       getSep41AssetBalancesSpy.mockRestore();
     });
 
-    it('throws when a requested SEP-41 asset id is missing from the balance map', async () => {
+    it('skips a SEP-41 asset id missing from the balance map and binds the rest', async () => {
       const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
       const loadedAcc = createMockAccountWithBalances(
         signer.publicKey(),
@@ -434,15 +430,14 @@ describe('OnChainAccountService', () => {
         });
 
       const { onChainAccountService } = mockOnChainAccountService();
-      await expect(
-        onChainAccountService.resolveOnChainAccount(
-          signer.publicKey(),
-          KnownCaip2ChainId.Mainnet,
-          { resolveWithFullBalance: true },
-        ),
-      ).rejects.toThrow(
-        new OnChainAccountBalanceNotAvailableException(usdt.assetId),
+      const result = await onChainAccountService.resolveOnChainAccount(
+        signer.publicKey(),
+        KnownCaip2ChainId.Mainnet,
+        { resolveWithFullBalance: true },
       );
+
+      expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe('1');
+      expect(result.getRawAsset(USDT_SEP41)).toBeUndefined();
       fetchSep41Spy.mockRestore();
       getSep41AssetBalancesSpy.mockRestore();
     });
@@ -485,8 +480,9 @@ describe('OnChainAccountService', () => {
     it('returns null when no snapshot exists for the keyring id and scope', async () => {
       const keyringAccountId = globalThis.crypto.randomUUID();
       const accountAddress = Keypair.random().publicKey();
-      const { onChainAccountService, onChainAccountRepository } =
+      const { onChainAccountService, onChainAccountRepository, assetsService } =
         mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
       const findByAccountIdSpy = jest.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
@@ -520,8 +516,9 @@ describe('OnChainAccountService', () => {
         KnownCaip2ChainId.Mainnet,
       ) as OnChainAccountSerializableFull;
 
-      const { onChainAccountService, onChainAccountRepository } =
+      const { onChainAccountService, onChainAccountRepository, assetsService } =
         mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
       const findByAccountIdSpy = jest.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
@@ -747,7 +744,9 @@ describe('OnChainAccountService', () => {
           ) as OnChainAccountSerializableFull,
         ),
       }));
-      const { onChainAccountService } = mockOnChainAccountService();
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
       const synchronizeSpy = jest.spyOn(
         OnChainAccountSynchronizeService.prototype,
         'synchronize',
