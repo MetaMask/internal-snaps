@@ -19,7 +19,6 @@ import {
  * 4. An incoming credit is a receive.
  * 5. Every other shape, including a Soroban invoke, is `unknown`.
  *
- *
  * @param transaction - The transaction to classify.
  * @param accountAddress - The Stellar address the classification is relative to.
  * @returns The classification to report.

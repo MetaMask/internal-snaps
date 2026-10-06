@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
 
-### Changed
-
 ## [1.1.1]
 
 ### Fixed
