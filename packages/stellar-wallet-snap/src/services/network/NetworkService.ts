@@ -40,7 +40,7 @@ import { InvalidInvokeContractStructureException } from '../transaction/exceptio
 import { Transaction } from '../transaction/Transaction';
 import { assertInvokeHostFunctionSoleOperation } from '../transaction/utils';
 import { extractAssetDataFromContractData } from '../transaction/xdrParser';
-import type { AssetDataResponse } from './api';
+import type { AccountLedgerMeta, AssetDataResponse } from './api';
 import { KnownRpcError } from './api';
 import {
   AccountNotActivatedException,
@@ -361,6 +361,53 @@ export class NetworkService {
       return this.#throwError({
         error,
         fallbackError: 'Failed to get account',
+      });
+    }
+  }
+
+  /**
+   * Loads account ledger metadata (sequence, subentries, sponsorship counts) from Soroban RPC.
+   *
+   * @param accountAddress - The Stellar account address (public key).
+   * @param scope - The CAIP-2 chain ID.
+   * @returns Sequence, subentry count, sponsorship counters, and native stroops.
+   * @throws {AccountNotActivatedException} If the account does not exist on the network.
+   * @throws {NetworkServiceException} If the RPC request fails.
+   */
+  async getAccountLedgerMetadata(
+    accountAddress: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<AccountLedgerMeta> {
+    try {
+      const client = this.#getRpcClient(scope);
+      const entry = await client.getAccountEntry(accountAddress);
+
+      const accountExt = entry.ext;
+
+      const isAccountSupportSponsorship =
+        accountExt.type === 'v1' && accountExt.v1.ext.type === 'v2';
+
+      // legacy account does not have sponsorship counters, so we return 0 for both.
+      const sponsorship = isAccountSupportSponsorship
+        ? accountExt.v1.ext.v2
+        : { numSponsoring: 0, numSponsored: 0 };
+
+      return {
+        sequenceNumber: entry.seqNum.toString(),
+        subentryCount: entry.numSubEntries,
+        numSponsoring: sponsorship.numSponsoring,
+        numSponsored: sponsorship.numSponsored,
+        rawNativeBalance: entry.balance.toString(),
+      };
+    } catch (error: unknown) {
+      if (isAccountNotFoundError(error, accountAddress)) {
+        throw new AccountNotActivatedException(accountAddress, scope, {
+          cause: error,
+        });
+      }
+      return this.#throwError({
+        error,
+        fallbackError: `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}`,
       });
     }
   }
