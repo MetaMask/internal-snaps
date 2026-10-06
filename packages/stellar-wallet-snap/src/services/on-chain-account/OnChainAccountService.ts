@@ -1,7 +1,8 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
-import { KnownCaip19Sep41AssetId, KnownCaip2ChainId } from '../../api';
+import { KnownCaip2ChainId } from '../../api';
+import type { KnownCaip19Sep41AssetId } from '../../api';
 import {
   entries,
   getAssetReference,
@@ -115,14 +116,12 @@ export class OnChainAccountService {
    * @param scope - CAIP-2 network to load the account from (Horizon `loadAccount`).
    * @param options - Optional extra loads.
    * @param options.resolveWithFullBalance - When true, also read SEP-41 balances for the
-   * persisted catalog and bind them onto the Horizon account. Unread cells (`null` or missing)
-   * are skipped. A zero balance is bound.
+   * persisted catalog and bind them onto the Horizon account.
    * @returns Loaded {@link OnChainAccount} for simulation, fees, and sequence.
    * @throws {AccountNotActivatedException} When the account is not funded (from {@link NetworkService.loadOnChainAccount}).
    * @throws {DerivedAccountAddressMismatchException} When loaded id does not match `accountAddress`.
    * @throws {OnChainAccountSep41BalanceNotFoundException} When `resolveWithFullBalance` is set and
-   * mainnet returns no SEP-41 map for the account. An empty catalog, or testnet, leaves SEP-41
-   * unbound and does not throw.
+   * mainnet returns no SEP-41 map for the account.
    */
   async resolveOnChainAccount(
     accountAddress: string,
@@ -136,17 +135,18 @@ export class OnChainAccountService {
       scope,
     );
 
+    assertSameAddress(accountAddress, loaded.accountId);
+
     if (options?.resolveWithFullBalance) {
       await this.#bindSep41Balances(loaded, scope);
     }
 
-    assertSameAddress(accountAddress, loaded.accountId);
     return loaded;
   }
 
   /**
    * Reads SEP-41 balances for the persisted catalog and binds them onto `onChainAccount`.
-   * Unread cells (`null` or missing) are skipped.
+   * Empty balances record (`null` or missing) are skipped.
    *
    * @param onChainAccount - Horizon account to attach SEP-41 entries to.
    * @param scope - CAIP-2 network.
@@ -163,13 +163,13 @@ export class OnChainAccountService {
       KnownCaip19Sep41AssetId,
       StellarAssetMetadata
     > = {};
-
-    for (const asset of sep41Assets) {
-      const { assetId } = asset;
-      if (isSep41Id(assetId)) {
-        sep41AssetIds.push(assetId);
-        assetMetadataByAssetId[assetId] = asset;
+    for (const assetMetadata of sep41Assets) {
+      const { assetId } = assetMetadata;
+      if (!isSep41Id(assetId)) {
+        continue;
       }
+      sep41AssetIds.push(assetId);
+      assetMetadataByAssetId[assetId] = assetMetadata;
     }
 
     if (sep41AssetIds.length === 0) {
@@ -205,7 +205,7 @@ export class OnChainAccountService {
 
   /**
    * Binds one fetched SEP-41 balance, including zero, onto an account.
-   * Returns without binding when the cell was not read.
+   * Returns without binding when the balance is `null` or `undefined`.
    *
    * @param params - Account, one SEP-41 id, its balance, and its metadata.
    * @param params.onChainAccount - Horizon account that receives the entry.

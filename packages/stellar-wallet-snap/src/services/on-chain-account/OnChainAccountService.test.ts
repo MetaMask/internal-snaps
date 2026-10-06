@@ -32,6 +32,7 @@ import {
 import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountSerializableFull } from './OnChainAccountSerializable';
+import { OnChainAccountService } from './OnChainAccountService';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
 
 jest.mock('../../utils/logger');
@@ -51,6 +52,10 @@ describe('OnChainAccountService', () => {
     loadOnChainAccountSpy: jest.spyOn(
       NetworkService.prototype,
       'loadOnChainAccount',
+    ),
+    getSep41AssetBalancesSpy: jest.spyOn(
+      NetworkService.prototype,
+      'getSep41AssetBalances',
     ),
   });
 
@@ -115,34 +120,96 @@ describe('OnChainAccountService', () => {
   });
 
   describe('resolveOnChainAccount', () => {
-    it('returns loaded account when Horizon account id matches the requested address', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const keyringAccount = generateStellarKeyringAccount(
-        globalThis.crypto.randomUUID(),
-        signer.publicKey(),
-        'entropy-source-1',
-        0,
-      );
+    type Sep41BalancesByAccount = Awaited<
+      ReturnType<NetworkService['getSep41AssetBalances']>
+    >;
+
+    type ResolveOnChainAccountSetup = {
+      accountAddress: string;
+      scope: KnownCaip2ChainId;
+      loadOnChainAccountSpy: jest.SpyInstance;
+      getSep41AssetBalancesSpy: jest.SpyInstance;
+      onChainAccountService: OnChainAccountService;
+    };
+
+    const setupResolveOnChainAccount = ({
+      scope = KnownCaip2ChainId.Mainnet,
+      loadedAccountId,
+      sep41Catalog,
+      stubSep41Catalog = false,
+      sep41Balances,
+      sep41BalancesError,
+    }: {
+      scope?: KnownCaip2ChainId;
+      loadedAccountId?: string;
+      sep41Catalog?: ReturnType<typeof getMockSep41Assets>;
+      stubSep41Catalog?: boolean;
+      sep41Balances?: (accountAddress: string) => Sep41BalancesByAccount;
+      sep41BalancesError?: Error;
+    } = {}): ResolveOnChainAccountSetup => {
+      const accountAddress = generateStellarAddress();
+      const horizonAccountId = loadedAccountId ?? accountAddress;
       const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
+        horizonAccountId,
         '1',
         DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
       );
       const loaded = new OnChainAccount(
         loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
+        scope,
+        horizonSource(loadedAcc, scope),
       );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
+      const { loadOnChainAccountSpy, getSep41AssetBalancesSpy } =
+        getNetworkServiceSpies();
       loadOnChainAccountSpy.mockResolvedValue(loaded);
 
+      const fetchSep41Spy = jest.spyOn(
+        AssetMetadataService.prototype,
+        'fetchSep41AssetsOrSyncOnce',
+      );
+      const shouldStubSep41 =
+        stubSep41Catalog ||
+        sep41Catalog !== undefined ||
+        sep41Balances !== undefined ||
+        sep41BalancesError !== undefined;
+      if (shouldStubSep41) {
+        fetchSep41Spy.mockResolvedValue(sep41Catalog ?? getMockSep41Assets());
+      }
+      if (sep41BalancesError !== undefined) {
+        getSep41AssetBalancesSpy.mockRejectedValue(sep41BalancesError);
+      } else if (sep41Balances !== undefined) {
+        getSep41AssetBalancesSpy.mockResolvedValue(
+          sep41Balances(accountAddress),
+        );
+      }
+
       const { onChainAccountService } = mockOnChainAccountService();
+
+      return {
+        accountAddress,
+        scope,
+        loadOnChainAccountSpy,
+        getSep41AssetBalancesSpy,
+        onChainAccountService,
+      };
+    };
+
+    it('returns loaded account when Horizon account id matches the requested address', async () => {
+      const { accountAddress, loadOnChainAccountSpy, onChainAccountService } =
+        setupResolveOnChainAccount();
+      const keyringAccount = generateStellarKeyringAccount(
+        globalThis.crypto.randomUUID(),
+        accountAddress,
+        'entropy-source-1',
+        0,
+      );
+
       const result = await onChainAccountService.resolveOnChainAccount(
         keyringAccount.address,
         KnownCaip2ChainId.Mainnet,
       );
 
-      expect(result.accountId).toStrictEqual(signer.publicKey());
+      expect(result.accountId).toStrictEqual(accountAddress);
       expect(loadOnChainAccountSpy).toHaveBeenCalledWith(
         keyringAccount.address,
         KnownCaip2ChainId.Mainnet,
@@ -150,77 +217,41 @@ describe('OnChainAccountService', () => {
     });
 
     it('throws when loaded account id does not match the requested address', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const other = Keypair.random();
-      const loadedAcc = createMockAccountWithBalances(
-        other.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
+      const { accountAddress, scope, onChainAccountService } =
+        setupResolveOnChainAccount({
+          loadedAccountId: generateStellarAddress(),
+        });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       await expect(
-        onChainAccountService.resolveOnChainAccount(
-          signer.publicKey(),
-          KnownCaip2ChainId.Mainnet,
-        ),
+        onChainAccountService.resolveOnChainAccount(accountAddress, scope),
       ).rejects.toThrow(DerivedAccountAddressMismatchException);
     });
 
     it('binds SEP-41 balances including zero when resolveWithFullBalance is set', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const sep41Assets = getMockSep41Assets();
-      const [usdc, usdt] = sep41Assets;
-      if (
-        usdc === undefined ||
-        usdt === undefined ||
-        !isSep41Id(usdc.assetId) ||
-        !isSep41Id(usdt.assetId)
-      ) {
-        throw new Error('expected SEP-41 mock assets');
-      }
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue(sep41Assets);
-      const getSep41AssetBalancesSpy = jest
-        .spyOn(NetworkService.prototype, 'getSep41AssetBalances')
-        .mockResolvedValue({
-          [signer.publicKey()]: {
-            [usdc.assetId]: new BigNumber(10_000_000),
-            [usdt.assetId]: new BigNumber(0),
+      const {
+        accountAddress,
+        scope,
+        onChainAccountService,
+        getSep41AssetBalancesSpy,
+      } = setupResolveOnChainAccount({
+        sep41Balances: (address) => ({
+          [address]: {
+            [USDC_SEP41]: new BigNumber(10_000_000),
+            [USDT_SEP41]: new BigNumber(0),
           },
-        });
+        }),
+      });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       const result = await onChainAccountService.resolveOnChainAccount(
-        signer.publicKey(),
-        KnownCaip2ChainId.Mainnet,
+        accountAddress,
+        scope,
         { resolveWithFullBalance: true },
       );
 
       expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
-        accounts: [signer.publicKey()],
-        assetIds: [usdc.assetId, usdt.assetId],
-        scope: KnownCaip2ChainId.Mainnet,
+        accounts: [accountAddress],
+        assetIds: [USDC_SEP41, USDT_SEP41],
+        scope,
       });
       expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe(
         '10000000',
@@ -228,251 +259,122 @@ describe('OnChainAccountService', () => {
       expect(result.getAsset(USDC_SEP41)?.symbol).toBe('USDC');
       expect(result.getRawAsset(USDT_SEP41)?.balance.toFixed()).toBe('0');
       expect(result.getAsset(USDT_SEP41)).toBeUndefined();
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
 
     it('returns the Horizon account when the SEP-41 catalog is empty', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue([]);
-      const getSep41AssetBalancesSpy = jest.spyOn(
-        NetworkService.prototype,
-        'getSep41AssetBalances',
-      );
+      const {
+        accountAddress,
+        scope,
+        onChainAccountService,
+        getSep41AssetBalancesSpy,
+      } = setupResolveOnChainAccount({
+        sep41Catalog: [],
+      });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       const result = await onChainAccountService.resolveOnChainAccount(
-        signer.publicKey(),
-        KnownCaip2ChainId.Mainnet,
+        accountAddress,
+        scope,
         { resolveWithFullBalance: true },
       );
 
-      expect(result.accountId).toStrictEqual(signer.publicKey());
+      expect(result.accountId).toStrictEqual(accountAddress);
       expect(getSep41AssetBalancesSpy).not.toHaveBeenCalled();
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
 
     it('returns the Horizon account when testnet has no SEP-41 balance map', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Testnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Testnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const sep41Assets = getMockSep41Assets();
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue(sep41Assets);
-      const getSep41AssetBalancesSpy = jest.spyOn(
-        NetworkService.prototype,
-        'getSep41AssetBalances',
-      );
+      const {
+        accountAddress,
+        scope,
+        onChainAccountService,
+        getSep41AssetBalancesSpy,
+      } = setupResolveOnChainAccount({
+        scope: KnownCaip2ChainId.Testnet,
+        stubSep41Catalog: true,
+      });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       const result = await onChainAccountService.resolveOnChainAccount(
-        signer.publicKey(),
-        KnownCaip2ChainId.Testnet,
+        accountAddress,
+        scope,
         { resolveWithFullBalance: true },
       );
 
       expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
-        accounts: [signer.publicKey()],
-        assetIds: sep41Assets.map((asset) => asset.assetId),
-        scope: KnownCaip2ChainId.Testnet,
+        accounts: [accountAddress],
+        assetIds: [USDC_SEP41, USDT_SEP41],
+        scope,
       });
-      expect(result.accountId).toStrictEqual(signer.publicKey());
+      expect(result.accountId).toStrictEqual(accountAddress);
       expect(result.getRawAsset(USDC_SEP41)).toBeUndefined();
       expect(result.getRawAsset(USDT_SEP41)).toBeUndefined();
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
 
     it('throws when mainnet returns no SEP-41 balance map for the account', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const sep41Assets = getMockSep41Assets();
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue(sep41Assets);
-      const getSep41AssetBalancesSpy = jest
-        .spyOn(NetworkService.prototype, 'getSep41AssetBalances')
-        .mockResolvedValue({});
+      const { accountAddress, scope, onChainAccountService } =
+        setupResolveOnChainAccount({
+          sep41Balances: () => ({}),
+        });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       await expect(
-        onChainAccountService.resolveOnChainAccount(
-          signer.publicKey(),
-          KnownCaip2ChainId.Mainnet,
-          { resolveWithFullBalance: true },
-        ),
+        onChainAccountService.resolveOnChainAccount(accountAddress, scope, {
+          resolveWithFullBalance: true,
+        }),
       ).rejects.toThrow(
-        new OnChainAccountSep41BalanceNotFoundException(signer.publicKey()),
+        new OnChainAccountSep41BalanceNotFoundException(accountAddress),
       );
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
 
     it('skips an unread SEP-41 cell and binds the rest', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const sep41Assets = getMockSep41Assets();
-      const [usdc, usdt] = sep41Assets;
-      if (
-        usdc === undefined ||
-        usdt === undefined ||
-        !isSep41Id(usdc.assetId) ||
-        !isSep41Id(usdt.assetId)
-      ) {
-        throw new Error('expected SEP-41 mock assets');
-      }
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue(sep41Assets);
-      const getSep41AssetBalancesSpy = jest
-        .spyOn(NetworkService.prototype, 'getSep41AssetBalances')
-        .mockResolvedValue({
-          [signer.publicKey()]: {
-            [usdc.assetId]: null,
-            [usdt.assetId]: new BigNumber(1),
-          },
+      const { accountAddress, scope, onChainAccountService } =
+        setupResolveOnChainAccount({
+          sep41Balances: (address) => ({
+            [address]: {
+              [USDC_SEP41]: null,
+              [USDT_SEP41]: new BigNumber(1),
+            },
+          }),
         });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       const result = await onChainAccountService.resolveOnChainAccount(
-        signer.publicKey(),
-        KnownCaip2ChainId.Mainnet,
+        accountAddress,
+        scope,
         { resolveWithFullBalance: true },
       );
 
       expect(result.getRawAsset(USDC_SEP41)).toBeUndefined();
       expect(result.getRawAsset(USDT_SEP41)?.balance.toFixed()).toBe('1');
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
 
     it('skips a SEP-41 asset id missing from the balance map and binds the rest', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const sep41Assets = getMockSep41Assets();
-      const [usdc, usdt] = sep41Assets;
-      if (
-        usdc === undefined ||
-        usdt === undefined ||
-        !isSep41Id(usdc.assetId) ||
-        !isSep41Id(usdt.assetId)
-      ) {
-        throw new Error('expected SEP-41 mock assets');
-      }
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue(sep41Assets);
-      const getSep41AssetBalancesSpy = jest
-        .spyOn(NetworkService.prototype, 'getSep41AssetBalances')
-        .mockResolvedValue({
-          [signer.publicKey()]: {
-            [usdc.assetId]: new BigNumber(1),
-          },
+      const { accountAddress, scope, onChainAccountService } =
+        setupResolveOnChainAccount({
+          sep41Balances: (address) => ({
+            [address]: {
+              [USDC_SEP41]: new BigNumber(1),
+            },
+          }),
         });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       const result = await onChainAccountService.resolveOnChainAccount(
-        signer.publicKey(),
-        KnownCaip2ChainId.Mainnet,
+        accountAddress,
+        scope,
         { resolveWithFullBalance: true },
       );
 
       expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe('1');
       expect(result.getRawAsset(USDT_SEP41)).toBeUndefined();
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
 
     it('propagates a SEP-41 balance read failure', async () => {
-      const signer = Keypair.fromRawEd25519Seed(bufferToUint8Array(seed));
-      const loadedAcc = createMockAccountWithBalances(
-        signer.publicKey(),
-        '1',
-        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-      );
-      const loaded = new OnChainAccount(
-        loadedAcc,
-        KnownCaip2ChainId.Mainnet,
-        horizonSource(loadedAcc, KnownCaip2ChainId.Mainnet),
-      );
-      const { loadOnChainAccountSpy } = getNetworkServiceSpies();
-      loadOnChainAccountSpy.mockResolvedValue(loaded);
-      const fetchSep41Spy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
-        .mockResolvedValue(getMockSep41Assets());
-      const getSep41AssetBalancesSpy = jest
-        .spyOn(NetworkService.prototype, 'getSep41AssetBalances')
-        .mockRejectedValue(new Error('Failed to load SEP-41 token balance'));
+      const { accountAddress, scope, onChainAccountService } =
+        setupResolveOnChainAccount({
+          sep41BalancesError: new Error('Failed to load SEP-41 token balance'),
+        });
 
-      const { onChainAccountService } = mockOnChainAccountService();
       await expect(
-        onChainAccountService.resolveOnChainAccount(
-          signer.publicKey(),
-          KnownCaip2ChainId.Mainnet,
-          { resolveWithFullBalance: true },
-        ),
+        onChainAccountService.resolveOnChainAccount(accountAddress, scope, {
+          resolveWithFullBalance: true,
+        }),
       ).rejects.toThrow('Failed to load SEP-41 token balance');
-      fetchSep41Spy.mockRestore();
-      getSep41AssetBalancesSpy.mockRestore();
     });
   });
 
