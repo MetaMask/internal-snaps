@@ -366,18 +366,15 @@ export class NetworkService {
   }
 
   /**
-   * Loads account ledger meta (sequence, subentries, sponsorship counts) from Soroban RPC.
-   *
-   * Uses RPC `getAccountEntry`. Sequence is `seqNum().toString()`, matching SDK `getAccount`.
+   * Loads account ledger metadata (sequence, subentries, sponsorship counts) from Soroban RPC.
    *
    * @param accountAddress - The Stellar account address (public key).
    * @param scope - The CAIP-2 chain ID.
    * @returns Sequence, subentry count, sponsorship counters, and native stroops.
    * @throws {AccountNotActivatedException} If the account does not exist on the network.
-   * @throws {NetworkServiceException} If the RPC request fails, or the account entry is missing
-   * the v1 / v2 extensions required for sponsorship counts.
+   * @throws {NetworkServiceException} If the RPC request fails.
    */
-  async getAccountLedgerMeta(
+  async getAccountLedgerMetadata(
     accountAddress: string,
     scope: KnownCaip2ChainId,
   ): Promise<AccountLedgerMeta> {
@@ -385,26 +382,22 @@ export class NetworkService {
       const client = this.#getRpcClient(scope);
       const entry = await client.getAccountEntry(accountAddress);
 
-      const accountExt = entry.ext();
-      if (accountExt.switch() !== 1) {
-        throw new NetworkServiceException(
-          `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}: expected account extension v1, got switch ${accountExt.switch()}`,
-        );
-      }
-      const v1Ext = accountExt.v1().ext();
-      if (v1Ext.switch() !== 2) {
-        throw new NetworkServiceException(
-          `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}: expected account extension v2, got switch ${v1Ext.switch()}`,
-        );
-      }
+      const accountExt = entry.ext;
 
-      const v2 = v1Ext.v2();
+      const isAccountSupportSponsorship =
+        accountExt.type === 'v1' && accountExt.v1.ext.type === 'v2';
+
+      // legacy account does not have sponsorship counters, so we return 0 for both.
+      const sponsorship = isAccountSupportSponsorship
+        ? accountExt.v1.ext.v2
+        : { numSponsoring: 0, numSponsored: 0 };
+
       return {
-        sequenceNumber: entry.seqNum().toString(),
-        subentryCount: entry.numSubEntries(),
-        numSponsoring: v2.numSponsoring(),
-        numSponsored: v2.numSponsored(),
-        rawNativeBalance: entry.balance().toString(),
+        sequenceNumber: entry.seqNum.toString(),
+        subentryCount: entry.numSubEntries,
+        numSponsoring: sponsorship.numSponsoring,
+        numSponsored: sponsorship.numSponsored,
+        rawNativeBalance: entry.balance.toString(),
       };
     } catch (error: unknown) {
       if (isAccountNotFoundError(error, accountAddress)) {

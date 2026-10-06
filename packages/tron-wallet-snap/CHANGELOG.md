@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Emit `transaction_type` on the transaction lifecycle events, derived from the contract type, so a flow can be attributed by combining `origin` and `transaction_type` ([#399](https://github.com/MetaMask/internal-snaps/pull/399))
+- Emit `transaction_type` and `transaction_status` on the transaction lifecycle events, with `transaction_type` derived from the contract type (so a flow can be attributed by combining `origin` and `transaction_type`) and `transaction_status` reporting the on-chain outcome on `Transaction Finalized`. ([#399](https://github.com/MetaMask/internal-snaps/pull/399), [#405](https://github.com/MetaMask/internal-snaps/pull/405))
 
 ### Changed
 

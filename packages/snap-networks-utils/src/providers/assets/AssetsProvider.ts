@@ -4,8 +4,10 @@ import type {
   AssetsControllerGetAccountAssetsByIDsAction,
   AssetsControllerGetAccountAssetsByScopeAction,
   AssetsControllerGetAssetMetadataAction,
+  AssetsControllerGetAssetsAction,
   Caip19AssetId,
 } from '@metamask/assets-controller';
+import type { InternalAccount } from '@metamask/keyring-internal-api';
 import type { Messenger } from '@metamask/messenger';
 import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { CaipChainId } from '@metamask/utils';
@@ -22,7 +24,8 @@ export type AssetsProviderAllowedActions =
   | AssetsControllerGetAccountAssetByIDAction
   | AssetsControllerGetAccountAssetsByIDsAction
   | AssetsControllerGetAccountAssetsByScopeAction
-  | AssetsControllerGetAssetMetadataAction;
+  | AssetsControllerGetAssetMetadataAction
+  | AssetsControllerGetAssetsAction;
 
 /**
  * Messenger restricted to actions consumed by {@link AssetsProvider}.
@@ -107,5 +110,34 @@ export class AssetsProvider {
     assetId: Caip19AssetId,
   ): Promise<ReturnType<AssetsControllerGetAssetMetadataAction['handler']>> {
     return this.#messenger.call('AssetsController:getAssetMetadata', assetId);
+  }
+
+  /**
+   * Fetches combined assets (balance + metadata + price + computed
+   * `fiatValue`) for the given accounts, bypassing client-side caches.
+   *
+   * Unlike the state-only getters above, this maps to the controller's
+   * one-time fetch pipeline: passing `forceUpdate: true` refreshes the data
+   * from the data sources and updates controller state, and the returned
+   * value reflects that fresh fetch rather than current state. Pass
+   * `bypassServerCache: true` (only together with `forceUpdate`) to also
+   * bypass server-side HTTP caches such as the Accounts API's 60-second
+   * cache; use sparingly, e.g. right after a transaction confirms when the
+   * cached snapshot is known stale.
+   *
+   * @param accounts - Internal accounts to fetch assets for.
+   * @param options - Fetch options (`chainIds`, `forceUpdate`,
+   * `bypassServerCache`, `dataTypes`, etc.).
+   * @returns Combined assets keyed by account ID, then CAIP-19 asset ID.
+   */
+  async getAssets(
+    accounts: InternalAccount[],
+    options?: Parameters<AssetsControllerGetAssetsAction['handler']>[1],
+  ): Promise<ReturnType<AssetsControllerGetAssetsAction['handler']>> {
+    return this.#messenger.call(
+      'AssetsController:getAssets',
+      accounts,
+      options,
+    );
   }
 }

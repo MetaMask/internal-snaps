@@ -1,5 +1,5 @@
 import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
-import { TransactionType } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { getJsonError } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -136,6 +136,70 @@ describe('SnapClientAdapter', () => {
       });
 
       expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('includes transaction_status when provided', async () => {
+      const { snapClient, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const tx = mock<WalletTx>({
+        txid: { toString: () => 'txid-123' },
+      });
+      mockRequest.mockResolvedValue(undefined);
+
+      await snapClient.emitTrackingEvent(
+        TrackingSnapEvent.TransactionFinalized,
+        account,
+        tx,
+        'metamask',
+        TransactionType.Send,
+        TransactionStatus.Confirmed,
+      );
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event: TrackingSnapEvent.TransactionFinalized,
+            properties: {
+              origin: 'metamask',
+              message: 'Snap transaction finalized',
+              chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
+              account_type: 'bip122:p2wpkh',
+              transaction_type: 'send',
+              transaction_status: 'confirmed',
+              tx_id: 'txid-123',
+            },
+          },
+        },
+      });
+    });
+
+    it('omits transaction_status when not provided', async () => {
+      const { snapClient, mockRequest } = setupTest();
+
+      const account = mock<BitcoinAccount>({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+      });
+      const tx = mock<WalletTx>({
+        txid: { toString: () => 'txid-123' },
+      });
+      mockRequest.mockResolvedValue(undefined);
+
+      await snapClient.emitTrackingEvent(
+        TrackingSnapEvent.TransactionSubmitted,
+        account,
+        tx,
+        'metamask',
+        TransactionType.Send,
+      );
+
+      const { properties } = mockRequest.mock.calls[0][0].params.event;
+      expect(properties).not.toHaveProperty('transaction_status');
     });
 
     it("doesn't throw and logs when building properties fails", async () => {

@@ -36,6 +36,7 @@ import type { ConfirmationUXController } from '../../ui/confirmation/controller'
 import type { LocalizedMessage } from '../../utils';
 import {
   hasDecimals,
+  isSep41Id,
   isSlip44Id,
   toSmallestUnit,
   trackError,
@@ -396,6 +397,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         renderContext: {
           account,
           toAddress,
+          supportsMemo: !isSep41Id(assetId),
           ...(initialValidationError
             ? {
                 // Recoverable RequiresMemo: show the banner, but do not start a
@@ -469,6 +471,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       renderContext: {
         account,
         toAddress,
+        supportsMemo: !isSep41Id(assetId),
         transactionsFetchStatus: FetchStatus.Error,
         errorMessage: getTxnErrorMessageKey(error, account.address),
       },

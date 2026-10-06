@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Populate the optional `transaction_type` property on the transaction lifecycle tracking events. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
+- Populate the `transaction_type` and `transaction_status` properties on the transaction lifecycle tracking events, with `transaction_status` set to `confirmed` on `Transaction Finalized`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393), [#404](https://github.com/MetaMask/internal-snaps/pull/404))
 
 ## [3.1.0]
 

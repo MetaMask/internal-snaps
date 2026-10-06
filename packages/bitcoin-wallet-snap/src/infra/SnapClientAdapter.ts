@@ -2,7 +2,11 @@ import type { WalletTx } from '@metamask/bitcoindevkit';
 import { Amount } from '@metamask/bitcoindevkit';
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
-import { KeyringEvent, TransactionType } from '@metamask/keyring-api';
+import {
+  KeyringEvent,
+  TransactionStatus,
+  TransactionType,
+} from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type {
   GetClientStatusResult,
@@ -260,6 +264,7 @@ export class SnapClientAdapter implements SnapClient {
     tx: WalletTx,
     origin: string,
     transactionType: TransactionType,
+    transactionStatus?: TransactionStatus,
   ): Promise<void> {
     const transactionKey =
       eventType === TrackingSnapEvent.MissedTransactionsDiscovered
@@ -272,6 +277,9 @@ export class SnapClientAdapter implements SnapClient {
       chain_id_caip: networkToScope[account.network],
       account_type: addressTypeToCaip[account.addressType],
       transaction_type: transactionType,
+      ...(transactionStatus === undefined
+        ? {}
+        : { transaction_status: transactionStatus }),
       [transactionKey]: tx.txid.toString(),
     }));
   }

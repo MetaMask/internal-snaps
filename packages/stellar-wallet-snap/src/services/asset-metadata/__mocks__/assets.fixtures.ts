@@ -22,6 +22,8 @@ export const USDC_SEP41: KnownCaip19Sep41AssetId =
   'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
 export const USDT_SEP41: KnownCaip19Sep41AssetId =
   'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J';
+export const TESTNET_SEP41_USDC: KnownCaip19Sep41AssetId =
+  'stellar:testnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
 
 export const generateMockStellarAssetMetadata = (): AssetMetadataByAssetId => {
   return {

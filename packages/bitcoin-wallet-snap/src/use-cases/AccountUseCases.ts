@@ -9,6 +9,7 @@ import type {
 } from '@metamask/bitcoindevkit';
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
+import { TransactionStatus } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
 import {
   batchesAllSettled,
@@ -533,6 +534,9 @@ export class AccountUseCases {
             tx,
             origin,
             mapToTransactionType(account, tx.tx),
+            // This branch only runs when the transaction becomes confirmed, so
+            // the terminal status is always `confirmed`.
+            TransactionStatus.Confirmed,
           );
         } else {
           // if the status was changed, and now it's NOT confirmed

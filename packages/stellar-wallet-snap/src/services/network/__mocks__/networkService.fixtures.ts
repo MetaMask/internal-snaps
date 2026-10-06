@@ -118,21 +118,25 @@ export const buildTransactionWithTwoInvokeHostFunctionOps = (): Transaction => {
 };
 
 type MockAccountEntry = {
-  numSubEntries: () => number;
-  seqNum: () => { toString: () => string };
-  balance: () => { toString: () => string };
-  ext: () => {
-    switch: () => number;
-    v1: () => {
-      ext: () => {
-        switch: () => number;
-        v2: () => {
-          numSponsoring: () => number;
-          numSponsored: () => number;
+  numSubEntries: number;
+  seqNum: bigint;
+  balance: bigint;
+  ext:
+    | { type: 'v0' }
+    | {
+        type: 'v1';
+        v1: {
+          ext:
+            | { type: 'v0' }
+            | {
+                type: 'v2';
+                v2: {
+                  numSponsoring: number;
+                  numSponsored: number;
+                };
+              };
         };
       };
-    };
-  };
 };
 
 export const createMockAccountEntry = ({
@@ -141,34 +145,36 @@ export const createMockAccountEntry = ({
   rawNativeBalance = '351010623',
   numSponsoring = 1,
   numSponsored = 0,
-  accountExtSwitch = 1,
-  v1ExtSwitch = 2,
+  accountExtType = 'v1',
+  v1ExtType = 'v2',
 }: {
   numSubEntries?: number;
   sequenceNumber?: string;
   rawNativeBalance?: string;
   numSponsoring?: number;
   numSponsored?: number;
-  accountExtSwitch?: number;
-  v1ExtSwitch?: number;
+  accountExtType?: 'v0' | 'v1';
+  v1ExtType?: 'v0' | 'v2';
 } = {}): MockAccountEntry => ({
-  numSubEntries: () => numSubEntries,
-  seqNum: () => ({
-    toString: () => sequenceNumber,
-  }),
-  balance: () => ({
-    toString: () => rawNativeBalance,
-  }),
-  ext: () => ({
-    switch: () => accountExtSwitch,
-    v1: () => ({
-      ext: () => ({
-        switch: () => v1ExtSwitch,
-        v2: () => ({
-          numSponsoring: () => numSponsoring,
-          numSponsored: () => numSponsored,
-        }),
-      }),
-    }),
-  }),
+  numSubEntries,
+  seqNum: BigInt(sequenceNumber),
+  balance: BigInt(rawNativeBalance),
+  ext:
+    accountExtType === 'v0'
+      ? { type: 'v0' }
+      : {
+          type: 'v1',
+          v1: {
+            ext:
+              v1ExtType === 'v0'
+                ? { type: 'v0' }
+                : {
+                    type: 'v2',
+                    v2: {
+                      numSponsoring,
+                      numSponsored,
+                    },
+                  },
+          },
+        },
 });

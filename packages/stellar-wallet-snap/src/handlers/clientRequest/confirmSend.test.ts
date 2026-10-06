@@ -314,6 +314,7 @@ describe('ConfirmSendHandler', () => {
       renderContext: {
         account,
         toAddress: destinationAddress,
+        supportsMemo: true,
       },
       renderOptions: {
         loadPrice: true,
@@ -555,6 +556,7 @@ describe('ConfirmSendHandler', () => {
           renderContext: {
             account,
             toAddress: destinationAddress,
+            supportsMemo: true,
             transactionsFetchStatus: FetchStatus.Error,
             errorMessage: message,
           },
