@@ -173,6 +173,8 @@ function getErrorMessage(
   error: TransactionScanError,
   translate: ReturnType<typeof i18n>,
 ): string {
+  // Blockaid codes are passed through as-is (e.g. `insufficient_funds`), while
+  // `ERROR_MESSAGE_IDS` keys use the compact form (`insufficientfunds`).
   const normalizedCode = error.code
     ?.replace(/[^a-zA-Z0-9]/gu, '')
     .toLowerCase();
