@@ -1376,14 +1376,6 @@
       "count": 7
     }
   },
-  "packages/tron-wallet-snap/src/ui/confirmation/components/TransactionAlert/TransactionAlert.test.tsx": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/ui/confirmation/utils/getIconUrlForKnownAsset.ts": {
     "no-restricted-syntax": {
       "count": 1
