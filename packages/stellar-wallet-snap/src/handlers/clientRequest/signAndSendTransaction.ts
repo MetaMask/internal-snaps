@@ -142,8 +142,6 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
 
     const { sourceAssetId, destAssetId } = options;
     const swapAssetIds = { sourceAssetId, destAssetId };
-    // A cross-chain swap is a bridge send. The envelope alone looks like a
-    // payment, so the flow decides the classification here.
     const transactionType = this.#isCrossChain(swapAssetIds)
       ? TransactionType.BridgeSend
       : TransactionType.Swap;
