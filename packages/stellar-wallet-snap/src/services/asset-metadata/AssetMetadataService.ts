@@ -16,7 +16,7 @@ import {
   isClassicAssetId,
   isSep41Id,
 } from '../../utils';
-import type { AssetsService, CoreAssetMetadata } from '../assets';
+import type { AssetsService } from '../assets';
 import type { AssetDataResponse, NetworkService } from '../network';
 import type { AssetUnit, StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
@@ -156,19 +156,9 @@ export class AssetMetadataService {
   /**
    * Fetches and persists all Assets for the given chain ID from the token API.
    *
-   * When the Stellar assets migration flag is on, skips catalog persist;
-   * AssetsController owns fungible metadata.
-   *
    * @param scope - The chain ID to fetch and persist assets for.
    */
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
-    if (await this.#assetsService.isMigrationEnabled()) {
-      this.#logger.debug(
-        'Skipping asset metadata catalog sync; Core migration is on',
-      );
-      return;
-    }
-
     const tokensMetadata = await this.#getAssetsByChainId(scope);
     await this.#assetMetadataRepository.saveMany(tokensMetadata);
   }
@@ -184,7 +174,7 @@ export class AssetMetadataService {
       result.push(getNativeAssetMetadata(chainId));
     }
 
-    // fetch assets from Core, then snap state
+    // persisted: Core then snap when migration is on; snap only when off
     const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
     const { assets, missingAssetIds } =
       await this.#getPersistedAssetMetadata(allNonNativeAssetIds);
@@ -214,27 +204,43 @@ export class AssetMetadataService {
     return result.concat(assets, missingAssets);
   }
 
+  /**
+   * Resolves persisted metadata. Core first when the Stellar assets migration
+   * flag is on, then snap state for remaining ids. When the flag is off, skip
+   * Core and read snap state only.
+   *
+   * @param assetIds - Non-native CAIP-19 ids to look up.
+   * @returns Hits plus ids still missing after persisted lookups.
+   */
   async #getPersistedAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{
     assets: StellarAssetMetadata[];
     missingAssetIds: KnownCaip19AssetId[];
   }> {
-    const { hits: coreHits, missing: missingAssetIdsFromCore } =
-      await this.#getCoreAssetMetadata(assetIds);
+    if (await this.#assetsService.isMigrationEnabled()) {
+      const { hits: coreHits, missing: missingAssetIdsFromCore } =
+        await this.#getCoreAssetMetadata(assetIds);
 
-    if (missingAssetIdsFromCore.length === 0) {
-      return { assets: coreHits, missingAssetIds: [] };
+      if (missingAssetIdsFromCore.length === 0) {
+        return { assets: coreHits, missingAssetIds: [] };
+      }
+
+      const { hits: snapHits, missing: missingAssetIds } =
+        await this.#getSnapAssetMetadata(missingAssetIdsFromCore);
+
+      return { assets: [...coreHits, ...snapHits], missingAssetIds };
     }
 
-    const cachedAssets = await this.#assetMetadataRepository.getByAssetIds(
-      missingAssetIdsFromCore,
-    );
-    const { hits: snapHits, missing: missingAssetIds } =
-      this.#partitionHitsAndMissingByArray(
-        missingAssetIdsFromCore,
-        cachedAssets,
-      );
+    const { hits, missing } = await this.#getSnapAssetMetadata(assetIds);
+    return { assets: hits, missingAssetIds: missing };
+  }
 
-    return { assets: [...coreHits, ...snapHits], missingAssetIds };
+  async #getSnapAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{
+    hits: StellarAssetMetadata[];
+    missing: KnownCaip19AssetId[];
+  }> {
+    const cachedAssets =
+      await this.#assetMetadataRepository.getByAssetIds(assetIds);
+    return this.#partitionHitsAndMissingByArray(assetIds, cachedAssets);
   }
 
   async #getCoreAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{

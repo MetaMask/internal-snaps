@@ -7,6 +7,7 @@ import type { KnownCaip2ChainId } from '../../../api';
 import { logger, noOpLogger } from '../../../utils/logger';
 import { AccountService } from '../../account/AccountService';
 import { AccountsRepository } from '../../account/AccountsRepository';
+import { createMockAssetMetadataService } from '../../asset-metadata/__mocks__/assets.fixtures';
 import { createMockAssetsService } from '../../assets/__mocks__/assetsService.fixtures';
 import { NetworkService } from '../../network';
 import { WalletService } from '../../wallet';
@@ -173,11 +174,13 @@ export function mockOnChainAccountService() {
   });
   const onChainAccountRepository = new OnChainAccountRepository(state);
   const { service: assetsService } = createMockAssetsService();
+  const { service: assetMetadataService } = createMockAssetMetadataService();
   const onChainAccountService = new OnChainAccountService({
     logger,
     networkService,
     onChainAccountRepository,
     assetsService,
+    assetMetadataService,
   });
 
   return {
@@ -186,6 +189,7 @@ export function mockOnChainAccountService() {
     accountService,
     walletService,
     assetsService,
+    assetMetadataService,
   };
 }
 

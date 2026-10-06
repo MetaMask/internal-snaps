@@ -10,10 +10,11 @@ import type { CoreAsset, CoreAssetMetadata } from './api';
 import { isAssetsMigrationEnabled } from './utils';
 
 /**
- * Core AssetsController facade. Account holdings stay behind the Stellar
- * migration flag. {@link getAssetMetadata} is a Core-only lookup (no snap
- * fallback); domain services consume it and stay the caller-facing API.
+ * Core AssetsController facade. Getters always read Core; they do not check
+ * {@link isMigrationEnabled}. Domain services branch on the flag at the call
+ * site (Core vs snap state, skip persist, catalog fallback).
  *
+ * {@link getAssetMetadata} is a Core-only lookup (no snap fallback).
  * Account-asset and catalog methods validate controller rows into
  * {@link CoreAsset} / {@link CoreAssetMetadata} before returning. Domain services
  * map those into snap types.
