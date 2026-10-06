@@ -12,15 +12,13 @@ import {
 /**
  * Classifies a Stellar transaction from its operations.
  *
- * The order matches activity mapping: a payment or create-account from the
- * account is a send, a self path-payment is a swap, a trustline change is a
- * token approval or disapproval, and an incoming credit is a receive. Anything
- * else, including a Soroban invoke, stays `unknown` — those shapes are not
- * classified from the envelope alone.
+ * Cases are checked in activity-mapping order:
+ * 1. A payment or create-account from the account is a send.
+ * 2. A path payment to the same account is a swap.
+ * 3. A trustline change is a token approval or disapproval.
+ * 4. An incoming credit is a receive.
+ * 5. Every other shape, including a Soroban invoke, is `unknown`.
  *
- * Callers that already know the flow, such as a cross-chain swap, should pass
- * that classification instead of using this helper. A bridge send is a payment
- * in the envelope, so the operations alone would report it as a send.
  *
  * @param transaction - The transaction to classify.
  * @param accountAddress - The Stellar address the classification is relative to.
