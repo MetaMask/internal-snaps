@@ -107,6 +107,7 @@ const onChainAccountService = new OnChainAccountService({
   logger,
   networkService,
   onChainAccountRepository,
+  assetMetadataService,
 });
 
 const transactionService = new TransactionService({
