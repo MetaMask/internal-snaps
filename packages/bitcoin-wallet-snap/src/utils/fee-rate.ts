@@ -16,7 +16,7 @@ export const MIN_FEE_RATE_SAT_PER_VB = 1;
  * @param feeRate - The candidate fee rate in sat/vB.
  * @returns `true` if the rate is a finite, strictly positive number.
  */
-function isUsableFeeRate(feeRate: number | undefined): feeRate is number {
+function isValidFeeRate(feeRate: number | undefined): feeRate is number {
   return typeof feeRate === 'number' && Number.isFinite(feeRate) && feeRate > 0;
 }
 
