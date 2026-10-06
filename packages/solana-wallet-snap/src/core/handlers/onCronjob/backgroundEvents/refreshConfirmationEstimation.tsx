@@ -63,30 +63,34 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       return;
     }
 
-    // Skip transaction simulation if the preference is disabled
-    if (!interfaceContext.preferences?.simulateOnChainActions) {
-      logger.info(`Transaction simulation is disabled in preferences`);
-    }
+    const shouldScan = Boolean(
+      interfaceContext.preferences?.simulateOnChainActions,
+    );
 
     // MetaMask-originated transactions receive a fresh blockhash before signing.
     const shouldSkipBlockhashCheck =
       interfaceContext.origin === METAMASK_ORIGIN;
 
-    const fetchingConfirmationContext = {
-      ...interfaceContext,
-      scanFetchStatus: 'fetching',
-    } as ConfirmTransactionRequestContext;
+    // Blockhash-only refreshes must not show the scan-in-progress state.
+    if (shouldScan) {
+      const fetchingConfirmationContext = {
+        ...interfaceContext,
+        scanFetchStatus: 'fetching',
+      } as ConfirmTransactionRequestContext;
 
-    await updateInterface(
-      confirmationInterfaceId,
-      <ConfirmTransactionRequest
-        context={serialize(fetchingConfirmationContext) as any}
-      />,
-      fetchingConfirmationContext,
-    );
+      await updateInterface(
+        confirmationInterfaceId,
+        <ConfirmTransactionRequest
+          context={serialize(fetchingConfirmationContext) as any}
+        />,
+        fetchingConfirmationContext,
+      );
+    } else {
+      logger.info(`Transaction simulation is disabled in preferences`);
+    }
 
     const [scan, isExpired, updatedInterfaceContextFinal] = await Promise.all([
-      interfaceContext.preferences?.simulateOnChainActions
+      shouldScan
         ? transactionScanService.scanTransaction({
             method: interfaceContext.method,
             accountAddress: interfaceContext.account.address,
@@ -122,7 +126,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       scan: isExpired ? EXPIRED_TRANSACTION_SCAN : scan,
     };
 
-    if (interfaceContext.preferences?.simulateOnChainActions) {
+    if (shouldScan) {
       logger.info(`New scan fetched`);
     }
 
