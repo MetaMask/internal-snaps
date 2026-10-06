@@ -21,7 +21,6 @@ export class OnChainAccountMetadataNotAvailableException extends OnChainAccountE
   }
 }
 
-
 /**
  * Thrown when mainnet returns no SEP-41 balance map for an account.
  */

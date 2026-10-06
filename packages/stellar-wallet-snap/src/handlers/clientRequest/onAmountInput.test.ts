@@ -2,10 +2,6 @@ import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import type {
-  KnownCaip19ClassicAssetId,
-  KnownCaip19Sep41AssetId,
-} from '../../api';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import type { StellarAssetMetadata } from '../../services/asset-metadata';
@@ -59,7 +55,7 @@ describe('OnAmountInputHandler', () => {
   });
 
   const accountId = '11111111-1111-4111-8111-111111111111';
-  const assetId = USDC_CLASSIC as KnownCaip19ClassicAssetId;
+  const assetId = USDC_CLASSIC;
   const scope = KnownCaip2ChainId.Mainnet;
 
   function setup() {
@@ -154,7 +150,7 @@ describe('OnAmountInputHandler', () => {
   }
 
   it('returns invalid when value has more decimal places than the asset supports', async () => {
-    const sep41AssetId = USDC_SEP41 as KnownCaip19Sep41AssetId;
+    const sep41AssetId = USDC_SEP41;
     const { handler, createValidatedSendTransaction } = setup();
     const assetMetadata = generateMockStellarAssetMetadata()[
       sep41AssetId

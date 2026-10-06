@@ -11,7 +11,6 @@ import {
   Horizon as StellarHorizon,
   NotFoundError,
   rpc,
-  Account,
 } from '@stellar/stellar-sdk';
 
 import type {

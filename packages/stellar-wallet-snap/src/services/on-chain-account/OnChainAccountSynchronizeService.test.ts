@@ -6,7 +6,6 @@ import { hexToBytes } from '@metamask/utils';
 import { Keypair } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
-import type { KnownCaip19Sep41AssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
 import { bufferToUint8Array } from '../../utils/buffer';
@@ -144,8 +143,8 @@ describe('OnChainAccountSynchronizeService', () => {
   const seed = hexToBytes(
     '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
   );
-  const sep41Id = USDC_SEP41 as KnownCaip19Sep41AssetId;
-  const backupSep41Id = USDT_SEP41 as KnownCaip19Sep41AssetId;
+  const sep41Id = USDC_SEP41;
+  const backupSep41Id = USDT_SEP41;
   const mockSep41Assets = getMockSep41Assets();
 
   const getNetworkServiceSpies = () => ({

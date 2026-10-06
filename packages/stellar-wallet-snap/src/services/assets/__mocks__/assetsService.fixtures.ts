@@ -8,6 +8,7 @@ import { AssetsService } from '../AssetsService';
  * Builds an {@link AssetsService} with a mocked Core adapter. Flag defaults to Off.
  *
  * @param options - Optional Core / flag overrides.
+ * @param options.migrationStage - The migration stage to use for the mock.
  * @returns The facade and the Core `getAssetMetadata` mock.
  */
 export function createMockAssetsService({

@@ -25,7 +25,10 @@ import type { CoreAsset } from '../assets/api';
 import { AccountNotActivatedException } from '../network';
 import type { AccountLedgerMeta, NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
-import { OnChainAccountBalanceNotAvailableException, OnChainAccountSep41BalanceNotFoundException } from './exceptions';
+import {
+  OnChainAccountBalanceNotAvailableException,
+  OnChainAccountSep41BalanceNotFoundException,
+} from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountRepository } from './OnChainAccountRepository';
 import {
@@ -183,12 +186,13 @@ export class OnChainAccountService {
       scope,
     });
     const sep41Balances = balancesByAccount[onChainAccount.accountId];
-   
     // If it is testnet, we won't have any balances, so we return early.
     // If it is mainnet, we throw an error as it is unexpected.
     if (sep41Balances === undefined) {
       if (scope === KnownCaip2ChainId.Mainnet) {
-        throw new OnChainAccountSep41BalanceNotFoundException(onChainAccount.accountId);
+        throw new OnChainAccountSep41BalanceNotFoundException(
+          onChainAccount.accountId,
+        );
       }
       return;
     }
@@ -240,7 +244,7 @@ export class OnChainAccountService {
   }
 
   /**
-   * Loads the on-chain account for the given keyring account id from snap state.
+   * Loads the on-chain account for the given keyring account id from snap state or core.
    *
    * @param keyringAccountId - The keyring account id to load the on-chain account for.
    * @param accountAddress - Stellar G-address for the account header.
@@ -273,12 +277,9 @@ export class OnChainAccountService {
   /**
    * Best-effort {@link OnChainAccount} from Core holdings for fast read paths.
    *
-   * Binds balances from AssetsController when the Stellar migration flag is on.
-   * Protocol fields (sequence, subentries, sponsorship, native stroops) come from
-   * {@link NetworkService.getAccountLedgerMeta} when `resolveAccountFromNetwork` is set;
-   * otherwise sequence is `0`, sponsorships are 0, and `subentryCount` is derived from Core
-   * native `minimumReserveBalance`.
-   * Not a substitute for live Horizon for send / fee / ChangeTrust.
+   * - When `resolveAccountFromNetwork` is set, sequence, subentries, sponsorship, and native stroops come from {@link NetworkService.getAccountLedgerMeta}.
+   * - Otherwise sequence is `0`, sponsorships are `0`, and `subentryCount` is derived from Core native `minimumReserveBalance`.
+   * - Not a substitute for live Horizon for send, fee, or ChangeTrust.
    *
    * @param scope - CAIP-2 network.
    * @param keyringAccountId - MetaMask keyring account id.
@@ -297,10 +298,6 @@ export class OnChainAccountService {
       resolveAccountFromNetwork?: boolean;
     },
   ): Promise<OnChainAccount | null> {
-    if (!(await this.#assetsService.isMigrationEnabled())) {
-      return null;
-    }
-
     const { resolveAccountFromNetwork = false } = options ?? {};
     let ledger: AccountLedgerMeta | undefined;
 
@@ -331,12 +328,12 @@ export class OnChainAccountService {
     });
 
     try {
-      const serializable = await this.#toSerializableFromCoreAssets({
+      const serializable = this.#toSerializableFromCoreAssets({
         accountAddress,
         scope,
         assets,
         ledger,
-      })
+      });
       return OnChainAccount.fromSerializable(serializable);
     } catch (error: unknown) {
       await trackError(

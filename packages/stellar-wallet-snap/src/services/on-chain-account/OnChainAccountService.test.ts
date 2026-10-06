@@ -14,6 +14,7 @@ import { DerivedAccountAddressMismatchException } from '../account/exceptions';
 import { AssetMetadataService } from '../asset-metadata';
 import {
   getMockSep41Assets,
+  USDC_CLASSIC,
   USDC_SEP41,
   USDT_SEP41,
 } from '../asset-metadata/__mocks__/assets.fixtures';
@@ -544,29 +545,7 @@ describe('OnChainAccountService', () => {
   });
 
   describe('resolveOnChainAccountFromCore', () => {
-    const usdcIssuer =
-      'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-    const usdcId = `stellar:pubnet/asset:USDC-${usdcIssuer}` as const;
-    const sep41Id =
-      'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75' as const;
-
-    it('returns null when Core migration is off', async () => {
-      const { onChainAccountService, assetsService } =
-        mockOnChainAccountService();
-      const getAccountAssetsByScopeSpy = jest.spyOn(
-        assetsService,
-        'getAccountAssetsByScope',
-      );
-
-      expect(
-        await onChainAccountService.resolveOnChainAccountFromCore(
-          KnownCaip2ChainId.Mainnet,
-          globalThis.crypto.randomUUID(),
-          Keypair.random().publicKey(),
-        ),
-      ).toBeNull();
-      expect(getAccountAssetsByScopeSpy).not.toHaveBeenCalled();
-    });
+    const usdcIssuer = USDC_CLASSIC.split('-').at(1) as string;
 
     it('returns null when Core returns no holdings', async () => {
       const { onChainAccountService, assetsService } =
@@ -608,7 +587,7 @@ describe('OnChainAccountService', () => {
             metadata: { symbol: 'XLM', decimals: 7 },
           },
           {
-            id: usdcId,
+            id: USDC_CLASSIC,
             chainId: KnownCaip2ChainId.Mainnet,
             balance: {
               amount: '0.1630079',
@@ -621,7 +600,7 @@ describe('OnChainAccountService', () => {
             metadata: { symbol: 'USDC', decimals: 7 },
           },
           {
-            id: sep41Id,
+            id: USDC_SEP41,
             chainId: KnownCaip2ChainId.Mainnet,
             balance: { amount: '2' },
             metadata: { symbol: 'TA', decimals: 7 },
@@ -650,7 +629,7 @@ describe('OnChainAccountService', () => {
       expect(full?.balances).toStrictEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            assetId: usdcId,
+            assetId: USDC_CLASSIC,
             balance: '1630079',
             symbol: 'USDC',
             address: usdcIssuer,
@@ -659,7 +638,7 @@ describe('OnChainAccountService', () => {
             sponsored: false,
           }),
           expect.objectContaining({
-            assetId: sep41Id,
+            assetId: USDC_SEP41,
             balance: '20000000',
             symbol: 'TA',
             decimals: 7,

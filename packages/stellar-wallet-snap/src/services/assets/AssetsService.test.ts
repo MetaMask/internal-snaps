@@ -28,16 +28,14 @@ describe('AssetsService', () => {
       image: 'https://example.test/usdc.png',
     });
 
-    await expect(service.getAssetMetadata(assetId)).resolves.toMatchObject(
-      coreMetadata,
-    );
+    expect(await service.getAssetMetadata(assetId)).toMatchObject(coreMetadata);
     expect(getAssetMetadata).toHaveBeenCalledWith(assetId);
   });
 
   it('returns null when Core misses', async () => {
     const { service, getAssetMetadata } = createMockAssetsService();
 
-    await expect(service.getAssetMetadata(assetId)).resolves.toBeNull();
+    expect(await service.getAssetMetadata(assetId)).toBeNull();
     expect(getAssetMetadata).toHaveBeenCalledWith(assetId);
   });
 
@@ -45,7 +43,7 @@ describe('AssetsService', () => {
     const { service, getAssetMetadata } = createMockAssetsService();
     getAssetMetadata.mockResolvedValue({ symbol: 'USDC' });
 
-    await expect(service.getAssetMetadata(assetId)).resolves.toBeNull();
+    expect(await service.getAssetMetadata(assetId)).toBeNull();
   });
 
   it('validates account assets into CoreAsset and drops invalid rows', async () => {
@@ -105,9 +103,12 @@ describe('AssetsService', () => {
       remoteFeatureFlagsProvider,
     });
 
-    await expect(
-      service.getAccountAssetsByScope(KnownCaip2ChainId.Mainnet, 'acct-1'),
-    ).resolves.toMatchObject([
+    expect(
+      await service.getAccountAssetsByScope(
+        KnownCaip2ChainId.Mainnet,
+        'acct-1',
+      ),
+    ).toMatchObject([
       {
         id: nativeId,
         chainId: KnownCaip2ChainId.Mainnet,
