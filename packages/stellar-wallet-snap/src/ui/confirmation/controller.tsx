@@ -28,6 +28,7 @@ import {
   formatOrigin,
   getPreferencesWithFallback,
   resolveRefresherKeys,
+  scheduledRefresherKeys,
 } from './utils';
 import { renderConfirmationView } from './views/render';
 import type { ConfirmationViewProps } from './views/render';
@@ -237,10 +238,23 @@ export class ConfirmationUXController {
       tokenPrices,
     };
 
+    // Ungated enable set for MemoEdit Save. Open cron uses Error-gated
+    // scheduledKeys so RequiresMemo does not start Scan/Tx until Save.
+    const enabledRefresherKeys = resolveRefresherKeys({
+      enablePricing: enablePricing ?? false,
+      enableSecurityScan,
+      enableLocalSimulation: enableLocalSimulation ?? false,
+    });
+    const scheduledKeys = scheduledRefresherKeys(
+      enabledRefresherKeys,
+      renderContext,
+    );
+
     // 1. Initial context with loading state
     const context = {
       ...defaultContext,
       ...renderContext,
+      ...(enabledRefresherKeys.length > 0 ? { enabledRefresherKeys } : {}),
     };
 
     // 2. Initial render with loading skeleton (always show loading if pricing enabled)
@@ -262,34 +276,27 @@ export class ConfirmationUXController {
       return dialogPromise;
     }
 
-    // 5. Persist preference-enabled refresher keys and schedule the open cron.
-    // Refreshers already no-op when their slice is Error (e.g. RequiresMemo).
-    const refresherKeys = resolveRefresherKeys({
-      enablePricing: enablePricing ?? false,
-      enableSecurityScan,
-      enableLocalSimulation: enableLocalSimulation ?? false,
-    });
-
-    if (refresherKeys.length > 0) {
+    // 5. Schedule the open cron for this-tick keys only.
+    if (scheduledKeys.length > 0) {
       const backgroundEventId =
         await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
           {
             scope,
             interfaceId: id,
             interfaceKey,
-            refresherKeys,
+            refresherKeys: scheduledKeys,
           },
           Duration.OneSecond,
         );
-      const contextWithRefreshMeta = {
+      const contextWithEventId = {
         ...context,
-        refresherKeys,
+        enabledRefresherKeys,
         backgroundEventId,
       };
       await updateInterfaceIfExists(
         id,
-        renderConfirmationView(interfaceKey, contextWithRefreshMeta),
-        contextWithRefreshMeta,
+        renderConfirmationView(interfaceKey, contextWithEventId),
+        contextWithEventId,
       );
     }
 

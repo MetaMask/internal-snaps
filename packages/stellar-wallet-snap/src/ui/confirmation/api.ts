@@ -165,7 +165,8 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   backgroundEventId?: string;
   /**
    * Preference- and flow-enabled refresher keys resolved at dialog open.
-   * MemoEdit Save reuses this snapshot for restart.
+   * Ungated: MemoEdit Save reuses this snapshot to restart, including slices
+   * that were Error on open (e.g. RequiresMemo).
    */
-  refresherKeys?: string[];
+  enabledRefresherKeys?: string[];
 };

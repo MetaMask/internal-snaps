@@ -142,14 +142,14 @@ async function onSaveSubmit(
   };
 
   const { scope } = baseContext;
-  const refresherKeys = Array.isArray(baseContext.refresherKeys)
-    ? (baseContext.refresherKeys as ConfirmationContextRefresherKey[])
+  const enabledRefresherKeys = Array.isArray(baseContext.enabledRefresherKeys)
+    ? (baseContext.enabledRefresherKeys as ConfirmationContextRefresherKey[])
     : [];
 
   if (
     canRestartRefresh(baseContext) &&
     typeof scope === 'string' &&
-    refresherKeys.length > 0
+    enabledRefresherKeys.length > 0
   ) {
     let previousEventId: string | undefined;
     if (typeof baseContext.backgroundEventId === 'string') {
@@ -163,10 +163,12 @@ async function onSaveSubmit(
       // Clear any prior banner; the restarted transaction refresher will set a
       // new error (e.g. RequiresMemo again) or leave it cleared on success.
       errorMessage: null,
-      ...(refresherKeys.includes(ConfirmationContextRefresherKey.Transaction)
+      ...(enabledRefresherKeys.includes(
+        ConfirmationContextRefresherKey.Transaction,
+      )
         ? { transactionsFetchStatus: FetchStatus.Fetched }
         : {}),
-      ...(refresherKeys.includes(ConfirmationContextRefresherKey.Scan)
+      ...(enabledRefresherKeys.includes(ConfirmationContextRefresherKey.Scan)
         ? { scanFetchStatus: FetchStatus.Fetching }
         : {}),
     };
@@ -177,7 +179,7 @@ async function onSaveSubmit(
           scope: scope as ConfirmSendJsonRpcRequest['params']['scope'],
           interfaceId: id,
           interfaceKey,
-          refresherKeys,
+          refresherKeys: enabledRefresherKeys,
         },
         Duration.OneSecond,
         { replaceEventId: previousEventId },

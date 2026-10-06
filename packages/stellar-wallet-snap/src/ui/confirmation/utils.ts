@@ -131,29 +131,65 @@ export type ResolveRefresherKeysParams = {
 };
 
 /**
- * Derives which confirmation context refreshers to schedule.
+ * Derives the preference- and flow-enabled refresher keys at dialog open.
  *
- * Shared by dialog open ({@link ConfirmationUXController}) and MemoEdit Save.
+ * Persist this snapshot on confirmation context. MemoEdit Save reads it to
+ * restart; it does not call this helper again.
  *
  * @param params - Preference-gated enable flags.
- * @returns Refresher keys to pass to `scheduleBackgroundEvent`.
+ * @returns Ungated enabled refresher keys.
  */
 export function resolveRefresherKeys(
   params: ResolveRefresherKeysParams,
 ): ConfirmationContextRefresherKey[] {
   const { enablePricing, enableSecurityScan, enableLocalSimulation } = params;
 
-  const refresherKeys: ConfirmationContextRefresherKey[] = [];
+  const enabledRefresherKeys: ConfirmationContextRefresherKey[] = [];
   if (enablePricing) {
-    refresherKeys.push(ConfirmationContextRefresherKey.Prices);
+    enabledRefresherKeys.push(ConfirmationContextRefresherKey.Prices);
   }
   if (enableSecurityScan) {
-    refresherKeys.push(ConfirmationContextRefresherKey.Scan);
+    enabledRefresherKeys.push(ConfirmationContextRefresherKey.Scan);
   }
   if (enableLocalSimulation) {
-    refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
+    enabledRefresherKeys.push(ConfirmationContextRefresherKey.Transaction);
   }
-  return refresherKeys;
+  return enabledRefresherKeys;
+}
+
+/**
+ * Keys allowed to run on the open-path cron tick.
+ *
+ * Scan / Transaction are omitted when `renderContext` already marked them
+ * Error (e.g. RequiresMemo). Read those statuses from `renderContext`, not
+ * the merged dialog context: `defaultContext` only ever sets Fetched/Fetching.
+ *
+ * @param enabled - Ungated keys from {@link resolveRefresherKeys}.
+ * @param renderContext - Caller-supplied context that may include Error overrides.
+ * @returns Keys to pass to `scheduleBackgroundEvent` on dialog open.
+ */
+export function scheduledRefresherKeys(
+  enabled: ConfirmationContextRefresherKey[],
+  renderContext: {
+    scanFetchStatus?: FetchStatus;
+    transactionsFetchStatus?: FetchStatus;
+  },
+): ConfirmationContextRefresherKey[] {
+  return enabled.filter((key) => {
+    if (
+      key === ConfirmationContextRefresherKey.Scan &&
+      renderContext.scanFetchStatus === FetchStatus.Error
+    ) {
+      return false;
+    }
+    if (
+      key === ConfirmationContextRefresherKey.Transaction &&
+      renderContext.transactionsFetchStatus === FetchStatus.Error
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**

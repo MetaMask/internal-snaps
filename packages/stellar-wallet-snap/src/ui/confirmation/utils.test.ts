@@ -20,6 +20,7 @@ import {
   requiresMaliciousAcknowledgement,
   resolveConfirmationBanner,
   resolveRefresherKeys,
+  scheduledRefresherKeys,
   shouldDisableConfirmation,
 } from './utils';
 
@@ -436,6 +437,38 @@ describe('confirmation utils', () => {
           enableLocalSimulation: false,
         }),
       ).toStrictEqual([]);
+    });
+  });
+
+  describe('scheduledRefresherKeys', () => {
+    const enabled = [
+      ConfirmationContextRefresherKey.Prices,
+      ConfirmationContextRefresherKey.Scan,
+      ConfirmationContextRefresherKey.Transaction,
+    ];
+
+    it('returns enabled keys when renderContext has no Error statuses', () => {
+      expect(scheduledRefresherKeys(enabled, {})).toStrictEqual(enabled);
+    });
+
+    it('omits scan and transaction when renderContext marked them Error', () => {
+      expect(
+        scheduledRefresherKeys(enabled, {
+          scanFetchStatus: FetchStatus.Error,
+          transactionsFetchStatus: FetchStatus.Error,
+        }),
+      ).toStrictEqual([ConfirmationContextRefresherKey.Prices]);
+    });
+
+    it('omits only scan when scanFetchStatus is Error', () => {
+      expect(
+        scheduledRefresherKeys(enabled, {
+          scanFetchStatus: FetchStatus.Error,
+        }),
+      ).toStrictEqual([
+        ConfirmationContextRefresherKey.Prices,
+        ConfirmationContextRefresherKey.Transaction,
+      ]);
     });
   });
 });
