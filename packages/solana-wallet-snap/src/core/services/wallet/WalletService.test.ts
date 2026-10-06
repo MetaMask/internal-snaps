@@ -1,4 +1,4 @@
-import { SolMethod } from '@metamask/keyring-api';
+import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 
 import { METAMASK_ORIGIN, Network } from '../../constants/solana';
@@ -379,6 +379,25 @@ describe('WalletService', () => {
             'confirmed',
             scope,
             'https://metamask.io',
+            undefined,
+          );
+        });
+
+        it('does not monitor with an origin-derived classification, so the on-chain type wins on finalized', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+          );
+
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            undefined,
           );
         });
 
@@ -396,7 +415,45 @@ describe('WalletService', () => {
             accountType: fromAccount.type,
             chainIdCaip: scope,
             origin: 'https://metamask.io',
+            transactionType: TransactionType.Unknown,
           });
+        });
+
+        it('reports a MetaMask-originated transaction as a send', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              origin: METAMASK_ORIGIN,
+              transactionType: TransactionType.Send,
+            }),
+          );
+        });
+
+        it('uses a caller-supplied classification over the origin', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            undefined,
+            TransactionType.TokenApprove,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionType: TransactionType.TokenApprove,
+            }),
+          );
         });
 
         it('saves a pending unconfirmed transaction after broadcasting', async () => {
@@ -421,6 +478,29 @@ describe('WalletService', () => {
                 }),
               ],
             }),
+          );
+        });
+
+        it('carries the caller classification into the pending transaction and the monitor', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            undefined,
+            TransactionType.TokenApprove,
+          );
+
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({ type: TransactionType.TokenApprove }),
+          );
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            TransactionType.TokenApprove,
           );
         });
 

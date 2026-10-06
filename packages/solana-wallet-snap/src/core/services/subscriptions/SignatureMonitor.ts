@@ -1,3 +1,4 @@
+import type { TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { assert, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
@@ -95,6 +96,8 @@ export class SignatureMonitor {
    * @param commitment - The commitment level to monitor.
    * @param network - The network to monitor.
    * @param origin - The origin of the transaction.
+   * @param transactionType - The classification resolved by the caller. When
+   * omitted, the on-chain classification is used once the transaction is mapped.
    */
   async monitor(
     signature: string,
@@ -102,6 +105,7 @@ export class SignatureMonitor {
     commitment: Commitment,
     network: Network,
     origin: string,
+    transactionType?: TransactionType,
   ): Promise<void> {
     this.#logger.info(`Monitoring signature`, {
       signature,
@@ -109,6 +113,7 @@ export class SignatureMonitor {
       commitment,
       network,
       origin,
+      transactionType,
     });
 
     const subscriptionRequest: SubscriptionRequest = {
@@ -125,6 +130,7 @@ export class SignatureMonitor {
       metadata: {
         accountId,
         origin,
+        ...(transactionType === undefined ? {} : { transactionType }),
       },
     };
 
@@ -159,6 +165,10 @@ export class SignatureMonitor {
       const origin = subscription.metadata?.origin;
       assert(origin, string());
 
+      const transactionType = get(subscription, 'metadata.transactionType') as
+        | TransactionType
+        | undefined;
+
       const account = await this.#accountService.findById(accountId);
       if (!account) {
         throw new Error(`Account not found: ${accountId}`);
@@ -185,7 +195,9 @@ export class SignatureMonitor {
             accountType: account.type,
             chainIdCaip: transaction.chain,
             transactionStatus: transaction.status,
-            transactionType: transaction.type,
+            transactionType:
+              transactionType ??
+              (transaction.type as TransactionType | undefined),
           });
           break;
         default:

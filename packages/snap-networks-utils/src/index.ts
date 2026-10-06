@@ -118,6 +118,13 @@ export type {
   EstimatedChangesLabels,
   EstimatedChangesProps,
 } from './ui/EstimatedChanges/EstimatedChanges';
+export { TransactionAlert } from './ui/TransactionAlert/TransactionAlert';
+export type {
+  TransactionAlertError,
+  TransactionAlertLabels,
+  TransactionAlertProps,
+  TransactionAlertValidation,
+} from './ui/TransactionAlert/TransactionAlert';
 export { InMemoryCache } from './utils/cache/InMemoryCache';
 export { StateCache } from './utils/cache/StateCache';
 export { useCache } from './utils/cache/useCache';

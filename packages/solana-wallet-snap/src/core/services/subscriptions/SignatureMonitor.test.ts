@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
+import { TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 
 import type {
@@ -132,6 +133,27 @@ describe('SignatureMonitor', () => {
       });
     });
 
+    it('carries a caller-supplied classification in the subscription metadata', async () => {
+      await signatureMonitor.monitor(
+        signature,
+        accountId,
+        commitment,
+        network,
+        origin,
+        TransactionType.TokenApprove,
+      );
+
+      expect(mockSubscriptionService.subscribe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: {
+            accountId,
+            origin,
+            transactionType: TransactionType.TokenApprove,
+          },
+        }),
+      );
+    });
+
     it('registers a connection recovery handler', async () => {
       await signatureMonitor.monitor(
         signature,
@@ -231,6 +253,44 @@ describe('SignatureMonitor', () => {
       expect(mockSubscriptionService.unsubscribe).toHaveBeenCalledWith(
         mockSubscription.id,
       );
+    });
+
+    it('prefers the caller-supplied classification over the on-chain type on finalized', async () => {
+      const mockNotification = {} as unknown as SignatureNotification;
+      const mockSubscription = {
+        id: 'subscription-id-123',
+        method: 'signatureSubscribe',
+        network: Network.Mainnet,
+        params: [signature, { commitment, enableReceivedNotification: false }],
+        metadata: {
+          accountId,
+          origin,
+          transactionType: TransactionType.TokenApprove,
+        },
+      } as unknown as Subscription;
+
+      await signatureMonitor.monitor(
+        signature,
+        accountId,
+        'confirmed',
+        network,
+        origin,
+        TransactionType.TokenApprove,
+      );
+
+      // Simulate notification received
+      const handler = notificationHandlers[0]!;
+      await handler(mockNotification, mockSubscription);
+
+      expect(
+        mockAnalyticsService.trackTransactionFinalized,
+      ).toHaveBeenCalledWith({
+        origin,
+        accountType: mockAccount.type,
+        chainIdCaip: mockTransaction.chain,
+        transactionStatus: mockTransaction.status,
+        transactionType: TransactionType.TokenApprove,
+      });
     });
 
     it('tracks notification handling errors and still unsubscribes', async () => {

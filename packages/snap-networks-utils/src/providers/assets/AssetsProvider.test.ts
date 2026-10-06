@@ -1,4 +1,9 @@
-import type { AccountId, Caip19AssetId } from '@metamask/assets-controller';
+import type {
+  AccountId,
+  Asset,
+  Caip19AssetId,
+} from '@metamask/assets-controller';
+import type { InternalAccount } from '@metamask/keyring-internal-api';
 import type { CaipChainId } from '@metamask/utils';
 
 import type { AssetsProviderMessenger } from './AssetsProvider';
@@ -7,6 +12,19 @@ import { AssetsProvider } from './AssetsProvider';
 const ACCOUNT_ID: AccountId = '550e8400-e29b-41d4-a716-446655440000';
 const ASSET_ID: Caip19AssetId = 'tron:728126428/slip44:195';
 const CHAIN_ID: CaipChainId = 'tron:728126428';
+
+const ACCOUNT: InternalAccount = {
+  id: ACCOUNT_ID,
+  address: 'TQrY8tryJYvt7PGfp4XK7c88SHmQbRQJMe',
+  type: 'eip155:eoa',
+  scopes: [CHAIN_ID],
+  methods: [],
+  options: {},
+  metadata: {
+    name: 'Tron Account',
+    keyring: { type: 'Snap Keyring' },
+  },
+} as unknown as InternalAccount;
 
 type WithAssetsProviderCallback<ReturnValue> = (payload: {
   assetsProvider: AssetsProvider;
@@ -78,6 +96,55 @@ describe('AssetsProvider', () => {
           ACCOUNT_ID,
           CHAIN_ID,
         );
+      });
+    });
+  });
+
+  describe('getAssets', () => {
+    it('calls AssetsController:getAssets with forceUpdate and bypassServerCache', async () => {
+      await withAssetsProvider(async ({ assetsProvider, mockMessenger }) => {
+        const options = {
+          chainIds: [CHAIN_ID],
+          forceUpdate: true,
+          bypassServerCache: true,
+        };
+
+        await assetsProvider.getAssets([ACCOUNT], options);
+
+        expect(mockMessenger.call).toHaveBeenCalledWith(
+          'AssetsController:getAssets',
+          [ACCOUNT],
+          options,
+        );
+      });
+    });
+
+    it('forwards no options when none are provided', async () => {
+      await withAssetsProvider(async ({ assetsProvider, mockMessenger }) => {
+        await assetsProvider.getAssets([ACCOUNT]);
+
+        expect(mockMessenger.call).toHaveBeenCalledWith(
+          'AssetsController:getAssets',
+          [ACCOUNT],
+          undefined,
+        );
+      });
+    });
+
+    it('returns the fresh assets from the fetch pipeline', async () => {
+      await withAssetsProvider(async ({ assetsProvider, mockMessenger }) => {
+        const assets = { [ASSET_ID]: { symbol: 'TRX' } as unknown as Asset };
+        mockMessenger.call.mockResolvedValue({
+          [ACCOUNT_ID]: assets,
+        });
+
+        const result = await assetsProvider.getAssets([ACCOUNT], {
+          chainIds: [CHAIN_ID],
+          forceUpdate: true,
+          dataTypes: ['balance', 'metadata'],
+        });
+
+        expect(result).toStrictEqual({ [ACCOUNT_ID]: assets });
       });
     });
   });
