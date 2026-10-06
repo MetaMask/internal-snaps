@@ -10,6 +10,7 @@ import {
 } from '../../../features/confirmation/views/ConfirmTransactionRequest/render';
 import { ScheduleBackgroundEventMethod } from '../../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import type { SolanaKeyringRequest } from '../../handlers/onKeyringRequest/structs';
+import { resolveTransactionType } from '../../utils/transactionType';
 import {
   SolanaSignAndSendTransactionRequestStruct,
   SolanaSignTransactionRequestStruct,
@@ -82,6 +83,12 @@ export class ConfirmationHandler {
       origin,
     } = request;
 
+    /**
+     * Resolved once and carried by all three lifecycle events, so Added,
+     * Approved and Rejected always agree on the classification.
+     */
+    const transactionType = resolveTransactionType({ origin });
+
     // Trigger the side effects that need to happen when the transaction is shown in confirmation UI
     await snap.request({
       method: 'snap_scheduleBackgroundEvent',
@@ -94,6 +101,7 @@ export class ConfirmationHandler {
             metadata: {
               scope,
               origin,
+              transactionType,
             },
           },
         },
@@ -122,6 +130,7 @@ export class ConfirmationHandler {
               metadata: {
                 scope,
                 origin,
+                transactionType,
               },
             },
           },
@@ -143,6 +152,7 @@ export class ConfirmationHandler {
             metadata: {
               scope,
               origin,
+              transactionType,
             },
           },
         },

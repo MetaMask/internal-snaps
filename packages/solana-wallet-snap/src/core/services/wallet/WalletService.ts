@@ -1,5 +1,6 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
+import type { TransactionType } from '@metamask/keyring-api';
 import { normalizeError } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
@@ -38,6 +39,7 @@ import { trackError } from '../../utils/errors';
 import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
+import { resolveTransactionType } from '../../utils/transactionType';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
@@ -275,6 +277,7 @@ export class WalletService {
    * @param options.preflightCommitment - The preflight commitment.
    * @param options.maxRetries - The maximum number of retries.
    * @param options.commitment - The commitment.
+   * @param transactionType - A classification already known by the caller. When omitted, it is derived from the origin.
    * @returns A Promise that resolves to the signed transaction.
    */
   async signAndSendTransaction(
@@ -283,6 +286,7 @@ export class WalletService {
     scope: Network,
     origin: string,
     options?: SolanaSignAndSendTransactionOptions,
+    transactionType?: TransactionType,
   ): Promise<SolanaSignAndSendTransactionResponse> {
     this.#logger.log('Signing and sending transaction', account);
 
@@ -340,10 +344,16 @@ export class WalletService {
       sendConfig,
     );
 
+    const resolvedTransactionType = resolveTransactionType({
+      origin,
+      transactionType,
+    });
+
     await this.#analyticsService.trackTransactionSubmitted({
       origin,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType: resolvedTransactionType,
     });
 
     // Immediately save and emit a pending transaction, so the client can show
@@ -356,6 +366,7 @@ export class WalletService {
           signature,
           account,
           scope,
+          transactionType: resolvedTransactionType,
         }),
       );
     } catch (error) {
@@ -371,6 +382,9 @@ export class WalletService {
       options?.commitment ?? 'confirmed',
       scope,
       origin,
+      // Only the explicit caller classification may override the on-chain
+      // type on `Transaction Finalized`; origin-derived defaults must not.
+      transactionType,
     );
 
     const result = {

@@ -7,10 +7,6 @@ import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import type {
-  KnownCaip19ClassicAssetId,
-  KnownCaip19Sep41AssetId,
-} from '../../api';
 import { METAMASK_ORIGIN } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
@@ -78,7 +74,7 @@ const destinationAddress =
 
 describe('ConfirmSendHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';
-  const assetId = USDC_CLASSIC as KnownCaip19ClassicAssetId;
+  const assetId = USDC_CLASSIC;
   const scope = KnownCaip2ChainId.Mainnet;
   const transactionId =
     '7d4b0c5ef7498b223f45a10f461060fb64f53eb13caf18e8dc7de95a8cf9c0e1';
@@ -245,7 +241,7 @@ describe('ConfirmSendHandler', () => {
   }
 
   it('returns invalid when value has more decimal places than the asset supports', async () => {
-    const sep41AssetId = USDC_SEP41 as KnownCaip19Sep41AssetId;
+    const sep41AssetId = USDC_SEP41;
     const {
       handler,
       createDraftSendTransactionForConfirm,
@@ -319,6 +315,7 @@ describe('ConfirmSendHandler', () => {
       renderContext: {
         account,
         toAddress: destinationAddress,
+        supportsMemo: true,
       },
       renderOptions: {
         loadPrice: true,
@@ -561,6 +558,7 @@ describe('ConfirmSendHandler', () => {
           renderContext: {
             account,
             toAddress: destinationAddress,
+            supportsMemo: true,
             transactionsFetchStatus: FetchStatus.Error,
             errorMessage: message,
           },

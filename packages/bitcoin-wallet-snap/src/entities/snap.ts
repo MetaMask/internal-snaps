@@ -1,6 +1,6 @@
 import type { AddressType, Network, WalletTx } from '@metamask/bitcoindevkit';
 import type { JsonSLIP10Node, SLIP10Node } from '@metamask/key-tree';
-import type { TransactionType } from '@metamask/keyring-api';
+import type { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type {
   ComponentOrElement,
   GetClientStatusResult,
@@ -278,6 +278,8 @@ export type SnapClient = {
    * @param tx The transaction we want to capture metrics for
    * @param origin The origin/source that triggered this event
    * @param transactionType The classification of the transaction.
+   * @param transactionStatus The terminal status of the transaction. Only the
+   * finalized event has a terminal outcome, so it is omitted for the others.
    */
   emitTrackingEvent(
     eventType: TransactionBroadcastEventType,
@@ -285,6 +287,7 @@ export type SnapClient = {
     tx: WalletTx,
     origin: string,
     transactionType: TransactionType,
+    transactionStatus?: TransactionStatus,
   ): Promise<void>;
 
   /**
