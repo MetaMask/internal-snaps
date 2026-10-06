@@ -15,7 +15,11 @@ import { AppConfig } from '../../config';
 import { STELLAR_DECIMAL_PLACES } from '../../constants';
 import { toSmallestUnit } from '../../utils';
 import { logger } from '../../utils/logger';
-import { USDC_SEP41 } from '../asset-metadata/__mocks__/assets.fixtures';
+import {
+  TESTNET_SEP41_USDC,
+  USDC_SEP41,
+  USDT_SEP41,
+} from '../asset-metadata/__mocks__/assets.fixtures';
 import { createMockAccountWithBalances } from '../on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
@@ -1339,8 +1343,6 @@ describe('NetworkService', () => {
 
   describe('getSep41AssetBalances', () => {
     const account = 'GDYTQGVA3NCXM5JPVMOHLDUAHMI3OQ2B2YI25BXYKROAGXXT2T3ZGHE6';
-    const secondAssetId =
-      'stellar:pubnet/sep41:CBGV2QFQBBGEQRUKUMCPO3SZOHDDYO6SCP5CH6TW7EALKVHCXTMWDDOF' as KnownCaip19Sep41AssetId;
 
     it('returns empty object when accounts is empty', async () => {
       const result = await networkService.getSep41AssetBalances({
@@ -1367,13 +1369,13 @@ describe('NetworkService', () => {
 
       const result = await networkService.getSep41AssetBalances({
         accounts: [account],
-        assetIds: [USDC_SEP41, secondAssetId],
+        assetIds: [USDC_SEP41, USDT_SEP41],
         scope: KnownCaip2ChainId.Mainnet,
       });
 
       expect(simResultSpy).toHaveBeenCalled();
       expect(result[account]?.[USDC_SEP41]?.toFixed()).toBe('100');
-      expect(result[account]?.[secondAssetId]?.toFixed()).toBe('200');
+      expect(result[account]?.[USDT_SEP41]?.toFixed()).toBe('200');
       simResultSpy.mockRestore();
     });
 
@@ -1384,12 +1386,12 @@ describe('NetworkService', () => {
 
       const result = await networkService.getSep41AssetBalances({
         accounts: [account],
-        assetIds: [USDC_SEP41, secondAssetId],
+        assetIds: [USDC_SEP41, USDT_SEP41],
         scope: KnownCaip2ChainId.Mainnet,
       });
 
       expect(result[account]?.[USDC_SEP41]?.toFixed()).toBe('1');
-      expect(result[account]?.[secondAssetId]).toBeNull();
+      expect(result[account]?.[USDT_SEP41]).toBeNull();
       simResultSpy.mockRestore();
     });
 
@@ -1401,7 +1403,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.getSep41AssetBalances({
           accounts: [account],
-          assetIds: [USDC_SEP41, secondAssetId],
+          assetIds: [USDC_SEP41, USDT_SEP41],
           scope: KnownCaip2ChainId.Mainnet,
         }),
       ).rejects.toThrow(NetworkServiceException);
@@ -1427,12 +1429,10 @@ describe('NetworkService', () => {
 
     it('returns empty object on testnet (batch SEP-41 balances not supported)', async () => {
       const simResultSpy = jest.spyOn(MultiCall.prototype, 'simResult');
-      const testnetAssetId =
-        'stellar:testnet/sep41:CDLZFC3SYJYDZT7K67VZ75HVSSBAXAVVD2XGDFEUCDZUFE7MDUROSPZM' as KnownCaip19Sep41AssetId;
 
       const result = await networkService.getSep41AssetBalances({
         accounts: [account],
-        assetIds: [testnetAssetId],
+        assetIds: [TESTNET_SEP41_USDC],
         scope: KnownCaip2ChainId.Testnet,
       });
 
