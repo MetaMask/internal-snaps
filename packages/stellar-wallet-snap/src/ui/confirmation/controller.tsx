@@ -239,10 +239,23 @@ export class ConfirmationUXController {
       tokenPrices,
     };
 
+    // Preference/flow-enabled keys for MemoEdit Save (ungated).
+    const enabledRefresherKeys: ConfirmationContextRefresherKey[] = [];
+    if (enablePricing) {
+      enabledRefresherKeys.push(ConfirmationContextRefresherKey.Prices);
+    }
+    if (enableSecurityScan) {
+      enabledRefresherKeys.push(ConfirmationContextRefresherKey.Scan);
+    }
+    if (enableLocalSimulation) {
+      enabledRefresherKeys.push(ConfirmationContextRefresherKey.Transaction);
+    }
+
     // 1. Initial context with loading state
     const context = {
       ...defaultContext,
       ...renderContext,
+      ...(enabledRefresherKeys.length > 0 ? { enabledRefresherKeys } : {}),
     };
 
     // 2. Initial render with loading skeleton (always show loading if pricing enabled)
@@ -264,38 +277,38 @@ export class ConfirmationUXController {
       return dialogPromise;
     }
 
-    // 5. Schedule background context refresh for enabled refreshers only.
+    // 5. Schedule background context refresh for this-tick keys only.
     // Skip Scan / Transaction when renderContext already marked them Error
     // (e.g. RequiresMemo on open): a pending open cron would race
     // MemoEdit's restart and double-hit Blockaid after the user saves a memo.
     // Read the Error overrides from `renderContext` (not merged `context`):
     // `defaultContext` only ever sets Fetched/Fetching, so TS narrows those
     // fields and rejects a comparison against Error on the merged object.
-    const refresherKeys: ConfirmationContextRefresherKey[] = [];
+    const scheduledKeys: ConfirmationContextRefresherKey[] = [];
     if (enablePricing) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Prices);
+      scheduledKeys.push(ConfirmationContextRefresherKey.Prices);
     }
     if (
       enableSecurityScan &&
       renderContext.scanFetchStatus !== FetchStatus.Error
     ) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Scan);
+      scheduledKeys.push(ConfirmationContextRefresherKey.Scan);
     }
     if (
       enableLocalSimulation &&
       renderContext.transactionsFetchStatus !== FetchStatus.Error
     ) {
-      refresherKeys.push(ConfirmationContextRefresherKey.Transaction);
+      scheduledKeys.push(ConfirmationContextRefresherKey.Transaction);
     }
 
-    if (refresherKeys.length > 0) {
+    if (scheduledKeys.length > 0) {
       const backgroundEventId =
         await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
           {
             scope,
             interfaceId: id,
             interfaceKey,
-            refresherKeys,
+            refresherKeys: scheduledKeys,
           },
           Duration.OneSecond,
         );
