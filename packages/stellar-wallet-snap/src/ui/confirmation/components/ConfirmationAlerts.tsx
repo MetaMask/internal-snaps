@@ -101,7 +101,9 @@ export const ConfirmationAlerts = ({
             scanInProgressMessage: translate(
               'confirmation.securityScanInProgressMessage',
             ),
-            scanFailedTitle: translate('confirmation.securityScanAPIErrorTitle'),
+            scanFailedTitle: translate(
+              'confirmation.securityScanAPIErrorTitle',
+            ),
             scanFailedMessage: translate(
               'confirmation.securityScanAPIErrorMessage',
             ),
