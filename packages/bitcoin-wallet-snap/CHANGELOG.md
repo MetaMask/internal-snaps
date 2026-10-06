@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Stop building zero-fee Bitcoin transactions when the fee estimator returns a zero or fractional sub-1 sat/vB rate.
+- Stop building zero-fee Bitcoin transactions when the fee estimator returns a zero or fractional sub-1 sat/vB rate. ([#417](https://github.com/MetaMask/internal-snaps/pull/417))
 
 ## [3.1.0]
 
