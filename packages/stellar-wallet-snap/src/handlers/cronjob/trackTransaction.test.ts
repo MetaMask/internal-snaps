@@ -1,4 +1,4 @@
-import { TransactionStatus } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -14,6 +14,7 @@ import {
 import { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
 import { Transaction } from '../../services/transaction/Transaction';
+import { trackError } from '../../utils/errors';
 import { logger, noOpLogger } from '../../utils/logger';
 import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import { BackgroundEventMethod } from './api';
@@ -30,6 +31,10 @@ jest.mock('../../utils/snap', () => {
       .mockResolvedValue({ active: true, locked: false }),
   };
 });
+jest.mock('../../utils/errors', () => ({
+  ...jest.requireActual('../../utils/errors'),
+  trackError: jest.fn().mockResolvedValue(undefined),
+}));
 
 describe('TrackTransactionHandler', () => {
   const txId =
@@ -43,6 +48,8 @@ describe('TrackTransactionHandler', () => {
   beforeEach(() => {
     jest.mocked(scheduleBackgroundEvent).mockClear();
     jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
+    jest.mocked(trackError).mockClear();
+    jest.mocked(trackError).mockResolvedValue(undefined);
     trackTransactionFinalized.mockClear();
   });
 
@@ -170,6 +177,32 @@ describe('TrackTransactionHandler', () => {
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
   });
 
+  it('reports the classification carried from submit time', async () => {
+    const { handler, getTransaction } = setup();
+    getTransaction.mockResolvedValue(
+      createNetworkTransaction(TransactionStatus.Confirmed),
+    );
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        transactionType: TransactionType.Send,
+      },
+    });
+
+    expect(trackTransactionFinalized).toHaveBeenCalledWith({
+      origin: METAMASK_ORIGIN,
+      accountType: KEYRING_ACCOUNT_TYPE,
+      chainIdCaip: scope,
+      transactionType: TransactionType.Send,
+    });
+  });
+
   it('reschedules when transaction is not found on first attempt', async () => {
     const { handler, getTransaction, synchronize } = setup();
     getTransaction.mockRejectedValue(new TransactionNotFoundException(txId));
@@ -196,6 +229,56 @@ describe('TrackTransactionHandler', () => {
       },
       duration: Duration.TwoSeconds,
     });
+  });
+
+  it('carries the submit-time classification on the rescheduled job', async () => {
+    const { handler, getTransaction } = setup();
+    getTransaction.mockRejectedValue(new TransactionNotFoundException(txId));
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        transactionType: TransactionType.Send,
+      },
+    });
+
+    expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        attempt: 1,
+        transactionType: TransactionType.Send,
+      },
+      duration: Duration.TwoSeconds,
+    });
+  });
+
+  it('tracks the error and stops when an unexpected error is thrown', async () => {
+    const { handler, getTransaction } = setup();
+    getTransaction.mockRejectedValue(new Error('boom'));
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+      },
+    });
+
+    expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
+    expect(jest.mocked(trackError)).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'boom' }),
+    );
   });
 
   it('settles confirmed after reschedule then confirmed across cron runs', async () => {

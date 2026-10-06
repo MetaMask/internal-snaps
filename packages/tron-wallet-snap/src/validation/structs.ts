@@ -50,14 +50,14 @@ export const GetAccountStruct = object({
 export const DeleteAccountStruct = object({
   accountId: UuidStruct,
 });
-export const ListAccountAssetsStruct = object({
+export const GetAccountAssetsStruct = object({
   accountId: UuidStruct,
 });
 export const GetAccountBalancesStruct = object({
   accountId: UuidStruct,
   assets: array(CaipAssetTypeStruct),
 });
-export const ListAccountTransactionsStruct = object({
+export const GetAccountTransactionsStruct = object({
   accountId: UuidStruct,
   pagination: object({
     limit: integer(),
@@ -99,7 +99,7 @@ export const GetAccounBalancesResponseStruct = record(
   }),
 );
 
-export const ListAccountAssetsResponseStruct = array(CaipAssetTypeStruct);
+export const GetAccountAssetsResponseStruct = array(CaipAssetTypeStruct);
 
 export const SubmitRequestMethodStruct = enums(Object.values(SolMethod));
 

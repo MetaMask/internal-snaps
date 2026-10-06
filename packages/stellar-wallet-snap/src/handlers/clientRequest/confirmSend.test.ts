@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
@@ -380,6 +381,7 @@ describe('ConfirmSendHandler', () => {
       txId: transactionId,
       scope,
       accountIdsOrAddresses: [account.id, destinationAddress],
+      transactionType: TransactionType.Send,
     });
   });
 
@@ -865,6 +867,7 @@ describe('ConfirmSendHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.Send,
       });
     });
 
@@ -885,6 +888,7 @@ describe('ConfirmSendHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.Send,
       });
     });
 
@@ -895,6 +899,7 @@ describe('ConfirmSendHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.Send,
       });
     });
 
@@ -911,6 +916,7 @@ describe('ConfirmSendHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.Send,
       });
 
       const submittedOrder =

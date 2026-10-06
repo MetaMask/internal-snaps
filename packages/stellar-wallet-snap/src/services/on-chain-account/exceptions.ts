@@ -13,3 +13,12 @@ export class OnChainAccountMetadataNotAvailableException extends OnChainAccountE
     super(`Account metadata not available`);
   }
 }
+
+/**
+ * Thrown when mainnet returns no SEP-41 balance map for an account.
+ */
+export class OnChainAccountSep41BalanceNotFoundException extends OnChainAccountException {
+  constructor(accountAddress: string) {
+    super(`Balance not available for account ${accountAddress}`);
+  }
+}

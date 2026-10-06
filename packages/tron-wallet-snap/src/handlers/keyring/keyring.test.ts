@@ -11,7 +11,8 @@ import {
 } from '@metamask/snaps-sdk';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
-import { Network } from '../../constants';
+import { KnownCaip19Id, Network } from '../../constants';
+import type { AssetEntity } from '../../entities/assets';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
@@ -65,6 +66,23 @@ describe('KeyringHandler', () => {
   let mockWalletService: jest.Mocked<WalletService>;
   let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
 
+  const mockLiveAsset: AssetEntity = {
+    assetType: KnownCaip19Id.TrxMainnet,
+    keyringAccountId: mockAccount.id,
+    network: Network.Mainnet,
+    symbol: 'TRX',
+    decimals: 6,
+    rawAmount: '1000000',
+    uiAmount: '1',
+    iconUrl: '',
+  };
+
+  const mockShastaAsset: AssetEntity = {
+    ...mockLiveAsset,
+    assetType: KnownCaip19Id.TrxShasta,
+    network: Network.Shasta,
+  };
+
   beforeEach(() => {
     mockSnapClient = {
       scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
@@ -84,7 +102,9 @@ describe('KeyringHandler', () => {
       }),
     } as unknown as jest.Mocked<AccountsService>;
     mockAssetsService = {
-      getAccountAssets: jest.fn().mockResolvedValue([]),
+      fetchAccountAssetsFromTrongrid: jest
+        .fn()
+        .mockResolvedValue([mockLiveAsset, mockShastaAsset]),
     } as unknown as jest.Mocked<AssetsService>;
     mockTransactionsService = {
       checkAddressActivity: jest.fn(),
@@ -670,13 +690,26 @@ describe('KeyringHandler', () => {
   });
 
   describe('getAccountAssets', () => {
-    it('returns asset types for an account', async () => {
+    it('fetches live assets for all account scopes and returns their asset types', async () => {
       const result = await keyringHandler.getAccountAssets(mockAccount.id);
 
-      expect(result).toStrictEqual([]);
-      expect(mockAssetsService.getAccountAssets).toHaveBeenCalledWith(
-        mockAccount.id,
+      expect(result).toStrictEqual([
+        KnownCaip19Id.TrxMainnet,
+        KnownCaip19Id.TrxShasta,
+      ]);
+      expect(
+        mockAssetsService.fetchAccountAssetsFromTrongrid,
+      ).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('propagates fetch failures', async () => {
+      mockAssetsService.fetchAccountAssetsFromTrongrid.mockRejectedValue(
+        new Error('network error'),
       );
+
+      await expect(
+        keyringHandler.getAccountAssets(mockAccount.id),
+      ).rejects.toThrow('network error');
     });
 
     it('throws when the account is not found', async () => {
@@ -684,6 +717,72 @@ describe('KeyringHandler', () => {
 
       await expect(
         keyringHandler.getAccountAssets(mockAccount.id),
+      ).rejects.toThrow('not found');
+    });
+  });
+
+  describe('getAccountBalances', () => {
+    it('fetches live balances for the account and returns the balance record', async () => {
+      const result = await keyringHandler.getAccountBalances(mockAccount.id, [
+        KnownCaip19Id.TrxMainnet,
+      ]);
+
+      expect(result).toStrictEqual({
+        [KnownCaip19Id.TrxMainnet]: {
+          amount: '1',
+          unit: 'TRX',
+        },
+      });
+      expect(
+        mockAssetsService.fetchAccountAssetsFromTrongrid,
+      ).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('excludes token assets with zero balance', async () => {
+      const zeroBalanceToken: AssetEntity = {
+        ...mockLiveAsset,
+        assetType: KnownCaip19Id.UsdtMainnet,
+        rawAmount: '0',
+        uiAmount: '0',
+      };
+
+      mockAssetsService.fetchAccountAssetsFromTrongrid.mockResolvedValue([
+        mockLiveAsset,
+        zeroBalanceToken,
+      ]);
+
+      const result = await keyringHandler.getAccountBalances(mockAccount.id, [
+        KnownCaip19Id.TrxMainnet,
+        KnownCaip19Id.UsdtMainnet,
+      ]);
+
+      expect(result).toStrictEqual({
+        [KnownCaip19Id.TrxMainnet]: {
+          amount: '1',
+          unit: 'TRX',
+        },
+      });
+    });
+
+    it('propagates fetch failures', async () => {
+      mockAssetsService.fetchAccountAssetsFromTrongrid.mockRejectedValue(
+        new Error('network error'),
+      );
+
+      await expect(
+        keyringHandler.getAccountBalances(mockAccount.id, [
+          KnownCaip19Id.TrxMainnet,
+        ]),
+      ).rejects.toThrow('network error');
+    });
+
+    it('throws when the account is not found', async () => {
+      mockAccountsService.findById.mockResolvedValue(null);
+
+      await expect(
+        keyringHandler.getAccountBalances(mockAccount.id, [
+          KnownCaip19Id.TrxMainnet,
+        ]),
       ).rejects.toThrow('not found');
     });
   });

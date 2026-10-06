@@ -111,7 +111,7 @@ type WithAccountsServiceCallback = (payload: {
   mockConfigProvider: { config: Config };
   mockLogger: Logger;
   mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
+    Pick<AssetsService, 'fetchAccountAssets' | 'saveMany'>
   >;
   mockSnapClient: jest.Mocked<
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
@@ -268,9 +268,9 @@ async function withAccountsService(
   };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetchAssetsAndBalancesForAccount' | 'saveMany'>
+    Pick<AssetsService, 'fetchAccountAssets' | 'saveMany'>
   > = {
-    fetchAssetsAndBalancesForAccount: jest.fn().mockResolvedValue([]),
+    fetchAccountAssets: jest.fn().mockResolvedValue([]),
     saveMany: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -1022,7 +1022,7 @@ describe('AccountsService', () => {
   });
 
   describe('synchronize (assets)', () => {
-    it('fetches assets for each account and scope, then saves', async () => {
+    it('fetches assets for each account, then saves', async () => {
       const account: ExtendedKeyringAccount = {
         id: 'sync-asset-id',
         address: 'TSyncAsset12345678901234567',
@@ -1048,26 +1048,15 @@ describe('AccountsService', () => {
       ];
 
       await withAccountsService(
-        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
-          mockConfigProvider.config = {
-            ...MOCK_CONFIG,
-            activeNetworks: [Network.Mainnet, Network.Shasta],
-          };
-          mockAssetsService.fetchAssetsAndBalancesForAccount.mockResolvedValue(
-            mockAssets,
-          );
+        async ({ accountsService, mockAssetsService }) => {
+          mockAssetsService.fetchAccountAssets.mockResolvedValue(mockAssets);
 
           await accountsService.synchronize([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledTimes(2);
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Mainnet, account);
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Shasta, account);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(1);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
+            account,
+          );
           expect(mockAssetsService.saveMany).toHaveBeenCalledWith(
             expect.arrayContaining(mockAssets),
           );
@@ -1154,7 +1143,7 @@ describe('AccountsService', () => {
             ...MOCK_CONFIG,
             activeNetworks: [Network.Mainnet],
           };
-          mockAssetsService.fetchAssetsAndBalancesForAccount
+          mockAssetsService.fetchAccountAssets
             .mockRejectedValueOnce(new Error('grpc unavailable'))
             .mockResolvedValueOnce(healthyAssets);
 
@@ -1199,9 +1188,7 @@ describe('AccountsService', () => {
               throw new Error('toString boom');
             },
           };
-          mockAssetsService.fetchAssetsAndBalancesForAccount.mockRejectedValue(
-            hostileReason,
-          );
+          mockAssetsService.fetchAccountAssets.mockRejectedValue(hostileReason);
 
           // The hostile reason is defused to a placeholder and the failure is
           // still reported; the sync completes and the save still runs.
@@ -1218,7 +1205,7 @@ describe('AccountsService', () => {
       );
     });
 
-    it('handles empty activeNetworks', async () => {
+    it('fetches per account regardless of activeNetworks', async () => {
       await withAccountsService(
         async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
           mockConfigProvider.config = MOCK_CONFIG;
@@ -1237,9 +1224,9 @@ describe('AccountsService', () => {
 
           await accountsService.synchronize([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).not.toHaveBeenCalled();
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
+            account,
+          );
           expect(mockAssetsService.saveMany).toHaveBeenCalledWith([]);
         },
       );
@@ -1416,9 +1403,9 @@ describe('AccountsService', () => {
 
           await accountsService.synchronize([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Mainnet, account);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
+            account,
+          );
           expect(
             mockTransactionsService.fetchNewTransactionsForAccount,
           ).toHaveBeenCalledWith(Network.Mainnet, account);
@@ -1462,9 +1449,7 @@ describe('AccountsService', () => {
             accountsService.synchronize([account]),
           ]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledTimes(1);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(1);
           expect(
             mockTransactionsService.fetchNewTransactionsForAccount,
           ).toHaveBeenCalledTimes(1);
@@ -1487,9 +1472,7 @@ describe('AccountsService', () => {
           await accountsService.synchronize([account]);
           await accountsService.synchronize([account]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledTimes(2);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(2);
         },
       );
     });
@@ -1510,15 +1493,13 @@ describe('AccountsService', () => {
             accountsService.synchronize([accountB]),
           ]);
 
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledTimes(2);
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Mainnet, accountA);
-          expect(
-            mockAssetsService.fetchAssetsAndBalancesForAccount,
-          ).toHaveBeenCalledWith(Network.Mainnet, accountB);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(2);
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
+            accountA,
+          );
+          expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
+            accountB,
+          );
         },
       );
     });
