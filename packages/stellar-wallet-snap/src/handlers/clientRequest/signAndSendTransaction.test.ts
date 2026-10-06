@@ -249,6 +249,7 @@ describe('SignAndSendTransactionHandler', () => {
       scope,
       txId: transactionId,
       accountIdsOrAddresses: [account.id],
+      transactionType: TransactionType.Swap,
     });
   });
 
@@ -310,6 +311,7 @@ describe('SignAndSendTransactionHandler', () => {
       scope,
       txId: transactionId,
       accountIdsOrAddresses: [account.id],
+      transactionType: TransactionType.Swap,
     });
   });
 
@@ -461,6 +463,7 @@ describe('SignAndSendTransactionHandler', () => {
       scope,
       txId: transactionId,
       accountIdsOrAddresses: [account.id],
+      transactionType: TransactionType.BridgeSend,
     });
   });
 
@@ -748,6 +751,7 @@ describe('SignAndSendTransactionHandler', () => {
         accountType: account.type,
         chainIdCaip: scope,
         origin: METAMASK_ORIGIN,
+        transactionType: TransactionType.Swap,
       });
     });
   });

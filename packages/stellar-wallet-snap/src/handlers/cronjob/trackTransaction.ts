@@ -1,3 +1,4 @@
+import type { TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 
 import type { KnownCaip2ChainId } from '../../api';
@@ -80,7 +81,13 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
     request: TrackTransactionJsonRpcRequest,
   ): Promise<void> {
     // Superstruct has already validated accountIdsOrAddresses: the first entry is the sender UUID.
-    const { scope, txId, accountIdsOrAddresses, attempt = 0 } = request.params;
+    const {
+      scope,
+      txId,
+      accountIdsOrAddresses,
+      attempt = 0,
+      transactionType,
+    } = request.params;
 
     this.logger.debug('Tracking transaction', {
       txId,
@@ -97,7 +104,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
 
       // Only synchronize once Horizon reports a terminal status.
       if (isCompletedTransactionStatus(transaction.status)) {
-        await this.#synchronize(scope, accountIdsOrAddresses);
+        await this.#synchronize(scope, accountIdsOrAddresses, transactionType);
       } else {
         this.logger.warn(
           'Transaction is neither confirmed nor failed; skipping synchronization',
@@ -119,6 +126,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
           scope,
           accountIdsOrAddresses,
           attempt,
+          transactionType,
         });
         return;
       }
@@ -142,11 +150,18 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
    * @param params.scope - CAIP-2 chain id for the network.
    * @param params.accountIdsOrAddresses - Sender account id and optional receiver address passed through to settlement.
    * @param params.attempt - Current track cron attempt (matches serialized `attempt` param).
+   * @param params.transactionType - Classification resolved at submit time, forwarded when present.
    */
   async #rescheduleWhenHorizonNotIndexed(
     params: TrackTransactionParams,
   ): Promise<void> {
-    const { txId, scope, attempt = 0, accountIdsOrAddresses } = params;
+    const {
+      txId,
+      scope,
+      attempt = 0,
+      accountIdsOrAddresses,
+      transactionType,
+    } = params;
     const maxReschedules = AppConfig.transaction.trackTransactionMaxReschedules;
 
     if (attempt < maxReschedules) {
@@ -163,6 +178,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
           scope,
           accountIdsOrAddresses,
           attempt: attempt + 1,
+          ...(transactionType === undefined ? {} : { transactionType }),
         },
         Duration.TwoSeconds,
       );
@@ -180,6 +196,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
   async #synchronize(
     scope: KnownCaip2ChainId,
     accountIdsOrAddresses: TrackTransactionParams['accountIdsOrAddresses'],
+    transactionType?: TransactionType,
   ): Promise<void> {
     // The first entry is the sender account UUID (validated by Superstruct).
     const senderAccountId = accountIdsOrAddresses[0];
@@ -196,6 +213,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       origin: METAMASK_ORIGIN,
       accountType: senderAccount.type,
       chainIdCaip: scope,
+      ...(transactionType === undefined ? {} : { transactionType }),
     });
 
     const accountsToSynchronize = [senderAccount];

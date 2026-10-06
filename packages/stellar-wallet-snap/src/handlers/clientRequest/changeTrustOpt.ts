@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   Logger,
@@ -154,10 +155,16 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       throw ensureError(new UserRejectedRequestError());
     }
 
+    const transactionType =
+      action === ChangeTrustOptAction.Add
+        ? TransactionType.TokenApprove
+        : TransactionType.TokenDisapprove;
+
     const trackingProperties: TransactionEventProperties = {
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType,
     };
 
     await this.#analyticsService.trackTransactionAdded(trackingProperties);
@@ -232,6 +239,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       // Change trust affects only the sender account.
       accountIdsOrAddresses: [account.id],
       scope,
+      transactionType,
     });
 
     return {
