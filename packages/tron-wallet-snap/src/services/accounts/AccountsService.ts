@@ -515,18 +515,10 @@ export class AccountsService {
    * @param accounts - The accounts to synchronize assets for.
    */
   async synchronizeAssets(accounts: ExtendedKeyringAccount[]): Promise<void> {
-    const scopes = this.#configProvider.config.activeNetworks;
-    const combinations = accounts.flatMap((account) =>
-      scopes.map((scope) => ({ account, scope })),
-    );
-
     const assetResponses = await Promise.allSettled(
-      combinations.map(async ({ account, scope }) => {
-        return this.#assetsService.fetchAssetsAndBalancesForAccount(
-          scope,
-          account,
-        );
-      }),
+      accounts.map((account) =>
+        this.#assetsService.fetchAccountAssets(account),
+      ),
     );
 
     const assets = assetResponses.flatMap((response) =>
@@ -536,7 +528,7 @@ export class AccountsService {
     await this.#reportSyncFailures(
       'Failed to fetch assets',
       assetResponses,
-      combinations.map(({ account }) => account.id),
+      accounts.map(({ id }) => id),
     );
 
     try {

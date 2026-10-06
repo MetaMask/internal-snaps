@@ -9,29 +9,18 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import { Logger } from '@metamask/snap-networks-utils';
 
-import type { TronHttpClient } from '../../../clients/tron-http/TronHttpClient';
-import { TrongridAccountNotFoundError } from '../../../clients/trongrid/errors';
-import type { TrongridApiClient } from '../../../clients/trongrid/TrongridApiClient';
 import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
 import logger from '../../../utils/logger';
-import { buildStakedData } from '../utils/buildStakedData';
-import { extractBandwidth } from '../utils/extractBandwidth';
-import { extractEnergy } from '../utils/extractEnergy';
-import { extractInLockPeriodAsset } from '../utils/extractInLockPeriodAsset';
-import { extractReadyForWithdrawalAsset } from '../utils/extractReadyForWithdrawalAsset';
-import { extractStakedNativeAssets } from '../utils/extractStakedNativeAssets';
-import { extractStakingRewardsAsset } from '../utils/extractStakingRewardsAsset';
 import { isSnapOwnedAsset } from '../utils/isSnapOwnedAsset';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
+import { toInternalAccount } from '../utils/toInternalAccount';
 
 export type CoreAssetsAdapterOptions = {
   getAccountAssetByID: AssetsProvider['getAccountAssetByID'];
   getAccountAssetsByIDs: AssetsProvider['getAccountAssetsByIDs'];
   getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
-  getAddressInfo: TrongridApiClient['getAccountInfoByAddress'];
-  getAddressResources: TronHttpClient['getAccountResources'];
-  getAddressStakingRewards: TronHttpClient['getReward'];
+  getAssets: AssetsProvider['getAssets'];
 };
 
 /**
@@ -47,29 +36,21 @@ export class CoreAssetsAdapter {
 
   readonly #getAccountAssetsByScope: AssetsProvider['getAccountAssetsByScope'];
 
-  readonly #getAddressInfo: TrongridApiClient['getAccountInfoByAddress'];
-
-  readonly #getAddressResources: TronHttpClient['getAccountResources'];
-
-  readonly #getAddressStakingRewards: TronHttpClient['getReward'];
+  readonly #getAssets: AssetsProvider['getAssets'];
 
   constructor(options: CoreAssetsAdapterOptions) {
     const {
       getAccountAssetByID,
       getAccountAssetsByIDs,
       getAccountAssetsByScope,
-      getAddressInfo,
-      getAddressResources,
-      getAddressStakingRewards,
+      getAssets,
     } = options;
 
     this.#logger = logger.withPrefix('[CoreAssetsAdapter]');
     this.#getAccountAssetByID = getAccountAssetByID;
     this.#getAccountAssetsByIDs = getAccountAssetsByIDs;
     this.#getAccountAssetsByScope = getAccountAssetsByScope;
-    this.#getAddressInfo = getAddressInfo;
-    this.#getAddressResources = getAddressResources;
-    this.#getAddressStakingRewards = getAddressStakingRewards;
+    this.#getAssets = getAssets;
   }
 
   async getAccountAssetByID(
@@ -137,77 +118,31 @@ export class CoreAssetsAdapter {
   }
 
   /**
-   * We used to fetch all assets and balances but now the Snap is only responsible for fetching snap-owned assets.
-   * - Energy & Bandwidth
-   * - Staked TRX and full staking lifecycle (rewards, in lock period, ready for withdrawal)
+   * Fetches live assets and balances for the given account across all its
+   * scopes through the AssetsController's fetch pipeline (`getAssets` with
+   * `forceUpdate` and `bypassServerCache`, so neither client nor server
+   * caches are used).
    *
-   * @param scope - The network to query.
    * @param account - The keyring account.
-   * @returns Promise<AssetEntity[]> - Array of assets with balances.
+   * @returns The freshly fetched assets.
    */
-  async fetchAssetsAndBalancesForAccount(
-    scope: Network,
-    account: KeyringAccount,
-  ): Promise<AssetEntity[]> {
-    this.#logger.info('Fetching assets and balances for account', {
-      scope,
-      account,
+  async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
+    this.#logger.info('Fetching assets and balances via AssetsController', {
+      accountId: account.id,
+      scopes: account.scopes,
     });
 
-    /**
-     * `getAccountInfoByAddress` rejects with `TrongridAccountNotFoundError` for
-     * inactive accounts. We still wait for all three requests, then rethrow
-     * unexpected failures (HTTP errors, timeouts) so they are not mistaken for
-     * an inactive account.
-     */
-    const [
-      addressInfoRequest,
-      addressResourcesRequest,
-      addressStakingRewardsRequest,
-    ] = await Promise.allSettled([
-      this.#getAddressInfo(scope, account.address),
-      this.#getAddressResources(scope, account.address),
-      this.#getAddressStakingRewards(scope, account.address),
-    ]);
+    const results = await this.#getAssets([toInternalAccount(account)], {
+      chainIds: account.scopes,
+      forceUpdate: true,
+      bypassServerCache: true,
+    });
 
-    /**
-     * If any of the requests fail let's treat it as a panic except for the inactive account case.
-     */
-    if (
-      addressInfoRequest.status === 'rejected' &&
-      !(addressInfoRequest.reason instanceof TrongridAccountNotFoundError)
-    ) {
-      throw addressInfoRequest.reason;
-    }
+    const accountAssets = results[account.id] ?? {};
 
-    if (addressResourcesRequest.status === 'rejected') {
-      throw addressResourcesRequest.reason;
-    }
-
-    if (addressStakingRewardsRequest.status === 'rejected') {
-      throw addressStakingRewardsRequest.reason;
-    }
-
-    const stakedData = buildStakedData(addressInfoRequest);
-    const resources = addressResourcesRequest.value;
-    const stakingRewards = Math.max(0, addressStakingRewardsRequest.value);
-
-    return [
-      ...extractStakedNativeAssets(account, scope, stakedData),
-      extractReadyForWithdrawalAsset(account, scope, stakedData),
-      extractInLockPeriodAsset(account, scope, stakedData),
-      extractStakingRewardsAsset(account, scope, stakingRewards),
-      ...extractBandwidth({
-        account,
-        scope,
-        tronAccountResources: resources,
-      }),
-      ...extractEnergy({
-        account,
-        scope,
-        tronAccountResources: resources,
-      }),
-    ];
+    return Object.values(accountAssets).map((asset: Asset) =>
+      mapControllerAsset(account.id, asset),
+    );
   }
 
   /**
