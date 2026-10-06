@@ -29,6 +29,7 @@ import {
 } from '../entities';
 import { CronMethod } from '../handlers';
 import { parsePsbt } from '../handlers/parsers';
+import { resolveFeeRate } from '../utils/fee-rate';
 import type { AccountUseCases } from './AccountUseCases';
 
 type SetAccountEventValue = {
@@ -100,8 +101,10 @@ export class SendFlowUseCases {
       account.network,
     );
 
-    const currentFeeRate =
-      feeEstimates.get(this.#targetBlocksConfirmation) ?? this.#fallbackFeeRate;
+    const currentFeeRate = resolveFeeRate(
+      feeEstimates.get(this.#targetBlocksConfirmation),
+      this.#fallbackFeeRate,
+    );
 
     templatePsbt.feeRate(currentFeeRate);
 
@@ -573,9 +576,10 @@ export class SendFlowUseCases {
     try {
       const feeEstimates = await this.#chainClient.getFeeEstimates(network);
 
-      updatedContext.feeRate =
-        feeEstimates.get(this.#targetBlocksConfirmation) ??
-        this.#fallbackFeeRate;
+      updatedContext.feeRate = resolveFeeRate(
+        feeEstimates.get(this.#targetBlocksConfirmation),
+        this.#fallbackFeeRate,
+      );
 
       updatedContext.exchangeRate = await this.#getExchangeRate(
         network,

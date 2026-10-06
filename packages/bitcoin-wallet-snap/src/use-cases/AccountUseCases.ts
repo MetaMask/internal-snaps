@@ -42,6 +42,7 @@ import {
   WalletError,
 } from '../entities';
 import { CronMethod } from '../handlers/CronHandler';
+import { resolveFeeRate } from '../utils/fee-rate';
 
 export type DiscoverAccountParams = {
   network: Network;
@@ -998,8 +999,9 @@ export class AccountUseCases {
 
   async getFallbackFeeRate(account: BitcoinAccount): Promise<number> {
     const feeEstimates = await this.#chain.getFeeEstimates(account.network);
-    return (
-      feeEstimates.get(this.#targetBlocksConfirmation) ?? this.#fallbackFeeRate
+    return resolveFeeRate(
+      feeEstimates.get(this.#targetBlocksConfirmation),
+      this.#fallbackFeeRate,
     );
   }
 

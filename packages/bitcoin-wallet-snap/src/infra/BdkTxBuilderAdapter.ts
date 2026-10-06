@@ -15,6 +15,7 @@ import {
 
 import { ValidationError } from '../entities';
 import type { CodifiedError, TransactionBuilder } from '../entities';
+import { toFeeRateSatsPerVb } from '../utils/fee-rate';
 
 export class BdkTxBuilderAdapter implements TransactionBuilder {
   #builder: TxBuilder;
@@ -62,7 +63,7 @@ export class BdkTxBuilderAdapter implements TransactionBuilder {
 
   feeRate(feeRate: number): BdkTxBuilderAdapter {
     this.#builder = this.#builder.fee_rate(
-      new FeeRate(BigInt(Math.floor(feeRate))),
+      new FeeRate(toFeeRateSatsPerVb(feeRate)),
     );
     return this;
   }

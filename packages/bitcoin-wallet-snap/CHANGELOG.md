@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Populate the `transaction_type` and `transaction_status` properties on the transaction lifecycle tracking events, with `transaction_status` set to `confirmed` on `Transaction Finalized`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393), [#404](https://github.com/MetaMask/internal-snaps/pull/404))
 
+### Fixed
+
+- Stop building zero-fee Bitcoin transactions when the fee estimator returns a zero or fractional sub-1 sat/vB rate. ([#417](https://github.com/MetaMask/internal-snaps/pull/417))
+
 ## [3.1.0]
 
 ### Added
