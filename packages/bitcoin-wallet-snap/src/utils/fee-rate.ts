@@ -38,7 +38,7 @@ export function resolveFeeRate(
   estimate: number | undefined,
   fallbackFeeRate: number,
 ): number {
-  if (!isUsableFeeRate(estimate)) {
+  if (!isValidFeeRate(estimate)) {
     return fallbackFeeRate;
   }
 
@@ -59,7 +59,7 @@ export function resolveFeeRate(
  * @returns The fee rate as a whole number of sat/vB.
  */
 export function toFeeRateSatsPerVb(feeRate: number): bigint {
-  if (!isUsableFeeRate(feeRate)) {
+  if (!isValidFeeRate(feeRate)) {
     return BigInt(0);
   }
 
