@@ -40,7 +40,7 @@ import { InvalidInvokeContractStructureException } from '../transaction/exceptio
 import { Transaction } from '../transaction/Transaction';
 import { assertInvokeHostFunctionSoleOperation } from '../transaction/utils';
 import { extractAssetDataFromContractData } from '../transaction/xdrParser';
-import type { AssetDataResponse } from './api';
+import type { AccountLedgerMeta, AssetDataResponse } from './api';
 import { KnownRpcError } from './api';
 import {
   AccountNotActivatedException,
@@ -361,6 +361,60 @@ export class NetworkService {
       return this.#throwError({
         error,
         fallbackError: 'Failed to get account',
+      });
+    }
+  }
+
+  /**
+   * Loads account ledger metadata (sequence, subentries, sponsorship counts) from Soroban RPC.
+   *
+   * Uses RPC `getAccountEntry`. Sequence is `seqNum` as a decimal string, matching SDK `getAccount`.
+   *
+   * @param accountAddress - The Stellar account address (public key).
+   * @param scope - The CAIP-2 chain ID.
+   * @returns Sequence, subentry count, sponsorship counters, and native stroops.
+   * @throws {AccountNotActivatedException} If the account does not exist on the network.
+   * @throws {NetworkServiceException} If the RPC request fails, or the account entry is missing
+   * the v1 / v2 extensions required for sponsorship counts.
+   */
+  async getAccountLedgerMetadata(
+    accountAddress: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<AccountLedgerMeta> {
+    try {
+      const client = this.#getRpcClient(scope);
+      const entry = await client.getAccountEntry(accountAddress);
+
+      const accountExt = entry.ext;
+      if (accountExt.type !== 'v1') {
+        throw new NetworkServiceException(
+          `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}: expected account extension v1, got ${accountExt.type}`,
+        );
+      }
+      const v1Ext = accountExt.v1.ext;
+      if (v1Ext.type !== 'v2') {
+        throw new NetworkServiceException(
+          `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}: expected account extension v2, got ${v1Ext.type}`,
+        );
+      }
+
+      const { numSponsoring, numSponsored } = v1Ext.v2;
+      return {
+        sequenceNumber: entry.seqNum.toString(),
+        subentryCount: entry.numSubEntries,
+        numSponsoring,
+        numSponsored,
+        rawNativeBalance: entry.balance.toString(),
+      };
+    } catch (error: unknown) {
+      if (isAccountNotFoundError(error, accountAddress)) {
+        throw new AccountNotActivatedException(accountAddress, scope, {
+          cause: error,
+        });
+      }
+      return this.#throwError({
+        error,
+        fallbackError: `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}`,
       });
     }
   }

@@ -1,6 +1,10 @@
 import { InMemoryState, InMemoryCache } from '@metamask/snap-networks-utils';
 
-import type { KnownCaip19AssetIdOrSlip44Id } from '../../../api';
+import type {
+  KnownCaip19ClassicAssetId,
+  KnownCaip19Sep41AssetId,
+  KnownCaip19Slip44Id,
+} from '../../../api';
 import { AssetType, KnownCaip2ChainId } from '../../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../../constants';
 import { getSlip44AssetId } from '../../../utils/caip';
@@ -10,12 +14,12 @@ import type { AssetMetadataByAssetId, StellarAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
 import { AssetMetadataService } from '../AssetMetadataService';
 
-export const NATIVE: KnownCaip19AssetIdOrSlip44Id = `${getSlip44AssetId(KnownCaip2ChainId.Mainnet)}`;
-export const USDC_CLASSIC: KnownCaip19AssetIdOrSlip44Id =
+export const NATIVE: KnownCaip19Slip44Id = `${getSlip44AssetId(KnownCaip2ChainId.Mainnet)}`;
+export const USDC_CLASSIC: KnownCaip19ClassicAssetId =
   'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-export const USDC_SEP41: KnownCaip19AssetIdOrSlip44Id =
+export const USDC_SEP41: KnownCaip19Sep41AssetId =
   'stellar:pubnet/sep41:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
-export const USDT_SEP41: KnownCaip19AssetIdOrSlip44Id =
+export const USDT_SEP41: KnownCaip19Sep41AssetId =
   'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J';
 
 export const generateMockStellarAssetMetadata = (): AssetMetadataByAssetId => {

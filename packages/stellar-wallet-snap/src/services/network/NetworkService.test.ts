@@ -2,36 +2,39 @@ import { TransactionStatus } from '@metamask/keyring-api';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import {
   Account,
-  Contract,
   Horizon as StellarHorizon,
   Networks,
-  nativeToScVal,
   NotFoundError,
   rpc as StellarRpc,
-  TransactionBuilder as StellarTransactionBuilder,
 } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
-import type {
-  KnownCaip19ClassicAssetId,
-  KnownCaip19Sep41AssetId,
-} from '../../api';
+import type { KnownCaip19ClassicAssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { STELLAR_DECIMAL_PLACES } from '../../constants';
 import { toSmallestUnit } from '../../utils';
 import { logger } from '../../utils/logger';
+import { USDC_SEP41 } from '../asset-metadata/__mocks__/assets.fixtures';
 import { createMockAccountWithBalances } from '../on-chain-account/__mocks__/onChainAccount.fixtures';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import {
   buildMockClassicTransaction,
   buildMockHorizonTransactionPage,
   buildMockHorizonTransactionRecord,
-  buildMockInvokeHostFunctionTransaction,
 } from '../transaction/__mocks__/transaction.fixtures';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
 import { generateStellarAddress } from '../wallet/__mocks__/wallet.fixtures';
+import {
+  buildTransactionWithTwoInvokeHostFunctionOps,
+  createMockAccountEntry,
+  createMockInvokeHostFunctionTransaction,
+  createMockTransaction,
+  getHorizonClientSpies,
+  getRpcServerSpies,
+  mockHorizonAccountTransactions,
+} from './__mocks__/networkService.fixtures';
 import { KnownRpcError } from './api';
 import {
   AccountNotActivatedException,
@@ -62,98 +65,6 @@ describe('NetworkService', () => {
     });
     scope = KnownCaip2ChainId.Mainnet;
   });
-
-  const getHorizonClientSpies = () => ({
-    fetchBaseFeeSpy: jest.spyOn(
-      StellarHorizon.Server.prototype,
-      'fetchBaseFee',
-    ),
-    loadAccountSpy: jest.spyOn(StellarHorizon.Server.prototype, 'loadAccount'),
-  });
-
-  const getRpcServerSpies = () => ({
-    pollTransactionSpy: jest.spyOn(
-      StellarRpc.Server.prototype,
-      'pollTransaction',
-    ),
-    sendTransactionSpy: jest.spyOn(
-      StellarRpc.Server.prototype,
-      'sendTransaction',
-    ),
-    getAccountSpy: jest.spyOn(StellarRpc.Server.prototype, 'getAccount'),
-    getLedgerEntriesSpy: jest.spyOn(
-      StellarRpc.Server.prototype,
-      'getLedgerEntries',
-    ),
-    simulateTransactionSpy: jest.spyOn(
-      StellarRpc.Server.prototype,
-      'simulateTransaction',
-    ),
-  });
-
-  const validSep41AssetId =
-    'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
-
-  const createMockTransaction = (accountId?: string) => {
-    return buildMockClassicTransaction(
-      [
-        {
-          type: 'payment',
-          params: {
-            destination: accountId ?? generateStellarAddress(),
-            asset: 'native',
-            amount: '1',
-          },
-        },
-      ],
-      {
-        networkPassphrase: Networks.PUBLIC,
-      },
-    );
-  };
-
-  const mockHorizonAccountTransactions = (
-    call: jest.Mock,
-  ): jest.SpyInstance => {
-    return jest
-      .spyOn(StellarHorizon.Server.prototype, 'transactions')
-      .mockReturnValue({
-        forAccount: jest.fn().mockReturnValue({
-          order: jest.fn().mockReturnValue({
-            cursor: jest.fn().mockReturnValue({
-              limit: jest.fn().mockReturnValue({
-                includeFailed: jest.fn().mockReturnValue({ call }),
-              }),
-            }),
-          }),
-        }),
-      } as never);
-  };
-
-  const createMockInvokeHostFunctionTransaction = (accountId?: string) => {
-    return buildMockInvokeHostFunctionTransaction('invokeHostFunction', [], {
-      contractId: 'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT',
-      source: {
-        accountId: accountId ?? generateStellarAddress(),
-        sequence: '1',
-      },
-    });
-  };
-
-  const buildTransactionWithTwoInvokeHostFunctionOps = (): Transaction => {
-    const source = 'GB5QOHJZ6RACA26NFDIEHD7I7SLROLC5P4NATSG43OJV2C5WUR4VEUKG';
-    const stellarAccount = new Account(source, '1');
-    const contract = new Contract(
-      'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT',
-    );
-    const builder = new StellarTransactionBuilder(stellarAccount, {
-      fee: '200',
-      networkPassphrase: Networks.PUBLIC,
-    });
-    builder.addOperation(contract.call('fnA', nativeToScVal(1)));
-    builder.addOperation(contract.call('fnB', nativeToScVal(2)));
-    return new Transaction(builder.setTimeout(60).build());
-  };
 
   describe('getBaseFee', () => {
     it('returns base fee as BigNumber', async () => {
@@ -463,13 +374,82 @@ describe('NetworkService', () => {
     });
   });
 
+  describe('getAccountLedgerMetadata', () => {
+    const testAddress =
+      'GB5QOHJZ6RACA26NFDIEHD7I7SLROLC5P4NATSG43OJV2C5WUR4VEUKG';
+
+    it('returns sequence, subentry, and sponsorship counts from RPC getAccountEntry', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockResolvedValue(createMockAccountEntry());
+
+      expect(
+        await networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).toStrictEqual({
+        sequenceNumber: '262764252333343491',
+        subentryCount: 4,
+        numSponsoring: 1,
+        numSponsored: 0,
+        rawNativeBalance: '351010623',
+      });
+      expect(getAccountEntrySpy).toHaveBeenCalledWith(testAddress);
+    });
+
+    it('throws when the account v1 extension is missing', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockResolvedValue(
+        createMockAccountEntry({ accountExtType: 'v0' }),
+      );
+
+      await expect(
+        networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).rejects.toThrow(
+        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}: expected account extension v1, got v0`,
+      );
+    });
+
+    it('throws when the account v2 extension is missing', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockResolvedValue(
+        createMockAccountEntry({ v1ExtType: 'v0' }),
+      );
+
+      await expect(
+        networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).rejects.toThrow(
+        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}: expected account extension v2, got v0`,
+      );
+    });
+
+    it('throws AccountNotActivatedException when RPC uses Soroban missing-account error shape', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockRejectedValue(
+        new Error(`Account not found: ${testAddress}`),
+      );
+
+      await expect(
+        networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).rejects.toThrow(AccountNotActivatedException);
+    });
+
+    it('throws NetworkServiceException for other RPC errors', async () => {
+      const { getAccountEntrySpy } = getRpcServerSpies();
+      getAccountEntrySpy.mockRejectedValue(new Error('RPC unavailable'));
+
+      await expect(
+        networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).rejects.toThrow(
+        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}`,
+      );
+    });
+  });
+
   describe('getSep41AssetsData', () => {
     it('throws NetworkServiceException when getLedgerEntries fails', async () => {
       const { getLedgerEntriesSpy } = getRpcServerSpies();
       getLedgerEntriesSpy.mockRejectedValue(new Error('RPC error'));
 
       await expect(
-        networkService.getSep41AssetsData([validSep41AssetId], scope),
+        networkService.getSep41AssetsData([USDC_SEP41], scope),
       ).rejects.toThrow(NetworkServiceException);
     });
   });
@@ -1233,7 +1213,7 @@ describe('NetworkService', () => {
         networkService.simulateSep41TransferWithCache({
           transaction: mockTx,
           scope,
-          assetId: validSep41AssetId,
+          assetId: USDC_SEP41,
           fromAccountId: generateStellarAddress(),
           toAccountId: generateStellarAddress(),
         }),
@@ -1247,7 +1227,7 @@ describe('NetworkService', () => {
         networkService.simulateSep41TransferWithCache({
           transaction: invalidStructureTx,
           scope,
-          assetId: validSep41AssetId,
+          assetId: USDC_SEP41,
           fromAccountId: generateStellarAddress(),
           toAccountId: generateStellarAddress(),
         }),
@@ -1265,7 +1245,7 @@ describe('NetworkService', () => {
       const first = await networkService.simulateSep41TransferWithCache({
         transaction: mockInvoke,
         scope,
-        assetId: validSep41AssetId,
+        assetId: USDC_SEP41,
         fromAccountId,
         toAccountId,
       });
@@ -1274,7 +1254,7 @@ describe('NetworkService', () => {
       const second = await networkService.simulateSep41TransferWithCache({
         transaction: mockInvoke,
         scope,
-        assetId: validSep41AssetId,
+        assetId: USDC_SEP41,
         fromAccountId,
         toAccountId,
       });
@@ -1294,7 +1274,7 @@ describe('NetworkService', () => {
       const params = {
         transaction: mockInvoke,
         scope,
-        assetId: validSep41AssetId,
+        assetId: USDC_SEP41,
         fromAccountId,
         toAccountId,
       };
@@ -1365,7 +1345,7 @@ describe('NetworkService', () => {
     it('returns empty object when accounts is empty', async () => {
       const result = await networkService.getSep41AssetBalances({
         accounts: [],
-        assetIds: [validSep41AssetId],
+        assetIds: [USDC_SEP41],
         scope: KnownCaip2ChainId.Mainnet,
       });
       expect(result).toStrictEqual({});
@@ -1387,12 +1367,12 @@ describe('NetworkService', () => {
 
       const result = await networkService.getSep41AssetBalances({
         accounts: [account],
-        assetIds: [validSep41AssetId, secondAssetId],
+        assetIds: [USDC_SEP41, secondAssetId],
         scope: KnownCaip2ChainId.Mainnet,
       });
 
       expect(simResultSpy).toHaveBeenCalled();
-      expect(result[account]?.[validSep41AssetId]?.toFixed()).toBe('100');
+      expect(result[account]?.[USDC_SEP41]?.toFixed()).toBe('100');
       expect(result[account]?.[secondAssetId]?.toFixed()).toBe('200');
       simResultSpy.mockRestore();
     });
@@ -1404,11 +1384,11 @@ describe('NetworkService', () => {
 
       const result = await networkService.getSep41AssetBalances({
         accounts: [account],
-        assetIds: [validSep41AssetId, secondAssetId],
+        assetIds: [USDC_SEP41, secondAssetId],
         scope: KnownCaip2ChainId.Mainnet,
       });
 
-      expect(result[account]?.[validSep41AssetId]?.toFixed()).toBe('1');
+      expect(result[account]?.[USDC_SEP41]?.toFixed()).toBe('1');
       expect(result[account]?.[secondAssetId]).toBeNull();
       simResultSpy.mockRestore();
     });
@@ -1421,7 +1401,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.getSep41AssetBalances({
           accounts: [account],
-          assetIds: [validSep41AssetId, secondAssetId],
+          assetIds: [USDC_SEP41, secondAssetId],
           scope: KnownCaip2ChainId.Mainnet,
         }),
       ).rejects.toThrow(NetworkServiceException);
@@ -1437,7 +1417,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.getSep41AssetBalances({
           accounts: [account],
-          assetIds: [validSep41AssetId],
+          assetIds: [USDC_SEP41],
           scope: KnownCaip2ChainId.Mainnet,
         }),
       ).rejects.toThrow(NetworkServiceException);
@@ -1471,7 +1451,7 @@ describe('NetworkService', () => {
         .mockResolvedValue([BigInt('42')]);
       const params = {
         accounts: [account],
-        assetIds: [validSep41AssetId],
+        assetIds: [USDC_SEP41],
         scope: KnownCaip2ChainId.Mainnet,
       };
 
@@ -1482,7 +1462,7 @@ describe('NetworkService', () => {
         await networkService.getSep41AssetBalancesWithCache(params);
 
       expect(first).toStrictEqual(second);
-      expect(first[account]?.[validSep41AssetId]?.toFixed()).toBe('42');
+      expect(first[account]?.[USDC_SEP41]?.toFixed()).toBe('42');
       expect(simResultSpy).toHaveBeenCalledTimes(1);
       simResultSpy.mockRestore();
     });
