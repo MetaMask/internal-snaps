@@ -91,6 +91,12 @@
     "confirmation.validationErrorSecurityAdviced": {
       "message": "Security advice by"
     },
+    "confirmation.securityScanInProgressTitle": {
+      "message": "Checking for security issues"
+    },
+    "confirmation.securityScanInProgressMessage": {
+      "message": "This usually takes a few seconds."
+    },
     "transactionScan.errors.unknownError": {
       "message": "An unknown error occurred"
     },

@@ -1,3 +1,4 @@
+import { TransactionAlert } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -23,7 +24,7 @@ import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
-import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
+import { getTransactionAlertProps } from '../../utils/getTransactionAlertProps';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import type { ConfirmTransactionRequestContext } from './types';
 
@@ -92,10 +93,11 @@ export const ConfirmTransactionRequest = ({
         {/* Security Alert */}
         {preferences.useSecurityAlerts ? (
           <TransactionAlert
-            scanFetchStatus={scanFetchStatus}
-            validation={scan?.validation ?? null}
-            error={scan?.error ?? null}
-            preferences={preferences}
+            {...getTransactionAlertProps({
+              preferences,
+              scan,
+              scanFetchStatus,
+            })}
           />
         ) : null}
 

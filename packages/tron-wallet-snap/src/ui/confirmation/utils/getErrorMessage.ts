@@ -1,7 +1,7 @@
-import { isTransactionDeadlinePassedError } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
-import type { TransactionScanError } from '../../../../services/transaction-scan/types';
-import type { Preferences } from '../../../../types/snap';
-import { i18n } from '../../../../utils/i18n';
+import { isTransactionDeadlinePassedError } from '../../../services/transaction-scan/isTransactionDeadlinePassedError';
+import type { TransactionScanError } from '../../../services/transaction-scan/types';
+import type { Preferences } from '../../../types/snap';
+import { i18n } from '../../../utils/i18n';
 
 /**
  * Maps error codes to user-friendly messages
