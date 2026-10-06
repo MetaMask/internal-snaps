@@ -61,6 +61,7 @@ export const ConfirmSendTransaction = ({
   transactionsFetchStatus = FetchStatus.Initial,
   errorMessage,
   memo: contextMemo,
+  supportsMemo = true,
 }: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
   const { address } = account;
@@ -72,7 +73,9 @@ export const ConfirmSendTransaction = ({
   // scan or re-validation is still in flight.
   const shouldDisableMemoEdit =
     isFetchInProgress(scanFetchStatus) ||
-    isFetchInProgress(transactionsFetchStatus);
+    isFetchInProgress(transactionsFetchStatus) ||
+    (transactionsFetchStatus === FetchStatus.Error &&
+      errorMessage !== 'confirmation.txnError.requiresMemo');
   const memo =
     typeof contextMemo === 'string' && contextMemo.trim()
       ? contextMemo.trim()
@@ -164,24 +167,26 @@ export const ConfirmSendTransaction = ({
           )}
         </Section>
 
-        <Section>
-          <Box alignment="space-between" direction="horizontal">
-            <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.memo')}
-            </SnapText>
-            <Box direction="horizontal" alignment="end">
-              <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
-              <Button
-                name={MemoEditFormNames.Open}
-                disabled={shouldDisableMemoEdit}
-              >
-                {memo
-                  ? t('confirmation.memo.update')
-                  : t('confirmation.memo.add')}
-              </Button>
+        {supportsMemo ? (
+          <Section>
+            <Box alignment="space-between" direction="horizontal">
+              <SnapText fontWeight="medium" color="alternative">
+                {t('confirmation.memo')}
+              </SnapText>
+              <Box direction="horizontal" alignment="end">
+                <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
+                <Button
+                  name={MemoEditFormNames.Open}
+                  disabled={shouldDisableMemoEdit}
+                >
+                  {memo
+                    ? t('confirmation.memo.update')
+                    : t('confirmation.memo.add')}
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        </Section>
+          </Section>
+        ) : null}
       </Box>
       <ConfirmationFooter
         locale={locale}

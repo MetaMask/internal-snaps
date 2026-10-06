@@ -1,5 +1,6 @@
 import { Address, Amount, Psbt } from '@metamask/bitcoindevkit';
 import type { Network, Transaction } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
@@ -28,6 +29,7 @@ import {
 } from '../entities';
 import { CronMethod } from '../handlers';
 import { parsePsbt } from '../handlers/parsers';
+import { resolveFeeRate } from '../utils/fee-rate';
 import type { AccountUseCases } from './AccountUseCases';
 
 type SetAccountEventValue = {
@@ -99,8 +101,10 @@ export class SendFlowUseCases {
       account.network,
     );
 
-    const currentFeeRate =
-      feeEstimates.get(this.#targetBlocksConfirmation) ?? this.#fallbackFeeRate;
+    const currentFeeRate = resolveFeeRate(
+      feeEstimates.get(this.#targetBlocksConfirmation),
+      this.#fallbackFeeRate,
+    );
 
     templatePsbt.feeRate(currentFeeRate);
 
@@ -142,18 +146,30 @@ export class SendFlowUseCases {
     const interfaceId =
       await this.#sendFlowRepository.insertConfirmSendForm(context);
 
-    await this.#snapClient.trackTransactionAdded(account, METAMASK_ORIGIN);
+    await this.#snapClient.trackTransactionAdded(
+      account,
+      METAMASK_ORIGIN,
+      TransactionType.Send,
+    );
 
     // Blocks and waits for user actions.
     const confirmed =
       await this.#snapClient.displayUserPrompt<boolean>(interfaceId);
 
     if (!confirmed) {
-      await this.#snapClient.trackTransactionRejected(account, METAMASK_ORIGIN);
+      await this.#snapClient.trackTransactionRejected(
+        account,
+        METAMASK_ORIGIN,
+        TransactionType.Send,
+      );
       throw new UserActionError('User canceled the confirmation');
     }
 
-    await this.#snapClient.trackTransactionApproved(account, METAMASK_ORIGIN);
+    await this.#snapClient.trackTransactionApproved(
+      account,
+      METAMASK_ORIGIN,
+      TransactionType.Send,
+    );
 
     // sign and broadcast
     const signedPsbt = (
@@ -560,9 +576,10 @@ export class SendFlowUseCases {
     try {
       const feeEstimates = await this.#chainClient.getFeeEstimates(network);
 
-      updatedContext.feeRate =
-        feeEstimates.get(this.#targetBlocksConfirmation) ??
-        this.#fallbackFeeRate;
+      updatedContext.feeRate = resolveFeeRate(
+        feeEstimates.get(this.#targetBlocksConfirmation),
+        this.#fallbackFeeRate,
+      );
 
       updatedContext.exchangeRate = await this.#getExchangeRate(
         network,

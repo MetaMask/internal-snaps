@@ -1,3 +1,4 @@
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   IStateManager,
@@ -8,6 +9,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
+  METAMASK_ORIGIN,
   Network,
   TRACK_TX_INTERVAL,
   TRACK_TX_MAX_ATTEMPTS,
@@ -138,7 +140,7 @@ function buildMockInterfaceContext(
   overrides: Partial<ConfirmTransactionRequestContext> = {},
 ): ConfirmTransactionRequestContext {
   return {
-    origin: 'MetaMask',
+    origin: METAMASK_ORIGIN,
     scope: Network.Mainnet,
     fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     toAddress: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
@@ -1011,6 +1013,7 @@ describe('CronHandler', () => {
           const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
           } as any);
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
@@ -1019,6 +1022,7 @@ describe('CronHandler', () => {
             scope: Network.Mainnet,
             accountIds: ACCOUNT_IDS,
             attempt: 0,
+            transactionType: TransactionType.Send,
           });
 
           expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
@@ -1029,10 +1033,40 @@ describe('CronHandler', () => {
           expect(
             mockAnalyticsService.trackTransactionFinalized,
           ).toHaveBeenCalledWith({
-            origin: 'MetaMask',
+            origin: METAMASK_ORIGIN,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.Send,
           });
+        },
+      );
+    });
+
+    it('reports a failed status when the transaction reverted on-chain', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'REVERT' },
+          });
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionStatus: TransactionStatus.Failed,
+            }),
+          );
         },
       );
     });

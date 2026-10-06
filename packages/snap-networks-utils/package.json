@@ -72,8 +72,9 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "dependencies": {
-    "@metamask/assets-controller": "^13.0.0",
+    "@metamask/assets-controller": "^15.0.0",
     "@metamask/keyring-api": "^24.1.0",
+    "@metamask/keyring-internal-api": "^12.0.0",
     "@metamask/remote-feature-flag-controller": "^5.0.0",
     "@metamask/snaps-sdk": "^12.0.1",
     "@metamask/superstruct": "^3.4.1",
@@ -83,7 +84,7 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@metamask/auto-changelog": "^6.1.1",
+    "@metamask/auto-changelog": "^6.2.1",
     "@metamask/messenger": "^2.0.0",
     "@ts-bridge/cli": "^0.6.4",
     "@types/jest": "^30.0.0",

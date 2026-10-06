@@ -9,27 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add send confirmation memo edit UI for SEP-29 RequiresMemo recovery: store memo on confirmation context (`context.memo`), resolve dialog as `{ confirmed, memo? }`, and rebuild with `skipExceptions: [RequiresMemoException]` / post-confirm memo attach (no client wire `memo` / `memoType` params). Live refresh pauses on RequiresMemo (omit scan / pause auto-cron); MemoEdit Save cancel-and-replaces to restart validation and scanning ([#323](https://github.com/MetaMask/internal-snaps/pull/323))
-- Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` from the SEP-43 `signTransaction` confirmation ([#346](https://github.com/MetaMask/internal-snaps/pull/346))
-  - Only the unified send and change-trust flows emitted decision events before; dApp-initiated transaction signatures were invisible.
-- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request. ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
-- Resolve and attach Stellar memos on the send build path via `TransactionService` / `TransactionBuilder` (`resolveStellarMemo`: infer `id` for all-digit uint64 values, else `text`) ([#289](https://github.com/MetaMask/internal-snaps/pull/289))
-- Accept CAP-71 v2 Soroban authorization preimages (`envelopeTypeSorobanAuthorizationWithAddress`) in `signAuthEntry`([#307](https://github.com/MetaMask/internal-snaps/pull/307))
-  - Reject when the v2 bound address is not the signing account
-  - Show `ADDRESS_V2` credential addresses on invoke-host-function confirmation
-- Show decoded `createContract` / `createContractV2` confirmation rows (deployer, salt, wasm hash, CAP-85 external ref, constructor args) instead of the generic invoke-host-function note ([#349](https://github.com/MetaMask/internal-snaps/pull/349))
+- Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
 
-### Changed
-
-- Reduce `snap_getBip32Entropy` calls during `bip44:discover` from two to one by fetching the coin-type node once and reusing it for both the on-chain activity check and account derivation in `AccountService.batchCreate`; also parallelize the accounts state read and entropy fetch in `AccountService.batchCreate` for non-discover paths ([#308](https://github.com/MetaMask/internal-snaps/pull/308))
-- Bump `@stellar/stellar-sdk` from `^15.0.1` to `^17.0.1` ([#302](https://github.com/MetaMask/internal-snaps/pull/302))
-  - Show distinct confirmation titles for each revoke-sponsorship operation type (account, claimable balance, data, liquidity pool, offer, signer, trustline)
+## [1.1.1]
 
 ### Fixed
 
-- Abort confirmation-context refresh write and reschedule when MemoEdit Save replaces `backgroundEventId` during an in-flight cron tick, and resolve the live event id from the latest interface context so Save cancel-and-replace owns the chain ([#360](https://github.com/MetaMask/internal-snaps/pull/360))
-- Emit `Transaction Submitted` from the unified send and change-trust flows so their transactions no longer reach `Transaction Finalized` without a matching submit event ([#345](https://github.com/MetaMask/internal-snaps/pull/345))
-  - Previously only the swap/bridge `signAndSendTransaction` path emitted `Transaction Submitted`.
+- Hide send-confirmation memo controls for SEP-41 assets and skip SEP-29 RequiresMemo recovery on `invokeHostFunction` transactions ([#385](https://github.com/MetaMask/internal-snaps/pull/385))
+
+## [1.1.0]
+
+### Added
+
+- Add send confirmation memo UI for SEP-29 RequiresMemo recovery ([#323](https://github.com/MetaMask/internal-snaps/pull/323), [#360](https://github.com/MetaMask/internal-snaps/pull/360), [#289](https://github.com/MetaMask/internal-snaps/pull/289))
+  - Rebuild the transaction after the memo is entered.
+  - Pause background confirmation refresh while a memo is required, and restart it after the memo is added.
+- Add `signProofOfOwnershipBatch` for signing multiple proof-of-ownership messages in one request ([#267](https://github.com/MetaMask/internal-snaps/pull/267))
+
+### Changed
+
+- Bump `@stellar/stellar-sdk` from `^15.0.1` to `^17.0.1` ([#302](https://github.com/MetaMask/internal-snaps/pull/302), [#307](https://github.com/MetaMask/internal-snaps/pull/307), [#349](https://github.com/MetaMask/internal-snaps/pull/349))
+  - Show distinct confirmation titles for each revoke-sponsorship operation type on `signTransaction`.
+  - Accept CAP-71 v2 Soroban authorization preimages on `signAuthEntry`, show `ADDRESS_V2` credential addresses, and reject when the v2 bound address is not the signing account.
+  - Show decoded `createContract` / `createContractV2` confirmation rows on `signTransaction` and `signAuthEntry`.
+- Emit transaction analytics from `signTransaction`, `ConfirmSend`, and `ChangeTrustOpt` ([#346](https://github.com/MetaMask/internal-snaps/pull/346), [#345](https://github.com/MetaMask/internal-snaps/pull/345))
+  - Emit `Transaction Added`, `Transaction Approved`, and `Transaction Rejected` from the `signTransaction` confirmation.
+  - Emit `Transaction Submitted` from the `ConfirmSend` and `ChangeTrustOpt` flows.
+
+### Fixed
+
 - Rename confirmation network labels from `Mainnet` and `Testnet` to `Stellar Mainnet` and `Stellar Testnet` ([#382](https://github.com/MetaMask/internal-snaps/pull/382))
 
 ## [1.0.0]
@@ -68,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...HEAD
+[1.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.0...@metamask/stellar-wallet-snap@1.1.1
+[1.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.0.0...@metamask/stellar-wallet-snap@1.1.0
 [1.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@0.1.0...@metamask/stellar-wallet-snap@1.0.0
 [0.1.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/stellar-wallet-snap@0.1.0

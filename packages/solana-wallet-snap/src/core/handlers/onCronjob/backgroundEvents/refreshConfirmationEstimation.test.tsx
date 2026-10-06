@@ -164,11 +164,11 @@ describe('refreshConfirmationEstimation', () => {
     expect(isTransactionBlockhashExpired).not.toHaveBeenCalled();
   });
 
-  it('preserves the existing scan while checking a valid blockhash without simulation', async () => {
+  it('preserves the existing scan without a fetching state while checking a valid blockhash without simulation', async () => {
     const existingScan = { status: 'SUCCESS' };
     const interfaceContext = {
       ...setupTest(),
-      preferences: { simulateOnChainActions: false },
+      preferences: { simulateOnChainActions: false, useSecurityAlerts: true },
       scan: existingScan,
     };
 
@@ -179,8 +179,7 @@ describe('refreshConfirmationEstimation', () => {
     });
 
     expect(transactionScanService.scanTransaction).not.toHaveBeenCalled();
-    expect(updateInterface).toHaveBeenNthCalledWith(
-      1,
+    expect(updateInterface).not.toHaveBeenCalledWith(
       'interface-id',
       null,
       expect.objectContaining({ scanFetchStatus: 'fetching' }),

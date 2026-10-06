@@ -1,14 +1,18 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
-import { InFlightCoalescer } from '@metamask/snap-networks-utils';
-import type { Json, JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
+import {
+  InFlightCoalescer,
+  SynchronizationError,
+  getSyncFailuresFromSettledResult,
+} from '@metamask/snap-networks-utils';
+import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import { array, assert, is, object, string } from 'superstruct';
 
 import {
   InexistentMethodError,
-  SynchronizationError,
+  mapToTransactionType,
   TrackingSnapEvent,
 } from '../entities';
-import type { BitcoinAccount, SnapClient, SyncResult } from '../entities';
+import type { Logger, SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export const CronMethod = {
@@ -45,6 +49,8 @@ export class CronHandler {
 
   readonly #snap: SnapsProvider;
 
+  readonly #logger: Logger;
+
   readonly #syncCoalescer = new InFlightCoalescer();
 
   constructor(
@@ -52,11 +58,46 @@ export class CronHandler {
     sendFlow: SendFlowUseCases,
     snapClient: SnapClient,
     snap: SnapsProvider,
+    logger: Logger,
   ) {
     this.#accountsUseCases = accounts;
     this.#sendFlowUseCases = sendFlow;
     this.#snapClient = snapClient;
     this.#snap = snap;
+    this.#logger = logger;
+  }
+
+  /**
+   * Reports account synchronization failures to Sentry, with the failure
+   * reasons embedded in the message: error tracking (`snap_trackError`) does
+   * not preserve custom error properties, so the message is the only reliable
+   * channel for the details.
+   *
+   * Reporting never throws: tracking failures are logged and swallowed, so
+   * they never break the caller's flow.
+   *
+   * @param message - The error message describing the failed operation.
+   * @param results - The settled synchronization results.
+   * @param accountIds - The account IDs, in the same order as `results`.
+   */
+  async #reportSyncFailures(
+    message: string,
+    results: PromiseSettledResult<unknown>[],
+    accountIds: string[],
+  ): Promise<void> {
+    try {
+      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+
+      if (failures.length === 0) {
+        return;
+      }
+
+      await this.#snapClient.emitTrackingError(
+        new SynchronizationError(message, failures),
+      );
+    } catch (reportingError) {
+      this.#logger.warn('Failed to report error', { reportingError });
+    }
   }
 
   async route(request: JsonRpcRequest): Promise<void> {
@@ -92,18 +133,14 @@ export class CronHandler {
     // Sync triggers stack up (the 30s cronjob, `onActive`, background
     // events), so concurrent invocations share one in-flight run instead of
     // duplicating network fetches, state writes, and keyring events. Note
-    // that coalesced callers share the run's outcome, including a
-    // `SynchronizationError` from partial failures.
+    // that coalesced callers share the run's outcome, including the reported
+    // synchronization failures.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
       try {
         await this.#repairNextAccount();
       } catch (error) {
         await this.#snapClient.emitTrackingError(
-          new SynchronizationError(
-            'Account repair scan failed',
-            undefined,
-            error,
-          ),
+          new Error('Account repair scan failed', { cause: error }),
         );
       }
 
@@ -123,45 +160,33 @@ export class CronHandler {
         ),
       );
 
-      await this.#finishSync(
-        accounts,
+      await this.#finishSync(results);
+
+      await this.#reportSyncFailures(
+        'synchronizeAccounts: Account synchronization failures',
         results,
-        'Account synchronization failures',
+        accounts.map(({ id }) => id),
       );
     });
   }
 
   /**
-   * Aggregate settled sync results, emit events for successes, and throw for failures.
+   * Aggregates settled sync results and emits events for the successful ones.
    *
-   * @param accounts - The accounts that were synchronized, in the same order as `results`.
    * @param results - The settled synchronization results.
-   * @param message - The error message to use if any synchronization failed.
    */
   async #finishSync(
-    accounts: BitcoinAccount[],
     results: PromiseSettledResult<SyncResult>[],
-    message: string,
   ): Promise<void> {
     const successfulResults: SyncResult[] = [];
-    const errors: Record<string, Json> = {};
 
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       if (result.status === 'fulfilled') {
         successfulResults.push(result.value);
-      } else {
-        const id = accounts[index]?.id;
-        if (id) {
-          errors[id] = String(result.reason);
-        }
       }
     });
 
     await this.#emitSyncEvents(successfulResults);
-
-    if (Object.keys(errors).length > 0) {
-      throw new SynchronizationError(message, errors);
-    }
   }
 
   async syncSelectedAccounts(accountIds: string[]): Promise<void> {
@@ -193,22 +218,13 @@ export class CronHandler {
         )
         .map((result) => result.value);
 
-      const rejectedResults = results.filter(
-        (result): result is PromiseRejectedResult =>
-          result.status === 'rejected',
-      );
-
-      if (rejectedResults.length > 0) {
-        await this.#snapClient.emitTrackingError(
-          new SynchronizationError(
-            `Failed to synchronize ${rejectedResults.length} selected accounts`,
-            undefined,
-            rejectedResults[0]?.reason,
-          ),
-        );
-      }
-
       await this.#emitSyncEvents(successfulResults);
+
+      await this.#reportSyncFailures(
+        'syncSelectedAccounts: Account synchronization failures',
+        results,
+        selectedAccounts.map(({ id }) => id),
+      );
     });
   }
 
@@ -289,6 +305,7 @@ export class CronHandler {
           account,
           tx,
           'cron',
+          mapToTransactionType(account, tx.tx),
         );
       }
     }

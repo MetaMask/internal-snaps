@@ -1,4 +1,4 @@
-import { Network } from '../../../../constants';
+import { METAMASK_ORIGIN, Network } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { FetchStatus } from '../../../../types/snap';
@@ -55,7 +55,7 @@ describe('ConfirmTransactionRequest', () => {
   };
 
   const baseContext: ConfirmTransactionRequestContext = {
-    origin: 'MetaMask',
+    origin: METAMASK_ORIGIN,
     scope: Network.Mainnet,
     fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     toAddress: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
@@ -95,17 +95,47 @@ describe('ConfirmTransactionRequest', () => {
     );
   });
 
+  it('renders the scan-in-progress banner while the scan is fetching', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      scanFetchStatus: FetchStatus.Fetching,
+      scan: null,
+    };
+
+    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+
+    expect(serialized).toContain('confirmation.securityScanInProgressTitle');
+    expect(serialized).toContain('"severity":"info"');
+  });
+
+  it('renders the security alert banner for malicious validations', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      scan: {
+        ...mockScanResult,
+        validation: { type: 'Malicious', reason: 'known_attacker' },
+      },
+    };
+
+    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+
+    expect(serialized).toContain('confirmation.validationErrorTitle');
+    expect(serialized).toContain('"severity":"danger"');
+  });
+
   it('renders without TransactionAlert when useSecurityAlerts is false', () => {
     const context: ConfirmTransactionRequestContext = {
       ...baseContext,
+      scanFetchStatus: FetchStatus.Fetching,
       preferences: {
         ...mockPreferences,
         useSecurityAlerts: false,
       },
     };
 
-    const result = ConfirmTransactionRequest({ context });
-    expect(result).toBeDefined();
+    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+
+    expect(serialized).not.toContain('"type":"Banner"');
   });
 
   it('renders EstimatedChanges when simulateOnChainActions is true', () => {
@@ -199,6 +229,29 @@ describe('ConfirmTransactionRequest', () => {
 
     const result = ConfirmTransactionRequest({ context });
     expect(result).toBeDefined();
+  });
+
+  it('renders the MetaMask label for the canonical origin', () => {
+    const result = ConfirmTransactionRequest({ context: baseContext });
+    const serialized = JSON.stringify(result);
+
+    // The stored origin is the canonical lowercase one, but the user must see
+    // the MetaMask label.
+    expect(serialized).toContain('MetaMask');
+    expect(serialized).not.toContain('"metamask"');
+  });
+
+  it('renders the hostname for a dApp origin', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      origin: 'https://dapp.example.com',
+    };
+
+    const result = ConfirmTransactionRequest({ context });
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).toContain('dapp.example.com');
+    expect(serialized).not.toContain('https://dapp.example.com');
   });
 
   it('renders with Malicious validation', () => {

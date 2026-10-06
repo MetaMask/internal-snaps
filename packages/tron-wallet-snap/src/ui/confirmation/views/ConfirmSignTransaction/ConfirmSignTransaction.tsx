@@ -1,3 +1,4 @@
+import { TransactionAlert } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -22,7 +23,7 @@ import { formatOrigin } from '../../../../utils/formatOrigin';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
-import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
+import { getTransactionAlertProps } from '../../utils/getTransactionAlertProps';
 import { ConfirmSignTransactionFormNames } from './events';
 import type { ConfirmSignTransactionContext } from './types';
 
@@ -87,6 +88,7 @@ export const ConfirmSignTransaction = ({
         <EstimatedChanges
           scanFetchStatus={scanFetchStatus}
           changes={scan?.estimatedChanges ?? null}
+          scanStatus={scan?.status ?? null}
           preferences={preferences}
         />
       );
@@ -111,10 +113,11 @@ export const ConfirmSignTransaction = ({
             expiry warning surfaces even with security alerts turned off. */}
         {preferences.useSecurityAlerts || scan?.error ? (
           <TransactionAlert
-            scanFetchStatus={scanFetchStatus}
-            validation={scan?.validation ?? null}
-            error={scan?.error ?? null}
-            preferences={preferences}
+            {...getTransactionAlertProps({
+              preferences,
+              scan,
+              scanFetchStatus,
+            })}
           />
         ) : null}
 

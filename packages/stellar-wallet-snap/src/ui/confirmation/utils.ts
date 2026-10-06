@@ -387,8 +387,9 @@ export type ConfirmationBanner =
  * Priority is explicit: a failed background re-validation (the transaction is no
  * longer valid) outranks the Blockaid scan alert, so the two never stack. The
  * scan banner is only considered when the user has security or simulation alerts
- * enabled; the {@link TransactionAlert} component still decides its own content
- * based on the scan result.
+ * enabled; the shared `TransactionAlert` component (via
+ * {@link ConfirmationAlerts}) still decides its own content based on the scan
+ * result.
  *
  * @param params - Validation and scan-preference state.
  * @param params.preferences - User preferences controlling scan behavior.

@@ -1,3 +1,5 @@
+import { TransactionType } from '@metamask/keyring-api';
+
 import { mockLogger } from '../../utils/logger/__mocks__/Logger';
 import {
   AnalyticsService,
@@ -64,13 +66,62 @@ describe('AnalyticsService', () => {
     });
   });
 
+  it.each([
+    [
+      'trackTransactionAdded',
+      TransactionEventType.TransactionAdded,
+      'Snap transaction added',
+    ],
+    [
+      'trackTransactionRejected',
+      TransactionEventType.TransactionRejected,
+      'Snap transaction rejected',
+    ],
+    [
+      'trackTransactionApproved',
+      TransactionEventType.TransactionApproved,
+      'Snap transaction approved',
+    ],
+    [
+      'trackTransactionSubmitted',
+      TransactionEventType.TransactionSubmitted,
+      'Snap transaction submitted',
+    ],
+  ] as const)(
+    'tracks %s with a transaction type',
+    async (method, event, message) => {
+      await analytics[method]({
+        origin: 'metamask',
+        accountType: 'bip122:p2wpkh',
+        chainIdCaip: 'bip122:000000000019d6689c085ae165831e93',
+        transactionType: TransactionType.Send,
+      });
+
+      expect(request).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event,
+            properties: {
+              message,
+              origin: 'metamask',
+              account_type: 'bip122:p2wpkh',
+              chain_id_caip: 'bip122:000000000019d6689c085ae165831e93',
+              transaction_type: 'send',
+            },
+          },
+        },
+      });
+    },
+  );
+
   it('tracks finalized transactions with optional transaction details', async () => {
     await analytics.trackTransactionFinalized({
       origin: 'https://example.com',
       accountType: 'eip155:eoa',
       chainIdCaip: 'eip155:1',
       transactionStatus: 'confirmed',
-      transactionType: 'send',
+      transactionType: TransactionType.Send,
     });
 
     expect(request).toHaveBeenCalledWith({
@@ -157,6 +208,24 @@ describe('AnalyticsService', () => {
         },
       },
     });
+  });
+
+  it('does not emit transaction_type on security events', async () => {
+    // `SecurityAlertDetectedEventProperties` and
+    // `SecurityScanCompletedEventProperties` must not advertise
+    // `transactionType`, otherwise a type-valid caller value is discarded.
+    await analytics.trackSecurityScanCompleted({
+      origin: 'https://example.com',
+      accountType: 'eip155:eoa',
+      chainIdCaip: 'eip155:1',
+      scanStatus: 'success',
+      hasSecurityAlerts: false,
+      // @ts-expect-error - transactionType is not a security event property.
+      transactionType: TransactionType.Send,
+    });
+
+    const event = request.mock.calls[0]?.[0].params.event;
+    expect(event.properties).not.toHaveProperty('transaction_type');
   });
 
   it('tracks WebSocket connection failures', async () => {

@@ -4,6 +4,7 @@ import type {
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
+import { TransactionType } from '@metamask/keyring-api';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -853,6 +854,28 @@ describe('SendFlowUseCases', () => {
       );
     });
 
+    it('uses fallback fee rate when the estimate is zero', async () => {
+      (mockFeeEstimates.get as jest.Mock).mockReturnValue(0);
+
+      await useCases.refresh('interface-id');
+
+      expect(mockSendFlowRepository.updateForm).toHaveBeenCalledWith(
+        'interface-id',
+        expect.objectContaining({ feeRate: fallbackFeeRate }),
+      );
+    });
+
+    it('clamps a fractional estimate below 1 sat/vB instead of using zero', async () => {
+      (mockFeeEstimates.get as jest.Mock).mockReturnValue(0.285);
+
+      await useCases.refresh('interface-id');
+
+      expect(mockSendFlowRepository.updateForm).toHaveBeenCalledWith(
+        'interface-id',
+        expect.objectContaining({ feeRate: 1 }),
+      );
+    });
+
     it('does not set exchange rate if network is not bitcoin', async () => {
       (mockFeeEstimates.get as jest.Mock).mockReturnValue(mockFeeRate);
       mockSendFlowRepository.getContext.mockResolvedValueOnce({
@@ -1045,6 +1068,27 @@ describe('SendFlowUseCases', () => {
       expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(fallbackFeeRate);
     });
 
+    it('uses fallback fee rate when the fee estimate is zero', async () => {
+      const zeroFeeEstimates = mock<FeeEstimates>();
+      zeroFeeEstimates.get.mockReturnValue(0);
+      mockChain.getFeeEstimates.mockResolvedValue(zeroFeeEstimates);
+
+      await useCases.confirmSendFlow(mockAccount, amount, toAddress);
+
+      expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(fallbackFeeRate);
+    });
+
+    it('never builds a zero-fee transaction for a fractional estimate below 1 sat/vB', async () => {
+      const fractionalFeeEstimates = mock<FeeEstimates>();
+      fractionalFeeEstimates.get.mockReturnValue(0.285);
+      mockChain.getFeeEstimates.mockResolvedValue(fractionalFeeEstimates);
+
+      await useCases.confirmSendFlow(mockAccount, amount, toAddress);
+
+      expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(1);
+      expect(mockTxBuilder.feeRate).not.toHaveBeenCalledWith(0);
+    });
+
     it('throws error when user cancels confirmation', async () => {
       mockSnapClient.displayUserPrompt.mockResolvedValue(false);
 
@@ -1059,10 +1103,12 @@ describe('SendFlowUseCases', () => {
       expect(mockSnapClient.trackTransactionAdded).toHaveBeenCalledWith(
         mockAccount,
         'metamask',
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionApproved).toHaveBeenCalledWith(
         mockAccount,
         'metamask',
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionRejected).not.toHaveBeenCalled();
     });
@@ -1077,6 +1123,7 @@ describe('SendFlowUseCases', () => {
       expect(mockSnapClient.trackTransactionRejected).toHaveBeenCalledWith(
         mockAccount,
         'metamask',
+        TransactionType.Send,
       );
       expect(mockSnapClient.trackTransactionApproved).not.toHaveBeenCalled();
     });

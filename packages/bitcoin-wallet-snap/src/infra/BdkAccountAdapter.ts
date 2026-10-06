@@ -27,6 +27,7 @@ import {
 
 import { AccountCapability, ValidationError, WalletError } from '../entities';
 import type { BitcoinAccount, TransactionBuilder } from '../entities';
+import { toFeeRateSatsPerVb } from '../utils/fee-rate';
 import { BdkTxBuilderAdapter } from './BdkTxBuilderAdapter';
 
 /**
@@ -225,7 +226,7 @@ export class BdkAccountAdapter implements BitcoinAccount {
     try {
       return maxFeeRate
         ? psbt.extract_tx_with_fee_rate_limit(
-            new FeeRate(BigInt(Math.floor(maxFeeRate))),
+            new FeeRate(toFeeRateSatsPerVb(maxFeeRate)),
           )
         : psbt.extract_tx();
     } catch (error) {

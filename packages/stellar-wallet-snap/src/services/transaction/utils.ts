@@ -169,6 +169,10 @@ export function assertTransactionTimeBound(transaction: Transaction): void {
 /**
  * Throws when `destRequiresMemo` is true and the envelope has no memo (SEP-29).
  *
+ * Soroban / `invokeHostFunction` envelopes cannot carry a Stellar memo, so SEP-29
+ * does not apply (same pattern as the Stellar SDK). Callers still hide memo UI for
+ * SEP-41 sends via `supportsMemo: false`.
+ *
  * @param transaction - Wrapped Stellar transaction.
  * @param destAccountAddress - Payment or path-payment destination.
  * @param destRequiresMemo - From {@link OnChainAccount.requiresMemo} or simulation state.
@@ -179,6 +183,11 @@ export function assertMemoWhenDestinationRequires(
   destAccountAddress: string,
   destRequiresMemo: boolean,
 ): void {
+  // Contract txs cannot attach memos; do not force RequiresMemo recovery.
+  if (transaction.hasInvokeHostFunction) {
+    return;
+  }
+
   const memo = transaction.getMemo();
   // Whitespace-only memos count as missing under SEP-29.
   // Hence, we dont consider them.

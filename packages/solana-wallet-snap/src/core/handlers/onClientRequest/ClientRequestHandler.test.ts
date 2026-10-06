@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -1105,6 +1106,8 @@ describe('ClientRequestHandler', () => {
         expect.any(String),
         Network.Mainnet,
         'metamask',
+        undefined,
+        TransactionType.TokenApprove,
       );
       expect(result).toStrictEqual({ signature: mockSignature });
     });

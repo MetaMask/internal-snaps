@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a shared `TransactionAlert` Snaps JSX component for transaction confirmations, rendering a single scan banner for the in-progress, scan-failed, scan-error, and malicious/warning security validation states ([#408](https://github.com/MetaMask/internal-snaps/pull/408))
+  - Takes translated `labels` (`TransactionAlertLabels`), `isFetching` and `isFetchError` flags, a resolved `error` (`TransactionAlertError`), and a `validation` (`TransactionAlertValidation`)
+- Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` events tracked by `AnalyticsService`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
+- Add a shared `EstimatedChanges` Snaps JSX component for transaction confirmations, rendering send/receive asset rows with loading, not-available, and no-changes states ([#369](https://github.com/MetaMask/internal-snaps/pull/369))
 - Add `SynchronizationError`, `formatAccountSyncFailures`, and the `AccountSyncFailure` type, for reporting account synchronization failures with per-account failure details embedded in the error message (details must live in the message because `snap_trackError` only serializes `name`, `message`, `stack`, and `cause`). ([#374](https://github.com/MetaMask/internal-snaps/pull/374))
 - Add `wrapSnapHandlers` to wrap any Snap entrypoint handlers with `withCatchAndThrowSnapError`, with optional per-handler `logError` overrides ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
 - Add `noopAssetHandlers`, the no-op asset entrypoints network Snaps must export to keep the `endowment:assets` permission ([#341](https://github.com/MetaMask/internal-snaps/pull/341))
@@ -45,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `sanitizeControlCharacters` and `sanitizeUri` utilities for validating and sanitizing user-provided strings and URIs. ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
 - Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- Add `getAssets` to `AssetsProvider`, mapping to the `AssetsController:getAssets` one-time fetch so Snaps can fetch uncached combined assets (balance, metadata, price, and `fiatValue`) and update controller state, with `forceUpdate` and `bypassServerCache` support for post-transaction freshness
 
 ### Changed
 

@@ -9,6 +9,7 @@ import type {
 } from '@metamask/bitcoindevkit';
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
+import { TransactionStatus } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
 import {
   batchesAllSettled,
@@ -36,10 +37,12 @@ import {
   NotFoundError,
   PermissionError,
   TrackingSnapEvent,
+  mapToTransactionType,
   ValidationError,
   WalletError,
 } from '../entities';
 import { CronMethod } from '../handlers/CronHandler';
+import { resolveFeeRate } from '../utils/fee-rate';
 
 export type DiscoverAccountParams = {
   network: Network;
@@ -510,6 +513,7 @@ export class AccountUseCases {
           account,
           tx,
           origin,
+          mapToTransactionType(account, tx.tx),
         );
 
         continue;
@@ -530,6 +534,10 @@ export class AccountUseCases {
             account,
             tx,
             origin,
+            mapToTransactionType(account, tx.tx),
+            // This branch only runs when the transaction becomes confirmed, so
+            // the terminal status is always `confirmed`.
+            TransactionStatus.Confirmed,
           );
         } else {
           // if the status was changed, and now it's NOT confirmed
@@ -541,6 +549,7 @@ export class AccountUseCases {
             account,
             tx,
             origin,
+            mapToTransactionType(account, tx.tx),
           );
         }
       }
@@ -990,8 +999,9 @@ export class AccountUseCases {
 
   async getFallbackFeeRate(account: BitcoinAccount): Promise<number> {
     const feeEstimates = await this.#chain.getFeeEstimates(account.network);
-    return (
-      feeEstimates.get(this.#targetBlocksConfirmation) ?? this.#fallbackFeeRate
+    return resolveFeeRate(
+      feeEstimates.get(this.#targetBlocksConfirmation),
+      this.#fallbackFeeRate,
     );
   }
 
@@ -1096,6 +1106,9 @@ export class AccountUseCases {
     origin: string,
   ): Promise<BroadcastResult> {
     const txid = tx.compute_txid();
+    // Resolve the classification before `applyUnconfirmedTx` takes ownership of
+    // the underlying wasm transaction; reading `tx` afterwards panics.
+    const transactionType = mapToTransactionType(account, tx);
     await this.#chain.broadcast(account.network, tx.clone());
     account.applyUnconfirmedTx(tx, getCurrentUnixTimestamp());
     await this.#repository.update(account);
@@ -1114,6 +1127,7 @@ export class AccountUseCases {
         account,
         walletTx,
         origin,
+        transactionType,
       );
     }
 

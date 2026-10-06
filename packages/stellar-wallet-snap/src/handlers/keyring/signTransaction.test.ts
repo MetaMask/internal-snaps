@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -292,6 +293,7 @@ describe('SignTransactionHandler', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: KnownCaip2ChainId.Mainnet,
+        transactionType: TransactionType.Send,
       };
 
       expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);
@@ -333,6 +335,7 @@ describe('SignTransactionHandler', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: KnownCaip2ChainId.Mainnet,
+        transactionType: TransactionType.Send,
       };
 
       expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);

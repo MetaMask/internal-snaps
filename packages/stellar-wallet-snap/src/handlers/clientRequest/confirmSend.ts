@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import type {
   AnalyticsService,
   Logger,
@@ -36,6 +37,7 @@ import type { ConfirmationUXController } from '../../ui/confirmation/controller'
 import type { LocalizedMessage } from '../../utils';
 import {
   hasDecimals,
+  isSep41Id,
   isSlip44Id,
   toSmallestUnit,
   trackError,
@@ -202,6 +204,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         origin: METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
+        transactionType: TransactionType.Send,
       };
 
       await this.#analyticsService.trackTransactionAdded(trackingProperties);
@@ -272,6 +275,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         txId: transactionId,
         accountIdsOrAddresses: [stellarKeyringAccount.id, toAddress],
         scope,
+        transactionType: TransactionType.Send,
       });
 
       return {
@@ -396,6 +400,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         renderContext: {
           account,
           toAddress,
+          supportsMemo: !isSep41Id(assetId),
           ...(initialValidationError
             ? {
                 // Recoverable RequiresMemo: show the banner, but do not start a
@@ -469,6 +474,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       renderContext: {
         account,
         toAddress,
+        supportsMemo: !isSep41Id(assetId),
         transactionsFetchStatus: FetchStatus.Error,
         errorMessage: getTxnErrorMessageKey(error, account.address),
       },

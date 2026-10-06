@@ -1,5 +1,6 @@
 import type { AddressType, Network, WalletTx } from '@metamask/bitcoindevkit';
 import type { JsonSLIP10Node, SLIP10Node } from '@metamask/key-tree';
+import type { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type {
   ComponentOrElement,
   GetClientStatusResult,
@@ -276,12 +277,17 @@ export type SnapClient = {
    * @param account The correlated bitcoin account
    * @param tx The transaction we want to capture metrics for
    * @param origin The origin/source that triggered this event
+   * @param transactionType The classification of the transaction.
+   * @param transactionStatus The terminal status of the transaction. Only the
+   * finalized event has a terminal outcome, so it is omitted for the others.
    */
   emitTrackingEvent(
     eventType: TransactionBroadcastEventType,
     account: BitcoinAccount,
     tx: WalletTx,
     origin: string,
+    transactionType: TransactionType,
+    transactionStatus?: TransactionStatus,
   ): Promise<void>;
 
   /**
@@ -291,8 +297,13 @@ export type SnapClient = {
    *
    * @param account The account the transaction belongs to.
    * @param origin The origin/source that triggered this event.
+   * @param transactionType The classification of the transaction.
    */
-  trackTransactionAdded(account: BitcoinAccount, origin: string): Promise<void>;
+  trackTransactionAdded(
+    account: BitcoinAccount,
+    origin: string,
+    transactionType: TransactionType,
+  ): Promise<void>;
 
   /**
    * Track a "Transaction Approved" event when the user approves a transaction.
@@ -301,10 +312,12 @@ export type SnapClient = {
    *
    * @param account The account the transaction belongs to.
    * @param origin The origin/source that triggered this event.
+   * @param transactionType The classification of the transaction.
    */
   trackTransactionApproved(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void>;
 
   /**
@@ -314,10 +327,12 @@ export type SnapClient = {
    *
    * @param account The account the transaction belongs to.
    * @param origin The origin/source that triggered this event.
+   * @param transactionType The classification of the transaction.
    */
   trackTransactionRejected(
     account: BitcoinAccount,
     origin: string,
+    transactionType: TransactionType,
   ): Promise<void>;
 
   /**

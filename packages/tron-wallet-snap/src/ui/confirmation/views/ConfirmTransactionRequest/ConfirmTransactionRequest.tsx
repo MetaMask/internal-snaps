@@ -1,3 +1,4 @@
+import { TransactionAlert } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -18,11 +19,12 @@ import { Networks } from '../../../../constants';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
+import { formatOrigin } from '../../../../utils/formatOrigin';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
-import { TransactionAlert } from '../../components/TransactionAlert/TransactionAlert';
+import { getTransactionAlertProps } from '../../utils/getTransactionAlertProps';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import type { ConfirmTransactionRequestContext } from './types';
 
@@ -78,6 +80,7 @@ export const ConfirmTransactionRequest = ({
         <EstimatedChanges
           scanFetchStatus={scanFetchStatus}
           changes={scan?.estimatedChanges ?? null}
+          scanStatus={scan?.status ?? null}
           preferences={preferences}
         />
       );
@@ -90,10 +93,11 @@ export const ConfirmTransactionRequest = ({
         {/* Security Alert */}
         {preferences.useSecurityAlerts ? (
           <TransactionAlert
-            scanFetchStatus={scanFetchStatus}
-            validation={scan?.validation ?? null}
-            error={scan?.error ?? null}
-            preferences={preferences}
+            {...getTransactionAlertProps({
+              preferences,
+              scan,
+              scanFetchStatus,
+            })}
           />
         ) : null}
 
@@ -121,7 +125,7 @@ export const ConfirmTransactionRequest = ({
                 <Icon name="question" color="muted" />
               </Tooltip>
             </Box>
-            <SnapText>{origin}</SnapText>
+            <SnapText>{formatOrigin(origin)}</SnapText>
           </Box>
           <Box>{null}</Box>
           {/* From */}
