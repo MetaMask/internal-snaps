@@ -277,7 +277,7 @@ export class OnChainAccountService {
   /**
    * Best-effort {@link OnChainAccount} from Core holdings for fast read paths.
    *
-   * - When `resolveAccountFromNetwork` is set, sequence, subentries, sponsorship, and native stroops come from {@link NetworkService.getAccountLedgerMeta}.
+   * - When `resolveAccountFromNetwork` is set, sequence, subentries, sponsorship, and native stroops come from {@link NetworkService.getAccountLedgerMetadata}.
    * - Otherwise sequence is `0`, sponsorships are `0`, and `subentryCount` is derived from Core native `minimumReserveBalance`.
    * - Not a substitute for live Horizon for send, fee, or ChangeTrust.
    *
@@ -445,7 +445,7 @@ export class OnChainAccountService {
     scope: KnownCaip2ChainId,
   ): Promise<AccountLedgerMeta | undefined> {
     try {
-      return await this.#networkService.getAccountLedgerMeta(
+      return await this.#networkService.getAccountLedgerMetadata(
         accountAddress,
         scope,
       );

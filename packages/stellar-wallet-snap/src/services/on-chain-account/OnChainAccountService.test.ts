@@ -49,7 +49,7 @@ describe('OnChainAccountService', () => {
     getAccountSpy: jest.spyOn(NetworkService.prototype, 'getAccount'),
     getAccountLedgerMetaSpy: jest.spyOn(
       NetworkService.prototype,
-      'getAccountLedgerMeta',
+      'getAccountLedgerMetadata',
     ),
     loadOnChainAccountSpy: jest.spyOn(
       NetworkService.prototype,
