@@ -398,30 +398,38 @@ describe('NetworkService', () => {
       expect(getAccountEntrySpy).toHaveBeenCalledWith(testAddress);
     });
 
-    it('throws when the account v1 extension is missing', async () => {
+    it('returns zero sponsorship counters when the account extension is v0', async () => {
       const { getAccountEntrySpy } = getRpcServerSpies();
       getAccountEntrySpy.mockResolvedValue(
         createMockAccountEntry({ accountExtType: 'v0' }),
       );
 
-      await expect(
-        networkService.getAccountLedgerMetadata(testAddress, scope),
-      ).rejects.toThrow(
-        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}: expected account extension v1, got v0`,
-      );
+      expect(
+        await networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).toStrictEqual({
+        sequenceNumber: '262764252333343491',
+        subentryCount: 4,
+        numSponsoring: 0,
+        numSponsored: 0,
+        rawNativeBalance: '351010623',
+      });
     });
 
-    it('throws when the account v2 extension is missing', async () => {
+    it('returns zero sponsorship counters when the v1 extension has no v2 arm', async () => {
       const { getAccountEntrySpy } = getRpcServerSpies();
       getAccountEntrySpy.mockResolvedValue(
         createMockAccountEntry({ v1ExtType: 'v0' }),
       );
 
-      await expect(
-        networkService.getAccountLedgerMetadata(testAddress, scope),
-      ).rejects.toThrow(
-        `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}: expected account extension v2, got v0`,
-      );
+      expect(
+        await networkService.getAccountLedgerMetadata(testAddress, scope),
+      ).toStrictEqual({
+        sequenceNumber: '262764252333343491',
+        subentryCount: 4,
+        numSponsoring: 0,
+        numSponsored: 0,
+        rawNativeBalance: '351010623',
+      });
     });
 
     it('throws AccountNotActivatedException when RPC uses Soroban missing-account error shape', async () => {

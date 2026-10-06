@@ -368,14 +368,11 @@ export class NetworkService {
   /**
    * Loads account ledger metadata (sequence, subentries, sponsorship counts) from Soroban RPC.
    *
-   * Uses RPC `getAccountEntry`. Sequence is `seqNum` as a decimal string, matching SDK `getAccount`.
-   *
    * @param accountAddress - The Stellar account address (public key).
    * @param scope - The CAIP-2 chain ID.
    * @returns Sequence, subentry count, sponsorship counters, and native stroops.
    * @throws {AccountNotActivatedException} If the account does not exist on the network.
-   * @throws {NetworkServiceException} If the RPC request fails, or the account entry is missing
-   * the v1 / v2 extensions required for sponsorship counts.
+   * @throws {NetworkServiceException} If the RPC request fails.
    */
   async getAccountLedgerMetadata(
     accountAddress: string,
@@ -386,24 +383,20 @@ export class NetworkService {
       const entry = await client.getAccountEntry(accountAddress);
 
       const accountExt = entry.ext;
-      if (accountExt.type !== 'v1') {
-        throw new NetworkServiceException(
-          `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}: expected account extension v1, got ${accountExt.type}`,
-        );
-      }
-      const v1Ext = accountExt.v1.ext;
-      if (v1Ext.type !== 'v2') {
-        throw new NetworkServiceException(
-          `Failed to get account ledger meta for address: ${accountAddress} for scope: ${scope}: expected account extension v2, got ${v1Ext.type}`,
-        );
-      }
 
-      const { numSponsoring, numSponsored } = v1Ext.v2;
+      const isAccountSupportSponsorship =
+        accountExt.type === 'v1' && accountExt.v1.ext.type === 'v2';
+
+      // legacy account does not have sponsorship counters, so we return 0 for both.
+      const sponsorship = isAccountSupportSponsorship
+        ? accountExt.v1.ext.v2
+        : { numSponsoring: 0, numSponsored: 0 };
+
       return {
         sequenceNumber: entry.seqNum.toString(),
         subentryCount: entry.numSubEntries,
-        numSponsoring,
-        numSponsored,
+        numSponsoring: sponsorship.numSponsoring,
+        numSponsored: sponsorship.numSponsored,
         rawNativeBalance: entry.balance.toString(),
       };
     } catch (error: unknown) {
