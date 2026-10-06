@@ -4,7 +4,6 @@ import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import type { KnownCaip19ClassicAssetId } from '../../api';
 import { METAMASK_ORIGIN } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
@@ -73,7 +72,7 @@ describe('ChangeTrustOptHandler', () => {
 
   const accountId = '11111111-1111-4111-8111-111111111111';
   const scope = KnownCaip2ChainId.Mainnet;
-  const assetId = USDC_CLASSIC as KnownCaip19ClassicAssetId;
+  const assetId = USDC_CLASSIC;
   const transactionHash =
     '7d4b0c5ef7498b223f45a10f461060fb64f53eb13caf18e8dc7de95a8cf9c0e1';
   const trustlineAsset = {
