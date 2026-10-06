@@ -103,11 +103,12 @@ export class OnChainAccountService {
       scope,
     );
 
+    assertSameAddress(accountAddress, loaded.accountId);
+
     if (options?.resolveWithFullBalance) {
       await this.#bindSep41Balances(loaded, scope);
     }
 
-    assertSameAddress(accountAddress, loaded.accountId);
     return loaded;
   }
 
