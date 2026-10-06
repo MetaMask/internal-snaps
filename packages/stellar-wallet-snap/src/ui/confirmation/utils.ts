@@ -5,7 +5,6 @@ import { BigNumber } from 'bignumber.js';
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
-import { ConfirmationContextRefresherKey } from '../../handlers/cronjob/refreshConfirmationContext';
 import { getNativeAssetMetadata } from '../../services/asset-metadata/utils';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
 import type { TransactionScanResult } from '../../services/transaction-scan';
@@ -117,79 +116,6 @@ export async function getPreferencesWithFallback(): Promise<GetPreferencesResult
     useExternalPricingData: true,
     showTestnets: true,
   }));
-}
-
-/**
- * Params for {@link resolveRefresherKeys}.
- *
- * `enable*` flags are preference- and flow-gated by the caller.
- */
-export type ResolveRefresherKeysParams = {
-  enablePricing: boolean;
-  enableSecurityScan: boolean;
-  enableLocalSimulation: boolean;
-};
-
-/**
- * Derives the preference- and flow-enabled refresher keys at dialog open.
- *
- * Persist this snapshot on confirmation context. MemoEdit Save reads it to
- * restart; it does not call this helper again.
- *
- * @param params - Preference-gated enable flags.
- * @returns Ungated enabled refresher keys.
- */
-export function resolveRefresherKeys(
-  params: ResolveRefresherKeysParams,
-): ConfirmationContextRefresherKey[] {
-  const { enablePricing, enableSecurityScan, enableLocalSimulation } = params;
-
-  const enabledRefresherKeys: ConfirmationContextRefresherKey[] = [];
-  if (enablePricing) {
-    enabledRefresherKeys.push(ConfirmationContextRefresherKey.Prices);
-  }
-  if (enableSecurityScan) {
-    enabledRefresherKeys.push(ConfirmationContextRefresherKey.Scan);
-  }
-  if (enableLocalSimulation) {
-    enabledRefresherKeys.push(ConfirmationContextRefresherKey.Transaction);
-  }
-  return enabledRefresherKeys;
-}
-
-/**
- * Keys allowed to run on the open-path cron tick.
- *
- * Scan / Transaction are omitted when `renderContext` already marked them
- * Error (e.g. RequiresMemo). Read those statuses from `renderContext`, not
- * the merged dialog context: `defaultContext` only ever sets Fetched/Fetching.
- *
- * @param enabled - Ungated keys from {@link resolveRefresherKeys}.
- * @param renderContext - Caller-supplied context that may include Error overrides.
- * @returns Keys to pass to `scheduleBackgroundEvent` on dialog open.
- */
-export function scheduledRefresherKeys(
-  enabled: ConfirmationContextRefresherKey[],
-  renderContext: {
-    scanFetchStatus?: FetchStatus;
-    transactionsFetchStatus?: FetchStatus;
-  },
-): ConfirmationContextRefresherKey[] {
-  return enabled.filter((key) => {
-    if (
-      key === ConfirmationContextRefresherKey.Scan &&
-      renderContext.scanFetchStatus === FetchStatus.Error
-    ) {
-      return false;
-    }
-    if (
-      key === ConfirmationContextRefresherKey.Transaction &&
-      renderContext.transactionsFetchStatus === FetchStatus.Error
-    ) {
-      return false;
-    }
-    return true;
-  });
 }
 
 /**

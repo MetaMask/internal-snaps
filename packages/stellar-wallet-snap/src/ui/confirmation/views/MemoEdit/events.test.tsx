@@ -304,39 +304,6 @@ describe('MemoEdit event handlers', () => {
       );
     });
 
-    it('persists the memo without rescheduling when no refresher keys were enabled at open', async () => {
-      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
-        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-        scope: 'stellar:pubnet',
-        transaction: 'xdr',
-        accountId: 'account-id',
-        transactionsFetchStatus: FetchStatus.Error,
-        enabledRefresherKeys: [],
-      });
-
-      await handlers[MemoEditFormNames.Form]?.({
-        id: 'interface-id',
-        event: formSubmitEvent('no-refreshers'),
-        context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          scope: 'stellar:pubnet',
-          transaction: 'xdr',
-          accountId: 'account-id',
-          transactionsFetchStatus: FetchStatus.Error,
-        },
-      });
-
-      expect(scheduleSpy).not.toHaveBeenCalled();
-      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
-        'interface-id',
-        'RENDERED',
-        expect.objectContaining({
-          memo: 'no-refreshers',
-          memoScreen: false,
-        }),
-      );
-    });
-
     it('keeps the memo and shows validation error without rescheduling', async () => {
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',

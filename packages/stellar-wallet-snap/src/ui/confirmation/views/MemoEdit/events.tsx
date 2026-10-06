@@ -158,20 +158,21 @@ async function onSaveSubmit(
       previousEventId = context.backgroundEventId;
     }
 
-    const refreshedContext = {
+    // Clear any prior banner; the restarted transaction refresher will set a
+    // new error (e.g. RequiresMemo again) or leave it cleared on success.
+    // Only reset slices that were preference-enabled at open.
+    const refreshedContext: Record<string, Json> = {
       ...nextContext,
-      // Clear any prior banner; the restarted transaction refresher will set a
-      // new error (e.g. RequiresMemo again) or leave it cleared on success.
       errorMessage: null,
-      ...(enabledRefresherKeys.includes(
-        ConfirmationContextRefresherKey.Transaction,
-      )
-        ? { transactionsFetchStatus: FetchStatus.Fetched }
-        : {}),
-      ...(enabledRefresherKeys.includes(ConfirmationContextRefresherKey.Scan)
-        ? { scanFetchStatus: FetchStatus.Fetching }
-        : {}),
     };
+    if (
+      enabledRefresherKeys.includes(ConfirmationContextRefresherKey.Transaction)
+    ) {
+      refreshedContext.transactionsFetchStatus = FetchStatus.Fetched;
+    }
+    if (enabledRefresherKeys.includes(ConfirmationContextRefresherKey.Scan)) {
+      refreshedContext.scanFetchStatus = FetchStatus.Fetching;
+    }
 
     const backgroundEventId =
       await RefreshConfirmationContextHandler.scheduleBackgroundEvent(

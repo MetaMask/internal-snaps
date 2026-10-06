@@ -6,7 +6,10 @@ import type {
   ChangeTrustOptJsonRpcRequest,
   ConfirmSendJsonRpcRequest,
 } from '../../handlers/clientRequest/api';
-import { RefreshConfirmationContextHandler } from '../../handlers/cronjob/refreshConfirmationContext';
+import {
+  ConfirmationContextRefresherKey,
+  RefreshConfirmationContextHandler,
+} from '../../handlers/cronjob/refreshConfirmationContext';
 import type {
   SecurityScanRequest,
   TransactionScanResult,
@@ -27,8 +30,6 @@ import {
   formatFeeData,
   formatOrigin,
   getPreferencesWithFallback,
-  resolveRefresherKeys,
-  scheduledRefresherKeys,
 } from './utils';
 import { renderConfirmationView } from './views/render';
 import type { ConfirmationViewProps } from './views/render';
@@ -238,17 +239,17 @@ export class ConfirmationUXController {
       tokenPrices,
     };
 
-    // Ungated enable set for MemoEdit Save. Open cron uses Error-gated
-    // scheduledKeys so RequiresMemo does not start Scan/Tx until Save.
-    const enabledRefresherKeys = resolveRefresherKeys({
-      enablePricing: enablePricing ?? false,
-      enableSecurityScan,
-      enableLocalSimulation: enableLocalSimulation ?? false,
-    });
-    const scheduledKeys = scheduledRefresherKeys(
-      enabledRefresherKeys,
-      renderContext,
-    );
+    // Preference/flow-enabled keys for MemoEdit Save (ungated).
+    const enabledRefresherKeys: ConfirmationContextRefresherKey[] = [];
+    if (enablePricing) {
+      enabledRefresherKeys.push(ConfirmationContextRefresherKey.Prices);
+    }
+    if (enableSecurityScan) {
+      enabledRefresherKeys.push(ConfirmationContextRefresherKey.Scan);
+    }
+    if (enableLocalSimulation) {
+      enabledRefresherKeys.push(ConfirmationContextRefresherKey.Transaction);
+    }
 
     // 1. Initial context with loading state
     const context = {
@@ -276,7 +277,30 @@ export class ConfirmationUXController {
       return dialogPromise;
     }
 
-    // 5. Schedule the open cron for this-tick keys only.
+    // 5. Schedule background context refresh for this-tick keys only.
+    // Skip Scan / Transaction when renderContext already marked them Error
+    // (e.g. RequiresMemo on open): a pending open cron would race
+    // MemoEdit's restart and double-hit Blockaid after the user saves a memo.
+    // Read the Error overrides from `renderContext` (not merged `context`):
+    // `defaultContext` only ever sets Fetched/Fetching, so TS narrows those
+    // fields and rejects a comparison against Error on the merged object.
+    const scheduledKeys: ConfirmationContextRefresherKey[] = [];
+    if (enablePricing) {
+      scheduledKeys.push(ConfirmationContextRefresherKey.Prices);
+    }
+    if (
+      enableSecurityScan &&
+      renderContext.scanFetchStatus !== FetchStatus.Error
+    ) {
+      scheduledKeys.push(ConfirmationContextRefresherKey.Scan);
+    }
+    if (
+      enableLocalSimulation &&
+      renderContext.transactionsFetchStatus !== FetchStatus.Error
+    ) {
+      scheduledKeys.push(ConfirmationContextRefresherKey.Transaction);
+    }
+
     if (scheduledKeys.length > 0) {
       const backgroundEventId =
         await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
@@ -288,11 +312,9 @@ export class ConfirmationUXController {
           },
           Duration.OneSecond,
         );
-      const contextWithEventId = {
-        ...context,
-        enabledRefresherKeys,
-        backgroundEventId,
-      };
+      // Persist the pending event id so MemoEdit (or a later replace) can cancel
+      // it before scheduling another chain — bitcoin send-flow pattern.
+      const contextWithEventId = { ...context, backgroundEventId };
       await updateInterfaceIfExists(
         id,
         renderConfirmationView(interfaceKey, contextWithEventId),

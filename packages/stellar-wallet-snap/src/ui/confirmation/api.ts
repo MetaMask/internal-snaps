@@ -162,13 +162,13 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   supportsMemo?: boolean;
   /**
    * Pending `snap_scheduleBackgroundEvent` id for confirmation context refresh.
-   * Used to cancel-and-replace when restarting the refresh chain.
+   * Stored so callers can cancel-and-replace (bitcoin send-flow pattern) instead
+   * of stacking parallel refresh chains (e.g. MemoEdit Save vs open cron).
    */
   backgroundEventId?: string;
   /**
    * Preference- and flow-enabled refresher keys resolved at dialog open.
-   * Ungated: MemoEdit Save reuses this snapshot to restart, including slices
-   * that were Error on open (e.g. RequiresMemo).
+   * MemoEdit Save reuses this snapshot for restart.
    */
   enabledRefresherKeys?: string[];
 };
