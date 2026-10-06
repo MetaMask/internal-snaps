@@ -24,9 +24,9 @@ import { KnownCaip2ChainId, XdrStruct } from '../../api';
  * These are used to map error messages to localized messages for the transaction alert.
  *
  * Values are lowercase and punctuation-free so they match the normalized API
- * error codes looked up in {@link TransactionAlert} (`ERROR_MESSAGE_IDS`).
+ * error codes looked up in {@link ConfirmationAlerts} (`ERROR_MESSAGE_IDS`).
  *
- * @see packages/snap/src/ui/confirmation/components/TransactionAlert.tsx
+ * @see packages/stellar-wallet-snap/src/ui/confirmation/components/ConfirmationAlerts.tsx
  */
 export const TransactionScanErrorId = {
   InsufficientBalance: 'insufficientbalance',

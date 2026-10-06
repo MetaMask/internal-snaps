@@ -1,8 +1,12 @@
+import { TransactionAlert } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 
-import type { ConfirmationBaseProps, FetchStatus } from '../api';
+import type { TransactionScanError } from '../../../services/transaction-scan';
+import type { LocalizedMessage } from '../../../utils';
+import { i18n } from '../../../utils';
+import type { ConfirmationBaseProps } from '../api';
+import { FetchStatus } from '../api';
 import { ConfirmationBanner, resolveConfirmationBanner } from '../utils';
-import { TransactionAlert } from './TransactionAlert';
 import { TransactionValidationAlert } from './TransactionValidationAlert';
 
 type ConfirmationAlertsProps = {
@@ -11,6 +15,42 @@ type ConfirmationAlertsProps = {
   scanFetchStatus: FetchStatus;
   transactionsFetchStatus: FetchStatus;
   errorMessage?: ConfirmationBaseProps['errorMessage'];
+};
+
+type ErrorCopy = {
+  title: LocalizedMessage;
+  subtitle: LocalizedMessage;
+};
+
+// Keys are normalized API codes (lowercase, no punctuation); see TransactionScanErrorId.
+const ERROR_MESSAGE_IDS: Record<string, LocalizedMessage> = {
+  insufficientbalance: 'transactionScan.errors.insufficientBalance',
+  insufficientfunds: 'transactionScan.errors.insufficientFunds',
+  invalidtransaction: 'transactionScan.errors.invalidTransaction',
+  invalidaddress: 'transactionScan.errors.invalidAddress',
+  notrustline: 'transactionScan.errors.noTrustline',
+  transactionexpired: 'transactionScan.errors.transactionExpired',
+  unsupportedeip712message: 'transactionScan.errors.unsupportedEIP712Message',
+};
+
+const DEFAULT_ERROR_COPY: ErrorCopy = {
+  title: 'confirmation.securityScanErrorTitle',
+  subtitle: 'confirmation.securityScanErrorSubtitle',
+};
+
+const ERROR_TYPE_TO_COPY: Record<string, ErrorCopy> = {
+  simulation: {
+    title: 'confirmation.simulationErrorTitle',
+    subtitle: 'confirmation.simulationErrorSubtitle',
+  },
+  validation: {
+    title: 'confirmation.validationScanErrorTitle',
+    subtitle: 'confirmation.validationScanErrorSubtitle',
+  },
+  response: {
+    title: 'confirmation.securityScanIncompleteTitle',
+    subtitle: 'confirmation.securityScanIncompleteSubtitle',
+  },
 };
 
 /**
@@ -44,17 +84,105 @@ export const ConfirmationAlerts = ({
           errorMessage={errorMessage}
         />
       );
-    case ConfirmationBanner.TransactionScan:
+    case ConfirmationBanner.TransactionScan: {
+      const translate = i18n(preferences.locale);
+      const scanError = scan?.error;
+      const errorCopy =
+        scanError && shouldShowError(scanError, preferences)
+          ? (ERROR_TYPE_TO_COPY[scanError.type ?? ''] ?? DEFAULT_ERROR_COPY)
+          : null;
+
       return (
         <TransactionAlert
-          scanFetchStatus={scanFetchStatus}
-          validation={scan?.validation ?? null}
-          error={scan?.error ?? null}
-          preferences={preferences}
+          labels={{
+            scanInProgressTitle: translate(
+              'confirmation.securityScanInProgressTitle',
+            ),
+            scanInProgressMessage: translate(
+              'confirmation.securityScanInProgressMessage',
+            ),
+            scanFailedTitle: translate(
+              'confirmation.securityScanAPIErrorTitle',
+            ),
+            scanFailedMessage: translate(
+              'confirmation.securityScanAPIErrorMessage',
+            ),
+            maliciousTitle: translate('confirmation.validationErrorTitle'),
+            maliciousMessage: translate('confirmation.validationErrorSubtitle'),
+            warningTitle: translate('confirmation.validationWarningTitle'),
+            warningMessage: translate('confirmation.validationWarningSubtitle'),
+            learnMore: translate('confirmation.validationErrorLearnMore'),
+            securityAdvisedBy: translate(
+              'confirmation.validationErrorSecurityAdviced',
+            ),
+          }}
+          isFetching={scanFetchStatus === FetchStatus.Fetching}
+          isFetchError={scanFetchStatus === FetchStatus.Error}
+          error={
+            scanError && errorCopy
+              ? {
+                  title: translate(errorCopy.title),
+                  message: translate(errorCopy.subtitle, {
+                    reason: getErrorMessage(scanError, translate),
+                  }),
+                }
+              : null
+          }
+          validation={
+            preferences.useSecurityAlerts ? (scan?.validation ?? null) : null
+          }
         />
       );
+    }
     case ConfirmationBanner.None:
     default:
       return null;
   }
 };
+
+/**
+ * Determines whether a scan error should be visible for the enabled alert type.
+ *
+ * @param error - The scan error to evaluate.
+ * @param preferences - User preferences controlling scan behavior.
+ * @returns True when the error should be rendered.
+ */
+function shouldShowError(
+  error: TransactionScanError,
+  preferences: ConfirmationBaseProps['preferences'],
+): boolean {
+  if (error.type === 'simulation') {
+    return preferences.simulateOnChainActions;
+  }
+
+  if (error.type === 'validation') {
+    return preferences.useSecurityAlerts;
+  }
+
+  return preferences.simulateOnChainActions || preferences.useSecurityAlerts;
+}
+
+/**
+ * Gets a user-facing scan error message.
+ *
+ * @param error - The scan error returned by the transaction scan service.
+ * @param translate - The translation function for the user's locale.
+ * @returns A translated or API-provided error message.
+ */
+function getErrorMessage(
+  error: TransactionScanError,
+  translate: ReturnType<typeof i18n>,
+): string {
+  // Blockaid codes are passed through as-is (e.g. `insufficient_funds`), while
+  // `ERROR_MESSAGE_IDS` keys use the compact form (`insufficientfunds`).
+  const normalizedCode = error.code
+    ?.replace(/[^a-zA-Z0-9]/gu, '')
+    .toLowerCase();
+  const messageId = normalizedCode ? ERROR_MESSAGE_IDS[normalizedCode] : null;
+
+  if (messageId) {
+    return translate(messageId);
+  }
+
+  return error.message ?? translate('transactionScan.errors.unknownError');
+}
