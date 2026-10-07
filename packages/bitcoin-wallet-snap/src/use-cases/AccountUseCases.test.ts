@@ -2144,6 +2144,29 @@ describe('AccountUseCases', () => {
 
       expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(fallbackFeeRate);
     });
+
+    it('uses fallback fee rate when the estimate is zero', async () => {
+      mockChain.getFeeEstimates.mockResolvedValueOnce({
+        ...mockFeeEstimates,
+        get: () => 0,
+      });
+
+      await useCases.computeFee('account-id', mockTemplatePsbt);
+
+      expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(fallbackFeeRate);
+    });
+
+    it('clamps a fractional estimate below 1 sat/vB instead of using zero', async () => {
+      mockChain.getFeeEstimates.mockResolvedValueOnce({
+        ...mockFeeEstimates,
+        get: () => 0.285,
+      });
+
+      await useCases.computeFee('account-id', mockTemplatePsbt);
+
+      expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(1);
+      expect(mockTxBuilder.feeRate).not.toHaveBeenCalledWith(0);
+    });
   });
 
   describe('sendTransfer', () => {

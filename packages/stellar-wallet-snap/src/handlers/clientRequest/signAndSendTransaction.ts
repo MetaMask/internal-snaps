@@ -140,14 +140,18 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
       pollTransaction: false,
     });
 
+    const { sourceAssetId, destAssetId } = options;
+    const swapAssetIds = { sourceAssetId, destAssetId };
+    const transactionType = this.#isCrossChain(swapAssetIds)
+      ? TransactionType.BridgeSend
+      : TransactionType.Swap;
+
     await this.#analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType,
     });
-
-    const { sourceAssetId, destAssetId } = options;
-    const swapAssetIds = { sourceAssetId, destAssetId };
 
     await this.#savePendingTransaction({
       transactionId: transactionHash,
@@ -164,6 +168,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
       // Same-chain swaps reuse the sender address as the receiver; cross-chain swaps
       // use a non-Stellar receiver, so only the sender account id is tracked.
       accountIdsOrAddresses: [account.id],
+      transactionType,
     });
 
     return {

@@ -7,6 +7,7 @@ import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import type { StellarKeyringAccount } from '../../services/account';
 import { OperationMapper, Transaction } from '../../services/transaction';
+import { resolveTransactionType } from '../../services/transaction/transactionType';
 import {
   assertTransactionScope,
   collectTransactionAssetCaipIds,
@@ -88,6 +89,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
       origin: request.origin,
       accountType: account.type,
       chainIdCaip: scope,
+      transactionType: resolveTransactionType(transaction, account.address),
     };
 
     await this.#analyticsService.trackTransactionAdded(trackingProperties);

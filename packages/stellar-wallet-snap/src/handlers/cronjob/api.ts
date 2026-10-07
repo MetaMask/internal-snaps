@@ -1,3 +1,4 @@
+import { TransactionType } from '@metamask/keyring-api';
 import { UuidStruct } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -73,6 +74,11 @@ export const TrackTransactionParamsStruct = type({
     nonempty(tuple([UuidStruct, StellarAddressStruct])),
   ]),
   scope: KnownCaip2ChainIdStruct,
+  /**
+   * Classification resolved when the transaction was submitted. Optional so a
+   * track job scheduled before this field existed still validates.
+   */
+  transactionType: optional(enums(Object.values(TransactionType))),
   /** Reschedule counter; omitted on first schedule (treated as 0). */
   attempt: optional(
     size(integer(), 0, AppConfig.transaction.trackTransactionMaxReschedules),

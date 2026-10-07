@@ -267,6 +267,16 @@ export class SnapAssetsAdapter {
     return this.#filterTokensWithoutPriceData(enrichedAssets, spotPrices);
   }
 
+  async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
+    const results = await Promise.all(
+      account.scopes.map((scope) =>
+        this.fetchAssetsAndBalancesForAccount(scope as Network, account),
+      ),
+    );
+
+    return results.flat();
+  }
+
   /**
    * Filters out spam tokens (those without price data).
    * Essential assets are always kept. Tokens need price data to be included.

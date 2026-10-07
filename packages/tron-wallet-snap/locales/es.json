@@ -91,6 +91,12 @@
     "confirmation.validationErrorSecurityAdviced": {
       "message": "Asesoramiento de seguridad por"
     },
+    "confirmation.securityScanInProgressTitle": {
+      "message": "Comprobando problemas de seguridad"
+    },
+    "confirmation.securityScanInProgressMessage": {
+      "message": "Esto suele tardar unos segundos."
+    },
     "transactionScan.errors.unknownError": {
       "message": "Ocurrió un error desconocido"
     },

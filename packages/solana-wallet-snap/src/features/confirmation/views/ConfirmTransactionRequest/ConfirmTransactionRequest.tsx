@@ -1,3 +1,4 @@
+import { TransactionAlert } from '@metamask/snap-networks-utils';
 import {
   Box,
   Button,
@@ -10,9 +11,9 @@ import { Networks } from '../../../../core/constants/solana';
 import { i18n } from '../../../../core/utils/i18n';
 import { Advanced } from '../../components/Advanced/Advanced';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
-import { TransactionAlert } from '../../components/TransactionAlert';
 import { TransactionDetails } from '../../components/TransactionDetails/TransactionDetails';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
+import { getErrorMessage } from './getErrorMessage';
 import type { ConfirmTransactionRequestContext } from './types';
 
 export const ConfirmTransactionRequest = ({
@@ -32,16 +33,46 @@ export const ConfirmTransactionRequest = ({
     context.scanFetchStatus === 'fetching' || isScanError;
 
   const shouldShowAlert = context.preferences.useSecurityAlerts || isScanError;
+  const scanError = context.scan?.error;
 
   return (
     <Container>
       <Box>
         {shouldShowAlert ? (
           <TransactionAlert
-            scanFetchStatus={context.scanFetchStatus}
+            labels={{
+              scanInProgressTitle: translate(
+                'confirmation.securityScanInProgressTitle',
+              ),
+              scanInProgressMessage: translate(
+                'confirmation.securityScanInProgressMessage',
+              ),
+              scanFailedTitle: translate('send.simulationTitleAPIError'),
+              scanFailedMessage: translate('send.simulationMessageAPIError'),
+              maliciousTitle: translate('confirmation.validationErrorTitle'),
+              maliciousMessage: translate(
+                'confirmation.validationErrorSubtitle',
+              ),
+              warningTitle: translate('confirmation.validationErrorTitle'),
+              warningMessage: translate('confirmation.validationErrorSubtitle'),
+              learnMore: translate('confirmation.validationErrorLearnMore'),
+              securityAdvisedBy: translate(
+                'confirmation.validationErrorSecurityAdviced',
+              ),
+            }}
+            isFetching={context.scanFetchStatus === 'fetching'}
+            isFetchError={context.scanFetchStatus === 'error'}
+            error={
+              scanError
+                ? {
+                    title: translate('confirmation.simulationErrorTitle'),
+                    message: translate('confirmation.simulationErrorSubtitle', {
+                      reason: getErrorMessage(scanError, context.preferences),
+                    }),
+                  }
+                : null
+            }
             validation={context.scan?.validation ?? null}
-            error={context.scan?.error ?? null}
-            preferences={context.preferences}
           />
         ) : null}
         <Box alignment="center" center>

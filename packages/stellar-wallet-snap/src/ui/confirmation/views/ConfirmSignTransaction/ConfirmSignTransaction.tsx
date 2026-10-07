@@ -20,18 +20,17 @@ import { i18n } from '../../../../utils';
 import type { ConfirmationBaseProps, FeeData } from '../../api';
 import { FetchStatus } from '../../api';
 import { Authorizations } from '../../components/Authorizations';
+import { ConfirmationAlerts } from '../../components/ConfirmationAlerts';
 import { ConfirmationFooter } from '../../components/ConfirmationFooter';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { FeeRow } from '../../components/Fee';
 import { InvocationSummary } from '../../components/InvocationSummary';
 import { NetworkRow } from '../../components/Network';
 import { ReadableParamsList } from '../../components/ReadableParamsList';
-import { TransactionAlert } from '../../components/TransactionAlert';
 import {
   getAccountName,
   getInvocationDetailParams,
   getParam,
-  hasEnabledTransactionScan,
   requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
@@ -74,14 +73,12 @@ export const ConfirmSignTransaction = ({
   return (
     <Container>
       <Box>
-        {hasEnabledTransactionScan(preferences) ? (
-          <TransactionAlert
-            scanFetchStatus={scanFetchStatus}
-            validation={scan?.validation ?? null}
-            error={scan?.error ?? null}
-            preferences={preferences}
-          />
-        ) : null}
+        <ConfirmationAlerts
+          preferences={preferences}
+          scan={scan}
+          scanFetchStatus={scanFetchStatus}
+          transactionsFetchStatus={FetchStatus.Initial}
+        />
         <Box alignment="center" center>
           <Box>{null}</Box>
           <Heading size="lg">{t('confirmation.signTransaction.title')}</Heading>

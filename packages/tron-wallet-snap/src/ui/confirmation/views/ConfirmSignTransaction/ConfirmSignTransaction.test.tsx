@@ -246,6 +246,88 @@ describe('ConfirmSignTransaction', () => {
     expect(texts).not.toContain(SIMULATION_ERROR_TITLE);
   });
 
+  describe('security alert banner', () => {
+    const SCAN_IN_PROGRESS_TITLE = 'Checking for security issues';
+    const SCAN_FAILED_TITLE =
+      "Because of an error, we couldn't check for security alerts.";
+    const MALICIOUS_TITLE = 'This is a deceptive request';
+
+    const render = (
+      context: ConfirmSignTransactionContext,
+    ): { texts: string[]; serialized: string } => {
+      const tree = ConfirmSignTransaction({ context });
+      return { texts: collectTexts(tree), serialized: JSON.stringify(tree) };
+    };
+
+    it.each([FetchStatus.Loading, FetchStatus.Fetching])(
+      'renders the scan-in-progress info banner while the scan is %s',
+      (scanFetchStatus) => {
+        const { texts, serialized } = render(
+          buildContext({ scanFetchStatus, scan: null }),
+        );
+
+        expect(texts).toContain(SCAN_IN_PROGRESS_TITLE);
+        expect(serialized).toContain('"severity":"info"');
+      },
+    );
+
+    it('renders the scan-failed danger banner when the scan request fails', () => {
+      const { texts, serialized } = render(
+        buildContext({ scanFetchStatus: FetchStatus.Error, scan: null }),
+      );
+
+      expect(texts).toContain(SCAN_FAILED_TITLE);
+      expect(serialized).toContain('"severity":"danger"');
+    });
+
+    it('renders malicious validations as a danger banner', () => {
+      const { texts, serialized } = render(
+        buildContext({
+          scan: buildScanResult({
+            validation: { type: 'Malicious', reason: 'known_attacker' },
+          }),
+        }),
+      );
+
+      expect(texts).toContain(MALICIOUS_TITLE);
+      expect(texts).toContain('Learn more');
+      expect(serialized).toContain('"severity":"danger"');
+    });
+
+    it('renders warning validations as a warning banner', () => {
+      const { texts, serialized } = render(
+        buildContext({
+          scan: buildScanResult({
+            validation: { type: 'Warning', reason: 'unfair_trade' },
+          }),
+        }),
+      );
+
+      expect(texts).toContain(MALICIOUS_TITLE);
+      expect(serialized).toContain('"severity":"warning"');
+    });
+
+    it('renders scan errors before validation findings', () => {
+      const { texts } = render(
+        buildContext({
+          scan: buildScanResult({
+            validation: { type: 'Malicious', reason: 'known_attacker' },
+            error: otherError,
+          }),
+        }),
+      );
+
+      expect(texts).toContain(SIMULATION_ERROR_TITLE);
+      expect(texts).not.toContain(MALICIOUS_TITLE);
+    });
+
+    it('renders no banner for benign validations', () => {
+      const { serialized } = render(buildContext());
+
+      expect(serialized).not.toContain('"type":"Banner"');
+    });
+  });
+
   it('shows unsupported-contract copy for skipped simulations of unknown contracts', () => {
     const texts = renderTexts(
       buildContext({

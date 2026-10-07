@@ -1957,14 +1957,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/action-utils@npm:^1.0.0":
-  version: 1.1.1
-  resolution: "@metamask/action-utils@npm:1.1.1"
+"@metamask/action-utils@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "@metamask/action-utils@npm:2.0.0"
   dependencies:
     "@types/semver": "npm:^7.3.6"
     glob: "npm:^7.1.7"
     semver: "npm:^7.3.5"
-  checksum: 10/de6ac6a3f92f58fd343c5e59f85ab32b26c60e4cd5ec781b541c0e2432b1dc70f442095442bcc1a03b1164ac61708d5855293992f3e0e8265abc93c4024bdbb4
+  checksum: 10/9d0ef99cf7be9314a4996108760acb30071dff9e14f090ff6b8c1a1996effb9b9ef1ba5238dc5cd9c0c5396830a66b60621ef9213457606dc011822154188708
   languageName: node
   linkType: hard
 
@@ -2158,9 +2158,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/auto-changelog@npm:^6.1.1":
-  version: 6.1.1
-  resolution: "@metamask/auto-changelog@npm:6.1.1"
+"@metamask/auto-changelog@npm:^6.1.1, @metamask/auto-changelog@npm:^6.2.1":
+  version: 6.2.1
+  resolution: "@metamask/auto-changelog@npm:6.2.1"
   dependencies:
     "@octokit/rest": "npm:^20.0.0"
     diff: "npm:^5.0.0"
@@ -2177,7 +2177,7 @@ __metadata:
       optional: true
   bin:
     auto-changelog: dist/cli.mjs
-  checksum: 10/cae26d9435b86899af583fb3c7e3d35b6330fb19ae376bf8382ffee48db53a2b46f10032ece53477d8f7818ebb8721304e4f39f21273e71e25fd28d72f3e246f
+  checksum: 10/88f5bc63ef5003b3e4f88ebf018229ce5e701283cadee1dcbd37f869541a1102ba6a8a96fd54993863e3578c8b79f0c6e0242e4afd08c58d5db529bc75dbaf2c
   languageName: node
   linkType: hard
 
@@ -2197,7 +2197,7 @@ __metadata:
   resolution: "@metamask/bitcoin-wallet-snap@workspace:packages/bitcoin-wallet-snap"
   dependencies:
     "@jest/globals": "npm:^29.5.0"
-    "@metamask/auto-changelog": "npm:^6.1.1"
+    "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/bitcoindevkit": "npm:^0.1.13"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
@@ -2362,11 +2362,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/create-release-branch@npm:^4.2.1":
-  version: 4.2.1
-  resolution: "@metamask/create-release-branch@npm:4.2.1"
+"@metamask/create-release-branch@npm:^4.2.2":
+  version: 4.2.2
+  resolution: "@metamask/create-release-branch@npm:4.2.2"
   dependencies:
-    "@metamask/action-utils": "npm:^1.0.0"
+    "@metamask/action-utils": "npm:^2.0.0"
     "@metamask/auto-changelog": "npm:^6.1.1"
     "@metamask/utils": "npm:^9.0.0"
     debug: "npm:^4.3.4"
@@ -2389,7 +2389,7 @@ __metadata:
       optional: true
   bin:
     create-release-branch: bin/create-release-branch.js
-  checksum: 10/76b3f904e6cceeb7f42d2120b6b816fb14a190678ab79a8a6a9033e7a872a083254bc36b153c9e773b9d821ed30f0d302b18adc0f83795cc5dfcec2bb166ada6
+  checksum: 10/35b1e671c53cf0c1c03bb076fe33684bdc4eee55935feb0be4f681d4682c57dd68a953585fb6cac8707117218716156ade715db5484d9ade4e25ec79aeba27c1
   languageName: node
   linkType: hard
 
@@ -2407,17 +2407,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/eslint-config-nodejs@npm:^15.0.0":
-  version: 15.0.0
-  resolution: "@metamask/eslint-config-nodejs@npm:15.0.0"
+"@metamask/eslint-config-nodejs@npm:^15.0.1":
+  version: 15.0.1
+  resolution: "@metamask/eslint-config-nodejs@npm:15.0.1"
   dependencies:
     "@eslint/js": "npm:^9.11.0"
     globals: "npm:^15.9.0"
   peerDependencies:
-    "@metamask/eslint-config": ^15.0.0
+    "@metamask/eslint-config": "workspace:^"
     eslint: ^9.11.0
     eslint-plugin-n: ^17.10.3
-  checksum: 10/541a2df5a21e3e73abd8b5b175fd2c3604bfa8694d7e8e7e48891f01d38396267f1cf92cb88cb181ddd7931dee3c7bf39de59d2cb1f30971a245551d575674a1
+  checksum: 10/3934e69f966192ccb57c6bf234129f49ff8a034e6383af54497596780e422ccb1291264842c23def587d90d1484999a71d4a4a901fa20d3a922837e39da5f9ae
   languageName: node
   linkType: hard
 
@@ -2750,10 +2750,10 @@ __metadata:
   dependencies:
     "@lavamoat/allow-scripts": "npm:^3.0.4"
     "@lavamoat/preinstall-always-fail": "npm:^2.1.0"
-    "@metamask/create-release-branch": "npm:^4.2.1"
+    "@metamask/create-release-branch": "npm:^4.2.2"
     "@metamask/eslint-config": "npm:^15.0.0"
     "@metamask/eslint-config-jest": "npm:^15.0.0"
-    "@metamask/eslint-config-nodejs": "npm:^15.0.0"
+    "@metamask/eslint-config-nodejs": "npm:^15.0.1"
     "@metamask/eslint-config-typescript": "npm:^15.0.0"
     "@metamask/utils": "npm:^11.11.0"
     "@types/jest": "npm:^30.0.0"
@@ -3400,7 +3400,7 @@ __metadata:
   resolution: "@metamask/snap-networks-utils@workspace:packages/snap-networks-utils"
   dependencies:
     "@metamask/assets-controller": "npm:^15.0.0"
-    "@metamask/auto-changelog": "npm:^6.1.1"
+    "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-internal-api": "npm:^12.0.0"
     "@metamask/messenger": "npm:^2.0.0"
@@ -3768,7 +3768,7 @@ __metadata:
   resolution: "@metamask/solana-wallet-snap@workspace:packages/solana-wallet-snap"
   dependencies:
     "@jest/globals": "npm:^29.5.0"
-    "@metamask/auto-changelog": "npm:^6.1.1"
+    "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
@@ -3814,7 +3814,7 @@ __metadata:
   resolution: "@metamask/stellar-wallet-snap@workspace:packages/stellar-wallet-snap"
   dependencies:
     "@metamask/assets-controller": "npm:^15.0.0"
-    "@metamask/auto-changelog": "npm:^6.1.1"
+    "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
@@ -3928,7 +3928,7 @@ __metadata:
   resolution: "@metamask/tron-wallet-snap@workspace:packages/tron-wallet-snap"
   dependencies:
     "@metamask/assets-controller": "npm:^15.0.0"
-    "@metamask/auto-changelog": "npm:^6.1.1"
+    "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
