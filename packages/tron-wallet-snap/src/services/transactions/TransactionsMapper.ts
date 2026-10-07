@@ -1185,7 +1185,7 @@ export class TransactionMapper {
           address: from,
           asset: {
             unit: stakedAsset.symbol,
-            type: stakedAsset.id as CaipAssetType,
+            type: stakedAsset.id,
             amount: amountInTrx,
             fungible: true,
           },
@@ -1270,7 +1270,7 @@ export class TransactionMapper {
           address: to,
           asset: {
             unit: stakedAsset.symbol,
-            type: stakedAsset.id as CaipAssetType,
+            type: stakedAsset.id,
             amount: amountInTrx,
             fungible: true,
           },

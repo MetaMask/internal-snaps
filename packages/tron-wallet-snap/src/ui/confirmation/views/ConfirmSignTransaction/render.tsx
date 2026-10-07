@@ -1,4 +1,3 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
@@ -16,6 +15,7 @@ import { FetchStatus } from '../../../../types/snap';
 import { sunToTrx } from '../../../../utils/conversion';
 import logger from '../../../../utils/logger';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
+import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { getTransactionTrxValue } from '../../../../validation/transaction';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
@@ -61,7 +61,7 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
  * @returns The confirmation dialog result.
  */
 export async function render(
-  request: KeyringRequest,
+  request: TronWalletKeyringRequest,
   account: ExtendedKeyringAccount,
   rawData: TronwebTypes.Transaction['raw_data'],
 ): Promise<DialogResult> {
@@ -79,7 +79,7 @@ export async function render(
   // Build initial context
   const context: ConfirmSignTransactionContext = {
     ...DEFAULT_CONTEXT,
-    scope: scope as Network,
+    scope,
     account,
     transaction,
     origin: origin ?? 'Unknown',
@@ -94,9 +94,9 @@ export async function render(
   const [preferences, accountAssets] = await Promise.all([
     snapClient.getPreferences().catch(() => DEFAULT_CONTEXT.preferences),
     assetsService.getAccountAssetsByIDs(account.id, [
-      Networks[scope as Network].nativeToken.id,
-      Networks[scope as Network].bandwidth.id,
-      Networks[scope as Network].energy.id,
+      Networks[scope].nativeToken.id,
+      Networks[scope].bandwidth.id,
+      Networks[scope].energy.id,
     ]),
   ]);
 
@@ -131,7 +131,7 @@ export async function render(
     };
 
     const fees = await feeCalculatorService.computeFee({
-      scope: scope as Network,
+      scope,
       transaction: transactionObj,
       availableEnergy,
       availableBandwidth,
@@ -157,9 +157,8 @@ export async function render(
     context.fees = fees;
     context.feesFetchStatus = FetchStatus.Fetched;
     const trxFee = new BigNumber(
-      fees.find(
-        (fee) => fee.asset.type === Networks[scope as Network].nativeToken.id,
-      )?.asset.amount ?? '0',
+      fees.find((fee) => fee.asset.type === Networks[scope].nativeToken.id)
+        ?.asset.amount ?? '0',
     );
     const trxBalance = nativeTokenAsset
       ? sunToTrx(nativeTokenAsset.rawAmount)
@@ -214,7 +213,7 @@ export async function render(
           accountAddress: account.address,
           transactionRawData: rawData,
           origin,
-          scope: scope as Network,
+          scope,
           options,
         });
       } catch {
@@ -231,7 +230,7 @@ export async function render(
       const expired =
         await snapContext.transactionExpirationRefresherService.isTransactionExpired(
           {
-            scope: scope as Network,
+            scope,
             rawData,
           },
         );

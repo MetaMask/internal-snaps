@@ -1,14 +1,13 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 
-import type { Network } from '../../../../constants';
 import snapContext from '../../../../context';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { formatOrigin } from '../../../../utils/formatOrigin';
 import { FALLBACK_LANGUAGE } from '../../../../utils/i18n';
 import { SignMessageRequestStruct } from '../../../../validation/structs';
+import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { ConfirmSignMessage } from './ConfirmSignMessage';
 
 /**
@@ -19,7 +18,7 @@ import { ConfirmSignMessage } from './ConfirmSignMessage';
  * @returns The confirmation dialog result.
  */
 export async function render(
-  request: KeyringRequest,
+  request: TronWalletKeyringRequest,
   account: ExtendedKeyringAccount,
 ): Promise<DialogResult> {
   assert(request.request.params, SignMessageRequestStruct);
@@ -45,7 +44,7 @@ export async function render(
     <ConfirmSignMessage
       message={messageUtf8}
       account={account}
-      scope={scope as Network}
+      scope={scope}
       locale={locale}
       networkImage={TRX_IMAGE_SVG}
       origin={formatOrigin(origin)}

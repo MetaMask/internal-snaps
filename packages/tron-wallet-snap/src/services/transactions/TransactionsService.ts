@@ -5,6 +5,8 @@ import type {
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
+import { is } from '@metamask/superstruct';
+import { CaipAssetTypeStruct } from '@metamask/utils';
 import { groupBy } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -420,7 +422,7 @@ export class TransactionsService {
     transactions: Transaction[],
     account: ExtendedKeyringAccount,
   ): Promise<SpotPrices | undefined> {
-    const tokenAssetTypes = new Set<string>();
+    const tokenAssetTypes = new Set<CaipAssetType>();
     for (const tx of transactions) {
       if (tx.type !== TransactionType.Receive) {
         continue;
@@ -430,7 +432,8 @@ export class TransactionsService {
           movement.address === account.address &&
           movement.asset?.fungible &&
           (movement.asset.type.includes('/trc10:') ||
-            movement.asset.type.includes('/trc20:'))
+            movement.asset.type.includes('/trc20:')) &&
+          is(movement.asset.type, CaipAssetTypeStruct)
         ) {
           tokenAssetTypes.add(movement.asset.type);
         }
@@ -444,7 +447,7 @@ export class TransactionsService {
     try {
       return await this.#priceApiClient.getMultipleSpotPrices([
         ...tokenAssetTypes,
-      ] as CaipAssetType[]);
+      ]);
     } catch (error) {
       this.#logger.warn(
         { error },
