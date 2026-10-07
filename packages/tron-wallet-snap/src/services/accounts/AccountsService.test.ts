@@ -109,7 +109,10 @@ type WithAccountsServiceCallback = (payload: {
   mockConfigProvider: { config: Config };
   mockLogger: Logger;
   mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetchAccountAssets' | 'saveMany'>
+    Pick<
+      AssetsService,
+      'isAssetsMigrationEnabled' | 'fetchAccountAssets' | 'saveManyAndEmit'
+    >
   >;
   mockSnapClient: jest.Mocked<
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
@@ -266,10 +269,14 @@ async function withAccountsService(
   };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'fetchAccountAssets' | 'saveMany'>
+    Pick<
+      AssetsService,
+      'isAssetsMigrationEnabled' | 'fetchAccountAssets' | 'saveManyAndEmit'
+    >
   > = {
+    isAssetsMigrationEnabled: jest.fn().mockResolvedValue(false),
     fetchAccountAssets: jest.fn().mockResolvedValue([]),
-    saveMany: jest.fn().mockResolvedValue(undefined),
+    saveManyAndEmit: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockTransactionsService: jest.Mocked<
@@ -1055,7 +1062,7 @@ describe('AccountsService', () => {
           expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
             account,
           );
-          expect(mockAssetsService.saveMany).toHaveBeenCalledWith(
+          expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith(
             expect.arrayContaining(mockAssets),
           );
           expect(trackError).not.toHaveBeenCalled();
@@ -1083,7 +1090,7 @@ describe('AccountsService', () => {
             activeNetworks: [Network.Mainnet, Network.Shasta],
           };
           const saveError = new Error('storage full');
-          mockAssetsService.saveMany.mockRejectedValue(saveError);
+          mockAssetsService.saveManyAndEmit.mockRejectedValue(saveError);
 
           // Save failures are batch-level: tracked as their own error (not
           // attributed to individual accounts), and the method still resolves.
@@ -1155,7 +1162,7 @@ describe('AccountsService', () => {
               'sync-fail-id: Error: grpc unavailable',
           );
           // The healthy account's assets are still saved.
-          expect(mockAssetsService.saveMany).toHaveBeenCalledWith(
+          expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith(
             healthyAssets,
           );
         },
@@ -1192,7 +1199,7 @@ describe('AccountsService', () => {
           // still reported; the sync completes and the save still runs.
           await accountsService.synchronize([account]);
 
-          expect(mockAssetsService.saveMany).toHaveBeenCalledWith([]);
+          expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith([]);
           expect(trackError).toHaveBeenCalledTimes(1);
           const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
           expect(tracked.message).toBe(
@@ -1225,7 +1232,33 @@ describe('AccountsService', () => {
           expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
             account,
           );
-          expect(mockAssetsService.saveMany).toHaveBeenCalledWith([]);
+          expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith([]);
+        },
+      );
+    });
+
+    it('skips fetching and saving assets while the assets migration is active', async () => {
+      const account: TronKeyringAccount = {
+        id: 'sync-migration-id',
+        address: 'TSyncMigration123456789012345',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockAssetsService }) => {
+          mockAssetsService.isAssetsMigrationEnabled.mockResolvedValue(true);
+
+          await accountsService.synchronize([account]);
+
+          expect(mockAssetsService.fetchAccountAssets).not.toHaveBeenCalled();
+          expect(mockAssetsService.saveManyAndEmit).not.toHaveBeenCalled();
+          expect(trackError).not.toHaveBeenCalled();
         },
       );
     });
@@ -1451,7 +1484,35 @@ describe('AccountsService', () => {
           expect(
             mockTransactionsService.fetchNewTransactionsForAccount,
           ).toHaveBeenCalledTimes(1);
-          expect(mockAssetsService.saveMany).toHaveBeenCalledTimes(1);
+          expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledTimes(1);
+          expect(mockTransactionsService.saveMany).toHaveBeenCalledTimes(1);
+        },
+      );
+    });
+
+    it('skips asset syncing while the assets migration is active, but still syncs transactions', async () => {
+      const account = makeSyncAccount('migration-id', 0);
+
+      await withAccountsService(
+        async ({
+          accountsService,
+          mockConfigProvider,
+          mockAssetsService,
+          mockTransactionsService,
+        }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          mockAssetsService.isAssetsMigrationEnabled.mockResolvedValue(true);
+
+          await accountsService.synchronize([account]);
+
+          expect(mockAssetsService.fetchAccountAssets).not.toHaveBeenCalled();
+          expect(mockAssetsService.saveManyAndEmit).not.toHaveBeenCalled();
+          expect(
+            mockTransactionsService.fetchNewTransactionsForAccount,
+          ).toHaveBeenCalledWith(Network.Mainnet, account);
           expect(mockTransactionsService.saveMany).toHaveBeenCalledTimes(1);
         },
       );
