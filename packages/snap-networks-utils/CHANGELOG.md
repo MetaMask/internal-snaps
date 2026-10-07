@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `sanitizeControlCharacters` and `sanitizeUri` utilities for validating and sanitizing user-provided strings and URIs. ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
 - Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- Add `getAssetMetadata` to `AssetsProvider`, mapping to the `AssetsController:getAssetMetadata` state lookup so Snaps can read controller metadata for a CAIP-19 asset ([#419](https://github.com/MetaMask/internal-snaps/pull/419))
 - Add `getAssets` to `AssetsProvider`, mapping to the `AssetsController:getAssets` one-time fetch so Snaps can fetch uncached combined assets (balance, metadata, price, and `fiatValue`) and update controller state, with `forceUpdate` and `bypassServerCache` support for post-transaction freshness
 
 ### Changed
