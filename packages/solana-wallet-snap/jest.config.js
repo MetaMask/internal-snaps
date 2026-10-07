@@ -5,7 +5,7 @@ module.exports = {
   preset: '@metamask/snaps-jest',
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
-    '^.+\\.svg$': '<rootDir>/svg-transformer.js',
+    '^.+\\.svg$': '<rootDir>/../../jest.svg-transformer.js',
   },
   moduleNameMapper: {
     ...baseConfig.moduleNameMapper,
