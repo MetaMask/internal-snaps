@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support importing `.svg` files as strings in the package source, like in a Snap ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+- Support importing `.svg` files as strings in the package source, like in a Snap ([#423](https://github.com/MetaMask/internal-snaps/pull/423))
   - The files are copied to `dist/` as-is, so consumers must bundle the package with `mm-snap` (or another bundler that loads `.svg` files as source)
 - Add a shared `TransactionAlert` Snaps JSX component for transaction confirmations, rendering a single scan banner for the in-progress, scan-failed, scan-error, and malicious/warning security validation states ([#408](https://github.com/MetaMask/internal-snaps/pull/408))
   - Takes translated `labels` (`TransactionAlertLabels`), `isFetching` and `isFetchError` flags, a resolved `error` (`TransactionAlertError`), and a `validation` (`TransactionAlertValidation`)
