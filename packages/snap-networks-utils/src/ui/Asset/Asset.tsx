@@ -24,7 +24,7 @@ const IconSize = {
 export type AssetIconProps = {
   /** Icon URL; a question-mark icon is shown when missing or blank. */
   iconUrl?: string | null;
-  size?: keyof typeof ICON_SIZES;
+  size?: keyof typeof IconSize;
 };
 
 export type AssetProps = {
@@ -64,8 +64,8 @@ export const AssetIcon = ({
   <Image
     borderRadius="full"
     src={iconUrl?.trim() ? iconUrl : QUESTION_MARK_SVG}
-    height={ICON_SIZES[size]}
-    width={ICON_SIZES[size]}
+    height={IconSize[size]}
+    width={IconSize[size]}
   />
 );
 
