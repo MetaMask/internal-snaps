@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Emit `transaction_type` and `transaction_status` on the transaction lifecycle events, with `transaction_type` derived from the contract type (so a flow can be attributed by combining `origin` and `transaction_type`) and `transaction_status` reporting the on-chain outcome on `Transaction Finalized`. ([#399](https://github.com/MetaMask/internal-snaps/pull/399), [#405](https://github.com/MetaMask/internal-snaps/pull/405))
+- Fetch fresh asset data before send, stake, unstake, and claim flows so validation, fee estimation, and confirmations never act on stale balances. When the assets migration is active, controller-tracked assets come from an `AssetsController` one-time fetch with `forceUpdate` and `bypassServerCache`, while snap-owned assets (staking positions, energy, bandwidth) are fetched directly from Tron RPC
 
 ### Changed
 
