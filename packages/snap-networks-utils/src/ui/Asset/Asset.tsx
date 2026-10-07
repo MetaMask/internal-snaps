@@ -39,7 +39,11 @@ export type AssetProps = {
   hideIcon?: boolean;
   /** Explorer link; when set, the asset text is rendered as a link. */
   link?: string;
-  /** Display-ready fiat value shown before the asset. */
+  /**
+   * Display-ready fiat value shown before the asset. The caller decides whether
+   * fiat applies (e.g. `useExternalPricingData`) and formats it with the user's
+   * currency and locale; pass `null` to show no fiat.
+   */
   fiat?: string | null;
   /** Whether the fiat value is loading; shows a skeleton in its place. */
   isFiatLoading?: boolean;
@@ -79,6 +83,28 @@ export const AssetIcon = ({
  * @param props.fiat - The display-ready fiat value.
  * @param props.isFiatLoading - Whether the fiat value is loading.
  * @returns The asset element.
+ * @example
+ * ```tsx
+ * const price = preferences.useExternalPricingData
+ *   ? tokenPrices[assetId]
+ *   : null;
+ *
+ * <Asset
+ *   symbol="XLM"
+ *   amount="1.5"
+ *   iconUrl={iconUrl}
+ *   fiat={
+ *     price
+ *       ? formatFiat(
+ *           tokenToFiat('1.5', price),
+ *           preferences.currency,
+ *           preferences.locale,
+ *         )
+ *       : null
+ *   }
+ *   isFiatLoading={tokenPricesFetchStatus === 'fetching'}
+ * />;
+ * ```
  */
 export const Asset = ({
   symbol,
