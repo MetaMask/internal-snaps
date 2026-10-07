@@ -1,7 +1,7 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
-import type { Network } from '../../constants';
+import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { hexToString } from '../../utils/hex';
 import {
@@ -43,14 +43,14 @@ export class TronHttpClient {
     const { baseUrls } = configProvider.config.tronHttpApi;
 
     // Initialize clients for all networks
-    Object.entries(baseUrls).forEach(([network, baseUrl]) => {
+    Object.values(Network).forEach((network) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Allow-Origin': '*',
       };
 
-      this.#clients.set(network as Network, { baseUrl, headers });
+      this.#clients.set(network, { baseUrl: baseUrls[network], headers });
     });
   }
 

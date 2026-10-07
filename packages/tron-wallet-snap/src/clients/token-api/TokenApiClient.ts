@@ -3,12 +3,13 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
-import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
+import { CaipAssetTypeStruct } from '@metamask/utils';
 
 import { Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import logger from '../../utils/logger';
 import { TokenMetadataResponseStruct } from './structs';
 
@@ -96,8 +97,8 @@ export class TokenApiClient {
         if (SNAP_OWNED_ASSETS.includes(assetType)) {
           return false;
         }
-        const { chainId } = parseCaipAssetType(assetType);
-        return TokenApiClient.supportedNetworks.includes(chainId as Network);
+        const { chainId } = parseTronCaipAssetType(assetType);
+        return TokenApiClient.supportedNetworks.includes(chainId);
       });
 
       if (supportedAssetTypes.length !== assetTypes.length) {
