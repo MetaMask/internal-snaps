@@ -1,8 +1,11 @@
 import { SolMethod } from '@metamask/keyring-api';
 
-import { Network } from '../../../../core/constants/solana';
+import type { SpotPrices } from '../../../../core/clients/price-api/types';
+import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
 import type { TransactionScanResult } from '../../../../core/services/transaction-scan/types';
 import type { Preferences } from '../../../../core/types/snap';
+import { formatFiat } from '../../../../core/utils/formatFiat';
+import { tokenToFiat } from '../../../../core/utils/tokenToFiat';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from './types';
 
@@ -108,6 +111,53 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).not.toContain('"type":"Banner"');
+    });
+  });
+
+  describe('fee', () => {
+    const tokenPrices = {
+      [KnownCaip19Id.SolMainnet]: { price: 150 },
+    } as unknown as SpotPrices;
+    const fiat = formatFiat(tokenToFiat('0.000005', 150), 'usd', 'en');
+
+    it('renders the fiat value before the fee in SOL', () => {
+      const serialized = render({ feeEstimatedInSol: '0.000005', tokenPrices });
+
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+      expect(serialized.indexOf(fiat)).toBeGreaterThan(-1);
+      expect(serialized.indexOf(fiat)).toBeLessThan(
+        serialized.indexOf('0.000005 SOL'),
+      );
+    });
+
+    it('renders a skeleton instead of the fiat value while prices load', () => {
+      const serialized = render({
+        feeEstimatedInSol: '0.000005',
+        tokenPrices,
+        tokenPricesFetchStatus: 'fetching',
+      });
+
+      expect(serialized).toContain('"type":"Skeleton"');
+      expect(serialized).not.toContain(fiat);
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+    });
+
+    it('renders only the fee in SOL when prices failed to load', () => {
+      const serialized = render({
+        feeEstimatedInSol: '0.000005',
+        tokenPrices,
+        tokenPricesFetchStatus: 'error',
+      });
+
+      expect(serialized).not.toContain(fiat);
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+    });
+
+    it('renders a warning when the fee could not be estimated', () => {
+      const serialized = render({ feeEstimatedInSol: null });
+
+      expect(serialized).toContain('"name":"warning"');
+      expect(serialized).not.toContain(' SOL"');
     });
   });
 });
