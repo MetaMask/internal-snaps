@@ -48,6 +48,7 @@
     "test:watch": "jest --watch"
   },
   "devDependencies": {
+    "@metamask/assets-controller": "^15.0.0",
     "@metamask/auto-changelog": "^6.2.1",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^24.1.0",
