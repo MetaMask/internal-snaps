@@ -3,10 +3,7 @@ import {
   TransactionType,
   TrxAccountType,
 } from '@metamask/keyring-api';
-import type {
-  AnalyticsService,
-  ExtendedKeyringAccount,
-} from '@metamask/snap-networks-utils';
+import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -28,6 +25,7 @@ import type {
   NativeAsset,
   ResourceAsset,
 } from '../../entities/assets';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
@@ -60,22 +58,22 @@ const createPassThroughTransactionExpirationRefresherService = () =>
   }) as unknown as TransactionExpirationRefresherService;
 
 /**
- * Creates a minimal ExtendedKeyringAccount fixture for tests that only need
+ * Creates a minimal TronKeyringAccount fixture for tests that only need
  * account identity and derivation metadata.
  *
  * @param overrides - Account fields to override on the default fixture.
  * @returns A Tron keyring account test fixture.
  */
 const createMockExtendedKeyringAccount = (
-  overrides: Partial<ExtendedKeyringAccount> = {},
-): ExtendedKeyringAccount =>
+  overrides: Partial<TronKeyringAccount> = {},
+): TronKeyringAccount =>
   ({
     id: TEST_ACCOUNT_ID,
     address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
     entropySource: 'test-entropy',
     derivationPath: "m/44'/195'/0'/0/0",
     ...overrides,
-  }) as ExtendedKeyringAccount;
+  }) as TronKeyringAccount;
 
 type MockTronWeb = {
   trx: {
@@ -1501,7 +1499,7 @@ describe('ClientRequestHandler', () => {
         params: { items },
       });
 
-      const account1: ExtendedKeyringAccount = {
+      const account1: TronKeyringAccount = {
         id: TEST_ACCOUNT_ID,
         address: TEST_ADDRESS,
         entropySource: 'test-entropy',
@@ -1512,7 +1510,7 @@ describe('ClientRequestHandler', () => {
         options: {},
         methods: ['signMessage', 'signTransaction'],
       };
-      const account2: ExtendedKeyringAccount = {
+      const account2: TronKeyringAccount = {
         id: TEST_ACCOUNT_ID_2,
         address: TEST_ADDRESS_2,
         entropySource: 'test-entropy',
@@ -1869,7 +1867,9 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     await expect(
       clientRequestHandler.handle(request as JsonRpcRequest),
     ).rejects.toThrow(
-      `Transaction owner_address (${TronWeb.address.fromHex(WRONG_OWNER_ADDRESS_HEX)}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
+      `Transaction owner_address (${TronWeb.address.fromHex(
+        WRONG_OWNER_ADDRESS_HEX,
+      )}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
     );
   });
 

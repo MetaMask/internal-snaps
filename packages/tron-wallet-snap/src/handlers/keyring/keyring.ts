@@ -18,10 +18,7 @@ import {
   asStrictKeyringAccount,
   validateOrigin,
 } from '@metamask/snap-networks-utils';
-import type {
-  ExtendedKeyringAccount,
-  Logger,
-} from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,
@@ -38,7 +35,7 @@ import { sortBy } from 'lodash';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { ESSENTIAL_ASSETS } from '../../constants';
-import type { Network } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { originPermissions } from '../../permissions';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
@@ -55,6 +52,7 @@ import {
   GetAccountAssetsStruct,
   GetAccountAssetsResponseStruct,
   PrivateKeyHexStruct,
+  ResolveAccountAddressStruct,
   SignTransactionRequestStruct,
   TronKeyringRequestStruct,
   GetAccountTransactionsStruct,
@@ -111,7 +109,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     return result ?? null;
   }
 
-  async #listAccounts(): Promise<ExtendedKeyringAccount[]> {
+  async #listAccounts(): Promise<TronKeyringAccount[]> {
     try {
       const keyringAccounts = await this.#accountsService.getAll();
 
@@ -133,7 +131,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   async #getAccount(
     accountId: string,
-  ): Promise<ExtendedKeyringAccount | undefined> {
+  ): Promise<TronKeyringAccount | undefined> {
     try {
       const account =
         (await this.#accountsService.findById(accountId)) ?? undefined;
@@ -158,7 +156,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     }
   }
 
-  async #getAccountOrThrow(accountId: string): Promise<ExtendedKeyringAccount> {
+  async #getAccountOrThrow(accountId: string): Promise<TronKeyringAccount> {
     const account = await this.#getAccount(accountId);
 
     if (!account) {
@@ -322,6 +320,9 @@ export class KeyringHandler implements KeyringSnapRpc {
     scope: CaipChainId,
     request: JsonRpcRequest,
   ): Promise<ResolvedAccountAddress> {
+    const params = { scope };
+    validateRequest(params, ResolveAccountAddressStruct);
+
     this.#logger.info('Resolving account address', { scope, request });
 
     // Get all keyring accounts
@@ -330,7 +331,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     // Resolve the address using the wallet service
     const caip10Address = await this.#walletService.resolveAccountAddress(
       keyringAccounts,
-      scope as Network,
+      params.scope,
       request,
     );
 

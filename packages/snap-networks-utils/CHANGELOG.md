@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add shared `Asset` and `AssetIcon` Snaps JSX components for displaying an asset inline in transaction confirmations ([#418](https://github.com/MetaMask/internal-snaps/pull/418))
+  - `Asset` renders an optional display-ready fiat value (or a loading skeleton), the asset icon, then the amount and symbol, optionally as an explorer link
+  - The icon can be an image URL, a Snaps icon (`iconName`), or hidden (`hideIcon`); `AssetIcon` falls back to a question-mark icon when the URL is missing or blank
 - Add a shared `TransactionAlert` Snaps JSX component for transaction confirmations, rendering a single scan banner for the in-progress, scan-failed, scan-error, and malicious/warning security validation states ([#408](https://github.com/MetaMask/internal-snaps/pull/408))
   - Takes translated `labels` (`TransactionAlertLabels`), `isFetching` and `isFetchError` flags, a resolved `error` (`TransactionAlertError`), and a `validation` (`TransactionAlertValidation`)
 - Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` events tracked by `AnalyticsService`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
@@ -49,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `sanitizeControlCharacters` and `sanitizeUri` utilities for validating and sanitizing user-provided strings and URIs. ([#191](https://github.com/MetaMask/internal-snaps/pull/191))
 - Add a `safeMerge` utility for shallowly merging objects. ([#166](https://github.com/MetaMask/internal-snaps/pull/166))
 - Add a `UrlStruct` utility for validating safe HTTP, HTTPS, and WebSocket URLs. ([#174](https://github.com/MetaMask/internal-snaps/pull/174))
+- Add `getAssetMetadata` to `AssetsProvider`, mapping to the `AssetsController:getAssetMetadata` state lookup so Snaps can read controller metadata for a CAIP-19 asset ([#419](https://github.com/MetaMask/internal-snaps/pull/419))
 - Add `getAssets` to `AssetsProvider`, mapping to the `AssetsController:getAssets` one-time fetch so Snaps can fetch uncached combined assets (balance, metadata, price, and `fiatValue`) and update controller state, with `forceUpdate` and `bypassServerCache` support for post-transaction freshness
 
 ### Changed

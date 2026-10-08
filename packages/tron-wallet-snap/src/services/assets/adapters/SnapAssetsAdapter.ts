@@ -8,7 +8,6 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { IStateManager, Logger } from '@metamask/snap-networks-utils';
 import type { AssetMetadata, FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import type { CaipAssetType } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type { PriceApiClient } from '../../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../../clients/price-api/types';
@@ -39,6 +38,7 @@ import {
   TRX_STAKING_REWARDS_METADATA,
 } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
+import { parseTronCaipAssetType } from '../../../utils/caip';
 import { toUiAmount } from '../../../utils/conversion';
 import type { UnencryptedStateValue } from '../../state/stateTypes';
 import type { AssetsRepository } from '../AssetsRepository';
@@ -1128,12 +1128,11 @@ export class SnapAssetsAdapter {
     keyringAccountId: string,
   ): AssetEntity {
     const metadata = TokenMetadata[assetId as keyof typeof TokenMetadata];
-    const { chainId } = parseCaipAssetType(assetId);
 
     return {
       assetType: metadata.id,
       keyringAccountId,
-      network: chainId as Network,
+      network: parseTronCaipAssetType(assetId).chainId,
       symbol: metadata.symbol,
       decimals: metadata.decimals,
       rawAmount: '0',

@@ -7,7 +7,7 @@ describe('isSnapOwnedAsset', () => {
   it.each(SNAP_OWNED_ASSETS)(
     'returns true for snap-owned asset %s',
     (assetId) => {
-      expect(isSnapOwnedAsset(assetId as CaipAssetType)).toBe(true);
+      expect(isSnapOwnedAsset(assetId)).toBe(true);
     },
   );
 
