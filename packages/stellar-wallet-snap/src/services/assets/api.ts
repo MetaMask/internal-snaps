@@ -142,7 +142,11 @@ export function parseCoreStellarAsset(value: unknown): CoreAsset | null {
   }
 
   try {
-    return create(value, CoreAssetStruct);
+    const asset = create(value, CoreAssetStruct);
+    if (!asset.id.startsWith(`${asset.chainId}/`)) {
+      throw new Error('Asset ID does not match chain ID');
+    }
+    return asset;
   } catch (error) {
     throw new InvalidCoreAssetException(
       `${value.id} is not a valid Stellar asset`,
