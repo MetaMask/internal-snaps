@@ -1,13 +1,26 @@
+import { Asset } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import { Box, Text as SnapText } from '@metamask/snaps-sdk/jsx';
+import type { IconProps } from '@metamask/snaps-sdk/jsx';
 
 import type { SpotPrices } from '../../../clients/price-api/types';
+import { KnownCaip19Id } from '../../../constants';
 import type { ComputeFeeResult } from '../../../services/send/types';
 import { FetchStatus } from '../../../types/snap';
 import type { Preferences } from '../../../types/snap';
+import { formatFiat } from '../../../utils/formatFiat';
 import { i18n } from '../../../utils/i18n';
 import { isFetchStatusLoadingOrFetching } from '../../../utils/isFetchStatusLoadingOrFetching';
-import { Asset } from './Asset/Asset';
+import { tokenToFiat } from '../../../utils/tokenToFiat';
+
+const RESOURCE_ICONS: Partial<Record<string, IconProps['name']>> = {
+  [KnownCaip19Id.BandwidthMainnet]: 'connect',
+  [KnownCaip19Id.BandwidthNile]: 'connect',
+  [KnownCaip19Id.BandwidthShasta]: 'connect',
+  [KnownCaip19Id.EnergyMainnet]: 'flash',
+  [KnownCaip19Id.EnergyNile]: 'flash',
+  [KnownCaip19Id.EnergyShasta]: 'flash',
+};
 
 type FeesProps = {
   fees: ComputeFeeResult;
@@ -68,13 +81,20 @@ export const Fees = ({
 
             {/* Right side - fee value with asset display including price */}
             <Asset
-              caipId={feeItem.asset.type}
               amount={feeItem.asset.amount}
               symbol={feeItem.asset.unit}
               iconUrl={feeItem.asset.iconUrl}
-              price={feePrice}
-              preferences={preferences}
-              priceLoading={priceLoading}
+              iconName={RESOURCE_ICONS[feeItem.asset.type]}
+              fiat={
+                feePrice
+                  ? formatFiat(
+                      tokenToFiat(feeItem.asset.amount, feePrice),
+                      preferences.currency,
+                      preferences.locale,
+                    )
+                  : null
+              }
+              isFiatLoading={priceLoading}
             />
           </Box>
         );

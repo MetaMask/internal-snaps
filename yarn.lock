@@ -3944,7 +3944,6 @@ __metadata:
     ethers: "npm:^6.15.0"
     jest: "npm:30.0.3"
     jest-it-up: "npm:^2.0.2"
-    jest-transform-stub: "npm:2.0.0"
     lodash: "npm:^4.17.21"
     oxfmt: "npm:^0.45.0"
     tronweb: "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch"
