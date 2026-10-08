@@ -44,6 +44,7 @@ export function getIconUrl(assetId: KnownCaip19AssetIdOrSlip44Id): string {
  * @param assetData.decimals - Smallest-unit decimal count for the primary unit.
  * @param assetData.symbol - Ticker or short symbol for display.
  * @param assetData.name - Optional long name; defaults to `symbol` when omitted.
+ * @param assetData.iconUrl - Optional icon URL; defaults to the icon URL from the token API.
  * @returns Cached metadata including icon URL and units.
  */
 export function toStellarAssetMetadata(assetData: {
@@ -51,6 +52,7 @@ export function toStellarAssetMetadata(assetData: {
   decimals: number;
   symbol: string;
   name?: string;
+  iconUrl?: string;
 }): StellarAssetMetadata {
   const name = assetData.name ?? assetData.symbol;
   const { assetNamespace, chainId } = parseCaipAssetType(assetData.assetId);
@@ -62,7 +64,7 @@ export function toStellarAssetMetadata(assetData: {
     chainId: chainId as KnownCaip2ChainId,
     assetType: assetNamespace as AssetType,
     fungible: true,
-    iconUrl: getIconUrl(assetData.assetId),
+    iconUrl: assetData.iconUrl ?? getIconUrl(assetData.assetId),
     units: [
       {
         name,

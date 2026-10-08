@@ -19,6 +19,8 @@ import type {
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import {
   asStrictKeyringAccount,
+  InMemoryCache,
+  useCache,
   validateOrigin,
 } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
@@ -38,20 +40,19 @@ import type {
 import { StellarSecretKeyStruct } from '../../api';
 import { AppConfig } from '../../config';
 import { originPermissions } from '../../permissions';
-import type {
-  AccountService,
-  StellarKeyringAccount,
-} from '../../services/account';
+import type { AccountService } from '../../services/account';
 import { AccountNotFoundException } from '../../services/account/exceptions';
-import type {
-  OnChainAccount,
-  OnChainAccountService,
-} from '../../services/on-chain-account';
+import { AccountNotActivatedException } from '../../services/network/exceptions';
 import {
+  OnChainAccount,
   toClassicBalanceEntry,
   getDefaultBalanceEntry,
   toNativeBalanceEntry,
   toStandardBalanceEntry,
+} from '../../services/on-chain-account';
+import type {
+  OnChainAccountSerializableFull,
+  OnChainAccountService,
 } from '../../services/on-chain-account';
 import type { TransactionService } from '../../services/transaction/TransactionService';
 import type { WalletService } from '../../services/wallet';
@@ -95,6 +96,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   readonly #handlers: Record<MultichainMethod, IKeyringRequestHandler>;
 
+  readonly #liveOnChainAccountCache: InMemoryCache;
+
   constructor({
     logger,
     accountService,
@@ -111,6 +114,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
     this.#logger = logger.withPrefix(KEYRING_HANDLER_LOGGER_PREFIX);
+    this.#liveOnChainAccountCache = new InMemoryCache(this.#logger);
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;
@@ -213,13 +217,14 @@ export class KeyringHandler implements KeyringSnapRpc {
     validateRequest(accountId, ListAccountAssetsRequestStruct);
 
     const scope = AppConfig.selectedNetwork;
-
-    const { onChainAccount } = await this.#resolveAccountByAccountId(
+    const onChainAccount = await this.#resolveAccountByAccountId({
       accountId,
       scope,
-    );
+      // Always refresh the cache to get the latest on-chain account.
+      refresh: true,
+    });
 
-    // If the account is not activated or not yet synced, return the native asset with zero balance
+    // Unfunded accounts have no trustlines. Return native so the client can ask for a zero balance.
     if (onChainAccount === null) {
       return [getSlip44AssetId(scope)];
     }
@@ -320,12 +325,13 @@ export class KeyringHandler implements KeyringSnapRpc {
     const scope = AppConfig.selectedNetwork;
     const assetBalances = {} as Record<KnownCaip19AssetIdOrSlip44Id, Balance>;
 
-    const { onChainAccount } = await this.#resolveAccountByAccountId(
+    const onChainAccount = await this.#resolveAccountByAccountId({
       accountId,
       scope,
-    );
+      refresh: false,
+    });
 
-    // If the account is not activated or not yet synced, return the native asset with zero balance
+    // Unfunded accounts have no trustlines. Return native zero when it was requested.
     if (onChainAccount === null) {
       const nativeAssetId = knownAssets.find(isSlip44Id);
       if (nativeAssetId !== undefined) {
@@ -482,26 +488,66 @@ export class KeyringHandler implements KeyringSnapRpc {
     validateRequest(method, MultichainMethodStruct);
   }
 
-  async #resolveAccountByAccountId(
-    accountId: string,
-    scope: KnownCaip2ChainId,
-  ): Promise<{
-    account: StellarKeyringAccount;
-    onChainAccount: OnChainAccount | null;
-  }> {
+  /**
+   * Loads a Horizon account for the keyring asset/balance pair.
+   *
+   * `getAccountAssets` always refreshes and stores the result. `getAccountBalances`
+   * reuses that entry until `AppConfig.cache.ttlMilliseconds.keyringLiveAccount`, then loads Horizon.
+   * A failed load is not cached. An unactivated account is cached as `null`.
+   *
+   * @param params - Account id, scope, and whether to skip the cache.
+   * @param params.accountId - Keyring account id.
+   * @param params.scope - CAIP-2 network.
+   * @param params.refresh - When true, load Horizon and replace the cache entry.
+   * @returns The live account, or `null` when it is not activated.
+   */
+  async #resolveAccountByAccountId({
+    accountId,
+    scope,
+    refresh,
+  }: {
+    accountId: string;
+    scope: KnownCaip2ChainId;
+    refresh: boolean;
+  }): Promise<OnChainAccount | null> {
     const { account } = await this.#accountService.resolveAccount({
       accountId,
     });
+    const serialized = await useCache(
+      this.#resolveOnChainAccount.bind(this),
+      this.#liveOnChainAccountCache,
+      {
+        logger: this.#logger,
+        functionName: 'KeyringHandler:resolveOnChainAccount',
+        ttlMilliseconds: AppConfig.cache.ttlMilliseconds.keyringLiveAccount,
+        refreshCache: refresh,
+      },
+    )(account.address, scope);
 
-    // We read the on-chain account from state, which is synced in the background.
-    // This improves performance compared to fetching account data from the network on every request.
-    // The trade-off is that the data can be slightly stale within the sync window.
-    const onChainAccount =
-      await this.#onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-        accountId,
-        scope,
-      );
+    if (serialized === null) {
+      return null;
+    }
 
-    return { account, onChainAccount };
+    return OnChainAccount.fromSerializable(serialized);
+  }
+
+  async #resolveOnChainAccount(
+    accountAddress: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<OnChainAccountSerializableFull | null> {
+    try {
+      const onChainAccount =
+        await this.#onChainAccountService.resolveOnChainAccount(
+          accountAddress,
+          scope,
+          { resolveWithFullBalance: true },
+        );
+      return onChainAccount.toSerializableFull();
+    } catch (error: unknown) {
+      if (error instanceof AccountNotActivatedException) {
+        return null;
+      }
+      throw error;
+    }
   }
 }

@@ -61,6 +61,15 @@
     },
     "endowment:assets": {
       "scopes": ["stellar:pubnet"]
+    },
+    "endowment:messenger": {
+      "actions": [
+        "RemoteFeatureFlagController:getState",
+        "AssetsController:getAccountAssetByID",
+        "AssetsController:getAccountAssetsByIDs",
+        "AssetsController:getAccountAssetsByScope",
+        "AssetsController:getAssetMetadata"
+      ]
     }
   },
   "platformVersion": "12.0.1",
