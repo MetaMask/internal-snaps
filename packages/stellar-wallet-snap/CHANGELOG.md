@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Render confirmation asset rows and icons with the shared `Asset` and `AssetIcon` components from `@metamask/snap-networks-utils` ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+- Render confirmation asset rows and icons with the shared `Asset` and `AssetIcon` components from `@metamask/snap-networks-utils` ([#428](https://github.com/MetaMask/internal-snaps/pull/428))
 
 ## [1.1.1]
 
