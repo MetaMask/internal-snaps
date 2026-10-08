@@ -1,3 +1,4 @@
+import { Asset } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import { Box, Copyable, Text as SnapText } from '@metamask/snaps-sdk/jsx';
 import type { Json } from '@metamask/utils';
@@ -7,10 +8,9 @@ import type { KnownCaip2ChainId } from '../../../api';
 import { FieldType } from '../../../services/transaction';
 import type { ReadableOperationField } from '../../../services/transaction';
 import type { LocalizedMessage } from '../../../utils';
-import { i18n } from '../../../utils';
+import { formatFiat, i18n, tokenToFiat } from '../../../utils';
 import type { ConfirmationBaseProps } from '../api';
 import { resolveAssetDisplay } from '../utils';
-import { Asset } from './Asset';
 import { JsonParamsSummary } from './JsonParamsSummary';
 
 export type ReadableParamsListProps = {
@@ -61,9 +61,18 @@ const AssetParam = ({
       amount={amount}
       iconUrl={resolved.iconUrl}
       link={resolved.link}
-      preferences={preferences}
-      price={price ?? null}
-      priceLoading={priceLoading}
+      fiat={
+        preferences && price && amount !== undefined
+          ? formatFiat(
+              tokenToFiat(amount, price),
+              preferences.currency,
+              preferences.locale,
+            )
+          : null
+      }
+      isFiatLoading={
+        preferences !== undefined && amount !== undefined && priceLoading
+      }
     />
   );
 };

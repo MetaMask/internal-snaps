@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
 - Emit `transaction_status` on the `Transaction Finalized` event. ([#416](https://github.com/MetaMask/internal-snaps/pull/416))
 
+### Changed
+
+- Render confirmation asset rows and icons with the shared `Asset` and `AssetIcon` components from `@metamask/snap-networks-utils` ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+
 ## [1.1.1]
 
 ### Fixed

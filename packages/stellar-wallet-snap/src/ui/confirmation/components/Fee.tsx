@@ -1,14 +1,15 @@
+import { Asset } from '@metamask/snap-networks-utils';
 import type {
   ComponentOrElement,
   GetPreferencesResult,
 } from '@metamask/snaps-sdk';
 import { Box, Text as SnapText } from '@metamask/snaps-sdk/jsx';
 
+import { formatFiat, tokenToFiat } from '../../../utils';
 import { i18n } from '../../../utils/i18n';
 import { xlmIcon } from '../../images';
 import { FetchStatus } from '../api';
 import type { FeeData } from '../api';
-import { Asset } from './Asset';
 
 type FeesProps = {
   fee: FeeData;
@@ -39,9 +40,16 @@ export const FeeRow = ({
           amount={fee.amount}
           symbol={fee.symbol}
           iconUrl={xlmIcon}
-          price={price}
-          preferences={preferences}
-          priceLoading={priceLoading}
+          fiat={
+            price
+              ? formatFiat(
+                  tokenToFiat(fee.amount, price),
+                  preferences.currency,
+                  preferences.locale,
+                )
+              : null
+          }
+          isFiatLoading={priceLoading}
         />
       </Box>
     </Box>
