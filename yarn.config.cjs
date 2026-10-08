@@ -161,20 +161,21 @@ module.exports = defineConfig({
           }
 
           // All non-root packages must have a "build" script. All packages that
-          // do not exclusively deploy documentation sites must use `ts-bridge`.
+          // do not exclusively deploy documentation sites must use `ts-bridge`
+          // (other commands may be chained after it, e.g. copying assets).
           if (DOCSITE_PACKAGES.includes(workspace.ident)) {
             expectWorkspaceField(workspace, 'scripts.build');
           } else {
-            expectWorkspaceField(
+            expectWorkspaceScriptStartsWith(
               workspace,
-              'scripts.build',
+              'build',
               'ts-bridge --project tsconfig.build.json --verbose --clean --no-references',
             );
 
             // All non-root packages must have the same "build:all" script.
-            expectWorkspaceField(
+            expectWorkspaceScriptStartsWith(
               workspace,
-              'scripts.build:all',
+              'build:all',
               'ts-bridge --project tsconfig.build.json --verbose --clean',
             );
           }
