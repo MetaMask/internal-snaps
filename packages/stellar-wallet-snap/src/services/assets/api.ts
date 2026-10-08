@@ -9,7 +9,6 @@ import {
   union,
 } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
-import { ensureError } from '@metamask/utils';
 
 import {
   KnownCaip19AssetIdOrSlip44IdStruct,
