@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#409](https://github.com/MetaMask/internal-snaps/pull/409))
   - A "Checking for security issues" banner is now shown while the transaction scan is in progress, instead of no banner
-- Render the confirmation network fee with the shared `Asset` component from `@metamask/snap-networks-utils` ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+- Render the confirmation network fee with the shared `Asset` component from `@metamask/snap-networks-utils` ([#427](https://github.com/MetaMask/internal-snaps/pull/427))
 
 ## [7.0.0]
 
