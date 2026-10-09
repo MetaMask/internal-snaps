@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a shared `ActionHeader` Snaps JSX component for the centered header at the top of transaction confirmations, rendering a large `title`, an optional muted `subtitle`, and an optional extra-large asset icon (`iconUrl`) ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
 - Support importing `.svg` files as strings in the package source, like in a Snap ([#423](https://github.com/MetaMask/internal-snaps/pull/423))
   - The files are copied to `dist/` as-is, so consumers must bundle the package with `mm-snap` (or another bundler that loads `.svg` files as source)
 - Add shared `Asset` and `AssetIcon` Snaps JSX components for displaying an asset inline in transaction confirmations ([#418](https://github.com/MetaMask/internal-snaps/pull/418))
