@@ -20,7 +20,9 @@ jest.mock('../../utils/errors');
 describe('AccountsSynchronizer', () => {
   let synchronizer: AccountsSynchronizer;
   let mockAccountsService: jest.Mocked<Pick<AccountsService, 'getAll'>>;
-  let mockAssetsService: jest.Mocked<Pick<AssetsService, 'fetch' | 'saveMany'>>;
+  let mockAssetsService: jest.Mocked<
+    Pick<AssetsService, 'fetchAccountAssets' | 'saveMany'>
+  >;
   let mockTransactionsService: jest.Mocked<
     Pick<TransactionsService, 'fetchAssetsTransactions' | 'saveMany'>
   >;
@@ -34,7 +36,7 @@ describe('AccountsSynchronizer', () => {
     };
 
     mockAssetsService = {
-      fetch: jest.fn().mockResolvedValue([]),
+      fetchAccountAssets: jest.fn().mockResolvedValue([]),
       saveMany: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -55,7 +57,7 @@ describe('AccountsSynchronizer', () => {
     it('fetches and saves assets and transactions for provided accounts', async () => {
       await synchronizer.synchronize([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
 
-      expect(mockAssetsService.fetch).toHaveBeenCalledWith(
+      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
       expect(mockAssetsService.saveMany).toHaveBeenCalledTimes(1);
@@ -69,7 +71,7 @@ describe('AccountsSynchronizer', () => {
       await synchronizer.synchronize();
 
       expect(mockAccountsService.getAll).toHaveBeenCalledTimes(1);
-      expect(mockAssetsService.fetch).toHaveBeenCalledWith(
+      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledWith(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
     });
@@ -79,7 +81,7 @@ describe('AccountsSynchronizer', () => {
 
       // Delay the fetch so both calls are in-flight at the same time.
       let resolveFetch!: () => void;
-      mockAssetsService.fetch.mockReturnValueOnce(
+      mockAssetsService.fetchAccountAssets.mockReturnValueOnce(
         new Promise((resolve) => {
           resolveFetch = (): void => resolve([]);
         }),
@@ -92,7 +94,7 @@ describe('AccountsSynchronizer', () => {
       resolveFetch();
       await Promise.all([p1, p2]);
 
-      expect(mockAssetsService.fetch).toHaveBeenCalledTimes(1);
+      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(1);
     });
 
     it('starts a fresh run after settlement', async () => {
@@ -101,7 +103,7 @@ describe('AccountsSynchronizer', () => {
       await synchronizer.synchronize(accounts);
       await synchronizer.synchronize(accounts);
 
-      expect(mockAssetsService.fetch).toHaveBeenCalledTimes(2);
+      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(2);
     });
 
     it('does not coalesce calls for different account sets', async () => {
@@ -110,7 +112,7 @@ describe('AccountsSynchronizer', () => {
 
       let resolveFetch1!: () => void;
       let resolveFetch2!: () => void;
-      mockAssetsService.fetch
+      mockAssetsService.fetchAccountAssets
         .mockReturnValueOnce(
           new Promise((resolve) => {
             resolveFetch1 = (): void => resolve([]);
@@ -130,7 +132,7 @@ describe('AccountsSynchronizer', () => {
       resolveFetch2();
       await Promise.all([p1, p2]);
 
-      expect(mockAssetsService.fetch).toHaveBeenCalledTimes(2);
+      expect(mockAssetsService.fetchAccountAssets).toHaveBeenCalledTimes(2);
     });
 
     it('reports per-account fetch failures and saves only successful assets', async () => {
@@ -139,7 +141,7 @@ describe('AccountsSynchronizer', () => {
         MOCK_SOLANA_KEYRING_ACCOUNT_1,
       ];
       const fetchError = new Error('fetch failed');
-      mockAssetsService.fetch
+      mockAssetsService.fetchAccountAssets
         .mockRejectedValueOnce(fetchError)
         .mockResolvedValueOnce([MOCK_ASSET_ENTITY_1]);
 
@@ -162,7 +164,9 @@ describe('AccountsSynchronizer', () => {
 
     it('tracks asset save failures standalone and propagates them', async () => {
       const saveError = new Error('storage unavailable');
-      mockAssetsService.fetch.mockResolvedValueOnce([MOCK_ASSET_ENTITY_0]);
+      mockAssetsService.fetchAccountAssets.mockResolvedValueOnce([
+        MOCK_ASSET_ENTITY_0,
+      ]);
       mockAssetsService.saveMany.mockRejectedValueOnce(saveError);
 
       const rejection = await synchronizer
@@ -221,7 +225,7 @@ describe('AccountsSynchronizer', () => {
 
     it('does not throw when reporting failures fails', async () => {
       const fetchError = new Error('fetch failed');
-      mockAssetsService.fetch.mockRejectedValueOnce(fetchError);
+      mockAssetsService.fetchAccountAssets.mockRejectedValueOnce(fetchError);
       (trackError as jest.Mock).mockRejectedValueOnce(
         new Error('tracking down'),
       );

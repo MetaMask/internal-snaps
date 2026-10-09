@@ -377,12 +377,15 @@ export class SnapAssetsAdapter {
   }
 
   /**
-   * Fetches all assets for the given account.
+   * Fetches all live assets and balances for the given account from the
+   * Solana RPC nodes.
    *
-   * @param account - The account to get the balances for.
-   * @returns The balances and metadata of the account for the given assets.
+   * @param account - The account to get the assets and balances for.
+   * @returns The live assets and balances of the account.
    */
-  async fetch(account: ExtendedKeyringAccount): Promise<AssetEntity[]> {
+  async fetchAccountAssets(
+    account: ExtendedKeyringAccount,
+  ): Promise<AssetEntity[]> {
     const [nativeAssets, tokenAccounts] = await Promise.all([
       this.#fetchNativeAssets(account),
       this.#fetchTokenAccountsMultiple(
