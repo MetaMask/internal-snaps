@@ -61,7 +61,7 @@
     "@metamask/snaps-jest": "^10.2.1",
     "@metamask/snaps-sdk": "^12.0.1",
     "@metamask/superstruct": "^3.4.1",
-    "@metamask/utils": "^11.11.0",
+    "@metamask/utils": "^12.0.0",
     "@noble/ed25519": "2.1.0",
     "@solana-name-service/sns-sdk-kit": "^1.0.0",
     "@solana-program/compute-budget": "^0.18.1",
