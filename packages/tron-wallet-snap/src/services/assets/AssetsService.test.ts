@@ -509,7 +509,7 @@ describe('AssetsService', () => {
     });
   });
 
-  describe('saveMany', () => {
+  describe('saveManyAndEmit', () => {
     it('does not remove energy and bandwidth assets even when they have zero amounts', async () => {
       await withAssetsService(
         async ({ assetsService, mockState, mockAssetsRepository }) => {
@@ -548,7 +548,7 @@ describe('AssetsService', () => {
 
           mockState.getKey.mockResolvedValue(assets);
 
-          await assetsService.saveMany(assets);
+          await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
@@ -601,7 +601,7 @@ describe('AssetsService', () => {
           [mockAccount.id]: assets,
         });
 
-        await assetsService.saveMany(assets);
+        await assetsService.saveManyAndEmit(assets);
 
         expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
           expect.anything(),
@@ -674,7 +674,7 @@ describe('AssetsService', () => {
             [mockAccount.id]: savedAssets,
           });
 
-          await assetsService.saveMany(updatedAssets);
+          await assetsService.saveManyAndEmit(updatedAssets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
             finalSavedAssets,
@@ -752,7 +752,7 @@ describe('AssetsService', () => {
 
           mockState.getKey.mockResolvedValue(assets);
 
-          await assetsService.saveMany(assets);
+          await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
@@ -812,7 +812,7 @@ describe('AssetsService', () => {
 
           mockState.getKey.mockResolvedValue(assets);
 
-          await assetsService.saveMany(assets);
+          await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
@@ -862,7 +862,7 @@ describe('AssetsService', () => {
 
           mockState.getKey.mockResolvedValue(assets);
 
-          await assetsService.saveMany(assets);
+          await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
@@ -937,7 +937,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1013,7 +1013,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1092,7 +1092,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1212,7 +1212,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1289,7 +1289,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1367,7 +1367,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1463,7 +1463,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1562,7 +1562,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1639,7 +1639,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1716,7 +1716,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1813,7 +1813,7 @@ describe('AssetsService', () => {
               [mockAccount.id]: savedAssets,
             });
 
-            await assetsService.saveMany(updatedAssets);
+            await assetsService.saveManyAndEmit(updatedAssets);
 
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
@@ -1860,6 +1860,111 @@ describe('AssetsService', () => {
           },
         );
       });
+    });
+  });
+
+  describe('saveMany', () => {
+    it('persists the snapshot without emitting keyring events', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockState, mockAssetsRepository }) => {
+          const assets: AssetEntity[] = [
+            {
+              assetType: KnownCaip19Id.TrxMainnet,
+              keyringAccountId: mockAccount.id,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+          ];
+
+          mockState.getKey.mockResolvedValue({ [mockAccount.id]: assets });
+
+          await assetsService.saveMany(assets);
+
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
+          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('updates stale non-essential assets balance to 0 without emitting', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockState, mockAssetsRepository }) => {
+          const trc20AssetId =
+            `${Network.Mainnet}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as const;
+          const savedAssets: AssetEntity[] = [
+            {
+              assetType: trc20AssetId as TokenCaipAssetType,
+              keyringAccountId: mockAccount.id,
+              network: Network.Mainnet,
+              symbol: 'USDT',
+              decimals: 6,
+              rawAmount: '500000',
+              uiAmount: '0.5',
+              iconUrl: '',
+            },
+          ];
+          const latestSnapshot: AssetEntity[] = [
+            {
+              assetType: KnownCaip19Id.TrxMainnet,
+              keyringAccountId: mockAccount.id,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+          ];
+
+          mockState.getKey.mockResolvedValue({
+            [mockAccount.id]: savedAssets,
+          });
+
+          await assetsService.saveMany(latestSnapshot);
+
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith([
+            ...latestSnapshot,
+            {
+              ...savedAssets[0],
+              rawAmount: '0',
+              uiAmount: '0',
+            },
+          ]);
+          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('persists locally even when the migration is active', async () => {
+      await withAssetsService(
+        async ({ assetsService, mockAssetsRepository, setMigrationStage }) => {
+          setMigrationStage(
+            SnapsAssetsMigrationStage.ReadAssetsControllerWithoutFallback,
+          );
+
+          const assets: AssetEntity[] = [
+            {
+              assetType: KnownCaip19Id.TrxMainnet,
+              keyringAccountId: mockAccount.id,
+              network: Network.Mainnet,
+              symbol: 'TRX',
+              decimals: 6,
+              rawAmount: '1000000',
+              uiAmount: '1',
+              iconUrl: '',
+            },
+          ];
+
+          await assetsService.saveMany(assets);
+
+          expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
+          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+        },
+      );
     });
   });
 
@@ -2032,7 +2137,7 @@ describe('AssetsService', () => {
             iconUrl: '',
           };
 
-          await assetsService.saveMany([specialAsset, fungibleAsset]);
+          await assetsService.saveManyAndEmit([specialAsset, fungibleAsset]);
 
           expect(mockAssetsRepository.saveMany).not.toHaveBeenCalled();
           expect(emitSnapKeyringEvent).toHaveBeenCalledWith(

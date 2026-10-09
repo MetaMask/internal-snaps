@@ -187,6 +187,9 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       const assetEntities =
         await this.#assetsService.fetchAccountAssetsFromTrongrid(account);
+
+      await this.#assetsService.saveMany(assetEntities);
+
       const result = assetEntities
         .filter(
           (asset) =>
@@ -277,6 +280,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       const assetsList =
         await this.#assetsService.fetchAccountAssetsFromTrongrid(account);
+
+      await this.#assetsService.saveMany(assetsList);
 
       const assetsToUse = assetsList
         .filter((asset) => assets.includes(asset.assetType))
