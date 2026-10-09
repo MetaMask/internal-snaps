@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Classify `transaction_type` for the unified swap/bridge flow from the new optional `sourceAssetId`/`destAssetId` request options (reporting `swap` for a same-chain trade and `bridgeSend` for a cross-chain trade) and for TRC20 smart-contract calls by function selector (so a `transfer` reports `send` and an `approve` reports `tokenApprove` instead of `unknown`), covering the unified send and dApp flows as well ([#434](https://github.com/MetaMask/internal-snaps/pull/434))
 - Validate network and CAIP asset type values coming from untrusted boundaries (RPC request params, the Keyring API, the AssetsController) instead of force-casting them, so unsupported values fail fast with an `Invalid params` error ([#403](https://github.com/MetaMask/internal-snaps/pull/403))
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton

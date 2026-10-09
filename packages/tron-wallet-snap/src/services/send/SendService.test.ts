@@ -71,6 +71,32 @@ describe('SendService', () => {
       raw_data_hex: 'mock-hex',
     });
 
+    const createMockTrc20Transaction = (ownerAddress = TEST_OWNER_HEX) =>
+      ({
+        visible: false,
+        txID: 'mock-trc20-tx-id',
+        raw_data: {
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                type_url: 'type.googleapis.com/protocol.Transaction.Contract',
+                value: {
+                  owner_address: ownerAddress,
+                  contract_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                  data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                },
+              },
+            },
+          ],
+          ref_block_bytes: '0000',
+          ref_block_hash: '0000000000000000',
+          expiration: 0,
+          timestamp: 0,
+        },
+        raw_data_hex: 'mock-trc20-hex',
+      }) as unknown as TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
+
     beforeEach(() => {
       jest.clearAllMocks();
 
@@ -184,6 +210,36 @@ describe('SendService', () => {
       expect(result).toStrictEqual({
         result: true,
         txid: 'broadcast-tx-id',
+      });
+    });
+
+    it('classifies a unified TRC20 send as send rather than unknown', async () => {
+      const transaction = createMockTrc20Transaction();
+
+      await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction,
+      });
+
+      expect(
+        mockAnalyticsService.trackTransactionSubmitted,
+      ).toHaveBeenCalledWith({
+        origin: METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: Network.Mainnet,
+        transactionType: TransactionType.Send,
+      });
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: 'broadcast-tx-id',
+          scope: Network.Mainnet,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+          transactionType: TransactionType.Send,
+        },
+        duration: TRACK_TX_INTERVAL,
       });
     });
 
