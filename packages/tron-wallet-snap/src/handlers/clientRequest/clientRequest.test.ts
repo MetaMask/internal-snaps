@@ -1995,6 +1995,149 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         .invocationCallOrder[0] as number,
     );
   });
+
+  it.each([
+    [
+      'a same-chain swap',
+      'tron:728126428/slip44:195',
+      'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+      TransactionType.Swap,
+    ],
+    [
+      'a cross-chain bridge',
+      'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+      'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      TransactionType.BridgeSend,
+    ],
+  ])(
+    'classifies the transaction as %s when swap asset ids are provided',
+    async (_label, sourceAssetId, destAssetId, expectedType) => {
+      const scope = Network.Mainnet;
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: ClientRequestMethod.SignAndSendTransaction,
+        params: {
+          accountId: TEST_ACCOUNT_ID,
+          transaction: TEST_TRANSACTION_BASE64,
+          scope,
+          options: {
+            visible: false,
+            type: 'TriggerSmartContract',
+            sourceAssetId,
+            destAssetId,
+          },
+        },
+      };
+
+      mockAccountsService.findByIdOrThrow.mockResolvedValue(
+        createMockExtendedKeyringAccount({
+          type: 'tron:eoa',
+          scopes: [scope],
+        }),
+      );
+
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        privateKeyHex: 'test-private-key',
+        address: CORRECT_OWNER_ADDRESS_BASE58,
+        privateKeyBytes: new Uint8Array(),
+        publicKeyBytes: new Uint8Array(),
+      });
+
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+        contract: [
+          {
+            type: 'TriggerSmartContract',
+            parameter: {
+              value: {
+                owner_address: CORRECT_OWNER_ADDRESS_HEX,
+              },
+            },
+          },
+        ],
+      });
+
+      await clientRequestHandler.handle(request as JsonRpcRequest);
+
+      expect(
+        mockAnalyticsService.trackTransactionSubmitted,
+      ).toHaveBeenCalledWith({
+        origin: METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: scope,
+        transactionType: expectedType,
+      });
+
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: transactionId,
+          scope,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+          transactionType: expectedType,
+        },
+        duration: TRACK_TX_INTERVAL,
+      });
+    },
+  );
+
+  it('classifies a TRC20 transfer dApp call as send when no asset ids are provided', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+
+    mockAccountsService.findByIdOrThrow.mockResolvedValue(
+      createMockExtendedKeyringAccount({
+        type: 'tron:eoa',
+        scopes: [scope],
+      }),
+    );
+
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+      privateKeyBytes: new Uint8Array(),
+      publicKeyBytes: new Uint8Array(),
+    });
+
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: {
+              owner_address: CORRECT_OWNER_ADDRESS_HEX,
+              data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+            },
+          },
+        },
+      ],
+    });
+
+    await clientRequestHandler.handle(request as JsonRpcRequest);
+
+    expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
+      {
+        origin: METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: scope,
+        transactionType: TransactionType.Send,
+      },
+    );
+  });
 });
 
 describe('ClientRequestHandler - onAmountInput', () => {

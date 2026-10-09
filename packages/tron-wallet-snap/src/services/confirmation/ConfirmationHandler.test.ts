@@ -721,6 +721,79 @@ describe('ConfirmationHandler', () => {
       },
     );
 
+    it.each([
+      [
+        'a TRC20 transfer as send',
+        {
+          contract: [
+            {
+              parameter: {
+                value: {
+                  data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                },
+              },
+              type: 'TriggerSmartContract',
+            },
+          ],
+        },
+        TransactionType.Send,
+      ],
+      [
+        'a TRC20 approve as tokenApprove',
+        {
+          contract: [
+            {
+              parameter: {
+                value: {
+                  data: '095ea7b3000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                },
+              },
+              type: 'TriggerSmartContract',
+            },
+          ],
+        },
+        TransactionType.TokenApprove,
+      ],
+      [
+        'an unknown smart-contract call as unknown',
+        {
+          contract: [
+            {
+              parameter: {
+                value: { data: 'deadbeef' },
+              },
+              type: 'TriggerSmartContract',
+            },
+          ],
+        },
+        TransactionType.Unknown,
+      ],
+    ])(
+      'classifies a dApp keyring transaction (%s)',
+      async (_label, contractRawData, expectedType) => {
+        await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            contractRawData,
+          );
+          mockRenderConfirmSignTransaction.mockResolvedValue(true);
+
+          await handler.handleKeyringRequest({
+            request,
+            account: mockAccount,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionAdded,
+          ).toHaveBeenCalledWith({
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionType: expectedType,
+          });
+        });
+      },
+    );
+
     it('does not track transaction events for signMessage requests', async () => {
       await withConfirmationHandler(async ({ handler }) => {
         const signMessageRequest = {
