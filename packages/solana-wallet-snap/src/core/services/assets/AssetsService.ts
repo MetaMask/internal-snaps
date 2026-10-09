@@ -30,8 +30,33 @@ export class AssetsService {
     return this.#snapAdapter.getAssetsMetadata(assetTypes);
   }
 
-  async fetch(account: ExtendedKeyringAccount): Promise<AssetEntity[]> {
-    return this.#snapAdapter.fetch(account);
+  /**
+   * Fetches live assets and balances for the given account from the chain.
+   * Migration-aware: once the assets migration is active, the fetch goes
+   * through the AssetsController fetch pipeline; until then, it hits the
+   * Solana RPC nodes directly through the Snap adapter.
+   *
+   * @param account - The account to fetch live assets for.
+   * @returns The live assets.
+   */
+  async fetchAccountAssets(
+    account: ExtendedKeyringAccount,
+  ): Promise<AssetEntity[]> {
+    return this.#snapAdapter.fetchAccountAssets(account);
+  }
+
+  /**
+   * Fetches live assets and balances for the given account directly from the
+   * Solana RPC nodes through the Snap adapter. The fallback path for live
+   * asset fetching: it never consults the assets migration feature flag.
+   *
+   * @param account - The account to fetch live assets for.
+   * @returns The live assets.
+   */
+  async fetchAccountAssetsFromRpc(
+    account: ExtendedKeyringAccount,
+  ): Promise<AssetEntity[]> {
+    return this.#snapAdapter.fetchAccountAssets(account);
   }
 
   async save(asset: AssetEntity): Promise<void> {

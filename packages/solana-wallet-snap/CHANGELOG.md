@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `getAccountAssets` and `getAccountBalances` now fetch live assets and balances from the chain through the Snap's Solana RPC clients instead of returning persisted state. ([#432](https://github.com/MetaMask/internal-snaps/pull/432))
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#384](https://github.com/MetaMask/internal-snaps/pull/384))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#409](https://github.com/MetaMask/internal-snaps/pull/409))

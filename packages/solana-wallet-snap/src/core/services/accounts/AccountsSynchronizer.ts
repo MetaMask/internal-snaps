@@ -48,7 +48,7 @@ export class AccountsSynchronizer {
 
       const responses = await Promise.allSettled(
         accountsToSync.map(async (account) =>
-          this.#assetsService.fetch(account),
+          this.#assetsService.fetchAccountAssets(account),
         ),
       );
 

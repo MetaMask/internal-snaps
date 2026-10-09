@@ -94,7 +94,7 @@ describe('AssetsService', () => {
     });
   });
 
-  describe('fetch', () => {
+  describe('fetchAccountAssets', () => {
     it('fetches native and token assets', async () => {
       jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getBalance: jest.fn().mockReturnValueOnce({
@@ -116,7 +116,9 @@ describe('AssetsService', () => {
         }),
       } as any);
 
-      const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      const assets = await assetsService.fetchAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
 
       expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
     });
@@ -142,7 +144,9 @@ describe('AssetsService', () => {
         }),
       } as any);
 
-      const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      const assets = await assetsService.fetchAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
 
       expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_1, MOCK_ASSET_ENTITY_2]);
     });
@@ -161,9 +165,26 @@ describe('AssetsService', () => {
         }),
       } as any);
 
-      const assets = await assetsService.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      const assets = await assetsService.fetchAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
 
       expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_0]);
+    });
+  });
+
+  describe('fetchAccountAssetsFromRpc', () => {
+    it('delegates the live fetch to the Snap adapter', async () => {
+      const fetchSpy = jest
+        .spyOn(snapAssetsAdapter, 'fetchAccountAssets')
+        .mockResolvedValue(MOCK_ASSET_ENTITIES);
+
+      const assets = await assetsService.fetchAccountAssetsFromRpc(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
     });
   });
 
