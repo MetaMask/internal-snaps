@@ -2997,6 +2997,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metamask/messenger@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@metamask/messenger@npm:3.0.0"
+  dependencies:
+    "@metamask/utils": "npm:^11.12.0"
+  peerDependencies:
+    typescript: ">=5.0.0"
+  checksum: 10/ea335702bc818f0ea42ca8af4dd7c5f77562e650b1b4de9df92614dacaae0c29d6956999ae3cc524038d9ffdcd866890b4dee141323fda5072ae70d3c7d05173
+  languageName: node
+  linkType: hard
+
 "@metamask/metamask-eth-abis@npm:^3.1.1":
   version: 3.1.1
   resolution: "@metamask/metamask-eth-abis@npm:3.1.1"
@@ -3403,7 +3414,7 @@ __metadata:
     "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-internal-api": "npm:^12.0.0"
-    "@metamask/messenger": "npm:^2.0.0"
+    "@metamask/messenger": "npm:^3.0.0"
     "@metamask/remote-feature-flag-controller": "npm:^5.0.0"
     "@metamask/snaps-sdk": "npm:^12.0.1"
     "@metamask/superstruct": "npm:^3.4.1"
@@ -3928,7 +3939,7 @@ __metadata:
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
-    "@metamask/messenger": "npm:^2.0.0"
+    "@metamask/messenger": "npm:^3.0.0"
     "@metamask/remote-feature-flag-controller": "npm:^5.0.0"
     "@metamask/snap-networks-utils": "npm:^1.0.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
