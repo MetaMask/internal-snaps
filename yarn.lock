@@ -2181,6 +2181,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metamask/base-controller@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "@metamask/base-controller@npm:10.0.0"
+  dependencies:
+    "@metamask/messenger": "npm:^3.0.0"
+    "@metamask/utils": "npm:^11.12.0"
+    immer: "npm:^9.0.6"
+  checksum: 10/b09bbf175fe248c592d1e66dcc7d65b324bfd5b16fa95c751ce163dedc97153f19419fca4bb84d2a1c6cfa7b308572cc8ea2ce88cefff1ab4504dba29e9015df
+  languageName: node
+  linkType: hard
+
 "@metamask/base-controller@npm:^9.0.1, @metamask/base-controller@npm:^9.1.0":
   version: 9.1.0
   resolution: "@metamask/base-controller@npm:9.1.0"
@@ -2340,6 +2351,28 @@ __metadata:
   peerDependencies:
     "@babel/runtime": ^7.0.0
   checksum: 10/4f67b480a8522f3f89e1988631f57cfde5a7fca6c6df68f4f88e1cdcb54efccb4239befd3a8b3b7b2735479a47733b99eb059d8a0c7ddf28bdc85be4b8c04afb
+  languageName: node
+  linkType: hard
+
+"@metamask/controller-utils@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "@metamask/controller-utils@npm:13.0.0"
+  dependencies:
+    "@ethersproject/abi": "npm:^5.7.0"
+    "@metamask/eth-query": "npm:^4.0.0"
+    "@metamask/ethjs-unit": "npm:^0.3.0"
+    "@metamask/utils": "npm:^11.12.0"
+    "@signinwithethereum/siwe-parser": "npm:^4.2.1"
+    "@types/bn.js": "npm:^5.1.5"
+    bignumber.js: "npm:^9.1.2"
+    bn.js: "npm:^5.2.1"
+    cockatiel: "npm:^3.1.2"
+    eth-ens-namehash: "npm:^2.0.8"
+    fast-deep-equal: "npm:^3.1.3"
+    lodash-es: "npm:^4.17.21"
+  peerDependencies:
+    "@babel/runtime": ^7.0.0
+  checksum: 10/54aaa57439fd632eb6f2fddc512726937f61fe739184b979743d7e571d8cbe3ad02a9ba479af6f98353199c6b01a4a82ac3cf142a3045b2a7fd8a99a64041cd1
   languageName: node
   linkType: hard
 
@@ -2997,6 +3030,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metamask/messenger@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@metamask/messenger@npm:3.0.0"
+  dependencies:
+    "@metamask/utils": "npm:^11.12.0"
+  peerDependencies:
+    typescript: ">=5.0.0"
+  checksum: 10/ea335702bc818f0ea42ca8af4dd7c5f77562e650b1b4de9df92614dacaae0c29d6956999ae3cc524038d9ffdcd866890b4dee141323fda5072ae70d3c7d05173
+  languageName: node
+  linkType: hard
+
 "@metamask/metamask-eth-abis@npm:^3.1.1":
   version: 3.1.1
   resolution: "@metamask/metamask-eth-abis@npm:3.1.1"
@@ -3323,6 +3367,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metamask/remote-feature-flag-controller@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "@metamask/remote-feature-flag-controller@npm:7.0.0"
+  dependencies:
+    "@metamask/base-controller": "npm:^10.0.0"
+    "@metamask/controller-utils": "npm:^13.0.0"
+    "@metamask/messenger": "npm:^3.0.0"
+    "@metamask/utils": "npm:^11.12.0"
+    uuid: "npm:^8.3.2"
+  checksum: 10/facedb1fbb1a75bc4db4b4b04e124ca5df98aae31dc9a786d5bff28b1be04196a8bd37560dabcb9b3c04c8e8040cd37143156d5a2ecdcfbec00515f1416bd285
+  languageName: node
+  linkType: hard
+
 "@metamask/rpc-errors@npm:^7.0.2, @metamask/rpc-errors@npm:^7.0.3":
   version: 7.0.3
   resolution: "@metamask/rpc-errors@npm:7.0.3"
@@ -3404,7 +3461,7 @@ __metadata:
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-internal-api": "npm:^12.0.0"
     "@metamask/messenger": "npm:^2.0.0"
-    "@metamask/remote-feature-flag-controller": "npm:^5.0.0"
+    "@metamask/remote-feature-flag-controller": "npm:^7.0.0"
     "@metamask/snaps-sdk": "npm:^12.0.1"
     "@metamask/superstruct": "npm:^3.4.1"
     "@metamask/utils": "npm:^11.11.0"
@@ -3929,7 +3986,7 @@ __metadata:
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
     "@metamask/messenger": "npm:^2.0.0"
-    "@metamask/remote-feature-flag-controller": "npm:^5.0.0"
+    "@metamask/remote-feature-flag-controller": "npm:^7.0.0"
     "@metamask/snap-networks-utils": "npm:^1.0.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.1"
@@ -4070,7 +4127,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:1.8.0, @noble/hashes@npm:^1.1.2, @noble/hashes@npm:^1.2.0, @noble/hashes@npm:^1.3.1, @noble/hashes@npm:^1.3.2, @noble/hashes@npm:^1.7.1, @noble/hashes@npm:^1.8.0":
+"@noble/hashes@npm:1.8.0, @noble/hashes@npm:^1.1.2, @noble/hashes@npm:^1.2.0, @noble/hashes@npm:^1.3.1, @noble/hashes@npm:^1.3.2, @noble/hashes@npm:^1.7.0, @noble/hashes@npm:^1.7.1, @noble/hashes@npm:^1.8.0":
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
   checksum: 10/474b7f56bc6fb2d5b3a42132561e221b0ea4f91e590f4655312ca13667840896b34195e2b53b7f097ec080a1fdd3b58d902c2a8d0fbdf51d2e238b53808a177e
@@ -4615,6 +4672,16 @@ __metadata:
   version: 9.47.1
   resolution: "@sentry/core@npm:9.47.1"
   checksum: 10/62cc2a0f45d89e3b78f083fe365007e59aed54e20b55ae5b45931cfa8e4d79d457c0c57450c6c7f92cec71fa682cd9cb3b64414fa86273f08cf3d8d06bd99c24
+  languageName: node
+  linkType: hard
+
+"@signinwithethereum/siwe-parser@npm:^4.2.1":
+  version: 4.2.1
+  resolution: "@signinwithethereum/siwe-parser@npm:4.2.1"
+  dependencies:
+    "@noble/hashes": "npm:^1.7.0"
+    apg-js: "npm:^4.4.0"
+  checksum: 10/be730de6513c9dd9ec255f4d3c25f93a8b99bcbe941236270c1d788ab6c8accd1e1d1838110fcad6b17d88ca22c2f174a9ce1900ffeaefb6001ec698b23a5d2c
   languageName: node
   linkType: hard
 
@@ -7121,7 +7188,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"apg-js@npm:^4.1.1, apg-js@npm:^4.3.0":
+"apg-js@npm:^4.1.1, apg-js@npm:^4.3.0, apg-js@npm:^4.4.0":
   version: 4.4.0
   resolution: "apg-js@npm:4.4.0"
   checksum: 10/425f19096026742f5f156f26542b68f55602aa60f0c4ae2d72a0a888cf15fe9622223191202262dd8979d76a6125de9d8fd164d56c95fb113f49099f405eb08c
@@ -12292,6 +12359,13 @@ __metadata:
   dependencies:
     p-locate: "npm:^5.0.0"
   checksum: 10/72eb661788a0368c099a184c59d2fee760b3831c9c1c33955e8a19ae4a21b4116e53fa736dc086cdeb9fce9f7cc508f2f92d2d3aae516f133e16a2bb59a39f5a
+  languageName: node
+  linkType: hard
+
+"lodash-es@npm:^4.17.21":
+  version: 4.18.1
+  resolution: "lodash-es@npm:4.18.1"
+  checksum: 10/8bfad225ef09ef42b04283cdaf7830efcc2ba29ae41b56501c74422155ee1ccaa1f0f6e8319def3451a1fe54dec501c8e4bee622bae2b2d98ac993731e0a5cce
   languageName: node
   linkType: hard
 
