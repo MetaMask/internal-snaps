@@ -130,3 +130,23 @@ export function tokenToFiat(
   const bigAmount = new BigNumber(tokenAmount);
   return bigAmount.multipliedBy(new BigNumber(rateConversion)).toString();
 }
+
+/**
+ * Converts a token amount and rate to a formatted fiat string.
+ *
+ * @param tokenAmount - Token amount to convert.
+ * @param rateConversion - Token-to-fiat conversion rate.
+ * @param currency - Currency code.
+ * @param locale - Locale string.
+ * @returns A formatted fiat string, or null when no rate is available.
+ */
+export function tokenPriceToFiat(
+  tokenAmount: string | undefined,
+  rateConversion: string | null | undefined,
+  currency: string,
+  locale: string,
+): string | null {
+  return tokenAmount && rateConversion
+    ? formatFiat(tokenToFiat(tokenAmount, rateConversion), currency, locale)
+    : null;
+}

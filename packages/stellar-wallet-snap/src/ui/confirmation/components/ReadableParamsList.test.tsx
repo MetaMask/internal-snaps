@@ -65,6 +65,13 @@ describe('ReadableParamsList', () => {
       expect(serialized).toContain('"children":"1.5 XLM"');
     });
 
+    it('renders neither fiat nor skeleton when the price is undefined', () => {
+      const serialized = render({ preferences, tokenPrices: {} as never });
+
+      expect(serialized).not.toContain('"type":"Skeleton"');
+      expect(serialized).not.toContain(fiat);
+    });
+
     it('renders neither fiat nor skeleton for an asset without an amount', () => {
       const serialized = render({
         params: [{ key: 'asset', type: FieldType.asset, value: USDC }],

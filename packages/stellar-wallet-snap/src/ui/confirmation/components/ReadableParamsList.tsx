@@ -8,7 +8,7 @@ import type { KnownCaip2ChainId } from '../../../api';
 import { FieldType } from '../../../services/transaction';
 import type { ReadableOperationField } from '../../../services/transaction';
 import type { LocalizedMessage } from '../../../utils';
-import { formatFiat, i18n, tokenToFiat } from '../../../utils';
+import { i18n, tokenPriceToFiat } from '../../../utils';
 import type { ConfirmationBaseProps } from '../api';
 import { resolveAssetDisplay } from '../utils';
 import { JsonParamsSummary } from './JsonParamsSummary';
@@ -62,9 +62,10 @@ const AssetParam = ({
       iconUrl={resolved.iconUrl}
       link={resolved.link}
       fiat={
-        preferences && price && amount !== undefined
-          ? formatFiat(
-              tokenToFiat(amount, price),
+        preferences
+          ? tokenPriceToFiat(
+              amount,
+              price,
               preferences.currency,
               preferences.locale,
             )

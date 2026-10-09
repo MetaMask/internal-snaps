@@ -5,7 +5,7 @@ import type {
 } from '@metamask/snaps-sdk';
 import { Box, Text as SnapText } from '@metamask/snaps-sdk/jsx';
 
-import { formatFiat, tokenToFiat } from '../../../utils';
+import { tokenPriceToFiat } from '../../../utils';
 import { i18n } from '../../../utils/i18n';
 import { xlmIcon } from '../../images';
 import { FetchStatus } from '../api';
@@ -26,6 +26,12 @@ export const FeeRow = ({
 }: FeesProps): ComponentOrElement => {
   const translate = i18n(preferences.locale);
   const priceLoading = tokenPricesFetchStatus === FetchStatus.Fetching;
+  const fiat = tokenPriceToFiat(
+    fee.amount,
+    price,
+    preferences.currency,
+    preferences.locale,
+  );
 
   return (
     <Box>
@@ -40,15 +46,7 @@ export const FeeRow = ({
           amount={fee.amount}
           symbol={fee.symbol}
           iconUrl={xlmIcon}
-          fiat={
-            price
-              ? formatFiat(
-                  tokenToFiat(fee.amount, price),
-                  preferences.currency,
-                  preferences.locale,
-                )
-              : null
-          }
+          fiat={fiat}
           isFiatLoading={priceLoading}
         />
       </Box>
