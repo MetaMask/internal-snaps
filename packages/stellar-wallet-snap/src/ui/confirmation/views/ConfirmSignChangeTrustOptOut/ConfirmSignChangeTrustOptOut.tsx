@@ -1,3 +1,4 @@
+import { Asset, AssetIcon } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -22,8 +23,6 @@ import type {
 } from '../../api';
 import { FetchStatus } from '../../api';
 import {
-  Asset,
-  AssetIcon,
   ConfirmationAlerts,
   ConfirmationFooter,
   FeeRow,
