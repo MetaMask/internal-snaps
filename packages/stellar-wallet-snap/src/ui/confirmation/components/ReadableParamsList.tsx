@@ -55,22 +55,22 @@ const AssetParam = ({
     );
   }
 
+  const fiat = preferences
+    ? tokenPriceToFiat(
+        amount,
+        price,
+        preferences.currency,
+        preferences.locale,
+      )
+    : null;
+
   return (
     <Asset
       symbol={resolved.symbol}
       amount={amount}
       iconUrl={resolved.iconUrl}
       link={resolved.link}
-      fiat={
-        preferences
-          ? tokenPriceToFiat(
-              amount,
-              price,
-              preferences.currency,
-              preferences.locale,
-            )
-          : null
-      }
+      fiat={fiat}
       isFiatLoading={
         preferences !== undefined && amount !== undefined && priceLoading
       }
