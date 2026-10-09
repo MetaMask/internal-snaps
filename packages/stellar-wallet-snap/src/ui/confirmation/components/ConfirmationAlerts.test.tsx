@@ -180,6 +180,9 @@ describe('ConfirmationAlerts', () => {
         severity: 'danger',
         title: 'This is a deceptive request',
       });
+      expect(JSON.stringify(component)).toContain(
+        'If you approve this request, a third party known for scams will take all your assets.',
+      );
     });
 
     it('renders warning validation alerts with softer warning copy', () => {
