@@ -112,6 +112,8 @@ export {
   SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export { Asset, AssetIcon } from './ui/Asset/Asset';
+export type { AssetIconProps, AssetProps } from './ui/Asset/Asset';
 export { EstimatedChanges } from './ui/EstimatedChanges/EstimatedChanges';
 export type {
   EstimatedChangesAsset,

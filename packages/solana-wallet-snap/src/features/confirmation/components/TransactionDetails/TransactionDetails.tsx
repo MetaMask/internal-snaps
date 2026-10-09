@@ -1,3 +1,4 @@
+import { Asset } from '@metamask/snap-networks-utils';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
   Address,
@@ -5,7 +6,6 @@ import {
   Icon,
   Image,
   Section,
-  Skeleton,
   Text,
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
@@ -15,7 +15,7 @@ import type { Network } from '../../../../core/constants/solana';
 import { METAMASK_ORIGIN, Networks } from '../../../../core/constants/solana';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
-import { formatCrypto } from '../../../../core/utils/formatCrypto';
+import { formatCryptoBalance } from '../../../../core/utils/formatCryptoBalance';
 import { formatFiat } from '../../../../core/utils/formatFiat';
 import { i18n } from '../../../../core/utils/i18n';
 import { parseOrigin } from '../../../../core/utils/parseOrigin';
@@ -60,7 +60,7 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
   const feeInFiat =
     feeInSol && nativePrice && !pricesError
       ? formatFiat(tokenToFiat(feeInSol, nativePrice), currency, locale)
-      : '';
+      : null;
 
   return (
     <Section>
@@ -142,20 +142,13 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
           {translate('confirmation.fee')}
         </Text>
         {feeInSol ? (
-          <Box direction="horizontal" alignment="center">
-            {pricesFetching ? (
-              <Skeleton width={80} />
-            ) : (
-              <Text color="muted">{feeInFiat}</Text>
-            )}
-            <Text>
-              {formatCrypto(
-                feeInSol,
-                Networks[scope].nativeToken.symbol,
-                locale,
-              )}
-            </Text>
-          </Box>
+          <Asset
+            symbol={Networks[scope].nativeToken.symbol}
+            amount={formatCryptoBalance(feeInSol, locale)}
+            hideIcon
+            fiat={feeInFiat}
+            isFiatLoading={pricesFetching}
+          />
         ) : (
           <Tooltip content={translate('confirmation.feeError')}>
             <Icon name="warning" />

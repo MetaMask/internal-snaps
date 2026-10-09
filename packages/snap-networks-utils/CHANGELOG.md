@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Support importing `.svg` files as strings in the package source, like in a Snap ([#423](https://github.com/MetaMask/internal-snaps/pull/423))
+  - The files are copied to `dist/` as-is, so consumers must bundle the package with `mm-snap` (or another bundler that loads `.svg` files as source)
+- Add shared `Asset` and `AssetIcon` Snaps JSX components for displaying an asset inline in transaction confirmations ([#418](https://github.com/MetaMask/internal-snaps/pull/418))
+  - `Asset` renders an optional display-ready fiat value (or a loading skeleton), the asset icon, then the amount and symbol, optionally as an explorer link
+  - The icon can be an image URL, a Snaps icon (`iconName`), or hidden (`hideIcon`); `AssetIcon` falls back to a question-mark icon when the URL is missing or blank
 - Add a shared `TransactionAlert` Snaps JSX component for transaction confirmations, rendering a single scan banner for the in-progress, scan-failed, scan-error, and malicious/warning security validation states ([#408](https://github.com/MetaMask/internal-snaps/pull/408))
   - Takes translated `labels` (`TransactionAlertLabels`), `isFetching` and `isFetchError` flags, a resolved `error` (`TransactionAlertError`), and a `validation` (`TransactionAlertValidation`)
 - Populate the optional `transaction_type` property on the `Transaction Added`, `Transaction Approved`, `Transaction Rejected`, and `Transaction Submitted` events tracked by `AnalyticsService`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393))
