@@ -39,7 +39,10 @@ import { trackError } from '../../utils/errors';
 import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
-import { resolveTransactionType } from '../../utils/transactionType';
+import {
+  resolveFlowTransactionType,
+  resolveTransactionType,
+} from '../../utils/transactionType';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
@@ -344,9 +347,21 @@ export class WalletService {
       sendConfig,
     );
 
+    /**
+     * The unified swap/bridge flow passes the source and destination asset ids,
+     * which classify the transaction as a same-chain swap or a cross-chain
+     * bridge. An explicit caller classification (e.g. `tokenApprove`) still
+     * takes precedence.
+     */
+    const flowTransactionType = resolveFlowTransactionType({
+      sourceAssetId: options?.sourceAssetId,
+      destAssetId: options?.destAssetId,
+    });
+    const explicitTransactionType = transactionType ?? flowTransactionType;
+
     const resolvedTransactionType = resolveTransactionType({
       origin,
-      transactionType,
+      transactionType: explicitTransactionType,
     });
 
     await this.#analyticsService.trackTransactionSubmitted({
@@ -382,9 +397,10 @@ export class WalletService {
       options?.commitment ?? 'confirmed',
       scope,
       origin,
-      // Only the explicit caller classification may override the on-chain
-      // type on `Transaction Finalized`; origin-derived defaults must not.
-      transactionType,
+      // Only the explicit caller classification or the swap/bridge flow
+      // classification may override the on-chain type on `Transaction
+      // Finalized`; origin-derived defaults must not.
+      explicitTransactionType,
     );
 
     const result = {

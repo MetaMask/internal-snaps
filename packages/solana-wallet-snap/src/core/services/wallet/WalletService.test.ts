@@ -504,6 +504,100 @@ describe('WalletService', () => {
           );
         });
 
+        it('classifies a same-chain swap from the swap asset ids on submitted and finalized', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            {
+              sourceAssetId:
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+              destAssetId:
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+            },
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionType: TransactionType.Swap,
+            }),
+          );
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            TransactionType.Swap,
+          );
+        });
+
+        it('classifies a cross-chain bridge from the swap asset ids on submitted and finalized', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            {
+              sourceAssetId:
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+              destAssetId:
+                'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+            },
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionType: TransactionType.BridgeSend,
+            }),
+          );
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            TransactionType.BridgeSend,
+          );
+        });
+
+        it('prefers an explicit caller classification over the swap asset ids', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            METAMASK_ORIGIN,
+            {
+              sourceAssetId:
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+              destAssetId:
+                'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+            },
+            TransactionType.TokenApprove,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              transactionType: TransactionType.TokenApprove,
+            }),
+          );
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            METAMASK_ORIGIN,
+            TransactionType.TokenApprove,
+          );
+        });
+
         it('saves the pending transaction before monitoring the signature', async () => {
           await service.signAndSendTransaction(
             fromAccount,
