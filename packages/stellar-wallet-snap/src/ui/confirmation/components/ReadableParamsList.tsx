@@ -56,12 +56,7 @@ const AssetParam = ({
   }
 
   const fiat = preferences
-    ? tokenPriceToFiat(
-        amount,
-        price,
-        preferences.currency,
-        preferences.locale,
-      )
+    ? tokenPriceToFiat(amount, price, preferences.currency, preferences.locale)
     : null;
 
   return (
