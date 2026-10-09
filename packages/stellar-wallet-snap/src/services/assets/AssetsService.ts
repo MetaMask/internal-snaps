@@ -1,3 +1,8 @@
+import {
+  SnapsAssetsMigrationStage,
+  parseSnapsAssetsMigrationStage,
+  SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
+} from '@metamask/assets-controller';
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
 
 import type {
@@ -7,7 +12,6 @@ import type {
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { parseCoreStellarAsset, parseCoreAssetMetadata } from './api';
 import type { CoreAsset, CoreAssetMetadata } from './api';
-import { isAssetsMigrationEnabled } from './utils';
 
 /**
  * Assets service to read Assets balance and metadata from CoreAssetsAdapter.
@@ -37,7 +41,14 @@ export class AssetsService {
    * @returns Whether the Stellar assets migration flag is active.
    */
   async isMigrationEnabled(): Promise<boolean> {
-    return isAssetsMigrationEnabled(this.#remoteFeatureFlagsProvider);
+    const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
+      SNAPS_ASSETS_MIGRATION_FLAG_KEYS.stellar,
+    );
+
+    return (
+      parseSnapsAssetsMigrationStage(flagValue) !==
+      SnapsAssetsMigrationStage.Off
+    );
   }
 
   /**
