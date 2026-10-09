@@ -73,7 +73,7 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "dependencies": {
-    "@metamask/assets-controller": "^15.0.0",
+    "@metamask/assets-controller": "^18.0.1",
     "@metamask/keyring-api": "^24.1.0",
     "@metamask/keyring-internal-api": "^12.0.0",
     "@metamask/remote-feature-flag-controller": "^5.0.0",
