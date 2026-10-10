@@ -4,7 +4,10 @@ export type * from './config';
 export * from './chain';
 export * from './currency';
 export * from './send-flow';
-export { mapToTransactionType } from './transaction';
+export {
+  mapToTransactionType,
+  resolveFlowTransactionType,
+} from './transaction';
 export type { TransactionBuilder } from './transaction';
 export * from './snap';
 export type * from './meta-protocols';

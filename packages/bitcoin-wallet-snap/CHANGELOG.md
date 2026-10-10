@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Populate the `transaction_type` and `transaction_status` properties on the transaction lifecycle tracking events, with `transaction_status` set to `confirmed` on `Transaction Finalized`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393), [#404](https://github.com/MetaMask/internal-snaps/pull/404))
+- Classify `transaction_type` for the unified swap/bridge flow from the new optional `sourceAssetId`/`destAssetId` request options on `signAndSendTransaction`, reporting `swap` for a same-chain trade and `bridgeSend` for a cross-chain trade on `Transaction Submitted`.
 
 ### Fixed
 
