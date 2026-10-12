@@ -67,6 +67,8 @@ export const SignAndSendTransactionRequestParamsStruct = object({
   options: object({
     visible: optional(boolean()),
     type: string(),
+    sourceAssetId: optional(CaipAssetTypeStruct),
+    destAssetId: optional(CaipAssetTypeStruct),
   }),
 });
 

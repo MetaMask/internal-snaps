@@ -41,7 +41,7 @@ import type { TransactionsService } from '../../services/transactions/Transactio
 import { assertOrThrow } from '../../utils/assertOrThrow';
 import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
-import { mapRawTransactionType } from '../../utils/transactionType';
+import { resolveTransactionType } from '../../utils/transactionType';
 import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
@@ -343,7 +343,7 @@ export class ClientRequestHandler {
       transaction: transactionBase64,
       accountId,
       scope,
-      options: { type },
+      options: { type, sourceAssetId, destAssetId },
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
@@ -410,8 +410,17 @@ export class ClientRequestHandler {
      * unified send path and the background transaction tracker. The origin is
      * lowercased so it is recognized as MetaMask by the security alerts scan
      * and stays consistent with the other non-EVM snaps.
+     *
+     * The swap/bridge flow also passes the source and destination asset ids,
+     * which let the transaction be classified as a same-chain swap or a
+     * cross-chain bridge. Without them (unified send, dApp calls) the
+     * classification falls back to the contract type.
      */
-    const transactionType = mapRawTransactionType(rawData);
+    const transactionType = resolveTransactionType({
+      rawData,
+      sourceAssetId,
+      destAssetId,
+    });
 
     await this.#analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,

@@ -567,6 +567,38 @@ describe('AccountUseCases', () => {
       });
     });
 
+    it('keeps the balance-derived classification on Transaction Finalized', async () => {
+      // The accepted inconsistency: the unified swap/bridge flow
+      // reports `swap`/`bridgeSend` on Transaction Submitted, but the
+      // sync-driven Transaction Finalized cannot recover it and stays
+      // balance-derived (`send`/`receive`).
+      const mockTxPending = mock<WalletTx>({
+        chain_position: { is_confirmed: false },
+        txid: {
+          toString: () => 'txid',
+        },
+      });
+      const mockTxConfirmed = mock<WalletTx>({
+        ...mockTxPending,
+        chain_position: { is_confirmed: true },
+      });
+      mockAccount.listTransactions
+        .mockReturnValueOnce([mockTxPending])
+        .mockReturnValueOnce([mockTxConfirmed]);
+      stubSentAmount(mockAccount, 1);
+
+      await useCases.synchronize(mockAccount, 'test');
+
+      expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
+        TrackingSnapEvent.TransactionFinalized,
+        mockAccount,
+        mockTxConfirmed,
+        'test',
+        TransactionType.Send,
+        TransactionStatus.Confirmed,
+      );
+    });
+
     it('synchronizes with both new and confirmed transactions', async () => {
       const mockTxPending = mock<WalletTx>({
         chain_position: { is_confirmed: false },
@@ -1272,6 +1304,28 @@ describe('AccountUseCases', () => {
       expect(txid).toBe(mockTxid);
       expect(psbt).toBe('mockSignedPsbt');
       expect(canBeMalleable).toBe(false);
+    });
+
+    it('reports an explicit swap classification on Transaction Submitted', async () => {
+      mockAccount.getTransaction.mockReturnValue(mockWalletTx);
+      mockTransaction.compute_txid.mockReturnValue(mockTxid);
+
+      await useCases.signPsbt(
+        'account-id',
+        mockPsbt,
+        'metamask',
+        { fill: false, broadcast: true },
+        undefined,
+        TransactionType.Swap,
+      );
+
+      expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
+        TrackingSnapEvent.TransactionSubmitted,
+        mockAccount,
+        mockWalletTx,
+        'metamask',
+        TransactionType.Swap,
+      );
     });
 
     it('omits canBeMalleable when broadcast is false', async () => {

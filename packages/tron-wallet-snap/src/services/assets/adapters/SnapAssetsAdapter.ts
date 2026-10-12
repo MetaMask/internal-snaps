@@ -957,9 +957,70 @@ export class SnapAssetsAdapter {
    *
    * @param assets - The latest asset snapshot returned by the refresh flow.
    */
-  async saveMany(assets: AssetEntity[]): Promise<void> {
+  async saveManyAndEmit(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
+    const { assetsToSave, assetListUpdatedPayload, balancesUpdatedPayload } =
+      await this.#mergeSnapshot(assets);
+
+    // If no assets were added or removed, don't emit the event.
+    const isEmptyAccountAssetListUpdatedPayload = Object.values(
+      assetListUpdatedPayload,
+    )
+      .map((item) => item.added.length + item.removed.length)
+      .every((item) => item === 0);
+
+    if (!isEmptyAccountAssetListUpdatedPayload) {
+      await emitSnapKeyringEvent(snap, KeyringEvent.AccountAssetListUpdated, {
+        assets: assetListUpdatedPayload,
+      });
+    }
+
+    // Save assets using repository
+    await this.#assetsRepository.saveMany(assetsToSave);
+
+    // Traverse the balancesUpdatedPayload object to check if we have at least 1 account that has at least 1 balance updated.
+    const isSomeBalanceChanged = Object.values(balancesUpdatedPayload)
+      .map((accountAssets) => Object.keys(accountAssets).length) // To each accountAssets object, map the number of assetTypes
+      .some((count) => count > 0);
+
+    // Only emit the event if some balance was changed.
+    if (isSomeBalanceChanged) {
+      await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
+        balances: balancesUpdatedPayload,
+      });
+    }
+  }
+
+  /**
+   * Persist the latest fetched assets to local state without emitting any
+   * keyring events. Like `saveManyAndEmit`, the input is treated as the latest
+   * snapshot for the account/network pairs included in this sync, and
+   * disappeared assets are persisted with zero balances.
+   *
+   * @param assets - The latest asset snapshot returned by the refresh flow.
+   */
+  async saveMany(assets: AssetEntity[]): Promise<void> {
+    this.#logger.info('Saving assets without emitting keyring events', assets);
+
+    const { assetsToSave } = await this.#mergeSnapshot(assets);
+
+    await this.#assetsRepository.saveMany(assetsToSave);
+  }
+
+  /**
+   * Compares the latest asset snapshot with the previously saved state and
+   * computes the entities to persist plus the payloads for the asset-list and
+   * balance keyring events.
+   *
+   * @param assets - The latest asset snapshot returned by the refresh flow.
+   * @returns The entities to persist and the event payloads.
+   */
+  async #mergeSnapshot(assets: AssetEntity[]): Promise<{
+    assetsToSave: AssetEntity[];
+    assetListUpdatedPayload: AccountAssetListUpdatedEvent['params']['assets'];
+    balancesUpdatedPayload: AccountBalancesUpdatedEvent['params']['balances'];
+  }> {
     const hasZeroAmount = (asset: AssetEntity): boolean =>
       asset.rawAmount === '0' || asset.uiAmount === '0';
 
@@ -1050,19 +1111,6 @@ export class SnapAssetsAdapter {
       };
     }
 
-    // If no assets were added or removed, don't emit the event.
-    const isEmptyAccountAssetListUpdatedPayload = Object.values(
-      assetListUpdatedPayload,
-    )
-      .map((item) => item.added.length + item.removed.length)
-      .every((item) => item === 0);
-
-    if (!isEmptyAccountAssetListUpdatedPayload) {
-      await emitSnapKeyringEvent(snap, KeyringEvent.AccountAssetListUpdated, {
-        assets: assetListUpdatedPayload,
-      });
-    }
-
     // Emit synthetic zero-balance entries for disappeared assets so clients can
     // clear cached balances even when the backend omits zero-balance tokens
     // instead of returning them explicitly.
@@ -1073,8 +1121,6 @@ export class SnapAssetsAdapter {
     }));
 
     const assetsToSave = [...assets, ...removedAssetsWithZeroBalance];
-    // Save assets using repository
-    await this.#assetsRepository.saveMany(assetsToSave);
 
     // Broadcast the current snapshot plus synthetic zero-balance removals so the
     // client can reconcile both visible assets and cached balances in one pass.
@@ -1094,17 +1140,7 @@ export class SnapAssetsAdapter {
       {},
     );
 
-    // Traverse the balancesUpdatedPayload object to check if we have at least 1 account that has at least 1 balance updated.
-    const isSomeBalanceChanged = Object.values(balancesUpdatedPayload)
-      .map((accountAssets) => Object.keys(accountAssets).length) // To each accountAssets object, map the number of assetTypes
-      .some((count) => count > 0);
-
-    // Only emit the event if some balance was changed.
-    if (isSomeBalanceChanged) {
-      await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
-        balances: balancesUpdatedPayload,
-      });
-    }
+    return { assetsToSave, assetListUpdatedPayload, balancesUpdatedPayload };
   }
 
   async getAll(): Promise<AssetEntity[]> {
