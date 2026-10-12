@@ -1,7 +1,10 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import type { TransactionType } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  normalizeError,
+  resolveFlowTransactionType,
+} from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -344,9 +347,23 @@ export class WalletService {
       sendConfig,
     );
 
+    /**
+     * Only MetaMask-originated transactions can belong to the unified
+     * swap/bridge flow. DApp-provided asset ids must not influence analytics
+     * classification.
+     */
+    const flowTransactionType =
+      origin === METAMASK_ORIGIN
+        ? resolveFlowTransactionType({
+            sourceAssetId: options?.sourceAssetId,
+            destAssetId: options?.destAssetId,
+          })
+        : undefined;
+    const explicitTransactionType = transactionType ?? flowTransactionType;
+
     const resolvedTransactionType = resolveTransactionType({
       origin,
-      transactionType,
+      transactionType: explicitTransactionType,
     });
 
     await this.#analyticsService.trackTransactionSubmitted({
@@ -382,9 +399,10 @@ export class WalletService {
       options?.commitment ?? 'confirmed',
       scope,
       origin,
-      // Only the explicit caller classification may override the on-chain
-      // type on `Transaction Finalized`; origin-derived defaults must not.
-      transactionType,
+      // Only the explicit caller classification or the swap/bridge flow
+      // classification may override the on-chain type on `Transaction
+      // Finalized`; origin-derived defaults must not.
+      explicitTransactionType,
     );
 
     const result = {
