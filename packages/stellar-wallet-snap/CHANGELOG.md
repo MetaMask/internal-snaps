@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Use MetaMask generic security-alert copy for Stellar (Solana/Tron pattern) instead of Blockaid `description`, which can embed machine labels when `reason` is `OTHER` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
+- Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 
 ## [1.1.1]
 
