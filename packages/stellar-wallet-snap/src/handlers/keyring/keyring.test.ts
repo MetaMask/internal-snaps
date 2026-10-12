@@ -4,6 +4,7 @@ import { asStrictKeyringAccount } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { create } from '@metamask/superstruct';
+import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
@@ -15,6 +16,10 @@ import {
   generateStellarKeyringAccount,
 } from '../../services/account/__mocks__/account.fixtures';
 import { AccountNotFoundException } from '../../services/account/exceptions';
+import {
+  USDC_CLASSIC,
+  USDC_SEP41,
+} from '../../services/asset-metadata/__mocks__/assets.fixtures';
 import { AccountNotActivatedException } from '../../services/network/exceptions';
 import { OnChainAccountService } from '../../services/on-chain-account';
 import {
@@ -703,6 +708,74 @@ describe('KeyringHandler', () => {
 
       expect(resolveOnChainAccountSpy).toHaveBeenCalledTimes(2);
       expect(result[slipId]?.amount).toBe('1');
+    });
+
+    it('binds a requested SEP-41 asset missing from the watched account', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const onChainAccount = createTestOnChainAccount(mockAccount.address);
+      jest
+        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+        .mockResolvedValue(onChainAccount);
+      const fetchAndBindSpy = jest
+        .spyOn(OnChainAccountService.prototype, 'fetchAndBindSep41Balances')
+        .mockImplementation(async (account, _scope, assetIds) => {
+          for (const assetId of assetIds) {
+            account.setAsset(assetId, {
+              balance: new BigNumber(10_000_000),
+              symbol: 'USDC',
+              decimals: 7,
+            });
+          }
+          return account;
+        });
+
+      const result = await keyringHandler.getAccountBalances(mockAccountId, [
+        USDC_SEP41,
+      ]);
+
+      expect(fetchAndBindSpy).toHaveBeenCalledWith(
+        onChainAccount,
+        KnownCaip2ChainId.Mainnet,
+        [USDC_SEP41],
+      );
+      expect(result).toStrictEqual({
+        [USDC_SEP41]: {
+          unit: 'USDC',
+          amount: '1',
+        },
+      });
+    });
+
+    it('does not fetch a SEP-41 balance already stored on the account', async () => {
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      const onChainAccount = createTestOnChainAccount(mockAccount.address);
+      onChainAccount.setAsset(USDC_SEP41, {
+        balance: new BigNumber(10_000_000),
+        symbol: 'USDC',
+        decimals: 7,
+      });
+      jest
+        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+        .mockResolvedValue(onChainAccount);
+      const fetchAndBindSpy = jest.spyOn(
+        OnChainAccountService.prototype,
+        'fetchAndBindSep41Balances',
+      );
+
+      const result = await keyringHandler.getAccountBalances(mockAccountId, [
+        USDC_SEP41,
+        USDC_CLASSIC,
+      ]);
+
+      expect(fetchAndBindSpy).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        [USDC_SEP41]: {
+          unit: 'USDC',
+          amount: '1',
+        },
+      });
     });
 
     it('propagates errors when balance resolution fails for another reason', async () => {

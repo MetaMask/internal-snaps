@@ -145,19 +145,46 @@ export class OnChainAccountService {
   }
 
   /**
-   * Reads SEP-41 balances for the persisted catalog and binds them onto `onChainAccount`.
-   * Empty balances record (`null` or missing) are skipped.
+   * Fetches SEP-41 balances for ids and binds
+   * them onto `onChainAccount`.
+   *
+   * @param onChainAccount - Horizon account to attach the SEP-41 entries to.
+   * @param scope - CAIP-2 network.
+   * @param assetIds - SEP-41 asset ids.
+   * @returns The same account, with any resolved balances bound.
+   * @throws {OnChainAccountSep41BalanceNotFoundException} When mainnet returns no map for the account.
+   */
+  async fetchAndBindSep41Balances(
+    onChainAccount: OnChainAccount,
+    scope: KnownCaip2ChainId,
+    assetIds: KnownCaip19Sep41AssetId[],
+  ): Promise<OnChainAccount> {
+    await this.#bindSep41Balances(onChainAccount, scope, assetIds);
+    return onChainAccount;
+  }
+
+  /**
+   * Reads SEP-41 balances and binds them onto `onChainAccount`.
+   * Empty balance cells (`null` or missing) are skipped.
+   *
+   * When `assetIds` is omitted, balances are read for the persisted SEP-41 catalog.
+   * When `assetIds` is set, only those ids are resolved, and their metadata is persisted.
    *
    * @param onChainAccount - Horizon account to attach SEP-41 entries to.
    * @param scope - CAIP-2 network.
+   * @param assetIds - SEP-41 asset ids to fetch. Omit to use the persisted catalog.
    * @throws {OnChainAccountSep41BalanceNotFoundException} When mainnet returns no map for the account.
    */
   async #bindSep41Balances(
     onChainAccount: OnChainAccount,
     scope: KnownCaip2ChainId,
+    assetIds?: KnownCaip19Sep41AssetId[],
   ): Promise<void> {
     const sep41Assets =
-      await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
+      assetIds === undefined
+        ? await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope)
+        : await this.#assetMetadataService.fetchSep41AssetsMetadata(assetIds);
+
     const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
     const assetMetadataByAssetId: Record<
       KnownCaip19Sep41AssetId,

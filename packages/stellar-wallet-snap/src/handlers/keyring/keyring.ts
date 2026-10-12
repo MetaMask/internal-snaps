@@ -35,6 +35,7 @@ import type {
 
 import type {
   KnownCaip19AssetIdOrSlip44Id,
+  KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../api';
 import { StellarSecretKeyStruct } from '../../api';
@@ -60,6 +61,7 @@ import {
   Duration,
   getSlip44AssetId,
   isClassicAssetId,
+  isSep41Id,
   isSlip44Id,
   rethrowIfInstanceElseThrow,
   validateRequest,
@@ -338,6 +340,20 @@ export class KeyringHandler implements KeyringSnapRpc {
         assetBalances[nativeAssetId] = getDefaultBalanceEntry();
       }
       return assetBalances;
+    }
+
+    // `#resolveAccountByAccountId` returns watched assets balance from Tokens API.
+    // But, the watched assets from Tokens API can omit SEP-41 ids the client asked for.
+    const missingSep41AssetIds = knownAssets.filter(
+      (assetId): assetId is KnownCaip19Sep41AssetId =>
+        isSep41Id(assetId) && onChainAccount.getRawAsset(assetId) === undefined,
+    );
+    if (missingSep41AssetIds.length > 0) {
+      await this.#onChainAccountService.fetchAndBindSep41Balances(
+        onChainAccount,
+        scope,
+        missingSep41AssetIds,
+      );
     }
 
     for (const assetId of knownAssets) {

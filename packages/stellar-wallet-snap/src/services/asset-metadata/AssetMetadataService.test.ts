@@ -5,6 +5,7 @@ import type { KnownCaip19AssetId } from '../../api';
 import { getSlip44AssetId, logger } from '../../utils';
 import { createMockAssetsService } from '../assets/__mocks__/assetsService.fixtures';
 import type { NetworkService } from '../network';
+import { USDC_SEP41 } from './__mocks__/assets.fixtures';
 import type { StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataService } from './AssetMetadataService';
@@ -178,6 +179,35 @@ describe('AssetMetadataService', () => {
     expect(getByAssetIds).toHaveBeenCalledWith([classicId]);
     expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
     expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('resolves requested SEP-41 metadata and persists it', async () => {
+    const tokenRow: TokenMetadata = {
+      assetId: USDC_SEP41,
+      decimals: 7,
+      name: 'USDC',
+      symbol: 'USDC',
+    };
+    const { service, saveMany } = createService({});
+    mockGetAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+
+    const result = await service.fetchSep41AssetsMetadata([USDC_SEP41]);
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        assetId: USDC_SEP41,
+        name: 'USDC',
+        symbol: 'USDC',
+        assetType: AssetType.Sep41,
+      }),
+    ]);
+    expect(mockGetAssetsByAssetIds).toHaveBeenCalledWith([USDC_SEP41]);
+    expect(saveMany).toHaveBeenCalledWith([
+      expect.objectContaining({
+        assetId: USDC_SEP41,
+        symbol: 'USDC',
+      }),
+    ]);
   });
 
   it('delegates getPersistedSep41AssetsMetadata to repository', async () => {

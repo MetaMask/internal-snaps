@@ -4,7 +4,7 @@ import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
 import { MAX_INT64 } from '../../constants';
-import { getSlip44AssetId, isSep41Id } from '../../utils';
+import { getSlip44AssetId } from '../../utils';
 import { bufferToUint8Array } from '../../utils/buffer';
 import {
   generateMockStellarKeyringAccounts,
@@ -375,6 +375,56 @@ describe('OnChainAccountService', () => {
           resolveWithFullBalance: true,
         }),
       ).rejects.toThrow('Failed to load SEP-41 token balance');
+    });
+  });
+
+  describe('fetchAndBindSep41Balances', () => {
+    it('binds balances resolved by fetchSep41AssetsMetadata', async () => {
+      const accountAddress = generateStellarAddress();
+      const scope = KnownCaip2ChainId.Mainnet;
+      const loadedAcc = createMockAccountWithBalances(
+        accountAddress,
+        '1',
+        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+      );
+      const onChainAccount = new OnChainAccount(
+        loadedAcc,
+        scope,
+        horizonSource(loadedAcc, scope),
+      );
+      const { getSep41AssetBalancesSpy } = getNetworkServiceSpies();
+      const { onChainAccountService } = mockOnChainAccountService();
+      const usdcSep41 = getMockSep41Assets().find(
+        (asset) => asset.assetId === USDC_SEP41,
+      );
+      if (usdcSep41 === undefined) {
+        throw new Error('expected USDC SEP-41 metadata');
+      }
+      const fetchMetadataSpy = jest
+        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsMetadata')
+        .mockResolvedValue([usdcSep41]);
+      getSep41AssetBalancesSpy.mockResolvedValue({
+        [accountAddress]: {
+          [USDC_SEP41]: new BigNumber(10_000_000),
+        },
+      });
+
+      const result = await onChainAccountService.fetchAndBindSep41Balances(
+        onChainAccount,
+        scope,
+        [USDC_SEP41],
+      );
+
+      expect(fetchMetadataSpy).toHaveBeenCalledWith([USDC_SEP41]);
+      expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
+        accounts: [accountAddress],
+        assetIds: [USDC_SEP41],
+        scope,
+      });
+      expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe(
+        '10000000',
+      );
+      expect(result.getAsset(USDC_SEP41)?.symbol).toBe('USDC');
     });
   });
 

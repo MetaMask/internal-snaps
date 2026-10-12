@@ -93,6 +93,21 @@ export class AssetMetadataService {
   }
 
   /**
+   * Resolves SEP-41 metadata for ids that are not in the watched catalog.
+   *
+   * Rows already stored in Core or snap state are reused. Newly fetched rows
+   * are persisted, same as {@link resolve}.
+   *
+   * @param assetIds - SEP-41 asset ids to resolve.
+   * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
+   */
+  async fetchSep41AssetsMetadata(
+    assetIds: KnownCaip19Sep41AssetId[],
+  ): Promise<StellarAssetMetadata[]> {
+    return this.#fetchAndPersistAssetsByAssetIds(assetIds);
+  }
+
+  /**
    * Returns all persisted SEP-41 assets for the given chain ID.
    *
    * @param scope - The chain ID to look up.
@@ -348,7 +363,9 @@ export class AssetMetadataService {
 
     if (missingAssetIds.length > 0) {
       this.#logger.warn(
-        `Failed to fetch token metadata for assets: ${Array.from(missingAssetIds).join(', ')}`,
+        `Failed to fetch token metadata for assets: ${Array.from(
+          missingAssetIds,
+        ).join(', ')}`,
       );
     }
 
@@ -379,7 +396,9 @@ export class AssetMetadataService {
 
     if (missingAssetIds.length > 0) {
       this.#logger.warn(
-        `Failed to fetch token metadata for assets: ${Array.from(missingAssetIds).join(', ')}`,
+        `Failed to fetch token metadata for assets: ${Array.from(
+          missingAssetIds,
+        ).join(', ')}`,
       );
     }
 
