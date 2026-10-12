@@ -1,3 +1,4 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -79,11 +80,7 @@ export const ConfirmSignTransaction = ({
           scanFetchStatus={scanFetchStatus}
           transactionsFetchStatus={FetchStatus.Initial}
         />
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">{t('confirmation.signTransaction.title')}</Heading>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader title={t('confirmation.signTransaction.title')} />
 
         {preferences.simulateOnChainActions ? (
           <EstimatedChanges
