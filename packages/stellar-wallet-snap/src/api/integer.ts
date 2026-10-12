@@ -56,6 +56,26 @@ export const ValidStellarAmountStruct = refine(
 );
 
 /**
+ * Non-empty non-negative integer string already in smallest units (stroops /
+ * trustline limit), not above {@link MAX_INT64}. Does not scale by decimals.
+ */
+export const ValidStellarInt64Struct = refine(
+  ValidAmountStruct,
+  'valid_stellar_int64',
+  (value: string) => {
+    try {
+      const amount = new BigNumber(value);
+      if (!amount.isInteger() || amount.gt(MAX_INT64)) {
+        return 'Invalid amount';
+      }
+      return true;
+    } catch {
+      return 'Invalid amount';
+    }
+  },
+);
+
+/**
  * Non-empty string that parses to a finite, non-negative {@link BigNumber} and is not zero.
  * The amount is converted to the smallest unit of the asset and validated against the maximum int64.
  */

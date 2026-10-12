@@ -153,7 +153,7 @@ export class CoreAssetsAdapter {
    *
    * @param assets - Assets to publish (non snap-owned entries are ignored).
    */
-  async saveMany(assets: AssetEntity[]): Promise<void> {
+  async saveManyAndEmit(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Publishing snap-owned assets', assets);
 
     const snapOwnedAssets = assets.filter((asset) =>
