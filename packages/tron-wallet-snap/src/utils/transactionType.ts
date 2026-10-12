@@ -65,7 +65,7 @@ function getContractDataSelector(
     return undefined;
   }
 
-  return callData.slice(0, 8).toLowerCase();
+  return callData.replace(/^0x/iu, '').slice(0, 8).toLowerCase();
 }
 
 /**

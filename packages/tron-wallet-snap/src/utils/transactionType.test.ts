@@ -128,6 +128,19 @@ describe('resolveTransactionType', () => {
       ).toBe(TransactionType.Send);
     });
 
+    it('classifies a 0x-prefixed TRC20 transfer call as send', () => {
+      expect(
+        resolveTransactionType({
+          rawData: buildRawData(
+            TronwebTypes.ContractType.TriggerSmartContract,
+            {
+              data: '0xa9059cbb',
+            },
+          ),
+        }),
+      ).toBe(TransactionType.Send);
+    });
+
     it('classifies a TRC20 approve call as tokenApprove', () => {
       expect(
         resolveTransactionType({
