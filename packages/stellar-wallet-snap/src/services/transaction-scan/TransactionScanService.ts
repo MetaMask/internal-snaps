@@ -321,10 +321,15 @@ export class TransactionScanService {
       { status: 'Success' }
     >,
   ): TransactionScanValidation {
+    // Match Solana/Tron: drive the banner from `result_type` and MetaMask
+    // generic copy. Do not pass Blockaid `description` / `classification` —
+    // they can embed machine labels (e.g. `stellar_expert_malicious`) when
+    // `reason` is `OTHER`. Placeholder until Blockaid provides mappable
+    // reasons (WPN-2215).
     return {
       type: validation.result_type,
       reason: validation.reason ?? null,
-      description: validation.description ?? null,
+      description: null,
     };
   }
 

@@ -509,12 +509,22 @@ export class AccountsService {
    * Synchronizes only assets for the given accounts.
    * This method can be called independently to sync assets without syncing transactions.
    *
+   * A no-op while the assets migration is active: the AssetsController owns
+   * asset syncing then, so the snap neither fetches nor emits assets.
+   *
    * Fetch failures are reported to Sentry in one `SynchronizationError`,
    * attributed to their account; save failures are tracked standalone.
    *
    * @param accounts - The accounts to synchronize assets for.
    */
   async synchronizeAssets(accounts: TronKeyringAccount[]): Promise<void> {
+    if (await this.#assetsService.isAssetsMigrationEnabled()) {
+      /**
+       * No-op when AssetsController is already handling assets
+       */
+      return;
+    }
+
     const assetResponses = await Promise.allSettled(
       accounts.map((account) =>
         this.#assetsService.fetchAccountAssets(account),
@@ -532,7 +542,7 @@ export class AccountsService {
     );
 
     try {
-      await this.#assetsService.saveMany(assets);
+      await this.#assetsService.saveManyAndEmit(assets);
     } catch (error) {
       // Save failures are batch-level (not attributable to one account), so
       // they are tracked standalone.

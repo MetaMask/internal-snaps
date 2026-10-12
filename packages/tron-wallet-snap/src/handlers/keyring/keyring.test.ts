@@ -105,6 +105,7 @@ describe('KeyringHandler', () => {
       fetchAccountAssetsFromTrongrid: jest
         .fn()
         .mockResolvedValue([mockLiveAsset, mockShastaAsset]),
+      saveMany: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AssetsService>;
     mockTransactionsService = {
       checkAddressActivity: jest.fn(),
@@ -700,6 +701,10 @@ describe('KeyringHandler', () => {
       expect(
         mockAssetsService.fetchAccountAssetsFromTrongrid,
       ).toHaveBeenCalledWith(mockAccount);
+      expect(mockAssetsService.saveMany).toHaveBeenCalledWith([
+        mockLiveAsset,
+        mockShastaAsset,
+      ]);
     });
 
     it('propagates fetch failures', async () => {
@@ -736,6 +741,10 @@ describe('KeyringHandler', () => {
       expect(
         mockAssetsService.fetchAccountAssetsFromTrongrid,
       ).toHaveBeenCalledWith(mockAccount);
+      expect(mockAssetsService.saveMany).toHaveBeenCalledWith([
+        mockLiveAsset,
+        mockShastaAsset,
+      ]);
     });
 
     it('excludes token assets with zero balance', async () => {
