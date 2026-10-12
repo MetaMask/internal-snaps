@@ -24,6 +24,7 @@ export type {
   WebSocketConnectionClosedEventProperties,
 } from './services/analytics/AnalyticsService';
 export { safeMerge } from './utils/safeMerge/safeMerge';
+export { resolveFlowTransactionType } from './utils/transactionType/transactionType';
 export { buildUrl } from './utils/buildUrl/buildUrl';
 export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
 export {

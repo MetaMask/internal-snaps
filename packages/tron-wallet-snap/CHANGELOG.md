@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Classify `transaction_type` for the unified swap/bridge flow with the new optional `sourceAssetId`/`destAssetId` request options. Classify TRC20 smart-contract calls by function selector (so a `transfer` reports `send` and an `approve` reports `tokenApprove` instead of `unknown`) ([#434](https://github.com/MetaMask/internal-snaps/pull/434))
 - Change the last behaviours missing for the `AssetsController` migration to happen ([#424](https://github.com/MetaMask/internal-snaps/pull/424))
   - When the assets migration feature flag is active, the snap no longer fetches, persists, or publishes assets: the periodic sync cronjob and the synchronization triggered by selected account changes no longer touch assets or emit `AccountAssetListUpdated` and `AccountBalancesUpdated` events, leaving asset syncing to the `AssetsController`
   - When the live assets and balances are fetched by `getAccountAssets` and `getAccountBalances`, they are persisted to local state without emitting `AccountAssetListUpdated` and `AccountBalancesUpdated` events

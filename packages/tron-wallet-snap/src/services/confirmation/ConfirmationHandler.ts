@@ -26,7 +26,7 @@ import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/v
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
-import { mapRawTransactionType } from '../../utils/transactionType';
+import { resolveTransactionType } from '../../utils/transactionType';
 import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
@@ -150,7 +150,7 @@ export class ConfirmationHandler {
       origin: request.origin,
       accountType: account.type,
       chainIdCaip: scope,
-      transactionType: mapRawTransactionType(rawData),
+      transactionType: resolveTransactionType({ rawData }),
     };
 
     await this.#analyticsService.trackTransactionAdded(trackingProperties);
