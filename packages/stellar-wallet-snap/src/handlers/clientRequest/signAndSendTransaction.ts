@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { resolveFlowTransactionType } from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
@@ -142,9 +143,11 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
 
     const { sourceAssetId, destAssetId } = options;
     const swapAssetIds = { sourceAssetId, destAssetId };
-    const transactionType = this.#isCrossChain(swapAssetIds)
-      ? TransactionType.BridgeSend
-      : TransactionType.Swap;
+    const transactionType = resolveFlowTransactionType(swapAssetIds);
+
+    if (transactionType === undefined) {
+      throw new Error('Unable to resolve the swap or bridge transaction type');
+    }
 
     await this.#analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,
@@ -159,6 +162,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
       scope,
       transaction,
       swapAssetIds,
+      transactionType,
     });
 
     // Schedule the track-transaction background event.
@@ -176,34 +180,24 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
     };
   }
 
-  /**
-   * A swap is cross-chain when its source and destination assets live on
-   * different chains (e.g. a Stellar asset bridged to an EVM asset).
-   *
-   * @param swapAssetIds - The source and destination asset ids.
-   * @returns True when the two assets belong to different chains.
-   */
-  #isCrossChain(swapAssetIds: SwapAssetIds): boolean {
-    const { chainId: sourceChainId } = parseCaipAssetType(
-      swapAssetIds.sourceAssetId,
-    );
-    const { chainId: destChainId } = parseCaipAssetType(
-      swapAssetIds.destAssetId,
-    );
-    return sourceChainId !== destChainId;
-  }
-
   async #savePendingTransaction(params: {
     transactionId: string;
     scope: KnownCaip2ChainId;
     account: StellarKeyringAccount;
     transaction: Transaction;
     swapAssetIds: SwapAssetIds;
+    transactionType: TransactionType;
   }): Promise<void> {
     try {
-      const { transactionId, scope, account, transaction, swapAssetIds } =
-        params;
-      if (this.#isCrossChain(swapAssetIds)) {
+      const {
+        transactionId,
+        scope,
+        account,
+        transaction,
+        swapAssetIds,
+        transactionType,
+      } = params;
+      if (transactionType === TransactionType.BridgeSend) {
         await this.#transactionService.savePendingKeyringTransactionSafe({
           type: KeyringTransactionType.BridgeSend,
           request: {
