@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#409](https://github.com/MetaMask/internal-snaps/pull/409))
   - A "Checking for security issues" banner is now shown while the transaction scan is in progress, instead of no banner
 - Render the confirmation network fee with the shared `Asset` component from `@metamask/snap-networks-utils` ([#427](https://github.com/MetaMask/internal-snaps/pull/427))
+- Render the confirmation title with the shared `ActionHeader` component from `@metamask/snap-networks-utils` ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+  - The sign message and sign-in screens now have the same spacing below the title as the transaction request screen
 
 ## [7.0.0]
 
