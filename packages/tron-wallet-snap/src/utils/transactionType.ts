@@ -1,6 +1,6 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { resolveFlowTransactionType } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 import { Types as TronwebTypes } from 'tronweb';
 
 /**
@@ -117,13 +117,13 @@ export function resolveTransactionType({
   sourceAssetId?: CaipAssetType;
   destAssetId?: CaipAssetType;
 }): TransactionType {
-  const isCrossChain =
-    sourceAssetId !== undefined && destAssetId !== undefined
-      ? isCrossChainAssetPair(sourceAssetId, destAssetId)
-      : undefined;
+  const flowTransactionType = resolveFlowTransactionType({
+    sourceAssetId,
+    destAssetId,
+  });
 
-  if (isCrossChain !== undefined) {
-    return isCrossChain ? TransactionType.BridgeSend : TransactionType.Swap;
+  if (flowTransactionType !== undefined) {
+    return flowTransactionType;
   }
 
   const contractType = rawData?.contract?.[0]?.type;
@@ -133,28 +133,4 @@ export function resolveTransactionType({
   }
 
   return mapRawTransactionType(rawData);
-}
-
-/**
- * Compares the CAIP-2 chain of two CAIP-19 asset ids.
- *
- * @param sourceAssetId - The source asset id.
- * @param destAssetId - The destination asset id.
- * @returns True when the two assets live on different chains, or `undefined`
- * when either asset id cannot be parsed so the pair must not be trusted.
- */
-function isCrossChainAssetPair(
-  sourceAssetId: CaipAssetType,
-  destAssetId: CaipAssetType,
-): boolean | undefined {
-  try {
-    const { chainId: sourceChainId } = parseCaipAssetType(sourceAssetId);
-    const { chainId: destChainId } = parseCaipAssetType(destAssetId);
-
-    return sourceChainId !== destChainId;
-  } catch {
-    // An unparseable asset id means the pair cannot be trusted, so the caller
-    // falls back to classifying the transaction itself.
-    return undefined;
-  }
 }

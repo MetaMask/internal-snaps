@@ -84,27 +84,7 @@ describe('resolveTransactionType', () => {
   const EVM_USDC = 'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
   describe('with swap/bridge asset ids', () => {
-    it('returns bridgeSend when the assets are on different chains', () => {
-      expect(
-        resolveTransactionType({
-          rawData: buildRawData(TronwebTypes.ContractType.TriggerSmartContract),
-          sourceAssetId: TRON_MAINNET_USDT,
-          destAssetId: EVM_USDC,
-        }),
-      ).toBe(TransactionType.BridgeSend);
-    });
-
-    it('returns swap when both assets are on the same chain', () => {
-      expect(
-        resolveTransactionType({
-          rawData: buildRawData(TronwebTypes.ContractType.TriggerSmartContract),
-          sourceAssetId: TRON_MAINNET_TRX,
-          destAssetId: TRON_MAINNET_USDT,
-        }),
-      ).toBe(TransactionType.Swap);
-    });
-
-    it('returns swap for the same chain even when the contract is a plain transfer', () => {
+    it('uses the flow classification before the contract fallback', () => {
       expect(
         resolveTransactionType({
           rawData: buildRawData(TronwebTypes.ContractType.TransferContract),
@@ -114,7 +94,7 @@ describe('resolveTransactionType', () => {
       ).toBe(TransactionType.Swap);
     });
 
-    it('ignores a single asset id and falls back to the contract type', () => {
+    it('falls back to the contract type when an asset id is missing', () => {
       expect(
         resolveTransactionType({
           rawData: buildRawData(TronwebTypes.ContractType.TransferContract),
@@ -123,7 +103,7 @@ describe('resolveTransactionType', () => {
       ).toBe(TransactionType.Send);
     });
 
-    it('does not treat an unparseable asset pair as a bridge', () => {
+    it('falls back to the contract type when an asset id is malformed', () => {
       expect(
         resolveTransactionType({
           rawData: buildRawData(TronwebTypes.ContractType.TransferContract),
