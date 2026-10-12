@@ -1,3 +1,4 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
@@ -6,7 +7,6 @@ import {
   Button,
   Container,
   Footer,
-  Heading,
   Icon,
   Image,
   Section,
@@ -47,13 +47,7 @@ export const ConfirmSignMessage = ({
   return (
     <Container>
       <Box>
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">
-            {translate('confirmation.signMessage.title')}
-          </Heading>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader title={translate('confirmation.signMessage.title')} />
 
         <Section>
           <SnapText fontWeight="medium">
