@@ -1,7 +1,10 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import type { TransactionType } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  normalizeError,
+  resolveFlowTransactionType,
+} from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -39,10 +42,7 @@ import { trackError } from '../../utils/errors';
 import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
-import {
-  resolveFlowTransactionType,
-  resolveTransactionType,
-} from '../../utils/transactionType';
+import { resolveTransactionType } from '../../utils/transactionType';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
