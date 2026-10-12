@@ -9,7 +9,7 @@ import type {
 } from '@metamask/bitcoindevkit';
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
-import { TransactionStatus } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
 import {
   batchesAllSettled,
@@ -644,6 +644,7 @@ export class AccountUseCases {
     origin: string,
     options: { fill: boolean; broadcast: boolean },
     feeRate?: number,
+    transactionType?: TransactionType,
   ): Promise<{ psbt: string; txid?: Txid; canBeMalleable?: boolean }> {
     this.#logger.debug('Signing PSBT: %s', id, options);
 
@@ -675,6 +676,7 @@ export class AccountUseCases {
         account,
         tx,
         origin,
+        transactionType,
       );
 
       this.#logger.info(
@@ -1104,11 +1106,15 @@ export class AccountUseCases {
     account: BitcoinAccount,
     tx: Transaction,
     origin: string,
+    transactionType?: TransactionType,
   ): Promise<BroadcastResult> {
     const txid = tx.compute_txid();
     // Resolve the classification before `applyUnconfirmedTx` takes ownership of
-    // the underlying wasm transaction; reading `tx` afterwards panics.
-    const transactionType = mapToTransactionType(account, tx);
+    // the underlying wasm transaction; reading `tx` afterwards panics. An
+    // explicit caller classification (the unified swap/bridge flow) wins over
+    // the balance-derived one.
+    const resolvedTransactionType =
+      transactionType ?? mapToTransactionType(account, tx);
     await this.#chain.broadcast(account.network, tx.clone());
     account.applyUnconfirmedTx(tx, getCurrentUnixTimestamp());
     await this.#repository.update(account);
@@ -1127,7 +1133,7 @@ export class AccountUseCases {
         account,
         walletTx,
         origin,
-        transactionType,
+        resolvedTransactionType,
       );
     }
 

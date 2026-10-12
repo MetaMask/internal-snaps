@@ -14,6 +14,7 @@ import {
   type,
   union,
 } from '@metamask/superstruct';
+import { CaipAssetTypeStruct } from '@metamask/utils';
 
 import { Network } from '../../constants/solana';
 import {
@@ -173,6 +174,13 @@ export const SolanaSignAndSendTransactionOptionsStruct = type({
   skipPreflight: optional(boolean()),
   /** Maximum number of times for the RPC node to retry sending the transaction to the leader. */
   maxRetries: optional(number()),
+  /**
+   * Source and destination asset ids for the unified swap/bridge flow.
+   * Comparing their CAIP-2 chains lets the Snap classify the transaction as a
+   * same-chain swap or a cross-chain bridge.
+   */
+  sourceAssetId: optional(CaipAssetTypeStruct),
+  destAssetId: optional(CaipAssetTypeStruct),
 });
 
 export type SolanaSignAndSendTransactionOptions = Infer<

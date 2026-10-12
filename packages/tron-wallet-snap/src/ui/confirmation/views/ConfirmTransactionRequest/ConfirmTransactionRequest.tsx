@@ -1,4 +1,4 @@
-import { TransactionAlert } from '@metamask/snap-networks-utils';
+import { ActionHeader, TransactionAlert } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -6,7 +6,6 @@ import {
   Button,
   Container,
   Footer,
-  Heading,
   Icon,
   Image,
   Link,
@@ -102,13 +101,7 @@ export const ConfirmTransactionRequest = ({
         ) : null}
 
         {/* Header */}
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">
-            {translate(`confirmation.transaction.title`)}
-          </Heading>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader title={translate('confirmation.transaction.title')} />
 
         {/* Estimated Changes (from security scan simulation) */}
         {estimatedChangesSection}

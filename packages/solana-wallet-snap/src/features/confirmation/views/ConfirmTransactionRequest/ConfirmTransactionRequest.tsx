@@ -1,11 +1,5 @@
-import { TransactionAlert } from '@metamask/snap-networks-utils';
-import {
-  Box,
-  Button,
-  Container,
-  Footer,
-  Heading,
-} from '@metamask/snaps-sdk/jsx';
+import { ActionHeader, TransactionAlert } from '@metamask/snap-networks-utils';
+import { Box, Button, Container, Footer } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../core/constants/solana';
 import { i18n } from '../../../../core/utils/i18n';
@@ -75,13 +69,9 @@ export const ConfirmTransactionRequest = ({
             validation={context.scan?.validation ?? null}
           />
         ) : null}
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">
-            {translate(`confirmation.${context.method}.title`)}
-          </Heading>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader
+          title={translate(`confirmation.${context.method}.title`)}
+        />
         {context.preferences.simulateOnChainActions ? (
           <EstimatedChanges
             scanStatus={context.scan?.status ?? null}
