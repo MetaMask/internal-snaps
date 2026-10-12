@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Render the confirmation, account activation, memo edit and malicious acknowledgement titles with the shared `ActionHeader` component from `@metamask/snap-networks-utils` ([#437](https://github.com/MetaMask/internal-snaps/pull/437))
   - Spacing around the title is now the same on every screen, so the account activation, trustline, memo edit and malicious acknowledgement screens change slightly
 
+### Fixed
+
+- Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
+
 ## [1.1.1]
 
 ### Fixed
