@@ -348,15 +348,17 @@ export class WalletService {
     );
 
     /**
-     * The unified swap/bridge flow passes the source and destination asset ids,
-     * which classify the transaction as a same-chain swap or a cross-chain
-     * bridge. An explicit caller classification (e.g. `tokenApprove`) still
-     * takes precedence.
+     * Only MetaMask-originated transactions can belong to the unified
+     * swap/bridge flow. DApp-provided asset ids must not influence analytics
+     * classification.
      */
-    const flowTransactionType = resolveFlowTransactionType({
-      sourceAssetId: options?.sourceAssetId,
-      destAssetId: options?.destAssetId,
-    });
+    const flowTransactionType =
+      origin === METAMASK_ORIGIN
+        ? resolveFlowTransactionType({
+            sourceAssetId: options?.sourceAssetId,
+            destAssetId: options?.destAssetId,
+          })
+        : undefined;
     const explicitTransactionType = transactionType ?? flowTransactionType;
 
     const resolvedTransactionType = resolveTransactionType({

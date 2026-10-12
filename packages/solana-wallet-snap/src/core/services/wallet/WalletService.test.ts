@@ -566,6 +566,40 @@ describe('WalletService', () => {
           );
         });
 
+        it('ignores flow asset ids for dApp-originated transactions', async () => {
+          const dappOrigin = 'https://example.com';
+
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            dappOrigin,
+            {
+              sourceAssetId:
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+              destAssetId:
+                'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+            },
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              origin: dappOrigin,
+              transactionType: TransactionType.Unknown,
+            }),
+          );
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            dappOrigin,
+            undefined,
+          );
+        });
+
         it('prefers an explicit caller classification over the swap asset ids', async () => {
           await service.signAndSendTransaction(
             fromAccount,
