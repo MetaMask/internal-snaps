@@ -1,5 +1,8 @@
 import { BtcScope } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  normalizeError,
+  resolveFlowTransactionType,
+} from '@metamask/snap-networks-utils';
 import type {
   ProofOfOwnershipBatchRequestItem,
   ProofOfOwnershipBatchResponse,
@@ -23,7 +26,6 @@ import {
   FormatError,
   InexistentMethodError,
   ValidationError,
-  resolveFlowTransactionType,
 } from '../entities';
 import type { CodifiedError, Logger } from '../entities';
 import type {
