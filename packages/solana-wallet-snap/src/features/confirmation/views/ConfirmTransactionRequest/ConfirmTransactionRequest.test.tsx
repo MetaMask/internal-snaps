@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import { ActionHeader } from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
@@ -49,6 +50,12 @@ const render = (overrides: Partial<ConfirmTransactionRequestContext>): string =>
   );
 
 describe('ConfirmTransactionRequest', () => {
+  it('renders the shared header with the method title', () => {
+    expect(render({})).toContain(
+      JSON.stringify(ActionHeader({ title: 'Transaction request' })),
+    );
+  });
+
   describe('security alert', () => {
     it('renders the in-progress banner while the scan is fetching', () => {
       const serialized = render({ scanFetchStatus: 'fetching' });
