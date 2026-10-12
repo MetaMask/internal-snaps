@@ -142,7 +142,7 @@ describe('TransactionScanService', () => {
         validation: {
           type: TransactionScanValidationType.Benign,
           reason: '',
-          description: '',
+          description: null,
         },
         error: null,
       });
@@ -173,7 +173,7 @@ describe('TransactionScanService', () => {
         validation: {
           type: TransactionScanValidationType.Benign,
           reason: '',
-          description: '',
+          description: null,
         },
         error: null,
       });
@@ -210,7 +210,7 @@ describe('TransactionScanService', () => {
         validation: {
           type: TransactionScanValidationType.Benign,
           reason: '',
-          description: '',
+          description: null,
         },
         error: null,
       });
@@ -243,7 +243,7 @@ describe('TransactionScanService', () => {
         validation: {
           type: TransactionScanValidationType.Benign,
           reason: '',
-          description: '',
+          description: null,
         },
         error: null,
       });
@@ -328,6 +328,32 @@ describe('TransactionScanService', () => {
         description: null,
       },
       error: null,
+    });
+  });
+
+  it('drops Blockaid description so the banner uses MetaMask generic copy', async () => {
+    const { service, securityAlertsApiClient } = setup();
+    securityAlertsApiClient.scanTransaction.mockResolvedValue({
+      simulation: null,
+      validation: {
+        status: 'Success',
+        result_type: TransactionScanValidationType.Malicious,
+        reason: 'OTHER',
+        classification: 'other',
+        description:
+          'Gaining account GDUW4TP24B3PF2CCUZJ4AOSCHVXXQGKF3RDVCLFYFTL3XWB2YGTTXGIT is classified as stellar_expert_malicious',
+      },
+    });
+
+    const result = await service.scanTransactionSafe(scanParams);
+
+    expect(result).toMatchObject({
+      status: 'SUCCESS',
+      validation: {
+        type: TransactionScanValidationType.Malicious,
+        reason: 'OTHER',
+        description: null,
+      },
     });
   });
 
