@@ -5,10 +5,7 @@ module.exports = {
   preset: '@metamask/snaps-jest',
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
-  },
-  moduleNameMapper: {
-    ...baseConfig.moduleNameMapper,
-    '\\.svg$': 'jest-transform-stub',
+    '^.+\\.svg$': '<rootDir>/../../jest.svg-transformer.js',
   },
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
   setupFilesAfterEnv: [
@@ -19,10 +16,10 @@ module.exports = {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 71.17,
-      functions: 80.95,
-      lines: 85.91,
-      statements: 85.9,
+      branches: 71.79,
+      functions: 81.56,
+      lines: 86.19,
+      statements: 86.18,
     },
   },
 };

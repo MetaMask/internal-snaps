@@ -5,6 +5,7 @@ import {
   formatFiat,
   normalizeAmount,
   tokenToFiat,
+  tokenPriceToFiat,
   toSmallestUnit,
   removeTrailingZeros,
 } from './currency';
@@ -107,5 +108,19 @@ describe('tokenToFiat', () => {
 
   it('handles fractional token amounts', () => {
     expect(tokenToFiat('0.5', '4')).toBe('2');
+  });
+});
+
+describe('tokenPriceToFiat', () => {
+  it('formats fiat when a rate is present', () => {
+    expect(tokenPriceToFiat('1.5', '0.1', 'usd', 'en')).toBe('$0.15');
+  });
+
+  it('returns null when the rate is missing', () => {
+    expect(tokenPriceToFiat('1.5', null, 'usd', 'en')).toBeNull();
+  });
+
+  it('returns null when the amount is undefined', () => {
+    expect(tokenPriceToFiat(undefined, '0.1', 'usd', 'en')).toBeNull();
   });
 });

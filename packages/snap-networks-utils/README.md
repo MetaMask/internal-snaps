@@ -47,6 +47,10 @@ const assetId: Caip19AssetId = 'tron:728126428/slip44:195';
 const asset = await assetsProvider.getAccountAssetByID(accountId, assetId);
 ```
 
+### Images
+
+UI components may import `.svg` files as strings, like in a Snap. The files are copied to `dist/` as-is, so consumers must bundle the package with `mm-snap` (or another bundler that loads `.svg` files as source).
+
 ## Contributing
 
 This package is part of a monorepo. Instructions for contributing can be found in the [monorepo README](https://github.com/MetaMask/internal-snaps#readme).

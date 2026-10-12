@@ -5,10 +5,7 @@ module.exports = {
   preset: '@metamask/snaps-jest',
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
-  },
-  moduleNameMapper: {
-    ...baseConfig.moduleNameMapper,
-    '\\.svg$': 'jest-transform-stub',
+    '^.+\\.svg$': '<rootDir>/../../jest.svg-transformer.js',
   },
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
   setupFilesAfterEnv: [

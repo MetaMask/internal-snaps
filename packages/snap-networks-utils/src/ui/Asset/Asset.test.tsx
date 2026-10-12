@@ -1,4 +1,5 @@
-import { Asset, AssetIcon, QUESTION_MARK_SVG } from './Asset';
+import { Asset, AssetIcon } from './Asset';
+import questionMarkIcon from './question-mark.svg';
 
 const render = (props: Partial<Parameters<typeof Asset>[0]> = {}): string =>
   JSON.stringify(Asset({ symbol: 'XLM', amount: '1.5', ...props }));
@@ -20,7 +21,7 @@ describe('AssetIcon', () => {
     (iconUrl) => {
       const serialized = JSON.stringify(AssetIcon({ iconUrl }));
 
-      expect(serialized).toContain(JSON.stringify(QUESTION_MARK_SVG));
+      expect(serialized).toContain(JSON.stringify(questionMarkIcon));
       expect(serialized).toContain('"height":16');
     },
   );
