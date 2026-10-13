@@ -1,10 +1,10 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
   Button,
   Container,
-  Heading,
   Icon,
   Link,
   Section,
@@ -91,11 +91,7 @@ export const ConfirmSendTransaction = ({
           transactionsFetchStatus={transactionsFetchStatus}
           errorMessage={errorMessage}
         />
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">{t(`confirmation.transaction.title`)}</Heading>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader title={t('confirmation.transaction.title')} />
 
         {/* Always shown: the rows are seeded locally from the known send
             amount, so this is the only place the user sees what they're
