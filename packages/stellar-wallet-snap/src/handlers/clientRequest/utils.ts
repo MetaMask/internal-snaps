@@ -1,8 +1,8 @@
 import { parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
-import { BigNumber } from 'bignumber.js';
 
 import { StellarAddressStruct } from '../../api/address';
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import type { Transaction } from '../../services/transaction';
 import {
   InsufficientBalanceException,
@@ -22,15 +22,6 @@ import {
   resolveStellarMemo,
 } from '../../services/transaction';
 import type { LocalizedMessage } from '../../utils';
-
-/**
- * Max allowed fee increase vs the fee on the confirmation-time draft (20%).
- *
- * SEP-41 / Soroban resource fees can move between dialog open and the
- * post-confirm rebuild; a small buffer avoids dropping otherwise-valid txs.
- * Baseline is the draft built when the dialog opened (not later UI refreshes).
- */
-export const CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO = new BigNumber('1.2');
 
 /**
  * Guards the user-approved fee during submit-time transaction refresh.

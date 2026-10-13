@@ -77,6 +77,15 @@ export const NATIVE_ASSET_NAME = 'XLM';
 export const BASE_FEE = 100;
 
 /**
+ * Max allowed fee increase vs the confirmation-time draft (20%).
+ *
+ * SEP-41 / Soroban resource fees can move between dialog open and the
+ * post-confirm rebuild; a small buffer avoids dropping otherwise-valid txs.
+ * Baseline is the draft built when the dialog opened (not later UI refreshes).
+ */
+export const CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO = 1.2;
+
+/**
  * The maximum int64 balance for the Stellar network.
  *
  * @see https://stellar.org/learn/lumens
