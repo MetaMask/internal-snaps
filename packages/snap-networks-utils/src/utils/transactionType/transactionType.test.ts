@@ -1,9 +1,12 @@
 import { TransactionType } from '@metamask/keyring-api';
 import type { CaipAssetType } from '@metamask/utils';
 
-import { resolveFlowTransactionType } from './transactionType';
+import {
+  resolveFlowTransactionType,
+  resolveUnifiedSwapTransactionType,
+} from './transactionType';
 
-describe('resolveFlowTransactionType', () => {
+describe('resolveUnifiedSwapTransactionType', () => {
   const TRON_MAINNET_TRX: CaipAssetType = 'tron:728126428/slip44:195';
   const TRON_MAINNET_USDT: CaipAssetType =
     'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
@@ -12,7 +15,7 @@ describe('resolveFlowTransactionType', () => {
 
   it('returns swap for assets on the same chain', () => {
     expect(
-      resolveFlowTransactionType({
+      resolveUnifiedSwapTransactionType({
         sourceAssetId: TRON_MAINNET_TRX,
         destAssetId: TRON_MAINNET_USDT,
       }),
@@ -21,7 +24,7 @@ describe('resolveFlowTransactionType', () => {
 
   it('returns bridgeSend for assets on different chains', () => {
     expect(
-      resolveFlowTransactionType({
+      resolveUnifiedSwapTransactionType({
         sourceAssetId: TRON_MAINNET_USDT,
         destAssetId: ETHEREUM_MAINNET_USDC,
       }),
@@ -32,15 +35,24 @@ describe('resolveFlowTransactionType', () => {
     { sourceAssetId: undefined, destAssetId: ETHEREUM_MAINNET_USDC },
     { sourceAssetId: TRON_MAINNET_TRX, destAssetId: undefined },
   ])('returns undefined when an asset id is missing', (options) => {
-    expect(resolveFlowTransactionType(options)).toBeUndefined();
+    expect(resolveUnifiedSwapTransactionType(options)).toBeUndefined();
   });
 
   it('returns undefined when an asset id is malformed', () => {
     expect(
-      resolveFlowTransactionType({
+      resolveUnifiedSwapTransactionType({
         sourceAssetId: 'not-an-asset-id' as never,
         destAssetId: ETHEREUM_MAINNET_USDC,
       }),
     ).toBeUndefined();
+  });
+
+  it('keeps the helper as an alias', () => {
+    expect(
+      resolveFlowTransactionType({
+        sourceAssetId: TRON_MAINNET_TRX,
+        destAssetId: TRON_MAINNET_USDT,
+      }),
+    ).toBe(TransactionType.Swap);
   });
 });

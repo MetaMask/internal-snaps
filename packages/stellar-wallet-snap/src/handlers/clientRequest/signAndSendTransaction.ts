@@ -1,5 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
-import { resolveFlowTransactionType } from '@metamask/snap-networks-utils';
+import { resolveUnifiedSwapTransactionType } from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { parseCaipAssetType } from '@metamask/utils';
@@ -143,7 +143,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
 
     const { sourceAssetId, destAssetId } = options;
     const swapAssetIds = { sourceAssetId, destAssetId };
-    const transactionType = resolveFlowTransactionType(swapAssetIds);
+    const transactionType = resolveUnifiedSwapTransactionType(swapAssetIds);
 
     if (transactionType === undefined) {
       throw new Error('Unable to resolve the swap or bridge transaction type');
