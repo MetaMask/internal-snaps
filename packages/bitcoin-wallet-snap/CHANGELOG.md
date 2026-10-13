@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0]
+
 ### Uncategorized
 
 - chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
@@ -108,7 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This package was migrated from [snap-bitcoin-wallet](https://github.com/MetaMask/snap-bitcoin-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-bitcoin-wallet/blob/main/packages/snap/CHANGELOG.md).
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.2.0...HEAD
+[3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.1.0...@metamask/bitcoin-wallet-snap@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.0.0...@metamask/bitcoin-wallet-snap@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@2.0.1...@metamask/bitcoin-wallet-snap@3.0.0
 [2.0.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@2.0.0...@metamask/bitcoin-wallet-snap@2.0.1

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0]
+
 ### Uncategorized
 
 - refactor: use actual svg in networks util package ([#426](https://github.com/MetaMask/internal-snaps/pull/426))
@@ -91,5 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@1.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...HEAD
+[2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@1.0.0...@metamask/snap-networks-utils@2.0.0
 [1.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/snap-networks-utils@1.0.0

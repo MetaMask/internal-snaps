@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0]
+
 ### Uncategorized
 
 - chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
@@ -115,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.1.0...HEAD
+[4.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...@metamask/tron-wallet-snap@4.1.0
 [4.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.2.0...@metamask/tron-wallet-snap@4.0.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...@metamask/tron-wallet-snap@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.0.0...@metamask/tron-wallet-snap@3.1.0
