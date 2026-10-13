@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully
+- Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
 - Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 
 ## [1.1.1]
