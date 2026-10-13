@@ -1,3 +1,4 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import {
   Address,
@@ -5,7 +6,6 @@ import {
   Button,
   Container,
   Footer,
-  Heading,
   Image,
   Row,
   Section,
@@ -86,13 +86,10 @@ export const ConfirmSignIn: SnapComponent<ConfirmSignInProps> = ({
   return (
     <Container>
       <Box>
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">{translate('confirmation.signIn.title')}</Heading>
-          <Text color="muted" alignment="center">
-            {translate('confirmation.signIn.description')}
-          </Text>
-        </Box>
+        <ActionHeader
+          title={translate('confirmation.signIn.title')}
+          subtitle={translate('confirmation.signIn.description')}
+        />
 
         {preferences.simulateOnChainActions ? (
           <EstimatedChanges

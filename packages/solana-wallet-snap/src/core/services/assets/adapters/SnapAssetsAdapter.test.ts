@@ -165,7 +165,9 @@ describe('SnapAssetsAdapter', () => {
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
       expect(
-        await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0),
+        await snapAssetsAdapter.fetchAccountAssets(
+          MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        ),
       ).toStrictEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -197,7 +199,7 @@ describe('SnapAssetsAdapter', () => {
         }),
       });
 
-      await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      await snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
       expect(trackError).toHaveBeenCalledTimes(1);
       const error = (trackError as jest.Mock).mock.calls[0][0] as Error;
@@ -227,7 +229,7 @@ describe('SnapAssetsAdapter', () => {
         }),
       });
 
-      await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_1);
+      await snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_1);
 
       expect(trackError).toHaveBeenCalledTimes(1);
       const error = (trackError as jest.Mock).mock.calls[0][0] as Error;
@@ -251,7 +253,7 @@ describe('SnapAssetsAdapter', () => {
       });
       (trackError as jest.Mock).mockRejectedValue(new Error('tracking down'));
 
-      await snapAssetsAdapter.fetch(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      await snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
         'Failed to track error',

@@ -79,7 +79,7 @@ function createControllerAsset(options: {
 }
 
 /**
- * Builds a snap-owned asset entity for `saveMany` tests.
+ * Builds a snap-owned asset entity for `saveManyAndEmit` tests.
  *
  * @param overrides - Fields to override on the asset entity.
  * @returns An `AssetEntity`.
@@ -373,10 +373,10 @@ describe('CoreAssetsAdapter', () => {
     });
   });
 
-  describe('saveMany', () => {
+  describe('saveManyAndEmit', () => {
     it('does nothing when there are no snap-owned assets', async () => {
       await withCoreAssetsAdapter(async ({ adapter }) => {
-        await adapter.saveMany([
+        await adapter.saveManyAndEmit([
           createAssetEntity({
             assetType: KnownCaip19Id.TrxMainnet,
             symbol: 'TRX',
@@ -392,7 +392,7 @@ describe('CoreAssetsAdapter', () => {
 
     it('publishes only snap-owned assets as added with balance updates', async () => {
       await withCoreAssetsAdapter(async ({ adapter }) => {
-        await adapter.saveMany([
+        await adapter.saveManyAndEmit([
           createAssetEntity({
             assetType: KnownCaip19Id.TrxMainnet,
             symbol: 'TRX',

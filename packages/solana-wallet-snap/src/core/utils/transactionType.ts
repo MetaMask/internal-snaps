@@ -14,7 +14,10 @@ import { METAMASK_ORIGIN } from '../constants/solana';
  * The one pre-broadcast case that is known is the unified send flow: it is the
  * only MetaMask-originated transaction the Snap itself builds, and it is always
  * a send. That holds for `signTransaction` as well as
- * `signAndSendTransaction`, so the origin alone decides it.
+ * `signAndSendTransaction`, so the origin alone decides it. The unified
+ * swap/bridge flow is classified separately by the shared
+ * `resolveFlowTransactionType` utility from the source and destination asset
+ * ids before this resolver is called.
  *
  * @param options - The classification inputs.
  * @param options.origin - The origin that triggered the lifecycle step.

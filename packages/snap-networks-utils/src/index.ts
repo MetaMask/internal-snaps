@@ -24,6 +24,7 @@ export type {
   WebSocketConnectionClosedEventProperties,
 } from './services/analytics/AnalyticsService';
 export { safeMerge } from './utils/safeMerge/safeMerge';
+export { resolveFlowTransactionType } from './utils/transactionType/transactionType';
 export { buildUrl } from './utils/buildUrl/buildUrl';
 export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
 export {
@@ -112,6 +113,8 @@ export {
   SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export { ActionHeader } from './ui/ActionHeader/ActionHeader';
+export type { ActionHeaderProps } from './ui/ActionHeader/ActionHeader';
 export { Asset, AssetIcon } from './ui/Asset/Asset';
 export type { AssetIconProps, AssetProps } from './ui/Asset/Asset';
 export { EstimatedChanges } from './ui/EstimatedChanges/EstimatedChanges';

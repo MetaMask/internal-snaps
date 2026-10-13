@@ -13,12 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Classify `transaction_type` for the unified swap/bridge flow with the new optional `sourceAssetId`/`destAssetId` request options. Classify TRC20 smart-contract calls by function selector (so a `transfer` reports `send` and an `approve` reports `tokenApprove` instead of `unknown`) ([#434](https://github.com/MetaMask/internal-snaps/pull/434))
+- Change the last behaviours missing for the `AssetsController` migration to happen ([#424](https://github.com/MetaMask/internal-snaps/pull/424))
+  - When the assets migration feature flag is active, the snap no longer fetches, persists, or publishes assets: the periodic sync cronjob and the synchronization triggered by selected account changes no longer touch assets or emit `AccountAssetListUpdated` and `AccountBalancesUpdated` events, leaving asset syncing to the `AssetsController`
+  - When the live assets and balances are fetched by `getAccountAssets` and `getAccountBalances`, they are persisted to local state without emitting `AccountAssetListUpdated` and `AccountBalancesUpdated` events
 - Validate network and CAIP asset type values coming from untrusted boundaries (RPC request params, the Keyring API, the AssetsController) instead of force-casting them, so unsupported values fail fast with an `Invalid params` error ([#403](https://github.com/MetaMask/internal-snaps/pull/403))
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#414](https://github.com/MetaMask/internal-snaps/pull/414))
   - A "Checking for security issues" banner is now shown while the transaction scan is in progress, instead of a loading skeleton
 - Render the confirmation fee asset rows with the shared `Asset` component from `@metamask/snap-networks-utils` ([#429](https://github.com/MetaMask/internal-snaps/pull/429))
+- Render the confirmation title with the shared `ActionHeader` component from `@metamask/snap-networks-utils` ([#438](https://github.com/MetaMask/internal-snaps/pull/438))
 - `listAccountAssets` and `getAccountBalances` now fetch live assets and balances from the chain through the Snap's TronGrid clients instead of returning persisted state. ([#388](https://github.com/MetaMask/internal-snaps/pull/388))
 
 ### Fixed

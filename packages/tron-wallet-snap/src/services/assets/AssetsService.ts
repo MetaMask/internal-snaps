@@ -38,7 +38,7 @@ export class AssetsService {
     this.#remoteFeatureFlagsProvider = remoteFeatureFlagsProvider;
   }
 
-  async #shouldReturnAssetsFromCore(): Promise<boolean> {
+  async isAssetsMigrationEnabled(): Promise<boolean> {
     const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
       SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron,
     );
@@ -56,7 +56,7 @@ export class AssetsService {
       return [];
     }
 
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       const assets = await this.#coreAdapter.getAccountAssetsByIDs(
         accountId,
         assetIds as Caip19AssetId[],
@@ -71,7 +71,7 @@ export class AssetsService {
     accountId: string,
     assetId: string,
   ): Promise<AssetEntity | null> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       const asset = await this.#coreAdapter.getAccountAssetByID(
         accountId,
         assetId as Caip19AssetId,
@@ -83,7 +83,7 @@ export class AssetsService {
   }
 
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       return this.#coreAdapter.getAccountAssets(accountId);
     }
 
@@ -100,7 +100,7 @@ export class AssetsService {
    * @returns The live assets.
    */
   async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       return this.#coreAdapter.fetchAccountAssets(account);
     }
 
@@ -122,11 +122,32 @@ export class AssetsService {
     return this.#snapAdapter.fetchAccountAssets(account);
   }
 
-  async saveMany(assets: AssetEntity[]): Promise<void> {
-    if (await this.#shouldReturnAssetsFromCore()) {
-      return this.#coreAdapter.saveMany(assets);
+  /**
+   * Persists the latest asset snapshot to the snap's local state and emits
+   * the corresponding keyring events. Migration-aware: once the migration is
+   * active, Core owns publishing updates and local persistence is skipped.
+   *
+   * @param assets - The latest asset snapshot to persist.
+   * @returns Nothing.
+   */
+  async saveManyAndEmit(assets: AssetEntity[]): Promise<void> {
+    if (await this.isAssetsMigrationEnabled()) {
+      return this.#coreAdapter.saveManyAndEmit(assets);
     }
 
+    return this.#snapAdapter.saveManyAndEmit(assets);
+  }
+
+  /**
+   * Persists the latest asset snapshot to the snap's local state without
+   * emitting keyring events. Always writes through the Snap adapter because
+   * local state is snap-owned regardless of the migration stage; Core owns
+   * publishing updates instead.
+   *
+   * @param assets - The latest asset snapshot to persist.
+   * @returns Nothing.
+   */
+  async saveMany(assets: AssetEntity[]): Promise<void> {
     return this.#snapAdapter.saveMany(assets);
   }
 }
