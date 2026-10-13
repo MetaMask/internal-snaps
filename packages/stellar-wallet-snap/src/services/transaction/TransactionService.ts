@@ -635,11 +635,9 @@ export class TransactionService {
 
   /**
    * Submits a signed transaction.
-   * When the transaction fails with `txBadSeq`, reloads the account sequence, rebuilds, re-signs once, and retries
-   * **only when** the transaction source matches the resolved {@link OnChainAccount}'s `accountId` (this account consumes sequence)
-   * **and** the envelope is **not** a Soroban `invokeHostFunction` transaction. Soroban envelopes carry `sorobanData` that a
-   * sequence-only rebuild does not preserve; on `txBadSeq` for those txs this method logs, rethrows, and the caller must
-   * re-simulate / re-assemble (for example after a fresh quote).
+   * When the transaction fails with `txBadSeq`, reloads the account sequence, rebuilds (including Soroban
+   * `sorobanData` when present), re-signs once, and retries **only when** the transaction source matches
+   * the resolved {@link OnChainAccount}'s `accountId` (this account consumes sequence).
    * If the source is another account, `txBadSeq` is rethrown: sequence must be fixed on their side and the envelope re-signed.
    *
    * @param params - Options object.
@@ -650,7 +648,7 @@ export class TransactionService {
    * @param params.pollTransaction - If true, wait for RPC terminal status after submit.
    * @returns A promise that resolves to the transaction hash.
    * @throws {TransactionScopeNotMatchException} When `scope` does not match {@link Transaction.scope} (from {@link assertTransactionScope} before submit).
-   * @throws {TransactionRetryableException} When RPC returns `txBadSeq` (one rebuild+retry for classic txs when the tx source matches `onChainAccount`; Soroban invoke txs are not auto-retried).
+   * @throws {TransactionRetryableException} When RPC returns `txBadSeq` (one rebuild+retry when the tx source matches `onChainAccount`).
    * @throws {TransactionSendException} When submission fails for other RPC reasons.
    * @throws {TransactionPollException} When `pollTransaction` is true and polling does not end in SUCCESS.
    */

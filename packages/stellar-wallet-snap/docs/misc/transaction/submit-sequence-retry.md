@@ -31,15 +31,15 @@ Stellar rejects the submit with `txBadSeq` when the envelope’s sequence does n
 1. Checks the envelope **source** equals the resolved `onChainAccount.accountId` (this wallet consumes the sequence).
    - If source is **another** account → rethrow (cannot bump someone else’s sequence).
 2. Reloads the account from the network (`getAccount`) for a fresh `sequenceNumber`.
-3. `rebuildTxnWithNewSeq` — clone ops / fee / timebounds onto a new envelope with the new sequence.
+3. `rebuildTxnWithNewSeq` — clone ops / fee / timebounds onto a new envelope with the new sequence, and reattach Soroban `sorobanData` (resource fee + footprint) when the template is a contract invoke.
 4. `wallet.signTransaction` again.
 5. Submit **once** more.
 
 Only **one** automatic retry.
 
-## Soroban / `invokeHostFunction` caveat
+## Soroban / `invokeHostFunction`
 
-Sequence-only rebuild copies classic-style fields and operations; it does **not** correctly preserve assembled Soroban `sorobanData`. JSDoc on `sendTransaction` states that for invoke envelopes, `txBadSeq` should not be treated as a safe auto-retry — the caller should **re-simulate / re-assemble** (e.g. fresh quote or fresh SEP-41 sim) instead of relying on a blind sequence bump.
+`TransactionBuilder.cloneFrom` does not copy `xdr.SorobanTransactionData`. `rebuildTxnWithNewSeq` reads that ext from the original envelope and reapplies it with `setSorobanData`, so SEP-41 / other assembled invoke envelopes keep their simulation footprint and resource fee across the sequence bump. A stale footprint (ledger advanced enough to invalidate simulation) is a separate failure mode — that still requires a fresh simulate / re-assemble, not only a sequence retry.
 
 ## Flow
 

@@ -39,7 +39,7 @@ Local checks after network simulation has attached the Soroban resource fee:
 
 1. `Wallet.signTransaction`.
 2. `TransactionService.sendTransaction` — see [submit-sequence-retry](./submit-sequence-retry.md).
-3. Sequence-only rebuild does **not** safely preserve Soroban `sorobanData`; on `txBadSeq` for invoke envelopes the caller should re-simulate / rebuild rather than relying on a blind sequence bump.
+3. On `txBadSeq`, sequence retry rebuilds the envelope and reattaches Soroban `sorobanData` so the assembled resource fee / footprint are preserved.
 
 ## Flow
 

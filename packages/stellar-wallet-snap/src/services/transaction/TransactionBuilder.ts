@@ -1,5 +1,8 @@
 import { parseCaipAssetType } from '@metamask/utils';
-import type { xdr } from '@stellar/stellar-sdk';
+import type {
+  Transaction as StellarSdkTransaction,
+  xdr,
+} from '@stellar/stellar-sdk';
 import {
   Account,
   Address,
@@ -315,6 +318,11 @@ export class TransactionBuilder {
   /**
    * Rebuilds a transaction with a new sequence number (e.g. after `txBadSeq`).
    *
+   * For Soroban / SEP-41 envelopes, {@link StellarSdkTransactionBuilder.cloneFrom}
+   * does not copy `sorobanData`; this method reattaches it via
+   * {@link StellarSdkTransactionBuilder.setSorobanData} so resource fee and
+   * footprint survive the sequence bump.
+   *
    * @param params - Options object.
    * @param params.transaction - The original transaction.
    * @param params.sequenceNumber - The new sequence number.
@@ -337,6 +345,13 @@ export class TransactionBuilder {
 
       const builder = StellarSdkTransactionBuilder.cloneFrom(rawTransaction);
       builder.source = new Account(rawTransaction.source, sequenceNumber);
+
+      // cloneFrom intentionally omits Soroban ext data — reattach when present.
+      const sorobanData = getSorobanTransactionData(rawTransaction);
+      if (sorobanData) {
+        builder.setSorobanData(sorobanData);
+      }
+
       return new Transaction(builder.build());
     } catch (error: unknown) {
       return rethrowIfInstanceElseThrow(
@@ -388,4 +403,22 @@ export class TransactionBuilder {
   #getTimeout(): number {
     return AppConfig.transaction.timeout;
   }
+}
+
+/**
+ * Reads `xdr.SorobanTransactionData` from a classic (v1) envelope when present.
+ *
+ * @param transaction - Raw Stellar SDK transaction.
+ * @returns Soroban ext data, or `undefined` for classic-only envelopes.
+ */
+function getSorobanTransactionData(
+  transaction: StellarSdkTransaction,
+): xdr.SorobanTransactionData | undefined {
+  const envelope = transaction.toEnvelope();
+  if (envelope.type !== 'envelopeTypeTx') {
+    return undefined;
+  }
+
+  const { ext } = envelope.value.tx;
+  return ext.type === 'sorobanData' ? ext.value : undefined;
 }
