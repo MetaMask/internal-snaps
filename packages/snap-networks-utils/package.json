@@ -93,7 +93,7 @@
     "deepmerge": "^4.2.2",
     "jest": "30.0.3",
     "jest-it-up": "^2.0.2",
-    "ts-jest": "^29.4.1",
+    "ts-jest": "^29.4.14",
     "tsx": "^4.20.5",
     "typedoc": "^0.25.13",
     "typedoc-plugin-missing-exports": "^2.0.0",
