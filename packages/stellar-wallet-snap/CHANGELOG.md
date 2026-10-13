@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bump `@stellar/stellar-sdk` from `^17.0.1` to `^17.2.1` ([#435](https://github.com/MetaMask/internal-snaps/pull/435))
 - Render confirmation asset rows and icons with the shared `Asset` and `AssetIcon` components from `@metamask/snap-networks-utils` ([#428](https://github.com/MetaMask/internal-snaps/pull/428))
+- Use the shared `resolveUnifiedSwapTransactionType` utility for unified swap and bridge transaction classification ([#441](https://github.com/MetaMask/internal-snaps/pull/441))
 
 ### Fixed
 

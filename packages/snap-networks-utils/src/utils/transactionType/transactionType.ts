@@ -11,7 +11,7 @@ import { parseCaipAssetType } from '@metamask/utils';
  * @returns `swap` for assets on the same chain, `bridgeSend` for assets on
  * different chains, or `undefined` when either asset id is missing or invalid.
  */
-export function resolveFlowTransactionType({
+export function resolveUnifiedSwapTransactionType({
   sourceAssetId,
   destAssetId,
 }: {
@@ -33,3 +33,5 @@ export function resolveFlowTransactionType({
     return undefined;
   }
 }
+
+export const resolveFlowTransactionType = resolveUnifiedSwapTransactionType;
