@@ -1,3 +1,4 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Banner,
@@ -6,7 +7,6 @@ import {
   Checkbox,
   Container,
   Footer,
-  Heading,
   Text as SnapText,
 } from '@metamask/snaps-sdk/jsx';
 
@@ -39,9 +39,7 @@ export const MaliciousAcknowledgementScreen = ({
   return (
     <Container>
       <Box>
-        <Box alignment="center" center>
-          <Heading size="lg">{t('confirmation.maliciousAck.title')}</Heading>
-        </Box>
+        <ActionHeader title={t('confirmation.maliciousAck.title')} />
         <Banner title={t('confirmation.maliciousAck.title')} severity="danger">
           <SnapText>{t('confirmation.maliciousAck.description')}</SnapText>
         </Banner>

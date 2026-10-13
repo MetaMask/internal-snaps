@@ -1,9 +1,9 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Box,
   Container,
   Copyable,
-  Heading,
   Image,
   Section,
   Text as SnapText,
@@ -29,15 +29,9 @@ export const AccountActivationPrompt = ({
   return (
     <Container>
       <Box>
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">
-            {translate('confirmation.accountActivation.title')}
-          </Heading>
-          <Box>{null}</Box>
-          <Box>{null}</Box>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader
+          title={translate('confirmation.accountActivation.title')}
+        />
         <Section>
           <Box direction="vertical" center>
             {qrCode ? <Image src={qrCode} width={230} /> : null}
