@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(stellar): add `AssetsService` to connect with `AssetController` ([#425](https://github.com/MetaMask/internal-snaps/pull/425))
+- chore:(stellar): add `USDT0`, `deJAAA` and `deJTRSY` into unified-pubnet.json ([#430](https://github.com/MetaMask/internal-snaps/pull/430))
+- feat(stellar): use the shared TransactionAlert UI component ([#412](https://github.com/MetaMask/internal-snaps/pull/412))
+- chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
+- chore(stellar: add `bindSep41Balances` option from `resolveOnChainAccount` ([#413](https://github.com/MetaMask/internal-snaps/pull/413))
+- chore(stellar): add `getAccountLedgerMetadata` in `networkService` ([#411](https://github.com/MetaMask/internal-snaps/pull/411))
+
 ### Added
 
 - Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))

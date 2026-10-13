@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(snap-networks-utils): enable bundling .svgs into networks utils ([#423](https://github.com/MetaMask/internal-snaps/pull/423))
+- chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
+- Release/14.0.0 ([#407](https://github.com/MetaMask/internal-snaps/pull/407))
+
 ### Added
 
 - Emit `transaction_type` on the transaction lifecycle events. ([#401](https://github.com/MetaMask/internal-snaps/pull/401))
@@ -14,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `getAccountAssets` and `getAccountBalances` now fetch live assets and balances from the chain through the Snap's Solana RPC clients instead of returning persisted state. ([#432](https://github.com/MetaMask/internal-snaps/pull/432))
-- Classify `transaction_type` for the unified swap/bridge flow with the shared `resolveFlowTransactionType` utility and the new optional `sourceAssetId`/`destAssetId` request options, carried through to `Transaction Finalized` ([#439](https://github.com/MetaMask/internal-snaps/pull/439)).
+- Classify `transaction_type` for the unified swap/bridge flow with the shared `resolveFlowTransactionType` utility and the new optional `sourceAssetId`/`destAssetId` request options, carried through to `Transaction Finalized`. ([#439](https://github.com/MetaMask/internal-snaps/pull/439))
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#384](https://github.com/MetaMask/internal-snaps/pull/384))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#409](https://github.com/MetaMask/internal-snaps/pull/409))
