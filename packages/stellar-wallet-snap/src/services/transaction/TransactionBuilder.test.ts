@@ -2,6 +2,7 @@ import {
   Account,
   Keypair,
   Networks,
+  SorobanDataBuilder,
   Transaction as StellarTransaction,
   TransactionBuilder as StellarSdkTransactionBuilder,
 } from '@stellar/stellar-sdk';
@@ -241,6 +242,60 @@ describe('TransactionBuilder', () => {
 
       const rebuiltRaw = rebuilt.getRaw() as StellarTransaction;
       expect(rebuiltRaw.signatures).toHaveLength(0);
+    });
+
+    it('preserves Soroban data and resource fee when rebuilding a SEP-41 transaction', () => {
+      const sep41AssetId =
+        `stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J` as const;
+      const unsigned = transactionBuilder.sep41Transfer({
+        scope: KnownCaip2ChainId.Mainnet,
+        onChainAccount: testOnChainAccount,
+        assetId: sep41AssetId,
+        destination: getTestWallet().address,
+        amount: new BigNumber(100000000),
+        baseFee: baseInclusionFee(),
+      });
+
+      const resourceFee = '5000';
+      const sorobanData = new SorobanDataBuilder()
+        .setResourceFee(resourceFee)
+        .build();
+      const assembledRaw = StellarSdkTransactionBuilder.cloneFrom(
+        unsigned.getRaw() as StellarTransaction,
+        { sorobanData },
+      ).build();
+      const assembled = new Transaction(assembledRaw);
+
+      expect(assembled.totalFee).toStrictEqual(
+        unsigned.totalFee.plus(resourceFee),
+      );
+      expect(
+        assembledRaw.toEnvelope().value.tx.ext.type === 'sorobanData',
+      ).toBe(true);
+
+      const seqAcc = createMockAccountWithBalances(
+        testWalletWithSigner.address,
+        '100',
+        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+      );
+      const rebuilt = transactionBuilder.rebuildTxnWithNewSeq({
+        transaction: assembled,
+        sequenceNumber: new OnChainAccount(seqAcc, KnownCaip2ChainId.Mainnet)
+          .sequenceNumber,
+      });
+
+      const rebuiltRaw = rebuilt.getRaw() as StellarTransaction;
+      expect(rebuiltRaw.sequence).toBe('101');
+      expect(rebuilt.totalFee).toStrictEqual(assembled.totalFee);
+      expect(rebuilt.hasInvokeHostFunction).toBe(true);
+
+      const rebuiltExt = rebuiltRaw.toEnvelope().value.tx.ext;
+      expect(rebuiltExt.type).toBe('sorobanData');
+      expect(
+        rebuiltExt.type === 'sorobanData'
+          ? rebuiltExt.value.resourceFee.toString()
+          : undefined,
+      ).toBe(resourceFee);
     });
   });
 
