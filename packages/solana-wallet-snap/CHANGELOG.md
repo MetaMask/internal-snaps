@@ -9,12 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [7.1.0]
 
-### Uncategorized
-
-- feat(snap-networks-utils): enable bundling .svgs into networks utils ([#423](https://github.com/MetaMask/internal-snaps/pull/423))
-- chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
-- Release/14.0.0 ([#407](https://github.com/MetaMask/internal-snaps/pull/407))
-
 ### Added
 
 - Emit `transaction_type` on the transaction lifecycle events. ([#401](https://github.com/MetaMask/internal-snaps/pull/401))

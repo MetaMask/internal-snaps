@@ -9,12 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.1.0]
 
-### Uncategorized
-
-- chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
-- Release/14.0.0 ([#407](https://github.com/MetaMask/internal-snaps/pull/407))
-- feat(snaps-networks-utils): expose `getAssets` with `bypassServerCache` in AssetsProvider ([#389](https://github.com/MetaMask/internal-snaps/pull/389))
-
 ### Added
 
 - Emit `transaction_type` and `transaction_status` on the transaction lifecycle events, with `transaction_type` derived from the contract type (so a flow can be attributed by combining `origin` and `transaction_type`) and `transaction_status` reporting the on-chain outcome on `Transaction Finalized`. ([#399](https://github.com/MetaMask/internal-snaps/pull/399), [#405](https://github.com/MetaMask/internal-snaps/pull/405))

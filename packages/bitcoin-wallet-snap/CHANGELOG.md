@@ -9,11 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.2.0]
 
-### Uncategorized
-
-- chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
-- Release/14.0.0 ([#407](https://github.com/MetaMask/internal-snaps/pull/407))
-
 ### Added
 
 - Populate the `transaction_type` and `transaction_status` properties on the transaction lifecycle tracking events, with `transaction_status` set to `confirmed` on `Transaction Finalized`. ([#393](https://github.com/MetaMask/internal-snaps/pull/393), [#404](https://github.com/MetaMask/internal-snaps/pull/404))
