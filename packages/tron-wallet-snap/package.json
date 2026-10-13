@@ -69,7 +69,7 @@
     "jest": "30.0.3",
     "jest-it-up": "^2.0.2",
     "lodash": "^4.17.21",
-    "oxfmt": "^0.45.0",
+    "oxfmt": "^0.70.0",
     "tronweb": "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch",
     "typescript": "~5.8.3"
   },
