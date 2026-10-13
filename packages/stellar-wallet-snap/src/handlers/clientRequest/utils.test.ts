@@ -1,5 +1,7 @@
 import { Networks } from '@stellar/stellar-sdk';
+import { BigNumber } from 'bignumber.js';
 
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { USDC_CLASSIC } from '../../services/asset-metadata/__mocks__/assets.fixtures';
 import {
   InsufficientBalanceException,
@@ -34,19 +36,37 @@ function buildFeeTransaction(baseFeePerOperation: string) {
     [
       {
         type: 'payment',
-        params: { destination: destinationAddress, asset: 'native', amount: '1' },
+        params: {
+          destination: destinationAddress,
+          asset: 'native',
+          amount: '1',
+        },
       },
     ],
     { networkPassphrase: Networks.TESTNET, baseFeePerOperation },
   );
 }
 
+function feeAtBufferLimit(confirmedFee: string): string {
+  return new BigNumber(confirmedFee)
+    .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+    .toFixed(0);
+}
+
+function feeJustOverBuffer(confirmedFee: string): string {
+  return new BigNumber(feeAtBufferLimit(confirmedFee)).plus(1).toFixed(0);
+}
+
 describe('assertRefreshedTransactionFeeWithinBuffer', () => {
+  const confirmedFee = '100';
+
   it('allows a refreshed fee within the 20% buffer', () => {
     expect(() =>
       assertRefreshedTransactionFeeWithinBuffer({
-        confirmedTransaction: buildFeeTransaction('100'),
-        refreshedTransaction: buildFeeTransaction('120'),
+        confirmedTransaction: buildFeeTransaction(confirmedFee),
+        refreshedTransaction: buildFeeTransaction(
+          feeAtBufferLimit(confirmedFee),
+        ),
       }),
     ).not.toThrow();
   });
@@ -54,7 +74,7 @@ describe('assertRefreshedTransactionFeeWithinBuffer', () => {
   it('allows a refreshed fee lower than the confirmed fee', () => {
     expect(() =>
       assertRefreshedTransactionFeeWithinBuffer({
-        confirmedTransaction: buildFeeTransaction('100'),
+        confirmedTransaction: buildFeeTransaction(confirmedFee),
         refreshedTransaction: buildFeeTransaction('50'),
       }),
     ).not.toThrow();
@@ -63,8 +83,10 @@ describe('assertRefreshedTransactionFeeWithinBuffer', () => {
   it('throws when the refreshed fee exceeds the 20% buffer', () => {
     expect(() =>
       assertRefreshedTransactionFeeWithinBuffer({
-        confirmedTransaction: buildFeeTransaction('100'),
-        refreshedTransaction: buildFeeTransaction('121'),
+        confirmedTransaction: buildFeeTransaction(confirmedFee),
+        refreshedTransaction: buildFeeTransaction(
+          feeJustOverBuffer(confirmedFee),
+        ),
       }),
     ).toThrow(TransactionValidationException);
   });

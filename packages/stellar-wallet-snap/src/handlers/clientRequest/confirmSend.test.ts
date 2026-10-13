@@ -7,7 +7,10 @@ import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import { METAMASK_ORIGIN } from '../../constants';
+import {
+  CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO,
+  METAMASK_ORIGIN,
+} from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import type { StellarAssetMetadata } from '../../services/asset-metadata';
@@ -461,7 +464,9 @@ describe('ConfirmSendHandler', () => {
       signTransactionSpy,
       sendTransaction,
     } = setup();
-    const higherFeeTransaction = buildMockClassicTransaction(
+    // Default confirmed fee is 200 stroops; just over the buffer limit.
+    const confirmedFee = '200';
+    const exceedsBufferTransaction = buildMockClassicTransaction(
       [
         {
           type: 'payment',
@@ -482,10 +487,15 @@ describe('ConfirmSendHandler', () => {
           accountId: wallet.address,
           sequence: '2',
         },
-        baseFeePerOperation: '300',
+        baseFeePerOperation: new BigNumber(confirmedFee)
+          .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+          .plus(1)
+          .toFixed(0),
       },
     );
-    createValidatedSendTransaction.mockResolvedValueOnce(higherFeeTransaction);
+    createValidatedSendTransaction.mockResolvedValueOnce(
+      exceedsBufferTransaction,
+    );
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
@@ -524,11 +534,15 @@ describe('ConfirmSendHandler', () => {
           accountId: wallet.address,
           sequence: '2',
         },
-        // Default confirmed fee is 200 stroops; 240 is exactly +20%.
-        baseFeePerOperation: '240',
+        // Default confirmed fee is 200 stroops; exactly at the buffer limit.
+        baseFeePerOperation: new BigNumber('200')
+          .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+          .toFixed(0),
       },
     );
-    createValidatedSendTransaction.mockResolvedValueOnce(withinBufferTransaction);
+    createValidatedSendTransaction.mockResolvedValueOnce(
+      withinBufferTransaction,
+    );
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: true,
