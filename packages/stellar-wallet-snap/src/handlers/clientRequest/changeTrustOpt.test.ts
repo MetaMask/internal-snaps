@@ -624,7 +624,7 @@ describe('ChangeTrustOptHandler', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('throws when refreshed transaction fee is higher than confirmed fee', async () => {
+  it('throws when refreshed transaction fee exceeds the 20% buffer', async () => {
     const {
       handler,
       wallet,

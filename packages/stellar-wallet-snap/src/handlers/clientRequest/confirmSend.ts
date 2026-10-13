@@ -58,7 +58,7 @@ import {
 } from './api';
 import { BaseClientRequestHandler } from './base';
 import {
-  assertRefreshedTransactionFeeNotHigher,
+  assertRefreshedTransactionFeeWithinBuffer,
   getTxnErrorMessageKey,
 } from './utils';
 
@@ -352,9 +352,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         memo,
       });
 
-    // Reject if the refreshed fee is higher than what the user approved, so we
-    // never sign a transaction that differs from what was shown on the confirmation screen.
-    assertRefreshedTransactionFeeNotHigher({
+    // Allow a small fee drift vs the open-time draft (see
+    // CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO); larger increases fail closed.
+    assertRefreshedTransactionFeeWithinBuffer({
       confirmedTransaction,
       refreshedTransaction,
     });

@@ -453,7 +453,7 @@ describe('ConfirmSendHandler', () => {
     });
   });
 
-  it('returns invalid when refreshed transaction fee is higher than confirmed fee', async () => {
+  it('returns invalid when refreshed transaction fee exceeds the 20% buffer', async () => {
     const {
       handler,
       wallet,
@@ -493,6 +493,50 @@ describe('ConfirmSendHandler', () => {
     });
     expect(signTransactionSpy).not.toHaveBeenCalled();
     expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('allows a refreshed fee within the 20% buffer of the confirmed fee', async () => {
+    const {
+      handler,
+      wallet,
+      createValidatedSendTransaction,
+      signTransactionSpy,
+      sendTransaction,
+    } = setup();
+    const withinBufferTransaction = buildMockClassicTransaction(
+      [
+        {
+          type: 'payment',
+          params: {
+            destination: destinationAddress,
+            asset: {
+              code: 'USDC',
+              issuer:
+                'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+            },
+            amount: '1',
+          },
+        },
+      ],
+      {
+        networkPassphrase: Networks.PUBLIC,
+        source: {
+          accountId: wallet.address,
+          sequence: '2',
+        },
+        // Default confirmed fee is 200 stroops; 240 is exactly +20%.
+        baseFeePerOperation: '240',
+      },
+    );
+    createValidatedSendTransaction.mockResolvedValueOnce(withinBufferTransaction);
+
+    expect(await handler.handle(baseRequest())).toStrictEqual({
+      valid: true,
+      errors: [],
+      transactionId,
+    });
+    expect(signTransactionSpy).toHaveBeenCalledWith(withinBufferTransaction);
+    expect(sendTransaction).toHaveBeenCalled();
   });
 
   describe('pre-submit validation errors', () => {

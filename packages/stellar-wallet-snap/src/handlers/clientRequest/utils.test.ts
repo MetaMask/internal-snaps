@@ -1,3 +1,5 @@
+import { Networks } from '@stellar/stellar-sdk';
+
 import { USDC_CLASSIC } from '../../services/asset-metadata/__mocks__/assets.fixtures';
 import {
   InsufficientBalanceException,
@@ -15,12 +17,58 @@ import {
   TrustlineNotFoundException,
   UpdateTrustlineException,
 } from '../../services/transaction';
-import { getMemoValidationErrorKey, getTxnErrorMessageKey } from './utils';
+import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
+import {
+  assertRefreshedTransactionFeeWithinBuffer,
+  getMemoValidationErrorKey,
+  getTxnErrorMessageKey,
+} from './utils';
 
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 const senderAddress = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4';
 const assetId = USDC_CLASSIC;
+
+function buildFeeTransaction(baseFeePerOperation: string) {
+  return buildMockClassicTransaction(
+    [
+      {
+        type: 'payment',
+        params: { destination: destinationAddress, asset: 'native', amount: '1' },
+      },
+    ],
+    { networkPassphrase: Networks.TESTNET, baseFeePerOperation },
+  );
+}
+
+describe('assertRefreshedTransactionFeeWithinBuffer', () => {
+  it('allows a refreshed fee within the 20% buffer', () => {
+    expect(() =>
+      assertRefreshedTransactionFeeWithinBuffer({
+        confirmedTransaction: buildFeeTransaction('100'),
+        refreshedTransaction: buildFeeTransaction('120'),
+      }),
+    ).not.toThrow();
+  });
+
+  it('allows a refreshed fee lower than the confirmed fee', () => {
+    expect(() =>
+      assertRefreshedTransactionFeeWithinBuffer({
+        confirmedTransaction: buildFeeTransaction('100'),
+        refreshedTransaction: buildFeeTransaction('50'),
+      }),
+    ).not.toThrow();
+  });
+
+  it('throws when the refreshed fee exceeds the 20% buffer', () => {
+    expect(() =>
+      assertRefreshedTransactionFeeWithinBuffer({
+        confirmedTransaction: buildFeeTransaction('100'),
+        refreshedTransaction: buildFeeTransaction('121'),
+      }),
+    ).toThrow(TransactionValidationException);
+  });
+});
 
 describe('getTxnErrorMessageKey', () => {
   it.each([

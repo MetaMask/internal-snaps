@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
+- Allow up to a 20% network-fee increase after confirmation (vs open-time draft) and show the latest fee estimate while the dialog is open ([#447](https://github.com/MetaMask/internal-snaps/pull/447))
 - Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 
 ## [1.1.1]
