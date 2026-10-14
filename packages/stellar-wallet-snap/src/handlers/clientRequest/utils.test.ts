@@ -3,6 +3,7 @@ import { BigNumber } from 'bignumber.js';
 
 import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { USDC_CLASSIC } from '../../services/asset-metadata/__mocks__/assets.fixtures';
+import type { Transaction } from '../../services/transaction';
 import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverBaseReserveException,
@@ -31,7 +32,7 @@ const destinationAddress =
 const senderAddress = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4';
 const assetId = USDC_CLASSIC;
 
-function buildFeeTransaction(baseFeePerOperation: string) {
+function buildFeeTransaction(baseFeePerOperation: string): Transaction {
   return buildMockClassicTransaction(
     [
       {

@@ -762,7 +762,7 @@ describe('ChangeTrustOptHandler', () => {
       .mockResolvedValueOnce(confirmedTransaction)
       .mockResolvedValueOnce(withinBufferTransaction);
 
-    await expect(handler.handle(addRequest)).resolves.toStrictEqual({
+    expect(await handler.handle(addRequest)).toStrictEqual({
       status: true,
       transactionId: transactionHash,
     });
