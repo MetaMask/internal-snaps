@@ -1,14 +1,39 @@
+import { SECURITY_ALERTS_SCAN_OPTIONS } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
+  enums,
+  literal,
+  nonempty,
   nullable,
   number,
   optional,
   string,
   type,
   union,
-  enums,
 } from '@metamask/superstruct';
+
+/**
+ * JSON body sent to the Solana Security Alerts API scan endpoint.
+ */
+export const SecurityAlertRequestStruct = type({
+  /** The signing method that produced the transaction. */
+  method: nonempty(string()),
+  /** The wire encoding of the transaction payload. */
+  encoding: literal('base64'),
+  /** The scanned account's address, base64-encoded. */
+  account_address: nonempty(string()),
+  /** The origin of the request, reported by Blockaid as a URL. */
+  metadata: type({ url: nonempty(string()) }),
+  /** The Security Alerts API chain identifier. */
+  chain: enums(['mainnet', 'devnet', 'testnet', 'localnet']),
+  /** The transactions to scan, in the wire encoding. */
+  transactions: nonempty(array(nonempty(string()))),
+  /** The requested scan options. */
+  options: nonempty(array(enums(SECURITY_ALERTS_SCAN_OPTIONS))),
+});
+
+export type SolanaScanRequestBody = Infer<typeof SecurityAlertRequestStruct>;
 
 /**
  * Error details for a scan that failed at the API level.

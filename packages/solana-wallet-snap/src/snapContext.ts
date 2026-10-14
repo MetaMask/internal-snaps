@@ -44,7 +44,7 @@ import { NameResolutionService } from './core/services/name-resolution/NameResol
 import { registerStateMigration } from './core/services/state/registerStateMigration';
 import { DEFAULT_UNENCRYPTED_STATE } from './core/services/state/stateTypes';
 import type { UnencryptedStateValue } from './core/services/state/stateTypes';
-import { TransactionScanService } from './core/services/transaction-scan/TransactionScan';
+import { TransactionScanService } from './core/services/transaction-scan/TransactionScanService';
 import { WalletService } from './core/services/wallet/WalletService';
 import { trackError } from './core/utils/errors';
 import logger, { noOpLogger } from './core/utils/logger';

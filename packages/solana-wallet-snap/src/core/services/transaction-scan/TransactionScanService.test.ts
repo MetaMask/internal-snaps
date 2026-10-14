@@ -9,12 +9,11 @@ import {
 } from '@metamask/snap-networks-utils';
 import bs58 from 'bs58';
 
-import { SecurityAlertResponseStruct } from '../../clients/security-alerts-api/structs';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
 import { trackError } from '../../utils/errors';
-import { TransactionScanService } from './TransactionScan';
+import { TransactionScanService } from './TransactionScanService';
 
 jest.mock('../../utils/errors', () => ({
   trackError: jest.fn().mockResolvedValue('tracked-error-id'),
@@ -105,20 +104,17 @@ describe('TransactionScan', () => {
         options: ['validation'],
       });
 
-      expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
-        {
-          method: 'signAndSendTransaction',
-          encoding: 'base64',
-          account_address: Buffer.from(
-            bs58.decode(MOCK_SOLANA_KEYRING_ACCOUNT_0.address),
-          ).toString('base64'),
-          metadata: { url: 'https://example.com' },
-          chain: 'mainnet',
-          transactions: ['transaction'],
-          options: ['validation'],
-        },
-        SecurityAlertResponseStruct,
-      );
+      expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith({
+        method: 'signAndSendTransaction',
+        encoding: 'base64',
+        account_address: Buffer.from(
+          bs58.decode(MOCK_SOLANA_KEYRING_ACCOUNT_0.address),
+        ).toString('base64'),
+        metadata: { url: 'https://example.com' },
+        chain: 'mainnet',
+        transactions: ['transaction'],
+        options: ['validation'],
+      });
     });
 
     it('rewrites the MetaMask origin before scanning', async () => {
@@ -140,7 +136,6 @@ describe('TransactionScan', () => {
         expect.objectContaining({
           metadata: { url: 'https://metamask.io' },
         }),
-        SecurityAlertResponseStruct,
       );
     });
 
@@ -163,7 +158,10 @@ describe('TransactionScan', () => {
       });
 
       expect(result).toBeNull();
-      expect(mockLogger.warn).toHaveBeenCalled();
+      // The response struct assert rejects `null` before mapping, so the
+      // failure flows through the tracked error path.
+      expect(trackError).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalled();
       expect(
         mockAnalyticsService.trackSecurityScanCompleted,
       ).toHaveBeenCalledWith({
