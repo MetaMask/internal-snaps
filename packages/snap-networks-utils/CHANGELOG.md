@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **BREAKING:** Remove the CommonJS build; the package is now published as ESM only
+  - `require('@metamask/snap-networks-utils')` no longer works. Import the package from ESM code or a bundler such as `mm-snap` (webpack) instead
+
 ## [2.0.0]
 
 ### Added
