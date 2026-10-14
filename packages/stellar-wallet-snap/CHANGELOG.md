@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fail transaction submit on Soroban RPC `TRY_AGAIN_LATER` instead of treating it as success
+- Fail transaction submit on Soroban RPC `TRY_AGAIN_LATER` instead of treating it as success ([#451](https://github.com/MetaMask/internal-snaps/pull/451))
 - Hot-reload the token API asset catalog during account sync when the last catalog sync has expired, so newly listed SEP-41 tokens appear without waiting for the hourly `synchronizeAssets` cron ([#448](https://github.com/MetaMask/internal-snaps/pull/448))
 - Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
 - Allow up to a 20% network-fee increase after confirmation (vs open-time draft) and show the latest fee estimate while the dialog is open ([#447](https://github.com/MetaMask/internal-snaps/pull/447))
