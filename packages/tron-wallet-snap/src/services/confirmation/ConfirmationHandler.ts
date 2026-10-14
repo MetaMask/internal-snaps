@@ -12,7 +12,7 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { Networks, METAMASK_ORIGIN, ZERO } from '../../constants';
+import { METAMASK_ORIGIN, ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
@@ -31,6 +31,7 @@ import { SignTransactionRequestStruct } from '../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../validation/structs';
 import { assertTransactionStructure } from '../../validation/transaction';
 import type { AssetsService } from '../assets/AssetsService';
+import { AssetFetchError } from '../assets/errors';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
 import type { UnencryptedStateValue } from '../state/stateTypes';
@@ -264,11 +265,27 @@ export class ConfirmationHandler {
       account.address,
     );
 
-    const [bandwidthAsset, energyAsset] =
-      await this.#assetsService.getAccountAssetsByIDs(account.id, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]);
+    let bandwidthAsset: AssetEntity | null = null;
+    let energyAsset: AssetEntity | null = null;
+
+    try {
+      const resources = await this.#assetsService.fetchAccountResources(
+        account,
+        scope,
+      );
+      bandwidthAsset = resources.bandwidth;
+      energyAsset = resources.energy;
+    } catch (error) {
+      if (!(error instanceof AssetFetchError)) {
+        throw error;
+      }
+
+      await this.#snapClient.trackError(error);
+      this.#logger.error(
+        { error },
+        'Failed to fetch fresh resources; estimating fees worst-case',
+      );
+    }
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)

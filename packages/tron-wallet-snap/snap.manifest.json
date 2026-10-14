@@ -68,7 +68,8 @@
         "RemoteFeatureFlagController:getState",
         "AssetsController:getAccountAssetByID",
         "AssetsController:getAccountAssetsByIDs",
-        "AssetsController:getAccountAssetsByScope"
+        "AssetsController:getAccountAssetsByScope",
+        "AssetsController:getAssets"
       ]
     }
   },
