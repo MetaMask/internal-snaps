@@ -15,6 +15,7 @@ import {
   ContextWithTransactionValidationStruct,
   FetchStatus,
 } from '../../../ui/confirmation/api';
+import { formatFeeData } from '../../../ui/confirmation/utils';
 import { toSmallestUnit } from '../../../utils/currency';
 import type { AccountResolver } from '../../accountResolver';
 import { ResolveAccountSource } from '../../accountResolver';
@@ -165,9 +166,13 @@ export class ConfirmationTransactionRefresher implements IConfirmationContextRef
       }
 
       const rebuiltTransactionXdr = rebuiltTransaction.getRaw().toXdr();
+      // Keep the confirmation fee row in sync with the latest network estimate.
+      // Post-confirm buffer still baselines on the open-time draft fee.
+      const fee = rebuiltTransaction.totalFee.toFixed(0);
 
       return {
         result: {
+          feeData: formatFeeData(scope, fee),
           securityScanRequest: {
             accountAddress:
               securityScanRequest?.accountAddress ?? accountAddress,

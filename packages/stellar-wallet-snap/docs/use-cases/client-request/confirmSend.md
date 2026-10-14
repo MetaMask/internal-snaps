@@ -56,7 +56,7 @@ User rejection of a valid confirmation dialog also throws `UserRejectedRequestEr
 3. **Build** — Resolve asset metadata; convert amount; `TransactionService.createValidatedSendTransaction`.
 4. **Pre-submit validation errors** — Balance, trustline, and create-account failures are shown in the send confirmation (no fee or price estimates). After the dialog is dismissed, the handler throws `UserRejectedRequestError`. `RequiresMemo` opens a send confirmation instead (draft + banner) so the user can add a memo.
 5. **Confirm** — `ConfirmationUXController` shows send UI (fee, estimated changes, security scan, memo row, local re-validation cron while open). Dialog resolves with `{ confirmed, memo? }` from `context.memo`.
-6. **Refresh** — After confirm, account is resolved again from the live network; fee must not exceed what the user approved. Validation failures here return error codes without a second dialog. Dialog memo is applied on rebuild via `createValidatedSendTransaction({ memo })` (never written onto ConfirmSend RPC params).
+6. **Refresh** — After confirm, account is resolved again from the live network; refreshed fee may be up to 20% above the open-time draft fee (in-dialog fee refreshes are display-only). Larger increases return `Invalid`. Dialog memo is applied on rebuild via `createValidatedSendTransaction({ memo })` (never written onto ConfirmSend RPC params).
 7. **Sign & send** — `Wallet.signTransaction` → `TransactionService.sendTransaction`.
 8. **Post-submit** — Persist pending keyring tx (`Send`) and schedule `TrackTransactionHandler` for sender + destination.
 

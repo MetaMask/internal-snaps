@@ -1,4 +1,9 @@
+import { Networks } from '@stellar/stellar-sdk';
+import { BigNumber } from 'bignumber.js';
+
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { USDC_CLASSIC } from '../../services/asset-metadata/__mocks__/assets.fixtures';
+import type { Transaction } from '../../services/transaction';
 import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverBaseReserveException,
@@ -15,12 +20,78 @@ import {
   TrustlineNotFoundException,
   UpdateTrustlineException,
 } from '../../services/transaction';
-import { getMemoValidationErrorKey, getTxnErrorMessageKey } from './utils';
+import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
+import {
+  assertRefreshedTransactionFeeWithinBuffer,
+  getMemoValidationErrorKey,
+  getTxnErrorMessageKey,
+} from './utils';
 
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 const senderAddress = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4';
 const assetId = USDC_CLASSIC;
+
+function buildFeeTransaction(baseFeePerOperation: string): Transaction {
+  return buildMockClassicTransaction(
+    [
+      {
+        type: 'payment',
+        params: {
+          destination: destinationAddress,
+          asset: 'native',
+          amount: '1',
+        },
+      },
+    ],
+    { networkPassphrase: Networks.TESTNET, baseFeePerOperation },
+  );
+}
+
+function feeAtBufferLimit(confirmedFee: string): string {
+  return new BigNumber(confirmedFee)
+    .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+    .toFixed(0);
+}
+
+function feeJustOverBuffer(confirmedFee: string): string {
+  return new BigNumber(feeAtBufferLimit(confirmedFee)).plus(1).toFixed(0);
+}
+
+describe('assertRefreshedTransactionFeeWithinBuffer', () => {
+  const confirmedFee = '100';
+
+  it('allows a refreshed fee within the 20% buffer', () => {
+    expect(() =>
+      assertRefreshedTransactionFeeWithinBuffer({
+        confirmedTransaction: buildFeeTransaction(confirmedFee),
+        refreshedTransaction: buildFeeTransaction(
+          feeAtBufferLimit(confirmedFee),
+        ),
+      }),
+    ).not.toThrow();
+  });
+
+  it('allows a refreshed fee lower than the confirmed fee', () => {
+    expect(() =>
+      assertRefreshedTransactionFeeWithinBuffer({
+        confirmedTransaction: buildFeeTransaction(confirmedFee),
+        refreshedTransaction: buildFeeTransaction('50'),
+      }),
+    ).not.toThrow();
+  });
+
+  it('throws when the refreshed fee exceeds the 20% buffer', () => {
+    expect(() =>
+      assertRefreshedTransactionFeeWithinBuffer({
+        confirmedTransaction: buildFeeTransaction(confirmedFee),
+        refreshedTransaction: buildFeeTransaction(
+          feeJustOverBuffer(confirmedFee),
+        ),
+      }),
+    ).toThrow(TransactionValidationException);
+  });
+});
 
 describe('getTxnErrorMessageKey', () => {
   it.each([
