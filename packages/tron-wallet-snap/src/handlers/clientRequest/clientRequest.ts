@@ -27,10 +27,7 @@ import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
-import type {
-  NativeCaipAssetType,
-  StakedCaipAssetType,
-} from '../../services/assets/types';
+import type { StakedCaipAssetType } from '../../services/assets/types';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
@@ -615,10 +612,18 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      assetId,
-    );
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    /**
+     * Fetch the sent asset and the account resources fresh, so the
+     * validation and fee estimation below never act on stale balances.
+     */
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.fetchAccountAssetsByIDs(account, [
+        assetId,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     if (!asset) {
       return {
@@ -626,8 +631,6 @@ export class ClientRequestHandler {
         errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
-
-    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const amountBN = new BigNumber(amount);
 
@@ -654,27 +657,13 @@ export class ClientRequestHandler {
       };
     }
 
-    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
-      /**
-       * Get available Energy and Bandwidth from account assets.
-       */
-      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]),
-      /**
-       * Build the unsigned transaction.
-       * Fee estimation uses a constant overhead for the signature (134 bytes).
-       * Signing happens after user confirmation in sendTransaction().
-       */
-      this.#sendService.buildTransaction({
-        fromAccountId,
-        toAddress,
-        asset,
-        amount: amountBN,
-        feeLimit: FEE_LIMIT,
-      }),
-    ]);
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amountBN,
+      feeLimit: FEE_LIMIT,
+    });
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -983,8 +972,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
+    const asset = await this.#assetsService.fetchAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -1005,7 +994,7 @@ export class ClientRequestHandler {
      */
     await this.#stakingService.stake({
       account,
-      assetId: assetId as NativeCaipAssetType,
+      assetId,
       amount: requestBalance,
       purpose,
       srNodeAddress,
@@ -1099,8 +1088,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const asset = await this.#assetsService.fetchAccountAssetByID(
+      account,
       stakedAssetId,
     );
 

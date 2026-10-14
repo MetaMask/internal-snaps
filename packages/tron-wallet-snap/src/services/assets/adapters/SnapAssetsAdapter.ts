@@ -42,6 +42,7 @@ import { parseTronCaipAssetType } from '../../../utils/caip';
 import { toUiAmount } from '../../../utils/conversion';
 import type { UnencryptedStateValue } from '../../state/stateTypes';
 import type { AssetsRepository } from '../AssetsRepository';
+import { AssetFetchError } from '../errors';
 import type {
   InLockPeriodCaipAssetType,
   NativeCaipAssetType,
@@ -164,12 +165,16 @@ export class SnapAssetsAdapter {
    * 5. Enrich assets with metadata via `#enrichAssetsWithMetadata`
    * 6. Filter spam tokens via `#filterTokensWithoutPriceData`
    *
-   * Degradations along the way (unexpected account info failures, TRC20
-   * fallback failures, spot price failures) are tracked to Sentry; the request
-   * itself only rejects when assets cannot be built at all.
+   * Degradations along the way (TRC20 fallback failures, spot price
+   * failures) are tracked to Sentry; the request itself only rejects when
+   * assets cannot be built at all, or when the account info request fails
+   * with an {@link AssetFetchError}.
    *
    * @param scope - The network to query.
    * @param account - The keyring account.
+   * @throws {@link AssetFetchError} When the account info request fails for
+   * reasons other than "account not found", since the resulting balance
+   * state is unknown.
    * @returns Promise<AssetEntity[]> - Array of assets with balances.
    */
   async fetchAssetsAndBalancesForAccount(
@@ -194,26 +199,16 @@ export class SnapAssetsAdapter {
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
     if (isInactiveAccount) {
       const { reason } = tronAccountInfoRequest;
-      if (reason instanceof TrongridAccountNotFoundError) {
-        this.#logger.info(
-          'Account not found on-chain, treating as inactive account',
-          { account, scope },
-        );
-      } else {
-        // Any rejection is currently treated as an inactive account. A
-        // rejection that is not "account not found" (HTTP error, timeout)
-        // zeroes the account's balances, so track it for visibility.
-        await this.#snapClient.trackError(
-          new Error(
-            'Account info request failed; treating as inactive account',
-            { cause: reason },
-          ),
-        );
-        this.#logger.warn(
-          'Account info request failed; treating as inactive account',
-          { error: reason, account, scope },
-        );
+      if (!(reason instanceof TrongridAccountNotFoundError)) {
+        throw new AssetFetchError('Failed to fetch account info', {
+          cause: reason,
+        });
       }
+
+      this.#logger.info(
+        'Account not found on-chain, treating as inactive account',
+        { account, scope },
+      );
     }
 
     const trc20BalancesFallback = isInactiveAccount

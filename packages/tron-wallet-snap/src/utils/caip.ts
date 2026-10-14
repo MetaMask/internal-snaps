@@ -72,3 +72,18 @@ export function parseTronCaipAssetType(
     chainId: assertSupportedNetwork(getCaipChainIdPrefix(assetId)),
   };
 }
+
+/**
+ * Extracts the unique network scopes from a list of CAIP-19 asset IDs.
+ *
+ * @param assetIds - The CAIP-19 asset IDs (e.g., "tron:728126428/slip44:195").
+ * @throws If any asset ID is not a supported Tron asset type.
+ * @returns The unique network scopes, in order of first appearance.
+ */
+export function extractScopesFromAssetIds(assetIds: string[]): Network[] {
+  return [
+    ...new Set(
+      assetIds.map((assetId) => parseTronCaipAssetType(assetId).chainId),
+    ),
+  ];
+}
