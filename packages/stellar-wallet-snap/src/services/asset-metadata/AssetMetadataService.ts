@@ -116,10 +116,12 @@ export class AssetMetadataService {
   }
 
   /**
-   * Fetches all SEP-41 assets for the given scope, or synchronizes the assets if none are found.
+   * Returns persisted SEP-41 assets for the given scope, refreshing the token API
+   * catalog first when {@link AssetMetadataRepository.isStale} reports the last
+   * full catalog sync has expired (or never completed).
    *
-   * It is possible that the state is empty, due to the first sync.
-   * Hence, we synchronize the assets once.
+   * Used during account / transaction sync so newly listed SEP-41 tokens are
+   * picked up without waiting for the hourly `synchronizeAssets` cron.
    *
    * @param scope - The chain ID to look up.
    * @returns A Promise that resolves to all SEP-41 assets for the given scope.
@@ -127,13 +129,14 @@ export class AssetMetadataService {
   async fetchSep41AssetsOrSyncOnce(
     scope: KnownCaip2ChainId,
   ): Promise<StellarAssetMetadata[]> {
-    // Get all SEP-41 assets for the given scope.
-    const allAssets = await this.getAllByScope(scope);
-
-    if (allAssets.length === 0) {
-      this.#logger.debug('No assets found in the state, synchronizing assets');
-      // It is possible that the state is empty, due to the first sync.
-      // Hence, we synchronize the assets once.
+    if (
+      await this.#assetMetadataRepository.isStale(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      )
+    ) {
+      this.#logger.debug('Asset catalog is stale, synchronizing assets', {
+        scope,
+      });
       await this.synchronize(scope);
     }
 
@@ -149,11 +152,14 @@ export class AssetMetadataService {
   /**
    * Fetches and persists all Assets for the given chain ID from the token API.
    *
+   * Persists via `saveMany(..., true)` so `assetMetadataLastSyncedAt` advances
+   * only for a successful non-empty full catalog write.
+   *
    * @param scope - The chain ID to fetch and persist assets for.
    */
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
     const tokensMetadata = await this.#getAssetsByChainId(scope);
-    await this.#assetMetadataRepository.saveMany(tokensMetadata);
+    await this.#assetMetadataRepository.saveMany(tokensMetadata, true);
   }
 
   async #fetchAndPersistAssetsByAssetIds(

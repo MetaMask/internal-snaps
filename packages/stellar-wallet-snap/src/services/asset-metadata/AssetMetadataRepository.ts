@@ -111,12 +111,20 @@ export class AssetMetadataRepository {
   }
 
   /**
-   * Upserts rows by `assetId`. Stamps `persistedAt` (same value for all rows in this call)
-   * for future staleness / TTL logic.
+   * Upserts rows by `assetId` and stamps each row's `persistedAt`.
+   *
+   * When `fullSync` is true, also stamps `assetMetadataLastSyncedAt` so catalog
+   * TTL checks measure the last successful full token-list sync — not point lookups.
+   * An empty `assets` array is a no-op (including when `fullSync` is true), so a
+   * successful empty catalog leaves the catalog marked stale and will retry.
    *
    * @param assets - Full metadata rows; `assetId` must match the CAIP-19 key for that network.
+   * @param fullSync - Whether to stamp `assetMetadataLastSyncedAt`. Defaults to `false`.
    */
-  async saveMany(assets: StellarAssetMetadata[]): Promise<void> {
+  async saveMany(
+    assets: StellarAssetMetadata[],
+    fullSync: boolean = false,
+  ): Promise<void> {
     if (assets.length === 0) {
       return;
     }
@@ -130,7 +138,33 @@ export class AssetMetadataRepository {
           persistedAt,
         };
       }
+      if (fullSync) {
+        newState.assetMetadataLastSyncedAt = persistedAt;
+      }
       return newState;
     });
+  }
+
+  /**
+   * Whether the token API asset catalog should be refreshed.
+   *
+   * Compares `assetMetadataLastSyncedAt` (set only by a successful non-empty
+   * full catalog `saveMany(..., true)`) against `ttl`. Missing timestamps are
+   * treated as stale so legacy state and empty catalogs re-sync.
+   *
+   * @param ttl - Maximum age in milliseconds before the catalog is stale.
+   * @returns `true` when no catalog sync timestamp exists or it is older than `ttl`.
+   */
+  async isStale(ttl: number): Promise<boolean> {
+    const assetMetadataLastSyncedAt = await this.#state.getKey<number>(
+      'assetMetadataLastSyncedAt',
+    );
+
+    // Legacy / never-synced state — refresh once to stamp the catalog timestamp.
+    if (assetMetadataLastSyncedAt === undefined) {
+      return true;
+    }
+
+    return Date.now() - assetMetadataLastSyncedAt > ttl;
   }
 }

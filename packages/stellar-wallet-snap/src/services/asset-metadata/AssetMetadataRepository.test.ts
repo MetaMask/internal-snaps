@@ -43,6 +43,9 @@ function createMockStateManager(
       if (key === 'assets') {
         return cloneDeep(state.assets) as TResponse;
       }
+      if (key === 'assetMetadataLastSyncedAt') {
+        return state.assetMetadataLastSyncedAt as TResponse;
+      }
       return undefined;
     },
     setKey: jest.fn(async () => Promise.resolve()),
@@ -100,7 +103,7 @@ describe('AssetMetadataRepository', () => {
     ).toStrictEqual([sep41]);
   });
 
-  it('sets persistedAt when saving', async () => {
+  it('sets persistedAt when saving without advancing catalog sync time', async () => {
     const manager = createMockStateManager({ assets: {} });
     const repo = new AssetMetadataRepository(manager);
     const row = generateAssetData(
@@ -119,6 +122,35 @@ describe('AssetMetadataRepository', () => {
     });
     expect(saved?.persistedAt).toBeGreaterThanOrEqual(before);
     expect(saved?.persistedAt).toBeLessThanOrEqual(Date.now());
+    expect(await manager.getKey('assetMetadataLastSyncedAt')).toBeUndefined();
+  });
+
+  it('stamps assetMetadataLastSyncedAt only for a non-empty full catalog sync', async () => {
+    const manager = createMockStateManager({ assets: {} });
+    const repo = new AssetMetadataRepository(manager);
+    const row = generateAssetData(
+      sep41Id,
+      AssetType.Sep41,
+      KnownCaip2ChainId.Mainnet,
+    );
+    const before = Date.now();
+
+    await repo.saveMany([row], true);
+
+    const lastSyncedAt = await manager.getKey<number>(
+      'assetMetadataLastSyncedAt',
+    );
+    expect(lastSyncedAt).toBeGreaterThanOrEqual(before);
+    expect(lastSyncedAt).toBeLessThanOrEqual(Date.now());
+  });
+
+  it('does not stamp assetMetadataLastSyncedAt for an empty full catalog sync', async () => {
+    const manager = createMockStateManager({ assets: {} });
+    const repo = new AssetMetadataRepository(manager);
+
+    await repo.saveMany([], true);
+
+    expect(await manager.getKey('assetMetadataLastSyncedAt')).toBeUndefined();
   });
 
   it('resolves getByAssetId from assets map', async () => {
@@ -132,5 +164,36 @@ describe('AssetMetadataRepository', () => {
 
     expect(await repo.getByAssetId(classicId)).toStrictEqual(row);
     expect(await repo.getByAssetId(sep41Id)).toBeNull();
+  });
+
+  describe('isStale', () => {
+    const oneHour = 60 * 60 * 1000;
+
+    it('returns true when assetMetadataLastSyncedAt is missing', async () => {
+      const manager = createMockStateManager({ assets: {} });
+      const repo = new AssetMetadataRepository(manager);
+
+      expect(await repo.isStale(oneHour)).toBe(true);
+    });
+
+    it('returns false when the catalog sync is within the TTL', async () => {
+      const manager = createMockStateManager({
+        assets: {},
+        assetMetadataLastSyncedAt: Date.now(),
+      });
+      const repo = new AssetMetadataRepository(manager);
+
+      expect(await repo.isStale(oneHour)).toBe(false);
+    });
+
+    it('returns true when the catalog sync is older than the TTL', async () => {
+      const manager = createMockStateManager({
+        assets: {},
+        assetMetadataLastSyncedAt: Date.now() - (oneHour + 60 * 1000),
+      });
+      const repo = new AssetMetadataRepository(manager);
+
+      expect(await repo.isStale(oneHour)).toBe(true);
+    });
   });
 });
