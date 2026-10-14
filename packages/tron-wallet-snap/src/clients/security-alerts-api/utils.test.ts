@@ -4,9 +4,73 @@ import type {
   TransferAssetContractParameter,
   TransferContractParameter,
 } from '../trongrid/types';
-import { extractScanParametersFromTransactionData } from './utils';
+import {
+  extractScanParametersFromTransactionData,
+  isContractTypeSupported,
+} from './utils';
 
 describe('SecurityAlertsApiClient utils', () => {
+  describe('isContractTypeSupported', () => {
+    it('supports transfers, contract deployment, and contract calls', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [
+          {
+            type: TronwebTypes.ContractType.TransferContract,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
+              value: {
+                owner_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+                to_address: '4191bba2f3f6e1c4d5c8e8f5b6a7c8d9e0f1a2b3c4',
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(isContractTypeSupported(rawData)).toBe(true);
+    });
+
+    it('does not support other contract types', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [
+          {
+            type: 'FreezeBalanceContract' as TronwebTypes.ContractType,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.FreezeBalanceContract',
+              value: {
+                owner_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+                frozen_balance: 1000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(isContractTypeSupported(rawData)).toBe(false);
+    });
+
+    it('does not support transactions without contracts', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(isContractTypeSupported(rawData)).toBe(false);
+    });
+  });
+
   describe('extractScanParametersFromTransactionData', () => {
     it('extracts scan parameters from a TransferAssetContractParameter', () => {
       const contractInteraction: TransferAssetContractParameter = {

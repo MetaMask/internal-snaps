@@ -1,6 +1,7 @@
 import type {
   ExtendedKeyringAccount,
   IStateManager,
+  SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
 import type { DialogResult, Json } from '@metamask/snaps-sdk';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -134,7 +135,7 @@ export async function render(
   if (transactionScanService) {
     // Always request simulation for estimated changes;
     // conditionally add validation based on user preference
-    const options: string[] = ['simulation'];
+    const options: SecurityAlertsScanOption[] = ['simulation'];
 
     if (useSecurityAlerts) {
       options.push('validation');

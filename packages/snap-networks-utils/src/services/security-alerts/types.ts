@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { DEFAULT_METAMASK_ORIGIN } from '../../utils/originPermissions/createOriginPermissions';
 
 /**
@@ -8,13 +6,13 @@ import { DEFAULT_METAMASK_ORIGIN } from '../../utils/originPermissions/createOri
  * `simulation` requests an on-chain simulation of the transaction (asset
  * diffs); `validation` requests a security verdict.
  */
-export const SecurityAlertsScanOption = {
-  Simulation: 'simulation',
-  Validation: 'validation',
-} as const;
+export const SECURITY_ALERTS_SCAN_OPTIONS = [
+  'simulation',
+  'validation',
+] as const;
 
 export type SecurityAlertsScanOption =
-  (typeof SecurityAlertsScanOption)[keyof typeof SecurityAlertsScanOption];
+  (typeof SECURITY_ALERTS_SCAN_OPTIONS)[number];
 
 /** Status of a completed security scan. */
 export const SecurityAlertsScanStatus = {
@@ -39,24 +37,6 @@ export const SecurityAlertResponse = {
 
 export type SecurityAlertResponse =
   (typeof SecurityAlertResponse)[keyof typeof SecurityAlertResponse];
-
-/**
- * JSON body fields shared by every Security Alerts API scan request.
- *
- * Chain-specific payloads (the transaction itself, its encoding, and the
- * metadata shape) are added by each chain's client on top of this base.
- */
-export type SecurityAlertsScanRequestBase = {
-  /**
-   * The scanned account's address, in the chain's native format. The snake
-   * case matches the Security Alerts API wire format.
-   */
-  account_address: string;
-  /** The Security Alerts API chain identifier (e.g. `mainnet`, `pubnet`). */
-  chain: string;
-  /** The requested scan options. */
-  options?: string[];
-};
 
 /**
  * The URL substituted for the MetaMask in-app origin in scan request
