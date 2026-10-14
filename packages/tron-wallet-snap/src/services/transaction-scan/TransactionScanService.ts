@@ -2,19 +2,35 @@ import type {
   AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
+  SecurityAlertsApiClient,
+  SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeScanOrigin,
+  SecurityAlertResponse,
+  SecurityAlertsScanStatus,
+} from '@metamask/snap-networks-utils';
+import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
-import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type {
   AssetChange,
   AssetDiff,
   SecurityAlertSimulationValidationResponse,
+  TronScanRequestBody,
 } from '../../clients/security-alerts-api/structs';
+import {
+  SecurityAlertResponseStruct,
+  SecurityAlertRequestStruct,
+} from '../../clients/security-alerts-api/structs';
+import {
+  extractScanParametersFromTransactionData,
+  isContractTypeSupported,
+} from '../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
-import { METAMASK_ORIGIN } from '../../constants';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -22,12 +38,10 @@ import type {
   TransactionScanResult,
   TransactionScanValidation,
 } from './types';
-import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
-
-const METAMASK_ORIGIN_URL = 'https://metamask.io';
+import { SimulationStatus } from './types';
 
 export class TransactionScanService {
-  readonly #securityAlertsApiClient: SecurityAlertsApiClient;
+  readonly #securityAlertsHttpClient: SecurityAlertsApiClient;
 
   readonly #snapClient: SnapClient;
 
@@ -36,12 +50,12 @@ export class TransactionScanService {
   readonly #analyticsService: AnalyticsService;
 
   constructor(
-    securityAlertsApiClient: SecurityAlertsApiClient,
+    securityAlertsHttpClient: SecurityAlertsApiClient,
     snapClient: SnapClient,
     logger: Logger,
     analyticsService: AnalyticsService,
   ) {
-    this.#securityAlertsApiClient = securityAlertsApiClient;
+    this.#securityAlertsHttpClient = securityAlertsHttpClient;
     this.#snapClient = snapClient;
     this.#logger = logger;
     this.#analyticsService = analyticsService;
@@ -71,7 +85,7 @@ export class TransactionScanService {
     transactionRawData: TronwebTypes.Transaction['raw_data'];
     origin: string;
     scope: Network;
-    options?: string[] | undefined;
+    options?: SecurityAlertsScanOption[] | undefined;
     account?: ExtendedKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     if (!isTransactionWellFormed(transactionRawData)) {
@@ -92,7 +106,7 @@ export class TransactionScanService {
       };
     }
 
-    if (!SecurityAlertsApiClient.isContractTypeSupported(transactionRawData)) {
+    if (!isContractTypeSupported(transactionRawData)) {
       this.#logger.info(
         'Transaction contract type is not supported for simulation, skipping scan',
       );
@@ -107,42 +121,42 @@ export class TransactionScanService {
     }
 
     try {
-      const result = await this.#securityAlertsApiClient.scanTransaction({
-        accountAddress,
-        transactionRawData,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
+      this.#logger.info('Scanning Tron transaction with Security Alerts API');
+
+      const scanParameters =
+        extractScanParametersFromTransactionData(transactionRawData);
+
+      if (!scanParameters) {
+        throw new Error('Could not extract scan parameters from transaction.');
+      }
+
+      const requestBody = {
+        account_address: accountAddress,
+        metadata:
+          origin === DEFAULT_METAMASK_ORIGIN
+            ? { non_dapp: true }
+            : { domain: normalizeScanOrigin(origin) },
+        data: scanParameters,
         options,
-      });
+      } satisfies TronScanRequestBody;
+
+      assert(requestBody, SecurityAlertRequestStruct, 'Tron scan request body');
+
+      const result =
+        await this.#securityAlertsHttpClient.scanTransaction(requestBody);
+
+      assert(result, SecurityAlertResponseStruct, 'Tron scan response body');
 
       const scan = this.#mapScan(result);
 
-      if (!scan?.status) {
-        this.#logger.warn(
-          'Invalid scan result received from security alerts API',
-        );
-
-        // Track error if account is provided
-        if (account) {
-          await this.#analyticsService.trackSecurityScanCompleted({
-            origin,
-            accountType: account.type,
-            chainIdCaip: scope,
-            scanStatus: ScanStatus.ERROR,
-            hasSecurityAlerts: false,
-          });
-        }
-
-        return null;
-      }
-
       // Track security scan completion
       if (account) {
-        const isValidScanStatus = Object.values(ScanStatus).includes(
-          scan.status as ScanStatus,
-        );
+        const isValidScanStatus = Object.values(
+          SecurityAlertsScanStatus,
+        ).includes(scan.status as SecurityAlertsScanStatus);
         const scanStatus = isValidScanStatus
-          ? (scan.status as ScanStatus)
-          : ScanStatus.ERROR;
+          ? (scan.status as SecurityAlertsScanStatus)
+          : SecurityAlertsScanStatus.ERROR;
 
         const hasSecurityAlert = Boolean(
           scan.validation?.type &&
@@ -191,7 +205,7 @@ export class TransactionScanService {
           origin,
           accountType: account.type,
           chainIdCaip: scope,
-          scanStatus: ScanStatus.ERROR,
+          scanStatus: SecurityAlertsScanStatus.ERROR,
           hasSecurityAlerts: false,
         });
       }
@@ -237,11 +251,7 @@ export class TransactionScanService {
    */
   #mapScan(
     result: SecurityAlertSimulationValidationResponse,
-  ): TransactionScanResult | null {
-    if (!result) {
-      return null;
-    }
-
+  ): TransactionScanResult {
     const status = this.#resolveStatus(result);
 
     return {
