@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user
+  - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers
+  - Shows "Can't confirm" instead of "Free" when the user signs instructions of programs the Snap cannot decode, and names those programs
+  - Recognizes CoW Protocol `CreateOrder` instructions, which only cost the account that funds the order account
+
 ## [7.1.0]
 
 ### Added

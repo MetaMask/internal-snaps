@@ -289,8 +289,10 @@ const snapContext: SnapExecutionContext = {
 };
 
 export {
+  accountsService,
   accountsSynchronizer,
   analyticsService,
+  assetsService,
   clientRequestHandler,
   connection,
   eventEmitter,
