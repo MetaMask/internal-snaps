@@ -116,10 +116,11 @@ export class AssetMetadataService {
   }
 
   /**
-   * Fetches all SEP-41 assets for the given scope, or synchronizes the assets if none are found.
+   * Returns persisted SEP-41 assets for the given scope, refreshing the token API
+   * catalog first when it is empty or the last sync has expired.
    *
-   * It is possible that the state is empty, due to the first sync.
-   * Hence, we synchronize the assets once.
+   * Used during account / transaction sync so newly listed SEP-41 tokens are
+   * picked up without waiting for the hourly `synchronizeAssets` cron.
    *
    * @param scope - The chain ID to look up.
    * @returns A Promise that resolves to all SEP-41 assets for the given scope.
@@ -127,13 +128,15 @@ export class AssetMetadataService {
   async fetchSep41AssetsOrSyncOnce(
     scope: KnownCaip2ChainId,
   ): Promise<StellarAssetMetadata[]> {
-    // Get all SEP-41 assets for the given scope.
     const allAssets = await this.getAllByScope(scope);
 
-    if (allAssets.length === 0) {
-      this.#logger.debug('No assets found in the state, synchronizing assets');
-      // It is possible that the state is empty, due to the first sync.
-      // Hence, we synchronize the assets once.
+    if (this.#isAssetCatalogStale(allAssets)) {
+      this.#logger.debug(
+        allAssets.length === 0
+          ? 'No assets found in the state, synchronizing assets'
+          : 'Asset catalog sync expired, re-synchronizing assets',
+        { scope, noOfAssets: allAssets.length },
+      );
       await this.synchronize(scope);
     }
 
@@ -144,6 +147,35 @@ export class AssetMetadataService {
     });
 
     return sep41Assets;
+  }
+
+  /**
+   * Whether the persisted token catalog should be refreshed from the token API.
+   *
+   * Uses the freshest `persistedAt` among scope assets (stamped by
+   * {@link AssetMetadataRepository.saveMany}) against
+   * `AppConfig.cache.ttlMilliseconds.assetMetadata`.
+   *
+   * @param assets - Persisted assets for the scope.
+   * @returns `true` when empty, missing timestamps, or past TTL.
+   */
+  #isAssetCatalogStale(assets: StellarAssetMetadata[]): boolean {
+    if (assets.length === 0) {
+      return true;
+    }
+
+    const lastSyncedAt = Math.max(
+      ...assets.map((asset) => asset.persistedAt ?? 0),
+    );
+
+    if (lastSyncedAt === 0) {
+      return true;
+    }
+
+    return (
+      Date.now() - lastSyncedAt >
+      AppConfig.cache.ttlMilliseconds.assetMetadata
+    );
   }
 
   /**

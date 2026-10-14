@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hot-reload the token API asset catalog during account sync when the last catalog sync has expired, so newly listed SEP-41 tokens appear without waiting for the hourly `synchronizeAssets` cron
 - Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
 - Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 

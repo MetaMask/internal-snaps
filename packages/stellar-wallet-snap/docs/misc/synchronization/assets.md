@@ -32,7 +32,7 @@ Wire format: [SIP-29 Snap Assets API](https://metamask.github.io/SIPs/SIPS/sip-2
 4. Persist catalog via `AssetMetadataRepository.saveMany`.
 5. Failures are logged / tracked; the cron does not fail the whole Snap lifecycle.
 
-During account / transaction sync, `SynchronizeService` also preloads SEP-41 metadata via `fetchSep41AssetsOrSyncOnce` so transaction mapping and balance reads have catalog data without waiting for the assets cron.
+During account / transaction sync, `SynchronizeService` also preloads SEP-41 metadata via `fetchSep41AssetsOrSyncOnce`. That path refreshes the token API catalog when state is empty **or** the last sync (`persistedAt`) is older than `cache.ttlMilliseconds.assetMetadata` (default 1 hour), so newly listed SEP-41 tokens are picked up without waiting for the hourly assets cron.
 
 ## Sequence
 
