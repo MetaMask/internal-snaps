@@ -384,7 +384,10 @@ describe('AssetMetadataService', () => {
     });
 
     it('re-synchronizes when persisted assets lack persistedAt', async () => {
-      const legacyRow = createCachedRow(sep41AssetId, KnownCaip2ChainId.Mainnet);
+      const legacyRow = createCachedRow(
+        sep41AssetId,
+        KnownCaip2ChainId.Mainnet,
+      );
       const getAllByScope = jest.fn().mockResolvedValue([legacyRow]);
       const getByAssetType = jest.fn().mockResolvedValue([legacyRow]);
       const { service, saveMany } = createService({

@@ -173,8 +173,7 @@ export class AssetMetadataService {
     }
 
     return (
-      Date.now() - lastSyncedAt >
-      AppConfig.cache.ttlMilliseconds.assetMetadata
+      Date.now() - lastSyncedAt > AppConfig.cache.ttlMilliseconds.assetMetadata
     );
   }
 
