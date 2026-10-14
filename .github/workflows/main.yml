@@ -97,6 +97,22 @@ jobs:
       STELLAR_RPC_URL_TESTNET: ${{ secrets.STELLAR_RPC_URL_TESTNET }}
       STELLAR_HORIZON_URL_TESTNET: ${{ secrets.STELLAR_HORIZON_URL_TESTNET }}
 
+  audit:
+    name: Audit
+    needs: check-workflows
+    # Two-step rollout: this job is intentionally NOT in all-jobs-complete
+    # yet. The first push to main after merging creates the audit-baseline
+    # artifact and a tracking issue for pre-existing advisories. Once that
+    # baseline exists, add this job to all-jobs-complete.needs below so that
+    # new moderate+ advisories block merges.
+    permissions:
+      contents: read
+      issues: write
+      actions: write
+    uses: ./.github/workflows/audit.yml
+    secrets:
+      SLACK_WEBHOOK_INTERNAL_SNAPS: ${{ secrets.SLACK_WEBHOOK_INTERNAL_SNAPS }}
+
   sonarcloud:
     name: SonarCloud
     needs: lint-build-test
