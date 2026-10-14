@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore(deps): bump `concurrently`, `oxfmt`, `ts-jest`, `proxy-addr` ([#445](https://github.com/MetaMask/internal-snaps/pull/445))
+
 ## [2.0.0]
 
 ### Added
