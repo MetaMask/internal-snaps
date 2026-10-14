@@ -284,6 +284,14 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         transactionId,
       };
     } catch (error: unknown) {
+      // User rejection must propagate so MetaMask can dismiss the send flow.
+      if (error instanceof UserRejectedRequestError) {
+        throw error;
+      }
+
+      // Unexpected errors are swallowed into `{ valid: false }`, so track them for debugging.
+      await trackError(error);
+
       // Expected validation failures are user-facing outcomes; return them without tracking.
       if (error instanceof InsufficientBalanceException) {
         return {
@@ -305,14 +313,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           errors: [{ code: MultiChainSendErrorCodes.Invalid }],
         };
       }
-
-      // User rejection must propagate so MetaMask can dismiss the send flow.
-      if (error instanceof UserRejectedRequestError) {
-        throw error;
-      }
-
-      // Unexpected errors are swallowed into `{ valid: false }`, so track them for debugging.
-      await trackError(error);
 
       this.#logger.warn(
         'Failed to confirm send transaction due to unexpected issue',

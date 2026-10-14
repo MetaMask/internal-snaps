@@ -83,7 +83,7 @@ export const BASE_FEE = 100;
  * post-confirm rebuild; a small buffer avoids dropping otherwise-valid txs.
  * Baseline is the draft built when the dialog opened (not later UI refreshes).
  */
-export const CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO = 1.2;
+export const CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO = 2.0;
 
 /**
  * The maximum int64 balance for the Stellar network.
