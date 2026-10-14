@@ -9,35 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0]
 
-### Uncategorized
-
-- chore(deps): bump `concurrently`, `oxfmt`, `ts-jest`, `proxy-addr` ([#445](https://github.com/MetaMask/internal-snaps/pull/445))
-- Release/15.0.0 ([#443](https://github.com/MetaMask/internal-snaps/pull/443))
-- feat(stellar): add `AssetsService` to connect with `AssetController` ([#425](https://github.com/MetaMask/internal-snaps/pull/425))
-- chore:(stellar): add `USDT0`, `deJAAA` and `deJTRSY` into unified-pubnet.json ([#430](https://github.com/MetaMask/internal-snaps/pull/430))
-- feat(stellar): use the shared TransactionAlert UI component ([#412](https://github.com/MetaMask/internal-snaps/pull/412))
-- chore(deps-dev): bump @metamask/auto-changelog from 6.1.1 to 6.2.1 ([#363](https://github.com/MetaMask/internal-snaps/pull/363))
-- chore(stellar: add `bindSep41Balances` option from `resolveOnChainAccount` ([#413](https://github.com/MetaMask/internal-snaps/pull/413))
-- chore(stellar): add `getAccountLedgerMetadata` in `networkService` ([#411](https://github.com/MetaMask/internal-snaps/pull/411))
-
-### Added
-
-- Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
-- Emit `transaction_status` on the `Transaction Finalized` event. ([#416](https://github.com/MetaMask/internal-snaps/pull/416))
-
 ### Changed
 
 - Bump `@stellar/stellar-sdk` from `^17.0.1` to `^17.2.1` ([#435](https://github.com/MetaMask/internal-snaps/pull/435))
-- Render confirmation asset rows and icons with the shared `Asset` and `AssetIcon` components from `@metamask/snap-networks-utils` ([#428](https://github.com/MetaMask/internal-snaps/pull/428))
-- Render the confirmation, account activation, memo edit and malicious acknowledgement titles with the shared `ActionHeader` component from `@metamask/snap-networks-utils` ([#437](https://github.com/MetaMask/internal-snaps/pull/437))
-  - Spacing around the title is now the same on every screen, so the account activation, trustline, memo edit and malicious acknowledgement screens change slightly
-- Use the shared `resolveUnifiedSwapTransactionType` utility for unified swap and bridge transaction classification ([#441](https://github.com/MetaMask/internal-snaps/pull/441))
 
 ### Fixed
 
 - Hot-reload the token API asset catalog during account sync when the last catalog sync has expired, so newly listed SEP-41 tokens appear without waiting for the hourly `synchronizeAssets` cron ([#448](https://github.com/MetaMask/internal-snaps/pull/448))
 - Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
-- Allow up to a 20% network-fee increase after confirmation (vs open-time draft) and show the latest fee estimate while the dialog is open ([#447](https://github.com/MetaMask/internal-snaps/pull/447))
+- Allow up to a 100% network-fee increase after confirmation and show the latest fee estimate on the confirmation dialog ([#447](https://github.com/MetaMask/internal-snaps/pull/447))
 - Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 
 ## [1.1.1]
