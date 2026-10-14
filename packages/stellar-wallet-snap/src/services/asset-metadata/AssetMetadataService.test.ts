@@ -69,6 +69,7 @@ function createService(deps: {
     getAll: jest.fn().mockResolvedValue([]),
     getAllByScope: jest.fn().mockResolvedValue([]),
     getByAssetId: jest.fn().mockResolvedValue(null),
+    isStale: jest.fn().mockResolvedValue(false),
   };
 
   const repo = {
@@ -284,15 +285,18 @@ describe('AssetMetadataService', () => {
     expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
       KnownCaip2ChainId.Mainnet,
     );
-    expect(saveMany).toHaveBeenCalledWith([
-      expect.objectContaining({
-        assetId: sep41AssetId,
-        name: 'Token A',
-        symbol: 'TA',
-        assetType: AssetType.Sep41,
-        chainId: KnownCaip2ChainId.Mainnet,
-      }),
-    ]);
+    expect(saveMany).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          assetId: sep41AssetId,
+          name: 'Token A',
+          symbol: 'TA',
+          assetType: AssetType.Sep41,
+          chainId: KnownCaip2ChainId.Mainnet,
+        }),
+      ],
+      true,
+    );
   });
 
   describe('fetchSep41AssetsOrSyncOnce', () => {
@@ -305,59 +309,12 @@ describe('AssetMetadataService', () => {
       persistedAt: Date.now(),
     });
 
-    it('synchronizes when the catalog is empty', async () => {
+    it('synchronizes when the catalog is stale', async () => {
       const sepRows = [freshCatalogRow()];
-      const getAllByScope = jest.fn().mockResolvedValue([]);
+      const isStale = jest.fn().mockResolvedValue(true);
       const getByAssetType = jest.fn().mockResolvedValue(sepRows);
       const { service, saveMany } = createService({
-        repo: { getAllByScope, getByAssetType },
-      });
-      mockGetAssetsByChainId.mockResolvedValueOnce({
-        data: [],
-        count: 0,
-        totalCount: 0,
-      });
-
-      const result = await service.fetchSep41AssetsOrSyncOnce(
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
-        KnownCaip2ChainId.Mainnet,
-      );
-      expect(saveMany).toHaveBeenCalled();
-      expect(result).toBe(sepRows);
-    });
-
-    it('returns persisted SEP-41 assets without syncing when the catalog is fresh', async () => {
-      const catalog = [freshCatalogRow()];
-      const getAllByScope = jest.fn().mockResolvedValue(catalog);
-      const getByAssetType = jest.fn().mockResolvedValue(catalog);
-      const { service, saveMany } = createService({
-        repo: { getAllByScope, getByAssetType },
-      });
-
-      const result = await service.fetchSep41AssetsOrSyncOnce(
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
-      expect(saveMany).not.toHaveBeenCalled();
-      expect(result).toBe(catalog);
-    });
-
-    it('re-synchronizes when the last catalog sync has expired', async () => {
-      const staleRow: StellarAssetMetadata = {
-        ...createCachedRow(sep41AssetId, KnownCaip2ChainId.Mainnet),
-        assetType: AssetType.Sep41,
-        // Older than the 1-hour assetMetadata TTL
-        persistedAt: Date.now() - (60 * 60 * 1000 + 60 * 1000),
-      };
-      const refreshed = [freshCatalogRow()];
-      const getAllByScope = jest.fn().mockResolvedValue([staleRow]);
-      const getByAssetType = jest.fn().mockResolvedValue(refreshed);
-      const { service, saveMany } = createService({
-        repo: { getAllByScope, getByAssetType },
+        repo: { isStale, getByAssetType },
       });
       mockGetAssetsByChainId.mockResolvedValueOnce({
         data: [
@@ -376,35 +333,33 @@ describe('AssetMetadataService', () => {
         KnownCaip2ChainId.Mainnet,
       );
 
+      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
       expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
         KnownCaip2ChainId.Mainnet,
       );
-      expect(saveMany).toHaveBeenCalled();
-      expect(result).toBe(refreshed);
+      expect(saveMany).toHaveBeenCalledWith(
+        [expect.objectContaining({ assetId: sep41AssetId })],
+        true,
+      );
+      expect(result).toBe(sepRows);
     });
 
-    it('re-synchronizes when persisted assets lack persistedAt', async () => {
-      const legacyRow = createCachedRow(
-        sep41AssetId,
-        KnownCaip2ChainId.Mainnet,
-      );
-      const getAllByScope = jest.fn().mockResolvedValue([legacyRow]);
-      const getByAssetType = jest.fn().mockResolvedValue([legacyRow]);
+    it('returns persisted SEP-41 assets without syncing when the catalog is fresh', async () => {
+      const catalog = [freshCatalogRow()];
+      const isStale = jest.fn().mockResolvedValue(false);
+      const getByAssetType = jest.fn().mockResolvedValue(catalog);
       const { service, saveMany } = createService({
-        repo: { getAllByScope, getByAssetType },
-      });
-      mockGetAssetsByChainId.mockResolvedValueOnce({
-        data: [],
-        count: 0,
-        totalCount: 0,
+        repo: { isStale, getByAssetType },
       });
 
-      await service.fetchSep41AssetsOrSyncOnce(KnownCaip2ChainId.Mainnet);
-
-      expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
+      const result = await service.fetchSep41AssetsOrSyncOnce(
         KnownCaip2ChainId.Mainnet,
       );
-      expect(saveMany).toHaveBeenCalled();
+
+      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
+      expect(saveMany).not.toHaveBeenCalled();
+      expect(result).toBe(catalog);
     });
   });
 });

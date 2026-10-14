@@ -117,7 +117,8 @@ export class AssetMetadataService {
 
   /**
    * Returns persisted SEP-41 assets for the given scope, refreshing the token API
-   * catalog first when it is empty or the last sync has expired.
+   * catalog first when {@link AssetMetadataRepository.isStale} reports the last
+   * full catalog sync has expired (or never completed).
    *
    * Used during account / transaction sync so newly listed SEP-41 tokens are
    * picked up without waiting for the hourly `synchronizeAssets` cron.
@@ -128,15 +129,14 @@ export class AssetMetadataService {
   async fetchSep41AssetsOrSyncOnce(
     scope: KnownCaip2ChainId,
   ): Promise<StellarAssetMetadata[]> {
-    const allAssets = await this.getAllByScope(scope);
-
-    if (this.#isAssetCatalogStale(allAssets)) {
-      this.#logger.debug(
-        allAssets.length === 0
-          ? 'No assets found in the state, synchronizing assets'
-          : 'Asset catalog sync expired, re-synchronizing assets',
-        { scope, noOfAssets: allAssets.length },
-      );
+    if (
+      await this.#assetMetadataRepository.isStale(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      )
+    ) {
+      this.#logger.debug('Asset catalog is stale, synchronizing assets', {
+        scope,
+      });
       await this.synchronize(scope);
     }
 
@@ -150,41 +150,16 @@ export class AssetMetadataService {
   }
 
   /**
-   * Whether the persisted token catalog should be refreshed from the token API.
-   *
-   * Uses the freshest `persistedAt` among scope assets (stamped by
-   * {@link AssetMetadataRepository.saveMany}) against
-   * `AppConfig.cache.ttlMilliseconds.assetMetadata`.
-   *
-   * @param assets - Persisted assets for the scope.
-   * @returns `true` when empty, missing timestamps, or past TTL.
-   */
-  #isAssetCatalogStale(assets: StellarAssetMetadata[]): boolean {
-    if (assets.length === 0) {
-      return true;
-    }
-
-    const lastSyncedAt = Math.max(
-      ...assets.map((asset) => asset.persistedAt ?? 0),
-    );
-
-    if (lastSyncedAt === 0) {
-      return true;
-    }
-
-    return (
-      Date.now() - lastSyncedAt > AppConfig.cache.ttlMilliseconds.assetMetadata
-    );
-  }
-
-  /**
    * Fetches and persists all Assets for the given chain ID from the token API.
+   *
+   * Persists via `saveMany(..., true)` so `assetMetadataLastSyncedAt` advances
+   * only for a successful non-empty full catalog write.
    *
    * @param scope - The chain ID to fetch and persist assets for.
    */
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
     const tokensMetadata = await this.#getAssetsByChainId(scope);
-    await this.#assetMetadataRepository.saveMany(tokensMetadata);
+    await this.#assetMetadataRepository.saveMany(tokensMetadata, true);
   }
 
   async #fetchAndPersistAssetsByAssetIds(

@@ -29,4 +29,5 @@ export type AssetMetadataByAssetId = Partial<
 
 export type AssetMetadataState = {
   assets: AssetMetadataByAssetId;
+  assetMetadataLastSyncedAt?: number;
 };
