@@ -648,7 +648,7 @@ export class NetworkService {
    * @param params.pollTransaction - If true, poll until terminal status and return the hash only on SUCCESS.
    * @returns The transaction hash from submission, or after successful polling when `pollTransaction` is true.
    * @throws {TransactionRetryableException} When RPC indicates bad sequence (`txBadSeq`); caller may refresh sequence and retry.
-   * @throws {TransactionSendException} When submission fails for other RPC error reasons.
+   * @throws {TransactionSendException} When submission fails (`TRY_AGAIN_LATER`, other RPC error reasons).
    * @throws {TransactionPollException} When `pollTransaction` is true and the transaction does not end in SUCCESS.
    */
   async send({
@@ -665,6 +665,11 @@ export class NetworkService {
       const executedTransaction = await client.sendTransaction(
         transaction.getRaw(),
       );
+
+      if (executedTransaction.status === 'TRY_AGAIN_LATER') {
+        // Not queued — do not return the hash as a successful submit.
+        throw new TransactionSendException(scope, executedTransaction.status);
+      }
 
       if (executedTransaction.status === 'ERROR') {
         const errorCode = this.#getSendRpcErrorCodeSafe(executedTransaction);
