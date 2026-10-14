@@ -12,8 +12,6 @@
     "declarationMap": true,
     "emitDeclarationOnly": true,
     "inlineSources": true,
-    "module": "preserve",
-    "moduleResolution": "bundler",
     "noEmit": false,
     "sourceMap": true
   },

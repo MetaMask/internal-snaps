@@ -3,8 +3,6 @@
   "compilerOptions": {
     "baseUrl": "./",
     "jsx": "react-jsx",
-    "jsxImportSource": "@metamask/snaps-sdk",
-    "module": "preserve",
-    "moduleResolution": "bundler"
+    "jsxImportSource": "@metamask/snaps-sdk"
   }
 }
