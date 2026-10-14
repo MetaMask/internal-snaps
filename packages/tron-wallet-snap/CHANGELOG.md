@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Align the Tron security-scan request and response handling with the Blockaid API documentation
+
 ## [4.1.0]
 
 ### Added

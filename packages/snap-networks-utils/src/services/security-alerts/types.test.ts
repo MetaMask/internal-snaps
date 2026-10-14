@@ -1,8 +1,8 @@
 import {
   METAMASK_ORIGIN_URL,
   normalizeScanOrigin,
+  SECURITY_ALERTS_SCAN_OPTIONS,
   SecurityAlertResponse,
-  SecurityAlertsScanOption,
   SecurityAlertsScanStatus,
 } from './types';
 
@@ -20,10 +20,10 @@ describe('normalizeScanOrigin', () => {
 
 describe('shared scan vocabulary', () => {
   it('exposes the Security Alerts API scan options', () => {
-    expect(SecurityAlertsScanOption).toStrictEqual({
-      Simulation: 'simulation',
-      Validation: 'validation',
-    });
+    expect(SECURITY_ALERTS_SCAN_OPTIONS).toStrictEqual([
+      'simulation',
+      'validation',
+    ]);
   });
 
   it('exposes the scan statuses', () => {

@@ -1,16 +1,10 @@
-import { string, type } from '@metamask/superstruct';
-import type { Infer } from '@metamask/superstruct';
-
+import { HttpError } from '../../utils/errors';
 import {
   SecurityAlertsApiClient,
-  SecurityAlertsHttpError,
   SECURITY_ALERTS_REQUEST_HEADERS,
 } from './SecurityAlertsApiClient';
 
 const SCAN_URL = 'https://security-alerts.example/tron/transaction/scan';
-
-const FakeResponseStruct = type({ verdict: string() });
-type FakeResponse = Infer<typeof FakeResponseStruct>;
 
 describe('SecurityAlertsApiClient', () => {
   const fetchMock = jest.fn() as jest.MockedFunction<typeof globalThis.fetch>;
@@ -19,13 +13,19 @@ describe('SecurityAlertsApiClient', () => {
     ({
       ok: true,
       status: 200,
+      statusText: '',
       json: jest.fn().mockResolvedValue({ verdict: 'Benign' }),
-      text: jest.fn().mockResolvedValue('response body'),
       ...overrides,
     }) as unknown as Response;
 
   const createClient = (): SecurityAlertsApiClient =>
     new SecurityAlertsApiClient({ scanUrl: SCAN_URL, fetch: fetchMock });
+
+  const scan = (): Promise<unknown> =>
+    createClient().scanTransaction({
+      transaction: 'fake-transaction',
+      options: ['validation'],
+    });
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -39,12 +39,8 @@ describe('SecurityAlertsApiClient', () => {
 
   it('posts the body to the scan URL with the shared headers', async () => {
     fetchMock.mockResolvedValue(responseWith());
-    const client = createClient();
 
-    await client.scanTransaction(
-      { transaction: 'fake-transaction', options: ['validation'] },
-      FakeResponseStruct,
-    );
+    await scan();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(SCAN_URL, {
@@ -63,100 +59,82 @@ describe('SecurityAlertsApiClient', () => {
     const globalFetchSpy = jest
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(responseWith());
-    const client = new SecurityAlertsApiClient({ scanUrl: SCAN_URL });
-
-    await client.scanTransaction(
-      { transaction: 'fake-transaction', options: ['validation'] },
-      FakeResponseStruct,
-    );
+    await new SecurityAlertsApiClient({ scanUrl: SCAN_URL }).scanTransaction({
+      transaction: 'fake-transaction',
+      options: ['validation'],
+    });
 
     expect(globalFetchSpy).toHaveBeenCalledTimes(1);
+
+    globalFetchSpy.mockRestore();
   });
 
-  it('returns the response validated by the response struct', async () => {
+  it('returns the parsed response body', async () => {
     fetchMock.mockResolvedValue(responseWith());
-    const client = createClient();
 
-    // Annotating proves `ResponseT` is inferred from the struct.
-    const result: FakeResponse = await client.scanTransaction(
-      { transaction: 'fake-transaction', options: ['validation'] },
-      FakeResponseStruct,
-    );
+    const result = await scan();
 
     expect(result).toStrictEqual({ verdict: 'Benign' });
   });
 
-  it('throws when the response does not match the response struct', async () => {
-    fetchMock.mockResolvedValue(responseWith({ json: jest.fn() }));
-    const client = createClient();
-
-    await expect(
-      client.scanTransaction(
-        { transaction: 'fake-transaction', options: ['validation'] },
-        FakeResponseStruct,
-      ),
-    ).rejects.toThrow('Expected an object, but received: undefined');
-  });
-
-  it('throws a SecurityAlertsHttpError carrying the status and response body on a non-2xx response', async () => {
+  it('throws an HttpError with the common status text on a non-2xx response', async () => {
     fetchMock.mockResolvedValue(
       responseWith({
         ok: false,
         status: 503,
-        text: jest.fn().mockResolvedValue('service unavailable'),
+        statusText: 'Service Unavailable',
       }),
     );
-    const client = createClient();
 
-    const error = await client
-      .scanTransaction(
-        { transaction: 'fake-transaction', options: ['validation'] },
-        FakeResponseStruct,
-      )
-      .catch((caught: unknown) => caught);
+    const error = await scan().catch((caught: unknown) => caught);
 
-    expect(error).toBeInstanceOf(SecurityAlertsHttpError);
+    expect(error).toBeInstanceOf(HttpError);
     expect(error).toMatchObject({
-      name: 'SecurityAlertsHttpError',
-      message: 'Security Alerts API error: 503 - service unavailable',
-      statusCode: 503,
-      responseBody: 'service unavailable',
+      name: 'HttpError',
+      message: 'HTTP error! status: 503',
     });
   });
 
-  it('carries a null response body when the error body cannot be read', async () => {
+  it('throws an HttpError with the original error as cause when the request fails', async () => {
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+
+    const error = await scan().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error).toMatchObject({
+      name: 'HttpError',
+      message: 'Security Alerts API error',
+    });
+    expect((error as Error).cause).toBeInstanceOf(TypeError);
+  });
+
+  it('throws an HttpError with the parse error as cause when the response body is not valid JSON', async () => {
     fetchMock.mockResolvedValue(
       responseWith({
-        ok: false,
-        status: 500,
-        text: jest.fn().mockRejectedValue(new Error('stream consumed')),
+        json: jest
+          .fn()
+          .mockRejectedValue(new SyntaxError('Unexpected end of JSON input')),
       }),
     );
-    const client = createClient();
 
-    const error = await client
-      .scanTransaction(
-        { transaction: 'fake-transaction', options: ['validation'] },
-        FakeResponseStruct,
-      )
-      .catch((caught: unknown) => caught);
+    const error = await scan().catch((caught: unknown) => caught);
 
-    expect(error).toBeInstanceOf(SecurityAlertsHttpError);
+    expect(error).toBeInstanceOf(HttpError);
     expect(error).toMatchObject({
-      name: 'SecurityAlertsHttpError',
-      message: 'Security Alerts API error: 500',
-      statusCode: 500,
-      responseBody: null,
+      name: 'HttpError',
+      message: 'Security Alerts API error',
     });
+    expect((error as Error).cause).toBeInstanceOf(SyntaxError);
   });
 });
 
-describe('SecurityAlertsHttpError', () => {
-  it('omits the body from the message when there is none', () => {
-    const error = new SecurityAlertsHttpError(429, null);
+describe('HttpError', () => {
+  it('carries an optional cause', () => {
+    const cause = new Error('original error');
+    const error = new HttpError('wrapped error', { cause });
 
-    expect(error.message).toBe('Security Alerts API error: 429');
-    expect(error.statusCode).toBe(429);
-    expect(error.responseBody).toBeNull();
+    expect(error.name).toBe('HttpError');
+    expect(error.message).toBe('wrapped error');
+    expect(error.cause).toBe(cause);
   });
 });

@@ -25,18 +25,17 @@ export type {
 } from './services/analytics/AnalyticsService';
 export {
   SecurityAlertsApiClient,
-  SecurityAlertsHttpError,
   SECURITY_ALERTS_REQUEST_HEADERS,
 } from './services/security-alerts/SecurityAlertsApiClient';
 export type { SecurityAlertsApiClientOptions } from './services/security-alerts/SecurityAlertsApiClient';
 export {
   METAMASK_ORIGIN_URL,
   normalizeScanOrigin,
+  SECURITY_ALERTS_SCAN_OPTIONS,
   SecurityAlertResponse,
-  SecurityAlertsScanOption,
   SecurityAlertsScanStatus,
 } from './services/security-alerts/types';
-export type { SecurityAlertsScanRequestBase } from './services/security-alerts/types';
+export type { SecurityAlertsScanOption } from './services/security-alerts/types';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export {
   resolveFlowTransactionType,
@@ -124,6 +123,7 @@ export {
   createWithCatchAndThrowSnapError,
   formatAccountSyncFailures,
   getSyncFailuresFromSettledResult,
+  HttpError,
   isSnapRpcError,
   normalizeError,
   stringifyReason,

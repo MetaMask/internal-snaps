@@ -1,6 +1,6 @@
 import { assert } from '@metamask/superstruct';
-import type { Struct } from '@metamask/superstruct';
 
+import { HttpError } from '../../utils/errors';
 import { UrlStruct } from '../../utils/urlStruct/urlStruct';
 
 /**
@@ -10,33 +10,6 @@ export const SECURITY_ALERTS_REQUEST_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
   accept: 'application/json',
 };
-
-/**
- * Error thrown when the Security Alerts API responds with a non-2xx status.
- */
-export class SecurityAlertsHttpError extends Error {
-  readonly statusCode: number;
-
-  readonly responseBody: string | null;
-
-  /**
-   * Creates a new SecurityAlertsHttpError.
-   *
-   * @param statusCode - The HTTP status code of the response.
-   * @param responseBody - The raw response body, when it could be read.
-   */
-  constructor(statusCode: number, responseBody: string | null) {
-    super(
-      `Security Alerts API error: ${statusCode}${
-        responseBody ? ` - ${responseBody}` : ''
-      }`,
-    );
-
-    this.name = 'SecurityAlertsHttpError';
-    this.statusCode = statusCode;
-    this.responseBody = responseBody;
-  }
-}
 
 /**
  * Options for a `SecurityAlertsApiClient` constructor.
@@ -54,13 +27,13 @@ export type SecurityAlertsApiClientOptions = {
  * HTTP client for a Security Alerts API scan endpoint.
  *
  * Owns the request envelope shared by every chain — POSTing the JSON body,
- * reporting non-2xx responses as {@link SecurityAlertsHttpError}, and parsing
- * the JSON response — and nothing else.
+ * wrapping request failures, non-2xx responses, and malformed JSON bodies as
+ * {@link HttpError}, and parsing the JSON response — and nothing
+ * else.
  *
- * The request body and response payload are chain-specific Blockaid
- * contracts: the caller supplies a typed body (e.g. checked with `satisfies`
- * against a per-snap body type) and a Superstruct struct for the response,
- * so both are type-checked and validated at the call site.
+ * The request body is a chain-specific Blockaid contract: the caller
+ * supplies a typed body (e.g. checked with `satisfies` against a per-snap
+ * body type) and is responsible for validating the parsed response payload.
  */
 export class SecurityAlertsApiClient {
   readonly #fetch: typeof globalThis.fetch;
@@ -90,35 +63,31 @@ export class SecurityAlertsApiClient {
    * Scans a transaction by posting the request body to the scan endpoint.
    *
    * @param body - The chain-specific scan request body.
-   * @param responseStruct - Superstruct struct validating the
-   * chain-specific response payload.
-   * @returns The validated scan response.
-   * @throws SecurityAlertsHttpError if the API responds with a non-2xx status.
+   * @returns The parsed scan response.
+   * @throws HttpError if the request fails, the API responds
+   * with a non-2xx status, or the response body cannot be parsed as JSON.
    */
-  async scanTransaction<BodyT extends Record<string, unknown>, ResponseT>(
-    body: BodyT,
-    responseStruct: Struct<ResponseT>,
-  ): Promise<ResponseT> {
-    const response = await this.#fetch(this.#scanUrl, {
-      headers: { ...SECURITY_ALERTS_REQUEST_HEADERS },
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
+  async scanTransaction(body: unknown): Promise<unknown> {
+    try {
+      const response = await this.#fetch(this.#scanUrl, {
+        headers: { ...SECURITY_ALERTS_REQUEST_HEADERS },
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
 
-    if (!response.ok) {
-      let responseBody: string | null = null;
-      try {
-        responseBody = await response.text();
-      } catch {
-        responseBody = null;
+      if (!response.ok) {
+        throw new HttpError(`HTTP error! status: ${response.status}`);
       }
 
-      throw new SecurityAlertsHttpError(response.status, responseBody);
+      return await response.json();
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw error;
+      }
+
+      throw new HttpError('Security Alerts API error', {
+        cause: error,
+      });
     }
-
-    const data = await response.json();
-    assert(data, responseStruct);
-
-    return data;
   }
 }
