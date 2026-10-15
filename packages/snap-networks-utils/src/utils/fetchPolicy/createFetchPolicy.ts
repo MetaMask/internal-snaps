@@ -137,7 +137,10 @@ const withRetryAfter = (inner: Backoff): Backoff => ({
     const error = errorOf((context as { result: unknown }).result) as
       | FetchPolicyError
       | undefined;
-    const retryAfterMs = error?.retryAfterMs ?? 0;
+    const retryAfterMs =
+  Number.isFinite(error?.retryAfterMs) && error.retryAfterMs >= 0
+    ? error.retryAfterMs
+    : 0;
     return {
       ...withRetryAfter(step),
       duration: Math.max(step.duration, retryAfterMs),
