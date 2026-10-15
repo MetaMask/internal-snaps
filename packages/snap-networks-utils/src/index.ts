@@ -116,6 +116,18 @@ export {
   SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export {
+  BrokenCircuitError,
+  createFetchPolicy,
+  createFetchPolicyError,
+  FetchPolicyErrorName,
+  isTransientError,
+  MAX_RETRY_AFTER_MS,
+} from './utils/fetchPolicy/createFetchPolicy';
+export type {
+  CreateFetchPolicyOptions,
+  FetchPolicyError,
+} from './utils/fetchPolicy/createFetchPolicy';
 export { ActionHeader } from './ui/ActionHeader/ActionHeader';
 export type { ActionHeaderProps } from './ui/ActionHeader/ActionHeader';
 export { Asset, AssetIcon } from './ui/Asset/Asset';
