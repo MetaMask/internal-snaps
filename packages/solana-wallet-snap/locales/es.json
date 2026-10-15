@@ -200,13 +200,13 @@
       "message": "No se puede confirmar"
     },
     "confirmation.youPay.unverified.tooltip": {
-      "message": "El patrocinador paga la tarifa de red, pero esta transacción usa programas que MetaMask no puede revisar por completo, así que podrían cobrarte. Revisa los cambios estimados."
+      "message": "El patrocinador paga la tarifa de red, pero MetaMask no puede confirmar que esta transacción no te cobre. Revisa los cambios estimados."
     },
     "confirmation.youPay.mayCostMore.tooltip": {
-      "message": "Esta transacción también usa programas que MetaMask no puede revisar por completo, así que podrían cobrarte más de lo que se muestra."
+      "message": "MetaMask no puede confirmar que esta transacción no te cobre más de lo que se muestra."
     },
     "confirmation.youPay.uncheckedPrograms": {
-      "message": "Programas que no puede revisar: {programs}."
+      "message": "No pudo simular la transacción y no puede revisar estos programas: {programs}."
     },
     "confirmation.rent": {
       "message": "Renta de cuentas"

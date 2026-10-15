@@ -1,12 +1,22 @@
 import type { CaipAssetType } from '@metamask/utils';
 import { address } from '@solana/kit';
-import type { Rpc, SolanaRpcApi } from '@solana/kit';
+import type {
+  Base64EncodedWireTransaction,
+  Rpc,
+  SolanaRpcApi,
+} from '@solana/kit';
 
 import type { Network } from '../../../core/constants/solana';
+import {
+  fromTransactionToBase64String,
+  fromUnknownBase64StringToTransaction,
+} from '../../../core/sdk-extensions/codecs';
+import { trackError } from '../../../core/utils/errors';
 import { tokenAddressToCaip19 } from '../../../core/utils/tokenAddressToCaip19';
 import type {
   AccountSnapshot,
   FeePaymentChainReader,
+  SimulatedInstruction,
 } from './analyzeFeePayment';
 
 type TokenAccountInfo = {
@@ -62,6 +72,39 @@ export const createFeePaymentChainReader = (
 
   async getRentExemptMinimum(space): Promise<bigint> {
     return rpc.getMinimumBalanceForRentExemption(BigInt(space)).send();
+  },
+
+  async simulateInnerInstructions(
+    transaction,
+  ): Promise<readonly SimulatedInstruction[] | null> {
+    try {
+      // Accepts transaction messages too, with empty signatures.
+      const wireTransaction = fromTransactionToBase64String(
+        await fromUnknownBase64StringToTransaction(transaction),
+      ) as Base64EncodedWireTransaction;
+
+      const { value } = await rpc
+        .simulateTransaction(wireTransaction, {
+          encoding: 'base64',
+          innerInstructions: true,
+          // The user has not signed yet.
+          sigVerify: false,
+          replaceRecentBlockhash: true,
+        })
+        .send();
+
+      // A failing simulation stops early, so it can miss costs.
+      if (value.err || !value.innerInstructions) {
+        return null;
+      }
+
+      return value.innerInstructions.flatMap(
+        ({ instructions }) => instructions as readonly SimulatedInstruction[],
+      );
+    } catch (error) {
+      await trackError(error);
+      return null;
+    }
   },
 
   async getTokenSymbol(mint): Promise<string | null> {

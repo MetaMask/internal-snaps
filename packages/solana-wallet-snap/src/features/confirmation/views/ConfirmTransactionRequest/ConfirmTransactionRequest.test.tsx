@@ -261,7 +261,7 @@ describe('ConfirmTransactionRequest', () => {
       expect(serialized).toContain('Paid to sponsor');
       expect(serialized).toContain('"children":"0.000005 SOL"');
       expect(serialized).toContain('"children":"0.15 USDC"');
-      expect(serialized).not.toContain('may charge you more');
+      expect(serialized).not.toContain('charge you more than shown');
     });
 
     it('falls back to the mint address when the token symbol is unknown', () => {
@@ -293,7 +293,7 @@ describe('ConfirmTransactionRequest', () => {
       );
 
       expect(serialized).toContain('Not free');
-      expect(serialized).toContain('may charge you more');
+      expect(serialized).toContain('charge you more than shown');
     });
 
     it('does not claim the transaction is free when it cannot be verified', () => {
@@ -305,7 +305,9 @@ describe('ConfirmTransactionRequest', () => {
         }),
       );
 
-      expect(serialized).toContain("Programs it can't check: JUP6L...VTaV4.");
+      expect(serialized).toContain(
+        "can't check these programs: JUP6L...VTaV4.",
+      );
 
       expect(serialized).toContain('Sponsored by');
       expect(serialized).toContain("Can't confirm");

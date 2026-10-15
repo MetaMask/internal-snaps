@@ -218,13 +218,13 @@
       "message": "Can't confirm"
     },
     "confirmation.youPay.unverified.tooltip": {
-      "message": "The sponsor pays the network fee, but this transaction uses programs MetaMask can't fully check, so they may still charge you. Review the estimated changes."
+      "message": "The sponsor pays the network fee, but MetaMask can't confirm this transaction won't charge you. Review the estimated changes."
     },
     "confirmation.youPay.mayCostMore.tooltip": {
-      "message": "This transaction also uses programs MetaMask can't fully check, so they may charge you more than shown."
+      "message": "MetaMask can't confirm this transaction won't charge you more than shown."
     },
     "confirmation.youPay.uncheckedPrograms": {
-      "message": "Programs it can't check: {programs}."
+      "message": "It couldn't simulate the transaction, and can't check these programs: {programs}."
     },
     "confirmation.rent": {
       "message": "Account rent"

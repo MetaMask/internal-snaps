@@ -35,6 +35,7 @@ import type {
   AccountSnapshot,
   FeePayment,
   FeePaymentChainReader,
+  SimulatedInstruction,
 } from './analyzeFeePayment';
 import { analyzeFeePayment, getFeePayer } from './analyzeFeePayment';
 
@@ -55,7 +56,18 @@ const cowSettlementProgram = address(
   'Moook87DzJ25dELx3LXJ3dnu5a4ERVFwKo1PWWF4p7Y',
 );
 const orderAccount = address('B6acm3swJK9pJ7fe4i4GQgP7x5A3RndvsdV2bKhcA1i5');
-const COW_ORDER_RENT_LAMPORTS = 2_728_320n;
+
+// Inner instructions in the RPC `jsonParsed` format.
+const innerSystem = (type: string, info: object): SimulatedInstruction => ({
+  programId: '11111111111111111111111111111111',
+  program: 'system',
+  parsed: { type, info },
+});
+const innerToken = (type: string, info: object): SimulatedInstruction => ({
+  programId: TOKEN_PROGRAM_ADDRESS,
+  program: 'spl-token',
+  parsed: { type, info },
+});
 
 const userSigner = createNoopSigner(user);
 
@@ -88,19 +100,18 @@ const buildTransaction = (
 
 const buildReader = (
   accounts: Record<string, AccountSnapshot> = {},
+  innerInstructions: SimulatedInstruction[] | null = null,
 ): FeePaymentChainReader => ({
   getAccounts: jest.fn(async (addresses: string[]) =>
     Object.fromEntries(
       addresses.map((account) => [account, accounts[account] ?? null]),
     ),
   ),
-  getRentExemptMinimum: jest.fn(async (space: number) => {
-    if (space === 264) {
-      return COW_ORDER_RENT_LAMPORTS;
-    }
-    return space === 165 ? ATA_RENT_LAMPORTS : ATA_2022_RENT_LAMPORTS;
-  }),
+  getRentExemptMinimum: jest.fn(async (space: number) =>
+    space === 165 ? ATA_RENT_LAMPORTS : ATA_2022_RENT_LAMPORTS,
+  ),
   getTokenSymbol: jest.fn(async () => 'USDC'),
+  simulateInnerInstructions: jest.fn(async () => innerInstructions),
 });
 
 const analyze = async (
@@ -123,8 +134,9 @@ const transferSol = (destination: string, amount: bigint): Instruction =>
     amount,
   });
 
-// Mirrors `buildCreateOrderInstruction` in `@cowprotocol/sdk-trading-solana`.
-const cowCreateOrder = (createdBy: string, discriminator = 2): Instruction => ({
+// A program the Snap cannot parse: CoW Protocol `CreateOrder`, as built by
+// `buildCreateOrderInstruction` in `@cowprotocol/sdk-trading-solana`.
+const cowCreateOrder = (createdBy: string): Instruction => ({
   programAddress: cowSettlementProgram,
   accounts: [
     { address: user, role: AccountRole.READONLY_SIGNER },
@@ -135,7 +147,7 @@ const cowCreateOrder = (createdBy: string, discriminator = 2): Instruction => ({
       role: AccountRole.READONLY,
     },
   ],
-  data: new Uint8Array([discriminator, ...new Uint8Array(213)]),
+  data: new Uint8Array([2, ...new Uint8Array(213)]),
 });
 
 const transferUsdc = (destination: string, amount: bigint): Instruction =>
@@ -476,9 +488,30 @@ describe('analyzeFeePayment', () => {
     expect(reader.getRentExemptMinimum).not.toHaveBeenCalled();
   });
 
-  describe('CoW Protocol settlement program', () => {
-    it('reports a sponsored order as free when the sponsor funds the order account', async () => {
-      const result = await analyze(sponsor, [cowCreateOrder(sponsor)]);
+  describe('with a simulation', () => {
+    const simulate = async (
+      instructions: Instruction[],
+      innerInstructions: SimulatedInstruction[],
+      accounts: Record<string, AccountSnapshot> = {},
+    ): Promise<{ result: FeePayment; reader: FeePaymentChainReader }> => {
+      const reader = buildReader(accounts, innerInstructions);
+      const result = await analyze(sponsor, instructions, reader);
+      return { result, reader };
+    };
+
+    it('reports an order of another program as free when the sponsor funds it', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerSystem('createAccount', {
+            source: sponsor,
+            newAccount: orderAccount,
+            lamports: 2_728_320n,
+            space: 264n,
+            owner: cowSettlementProgram,
+          }),
+        ],
+      );
 
       expect(result).toStrictEqual({
         feePayer: sponsor,
@@ -490,23 +523,171 @@ describe('analyzeFeePayment', () => {
       });
     });
 
-    it('reports the order account rent when the user funds it', async () => {
-      const reader = buildReader();
+    it('reports rent another program makes the user pay', async () => {
+      const { result, reader } = await simulate(
+        [cowCreateOrder(user)],
+        [
+          innerSystem('createAccount', {
+            source: user,
+            newAccount: orderAccount,
+            lamports: 2_728_320n,
+            space: 264n,
+            owner: cowSettlementProgram,
+          }),
+        ],
+      );
 
-      const result = await analyze(sponsor, [cowCreateOrder(user)], reader);
-
-      expect(reader.getRentExemptMinimum).toHaveBeenCalledWith(264);
       expect(result.userCosts).toStrictEqual([
-        { type: 'rent', lamports: COW_ORDER_RENT_LAMPORTS.toString() },
+        { type: 'rent', lamports: '2728320' },
       ]);
       expect(result.mayCostMore).toBe(false);
+      expect(reader.getRentExemptMinimum).not.toHaveBeenCalled();
     });
 
-    it('treats other settlement instructions as unchecked', async () => {
-      const result = await analyze(sponsor, [cowCreateOrder(sponsor, 3)]);
+    it('counts associated token account rent once, from the simulation', async () => {
+      const { result, reader } = await simulate(
+        [
+          getCreateAssociatedTokenInstruction({
+            payer: userSigner,
+            ata: recipientUsdcAccount,
+            owner: recipient,
+            mint: usdcMint,
+          }),
+        ],
+        [
+          innerSystem('createAccount', {
+            source: user,
+            newAccount: recipientUsdcAccount,
+            lamports: 1_488_440n,
+            space: 165n,
+            owner: TOKEN_PROGRAM_ADDRESS,
+          }),
+        ],
+      );
+
+      expect(result.userCosts).toStrictEqual([
+        { type: 'rent', lamports: '1488440' },
+      ]);
+      expect(reader.getRentExemptMinimum).not.toHaveBeenCalled();
+    });
+
+    it('reports SOL another program sends from the user to the sponsor', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerSystem('transfer', {
+            source: user,
+            destination: sponsor,
+            lamports: 5000n,
+          }),
+        ],
+      );
+
+      expect(result.userCosts).toStrictEqual([
+        { type: 'solToSponsor', lamports: '5000' },
+      ]);
+    });
+
+    it('reports tokens another program sends to a new sponsor token account', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerToken('initializeAccount3', {
+            account: sponsorUsdcAccount,
+            mint: usdcMint,
+            owner: sponsor,
+          }),
+          innerToken('transferChecked', {
+            source: userUsdcAccount,
+            mint: usdcMint,
+            destination: sponsorUsdcAccount,
+            authority: user,
+            tokenAmount: { amount: '150000', decimals: 6 },
+          }),
+        ],
+      );
+
+      expect(result.userCosts).toStrictEqual([
+        {
+          type: 'tokenToSponsor',
+          mint: usdcMint,
+          amount: '150000',
+          decimals: 6,
+          symbol: 'USDC',
+        },
+      ]);
+    });
+
+    it('looks up the owner of existing token accounts receiving invoked transfers', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerToken('transfer', {
+            source: userUsdcAccount,
+            destination: sponsorUsdcAccount,
+            authority: user,
+            amount: '42',
+          }),
+        ],
+        {
+          [sponsorUsdcAccount]: {
+            tokenOwner: sponsor,
+            mint: usdcMint,
+            decimals: 6,
+          },
+        },
+      );
+
+      expect(result.userCosts).toStrictEqual([
+        {
+          type: 'tokenToSponsor',
+          mint: usdcMint,
+          amount: '42',
+          decimals: 6,
+          symbol: 'USDC',
+        },
+      ]);
+    });
+
+    it('marks invoked approvals to the sponsor as unverified', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerToken('approve', {
+            source: userUsdcAccount,
+            delegate: sponsor,
+            owner: user,
+            amount: '1000000',
+          }),
+        ],
+      );
+
+      expect(result.userCost).toBe('unverified');
+      expect(result.uncheckedPrograms).toStrictEqual([]);
+    });
+
+    it('ignores invoked instructions the RPC cannot parse', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [{ programId: unknownProgram, accounts: [user, sponsor], data: '1' }],
+      );
+
+      expect(result.userCost).toBe('free');
+    });
+
+    it('falls back to the instructions alone when the simulation fails', async () => {
+      const result = await analyze(sponsor, [cowCreateOrder(sponsor)]);
 
       expect(result.userCost).toBe('unverified');
       expect(result.uncheckedPrograms).toStrictEqual([cowSettlementProgram]);
+    });
+
+    it('does not simulate when the user pays the fee', async () => {
+      const reader = buildReader();
+
+      await analyze(user, [cowCreateOrder(user)], reader);
+
+      expect(reader.simulateInnerInstructions).not.toHaveBeenCalled();
     });
   });
 });
