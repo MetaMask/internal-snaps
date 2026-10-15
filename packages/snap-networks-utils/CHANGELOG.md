@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `createFetchPolicy`, a retry and circuit-breaker policy for calls to one upstream service, built on `createServicePolicy` from `@metamask/base-data-service`
+  - Retries only transient errors (network failures, timeouts and HTTP 408, 425, 429, 500, 502, 503 and 504), up to 3 times, with exponential backoff and jitter
+  - Waits for the error's `retryAfterMs` when it is longer than the backoff, and doesn't retry when it is over `MAX_RETRY_AFTER_MS` (30 seconds)
+  - Opens the circuit for 30 seconds on repeated transient errors or 5xx responses, but not on other 4xx, aborts or validation errors
+  - Logs retries, give-ups, `Retry-After` values over the cap and circuit breaks to the given `logger`
+- Add the `FetchPolicyError` type, `createFetchPolicyError`, `FetchPolicyErrorName` and `isTransientError` for converting errors to the shape `createFetchPolicy` decides on
+- Re-export `BrokenCircuitError` from `@metamask/base-data-service`, the error `createFetchPolicy` policies throw while the circuit is open
+  - Its `name` is `Error`, so check for it with `instanceof`
+- Add a `@metamask/snap-networks-utils/performance-shim` export, which snaps must provide as the `performance` global (e.g. with webpack's `ProvidePlugin`) to use `createFetchPolicy`
+
 ### Removed
 
 - **BREAKING:** Remove the CommonJS build; the package is now published as ESM only ([#452](https://github.com/MetaMask/internal-snaps/pull/452))
