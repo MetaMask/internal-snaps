@@ -1043,6 +1043,68 @@ describe('CronHandler', () => {
       );
     });
 
+    it('carries a swap classification through to the finalized event', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
+          } as never);
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            transactionType: TransactionType.Swap,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: METAMASK_ORIGIN,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.Swap,
+          });
+        },
+      );
+    });
+
+    it('carries a bridgeSend classification through to the finalized event', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
+          } as never);
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            transactionType: TransactionType.BridgeSend,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: METAMASK_ORIGIN,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.BridgeSend,
+          });
+        },
+      );
+    });
+
     it('reports a failed status when the transaction reverted on-chain', async () => {
       await withTrackTransactionCronHandler(
         async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {

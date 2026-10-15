@@ -7,7 +7,11 @@ import {
   USDC_CLASSIC,
   USDC_SEP41,
 } from '../asset-metadata/__mocks__/assets.fixtures';
-import { parseCoreAsset, parseCoreAssetMetadata, CoreAssetStruct } from './api';
+import {
+  parseCoreStellarAsset,
+  parseCoreAssetMetadata,
+  CoreAssetStruct,
+} from './api';
 
 const NATIVE_ID = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
 
@@ -142,9 +146,9 @@ describe('CoreAssetStruct', () => {
   });
 });
 
-describe('parseCoreAsset', () => {
+describe('parseCoreStellarAsset', () => {
   it('returns the Stellar-shaped asset for a valid Core payload', () => {
-    expect(parseCoreAsset(classicAsset)).toMatchObject({
+    expect(parseCoreStellarAsset(classicAsset)).toMatchObject({
       id: USDC_CLASSIC,
       chainId: KnownCaip2ChainId.Mainnet,
       balance: {
@@ -156,7 +160,16 @@ describe('parseCoreAsset', () => {
   });
 
   it('returns null when the payload is not Stellar-shaped', () => {
-    expect(parseCoreAsset({ id: 'not-an-asset' })).toBeNull();
+    expect(parseCoreStellarAsset({ id: 'not-an-asset' })).toBeNull();
+  });
+
+  it('throws when a Stellar asset id has an invalid body', () => {
+    expect(() =>
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: { amount: '3' },
+      }),
+    ).toThrow('Failed to parse Core asset');
   });
 });
 

@@ -27,10 +27,7 @@ import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
-import type {
-  NativeCaipAssetType,
-  StakedCaipAssetType,
-} from '../../services/assets/types';
+import type { StakedCaipAssetType } from '../../services/assets/types';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
@@ -41,7 +38,7 @@ import type { TransactionsService } from '../../services/transactions/Transactio
 import { assertOrThrow } from '../../utils/assertOrThrow';
 import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
-import { mapRawTransactionType } from '../../utils/transactionType';
+import { resolveTransactionType } from '../../utils/transactionType';
 import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
@@ -343,7 +340,7 @@ export class ClientRequestHandler {
       transaction: transactionBase64,
       accountId,
       scope,
-      options: { type },
+      options: { type, sourceAssetId, destAssetId },
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
@@ -410,8 +407,17 @@ export class ClientRequestHandler {
      * unified send path and the background transaction tracker. The origin is
      * lowercased so it is recognized as MetaMask by the security alerts scan
      * and stays consistent with the other non-EVM snaps.
+     *
+     * The swap/bridge flow also passes the source and destination asset ids,
+     * which let the transaction be classified as a same-chain swap or a
+     * cross-chain bridge. Without them (unified send, dApp calls) the
+     * classification falls back to the contract type.
      */
-    const transactionType = mapRawTransactionType(rawData);
+    const transactionType = resolveTransactionType({
+      rawData,
+      sourceAssetId,
+      destAssetId,
+    });
 
     await this.#analyticsService.trackTransactionSubmitted({
       origin: METAMASK_ORIGIN,
@@ -606,10 +612,18 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      assetId,
-    );
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    /**
+     * Fetch the sent asset and the account resources fresh, so the
+     * validation and fee estimation below never act on stale balances.
+     */
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.fetchAccountAssetsByIDs(account, [
+        assetId,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     if (!asset) {
       return {
@@ -617,8 +631,6 @@ export class ClientRequestHandler {
         errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
-
-    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const amountBN = new BigNumber(amount);
 
@@ -645,27 +657,13 @@ export class ClientRequestHandler {
       };
     }
 
-    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
-      /**
-       * Get available Energy and Bandwidth from account assets.
-       */
-      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]),
-      /**
-       * Build the unsigned transaction.
-       * Fee estimation uses a constant overhead for the signature (134 bytes).
-       * Signing happens after user confirmation in sendTransaction().
-       */
-      this.#sendService.buildTransaction({
-        fromAccountId,
-        toAddress,
-        asset,
-        amount: amountBN,
-        feeLimit: FEE_LIMIT,
-      }),
-    ]);
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amountBN,
+      feeLimit: FEE_LIMIT,
+    });
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -974,8 +972,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
+    const asset = await this.#assetsService.fetchAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -996,7 +994,7 @@ export class ClientRequestHandler {
      */
     await this.#stakingService.stake({
       account,
-      assetId: assetId as NativeCaipAssetType,
+      assetId,
       amount: requestBalance,
       purpose,
       srNodeAddress,
@@ -1090,8 +1088,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const asset = await this.#assetsService.fetchAccountAssetByID(
+      account,
       stakedAssetId,
     );
 

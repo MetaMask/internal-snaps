@@ -11,6 +11,7 @@ import {
 import type { Infer } from '@metamask/superstruct';
 
 import {
+  KnownCaip19AssetIdOrSlip44IdStruct,
   KnownCaip19ClassicAssetStruct,
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdStruct,
@@ -19,6 +20,7 @@ import {
   ValidStellarAmountStruct,
   ValidStellarInt64Struct,
 } from '../../api';
+import { InvalidCoreAssetException } from './exceptions';
 
 /**
  * Controller `Asset.metadata` fields Stellar needs from Core.
@@ -117,16 +119,41 @@ export function isCoreSep41Asset(asset: CoreAsset): asset is CoreSep41Asset {
 }
 
 /**
- * Validates a Core `Asset` into {@link CoreAsset}.
+ * A Core row whose CAIP-19 id is Stellar. Other chains are skipped; a Stellar
+ * id with an invalid body is a parse error.
+ *
+ * @param value - Raw AssetsController asset.
+ * @returns Whether `value` has a Stellar asset id.
+ */
+const StellarCoreAssetIdStruct = type({
+  id: KnownCaip19AssetIdOrSlip44IdStruct,
+});
+
+/**
+ * Validates a Stellar `Asset` into {@link CoreAsset}.
  *
  * @param value - Raw AssetsController asset.
  * @returns The Stellar-shaped asset, or `null` when the payload is not Stellar.
+ * @throws {@link InvalidCoreAssetException} When the id is Stellar but the row is invalid.
  */
-export function parseCoreAsset(value: unknown): CoreAsset | null {
-  try {
-    return create(value, CoreAssetStruct);
-  } catch {
+export function parseCoreStellarAsset(value: unknown): CoreAsset | null {
+  if (!StellarCoreAssetIdStruct.is(value)) {
     return null;
+  }
+
+  try {
+    const asset = create(value, CoreAssetStruct);
+    if (!asset.id.startsWith(`${asset.chainId}/`)) {
+      throw new Error('Asset ID does not match chain ID');
+    }
+    return asset;
+  } catch (error) {
+    throw new InvalidCoreAssetException(
+      `${value.id} is not a valid Stellar asset`,
+      {
+        cause: error,
+      },
+    );
   }
 }
 
@@ -134,7 +161,7 @@ export function parseCoreAsset(value: unknown): CoreAsset | null {
  * Validates a Core `Asset.metadata` into {@link CoreAssetMetadata}.
  *
  * @param value - Raw AssetsController asset metadata.
- * @returns The Stellar-shaped metadata, or `null` when the payload is not Stellar.
+ * @returns The asset metadata, or `null` when the payload is not valid.
  */
 export function parseCoreAssetMetadata(
   value: unknown,

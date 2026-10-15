@@ -1,6 +1,6 @@
 {
   "name": "@metamask/solana-wallet-snap",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "A Solana wallet Snap",
   "keywords": [
     "Ethereum",
@@ -56,7 +56,7 @@
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^24.1.0",
     "@metamask/keyring-snap-sdk": "^10.0.0",
-    "@metamask/snap-networks-utils": "^1.0.0",
+    "@metamask/snap-networks-utils": "^2.0.0",
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.1",
     "@metamask/snaps-sdk": "^12.0.1",
@@ -86,9 +86,9 @@
     "jest-it-up": "^2.0.2",
     "jest-transform-stub": "2.0.0",
     "lodash": "^4.17.21",
-    "oxfmt": "^0.45.0",
+    "oxfmt": "^0.70.0",
     "rimraf": "^6.0.1",
-    "ts-jest": "^29.4.1",
+    "ts-jest": "^29.4.14",
     "typescript": "~5.8.3"
   },
   "engines": {

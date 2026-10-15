@@ -1,18 +1,13 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
-import { KeyringEvent } from '@metamask/keyring-api';
-import type {
-  AccountAssetListUpdatedEvent,
-  AccountBalancesUpdatedEvent,
-  KeyringAccount,
-} from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import type { KeyringAccount } from '@metamask/keyring-api';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import { Logger } from '@metamask/snap-networks-utils';
 
 import { Network } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
+import { extractScopesFromAssetIds } from '../../../utils/caip';
 import logger from '../../../utils/logger';
-import { isSnapOwnedAsset } from '../utils/isSnapOwnedAsset';
+import { AssetFetchError } from '../errors';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
 import { toInternalAccount } from '../utils/toInternalAccount';
 
@@ -24,8 +19,9 @@ export type CoreAssetsAdapterOptions = {
 };
 
 /**
- * Uses the AssetsController for fungible reads. Snap-owned (special) assets are
- * published via keyring events without local persistence when migration is active.
+ * Reads assets through the AssetsController. All Tron assets, including
+ * special assets (staking positions and account resources), are fetched and
+ * published by the controller once the assets migration is active.
  */
 export class CoreAssetsAdapter {
   readonly #logger: Logger;
@@ -118,90 +114,60 @@ export class CoreAssetsAdapter {
   }
 
   /**
-   * Fetches live assets and balances for the given account across all its
-   * scopes through the AssetsController's fetch pipeline (`getAssets` with
-   * `forceUpdate` and `bypassServerCache`, so neither client nor server
-   * caches are used).
+   * Fetches fresh assets for the requested asset IDs, guaranteeing up-to-date
+   * data for flows that act on-chain or display actionable values.
    *
-   * @param account - The keyring account.
-   * @returns The freshly fetched assets.
+   * All assets, including special assets (staking positions and account
+   * resources), come from the controller's one-time fetch pipeline
+   * (`AssetsController:getAssets` with `forceUpdate` and `bypassServerCache`),
+   * reading the fresh fetch result directly.
+   *
+   * @param account - The keyring account to fetch assets for.
+   * @param assetIds - CAIP-19 asset IDs to resolve fresh values for.
+   * @throws {@link AssetFetchError} When the controller fetch fails.
+   * @returns Assets keyed in the same order as the requested asset IDs, with
+   * `null` for asset IDs that could not be resolved.
    */
-  async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
-    this.#logger.info('Fetching assets and balances via AssetsController', {
-      accountId: account.id,
-      scopes: account.scopes,
+  async fetchAccountAssetsByIDs(
+    account: KeyringAccount,
+    assetIds: Caip19AssetId[],
+  ): Promise<(AssetEntity | null)[]> {
+    const scopes = extractScopesFromAssetIds(assetIds);
+
+    const controllerAssets = await this.#getAssets(
+      [{ ...toInternalAccount(account), scopes }],
+      {
+        chainIds: scopes,
+        forceUpdate: true,
+        bypassServerCache: true,
+      },
+    ).catch((error: unknown) => {
+      throw error instanceof AssetFetchError
+        ? error
+        : new AssetFetchError(
+            'Failed to fetch assets via the AssetsController',
+            { cause: error },
+          );
     });
 
-    const results = await this.#getAssets([toInternalAccount(account)], {
-      chainIds: account.scopes,
-      forceUpdate: true,
-      bypassServerCache: true,
+    return assetIds.map((assetId) => {
+      const asset = controllerAssets[account.id]?.[assetId];
+      return asset ? mapControllerAsset(account.id, asset) : null;
     });
-
-    const accountAssets = results[account.id] ?? {};
-
-    return Object.values(accountAssets).map((asset: Asset) =>
-      mapControllerAsset(account.id, asset),
-    );
   }
 
   /**
-   * Publishes snap-owned assets to the extension without persisting locally.
+   * Fetches a single fresh asset for the given asset ID.
    *
-   * Filters to snap-owned assets, reports each as `added`, and emits balance
-   * updates for those assets.
-   *
-   * @param assets - Assets to publish (non snap-owned entries are ignored).
+   * @param account - The keyring account to fetch the asset for.
+   * @param assetId - CAIP-19 asset ID to resolve a fresh value for.
+   * @returns The fresh asset, or `null` if it could not be resolved.
    */
-  async saveMany(assets: AssetEntity[]): Promise<void> {
-    this.#logger.info('Publishing snap-owned assets', assets);
-
-    const snapOwnedAssets = assets.filter((asset) =>
-      isSnapOwnedAsset(asset.assetType),
-    );
-
-    if (snapOwnedAssets.length === 0) {
-      return;
-    }
-
-    const assetListUpdatedPayload = snapOwnedAssets.reduce<
-      AccountAssetListUpdatedEvent['params']['assets']
-    >(
-      (acc, asset) => ({
-        ...acc,
-        [asset.keyringAccountId]: {
-          added: [
-            ...(acc[asset.keyringAccountId]?.added ?? []),
-            asset.assetType,
-          ],
-          removed: [],
-        },
-      }),
-      {},
-    );
-
-    await emitSnapKeyringEvent(snap, KeyringEvent.AccountAssetListUpdated, {
-      assets: assetListUpdatedPayload,
-    });
-
-    const balancesUpdatedPayload = snapOwnedAssets.reduce<
-      AccountBalancesUpdatedEvent['params']['balances']
-    >(
-      (acc, asset) => ({
-        ...acc,
-        [asset.keyringAccountId]: {
-          ...(acc[asset.keyringAccountId] ?? {}),
-          [asset.assetType]: {
-            unit: asset.symbol,
-            amount: asset.uiAmount,
-          },
-        },
-      }),
-      {},
-    );
-
-    await emitSnapKeyringEvent(snap, KeyringEvent.AccountBalancesUpdated, {
-      balances: balancesUpdatedPayload,
-    });
+  async fetchAccountAssetByID(
+    account: KeyringAccount,
+    assetId: Caip19AssetId,
+  ): Promise<AssetEntity | null> {
+    const [asset] = await this.fetchAccountAssetsByIDs(account, [assetId]);
+    return asset ?? null;
   }
 }

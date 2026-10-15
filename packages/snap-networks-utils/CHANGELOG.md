@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **BREAKING:** Remove the CommonJS build; the package is now published as ESM only ([#452](https://github.com/MetaMask/internal-snaps/pull/452))
+  - `require('@metamask/snap-networks-utils')` no longer works. Import the package from ESM code or a bundler such as `mm-snap` (webpack) instead
+
+## [2.0.0]
+
 ### Added
 
+- Add a shared `ActionHeader` Snaps JSX component for the centered header at the top of transaction confirmations, rendering a large `title`, an optional muted `subtitle`, and an optional extra-large asset icon (`iconUrl`) ([#431](https://github.com/MetaMask/internal-snaps/pull/431))
+- Add `resolveFlowTransactionType` for classifying unified swap and bridge transactions from source and destination ([#434](https://github.com/MetaMask/internal-snaps/pull/434))
+- Add the more descriptive `resolveUnifiedSwapTransactionType` alias for unified swap and bridge classification ([#441](https://github.com/MetaMask/internal-snaps/pull/441))
+- Support importing `.svg` files as strings in the package source, like in a Snap ([#423](https://github.com/MetaMask/internal-snaps/pull/423))
+  - The files are copied to `dist/` as-is, so consumers must bundle the package with `mm-snap` (or another bundler that loads `.svg` files as source)
 - Add shared `Asset` and `AssetIcon` Snaps JSX components for displaying an asset inline in transaction confirmations ([#418](https://github.com/MetaMask/internal-snaps/pull/418))
   - `Asset` renders an optional display-ready fiat value (or a loading skeleton), the asset icon, then the amount and symbol, optionally as an explorer link
   - The icon can be an image URL, a Snaps icon (`iconName`), or hidden (`hideIcon`); `AssetIcon` falls back to a question-mark icon when the URL is missing or blank
@@ -69,5 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@1.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...HEAD
+[2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@1.0.0...@metamask/snap-networks-utils@2.0.0
 [1.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/snap-networks-utils@1.0.0

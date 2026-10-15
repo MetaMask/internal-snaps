@@ -7,13 +7,7 @@ import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import {
-  KnownCaip19Id,
-  METAMASK_ORIGIN,
-  Network,
-  Networks,
-  ZERO,
-} from '../../constants';
+import { KnownCaip19Id, METAMASK_ORIGIN, Network, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
@@ -21,6 +15,7 @@ import { render as renderConfirmSignTransaction } from '../../ui/confirmation/vi
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
+import { AssetFetchError } from '../assets/errors';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
 
@@ -116,7 +111,7 @@ type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
       };
     };
   };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
+  mockAssetsService: jest.Mocked<Pick<AssetsService, 'fetchAccountResources'>>;
   mockFeeCalculatorService: jest.Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   >;
@@ -152,9 +147,12 @@ async function withConfirmationHandler<ReturnValue>(
     };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAccountAssetsByIDs'>
+    Pick<AssetsService, 'fetchAccountResources'>
   > = {
-    getAccountAssetsByIDs: jest.fn().mockResolvedValue([null, null]),
+    fetchAccountResources: jest.fn().mockResolvedValue({
+      bandwidth: null,
+      energy: null,
+    }),
   };
 
   const mockFeeCalculatorService: jest.Mocked<
@@ -267,12 +265,9 @@ describe('ConfirmationHandler', () => {
           scope: Network.Mainnet,
         });
 
-        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
-          [
-            Networks[Network.Mainnet].bandwidth.id,
-            Networks[Network.Mainnet].energy.id,
-          ],
+        expect(mockAssetsService.fetchAccountResources).toHaveBeenCalledWith(
+          mockAccount,
+          Network.Mainnet,
         );
       });
     });
@@ -280,10 +275,10 @@ describe('ConfirmationHandler', () => {
     it('uses ZERO when bandwidth and energy assets are null', async () => {
       await withConfirmationHandler(
         async ({ handler, mockAssetsService, mockFeeCalculatorService }) => {
-          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-            null,
-            null,
-          ]);
+          mockAssetsService.fetchAccountResources.mockResolvedValue({
+            bandwidth: null,
+            energy: null,
+          });
 
           await handler.confirmClaimUnstakedTrx({
             account: mockAccount,
@@ -299,6 +294,53 @@ describe('ConfirmationHandler', () => {
           });
         },
       );
+    });
+
+    it('falls back to ZERO fees when fetching fresh resources fails with an AssetFetchError', async () => {
+      await withConfirmationHandler(
+        async ({
+          handler,
+          mockAssetsService,
+          mockSnapClient,
+          mockFeeCalculatorService,
+        }) => {
+          mockAssetsService.fetchAccountResources.mockRejectedValue(
+            new AssetFetchError('Failed to fetch account info'),
+          );
+
+          const result = await handler.confirmClaimUnstakedTrx({
+            account: mockAccount,
+            scope: Network.Mainnet,
+          });
+
+          expect(result).toBe(true);
+          expect(mockSnapClient.trackError).toHaveBeenCalledWith(
+            expect.any(AssetFetchError),
+          );
+          expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+            scope: Network.Mainnet,
+
+            transaction: { raw_data: {} },
+            availableEnergy: ZERO,
+            availableBandwidth: ZERO,
+          });
+        },
+      );
+    });
+
+    it('rethrows unexpected errors from fetching fresh resources', async () => {
+      await withConfirmationHandler(async ({ handler, mockAssetsService }) => {
+        mockAssetsService.fetchAccountResources.mockRejectedValue(
+          new Error('boom'),
+        );
+
+        await expect(
+          handler.confirmClaimUnstakedTrx({
+            account: mockAccount,
+            scope: Network.Mainnet,
+          }),
+        ).rejects.toThrow('boom');
+      });
     });
 
     it('uses actual asset amounts when bandwidth and energy assets exist', async () => {
@@ -324,10 +366,10 @@ describe('ConfirmationHandler', () => {
             uiAmount: '3000',
             iconUrl: '',
           };
-          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-            bandwidthAsset,
-            energyAsset,
-          ]);
+          mockAssetsService.fetchAccountResources.mockResolvedValue({
+            bandwidth: bandwidthAsset,
+            energy: energyAsset,
+          });
 
           await handler.confirmClaimUnstakedTrx({
             account: mockAccount,
@@ -716,6 +758,79 @@ describe('ConfirmationHandler', () => {
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
             transactionType: TransactionType.Send,
+          });
+        });
+      },
+    );
+
+    it.each([
+      [
+        'a TRC20 transfer as send',
+        {
+          contract: [
+            {
+              parameter: {
+                value: {
+                  data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                },
+              },
+              type: 'TriggerSmartContract',
+            },
+          ],
+        },
+        TransactionType.Send,
+      ],
+      [
+        'a TRC20 approve as tokenApprove',
+        {
+          contract: [
+            {
+              parameter: {
+                value: {
+                  data: '095ea7b3000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                },
+              },
+              type: 'TriggerSmartContract',
+            },
+          ],
+        },
+        TransactionType.TokenApprove,
+      ],
+      [
+        'an unknown smart-contract call as unknown',
+        {
+          contract: [
+            {
+              parameter: {
+                value: { data: 'deadbeef' },
+              },
+              type: 'TriggerSmartContract',
+            },
+          ],
+        },
+        TransactionType.Unknown,
+      ],
+    ])(
+      'classifies a dApp keyring transaction (%s)',
+      async (_label, contractRawData, expectedType) => {
+        await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            contractRawData,
+          );
+          mockRenderConfirmSignTransaction.mockResolvedValue(true);
+
+          await handler.handleKeyringRequest({
+            request,
+            account: mockAccount,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionAdded,
+          ).toHaveBeenCalledWith({
+            origin: request.origin,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionType: expectedType,
           });
         });
       },

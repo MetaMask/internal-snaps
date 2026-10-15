@@ -1,5 +1,6 @@
 import { CaipAssetTypeStruct } from '@metamask/keyring-api';
 import { pattern } from '@metamask/superstruct';
+import { definePattern } from '@metamask/utils';
 
 import type { TronAccount } from '../../clients/trongrid/types';
 import type { Network } from '../../constants';
@@ -28,8 +29,8 @@ export type NftCaipAssetType = `${Network}/trc721:${string}`;
 /**
  * Validates a TRON native CAIP-19 ID (e.g., "tron:728126428/slip44:195")
  */
-export const NativeCaipAssetTypeStruct = pattern(
-  CaipAssetTypeStruct,
+export const NativeCaipAssetTypeStruct = definePattern<NativeCaipAssetType>(
+  'NativeCaipAssetType',
   /^tron:(728126428|3448148188|2494104990)\/slip44:195$/u,
 );
 

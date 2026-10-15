@@ -40,9 +40,9 @@ Runs (or refreshes) the remote security scan on `securityScanRequest` in context
 
 ### Transaction rebuild
 
-Runs **first** when enabled. Rebuilds from the original request against a live on-chain account (fresh fee, sequence, time bounds, destination activation). Confirm-time send / change-trust rebuilds again before signing; this cycle does not patch the stored confirmation `transaction` XDR.
+Runs **first** when enabled. Rebuilds from the original request against a live on-chain account (fresh fee, sequence, time bounds, destination activation). Confirm-time send / change-trust rebuilds again before signing; this cycle does not patch the stored confirmation `transaction` XDR used as the post-confirm fee baseline.
 
-- **Success** — write the rebuilt XDR into `securityScanRequest` so scan does not use a stale snapshot.
+- **Success** — update `feeData` so the dialog shows the latest fee estimate, and write the rebuilt XDR into `securityScanRequest` so scan does not use a stale snapshot.
 - **Failure (`pause`)** — set `transactionsFetchStatus` / `scanFetchStatus` to error with a mapped banner message; omit the security scan this cycle; do **not** reschedule further auto-cron cycles. Applies to validation errors including SEP-29 `RequiresMemo`. The UI may call `scheduleBackgroundEvent` again after an in-dialog fix (e.g. user adds a memo via MemoEdit).
 
 ## Step-by-step (one cycle)

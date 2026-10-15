@@ -53,9 +53,8 @@ jest.mock(
   '../../ui/confirmation/views/MaliciousAcknowledgement/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock(
-  '../../ui/confirmation/views/MemoEdit/events',
-  (): MockEventsModule => mockEventsModule(),
+jest.mock('../../ui/confirmation/views/MemoEdit/events', (): MockEventsModule =>
+  mockEventsModule(),
 );
 
 describe('UserInputHandler', () => {

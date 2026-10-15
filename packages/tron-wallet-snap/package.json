@@ -1,6 +1,6 @@
 {
   "name": "@metamask/tron-wallet-snap",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "A Tron wallet Snap",
   "keywords": [
     "Ethereum",
@@ -55,7 +55,7 @@
     "@metamask/keyring-snap-sdk": "^10.0.0",
     "@metamask/messenger": "^2.0.0",
     "@metamask/remote-feature-flag-controller": "^5.0.0",
-    "@metamask/snap-networks-utils": "^1.0.0",
+    "@metamask/snap-networks-utils": "^2.0.0",
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.1",
     "@metamask/snaps-sdk": "^12.0.1",
@@ -68,9 +68,8 @@
     "ethers": "^6.15.0",
     "jest": "30.0.3",
     "jest-it-up": "^2.0.2",
-    "jest-transform-stub": "2.0.0",
     "lodash": "^4.17.21",
-    "oxfmt": "^0.45.0",
+    "oxfmt": "^0.70.0",
     "tronweb": "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch",
     "typescript": "~5.8.3"
   },

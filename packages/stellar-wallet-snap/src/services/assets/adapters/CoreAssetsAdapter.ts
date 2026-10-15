@@ -6,6 +6,8 @@ import type {
 import type { AssetsProvider, Logger } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../../api';
+import { rethrowIfInstanceElseThrow } from '../../../utils';
+import { CoreAssetsAdapterException } from '../exceptions';
 
 export type CoreAssetsAdapterOptions = {
   logger: Logger;
@@ -52,39 +54,60 @@ export class CoreAssetsAdapter {
     accountId: string,
     assetId: Caip19AssetId,
   ): Promise<Asset | null> {
-    this.#logger.debug('Getting account asset by ID', { accountId, assetId });
-    const asset = await this.#getAccountAssetByID(accountId, assetId);
+    try {
+      this.#logger.debug('Getting account asset by ID', { accountId, assetId });
+      const asset = await this.#getAccountAssetByID(accountId, assetId);
 
-    return asset ?? null;
+      return asset ?? null;
+    } catch (error: unknown) {
+      return this.#throwError(
+        error,
+        `Failed to get account asset by ID from Core: ${assetId}`,
+      );
+    }
   }
 
   async getAccountAssetsByIDs(
     accountId: string,
     assetIds: Caip19AssetId[],
   ): Promise<(Asset | null)[]> {
-    this.#logger.debug('Getting account assets by IDs', {
-      accountId,
-      assetIds,
-    });
-    const assets = await this.#getAccountAssetsByIDs(accountId, assetIds);
+    try {
+      this.#logger.debug('Getting account assets by IDs', {
+        accountId,
+        assetIds,
+      });
+      const assets = await this.#getAccountAssetsByIDs(accountId, assetIds);
 
-    return assetIds.map((assetId) => assets[assetId] ?? null);
+      return assetIds.map((assetId) => assets[assetId] ?? null);
+    } catch (error: unknown) {
+      return this.#throwError(
+        error,
+        `Failed to get account assets by IDs from Core for account ${accountId}`,
+      );
+    }
   }
 
   async getAccountAssetsByScope(
     scope: KnownCaip2ChainId,
     accountId: string,
   ): Promise<Asset[]> {
-    this.#logger.debug('Getting account assets by scope', {
-      scope,
-      accountId,
-    });
-    const controllerAssets = await this.#getAccountAssetsByScope(
-      scope,
-      accountId,
-    );
+    try {
+      this.#logger.debug('Getting account assets by scope', {
+        scope,
+        accountId,
+      });
+      const controllerAssets = await this.#getAccountAssetsByScope(
+        scope,
+        accountId,
+      );
 
-    return Object.values(controllerAssets);
+      return Object.values(controllerAssets);
+    } catch (error: unknown) {
+      return this.#throwError(
+        error,
+        `Failed to get account assets by scope from Core: ${scope}`,
+      );
+    }
   }
 
   async getAccountAssets(accountId: string): Promise<Asset[]> {
@@ -99,13 +122,28 @@ export class CoreAssetsAdapter {
   async getAssetMetadata(
     assetId: Caip19AssetId,
   ): Promise<AssetMetadata | null> {
-    this.#logger.debug('Getting asset metadata', { assetId });
-    const metadata = await this.#getAssetMetadata(assetId);
+    try {
+      this.#logger.debug('Getting asset metadata', { assetId });
+      const metadata = await this.#getAssetMetadata(assetId);
 
-    if (!metadata) {
-      return null;
+      if (!metadata) {
+        return null;
+      }
+
+      return metadata;
+    } catch (error: unknown) {
+      return this.#throwError(
+        error,
+        `Failed to get asset metadata from Core: ${assetId}`,
+      );
     }
+  }
 
-    return metadata;
+  #throwError(error: unknown, message: string): never {
+    return rethrowIfInstanceElseThrow(
+      error,
+      [CoreAssetsAdapterException],
+      new CoreAssetsAdapterException(message, { cause: error }),
+    );
   }
 }

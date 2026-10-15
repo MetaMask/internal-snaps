@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [1.2.0]
 
-- Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
-- Emit `transaction_status` on the `Transaction Finalized` event. ([#416](https://github.com/MetaMask/internal-snaps/pull/416))
+### Changed
+
+- Bump `@stellar/stellar-sdk` from `^17.0.1` to `^17.2.1` ([#435](https://github.com/MetaMask/internal-snaps/pull/435))
+
+### Fixed
+
+- Fail transaction submit on Soroban RPC `TRY_AGAIN_LATER` instead of treating it as success ([#451](https://github.com/MetaMask/internal-snaps/pull/451))
+- Hot-reload the token API asset catalog during account sync when the last catalog sync has expired, so newly listed SEP-41 tokens appear without waiting for the hourly `synchronizeAssets` cron ([#448](https://github.com/MetaMask/internal-snaps/pull/448))
+- Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
+- Allow up to a 100% network-fee increase after confirmation and show the latest fee estimate on the confirmation dialog ([#447](https://github.com/MetaMask/internal-snaps/pull/447))
+- Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 
 ## [1.1.1]
 
@@ -77,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...HEAD
+[1.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...@metamask/stellar-wallet-snap@1.2.0
 [1.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.0...@metamask/stellar-wallet-snap@1.1.1
 [1.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.0.0...@metamask/stellar-wallet-snap@1.1.0
 [1.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@0.1.0...@metamask/stellar-wallet-snap@1.0.0

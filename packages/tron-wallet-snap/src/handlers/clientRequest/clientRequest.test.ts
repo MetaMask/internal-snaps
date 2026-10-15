@@ -115,7 +115,13 @@ type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
     Pick<AccountsService, 'findById' | 'findByIdOrThrow' | 'deriveTronKeypair'>
   >;
   mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAccountAssetsByIDs' | 'getAccountAssetByID'>
+    Pick<
+      AssetsService,
+      | 'getAccountAssetsByIDs'
+      | 'getAccountAssetByID'
+      | 'fetchAccountAssetsByIDs'
+      | 'fetchAccountAssetByID'
+    >
   >;
   mockSendService: jest.Mocked<
     Pick<
@@ -165,10 +171,18 @@ async function withClientRequestHandler<ReturnValue>(
   };
 
   const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAccountAssetsByIDs' | 'getAccountAssetByID'>
+    Pick<
+      AssetsService,
+      | 'getAccountAssetsByIDs'
+      | 'getAccountAssetByID'
+      | 'fetchAccountAssetsByIDs'
+      | 'fetchAccountAssetByID'
+    >
   > = {
     getAccountAssetsByIDs: jest.fn(),
     getAccountAssetByID: jest.fn(),
+    fetchAccountAssetsByIDs: jest.fn(),
+    fetchAccountAssetByID: jest.fn(),
   };
 
   const mockSendService: jest.Mocked<
@@ -321,6 +335,8 @@ describe('ClientRequestHandler', () => {
 
       mockAssetsService = {
         getAccountAssetsByIDs: jest.fn(),
+        fetchAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
+        fetchAccountAssetByID: jest.fn().mockResolvedValue(null),
       } as unknown as jest.Mocked<AssetsService>;
 
       mockSendService = {} as unknown as jest.Mocked<SendService>;
@@ -1758,6 +1774,8 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     mockAssetsService = {
       getAccountAssetsByIDs: jest.fn(),
+      fetchAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
+      fetchAccountAssetByID: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<AssetsService>;
 
     mockSendService = {} as unknown as jest.Mocked<SendService>;
@@ -1993,6 +2011,149 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     ).toBeLessThan(
       mockSnapClient.scheduleBackgroundEvent.mock
         .invocationCallOrder[0] as number,
+    );
+  });
+
+  it.each([
+    [
+      'a same-chain swap',
+      'tron:728126428/slip44:195',
+      'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+      TransactionType.Swap,
+    ],
+    [
+      'a cross-chain bridge',
+      'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+      'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      TransactionType.BridgeSend,
+    ],
+  ])(
+    'classifies the transaction as %s when swap asset ids are provided',
+    async (_label, sourceAssetId, destAssetId, expectedType) => {
+      const scope = Network.Mainnet;
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: '1',
+        method: ClientRequestMethod.SignAndSendTransaction,
+        params: {
+          accountId: TEST_ACCOUNT_ID,
+          transaction: TEST_TRANSACTION_BASE64,
+          scope,
+          options: {
+            visible: false,
+            type: 'TriggerSmartContract',
+            sourceAssetId,
+            destAssetId,
+          },
+        },
+      };
+
+      mockAccountsService.findByIdOrThrow.mockResolvedValue(
+        createMockExtendedKeyringAccount({
+          type: 'tron:eoa',
+          scopes: [scope],
+        }),
+      );
+
+      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+        privateKeyHex: 'test-private-key',
+        address: CORRECT_OWNER_ADDRESS_BASE58,
+        privateKeyBytes: new Uint8Array(),
+        publicKeyBytes: new Uint8Array(),
+      });
+
+      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+        contract: [
+          {
+            type: 'TriggerSmartContract',
+            parameter: {
+              value: {
+                owner_address: CORRECT_OWNER_ADDRESS_HEX,
+              },
+            },
+          },
+        ],
+      });
+
+      await clientRequestHandler.handle(request as JsonRpcRequest);
+
+      expect(
+        mockAnalyticsService.trackTransactionSubmitted,
+      ).toHaveBeenCalledWith({
+        origin: METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: scope,
+        transactionType: expectedType,
+      });
+
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: transactionId,
+          scope,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+          transactionType: expectedType,
+        },
+        duration: TRACK_TX_INTERVAL,
+      });
+    },
+  );
+
+  it('classifies a TRC20 transfer dApp call as send when no asset ids are provided', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+
+    mockAccountsService.findByIdOrThrow.mockResolvedValue(
+      createMockExtendedKeyringAccount({
+        type: 'tron:eoa',
+        scopes: [scope],
+      }),
+    );
+
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+      privateKeyBytes: new Uint8Array(),
+      publicKeyBytes: new Uint8Array(),
+    });
+
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: {
+              owner_address: CORRECT_OWNER_ADDRESS_HEX,
+              data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+            },
+          },
+        },
+      ],
+    });
+
+    await clientRequestHandler.handle(request as JsonRpcRequest);
+
+    expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
+      {
+        origin: METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: scope,
+        transactionType: TransactionType.Send,
+      },
     );
   });
 });
@@ -2444,14 +2605,14 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         // Native TRX asset for mainnet
         const nativeAssetId = Networks[scope].nativeToken.id;
 
-        // Mock native balance and resources
+        // Mock native balance and resources (local state reads)
         mockAssetsService.getAccountAssetByID.mockResolvedValue({
           uiAmount: '100',
-        } as AssetEntity);
+        } as unknown as AssetEntity);
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
           { rawAmount: '5000' }, // Bandwidth
           { rawAmount: '100000' }, // Energy
-        ] as AssetEntity[]);
+        ] as unknown as AssetEntity[]);
 
         const feeResult = [
           {
@@ -2532,7 +2693,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         // Account has only 5 TRX
         mockAssetsService.getAccountAssetByID.mockResolvedValue({
           uiAmount: '5',
-        } as AssetEntity);
+        } as unknown as AssetEntity);
 
         const result = await handler.handle(request as JsonRpcRequest);
 
@@ -2588,7 +2749,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           uiAmount: '100',
           rawAmount: '100000000',
         } as NativeAsset;
-        mockAssetsService.getAccountAssetByID.mockResolvedValue(mockAsset);
+        mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
+          mockAsset,
+        ]);
 
         // validateSend returns insufficient balance
         mockSendService.validateSend.mockResolvedValue({
@@ -2657,7 +2820,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           uiAmount: '100',
           rawAmount: '100000000',
         } as NativeAsset;
-        mockAssetsService.getAccountAssetByID.mockResolvedValue(mockAsset);
+        mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
+          mockAsset,
+        ]);
 
         // validateSend returns insufficient balance to cover fee
         mockSendService.validateSend.mockResolvedValue({
@@ -2719,13 +2884,12 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           uiAmount: '100',
           rawAmount: '100000000',
         } as NativeAsset;
-        mockAssetsService.getAccountAssetByID.mockResolvedValue(mockAsset);
-
         // validateSend returns valid.
         mockSendService.validateSend.mockResolvedValue({ valid: true });
 
         // Mock the rest of the flow.
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+        mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
+          mockAsset,
           { rawAmount: '1000' }, // Bandwidth
           { rawAmount: '50000' }, // Energy
         ] as any);
@@ -2881,9 +3045,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         } as any);
 
         // Asset not found
-        (mockAssetsService.getAccountAssetByID as jest.Mock).mockResolvedValue(
-          null,
-        );
+        (
+          mockAssetsService.fetchAccountAssetsByIDs as jest.Mock
+        ).mockResolvedValue([null, null, null]);
 
         const result = await handler.handle(request);
 

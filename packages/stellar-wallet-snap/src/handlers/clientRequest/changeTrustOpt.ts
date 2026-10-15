@@ -45,7 +45,7 @@ import {
 } from './api';
 import { BaseClientRequestHandler } from './base';
 import {
-  assertRefreshedTransactionFeeNotHigher,
+  assertRefreshedTransactionFeeWithinBuffer,
   getTxnErrorMessageKey,
 } from './utils';
 
@@ -114,7 +114,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
    * - `{ status: true, transactionId }` when the transaction is built, signed, and submitted.
    * - `{ status: true }` when preflight finds an existing classic trustline with limit greater than zero for an add request.
    * @throws {TrustlineNotFoundException} If an opt-out trustline disappears after confirmation.
-   * @throws {TransactionValidationException} If validation fails after the user confirms (for example a higher refreshed fee).
+   * @throws {TransactionValidationException} If validation fails after the user confirms (for example a refreshed fee beyond the allowed buffer).
    * @throws {UserRejectedRequestError} If the user rejects a valid confirmation, or after the pre-submit error confirmation is dismissed (that dialog only supports reject).
    */
   protected async execute(
@@ -308,9 +308,8 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       limit,
     });
 
-    // Reject if the refreshed fee is higher than what the user approved, so we
-    // never sign a transaction that differs from what was shown on the confirmation screen.
-    assertRefreshedTransactionFeeNotHigher({
+    // Allow a small fee drift vs the open-time draft; larger increases fail closed.
+    assertRefreshedTransactionFeeWithinBuffer({
       confirmedTransaction,
       refreshedTransaction,
     });

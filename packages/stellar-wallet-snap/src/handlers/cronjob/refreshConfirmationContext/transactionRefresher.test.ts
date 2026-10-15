@@ -21,6 +21,7 @@ import {
 import type { MockClassicOperation } from '../../../services/transaction/__mocks__/transaction.fixtures';
 import { buildMockClassicTransaction } from '../../../services/transaction/__mocks__/transaction.fixtures';
 import { FetchStatus } from '../../../ui/confirmation/api';
+import { formatFeeData } from '../../../ui/confirmation/utils';
 import { getSlip44AssetId } from '../../../utils';
 import { logger } from '../../../utils/logger';
 import type { AccountResolver } from '../../accountResolver';
@@ -29,6 +30,7 @@ import {
   ClientRequestMethod,
 } from '../../clientRequest/api';
 import { createConfirmationDataContext } from './__fixtures__/context.fixtures';
+import type { ConfirmationContextRefreshResult } from './api';
 import { ConfirmationContextRefresherKey } from './api';
 import { ConfirmationTransactionRefresher } from './transactionRefresher';
 
@@ -147,6 +149,22 @@ describe('ConfirmationTransactionRefresher', () => {
     });
   }
 
+  function expectedSuccessResult(securityScanRequest: {
+    accountAddress: string;
+    origin: string;
+    scope: KnownCaip2ChainId;
+    transaction: string;
+  }): NonNullable<ConfirmationContextRefreshResult> {
+    const fee = transaction.totalFee.toFixed(0);
+    return {
+      result: {
+        feeData: formatFeeData(scope, fee),
+        securityScanRequest,
+      },
+      reschedule: true,
+    };
+  }
+
   it('uses the transaction refresher key', () => {
     const { refresher } = setup();
     expect(refresher.key).toBe(ConfirmationContextRefresherKey.Transaction);
@@ -166,17 +184,14 @@ describe('ConfirmationTransactionRefresher', () => {
       destination: toAddress,
       amount: expect.anything(),
     });
-    expect(result).toStrictEqual({
-      result: {
-        securityScanRequest: {
-          accountAddress: accountId,
-          origin: 'https://metamask.io',
-          scope,
-          transaction: transactionXdr,
-        },
-      },
-      reschedule: true,
-    });
+    expect(result).toStrictEqual(
+      expectedSuccessResult({
+        accountAddress: accountId,
+        origin: 'https://metamask.io',
+        scope,
+        transaction: transactionXdr,
+      }),
+    );
   });
 
   it('passes context.memo into createValidatedSendTransaction on ConfirmSend rebuild', async () => {
@@ -316,17 +331,14 @@ describe('ConfirmationTransactionRefresher', () => {
     expect(
       transactionService.createValidatedSendTransaction,
     ).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      result: {
-        securityScanRequest: {
-          accountAddress: accountId,
-          origin: 'https://metamask.io',
-          scope,
-          transaction: transactionXdr,
-        },
-      },
-      reschedule: true,
-    });
+    expect(result).toStrictEqual(
+      expectedSuccessResult({
+        accountAddress: accountId,
+        origin: 'https://metamask.io',
+        scope,
+        transaction: transactionXdr,
+      }),
+    );
   });
 
   it('re-validates a change-trust opt-out transaction with a zero limit', async () => {
@@ -359,15 +371,12 @@ describe('ConfirmationTransactionRefresher', () => {
       createTransactionContext({ securityScanRequest }),
     );
 
-    expect(result).toStrictEqual({
-      result: {
-        securityScanRequest: {
-          ...securityScanRequest,
-          transaction: transactionXdr,
-        },
-      },
-      reschedule: true,
-    });
+    expect(result).toStrictEqual(
+      expectedSuccessResult({
+        ...securityScanRequest,
+        transaction: transactionXdr,
+      }),
+    );
   });
 
   it('renews the security-scan transaction for change-trust flows', async () => {
@@ -386,15 +395,12 @@ describe('ConfirmationTransactionRefresher', () => {
       }),
     );
 
-    expect(result).toStrictEqual({
-      result: {
-        securityScanRequest: {
-          ...securityScanRequest,
-          transaction: transactionXdr,
-        },
-      },
-      reschedule: true,
-    });
+    expect(result).toStrictEqual(
+      expectedSuccessResult({
+        ...securityScanRequest,
+        transaction: transactionXdr,
+      }),
+    );
   });
 
   it('rebuilds when the stored envelope has expired', async () => {
@@ -424,17 +430,14 @@ describe('ConfirmationTransactionRefresher', () => {
       expect(
         transactionService.createValidatedSendTransaction,
       ).toHaveBeenCalled();
-      expect(result).toStrictEqual({
-        result: {
-          securityScanRequest: {
-            accountAddress: accountId,
-            origin: 'https://metamask.io',
-            scope,
-            transaction: transactionXdr,
-          },
-        },
-        reschedule: true,
-      });
+      expect(result).toStrictEqual(
+        expectedSuccessResult({
+          accountAddress: accountId,
+          origin: 'https://metamask.io',
+          scope,
+          transaction: transactionXdr,
+        }),
+      );
     } finally {
       jest.useRealTimers();
     }

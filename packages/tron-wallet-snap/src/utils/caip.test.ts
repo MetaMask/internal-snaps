@@ -2,7 +2,7 @@ import { is } from '@metamask/superstruct';
 
 import { Network } from '../constants';
 import { TronCaipAssetTypeStruct } from '../validation/structs';
-import { parseTronCaipAssetType } from './caip';
+import { extractScopesFromAssetIds, parseTronCaipAssetType } from './caip';
 
 describe('parseTronCaipAssetType', () => {
   it('parses native asset types', () => {
@@ -51,7 +51,32 @@ describe('parseTronCaipAssetType', () => {
     expect(() =>
       parseTronCaipAssetType('eip155:1/slip44:195-ready-for-withdrawal'),
     ).toThrow(
-      'Expected the value to satisfy a union of `CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType`, but received: "eip155:1/slip44:195-ready-for-withdrawal"',
+      'Expected the value to satisfy a union of `NativeCaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType`, but received: "eip155:1/slip44:195-ready-for-withdrawal"',
+    );
+  });
+});
+
+describe('extractScopesFromAssetIds', () => {
+  it('extracts the unique scopes in order of first appearance', () => {
+    expect(
+      extractScopesFromAssetIds([
+        'tron:728126428/slip44:195',
+        'tron:728126428/slip44:bandwidth',
+        'tron:3448148188/slip44:195-in-lock-period',
+        'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+      ]),
+    ).toStrictEqual([Network.Mainnet, Network.Nile]);
+  });
+
+  it('returns an empty list for no asset IDs', () => {
+    expect(extractScopesFromAssetIds([])).toStrictEqual([]);
+  });
+
+  it('rejects asset types on unsupported chains', () => {
+    expect(() =>
+      extractScopesFromAssetIds(['eip155:1/slip44:195-ready-for-withdrawal']),
+    ).toThrow(
+      'Expected the value to satisfy a union of `NativeCaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType | CaipAssetType`, but received: "eip155:1/slip44:195-ready-for-withdrawal"',
     );
   });
 });
