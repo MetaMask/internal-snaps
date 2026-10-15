@@ -8,7 +8,6 @@ import {
 import type { TransactionMessageBytes } from '@solana/kit';
 
 import type { InstructionParseResult } from '../../../entities';
-import { getKnownProgramCost } from './knownProgramCosts';
 
 /**
  * Size in bytes of an SPL Token account. Token-2022 associated token accounts
@@ -71,8 +70,8 @@ export type FeePayment = {
    * What the transaction costs the user when it is sponsored:
    * - `free`: nothing. The sponsor pays the network fee and no instruction charges the user.
    * - `costs`: the user pays the costs listed in `userCosts`.
-   * - `unverified`: no cost was found, but the user signs instructions this
-   * wallet cannot decode, so it cannot promise the transaction is free.
+   * - `unverified`: no cost was found, but this wallet cannot promise the
+   * transaction is free, for example because it could not simulate it.
    *
    * `null` when the transaction is not sponsored.
    */
@@ -83,7 +82,10 @@ export type FeePayment = {
    * the user may pay more than `userCosts`.
    */
   mayCostMore: boolean;
-  /** Programs of the instructions the user signs that this wallet cannot decode. */
+  /**
+   * Programs of the instructions the user signs that this wallet cannot
+   * decode. Only set when the transaction could not be simulated.
+   */
   uncheckedPrograms: string[];
 };
 
@@ -98,10 +100,33 @@ export type AccountSnapshot = {
   decimals: number | null;
 } | null;
 
+/**
+ * An instruction a program invoked during a simulation, in the RPC's
+ * `jsonParsed` format: parsed when the RPC knows the program, raw otherwise.
+ */
+export type SimulatedInstruction =
+  | {
+      programId: string;
+      program: string;
+      parsed: { type: string; info?: object };
+    }
+  | {
+      programId: string;
+      accounts: readonly string[];
+      data: string;
+    };
+
 export type FeePaymentChainReader = {
   getAccounts(addresses: string[]): Promise<Record<string, AccountSnapshot>>;
   getRentExemptMinimum(space: number): Promise<bigint>;
   getTokenSymbol(mint: string): Promise<string | null>;
+  /**
+   * Simulates the transaction and returns every instruction invoked through
+   * cross-program invocations, or `null` if the simulation fails.
+   */
+  simulateInnerInstructions(
+    transaction: string,
+  ): Promise<readonly SimulatedInstruction[] | null>;
 };
 
 type AnalyzeFeePaymentParams = {
@@ -175,14 +200,51 @@ const references = (
 ): boolean =>
   accountsOf(instruction).some((account) => account.address === address);
 
+type TokenTransfer = {
+  destination: string;
+  amount: bigint;
+  mint: string | null;
+  decimals: number | null;
+};
+
+type SimulatedInfo = {
+  source?: string;
+  destination?: string;
+  lamports?: bigint | number | string;
+  account?: string;
+  owner?: string;
+  wallet?: string;
+  mint?: string;
+  authority?: string;
+  multisigAuthority?: string;
+  amount?: bigint | number | string;
+  tokenAmount?: { amount: string; decimals: number };
+};
+
+const SIMULATED_TOKEN_PROGRAMS = new Set(['spl-token', 'spl-token-2022']);
+
+const SIMULATED_TOKEN_ACCOUNT_INITIALIZATION_TYPES = new Set([
+  'initializeAccount',
+  'initializeAccount2',
+  'initializeAccount3',
+]);
+
+const SIMULATED_TOKEN_TRANSFER_TYPES = new Set([
+  'transfer',
+  'transferChecked',
+  'transferCheckedWithFee',
+]);
+
 /**
  * Works out who pays for a transaction and, when someone else pays the
  * network fee, whether the user still pays anything.
  *
- * Only top-level instructions are inspected. When the user signs an
- * instruction this wallet cannot decode, the program could still charge the
- * user through a cross-program invocation, so the result is `unverified`
- * instead of `free`.
+ * Only the System program can debit the user's SOL and only the token
+ * programs can move the user's tokens. So the transaction is simulated, and
+ * the System and token instructions it runs, top-level or invoked by other
+ * programs, are inspected. Without a simulation, only top-level instructions
+ * are inspected, and instructions of other programs the user signs make the
+ * result `unverified` instead of `free`.
  *
  * @param params - The analysis parameters.
  * @param params.transaction - The base64 encoded transaction.
@@ -223,35 +285,36 @@ export const analyzeFeePayment = async ({
     };
   }
 
+  const innerInstructions = await reader.simulateInnerInstructions(transaction);
+  const simulated = innerInstructions !== null;
+
   let unverified = false;
   const uncheckedPrograms = new Set<string>();
-  const rentSpaces: number[] = [];
   let rentLamports = 0n;
   let solToSponsorLamports = 0n;
 
-  // Associated token accounts created by this transaction, by address.
+  // Token accounts created by this transaction, by address.
   const createdTokenAccounts = new Map<
     string,
-    { owner: string; mint: string; idempotent: boolean; tokenProgram: string }
+    { owner: string; mint: string }
   >();
-  const rentPaidAssociatedTokenAccounts: string[] = [];
-  const tokenTransfers: InstructionParseResult[] = [];
+  // Associated token accounts whose rent the user pays, when not simulated.
+  const rentPaidAssociatedTokenAccounts: {
+    ata: string;
+    idempotent: boolean;
+    tokenProgram: string;
+  }[] = [];
+  const tokenTransfers: TokenTransfer[] = [];
 
   for (const instruction of instructions) {
     const { type, parsed } = instruction;
     const userSigns = isSignedBy(instruction, accountAddress);
 
     if (!parsed) {
-      const knownCost = getKnownProgramCost(
-        instruction,
-        accountsOf(instruction),
-      );
-      if (knownCost) {
-        if (knownCost.rentPayer === accountAddress) {
-          rentSpaces.push(knownCost.rentSpace);
-        }
-      } else if (userSigns) {
-        // A program we cannot decode can move the user's funds if the user signs it.
+      // A program we cannot decode can move the user's funds if the user
+      // signs it. The simulation shows what it does through the System and
+      // token programs.
+      if (userSigns && !simulated) {
         uncheckedPrograms.add(instruction.encoded.programAddress);
       }
       continue;
@@ -274,21 +337,33 @@ export const analyzeFeePayment = async ({
       const mint = accountAddressOf(instruction, 'mint');
       const tokenProgram = accountAddressOf(instruction, 'tokenProgram');
       if (ata && owner && mint && tokenProgram) {
-        createdTokenAccounts.set(ata, {
-          owner,
-          mint,
-          tokenProgram,
-          idempotent: type === 'CreateAssociatedTokenIdempotent',
-        });
-        if (accountAddressOf(instruction, 'payer') === accountAddress) {
-          rentPaidAssociatedTokenAccounts.push(ata);
+        createdTokenAccounts.set(ata, { owner, mint });
+        // When simulated, the rent shows up as an invoked `createAccount`.
+        if (
+          !simulated &&
+          accountAddressOf(instruction, 'payer') === accountAddress
+        ) {
+          rentPaidAssociatedTokenAccounts.push({
+            ata,
+            tokenProgram,
+            idempotent: type === 'CreateAssociatedTokenIdempotent',
+          });
         }
       } else if (userSigns) {
         unverified = true;
       }
     } else if (TOKEN_TRANSFER_TYPES.has(type)) {
-      if (accountAddressOf(instruction, 'authority') === accountAddress) {
-        tokenTransfers.push(instruction);
+      const destination = accountAddressOf(instruction, 'destination');
+      if (
+        destination &&
+        accountAddressOf(instruction, 'authority') === accountAddress
+      ) {
+        tokenTransfers.push({
+          destination,
+          amount: BigInt(parsed.data.amount),
+          mint: accountAddressOf(instruction, 'mint'),
+          decimals: parsed.data.decimals ?? null,
+        });
       }
     } else if (references(instruction, feePayer) && userSigns) {
       // Any other instruction signed by the user that involves the sponsor,
@@ -297,55 +372,106 @@ export const analyzeFeePayment = async ({
     }
   }
 
+  for (const innerInstruction of innerInstructions ?? []) {
+    const { program, parsed } = innerInstruction as Partial<{
+      program: string;
+      parsed: { type: string; info?: object };
+    }>;
+
+    if (!program || !parsed) {
+      // Programs the RPC cannot parse cannot debit the user's wallet or
+      // token accounts themselves; they go through the System or token programs.
+      continue;
+    }
+
+    const info = (parsed.info ?? {}) as SimulatedInfo;
+
+    if (program === 'system') {
+      if (
+        (parsed.type === 'createAccount' ||
+          parsed.type === 'createAccountWithSeed') &&
+        info.source === accountAddress
+      ) {
+        rentLamports += BigInt(info.lamports ?? 0);
+      } else if (
+        (parsed.type === 'transfer' || parsed.type === 'transferWithSeed') &&
+        info.source === accountAddress &&
+        info.destination === feePayer
+      ) {
+        solToSponsorLamports += BigInt(info.lamports ?? 0);
+      }
+    } else if (program === 'spl-associated-token-account') {
+      if (info.account && info.wallet && info.mint) {
+        createdTokenAccounts.set(info.account, {
+          owner: info.wallet,
+          mint: info.mint,
+        });
+      }
+    } else if (SIMULATED_TOKEN_PROGRAMS.has(program)) {
+      const authority = info.authority ?? info.multisigAuthority;
+
+      if (SIMULATED_TOKEN_ACCOUNT_INITIALIZATION_TYPES.has(parsed.type)) {
+        if (info.account && info.owner && info.mint) {
+          createdTokenAccounts.set(info.account, {
+            owner: info.owner,
+            mint: info.mint,
+          });
+        }
+      } else if (SIMULATED_TOKEN_TRANSFER_TYPES.has(parsed.type)) {
+        if (authority === accountAddress && info.destination) {
+          tokenTransfers.push({
+            destination: info.destination,
+            amount: BigInt(info.tokenAmount?.amount ?? info.amount ?? 0),
+            mint: info.mint ?? null,
+            decimals: info.tokenAmount?.decimals ?? null,
+          });
+        }
+      } else {
+        const values = Object.values(info);
+        if (values.includes(accountAddress) && values.includes(feePayer)) {
+          // For example, an approval or a close that benefits the sponsor.
+          unverified = true;
+        }
+      }
+    }
+  }
+
   const lookups = [
-    ...rentPaidAssociatedTokenAccounts,
+    ...rentPaidAssociatedTokenAccounts.map(({ ata }) => ata),
     ...tokenTransfers
-      .map((instruction) => accountAddressOf(instruction, 'destination'))
-      .filter(
-        (destination): destination is string =>
-          destination !== null && !createdTokenAccounts.has(destination),
-      ),
+      .map(({ destination }) => destination)
+      .filter((destination) => !createdTokenAccounts.has(destination)),
   ];
   const accounts = lookups.length > 0 ? await reader.getAccounts(lookups) : {};
 
-  for (const ata of rentPaidAssociatedTokenAccounts) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const created = createdTokenAccounts.get(ata)!;
-    if (created.idempotent && accounts[ata]) {
+  for (const {
+    ata,
+    idempotent,
+    tokenProgram,
+  } of rentPaidAssociatedTokenAccounts) {
+    if (idempotent && accounts[ata]) {
       // The account already exists, so the instruction does nothing.
       continue;
     }
     rentLamports += await reader.getRentExemptMinimum(
-      created.tokenProgram === TOKEN_2022_PROGRAM_ADDRESS
+      tokenProgram === TOKEN_2022_PROGRAM_ADDRESS
         ? TOKEN_2022_ASSOCIATED_TOKEN_ACCOUNT_SPACE
         : TOKEN_ACCOUNT_SPACE,
     );
   }
 
-  for (const space of rentSpaces) {
-    // Programs may only top up a prefunded account, so this is an upper bound.
-    rentLamports += await reader.getRentExemptMinimum(space);
-  }
-
   const tokenCharges = new Map<string, { amount: bigint; decimals: number }>();
-  for (const instruction of tokenTransfers) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const destination = accountAddressOf(instruction, 'destination')!;
-    const created = createdTokenAccounts.get(destination);
-    const snapshot = accounts[destination];
+  for (const tokenTransfer of tokenTransfers) {
+    const created = createdTokenAccounts.get(tokenTransfer.destination);
+    const snapshot = accounts[tokenTransfer.destination];
     const owner = created?.owner ?? snapshot?.tokenOwner ?? null;
 
     if (owner !== feePayer) {
       continue;
     }
 
-    const mint =
-      accountAddressOf(instruction, 'mint') ??
-      created?.mint ??
-      snapshot?.mint ??
-      null;
-    const decimals =
-      instruction.parsed?.data.decimals ?? snapshot?.decimals ?? null;
+    const mint = tokenTransfer.mint ?? created?.mint ?? snapshot?.mint ?? null;
+    const decimals = tokenTransfer.decimals ?? snapshot?.decimals ?? null;
 
     if (mint === null || decimals === null) {
       // We know the user pays the sponsor, but not how much.
@@ -355,7 +481,7 @@ export const analyzeFeePayment = async ({
 
     const previous = tokenCharges.get(mint)?.amount ?? 0n;
     tokenCharges.set(mint, {
-      amount: previous + BigInt(instruction.parsed?.data.amount),
+      amount: previous + tokenTransfer.amount,
       decimals,
     });
   }
