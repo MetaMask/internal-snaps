@@ -189,6 +189,57 @@ export type CreateFetchPolicyOptions = Omit<
  * Snaps must provide a `performance` global (see `performance-shim`), which
  * the underlying library uses to time calls.
  *
+ * Create one policy per upstream service, convert errors to
+ * {@link FetchPolicyError} at the network boundary, and wrap each call with
+ * `policy.execute()`:
+ *
+ * @example
+ * ```typescript
+ * const priceApiPolicy = createFetchPolicy({ service: 'price_api', logger });
+ *
+ * const prices = await priceApiPolicy.execute(async () => {
+ *   const response = await fetch(url, {
+ *     signal: AbortSignal.timeout(10_000),
+ *   });
+ *   if (!response.ok) {
+ *     throw createFetchPolicyError(`HTTP ${response.status}`, {
+ *       httpStatus: response.status,
+ *     });
+ *   }
+ *   return response.json();
+ * });
+ * ```
+ *
+ * Don't wrap calls that build, sign and send a transaction: a retry could send
+ * it twice.
+ *
+ * While the circuit is open, `policy.execute()` throws
+ * {@link BrokenCircuitError} without calling the service. Its `name` is
+ * `Error`, so check for it with `instanceof`.
+ *
+ * The underlying library times calls with `performance.now()`, which snaps
+ * don't have. Add `webpack` as a dev dependency, on the same major version as
+ * `@metamask/snaps-cli`, and provide the shim in `snap.config.ts`:
+ *
+ * @example
+ * ```typescript
+ * import type { SnapConfig } from '@metamask/snaps-cli';
+ * import { merge } from '@metamask/snaps-cli';
+ * import { ProvidePlugin } from 'webpack';
+ *
+ * const config: SnapConfig = {
+ *   // ...
+ *   customizeWebpackConfig: (webpackConfig) =>
+ *     merge(webpackConfig, {
+ *       plugins: [
+ *         new ProvidePlugin({
+ *           performance: '@metamask/snap-networks-utils/performance-shim',
+ *         }),
+ *       ],
+ *     }),
+ * };
+ * ```
+ *
  * @param options - The policy options.
  * @param options.service - The upstream service name.
  * @param options.chainIdCaip - The CAIP-2 chain ID, if any.
