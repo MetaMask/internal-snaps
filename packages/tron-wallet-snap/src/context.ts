@@ -190,6 +190,7 @@ const stakingService = new StakingService({
   snapClient,
   accountsService,
   tronWebFactory,
+  transactionExpirationRefresherService,
 });
 
 const walletService = new WalletService({
