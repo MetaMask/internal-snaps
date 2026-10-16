@@ -1,6 +1,6 @@
 import { SolMethod } from '@metamask/keyring-api';
 import { serialize } from '@metamask/snap-networks-utils';
-import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
 import { transactionScanService, state } from '../../../../snapContext';
 import { METAMASK_ORIGIN, Network } from '../../../constants/solana';
@@ -89,7 +89,7 @@ describe('refreshConfirmationEstimation', () => {
     jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(updateInterface).toHaveBeenCalledWith(
@@ -112,7 +112,7 @@ describe('refreshConfirmationEstimation', () => {
     );
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(trackError).toHaveBeenCalledWith(error);
@@ -135,7 +135,7 @@ describe('refreshConfirmationEstimation', () => {
     jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(transactionScanService.scanTransaction).not.toHaveBeenCalled();
@@ -158,7 +158,7 @@ describe('refreshConfirmationEstimation', () => {
     (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(isTransactionBlockhashExpired).not.toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe('refreshConfirmationEstimation', () => {
     (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(transactionScanService.scanTransaction).not.toHaveBeenCalled();
