@@ -1,4 +1,4 @@
-import type { JsonRpcRequest } from '@metamask/utils';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
 import { getClientStatus } from '../../utils/snap';
 import type { BackgroundEventMethod, ICronjobRequestHandler } from './api';
