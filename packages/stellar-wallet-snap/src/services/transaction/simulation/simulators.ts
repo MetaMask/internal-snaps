@@ -126,6 +126,7 @@ function validateDebit(params: {
  * @param params.assetId - Asset being credited.
  * @param params.amount - Amount in smallest units.
  * @param params.balanceAfterDebit - Optional post-debit balance on the same row (native or trustline) when credit follows a debit on the same account+asset; enables correct limit checks for self-payments and path payments to self.
+ * @param params.skipExceptions - Optional array of error constructors to skip validation for.
  */
 function validateCredit(params: {
   account: AccountState;
