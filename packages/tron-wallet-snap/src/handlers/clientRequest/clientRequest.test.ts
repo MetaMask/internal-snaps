@@ -371,6 +371,12 @@ describe('ClientRequestHandler', () => {
 
       mockTronWebFactory = {
         createClient: jest.fn().mockReturnValue(mockTronWeb),
+        executeBroadcast: jest
+          .fn()
+          .mockImplementation(
+            async (_scope: Network, operation: () => Promise<unknown>) =>
+              operation(),
+          ),
       } as unknown as jest.Mocked<TronWebFactory>;
 
       mockSnapClient = {
@@ -1805,6 +1811,12 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     mockTronWebFactory = {
       createClient: jest.fn().mockReturnValue(mockTronWeb),
+      executeBroadcast: jest
+        .fn()
+        .mockImplementation(
+          async (_scope: Network, operation: () => Promise<unknown>) =>
+            operation(),
+        ),
     } as unknown as jest.Mocked<TronWebFactory>;
 
     mockSnapClient = {
@@ -1936,6 +1948,135 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
     const result = await clientRequestHandler.handle(request as JsonRpcRequest);
 
     expect(result).toStrictEqual({ transactionId });
+  });
+
+  it('signs once and retries the same signed client transaction on a transient broadcast failure', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+    const signedTransaction = { signature: ['test-signature'] };
+    mockAccountsService.findByIdOrThrow.mockResolvedValue(
+      createMockExtendedKeyringAccount({
+        address: CORRECT_OWNER_ADDRESS_BASE58,
+        type: 'tron:eoa',
+        scopes: [scope],
+      }),
+    );
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+    } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: { owner_address: CORRECT_OWNER_ADDRESS_HEX },
+          },
+        },
+      ],
+    });
+    mockTronWeb.trx.sign.mockReturnValue(signedTransaction);
+    mockTronWebFactory.executeBroadcast.mockImplementation(
+      async (_network: Network, operation: () => Promise<unknown>) => {
+        try {
+          return await operation();
+        } catch {
+          return operation();
+        }
+      },
+    );
+    mockTronWeb.trx.sendRawTransaction
+      .mockRejectedValueOnce(
+        Object.assign(new Error('unavailable'), {
+          response: { status: 503 },
+        }),
+      )
+      .mockResolvedValue({ result: true, txid: transactionId });
+
+    await clientRequestHandler.handle(request as JsonRpcRequest);
+
+    expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
+    expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
+    expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+      1,
+      signedTransaction,
+    );
+    expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+      2,
+      signedTransaction,
+    );
+  });
+
+  it('uses the signed transaction ID when a duplicate response omits it', async () => {
+    const scope = Network.Mainnet;
+    const request = {
+      jsonrpc: '2.0' as const,
+      id: '1',
+      method: ClientRequestMethod.SignAndSendTransaction,
+      params: {
+        accountId: TEST_ACCOUNT_ID,
+        transaction: TEST_TRANSACTION_BASE64,
+        scope,
+        options: {
+          visible: false,
+          type: 'TriggerSmartContract',
+        },
+      },
+    };
+    mockAccountsService.findByIdOrThrow.mockResolvedValue(
+      createMockExtendedKeyringAccount({
+        address: CORRECT_OWNER_ADDRESS_BASE58,
+        type: 'tron:eoa',
+        scopes: [scope],
+      }),
+    );
+    mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      privateKeyHex: 'test-private-key',
+      address: CORRECT_OWNER_ADDRESS_BASE58,
+    } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: { owner_address: CORRECT_OWNER_ADDRESS_HEX },
+          },
+        },
+      ],
+    });
+    mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+      code: 5,
+      message: 'Transaction already exists',
+      result: false,
+    });
+
+    const result = await clientRequestHandler.handle(request as JsonRpcRequest);
+    const signedTransactionId = (
+      mockTronWeb.trx.sign.mock.calls[0]?.[0] as { txID: string }
+    ).txID;
+
+    expect(result).toStrictEqual({ transactionId: signedTransactionId });
+    expect(mockTransactionsService.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: signedTransactionId }),
+    );
+    expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({ txId: signedTransactionId }),
+      }),
+    );
   });
 
   it('emits Transaction Submitted before scheduling the background tracker', async () => {

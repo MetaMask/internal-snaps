@@ -2,6 +2,7 @@ import { TronWeb } from 'tronweb';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { throwOnTransientBroadcastFailure } from '../../utils/broadcast';
 import { TronWebFactory } from './TronWebFactory';
 
 /**
@@ -65,6 +66,112 @@ describe('TronWebFactory', () => {
       expect(client.fullNode?.host).toBe(MAINNET_URL);
       expect(client.solidityNode?.host).toBe(MAINNET_URL);
       expect(client.eventServer?.host).toBe(MAINNET_URL);
+    });
+
+    it('sets a per-attempt timeout below the snap execution limit', () => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+
+      const client = factory.createClient(Network.Mainnet);
+
+      expect(client.fullNode.timeout).toBe(10_000);
+      expect(client.solidityNode.timeout).toBe(10_000);
+      expect(client.eventServer?.timeout).toBe(10_000);
+    });
+
+    it('retries axios-style transient read failures', async () => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+      const operation = jest
+        .fn<Promise<string>, []>()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('unavailable'), {
+            response: { status: 503 },
+          }),
+        )
+        .mockResolvedValue('ok');
+
+      expect(await factory.executeRead(Network.Mainnet, operation)).toBe('ok');
+      expect(operation).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry axios-style 404 read failures', async () => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+      const error = Object.assign(new Error('not found'), {
+        response: { status: 404 },
+      });
+      const operation = jest.fn<Promise<string>, []>().mockRejectedValue(error);
+
+      await expect(
+        factory.executeRead(Network.Mainnet, operation),
+      ).rejects.toMatchObject({ httpStatus: 404 });
+      expect(operation).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries only the captured signed transaction broadcast', async () => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+      const signedTransaction = { txID: 'signed-transaction' };
+      const sendRawTransaction = jest
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('unavailable'), {
+            response: { status: 503 },
+          }),
+        )
+        .mockResolvedValue({ result: true });
+      const operation = jest.fn(() => sendRawTransaction(signedTransaction));
+
+      await factory.executeBroadcast(Network.Mainnet, operation);
+
+      expect(operation).toHaveBeenCalledTimes(2);
+      expect(sendRawTransaction).toHaveBeenNthCalledWith(1, signedTransaction);
+      expect(sendRawTransaction).toHaveBeenNthCalledWith(2, signedTransaction);
+    });
+
+    it('does not retry non-transient broadcast failures', async () => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+      const error = Object.assign(new Error('invalid transaction'), {
+        response: { status: 400 },
+      });
+      const operation = jest.fn().mockRejectedValue(error);
+
+      await expect(
+        factory.executeBroadcast(Network.Mainnet, operation),
+      ).rejects.toMatchObject({ httpStatus: 400 });
+      expect(operation).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries a resolved transient node response through the broadcast policy', async () => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+      const signedTransaction = { txID: 'signed-transaction' };
+      const sendRawTransaction = jest
+        .fn()
+        .mockResolvedValueOnce({
+          code: 'SERVER_BUSY',
+          message: 'Server busy',
+          result: false,
+        })
+        .mockResolvedValue({ result: true });
+      const operation = async (): Promise<{ result: boolean }> =>
+        throwOnTransientBroadcastFailure(
+          await sendRawTransaction(signedTransaction),
+        );
+
+      await factory.executeBroadcast(Network.Mainnet, operation);
+
+      expect(sendRawTransaction).toHaveBeenCalledTimes(2);
+      expect(sendRawTransaction).toHaveBeenNthCalledWith(1, signedTransaction);
+      expect(sendRawTransaction).toHaveBeenNthCalledWith(2, signedTransaction);
     });
 
     it('reads the config on every call, picking up new config values', () => {

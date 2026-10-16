@@ -11,6 +11,7 @@ describe('trongrid errors', () => {
       const error = new TrongridHttpError(500);
 
       expect(error.status).toBe(500);
+      expect(error.httpStatus).toBe(500);
       expect(error.message).toBe('HTTP error! status: 500');
       expect(error.name).toBe('TrongridHttpError');
     });
@@ -22,19 +23,29 @@ describe('trongrid errors', () => {
 
       expect(error).toBeInstanceOf(TrongridHttpError);
       expect(error.status).toBe(429);
+      expect(error.httpStatus).toBe(429);
       expect(error.name).toBe('TrongridRateLimitError');
     });
   });
 
   describe('createTrongridHttpError', () => {
-    const buildResponse = (status: number) =>
-      ({ status }) as unknown as Parameters<typeof createTrongridHttpError>[0];
+    const buildResponse = (status: number, retryAfter?: string) =>
+      ({
+        status,
+        headers: { get: () => retryAfter ?? null },
+      }) as unknown as Parameters<typeof createTrongridHttpError>[0];
 
     it('returns a TrongridRateLimitError for 429', () => {
       const error = createTrongridHttpError(buildResponse(429));
 
       expect(error).toBeInstanceOf(TrongridRateLimitError);
       expect(error.status).toBe(429);
+    });
+
+    it('maps Retry-After to milliseconds', () => {
+      const error = createTrongridHttpError(buildResponse(429, '2'));
+
+      expect(error.retryAfterMs).toBe(2000);
     });
 
     it('returns a TrongridHttpError for non-429 statuses', () => {
