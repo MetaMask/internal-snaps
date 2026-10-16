@@ -379,7 +379,7 @@ describe('OnChainAccountService', () => {
   });
 
   describe('fetchAndBindSep41Balances', () => {
-    it('binds balances resolved by fetchSep41AssetsMetadata', async () => {
+    it('binds balances resolved by fetchSep41AssetsByAssetIds', async () => {
       const accountAddress = generateStellarAddress();
       const scope = KnownCaip2ChainId.Mainnet;
       const loadedAcc = createMockAccountWithBalances(
@@ -401,7 +401,7 @@ describe('OnChainAccountService', () => {
         throw new Error('expected USDC SEP-41 metadata');
       }
       const fetchMetadataSpy = jest
-        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsMetadata')
+        .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsByAssetIds')
         .mockResolvedValue([usdcSep41]);
       getSep41AssetBalancesSpy.mockResolvedValue({
         [accountAddress]: {
