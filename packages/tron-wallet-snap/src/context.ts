@@ -44,10 +44,7 @@ import { TransactionScanService } from './services/transaction-scan/TransactionS
 import { TransactionsRepository } from './services/transactions/TransactionsRepository';
 import { TransactionsService } from './services/transactions/TransactionsService';
 import { WalletService } from './services/wallet/WalletService';
-import type {
-  CoreMessenger,
-  CoreMessengerClient,
-} from './types/core-messenger';
+import type { CoreMessengerClient } from './types/core-messenger';
 import { trackError } from './utils/errors';
 import logger, { noOpLogger } from './utils/logger';
 
@@ -104,7 +101,7 @@ const tokenApiClient = new TokenApiClient(configProvider);
 /**
  * Core controllers plumbing
  */
-const coreMessenger = getMessenger<CoreMessenger>();
+const coreMessenger = getMessenger() as CoreMessengerClient;
 const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
   messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
 });

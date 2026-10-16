@@ -1,6 +1,4 @@
-import type { Messenger } from '@metamask/messenger';
 import type { RemoteFeatureFlagControllerGetStateAction } from '@metamask/remote-feature-flag-controller';
-import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { Json } from '@metamask/utils';
 
 /**
@@ -15,15 +13,47 @@ export const REMOTE_FEATURE_FLAGS_PROVIDER_NAME =
 export type RemoteFeatureFlagsProviderAllowedActions =
   RemoteFeatureFlagControllerGetStateAction;
 
+type ExtractActionParameters<
+  Action extends RemoteFeatureFlagsProviderAllowedActions,
+  ActionType extends Action['type'],
+> = Action extends {
+  type: ActionType;
+  handler: (...args: infer HandlerArgs) => unknown;
+}
+  ? HandlerArgs
+  : never;
+
+type ExtractActionResponse<
+  Action extends RemoteFeatureFlagsProviderAllowedActions,
+  ActionType extends Action['type'],
+> = Action extends {
+  type: ActionType;
+  handler: (...args: never[]) => infer HandlerReturnValue;
+}
+  ? HandlerReturnValue
+  : never;
+
 /**
  * Messenger restricted to actions consumed by {@link RemoteFeatureFlagsProvider}.
  */
-export type RemoteFeatureFlagsProviderMessenger = AsyncMessenger<
-  Messenger<
-    typeof REMOTE_FEATURE_FLAGS_PROVIDER_NAME,
-    RemoteFeatureFlagsProviderAllowedActions
-  >
->;
+export type RemoteFeatureFlagsProviderMessenger = {
+  call: <
+    ActionType extends RemoteFeatureFlagsProviderAllowedActions['type'],
+  >(
+    actionType: ActionType,
+    ...params: ExtractActionParameters<
+      RemoteFeatureFlagsProviderAllowedActions,
+      ActionType
+    >
+  ) => Promise<
+    Awaited<
+      ExtractActionResponse<
+        RemoteFeatureFlagsProviderAllowedActions,
+        ActionType
+      >
+    >
+  >;
+};
 
 export class RemoteFeatureFlagsProvider {
   readonly #messenger: RemoteFeatureFlagsProviderMessenger;

@@ -8,8 +8,6 @@ import type {
   Caip19AssetId,
 } from '@metamask/assets-controller';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
-import type { Messenger } from '@metamask/messenger';
-import { AsyncMessenger } from '@metamask/snaps-sdk';
 import type { CaipChainId } from '@metamask/utils';
 
 /**
@@ -27,12 +25,42 @@ export type AssetsProviderAllowedActions =
   | AssetsControllerGetAssetMetadataAction
   | AssetsControllerGetAssetsAction;
 
+type ExtractActionParameters<
+  Action extends AssetsProviderAllowedActions,
+  ActionType extends Action['type'],
+> = Action extends {
+  type: ActionType;
+  handler: (...args: infer HandlerArgs) => unknown;
+}
+  ? HandlerArgs
+  : never;
+
+type ExtractActionResponse<
+  Action extends AssetsProviderAllowedActions,
+  ActionType extends Action['type'],
+> = Action extends {
+  type: ActionType;
+  handler: (...args: never[]) => infer HandlerReturnValue;
+}
+  ? HandlerReturnValue
+  : never;
+
 /**
  * Messenger restricted to actions consumed by {@link AssetsProvider}.
  */
-export type AssetsProviderMessenger = AsyncMessenger<
-  Messenger<typeof ASSETS_PROVIDER_NAME, AssetsProviderAllowedActions>
->;
+export type AssetsProviderMessenger = {
+  call: <ActionType extends AssetsProviderAllowedActions['type']>(
+    actionType: ActionType,
+    ...params: ExtractActionParameters<
+      AssetsProviderAllowedActions,
+      ActionType
+    >
+  ) => Promise<
+    Awaited<
+      ExtractActionResponse<AssetsProviderAllowedActions, ActionType>
+    >
+  >;
+};
 
 export class AssetsProvider {
   readonly #messenger: AssetsProviderMessenger;
