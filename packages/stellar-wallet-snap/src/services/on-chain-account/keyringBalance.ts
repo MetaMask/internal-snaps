@@ -108,7 +108,7 @@ export function toClassicBalanceEntry(
     unit: asset.symbol,
     amount: toDisplayBalance(asset.balance, asset.decimals),
     metadata: {
-      limit: toDisplayBalance(asset.limit ?? new BigNumber(0), asset.decimals),
+      limit: (asset.limit ?? new BigNumber(0)).toFixed(0),
       authorized: asset.authorized,
       sponsor: asset.sponsor,
       sponsored: asset.sponsored,

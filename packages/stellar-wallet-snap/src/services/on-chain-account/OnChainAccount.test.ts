@@ -541,9 +541,9 @@ describe('OnChainAccount', () => {
       expect(tombstone.sponsored).toBe(false);
       expect(tombstone.sponsor).toBeUndefined();
 
-      const serialized = onChainAccount.toSerializableFull().balances.find(
-        (row) => row.assetId === usdcId,
-      );
+      const serialized = onChainAccount
+        .toSerializableFull()
+        .balances.find((row) => row.assetId === usdcId);
       expect(serialized).toMatchObject({
         limit: '0',
         sponsored: false,
