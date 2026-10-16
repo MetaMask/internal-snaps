@@ -243,12 +243,8 @@ export class OnChainAccount {
       limit: new BigNumber(0),
       address: assetEntry.address,
       authorized: assetEntry.authorized ?? true,
-      ...(assetEntry.sponsored === undefined
-        ? {}
-        : { sponsored: assetEntry.sponsored }),
-      ...(assetEntry.sponsor === undefined || assetEntry.sponsor.length === 0
-        ? {}
-        : { sponsor: assetEntry.sponsor }),
+      sponsored: false,
+      sponsor: undefined,
       decimals: assetEntry.decimals,
     });
   }
