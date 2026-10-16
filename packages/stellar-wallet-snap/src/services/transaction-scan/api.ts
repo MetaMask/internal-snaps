@@ -15,7 +15,7 @@ import {
   unknown,
 } from '@metamask/superstruct';
 
-import { KnownCaip2ChainId, XdrStruct } from '../../api';
+import { KnownCaip2ChainId } from '../../api';
 
 /**
  * TransactionScanErrorId
@@ -100,16 +100,17 @@ export const SecurityScanRequestStruct = type({
 });
 
 export const ScanTransactionRequestStruct = type({
-  accountAddress: nonempty(string()),
-  origin: string(),
-  scope: enums(Object.values(KnownCaip2ChainId)),
-  transaction: XdrStruct,
+  account_address: nonempty(string()),
+  chain: enums(['pubnet', 'testnet', 'futurenet']),
+  metadata: union([
+    type({ type: literal('wallet'), url: nonempty(string()) }),
+    type({ type: literal('in_app') }),
+  ]),
+  transaction: string(),
   options: optional(array(enums(Object.values(TransactionScanOption)))),
 });
 
 export type SecurityScanRequest = Infer<typeof SecurityScanRequestStruct>;
-
-export type ScanTransactionRequest = Infer<typeof ScanTransactionRequestStruct>;
 
 /** StellarTransactionScanResponse */
 const StellarAssetTransferDetailsStruct = type({

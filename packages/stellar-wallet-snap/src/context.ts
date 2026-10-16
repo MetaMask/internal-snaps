@@ -1,5 +1,6 @@
 import {
   AnalyticsService,
+  SecurityAlertsApiClient,
   State,
   InMemoryCache,
 } from '@metamask/snap-networks-utils';
@@ -57,10 +58,7 @@ import {
   TransactionRepository,
   TransactionService,
 } from './services/transaction';
-import {
-  SecurityAlertsApiClient,
-  TransactionScanService,
-} from './services/transaction-scan';
+import { TransactionScanService } from './services/transaction-scan';
 import { WalletService } from './services/wallet';
 import { ConfirmationUXController } from './ui/confirmation/controller';
 import { getSnapProvider, logger, noOpLogger, trackError } from './utils';
@@ -123,11 +121,15 @@ const priceService = new PriceService({
   logger,
 });
 
+const securityAlertsApiClient = new SecurityAlertsApiClient({
+  scanUrl: `${AppConfig.api.securityAlertsApi.baseUrl}/stellar/transaction/scan`,
+});
+
 const transactionScanService = new TransactionScanService({
-  securityAlertsApiClient: new SecurityAlertsApiClient(
-    AppConfig.api.securityAlertsApi,
-  ),
-  logger,
+  securityAlertsApiClient,
+  analyticsService,
+  logger: logger.withPrefix('[🛡️ TransactionScanService]'),
+  trackError,
 });
 
 const synchronizeService = new SynchronizeService({

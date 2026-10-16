@@ -1,3 +1,8 @@
+import type {
+  AnalyticsService,
+  SecurityAlertsApiClient,
+} from '@metamask/snap-networks-utils';
+import { SecurityAlertsScanStatus } from '@metamask/snap-networks-utils';
 import { Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -21,7 +26,6 @@ import {
   TransactionScanValidationType,
 } from './api';
 import type { StellarTransactionScanResponse } from './api';
-import type { SecurityAlertsApiClient } from './SecurityAlertsApiClient';
 import { TransactionScanService } from './TransactionScanService';
 
 jest.mock('../../utils/logger');
@@ -50,15 +54,29 @@ describe('TransactionScanService', () => {
     > = {
       scanTransaction: jest.fn(),
     };
+    const analyticsService: jest.Mocked<
+      Pick<
+        AnalyticsService,
+        'trackSecurityScanCompleted' | 'trackSecurityAlertDetected'
+      >
+    > = {
+      trackSecurityScanCompleted: jest.fn(),
+      trackSecurityAlertDetected: jest.fn(),
+    };
+    const mockTrackError = jest.fn<Promise<string | undefined>, [unknown]>();
     const service = new TransactionScanService({
       securityAlertsApiClient:
         securityAlertsApiClient as unknown as SecurityAlertsApiClient,
+      analyticsService: analyticsService as unknown as AnalyticsService,
       logger,
+      trackError: mockTrackError,
     });
 
     return {
       service,
       securityAlertsApiClient,
+      analyticsService,
+      mockTrackError,
     };
   }
 
@@ -69,7 +87,7 @@ describe('TransactionScanService', () => {
         insufficientBalanceResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toMatchObject({
         status: 'ERROR',
@@ -89,7 +107,7 @@ describe('TransactionScanService', () => {
         noTrustlineResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toMatchObject({
         status: 'ERROR',
@@ -109,7 +127,7 @@ describe('TransactionScanService', () => {
         successSwapXLMToUSDCResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toStrictEqual({
         status: 'SUCCESS',
@@ -154,7 +172,7 @@ describe('TransactionScanService', () => {
         successPaymentXLMResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toStrictEqual({
         status: 'SUCCESS',
@@ -185,7 +203,7 @@ describe('TransactionScanService', () => {
         successPaymentUSDCResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toStrictEqual({
         status: 'SUCCESS',
@@ -222,7 +240,7 @@ describe('TransactionScanService', () => {
         successPaymentSEP41Response as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toStrictEqual({
         status: 'SUCCESS',
@@ -256,7 +274,7 @@ describe('TransactionScanService', () => {
       insufficientBalanceResponse as StellarTransactionScanResponse,
     );
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
 
     expect(result?.error).toMatchObject({
       type: 'simulation',
@@ -274,7 +292,7 @@ describe('TransactionScanService', () => {
       validation: null,
     });
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
 
     expect(result).toMatchObject({
       status: 'ERROR',
@@ -293,7 +311,7 @@ describe('TransactionScanService', () => {
       validation: null,
     });
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
 
     expect(result).toMatchObject({
       status: 'ERROR',
@@ -315,7 +333,7 @@ describe('TransactionScanService', () => {
       },
     });
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
 
     expect(result).toStrictEqual({
       status: 'SUCCESS',
@@ -345,7 +363,7 @@ describe('TransactionScanService', () => {
       },
     });
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
 
     expect(result).toMatchObject({
       status: 'SUCCESS',
@@ -367,7 +385,7 @@ describe('TransactionScanService', () => {
       validation: null,
     });
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
 
     expect(result).toMatchObject({
       status: 'ERROR',
@@ -385,7 +403,7 @@ describe('TransactionScanService', () => {
       new Error('network error'),
     );
 
-    const result = await service.scanTransactionSafe(scanParams);
+    const result = await service.scanTransaction(scanParams);
     expect(result).toBeNull();
   });
 
@@ -436,7 +454,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe({
+      const result = await service.scanTransaction({
         ...scanParams,
         transaction: buildExpiredTransactionXdr(),
       });
@@ -467,7 +485,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe({
+      const result = await service.scanTransaction({
         ...scanParams,
         transaction: 'AAAAAgAAAAA=',
       });
@@ -488,7 +506,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe({
+      const result = await service.scanTransaction({
         ...scanParams,
         transaction: buildExpiredTransactionXdr(),
         options: [TransactionScanOption.Validation],
@@ -506,7 +524,7 @@ describe('TransactionScanService', () => {
         insufficientBalanceResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe({
+      const result = await service.scanTransaction({
         ...scanParams,
         transaction: buildExpiredTransactionXdr(),
       });
@@ -533,7 +551,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe({
+      const result = await service.scanTransaction({
         ...scanParams,
         transaction: buildExpiredTransactionXdr(),
       });
@@ -551,7 +569,7 @@ describe('TransactionScanService', () => {
         successPaymentXLMResponse as StellarTransactionScanResponse,
       );
 
-      const result = await service.scanTransactionSafe({
+      const result = await service.scanTransaction({
         ...scanParams,
         transaction: buildExpiredTransactionXdr(),
       });
@@ -621,7 +639,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toMatchObject({
         status: 'SUCCESS',
@@ -640,53 +658,18 @@ describe('TransactionScanService', () => {
       });
     });
 
-    it('maps null value when raw_value is missing from the transfer', async () => {
+    it('returns null when the response body fails schema validation', async () => {
       const { service, securityAlertsApiClient } = setup();
       securityAlertsApiClient.scanTransaction.mockResolvedValue({
         simulation: {
-          status: 'Success',
-          account_summary: {
-            account_assets_diffs: [],
-          },
-          assets_diffs: {
-            [FIXTURE_ACCOUNT_ADDRESS]: [
-              {
-                asset: {
-                  type: 'NATIVE',
-                  code: 'XLM',
-                },
-                asset_type: 'NATIVE',
-                in: null,
-                out: {
-                  usd_price: 0.18,
-                  summary: 'Sent 1 XLM',
-                  value: 1,
-                },
-              },
-            ],
-          },
+          status: 'Unexpected',
         },
-        validation: {
-          status: 'Success',
-          result_type: TransactionScanValidationType.Benign,
-        },
-      } as unknown as StellarTransactionScanResponse);
-
-      const result = await service.scanTransactionSafe(scanParams);
-
-      expect(result).toMatchObject({
-        status: 'SUCCESS',
-        estimatedChanges: {
-          assets: [
-            {
-              type: AssetChangeDirection.Out,
-              symbol: 'XLM',
-              value: null,
-              price: 0.18,
-            },
-          ],
-        },
+        validation: null,
       });
+
+      const result = await service.scanTransaction(scanParams);
+
+      expect(result).toBeNull();
     });
 
     it('reads signer diffs from assets_diffs instead of account_summary', async () => {
@@ -720,7 +703,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toMatchObject({
         status: 'SUCCESS',
@@ -768,7 +751,7 @@ describe('TransactionScanService', () => {
         },
       });
 
-      const result = await service.scanTransactionSafe(scanParams);
+      const result = await service.scanTransaction(scanParams);
 
       expect(result).toMatchObject({
         status: 'SUCCESS',
@@ -789,6 +772,124 @@ describe('TransactionScanService', () => {
           ],
         },
       });
+    });
+  });
+
+  describe('analytics', () => {
+    const accountType = 'xlm:account';
+
+    const benignResponse = {
+      simulation: {
+        status: 'Success',
+        account_summary: { account_assets_diffs: [] },
+      },
+      validation: {
+        status: 'Success',
+        result_type: TransactionScanValidationType.Benign,
+      },
+    } as unknown as StellarTransactionScanResponse;
+
+    it('tracks scan completed without alerts for benign scans', async () => {
+      const { service, securityAlertsApiClient, analyticsService } = setup();
+      securityAlertsApiClient.scanTransaction.mockResolvedValue(benignResponse);
+
+      const result = await service.scanTransaction({
+        ...scanParams,
+        accountType,
+      });
+
+      expect(result).toMatchObject({ status: 'SUCCESS' });
+      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+        origin: scanParams.origin,
+        accountType,
+        chainIdCaip: scanParams.scope,
+        scanStatus: 'SUCCESS',
+        hasSecurityAlerts: false,
+      });
+      expect(
+        analyticsService.trackSecurityAlertDetected,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('tracks scan completed and alert detected for warning scans', async () => {
+      const { service, securityAlertsApiClient, analyticsService } = setup();
+      securityAlertsApiClient.scanTransaction.mockResolvedValue({
+        ...benignResponse,
+        validation: {
+          status: 'Success',
+          result_type: TransactionScanValidationType.Warning,
+          reason: 'unfair_trade',
+        },
+      } as unknown as StellarTransactionScanResponse);
+
+      const result = await service.scanTransaction({
+        ...scanParams,
+        accountType,
+      });
+
+      expect(result).toMatchObject({
+        validation: { type: TransactionScanValidationType.Warning },
+      });
+      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+        origin: scanParams.origin,
+        accountType,
+        chainIdCaip: scanParams.scope,
+        scanStatus: 'SUCCESS',
+        hasSecurityAlerts: true,
+      });
+      expect(analyticsService.trackSecurityAlertDetected).toHaveBeenCalledWith({
+        origin: scanParams.origin,
+        accountType,
+        chainIdCaip: scanParams.scope,
+        securityAlertResponse: TransactionScanValidationType.Warning,
+        securityAlertReason: 'unfair_trade',
+        securityAlertDescription:
+          "Security alert: Unfair trade of assets, without adequate compensation to the owner's account",
+      });
+    });
+
+    it('does not track analytics when no account is provided', async () => {
+      const { service, securityAlertsApiClient, analyticsService } = setup();
+      securityAlertsApiClient.scanTransaction.mockResolvedValue(benignResponse);
+
+      await service.scanTransaction(scanParams);
+
+      expect(
+        analyticsService.trackSecurityScanCompleted,
+      ).not.toHaveBeenCalled();
+      expect(
+        analyticsService.trackSecurityAlertDetected,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('tracks scan completed with error status when the scan fails', async () => {
+      const {
+        service,
+        securityAlertsApiClient,
+        analyticsService,
+        mockTrackError,
+      } = setup();
+      securityAlertsApiClient.scanTransaction.mockRejectedValue(
+        new Error('Network error'),
+      );
+
+      const result = await service.scanTransaction({
+        ...scanParams,
+        accountType,
+      });
+
+      expect(result).toBeNull();
+      expect(mockTrackError).toHaveBeenCalled();
+      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith({
+        origin: scanParams.origin,
+        accountType,
+        chainIdCaip: scanParams.scope,
+        scanStatus: SecurityAlertsScanStatus.ERROR,
+        hasSecurityAlerts: false,
+      });
+      expect(
+        analyticsService.trackSecurityAlertDetected,
+      ).not.toHaveBeenCalled();
     });
   });
 });
