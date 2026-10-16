@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `sponsored` to classic keyring balance metadata ([#471](https://github.com/MetaMask/internal-snaps/pull/471))
+
 ### Changed
 
 - Keep `onAmountInput` valid when a classic amount would exceed the sender's trustline limit ([#469](https://github.com/MetaMask/internal-snaps/pull/469))
