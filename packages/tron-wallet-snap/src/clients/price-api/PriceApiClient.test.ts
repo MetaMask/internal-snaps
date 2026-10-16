@@ -127,6 +127,7 @@ describe('PriceApiClient', () => {
 
           expect(mockFetch).toHaveBeenCalledWith(
             'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
           );
           expect(result).toStrictEqual(mockResponse);
         });
@@ -135,7 +136,7 @@ describe('PriceApiClient', () => {
       it('logs and throws an error if fetch fails', async () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           const mockError = new Error('Fetch failed');
-          mockFetch.mockRejectedValueOnce(mockError);
+          mockFetch.mockRejectedValue(mockError);
 
           await expect(
             client.getMultipleSpotPrices([
@@ -144,7 +145,7 @@ describe('PriceApiClient', () => {
             ]),
           ).rejects.toThrow('Fetch failed');
           expect(mockLogger.error).toHaveBeenCalledWith(
-            mockError,
+            expect.objectContaining({ message: 'Fetch failed' }),
             'Error fetching spot prices',
           );
         });
@@ -184,18 +185,9 @@ describe('PriceApiClient', () => {
 
           expect(mockFetch).toHaveBeenCalledWith(
             'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
           );
         });
-
-        await client.getMultipleSpotPrices(
-          [KnownCaip19Id.TrxMainnet, KnownCaip19Id.UsdtMainnet],
-          'eur',
-        );
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
-          expect.objectContaining({ signal: expect.any(AbortSignal) }),
-        );
       });
 
       it('handles malformed JSON response', async () => {
@@ -220,7 +212,7 @@ describe('PriceApiClient', () => {
 
       it('handles network timeout', async () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
-          mockFetch.mockRejectedValueOnce(new Error('Network timeout'));
+          mockFetch.mockRejectedValue(new Error('Network timeout'));
 
           await expect(
             client.getMultipleSpotPrices([
@@ -320,6 +312,7 @@ describe('PriceApiClient', () => {
           // We should have fetched the second token only
           expect(mockFetch).toHaveBeenCalledWith(
             'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
           );
 
           // The second token should be added to the cache
@@ -401,6 +394,7 @@ describe('PriceApiClient', () => {
           expect.stringMatching(
             /^https:\/\/some-mock-url\.com\/v3\/spot-prices\?([^&=]+=[^&]*&)*[^&=]+=.+$/u,
           ),
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
         );
       });
     });
