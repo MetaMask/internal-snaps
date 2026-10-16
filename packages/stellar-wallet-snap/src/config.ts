@@ -112,6 +112,8 @@ export const ConfigStruct = object({
       simulateTransaction: parseIntegerStruct(1000, 10 * 1000),
       // SEP-41 balance reads (multicall on mainnet)
       sep41AssetBalance: parseIntegerStruct(1000, 30 * 1000),
+      // Keyring getAccountAssets result reused by the following getAccountBalances call
+      keyringLiveAccount: parseIntegerStruct(1000, 30 * 1000),
       // 1 hour — token API asset catalog. Account sync hot-reloads when older.
       assetMetadata: parseIntegerStruct(1000, 60 * 60 * 1000),
     }),
@@ -183,6 +185,8 @@ const ENVIRONMENT = {
         process.env.STELLAR_SIMULATE_TRANSACTION_TTL_MILLISECONDS,
       sep41AssetBalance:
         process.env.STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS,
+      keyringLiveAccount:
+        process.env.STELLAR_KEYRING_LIVE_ACCOUNT_TTL_MILLISECONDS,
       assetMetadata: process.env.STELLAR_ASSET_METADATA_TTL_MILLISECONDS,
     },
   },

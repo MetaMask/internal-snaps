@@ -185,6 +185,7 @@ describe('OnAmountInputHandler', () => {
     expect(result).toStrictEqual({ valid: true, errors: [] });
     expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       scope,
     );
     expect(createValidatedSendTransaction).toHaveBeenCalledWith({
@@ -211,6 +212,7 @@ describe('OnAmountInputHandler', () => {
 
     expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       KnownCaip2ChainId.Testnet,
     );
     expect(createValidatedSendTransaction).toHaveBeenCalledWith(

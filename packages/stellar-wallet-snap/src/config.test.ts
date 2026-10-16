@@ -54,6 +54,7 @@ const FULL_ENVIRONMENT = {
       loadOnChainAccount: '30000',
       simulateTransaction: '8000',
       sep41AssetBalance: '15000',
+      keyringLiveAccount: '20000',
       assetMetadata: '900000',
     },
   },
@@ -253,6 +254,7 @@ describe('ConfigProvider', () => {
         loadOnChainAccount: 30000,
         simulateTransaction: 8000,
         sep41AssetBalance: 15000,
+        keyringLiveAccount: 20000,
         assetMetadata: 900000,
       });
     });
@@ -268,6 +270,7 @@ describe('ConfigProvider', () => {
               loadOnChainAccount: '',
               simulateTransaction: undefined,
               sep41AssetBalance: '',
+              keyringLiveAccount: undefined,
               assetMetadata: '',
             },
           },
@@ -281,6 +284,7 @@ describe('ConfigProvider', () => {
         loadOnChainAccount: 10 * 60 * 1000,
         simulateTransaction: 10 * 1000,
         sep41AssetBalance: 30 * 1000,
+        keyringLiveAccount: 30 * 1000,
         assetMetadata: 60 * 60 * 1000,
       });
     });
