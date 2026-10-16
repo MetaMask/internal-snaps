@@ -20,7 +20,7 @@ jobs:
       - name: Check pull request merge queue status
         id: check-skip-merge-queue
         if: github.event_name == 'merge_group'
-        uses: MetaMask/github-tools/.github/actions/check-skip-merge-queue@7e0d74bc7b79ce9601e52f58d5e4d36c19591df9 # v1.19.0
+        uses: MetaMask/github-tools/.github/actions/check-skip-merge-queue@b1b556ff7ab5b6054698d078c661a7b149b8609e # v1.20.0
 
   check-workflows:
     name: Check workflows
@@ -158,7 +158,7 @@ jobs:
       - name: Restore build artifacts
         if: needs.check-release.outputs.IS_RELEASE_PR == 'true'
         # This is actions/download-artifact@v8.0.1
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: package-dist-${{ github.sha }}
           path: packages
