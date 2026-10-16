@@ -270,6 +270,7 @@ export class AssetMetadataService {
     const hits: StellarAssetMetadata[] = [];
     const missing: KnownCaip19AssetId[] = [];
 
+    this.#logger.debug('Getting asset metadata from Core', { assetIds });
     if (assetIds.length > 0) {
       // The order doesn't matter here, as we are not using the order of the assets.
       await Promise.all(
@@ -291,6 +292,7 @@ export class AssetMetadataService {
         }),
       );
     }
+    this.#logger.debug('Asset metadata from Core', { hits, missing });
     return { hits, missing };
   }
 

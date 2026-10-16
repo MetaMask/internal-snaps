@@ -9,6 +9,7 @@ import type {
 } from '../../../api';
 import { BASE_RESERVE_STROOPS, MAX_INT64 } from '../../../constants';
 import {
+  AnyErrorConstructor,
   getSlip44AssetId,
   isSlip44Id,
   stellarAssetToCaip19,
@@ -132,8 +133,16 @@ function validateCredit(params: {
   assetId: ClassicAssetId;
   amount: BigNumber;
   balanceAfterDebit?: BigNumber;
+  skipExceptions?: readonly AnyErrorConstructor[];
 }): void {
-  const { account, accountId, assetId, amount, balanceAfterDebit } = params;
+  const {
+    account,
+    accountId,
+    assetId,
+    amount,
+    balanceAfterDebit,
+    skipExceptions,
+  } = params;
 
   if (isSlip44Id(assetId)) {
     const nativeBalance = balanceAfterDebit ?? account.nativeRawBalance;
@@ -159,6 +168,14 @@ function validateCredit(params: {
   const trustlineBalance = balanceAfterDebit ?? line.balance;
   const newBalance = trustlineBalance.plus(amount);
   if (newBalance.isGreaterThan(line.limit)) {
+    if (
+      shouldSkipValidationException(
+        skipExceptions,
+        TrustlineExceedLimitException,
+      )
+    ) {
+      return;
+    }
     throw new TrustlineExceedLimitException(assetId);
   }
 }
@@ -218,7 +235,7 @@ function applyCredit(params: {
 export class PaymentOPSimulator implements OperationSimulator {
   validate(ctx: ValidateContext, op: Operation.Payment): void {
     const payment = op;
-    const { opIndex } = ctx;
+    const { opIndex, skipExceptions } = ctx;
     const { assetId, payAmt, source, dest, sourceId, destId } =
       this.#getContextData(ctx, op);
 
@@ -231,7 +248,7 @@ export class PaymentOPSimulator implements OperationSimulator {
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
     if (
       sourceId !== destId &&
-      !shouldSkipValidationException(ctx.skipExceptions, RequiresMemoException)
+      !shouldSkipValidationException(skipExceptions, RequiresMemoException)
     ) {
       assertMemoWhenDestinationRequires(
         ctx.transaction,
@@ -266,6 +283,7 @@ export class PaymentOPSimulator implements OperationSimulator {
       assetId,
       amount: payAmt,
       balanceAfterDebit,
+      skipExceptions,
     });
   }
 
@@ -311,6 +329,7 @@ export class PaymentOPSimulator implements OperationSimulator {
 
 export class PathPaymentOPSimulator implements OperationSimulator {
   validate(ctx: ValidateContext, op: PathPaymentOP): void {
+    const { skipExceptions, transaction } = ctx;
     const { source, sourceId, sendAssetId, sendAmount } = this.#sourceData(
       ctx,
       op,
@@ -323,13 +342,9 @@ export class PathPaymentOPSimulator implements OperationSimulator {
     // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
     if (
       sourceId !== destId &&
-      !shouldSkipValidationException(ctx.skipExceptions, RequiresMemoException)
+      !shouldSkipValidationException(skipExceptions, RequiresMemoException)
     ) {
-      assertMemoWhenDestinationRequires(
-        ctx.transaction,
-        destId,
-        dest.requiresMemo,
-      );
+      assertMemoWhenDestinationRequires(transaction, destId, dest.requiresMemo);
     }
 
     validateDebit({
@@ -358,6 +373,7 @@ export class PathPaymentOPSimulator implements OperationSimulator {
       assetId: destAssetId,
       amount: destAmount,
       balanceAfterDebit,
+      skipExceptions,
     });
   }
 

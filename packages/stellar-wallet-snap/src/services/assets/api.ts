@@ -22,6 +22,8 @@ import {
   ValidStellarAmountStruct,
   ValidStellarInt64Struct,
 } from '../../api';
+import { STELLAR_DECIMAL_PLACES } from '../../constants';
+import { hasDecimals, toSmallestUnit } from '../../utils';
 import { InvalidCoreAssetException } from './exceptions';
 
 /**
@@ -145,6 +147,24 @@ function isZeroTrustlineLimit(limit: string): boolean {
 }
 
 /**
+ * Convert a trustline limit to a stroop string.
+ *
+ * - If it has a fractional part, it is scaled to stroops.
+ * - If it is an integer, it is returned unchanged.
+ *
+ * @param limit - Trustline limit.
+ * @param decimals - Asset decimals used to scale a display amount.
+ * @returns Integer stroop string.
+ */
+function normalizeCoreTrustlineLimit(limit: string): string {
+  const amount = new BigNumber(limit);
+  if (!amount.isFinite() || !hasDecimals(amount)) {
+    return limit;
+  }
+  return toSmallestUnit(amount, STELLAR_DECIMAL_PLACES).toFixed(0);
+}
+
+/**
  * Whether classic trustline reserve is sponsored.
  * A non-empty sponsor on a removed trustline (limit 0) is stale and does not count.
  *
@@ -181,7 +201,9 @@ export function parseCoreStellarAsset(value: unknown): CoreAsset | null {
       throw new Error('Asset ID does not match chain ID');
     }
     if (isCoreClassicAsset(asset)) {
-      const { sponsor, limit } = asset.balance.metadata;
+      const { sponsor } = asset.balance.metadata;
+      const limit = normalizeCoreTrustlineLimit(asset.balance.metadata.limit);
+      asset.balance.metadata.limit = limit;
       if (isZeroTrustlineLimit(limit)) {
         // A removed trustline must not keep the previous sponsor account id.
         asset.balance.metadata.sponsor = null;
