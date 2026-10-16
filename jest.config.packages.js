@@ -80,7 +80,10 @@ module.exports = {
   // Here we ensure that Jest resolves `@metamask/*` imports to the uncompiled source code for packages that live in this repo.
   // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`.
   moduleNameMapper: {
-    '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
+    '^@metamask/utils/node$':
+      '<rootDir>/../../node_modules/@metamask/utils/dist/node.mjs',
+    '^@metamask/utils$':
+      '<rootDir>/../../node_modules/@metamask/utils/dist/index.mjs',
     // ESM-only package with an `exports`-only manifest: resolve it explicitly.
     '^@metamask/base-data-service$':
       '<rootDir>/../../node_modules/@metamask/base-data-service/dist/index.js',
@@ -196,11 +199,13 @@ module.exports = {
   // testURL: "http://localhost",
 
   // A map from regular expressions to paths to transformers
-  // transform: undefined,
+  transform: {
+    '^.+\\.mjs$': 'ts-jest',
+  },
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   transformIgnorePatterns: [
-    '/node_modules/(?!(@metamask/base-data-service|lodash-es)/)',
+    '/node_modules/(?!(@metamask/base-data-service|@metamask/utils|lodash-es)/)',
   ],
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
