@@ -45,7 +45,7 @@
     "@metamask/eslint-config-jest": "^15.0.1",
     "@metamask/eslint-config-nodejs": "^15.0.1",
     "@metamask/eslint-config-typescript": "^15.0.0",
-    "@metamask/utils": "^11.11.0",
+    "@metamask/utils": "^12.0.0",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.15",
     "@types/node": "^24",
@@ -84,6 +84,7 @@
   "resolutions": {
     "@metamask/snaps-execution-environments": "11.3.0",
     "@metamask/snaps-sdk": "12.0.1",
+    "@metamask/snaps-sdk/@metamask/utils": "^12.0.0",
     "@metamask/snaps-utils": "12.6.0",
     "@solana-name-service/sns-sdk-kit/@solana-program/token": "^0.16.1",
     "@types/react": "18.2.4",
