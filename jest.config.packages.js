@@ -80,10 +80,8 @@ module.exports = {
   // Here we ensure that Jest resolves `@metamask/*` imports to the uncompiled source code for packages that live in this repo.
   // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`.
   moduleNameMapper: {
-    '^@metamask/utils/node$':
-      '<rootDir>/../../node_modules/@metamask/utils/dist/node.mjs',
-    '^@metamask/utils$':
-      '<rootDir>/../../node_modules/@metamask/utils/dist/index.mjs',
+    '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
+    '^@metamask/utils$': require.resolve('@metamask/utils'),
     // ESM-only package with an `exports`-only manifest: resolve it explicitly.
     '^@metamask/base-data-service$':
       '<rootDir>/../../node_modules/@metamask/base-data-service/dist/index.js',
