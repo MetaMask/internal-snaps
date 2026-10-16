@@ -87,6 +87,7 @@ export const ConfirmTransactionRequest = ({
           destinationDomain={context.destinationDomain ?? null}
           scope={context.scope}
           feeInSol={feeInSol}
+          feePayment={context.feePayment ?? null}
           nativePrice={nativePrice}
           fetchingPricesStatus={context.tokenPricesFetchStatus}
           preferences={context.preferences}

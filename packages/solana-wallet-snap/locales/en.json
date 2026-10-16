@@ -190,6 +190,51 @@
     "confirmation.feeError": {
       "message": "Unable to estimate fee"
     },
+    "confirmation.sponsoredBy": {
+      "message": "Sponsored by"
+    },
+    "confirmation.sponsoredBy.tooltip": {
+      "message": "This account pays the network fee for this transaction."
+    },
+    "confirmation.paidBy": {
+      "message": "Fee paid by"
+    },
+    "confirmation.paidBy.tooltip": {
+      "message": "Another account in your wallet pays the network fee for this transaction."
+    },
+    "confirmation.youPay": {
+      "message": "You pay"
+    },
+    "confirmation.youPay.free": {
+      "message": "Free"
+    },
+    "confirmation.youPay.free.tooltip": {
+      "message": "The sponsor pays the network fee, and this transaction doesn't charge you any fee or rent. Any transfers are listed in the estimated changes."
+    },
+    "confirmation.youPay.notFree": {
+      "message": "Not free"
+    },
+    "confirmation.youPay.unverified": {
+      "message": "Can't confirm"
+    },
+    "confirmation.youPay.unverified.tooltip": {
+      "message": "The sponsor pays the network fee, but MetaMask can't confirm this transaction won't charge you. Review the estimated changes."
+    },
+    "confirmation.youPay.mayCostMore.tooltip": {
+      "message": "MetaMask can't confirm this transaction won't charge you more than shown."
+    },
+    "confirmation.youPay.uncheckedPrograms": {
+      "message": "It couldn't simulate the transaction, and can't check these programs: {programs}."
+    },
+    "confirmation.rent": {
+      "message": "Account rent"
+    },
+    "confirmation.rent.tooltip": {
+      "message": "SOL you set aside to create new accounts. You get it back when the accounts are closed."
+    },
+    "confirmation.paidToSponsor": {
+      "message": "Paid to sponsor"
+    },
     "confirmation.origin": {
       "message": "Request from"
     },
