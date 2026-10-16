@@ -7,6 +7,7 @@ const config = {
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
   },
+  transformIgnorePatterns: ['/node_modules/(?!(@metamask/utils)/)'],
   testMatch: ['**/integration-test/**/*.test.ts'],
 };
 
