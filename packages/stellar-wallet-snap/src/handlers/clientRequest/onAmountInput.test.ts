@@ -30,6 +30,7 @@ import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
   TransactionValidationException,
+  TrustlineExceedLimitException,
   XdrParseException,
 } from '../../services/transaction/exceptions';
 import { WalletService } from '../../services/wallet';
@@ -192,6 +193,7 @@ describe('OnAmountInputHandler', () => {
       assetId,
       amount: new BigNumber('10000000'),
       destination: onChainAccount.accountId,
+      skipExceptions: [TrustlineExceedLimitException],
       useCache: true,
     });
   });
@@ -215,6 +217,7 @@ describe('OnAmountInputHandler', () => {
       expect.objectContaining({
         scope: KnownCaip2ChainId.Testnet,
         assetId: testnetAssetId,
+        skipExceptions: [TrustlineExceedLimitException],
       }),
     );
   });
@@ -230,6 +233,7 @@ describe('OnAmountInputHandler', () => {
       assetId,
       amount: new BigNumber('10000000'),
       destination: onChainAccount.accountId,
+      skipExceptions: [TrustlineExceedLimitException],
       useCache: true,
     });
   });
