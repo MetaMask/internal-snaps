@@ -60,12 +60,13 @@ export const CoreNativeBalanceStruct = type({
 
 /**
  * Core `Asset.balance` for classic assets: human `amount` plus trustline
- * metadata (`limit` is unscaled int64 stroops).
+ * metadata. `limit` is a finite, non-negative string: either a display amount
+ * (`"0.0"`, `"922337203685.4775807"`) or an integer stroop string.
  */
 export const CoreClassicBalanceStruct = type({
   amount: ValidStellarAmountStruct,
   metadata: type({
-    limit: string(),
+    limit: ValidAmountStruct,
     authorized: defaulted(boolean(), true),
     // Keyring may omit sponsor or send null / "" when not sponsored.
     sponsor: optional(nullable(string())),
@@ -136,7 +137,7 @@ const StellarCoreAssetIdStruct = type({
 });
 
 /**
- * A removed trustline is stored with a zero display limit (`"0"`, `"0.0"`, `"0.0000000"`).
+ * A removed trustline is stored with a zero limit (`"0"`, `"0.0"`, `"0.0000000"`).
  *
  * @param limit - Classic trustline limit from Core balance metadata.
  * @returns Whether the limit is numeric zero.
