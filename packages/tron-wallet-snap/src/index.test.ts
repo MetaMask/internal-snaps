@@ -18,6 +18,7 @@ const mockCronHandle = jest.fn();
 const mockKeyringHandle = jest.fn();
 const mockRpcHandle = jest.fn();
 const mockUserInputHandle = jest.fn();
+const snapRequest = jest.fn();
 
 jest.mock('./context', () => ({
   clientRequestHandler: {
@@ -42,8 +43,23 @@ jest.mock('./context', () => ({
   },
 }));
 
+/**
+ * Resets the entrypoint mocks and executes a test with a configured Snap API.
+ *
+ * @param testFn - The test body receiving the Snap request mock.
+ * @returns Whatever the test function returns.
+ */
+async function withEntrypointMocks(
+  testFn: (setup: { snapRequest: jest.Mock }) => void | Promise<void>,
+): Promise<void> {
+  jest.resetAllMocks();
+  snapRequest.mockResolvedValue(undefined);
+  Object.assign(globalThis, { snap: { request: snapRequest } });
+
+  await testFn({ snapRequest });
+}
+
 describe('entrypoints', () => {
-  const snapRequest = jest.fn();
   const origin = 'https://example.com';
   const request = { jsonrpc: '2.0', id: 1, method: 'foo' } as const;
   const userInputParams = { id: 'id', event: {}, context: null };
@@ -84,52 +100,54 @@ describe('entrypoints', () => {
       ],
     ];
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    snapRequest.mockResolvedValue(undefined);
-    Object.assign(globalThis, { snap: { request: snapRequest } });
-  });
-
   it.each(entrypoints)(
     'delegates %s to its handler',
     async (_name, callEntrypoint, handle, expectedArgs) => {
-      handle.mockResolvedValue('result');
+      await withEntrypointMocks(async ({ snapRequest: mockSnapRequest }) => {
+        handle.mockResolvedValue('result');
 
-      expect(await callEntrypoint()).toBe('result');
-      expect(handle).toHaveBeenCalledWith(...expectedArgs);
-      expect(snapRequest).not.toHaveBeenCalled();
+        expect(await callEntrypoint()).toBe('result');
+        expect(handle).toHaveBeenCalledWith(...expectedArgs);
+        expect(mockSnapRequest).not.toHaveBeenCalled();
+      });
     },
   );
 
   it.each(entrypoints)(
     'normalizes and tracks %s errors',
     async (_name, callEntrypoint, handle) => {
-      handle.mockRejectedValue(new Error('Handler failed'));
+      await withEntrypointMocks(async ({ snapRequest: mockSnapRequest }) => {
+        handle.mockRejectedValue(new Error('Handler failed'));
 
-      await expect(callEntrypoint()).rejects.toBeInstanceOf(SnapError);
-      expect(snapRequest).toHaveBeenCalledWith({
-        method: 'snap_trackError',
-        params: {
-          error: expect.objectContaining({ message: 'Handler failed' }),
-        },
+        await expect(callEntrypoint()).rejects.toBeInstanceOf(SnapError);
+        expect(mockSnapRequest).toHaveBeenCalledWith({
+          method: 'snap_trackError',
+          params: {
+            error: expect.objectContaining({ message: 'Handler failed' }),
+          },
+        });
       });
     },
   );
 
   it('sanitizes sensitive errors before tracking them', async () => {
-    mockKeyringHandle.mockRejectedValue(new Error('Invalid private key 0xabc'));
+    await withEntrypointMocks(async ({ snapRequest: mockSnapRequest }) => {
+      mockKeyringHandle.mockRejectedValue(
+        new Error('Invalid private key 0xabc'),
+      );
 
-    await expect(
-      onKeyringRequest({ origin, request } as never),
-    ).rejects.toBeInstanceOf(SnapError);
-    expect(snapRequest).toHaveBeenCalledWith({
-      method: 'snap_trackError',
-      params: {
-        error: expect.objectContaining({
-          message:
-            'Key derivation failed. Please check your connection and try again.',
-        }),
-      },
+      await expect(
+        onKeyringRequest({ origin, request } as never),
+      ).rejects.toBeInstanceOf(SnapError);
+      expect(mockSnapRequest).toHaveBeenCalledWith({
+        method: 'snap_trackError',
+        params: {
+          error: expect.objectContaining({
+            message:
+              'Key derivation failed. Please check your connection and try again.',
+          }),
+        },
+      });
     });
   });
 

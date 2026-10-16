@@ -1177,6 +1177,68 @@ describe('SendService', () => {
           TEST_FROM_ADDRESS,
         );
       });
+
+      it('builds a self-send TRX transaction like any other send', async () => {
+        const asset = createNativeAsset();
+
+        const result = await sendService.buildTransaction({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_FROM_ADDRESS,
+          asset,
+          amount: new BigNumber(1),
+        });
+
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_FROM_ADDRESS,
+          1_000_000,
+          TEST_FROM_ADDRESS,
+        );
+        expect(result).toStrictEqual(createMockTransaction());
+      });
+
+      it('validates a self-send like any other send', async () => {
+        const asset = createNativeAsset();
+        const amount = new BigNumber(1);
+
+        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+          { uiAmount: '24.10979', rawAmount: '24109790' },
+          { uiAmount: '24.10979', rawAmount: '24109790' },
+          { rawAmount: '1000' },
+          { rawAmount: '0' },
+        ]);
+        mockFeeCalculatorService.computeFee.mockResolvedValue([
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '0',
+              fungible: true,
+            },
+          },
+        ]);
+
+        const result = await sendService.validateSend({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_FROM_ADDRESS,
+          asset,
+          amount,
+        });
+
+        expect(result).toStrictEqual({ valid: true });
+        expect(mockTronWeb.transactionBuilder.sendTrx).toHaveBeenCalledWith(
+          TEST_FROM_ADDRESS,
+          1_000_000,
+          TEST_FROM_ADDRESS,
+        );
+        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+          scope,
+          transaction: expect.objectContaining({ txID: 'mock-tx-id' }),
+          availableEnergy: expect.any(BigNumber),
+          availableBandwidth: expect.any(BigNumber),
+        });
+      });
     });
 
     describe('signAndSendTransaction', () => {
@@ -1384,6 +1446,34 @@ describe('SendService', () => {
             transaction: transaction as never,
           }),
         ).rejects.toThrow('Failed to send transaction: expired');
+      });
+    });
+  });
+
+  describe('Allows for recipients to be senders', () => {
+    it('builds a native transfer when the recipient is the sender', async () => {
+      const tronWeb = new TronWeb({ fullHost: 'https://api.trongrid.io' });
+      const address = 'TRXcKoEvHr6Y38VMcDYGBEYKznvH3XUX4g';
+
+      jest.spyOn(tronWeb.trx, 'getCurrentRefBlockParams').mockResolvedValue({
+        ref_block_bytes: '0123',
+        ref_block_hash: 'aabbccdd00112233',
+        expiration: 123456,
+        timestamp: 789,
+      });
+
+      const transaction = await tronWeb.transactionBuilder.sendTrx(
+        address,
+        1_000_000,
+        address,
+      );
+
+      const [contract] = transaction.raw_data.contract;
+      expect(contract?.type).toBe('TransferContract');
+      expect(contract?.parameter.value).toStrictEqual({
+        to_address: TronWeb.address.toHex(address),
+        owner_address: TronWeb.address.toHex(address),
+        amount: 1_000_000,
       });
     });
   });
