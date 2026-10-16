@@ -13,6 +13,12 @@ import type {
 
 type Block = TronwebTypes.Block;
 
+class ReferenceBlockLookupError extends Error {
+  constructor(cause: unknown) {
+    super('Unable to fetch transaction reference block', { cause });
+  }
+}
+
 /**
  * TRON block time is 3 seconds, so refresh if expiration is within the
  * documented 1-3 block interval window.
@@ -104,38 +110,50 @@ export class TransactionExpirationRefresherService {
     rawData: TransactionRawData;
   }): Promise<boolean> {
     const tronWeb = this.#tronWebFactory.createClient(scope);
-    return this.#tronWebFactory.executeRead(scope, async () => {
-      const now = Date.now();
-      const currentBlock = await tronWeb.trx.getCurrentBlock();
+    try {
+      return await this.#tronWebFactory.executeRead(scope, async () => {
+        const now = Date.now();
+        const currentBlock = await tronWeb.trx.getCurrentBlock();
 
-      if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
+        if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
+          return true;
+        }
+
+        const referenceBlockNumber = getReferenceBlockNumber({
+          currentBlockNumber: currentBlock.block_header.raw_data.number,
+          refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
+            .ref_block_bytes,
+        });
+
+        if (
+          !hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })
+        ) {
+          return true;
+        }
+
+        let referencedBlock: Block | undefined;
+        try {
+          referencedBlock = await this.#getReferenceBlock({
+            tronWeb,
+            currentBlock,
+            referenceBlockNumber,
+            suppressErrors: false,
+          });
+        } catch (error) {
+          throw new ReferenceBlockLookupError(error);
+        }
+
+        return !referencedBlockMatchesRawData({
+          rawData: rawData as TransactionRawDataWithExpirationMetadata,
+          referencedBlock,
+        });
+      });
+    } catch (error) {
+      if (hasErrorCause(error, ReferenceBlockLookupError)) {
         return true;
       }
-
-      const referenceBlockNumber = getReferenceBlockNumber({
-        currentBlockNumber: currentBlock.block_header.raw_data.number,
-        refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
-          .ref_block_bytes,
-      });
-
-      if (
-        !hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })
-      ) {
-        return true;
-      }
-
-      const referencedBlock = await this.#getReferenceBlock({
-        tronWeb,
-        currentBlock,
-        referenceBlockNumber,
-        suppressErrors: false,
-      });
-
-      return !referencedBlockMatchesRawData({
-        rawData: rawData as TransactionRawDataWithExpirationMetadata,
-        referencedBlock,
-      });
-    });
+      throw error;
+    }
   }
 
   /**
@@ -410,6 +428,27 @@ function hasAllowedExpirationWindow({
   const currentBlockTimestamp = currentBlock.block_header.raw_data.timestamp;
 
   return rawData.expiration < currentBlockTimestamp + MAX_EXPIRATION_MS;
+}
+
+/**
+ * Checks an error and its cause chain for a specific error type.
+ *
+ * @param error - Error value to inspect.
+ * @param ErrorType - Error constructor to find.
+ * @returns Whether the error chain contains the requested type.
+ */
+function hasErrorCause(
+  error: unknown,
+  ErrorType: typeof ReferenceBlockLookupError,
+): boolean {
+  let current = error;
+  while (current instanceof Error) {
+    if (current instanceof ErrorType) {
+      return true;
+    }
+    current = current.cause;
+  }
+  return false;
 }
 
 /**

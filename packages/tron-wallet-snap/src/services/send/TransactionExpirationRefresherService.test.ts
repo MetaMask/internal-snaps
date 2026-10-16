@@ -580,6 +580,47 @@ describe('transaction metadata', () => {
       expect(tronWeb.trx.getBlockByNumber).toHaveBeenCalledTimes(2);
     });
 
+    it('returns true after reference block lookup retries are exhausted', async () => {
+      const referencedBlock = createBlock({
+        number: 199_990,
+        timestamp: now - 30_000,
+      });
+      const currentBlock = createBlock({ number: 200_000, timestamp: now });
+      const tronWeb = createTronWeb({ currentBlock, referencedBlock });
+      tronWeb.trx.getBlockByNumber.mockRejectedValue(
+        new Error('block unavailable'),
+      );
+      const transaction = createTransaction({
+        block: referencedBlock,
+        expiration: now + 45_000,
+      });
+      const tronWebFactory = {
+        createClient: jest.fn().mockReturnValue(tronWeb),
+        executeRead: jest
+          .fn()
+          .mockImplementation(
+            async (_scope: Network, operation: () => Promise<unknown>) => {
+              try {
+                return await operation();
+              } catch {
+                return operation();
+              }
+            },
+          ),
+      };
+      const service = new TransactionExpirationRefresherService({
+        tronWebFactory: tronWebFactory as never,
+      });
+
+      expect(
+        await service.isTransactionExpired({
+          scope,
+          rawData: transaction.raw_data,
+        }),
+      ).toBe(true);
+      expect(tronWeb.trx.getBlockByNumber).toHaveBeenCalledTimes(2);
+    });
+
     it('returns true when the reference block bytes are outside the window', async () => {
       const currentBlock = createBlock({
         number: 10,
