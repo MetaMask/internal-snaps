@@ -1,8 +1,10 @@
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
+import { toFetchPolicyError } from '../../utils/fetchPolicy';
 import type {
   HasFreshExpirationMetadataParams,
   HasFreshExpirationMetadataResult,
@@ -13,9 +15,17 @@ import type {
 
 type Block = TronwebTypes.Block;
 
-class ReferenceBlockLookupError extends Error {
+class ReferenceBlockLookupError extends Error implements FetchPolicyError {
+  httpStatus?: number;
+
+  retryAfterMs?: number;
+
   constructor(cause: unknown) {
-    super('Unable to fetch transaction reference block', { cause });
+    const policyError = toFetchPolicyError(cause);
+    super(policyError.message, { cause });
+    this.name = policyError.name;
+    this.httpStatus = policyError.httpStatus;
+    this.retryAfterMs = policyError.retryAfterMs;
   }
 }
 

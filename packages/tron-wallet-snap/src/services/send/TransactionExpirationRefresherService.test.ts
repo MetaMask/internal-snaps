@@ -1,4 +1,7 @@
+import { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
+import { mockLogger } from '../../utils/mockLogger';
+import type { ConfigProvider } from '../config';
 import {
   TransactionExpirationRefresherService,
   TRANSACTION_METADATA_REFRESH_ERROR,
@@ -620,6 +623,61 @@ describe('transaction metadata', () => {
       ).toBe(true);
       expect(tronWeb.trx.getBlockByNumber).toHaveBeenCalledTimes(2);
     });
+
+    it.each([
+      {
+        description: 'a non-retryable 404',
+        response: { status: 404 },
+      },
+      {
+        description: 'a 429 with an over-cap Retry-After',
+        response: { headers: { 'retry-after': '60' }, status: 429 },
+      },
+    ])(
+      'preserves transport metadata for $description reference block response',
+      async ({ response }) => {
+        const referencedBlock = createBlock({
+          number: 199_990,
+          timestamp: now - 30_000,
+        });
+        const currentBlock = createBlock({ number: 200_000, timestamp: now });
+        const tronWeb = createTronWeb({ currentBlock, referencedBlock });
+        tronWeb.trx.getBlockByNumber.mockRejectedValue(
+          Object.assign(new Error('block unavailable'), { response }),
+        );
+        const transaction = createTransaction({
+          block: referencedBlock,
+          expiration: now + 45_000,
+        });
+        const configProvider = {
+          config: {
+            trongridApi: {
+              baseUrls: {
+                [Network.Mainnet]: 'https://api.trongrid.io',
+              },
+            },
+          },
+        } as ConfigProvider;
+        const tronWebFactory = new TronWebFactory({
+          configProvider,
+          logger: mockLogger,
+        });
+        jest
+          .spyOn(tronWebFactory, 'createClient')
+          .mockReturnValue(tronWeb as never);
+        const service = new TransactionExpirationRefresherService({
+          tronWebFactory,
+        });
+
+        expect(
+          await service.isTransactionExpired({
+            scope,
+            rawData: transaction.raw_data,
+          }),
+        ).toBe(true);
+        expect(tronWeb.trx.getBlockByNumber).toHaveBeenCalledTimes(1);
+      },
+    );
 
     it('returns true when the reference block bytes are outside the window', async () => {
       const currentBlock = createBlock({
