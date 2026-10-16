@@ -430,13 +430,16 @@ describe('AssetMetadataService', () => {
     expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
       KnownCaip2ChainId.Mainnet,
     );
-    expect(saveMany).toHaveBeenCalledWith([
-      expect.objectContaining({
-        assetId: sep41AssetId,
-        name: 'Token A',
-        symbol: 'TA',
-      }),
-    ]);
+    expect(saveMany).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          assetId: sep41AssetId,
+          name: 'Token A',
+          symbol: 'TA',
+        }),
+      ],
+      true,
+    );
   });
 
   it('maps Core catalog metadata into StellarAssetMetadata without reading snap state', async () => {

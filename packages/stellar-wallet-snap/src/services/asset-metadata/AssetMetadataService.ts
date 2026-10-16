@@ -101,7 +101,7 @@ export class AssetMetadataService {
    * @param assetIds - SEP-41 asset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
    */
-  async fetchSep41AssetsMetadata(
+  async fetchSep41AssetsByAssetIds(
     assetIds: KnownCaip19Sep41AssetId[],
   ): Promise<StellarAssetMetadata[]> {
     return this.#fetchAndPersistAssetsByAssetIds(assetIds);
@@ -196,6 +196,9 @@ export class AssetMetadataService {
 
     // persisted: Core then snap when migration is on; snap only when off
     const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
+    if (allNonNativeAssetIds.length === 0) {
+      return result;
+    }
     const { assets, missingAssetIds } =
       await this.#getPersistedAssetMetadata(allNonNativeAssetIds);
 
