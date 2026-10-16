@@ -1,9 +1,19 @@
-import { buildUrl } from '@metamask/snap-networks-utils';
+import {
+  buildUrl,
+  createFetchPolicy,
+  createFetchPolicyError,
+} from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import {
+  executeWithFetchPolicy,
+  parseRetryAfter,
+} from '../../utils/fetchPolicy';
 import { hexToString } from '../../utils/hex';
+import logger from '../../utils/logger';
 import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
@@ -39,7 +49,15 @@ export class TronHttpClient {
     }
   > = new Map();
 
-  constructor({ configProvider }: { configProvider: ConfigProvider }) {
+  readonly #policies: Map<Network, ReturnType<typeof createFetchPolicy>>;
+
+  constructor({
+    configProvider,
+    logger: clientLogger = logger,
+  }: {
+    configProvider: ConfigProvider;
+    logger?: Logger;
+  }) {
     const { baseUrls } = configProvider.config.tronHttpApi;
 
     // Initialize clients for all networks
@@ -52,6 +70,16 @@ export class TronHttpClient {
 
       this.#clients.set(network, { baseUrl: baseUrls[network], headers });
     });
+    this.#policies = new Map(
+      Object.values(Network).map((network) => [
+        network,
+        createFetchPolicy({
+          service: 'tronweb_provider',
+          chainIdCaip: network,
+          logger: clientLogger,
+        }),
+      ]),
+    );
   }
 
   /**
@@ -80,7 +108,7 @@ export class TronHttpClient {
       value: tokenId,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
@@ -148,7 +176,7 @@ export class TronHttpClient {
       visible: true,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
@@ -193,11 +221,16 @@ export class TronHttpClient {
       value: txId,
     });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body,
-    });
+    const response = await this.#fetch(
+      network,
+      url,
+      {
+        method: 'POST',
+        headers,
+        body,
+      },
+      [404],
+    );
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -240,7 +273,7 @@ export class TronHttpClient {
       path: '/wallet/getnextmaintenancetime',
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
     });
@@ -276,7 +309,7 @@ export class TronHttpClient {
       path: '/wallet/getchainparameters',
     });
 
-    const response = await fetch(url, { headers });
+    const response = await this.#fetch(network, url, { headers });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -323,7 +356,7 @@ export class TronHttpClient {
       path: '/wallet/triggerconstantcontract',
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body: JSON.stringify(
@@ -375,7 +408,7 @@ export class TronHttpClient {
       visible: false,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
@@ -424,7 +457,7 @@ export class TronHttpClient {
       visible: true,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
@@ -440,5 +473,31 @@ export class TronHttpClient {
     assert(rewardResponse, GetRewardResponseStruct);
 
     return rewardResponse.reward ?? 0;
+  }
+
+  async #fetch(
+    network: Network,
+    url: string,
+    init: RequestInit,
+    allowedStatuses: number[] = [],
+  ): Promise<Response> {
+    const policy = this.#policies.get(network);
+    if (!policy) {
+      throw new Error(`No policy configured for network: ${network}`);
+    }
+
+    return executeWithFetchPolicy(policy, async () => {
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok && !allowedStatuses.includes(response.status)) {
+        throw createFetchPolicyError(`HTTP error! status: ${response.status}`, {
+          httpStatus: response.status,
+          retryAfterMs: parseRetryAfter(response.headers.get('Retry-After')),
+        });
+      }
+      return response;
+    });
   }
 }

@@ -104,39 +104,38 @@ export class TransactionExpirationRefresherService {
     rawData: TransactionRawData;
   }): Promise<boolean> {
     const tronWeb = this.#tronWebFactory.createClient(scope);
-    const now = Date.now();
-    const currentBlock = await tronWeb.trx.getCurrentBlock();
+    return this.#tronWebFactory.executeRead(scope, async () => {
+      const now = Date.now();
+      const currentBlock = await tronWeb.trx.getCurrentBlock();
 
-    if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
-      return true;
-    }
+      if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
+        return true;
+      }
 
-    const referenceBlockNumber = getReferenceBlockNumber({
-      currentBlockNumber: currentBlock.block_header.raw_data.number,
-      refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
-        .ref_block_bytes,
-    });
+      const referenceBlockNumber = getReferenceBlockNumber({
+        currentBlockNumber: currentBlock.block_header.raw_data.number,
+        refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
+          .ref_block_bytes,
+      });
 
-    if (!hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })) {
-      return true;
-    }
+      if (
+        !hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })
+      ) {
+        return true;
+      }
 
-    const referencedBlock = await this.#getReferenceBlock({
-      tronWeb,
-      currentBlock,
-      referenceBlockNumber,
-    });
+      const referencedBlock = await this.#getReferenceBlock({
+        tronWeb,
+        currentBlock,
+        referenceBlockNumber,
+        suppressErrors: false,
+      });
 
-    if (
-      !referencedBlockMatchesRawData({
+      return !referencedBlockMatchesRawData({
         rawData: rawData as TransactionRawDataWithExpirationMetadata,
         referencedBlock,
-      })
-    ) {
-      return true;
-    }
-
-    return false;
+      });
+    });
   }
 
   /**
@@ -257,10 +256,12 @@ export class TransactionExpirationRefresherService {
     tronWeb,
     currentBlock,
     referenceBlockNumber,
+    suppressErrors = true,
   }: {
     tronWeb: TronWeb;
     currentBlock: Block;
     referenceBlockNumber: number;
+    suppressErrors?: boolean;
   }): Promise<Block | undefined> {
     const currentBlockNumber = currentBlock.block_header.raw_data.number;
 
@@ -270,7 +271,10 @@ export class TransactionExpirationRefresherService {
 
     try {
       return await tronWeb.trx.getBlockByNumber(referenceBlockNumber);
-    } catch {
+    } catch (error) {
+      if (!suppressErrors) {
+        throw error;
+      }
       return undefined;
     }
   }

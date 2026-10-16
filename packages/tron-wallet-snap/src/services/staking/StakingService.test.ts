@@ -100,6 +100,12 @@ describe('StakingService', () => {
 
     mockTronWebFactory = {
       createClient: jest.fn().mockReturnValue(mockTronWeb),
+      executeBroadcast: jest
+        .fn()
+        .mockImplementation(
+          async (_scope: Network, operation: () => Promise<unknown>) =>
+            operation(),
+        ),
     } as unknown as jest.Mocked<TronWebFactory>;
 
     mockSnapClient = {
@@ -155,6 +161,53 @@ describe('StakingService', () => {
         params: { accountId: mockAccount.id },
         duration: 'PT5S',
       });
+    });
+
+    it('builds and signs once when retrying a transient broadcast failure', async () => {
+      mockTronWebFactory.executeBroadcast.mockImplementation(
+        async (_scope: Network, operation: () => Promise<unknown>) => {
+          try {
+            return await operation();
+          } catch {
+            return operation();
+          }
+        },
+      );
+      mockTronWeb.trx.sendRawTransaction
+        .mockRejectedValueOnce(
+          Object.assign(new Error('unavailable'), {
+            response: { status: 503 },
+          }),
+        )
+        .mockResolvedValue({ result: true, txid: 'mock-tx-id' });
+
+      await stakingService.stake({
+        account: mockAccount,
+        assetId: KnownCaip19Id.TrxMainnet,
+        amount: BigNumber(1000000),
+        purpose: 'BANDWIDTH',
+      });
+
+      expect(
+        mockTronWeb.transactionBuilder.freezeBalanceV2,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockTronWeb.transactionBuilder.vote).toHaveBeenCalledTimes(1);
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(2);
+      expect(mockTronWeb.trx.sign).toHaveBeenNthCalledWith(1, mockTransaction);
+      expect(mockTronWeb.trx.sign).toHaveBeenNthCalledWith(2, mockTransaction);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(3);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+        1,
+        mockSignedTransaction,
+      );
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+        2,
+        mockSignedTransaction,
+      );
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+        3,
+        mockSignedTransaction,
+      );
     });
 
     it('successfully stakes TRX for ENERGY', async () => {

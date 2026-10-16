@@ -6,6 +6,10 @@ import type { TronWebFactory } from '../clients/tronweb/TronWebFactory';
 import type { Network } from '../constants';
 import { BackgroundEventMethod } from '../handlers/cronjob/cronjob';
 import type { AccountsService } from '../services/accounts/AccountsService';
+import {
+  isSuccessfulBroadcast,
+  throwOnTransientBroadcastFailure,
+} from './broadcast';
 
 /**
  * Derives a keypair, creates an authenticated TronWeb client,
@@ -47,9 +51,16 @@ export async function executeOnChainActions({
     const signedTx = await tronWeb.trx.sign(
       transaction as Parameters<TronWeb['trx']['sign']>[0],
     );
-    await tronWeb.trx.sendRawTransaction(
-      signedTx as Parameters<TronWeb['trx']['sendRawTransaction']>[0],
+    const result = await tronWebFactory.executeBroadcast(scope, async () =>
+      throwOnTransientBroadcastFailure(
+        await tronWeb.trx.sendRawTransaction(
+          signedTx as Parameters<TronWeb['trx']['sendRawTransaction']>[0],
+        ),
+      ),
     );
+    if (!isSuccessfulBroadcast(result)) {
+      throw new Error(`Failed to send transaction: ${result.message}`);
+    }
   }
 
   await snapClient.scheduleBackgroundEvent({

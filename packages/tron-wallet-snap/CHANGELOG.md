@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fetch fresh asset data before send, stake, unstake, and claim flows so validation, fee estimation, and confirmations never act on stale balances. When the assets migration is active, everything (including special assets) is fetched through an `AssetsController` one-time fetch with `forceUpdate` and `bypassServerCache`; otherwise the Snap syncs from Tron RPC and reads local state ([#390](https://github.com/MetaMask/internal-snaps/pull/390))
 
+### Changed
+
+- Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful.
+
 ## [4.1.0]
 
 ### Added

@@ -98,6 +98,12 @@ describe('transaction metadata', () => {
   const createService = (tronWeb: ReturnType<typeof createTronWeb>) => {
     const tronWebFactory = {
       createClient: jest.fn().mockReturnValue(tronWeb),
+      executeRead: jest
+        .fn()
+        .mockImplementation(
+          async (_scope: Network, operation: () => Promise<unknown>) =>
+            operation(),
+        ),
     };
 
     return {
@@ -473,7 +479,7 @@ describe('transaction metadata', () => {
         block: referencedBlock,
         expiration: now + 45_000,
       });
-      const { service } = createService(tronWeb);
+      const { service, tronWebFactory } = createService(tronWeb);
 
       const expired = await service.isTransactionExpired({
         scope,
@@ -481,6 +487,10 @@ describe('transaction metadata', () => {
       });
 
       expect(expired).toBe(false);
+      expect(tronWebFactory.executeRead).toHaveBeenCalledWith(
+        scope,
+        expect.any(Function),
+      );
     });
 
     it('returns true when the expiration is in the past', async () => {
@@ -527,6 +537,47 @@ describe('transaction metadata', () => {
       });
 
       expect(expired).toBe(true);
+    });
+
+    it('lets the read policy retry a failed reference block lookup', async () => {
+      const referencedBlock = createBlock({
+        number: 199_990,
+        timestamp: now - 30_000,
+      });
+      const currentBlock = createBlock({ number: 200_000, timestamp: now });
+      const tronWeb = createTronWeb({ currentBlock, referencedBlock });
+      tronWeb.trx.getBlockByNumber
+        .mockRejectedValueOnce(new Error('block unavailable'))
+        .mockResolvedValue(referencedBlock);
+      const transaction = createTransaction({
+        block: referencedBlock,
+        expiration: now + 45_000,
+      });
+      const tronWebFactory = {
+        createClient: jest.fn().mockReturnValue(tronWeb),
+        executeRead: jest
+          .fn()
+          .mockImplementation(
+            async (_scope: Network, operation: () => Promise<unknown>) => {
+              try {
+                return await operation();
+              } catch {
+                return operation();
+              }
+            },
+          ),
+      };
+      const service = new TransactionExpirationRefresherService({
+        tronWebFactory: tronWebFactory as never,
+      });
+
+      expect(
+        await service.isTransactionExpired({
+          scope,
+          rawData: transaction.raw_data,
+        }),
+      ).toBe(false);
+      expect(tronWeb.trx.getBlockByNumber).toHaveBeenCalledTimes(2);
     });
 
     it('returns true when the reference block bytes are outside the window', async () => {

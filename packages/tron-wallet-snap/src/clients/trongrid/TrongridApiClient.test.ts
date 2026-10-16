@@ -209,14 +209,43 @@ describe('TrongridApiClient', () => {
 
     it('throws error when HTTP request fails', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-          // eslint-disable-next-line no-restricted-globals
-          new Response('', { status: 500 }),
-        );
+        const fetchMock = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          )
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          )
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          )
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          );
 
         await expect(
           client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
         ).rejects.toThrow('HTTP error! status: 500');
+        expect(fetchMock).toHaveBeenCalledTimes(4);
+      });
+    });
+
+    it('does not retry 404 responses', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response('', { status: 404 }),
+        );
+
+        await expect(
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
+        ).rejects.toThrow('HTTP error! status: 404');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
       });
     });
 

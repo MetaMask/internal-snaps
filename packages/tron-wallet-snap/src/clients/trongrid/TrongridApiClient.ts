@@ -1,6 +1,11 @@
-import { useCacheUntil, buildUrl } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  useCacheUntil,
+  buildUrl,
+} from '@metamask/snap-networks-utils';
 import type {
   ICache,
+  Logger,
   ResultWithExpiry,
   Serializable,
 } from '@metamask/snap-networks-utils';
@@ -8,6 +13,8 @@ import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { executeWithFetchPolicy } from '../../utils/fetchPolicy';
+import logger from '../../utils/logger';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
 import {
@@ -60,6 +67,8 @@ export class TrongridApiClient {
 
   readonly #cache: ICache<Serializable>;
 
+  readonly #policies: Map<Network, ReturnType<typeof createFetchPolicy>>;
+
   /**
    * Cached version of getChainParameters that uses maintenance-aligned expiry.
    * The cache is invalidated when the next maintenance period is reached.
@@ -72,10 +81,12 @@ export class TrongridApiClient {
     configProvider,
     tronHttpClient,
     cache,
+    logger: clientLogger = logger,
   }: {
     configProvider: ConfigProvider;
     tronHttpClient: TronHttpClient;
     cache: ICache<Serializable>;
+    logger?: Logger;
   }) {
     const { baseUrls } = configProvider.config.trongridApi;
 
@@ -92,6 +103,16 @@ export class TrongridApiClient {
 
     this.#tronHttpClient = tronHttpClient;
     this.#cache = cache;
+    this.#policies = new Map(
+      Object.values(Network).map((network) => [
+        network,
+        createFetchPolicy({
+          service: 'trongrid',
+          chainIdCaip: network,
+          logger: clientLogger,
+        }),
+      ]),
+    );
 
     // Create cached version of getChainParameters with maintenance-aligned expiry
     this.#cachedGetChainParameters = useCacheUntil(
@@ -149,7 +170,7 @@ export class TrongridApiClient {
       pathParams: { address },
     });
 
-    const response = await fetch(url, { headers });
+    const response = await this.#fetch(scope, url, headers);
 
     if (!response.ok) {
       throw createTrongridHttpError(response);
@@ -207,7 +228,7 @@ export class TrongridApiClient {
       ...(queryParams ? { queryParams } : {}),
     });
 
-    const response = await fetch(url, { headers });
+    const response = await this.#fetch(scope, url, headers);
 
     if (!response.ok) {
       throw createTrongridHttpError(response);
@@ -258,7 +279,7 @@ export class TrongridApiClient {
       pathParams: { address },
     });
 
-    const response = await fetch(url, { headers });
+    const response = await this.#fetch(scope, url, headers);
 
     if (!response.ok) {
       throw createTrongridHttpError(response);
@@ -310,7 +331,7 @@ export class TrongridApiClient {
       pathParams: { address },
     });
 
-    const response = await fetch(url, { headers });
+    const response = await this.#fetch(scope, url, headers);
 
     if (!response.ok) {
       throw createTrongridHttpError(response);
@@ -369,5 +390,27 @@ export class TrongridApiClient {
       result: parameters,
       expiresAt: nextMaintenanceTime, // Exact maintenance time, no buffer needed
     };
+  }
+
+  async #fetch(
+    scope: Network,
+    url: string,
+    headers: Record<string, string>,
+  ): Promise<Response> {
+    const policy = this.#policies.get(scope);
+    if (!policy) {
+      throw new Error(`No policy configured for network: ${scope}`);
+    }
+
+    return executeWithFetchPolicy(policy, async () => {
+      const response = await fetch(url, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) {
+        throw createTrongridHttpError(response);
+      }
+      return response;
+    });
   }
 }
