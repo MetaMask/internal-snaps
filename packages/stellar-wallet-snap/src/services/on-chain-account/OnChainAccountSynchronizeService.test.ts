@@ -63,6 +63,7 @@ const classicBalanceEntry = (
     limit,
     authorized: true,
     sponsor: '',
+    sponsored: false,
   },
 });
 

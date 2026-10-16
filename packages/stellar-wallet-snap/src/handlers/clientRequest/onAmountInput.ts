@@ -7,6 +7,7 @@ import type { TransactionService } from '../../services/transaction';
 import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
+  TrustlineExceedLimitException,
 } from '../../services/transaction/exceptions';
 import { hasDecimals, toSmallestUnit } from '../../utils';
 import type {
@@ -96,6 +97,8 @@ export class OnAmountInputHandler extends BaseClientRequestHandler<
         // Always use self account as destination to bypass the error from the destination validation.
         // We validate the destination in the send transaction handler.
         destination: onChainAccount.accountId,
+        // Skip the trustline exceed limit exception because we are validating the transaction sending to self.
+        skipExceptions: [TrustlineExceedLimitException],
         // Use cached network reads so repeated amount checks stay fast.
         useCache: true,
       });

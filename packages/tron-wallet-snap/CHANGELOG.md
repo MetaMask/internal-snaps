@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful.
+
+## [4.2.0]
+
 ### Added
 
 - Fetch fresh asset data before send, stake, unstake, and claim flows so validation, fee estimation, and confirmations never act on stale balances. When the assets migration is active, everything (including special assets) is fetched through an `AssetsController` one-time fetch with `forceUpdate` and `bypassServerCache`; otherwise the Snap syncs from Tron RPC and reads local state ([#390](https://github.com/MetaMask/internal-snaps/pull/390))
 
-### Changed
+### Fixed
 
-- Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful.
+- Allow self-sends of TRX ([#454](https://github.com/MetaMask/internal-snaps/pull/454))
 
 ## [4.1.0]
 
@@ -119,7 +125,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.2.0...HEAD
+[4.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.1.0...@metamask/tron-wallet-snap@4.2.0
 [4.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...@metamask/tron-wallet-snap@4.1.0
 [4.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.2.0...@metamask/tron-wallet-snap@4.0.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...@metamask/tron-wallet-snap@3.2.0

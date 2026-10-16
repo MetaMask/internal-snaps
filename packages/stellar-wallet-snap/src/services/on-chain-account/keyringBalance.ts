@@ -44,6 +44,7 @@ export const ClassicBalanceEntryStruct = assign(
         limit: string(),
         authorized: defaulted(boolean(), true),
         sponsor: defaulted(string(), ''),
+        sponsored: defaulted(boolean(), false),
       }),
     ),
   }),
@@ -110,6 +111,7 @@ export function toClassicBalanceEntry(
       limit: toDisplayBalance(asset.limit ?? new BigNumber(0), asset.decimals),
       authorized: asset.authorized,
       sponsor: asset.sponsor,
+      sponsored: asset.sponsored,
     },
   });
 }
