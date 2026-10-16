@@ -106,7 +106,7 @@ export class PriceApiClient {
             },
           });
 
-          const response = await executeWithFetchPolicy(
+          const responseBody = await executeWithFetchPolicy(
             this.#policy,
             async () => {
               const result = await this.#fetch(url, {
@@ -123,11 +123,11 @@ export class PriceApiClient {
                   },
                 );
               }
-              return result;
+              return result.text();
             },
           );
 
-          const spotPrices = await response.json();
+          const spotPrices = JSON.parse(responseBody);
           assert(spotPrices, SpotPricesStruct);
 
           return spotPrices;

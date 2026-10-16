@@ -117,7 +117,7 @@ describe('PriceApiClient', () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(mockResponse),
+            text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
           });
 
           const result = await client.getMultipleSpotPrices([
@@ -175,7 +175,7 @@ describe('PriceApiClient', () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(mockResponse),
+            text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
           });
 
           await client.getMultipleSpotPrices(
@@ -194,7 +194,7 @@ describe('PriceApiClient', () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockRejectedValueOnce(new Error('Invalid JSON')),
+            text: jest.fn().mockResolvedValueOnce('Invalid JSON'),
           });
 
           await expect(
@@ -227,6 +227,30 @@ describe('PriceApiClient', () => {
         });
       });
 
+      it('retries when reading the response body fails', async () => {
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch
+            .mockResolvedValueOnce({
+              ok: true,
+              text: jest.fn().mockRejectedValueOnce(new Error('Body failed')),
+            })
+            .mockResolvedValueOnce({
+              ok: true,
+              text: jest
+                .fn()
+                .mockResolvedValueOnce(JSON.stringify(mockResponse)),
+            });
+
+          expect(
+            await client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).toStrictEqual(mockResponse);
+          expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
+      });
+
       it('throws when malformed response from the Price API', async () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           const mockMalformedResponse = cloneDeep(mockResponse);
@@ -234,7 +258,9 @@ describe('PriceApiClient', () => {
 
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(mockMalformedResponse),
+            text: jest
+              .fn()
+              .mockResolvedValueOnce(JSON.stringify(mockMalformedResponse)),
           });
 
           await expect(
@@ -296,10 +322,12 @@ describe('PriceApiClient', () => {
           jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce({
-              [KnownCaip19Id.UsdtMainnet]:
-                mockResponse[KnownCaip19Id.UsdtMainnet]!,
-            }),
+            text: jest.fn().mockResolvedValueOnce(
+              JSON.stringify({
+                [KnownCaip19Id.UsdtMainnet]:
+                  mockResponse[KnownCaip19Id.UsdtMainnet]!,
+              }),
+            ),
           });
 
           const result = await client.getMultipleSpotPrices([
@@ -384,7 +412,7 @@ describe('PriceApiClient', () => {
       await withPriceApiClient(async ({ client, mockFetch }) => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce({}),
+          text: jest.fn().mockResolvedValueOnce('{}'),
         });
 
         await client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]);
@@ -403,7 +431,7 @@ describe('PriceApiClient', () => {
       await withPriceApiClient(async ({ client, mockFetch }) => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce({}),
+          text: jest.fn().mockResolvedValueOnce('{}'),
         });
 
         await expect(

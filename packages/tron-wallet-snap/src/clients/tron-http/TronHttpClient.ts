@@ -114,11 +114,7 @@ export class TronHttpClient {
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const tokenData: TRC10TokenInfo = await response.json();
+    const tokenData: TRC10TokenInfo = JSON.parse(response.body);
 
     // Validate response schema
     assert(tokenData, TRC10TokenInfoStruct);
@@ -182,11 +178,7 @@ export class TronHttpClient {
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const accountResources: AccountResources = await response.json();
+    const accountResources: AccountResources = JSON.parse(response.body);
 
     // Validate response schema
     assert(accountResources, AccountResourcesStruct);
@@ -232,14 +224,11 @@ export class TronHttpClient {
       [404],
     );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null; // Transaction not found
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (response.status === 404) {
+      return null; // Transaction not found
     }
 
-    const txInfo: FullNodeTransactionInfo = await response.json();
+    const txInfo: FullNodeTransactionInfo = JSON.parse(response.body);
 
     // If the response is empty or doesn't have the expected data, return null
     // Note: GetTransactionInfoById only returns data for confirmed transactions
@@ -278,11 +267,7 @@ export class TronHttpClient {
       headers,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = JSON.parse(response.body);
 
     // Validate response schema
     assert(data, NextMaintenanceTimeStruct);
@@ -311,11 +296,7 @@ export class TronHttpClient {
 
     const response = await this.#fetch(network, url, { headers });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const rawData = await response.json();
+    const rawData = JSON.parse(response.body);
 
     // Validate response schema
     assert(rawData, ChainParametersResponseStruct);
@@ -368,11 +349,7 @@ export class TronHttpClient {
       ),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result: TriggerConstantContractResponse = await response.json();
+    const result: TriggerConstantContractResponse = JSON.parse(response.body);
 
     // Validate response schema
     assert(result, TriggerConstantContractResponseStruct);
@@ -414,11 +391,7 @@ export class TronHttpClient {
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const contractInfo: ContractInfo = await response.json();
+    const contractInfo: ContractInfo = JSON.parse(response.body);
 
     // Empty response means contract not found (TRON returns {} for non-existent contracts)
     if (!contractInfo || Object.keys(contractInfo).length === 0) {
@@ -463,11 +436,7 @@ export class TronHttpClient {
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const rewardResponse: GetRewardResponse = await response.json();
+    const rewardResponse: GetRewardResponse = JSON.parse(response.body);
 
     // Validate response schema
     assert(rewardResponse, GetRewardResponseStruct);
@@ -480,7 +449,7 @@ export class TronHttpClient {
     url: string,
     init: RequestInit,
     allowedStatuses: number[] = [],
-  ): Promise<Response> {
+  ): Promise<{ body: string; status: number }> {
     const policy = this.#policies.get(network);
     if (!policy) {
       throw new Error(`No policy configured for network: ${network}`);
@@ -497,7 +466,13 @@ export class TronHttpClient {
           retryAfterMs: parseRetryAfter(response.headers.get('Retry-After')),
         });
       }
-      return response;
+      if (allowedStatuses.includes(response.status)) {
+        return { body: '', status: response.status };
+      }
+      return {
+        body: await response.text(),
+        status: response.status,
+      };
     });
   }
 }

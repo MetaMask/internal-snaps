@@ -47,25 +47,46 @@ export async function executeOnChainActions({
   const tronWeb = tronWebFactory.createClient(scope, privateKeyHex);
 
   const transactions = await buildTransactions(tronWeb);
-  for (const transaction of transactions) {
-    const signedTx = await tronWeb.trx.sign(
-      transaction as Parameters<TronWeb['trx']['sign']>[0],
-    );
-    const result = await tronWebFactory.executeBroadcast(scope, async () =>
-      throwOnTransientBroadcastFailure(
-        await tronWeb.trx.sendRawTransaction(
-          signedTx as Parameters<TronWeb['trx']['sendRawTransaction']>[0],
+  let broadcastSucceeded = false;
+  let actionError: unknown;
+  try {
+    for (const transaction of transactions) {
+      const signedTx = await tronWeb.trx.sign(
+        transaction as Parameters<TronWeb['trx']['sign']>[0],
+      );
+      const result = await tronWebFactory.executeBroadcast(scope, async () =>
+        throwOnTransientBroadcastFailure(
+          await tronWeb.trx.sendRawTransaction(
+            signedTx as Parameters<TronWeb['trx']['sendRawTransaction']>[0],
+          ),
         ),
-      ),
-    );
-    if (!isSuccessfulBroadcast(result)) {
-      throw new Error(`Failed to send transaction: ${result.message}`);
+      );
+      if (!isSuccessfulBroadcast(result)) {
+        throw new Error(`Failed to send transaction: ${result.message}`);
+      }
+      broadcastSucceeded = true;
+    }
+  } catch (error) {
+    actionError = error;
+  }
+
+  if (broadcastSucceeded || transactions.length === 0) {
+    try {
+      await snapClient.scheduleBackgroundEvent({
+        method: BackgroundEventMethod.SynchronizeAccount,
+        params: { accountId: account.id },
+        duration: 'PT5S',
+      });
+    } catch (error) {
+      if (actionError === undefined) {
+        throw error;
+      }
     }
   }
 
-  await snapClient.scheduleBackgroundEvent({
-    method: BackgroundEventMethod.SynchronizeAccount,
-    params: { accountId: account.id },
-    duration: 'PT5S',
-  });
+  if (actionError !== undefined) {
+    throw actionError instanceof Error
+      ? actionError
+      : new Error('Action failed');
+  }
 }

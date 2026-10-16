@@ -172,11 +172,7 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    if (!response.ok) {
-      throw createTrongridHttpError(response);
-    }
-
-    const rawData: TrongridApiResponse<TronAccount[]> = await response.json();
+    const rawData: TrongridApiResponse<TronAccount[]> = JSON.parse(response);
 
     // Validate API response structure
     if (typeof rawData.success !== 'boolean' || !rawData.success) {
@@ -230,12 +226,8 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    if (!response.ok) {
-      throw createTrongridHttpError(response);
-    }
-
     const rawData: TrongridApiResponse<TransactionInfo[]> =
-      await response.json();
+      JSON.parse(response);
 
     // Validate API response structure
     if (typeof rawData.success !== 'boolean' || !rawData.success) {
@@ -281,12 +273,8 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    if (!response.ok) {
-      throw createTrongridHttpError(response);
-    }
-
     const rawData: TrongridApiResponse<ContractTransactionInfo[]> =
-      await response.json();
+      JSON.parse(response);
 
     // Validate API response structure
     if (typeof rawData.success !== 'boolean' || !rawData.success) {
@@ -333,11 +321,7 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    if (!response.ok) {
-      throw createTrongridHttpError(response);
-    }
-
-    const rawData: TrongridApiResponse<Trc20Balance[]> = await response.json();
+    const rawData: TrongridApiResponse<Trc20Balance[]> = JSON.parse(response);
 
     // Validate API response structure
     if (typeof rawData.success !== 'boolean' || !rawData.success) {
@@ -396,7 +380,7 @@ export class TrongridApiClient {
     scope: Network,
     url: string,
     headers: Record<string, string>,
-  ): Promise<Response> {
+  ): Promise<string> {
     const policy = this.#policies.get(scope);
     if (!policy) {
       throw new Error(`No policy configured for network: ${scope}`);
@@ -410,7 +394,7 @@ export class TrongridApiClient {
       if (!response.ok) {
         throw createTrongridHttpError(response);
       }
-      return response;
+      return response.text();
     });
   }
 }

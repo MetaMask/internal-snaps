@@ -210,6 +210,45 @@ describe('StakingService', () => {
       );
     });
 
+    it('synchronizes after a vote rejection following a successful freeze', async () => {
+      mockTronWeb.trx.sendRawTransaction
+        .mockResolvedValueOnce({ result: true, txid: 'freeze-tx-id' })
+        .mockResolvedValueOnce({ result: false, message: 'Vote rejected' });
+
+      await expect(
+        stakingService.stake({
+          account: mockAccount,
+          assetId: KnownCaip19Id.TrxMainnet,
+          amount: BigNumber(1000000),
+          purpose: 'BANDWIDTH',
+        }),
+      ).rejects.toThrow('Failed to send transaction: Vote rejected');
+
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.SynchronizeAccount,
+        params: { accountId: mockAccount.id },
+        duration: 'PT5S',
+      });
+    });
+
+    it('preserves the vote rejection if synchronization scheduling fails', async () => {
+      mockTronWeb.trx.sendRawTransaction
+        .mockResolvedValueOnce({ result: true, txid: 'freeze-tx-id' })
+        .mockResolvedValueOnce({ result: false, message: 'Vote rejected' });
+      mockSnapClient.scheduleBackgroundEvent.mockRejectedValueOnce(
+        new Error('Scheduling failed'),
+      );
+
+      await expect(
+        stakingService.stake({
+          account: mockAccount,
+          assetId: KnownCaip19Id.TrxMainnet,
+          amount: BigNumber(1000000),
+          purpose: 'BANDWIDTH',
+        }),
+      ).rejects.toThrow('Failed to send transaction: Vote rejected');
+    });
+
     it('successfully stakes TRX for ENERGY', async () => {
       const amount = BigNumber(2000000);
       const assetId = KnownCaip19Id.TrxNile;
