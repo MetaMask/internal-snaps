@@ -51,14 +51,9 @@ type ExtractActionResponse<
 export type AssetsProviderMessenger = {
   call: <ActionType extends AssetsProviderAllowedActions['type']>(
     actionType: ActionType,
-    ...params: ExtractActionParameters<
-      AssetsProviderAllowedActions,
-      ActionType
-    >
+    ...params: ExtractActionParameters<AssetsProviderAllowedActions, ActionType>
   ) => Promise<
-    Awaited<
-      ExtractActionResponse<AssetsProviderAllowedActions, ActionType>
-    >
+    Awaited<ExtractActionResponse<AssetsProviderAllowedActions, ActionType>>
   >;
 };
 

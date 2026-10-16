@@ -37,9 +37,7 @@ type ExtractActionResponse<
  * Messenger restricted to actions consumed by {@link RemoteFeatureFlagsProvider}.
  */
 export type RemoteFeatureFlagsProviderMessenger = {
-  call: <
-    ActionType extends RemoteFeatureFlagsProviderAllowedActions['type'],
-  >(
+  call: <ActionType extends RemoteFeatureFlagsProviderAllowedActions['type']>(
     actionType: ActionType,
     ...params: ExtractActionParameters<
       RemoteFeatureFlagsProviderAllowedActions,
