@@ -2,17 +2,21 @@ import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
+  SecurityAlertsApiClient,
+  TrackErrorFn,
 } from '@metamask/snap-networks-utils';
-import { Types as TronwebTypes } from 'tronweb';
+import {
+  SecurityAlertResponse,
+  SecurityAlertsScanStatus,
+} from '@metamask/snap-networks-utils';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
-import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
-import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionScanService } from './TransactionScanService';
 import type { TransactionScanResult } from './types';
-import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
+import { SimulationStatus } from './types';
 
 const mockAnalyticsService = {
   trackSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
@@ -34,15 +38,12 @@ describe('TransactionScanService', () => {
 
   const createMockSecurityAlertsApiClient = (
     mockApiResponse: SecurityAlertSimulationValidationResponse,
-  ): jest.Mocked<Pick<SecurityAlertsApiClient, 'scanTransaction'>> => ({
-    scanTransaction: jest.fn().mockResolvedValue(mockApiResponse),
-  });
+  ): SecurityAlertsApiClient =>
+    ({
+      scanTransaction: jest.fn().mockResolvedValue(mockApiResponse),
+    }) as unknown as SecurityAlertsApiClient;
 
-  const createMockSnapClient = (): jest.Mocked<
-    Pick<SnapClient, 'trackError'>
-  > => ({
-    trackError: jest.fn(),
-  });
+  const createMockTrackError = (): TrackErrorFn => jest.fn();
 
   const createWellFormedTransactionRawData =
     (): TronwebTypes.Transaction['raw_data'] => ({
@@ -109,14 +110,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -167,14 +168,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -226,14 +227,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -284,14 +285,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -343,14 +344,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -427,14 +428,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -467,6 +468,65 @@ describe('TransactionScanService', () => {
         value: '1',
         price: null,
         assetType: 'ERC721',
+      });
+    });
+
+    it('falls back to the asset type when symbol and name are missing', async () => {
+      const mockApiResponse: SecurityAlertSimulationValidationResponse = {
+        simulation: {
+          status: 'Success',
+
+          account_summary: {
+            assets_diffs: [
+              {
+                asset_type: 'NATIVE',
+                asset: {
+                  type: 'NATIVE',
+                  decimals: 6,
+                },
+                in: [
+                  {
+                    usd_price: '0.31',
+                    summary: 'Receiving 1 TRX',
+                    value: '1.0',
+
+                    raw_value: '0xf4240',
+                  },
+                ],
+                out: [],
+              },
+            ],
+          },
+        },
+        validation: {
+          status: 'Success',
+
+          result_type: 'Benign',
+        },
+      };
+
+      const mockSecurityAlertsApiClient =
+        createMockSecurityAlertsApiClient(mockApiResponse);
+      const mockTrackError = createMockTrackError();
+
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+        options: ['simulation'],
+      });
+
+      expect(result?.estimatedChanges.assets[0]).toMatchObject({
+        symbol: 'NATIVE',
+        name: 'NATIVE',
       });
     });
 
@@ -510,14 +570,14 @@ describe('TransactionScanService', () => {
 
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(mockApiResponse);
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -548,16 +608,18 @@ describe('TransactionScanService', () => {
 
         validation: { status: 'Success', result_type: 'Benign' },
       });
-      mockSecurityAlertsApiClient.scanTransaction.mockRejectedValueOnce(error);
+      jest
+        .mocked(mockSecurityAlertsApiClient.scanTransaction)
+        .mockRejectedValueOnce(error);
 
-      const mockSnapClient = createMockSnapClient();
+      const mockTrackError = createMockTrackError();
 
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       await service.scanTransaction({
         accountAddress: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
@@ -567,21 +629,23 @@ describe('TransactionScanService', () => {
         options: ['simulation'],
       });
 
-      expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
     });
   });
 
   describe('scan validation', () => {
     it('returns an error for malformed transactions', async () => {
-      const service = new TransactionScanService(
-        createMockSecurityAlertsApiClient({
+      const mockTrackError = createMockTrackError();
+
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
           simulation: { status: 'Success' },
           validation: { status: 'Success', result_type: 'Benign' },
-        }) as unknown as SecurityAlertsApiClient,
-        createMockSnapClient() as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: mockAccount.address,
@@ -594,47 +658,93 @@ describe('TransactionScanService', () => {
       });
 
       expect(result).toMatchObject({
-        status: ScanStatus.ERROR,
+        status: SecurityAlertsScanStatus.ERROR,
         simulationStatus: SimulationStatus.Failed,
         error: { type: 'MALFORMED_TRANSACTION' },
       });
     });
 
     it('skips unsupported contract types', async () => {
-      const isContractTypeSupported = jest
-        .spyOn(SecurityAlertsApiClient, 'isContractTypeSupported')
-        .mockReturnValue(false);
       const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
         simulation: { status: 'Success' },
         validation: { status: 'Success', result_type: 'Benign' },
       });
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        createMockSnapClient() as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const mockTrackError = createMockTrackError();
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: mockAccount.address,
-        transactionRawData: createWellFormedTransactionRawData(),
+        transactionRawData: {
+          ...createWellFormedTransactionRawData(),
+          contract: [
+            {
+              type: 'FreezeBalanceContract' as TronwebTypes.ContractType,
+              parameter: {
+                type_url: 'type.googleapis.com/protocol.FreezeBalanceContract',
+                value: {
+                  owner_address: `41${'a'.repeat(40)}`,
+                  frozen_balance: 1000,
+                },
+              },
+            },
+          ],
+        },
         origin: 'https://example.com',
         scope: Network.Mainnet,
       });
 
       expect(result).toMatchObject({
-        status: ScanStatus.SUCCESS,
+        status: SecurityAlertsScanStatus.SUCCESS,
         simulationStatus: SimulationStatus.Skipped,
       });
       expect(
         mockSecurityAlertsApiClient.scanTransaction,
       ).not.toHaveBeenCalled();
-      isContractTypeSupported.mockRestore();
+    });
+
+    it('posts the scan body extracted from the transaction data', async () => {
+      const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
+        simulation: { status: 'Success' },
+        validation: { status: 'Success', result_type: 'Benign' },
+      });
+      const mockTrackError = createMockTrackError();
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+        options: ['validation'],
+      });
+
+      expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith({
+        account_address: mockAccount.address,
+        metadata: { domain: 'https://example.com' },
+        data: {
+          from: TronWeb.address.fromHex(`41${'a'.repeat(40)}`),
+          to: TronWeb.address.fromHex(`41${'b'.repeat(40)}`),
+          value: '0xf1b30',
+        },
+        options: ['validation'],
+      });
     });
 
     it('ignores asset diffs without changes', async () => {
-      const service = new TransactionScanService(
-        createMockSecurityAlertsApiClient({
+      const mockTrackError = createMockTrackError();
+
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
           simulation: {
             status: 'Success',
             account_summary: {
@@ -649,11 +759,11 @@ describe('TransactionScanService', () => {
             },
           },
           validation: { status: 'Success', result_type: 'Benign' },
-        }) as unknown as SecurityAlertsApiClient,
-        createMockSnapClient() as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       const result = await service.scanTransaction({
         accountAddress: mockAccount.address,
@@ -664,29 +774,196 @@ describe('TransactionScanService', () => {
 
       expect(result?.estimatedChanges.assets).toStrictEqual([]);
     });
-  });
 
-  describe('getSecurityAlertDescription', () => {
-    const service = new TransactionScanService(
-      {} as SecurityAlertsApiClient,
-      {} as SnapClient,
-      mockLogger,
-      mockAnalyticsService,
-    );
+    it('accepts a response without a validation section', async () => {
+      const mockTrackError = createMockTrackError();
 
-    it('describes missing reasons', () => {
-      expect(
-        service.getSecurityAlertDescription({ type: 'Warning', reason: null }),
-      ).toBe('Security alert: Unknown reason');
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: { status: 'Success' },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        validation: { type: null, reason: null },
+      });
     });
 
-    it('describes unknown reasons', () => {
-      expect(
-        service.getSecurityAlertDescription({
-          type: 'Warning',
-          reason: 'unknown_reason',
+    it('accepts a response without a simulation section', async () => {
+      const mockTrackError = createMockTrackError();
+
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          validation: { status: 'Success', result_type: 'Benign' },
         }),
-      ).toBe('Security alert: unknown_reason');
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        estimatedChanges: { assets: [] },
+        error: null,
+      });
+    });
+
+    it('does not treat a validation section with an error status as a scan error', async () => {
+      // The Blockaid schema declares `validation.status` as always 'Success'
+      // (even in the validation-error variant, which signals via
+      // `result_type: 'Error'` instead), so the scan status must not depend
+      // on it.
+      const mockTrackError = createMockTrackError();
+
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: { status: 'Success' },
+          validation: {
+            status: 'Error',
+            result_type: 'Benign',
+          },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        simulationStatus: SimulationStatus.Completed,
+      });
+    });
+
+    it('maps a simulation error to the scan error', async () => {
+      const mockTrackError = createMockTrackError();
+
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: {
+            status: 'Error',
+            error: 'Insufficient funds',
+            error_details: {
+              code: 'GENERAL_INSUFFICIENT_FUNDS',
+              category: 'REVERT',
+            },
+          },
+          validation: { status: 'Success', result_type: 'Benign' },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        status: SecurityAlertsScanStatus.ERROR,
+        simulationStatus: SimulationStatus.Failed,
+        error: {
+          type: null,
+          code: 'GENERAL_INSUFFICIENT_FUNDS',
+          message: 'Insufficient funds',
+        },
+      });
+    });
+
+    it('maps a simulation error without error details', async () => {
+      const mockTrackError = createMockTrackError();
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: {
+            status: 'Error',
+            error: 'Simulation failed',
+          },
+          validation: { status: 'Success', result_type: 'Benign' },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        status: SecurityAlertsScanStatus.ERROR,
+        simulationStatus: SimulationStatus.Failed,
+        error: {
+          type: null,
+          code: null,
+          message: 'Simulation failed',
+        },
+      });
+    });
+
+    it('maps a simulation error with only error details', async () => {
+      const mockTrackError = createMockTrackError();
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: {
+            status: 'Error',
+            error_details: {
+              code: 'GENERAL_INSUFFICIENT_FUNDS',
+              category: 'REVERT',
+            },
+          },
+          validation: { status: 'Success', result_type: 'Benign' },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        status: SecurityAlertsScanStatus.ERROR,
+        simulationStatus: SimulationStatus.Failed,
+        error: {
+          type: null,
+          code: 'GENERAL_INSUFFICIENT_FUNDS',
+          message: null,
+        },
+      });
     });
   });
 
@@ -695,22 +972,20 @@ describe('TransactionScanService', () => {
       response: SecurityAlertSimulationValidationResponse,
     ): {
       service: TransactionScanService;
-      mockSecurityAlertsApiClient: jest.Mocked<
-        Pick<SecurityAlertsApiClient, 'scanTransaction'>
-      >;
-      mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+      mockSecurityAlertsApiClient: SecurityAlertsApiClient;
+      mockTrackError: TrackErrorFn;
     } => {
       const mockSecurityAlertsApiClient =
         createMockSecurityAlertsApiClient(response);
-      const mockSnapClient = createMockSnapClient();
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const mockTrackError = createMockTrackError();
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
-      return { service, mockSecurityAlertsApiClient, mockSnapClient };
+      return { service, mockSecurityAlertsApiClient, mockTrackError };
     };
 
     const scan = async (
@@ -743,9 +1018,30 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.SUCCESS,
+        scanStatus: SecurityAlertsScanStatus.SUCCESS,
         hasSecurityAlerts: false,
       });
+    });
+
+    it('does not track analytics without an account', async () => {
+      const { service } = createService({
+        simulation: { status: 'Success' },
+        validation: { status: 'Success', result_type: 'Benign' },
+      });
+
+      await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).not.toHaveBeenCalled();
     });
 
     it('tracks detected security alerts', async () => {
@@ -766,7 +1062,7 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.SUCCESS,
+        scanStatus: SecurityAlertsScanStatus.SUCCESS,
         hasSecurityAlerts: true,
       });
       expect(
@@ -778,8 +1074,99 @@ describe('TransactionScanService', () => {
         securityAlertResponse: SecurityAlertResponse.Warning,
         securityAlertReason: 'transfer_farming',
         securityAlertDescription:
-          "Substantial transfer of the account's assets to untrusted entities",
+          "Security alert: Substantial transfer of the account's assets to untrusted entities",
       });
+    });
+
+    it('does not track a security alert when the validation section is absent', async () => {
+      const { service } = createService({
+        simulation: { status: 'Success' },
+      });
+
+      await scan(service);
+
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ hasSecurityAlerts: false }),
+      );
+      expect(
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('tracks detected malicious alerts as malicious', async () => {
+      const { service } = createService({
+        simulation: { status: 'Success' },
+        validation: {
+          status: 'Success',
+          result_type: SecurityAlertResponse.Malicious,
+          reason: 'unfair_trade',
+        },
+      });
+
+      await scan(service);
+
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ hasSecurityAlerts: true }),
+      );
+      expect(
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).toHaveBeenCalledWith({
+        origin: 'https://example.com',
+        accountType: mockAccount.type,
+        chainIdCaip: Network.Mainnet,
+        securityAlertResponse: SecurityAlertResponse.Malicious,
+        securityAlertReason: 'unfair_trade',
+        securityAlertDescription:
+          "Security alert: Unfair trade of assets, without adequate compensation to the owner's account",
+      });
+    });
+
+    it('tracks malicious alerts without a reason as unknown-reason alerts', async () => {
+      const { service } = createService({
+        simulation: { status: 'Success' },
+        validation: {
+          status: 'Success',
+          result_type: SecurityAlertResponse.Malicious,
+        },
+      });
+
+      await scan(service);
+
+      expect(
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          securityAlertResponse: SecurityAlertResponse.Malicious,
+          securityAlertReason: null,
+          securityAlertDescription: 'Security alert: Unknown reason',
+        }),
+      );
+    });
+
+    it('does not track an error result type as a security alert', async () => {
+      const { service } = createService({
+        simulation: { status: 'Success' },
+        validation: {
+          status: 'Success',
+          result_type: 'Error',
+          error: 'Validation failed',
+        },
+      });
+
+      await scan(service);
+
+      expect(
+        mockAnalyticsService.trackSecurityScanCompleted,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ hasSecurityAlerts: false }),
+      );
+      expect(
+        mockAnalyticsService.trackSecurityAlertDetected,
+      ).not.toHaveBeenCalled();
     });
 
     it('tracks an error when the API returns an invalid result', async () => {
@@ -794,29 +1181,31 @@ describe('TransactionScanService', () => {
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.ERROR,
+        scanStatus: SecurityAlertsScanStatus.ERROR,
         hasSecurityAlerts: false,
       });
     });
 
     it('tracks an error when scanning throws', async () => {
       const error = new Error('Scan failed');
-      const { service, mockSecurityAlertsApiClient, mockSnapClient } =
+      const { service, mockSecurityAlertsApiClient, mockTrackError } =
         createService({
           simulation: { status: 'Success' },
           validation: { status: 'Success', result_type: 'Benign' },
         });
-      mockSecurityAlertsApiClient.scanTransaction.mockRejectedValueOnce(error);
+      jest
+        .mocked(mockSecurityAlertsApiClient.scanTransaction)
+        .mockRejectedValueOnce(error);
 
       expect(await scan(service)).toBeNull();
-      expect(mockSnapClient.trackError).toHaveBeenCalledWith(error);
+      expect(mockTrackError).toHaveBeenCalledWith(error);
       expect(
         mockAnalyticsService.trackSecurityScanCompleted,
       ).toHaveBeenCalledWith({
         origin: 'https://example.com',
         accountType: mockAccount.type,
         chainIdCaip: Network.Mainnet,
-        scanStatus: ScanStatus.ERROR,
+        scanStatus: SecurityAlertsScanStatus.ERROR,
         hasSecurityAlerts: false,
       });
     });
@@ -825,26 +1214,24 @@ describe('TransactionScanService', () => {
   describe('origin normalization', () => {
     const createService = (): {
       service: TransactionScanService;
-      mockSecurityAlertsApiClient: jest.Mocked<
-        Pick<SecurityAlertsApiClient, 'scanTransaction'>
-      >;
+      mockSecurityAlertsApiClient: SecurityAlertsApiClient;
     } => {
       const mockSecurityAlertsApiClient = createMockSecurityAlertsApiClient({
         simulation: { status: 'Success' },
         validation: { status: 'Success', result_type: 'Benign' },
       });
-      const mockSnapClient = createMockSnapClient();
-      const service = new TransactionScanService(
-        mockSecurityAlertsApiClient as unknown as SecurityAlertsApiClient,
-        mockSnapClient as unknown as SnapClient,
-        mockLogger,
-        mockAnalyticsService,
-      );
+      const mockTrackError = createMockTrackError();
+      const service = new TransactionScanService({
+        securityAlertsApiClient: mockSecurityAlertsApiClient,
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: mockTrackError,
+      });
 
       return { service, mockSecurityAlertsApiClient };
     };
 
-    it('resolves the MetaMask origin to its URL for the scan', async () => {
+    it('sends a non-dApp marker for the MetaMask origin', async () => {
       const { service, mockSecurityAlertsApiClient } = createService();
 
       await service.scanTransaction({
@@ -855,11 +1242,13 @@ describe('TransactionScanService', () => {
       });
 
       expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ origin: 'https://metamask.io' }),
+        expect.objectContaining({
+          metadata: { non_dapp: true },
+        }),
       );
     });
 
-    it('leaves dApp origins untouched for the scan', async () => {
+    it('sends the dApp URL for dApp origins', async () => {
       const { service, mockSecurityAlertsApiClient } = createService();
 
       await service.scanTransaction({
@@ -870,7 +1259,9 @@ describe('TransactionScanService', () => {
       });
 
       expect(mockSecurityAlertsApiClient.scanTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ origin: 'https://example.com' }),
+        expect.objectContaining({
+          metadata: { domain: 'https://example.com' },
+        }),
       );
     });
   });

@@ -48,10 +48,7 @@ type MockSnapClient = jest.Mocked<
  * Subset of TransactionScanService methods exercised by `render`.
  */
 type MockTransactionScanService = jest.Mocked<
-  Pick<
-    TransactionScanService,
-    'scanTransaction' | 'getSecurityAlertDescription'
-  >
+  Pick<TransactionScanService, 'scanTransaction'>
 >;
 
 /**
@@ -162,7 +159,6 @@ function buildMockSnapClient(): MockSnapClient {
 function buildMockTransactionScanService(): MockTransactionScanService {
   return {
     scanTransaction: jest.fn().mockResolvedValue(defaultScanResult),
-    getSecurityAlertDescription: jest.fn().mockReturnValue('description'),
   };
 }
 

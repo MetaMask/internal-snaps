@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `fetchWithPolicy` for the common policy-wrapped HTTP call: a fetch with a 10 second timeout, a status check that throws a `FetchPolicyError` for non-2xx responses (honouring `Retry-After`), and a body read inside the policy ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
 - Add `parseRetryAfter` for parsing a `Retry-After` header value as milliseconds ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
 - Add the `FetchPolicy` type, the minimal policy surface `executeWithFetchPolicy` and `fetchWithPolicy` accept ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add the shared `BaseTransactionScanService` base class for network snap transaction scan services, owning the shared scan dependencies (Security Alerts API client, analytics, logger, error reporting) and the scan analytics orchestration ([#397](https://github.com/MetaMask/internal-snaps/pull/397))
+  - Add the shared Security Alerts API HTTP client for `BaseTransactionScanService`.
 
 ## [3.0.0]
 

@@ -3,6 +3,7 @@ import {
   AssetsProvider,
   InMemoryCache,
   RemoteFeatureFlagsProvider,
+  SecurityAlertsApiClient,
   State,
   StateCache,
 } from '@metamask/snap-networks-utils';
@@ -14,7 +15,6 @@ import type {
 import { getMessenger } from '@metamask/snaps-sdk';
 
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
-import { SecurityAlertsApiClient } from './clients/security-alerts-api/SecurityAlertsApiClient';
 import { getSnapProvider } from './clients/snap/getSnapProvider';
 import { SnapClient } from './clients/snap/SnapClient';
 import { TokenApiClient } from './clients/token-api/TokenApiClient';
@@ -112,11 +112,10 @@ const assetsProvider = new AssetsProvider({
   messenger: coreMessenger as AssetsProviderMessenger,
 });
 
-// Security Alerts API client
-const securityAlertsApiClient = new SecurityAlertsApiClient(
-  configProvider,
-  logger,
-);
+// Security Alerts API HTTP client
+const securityAlertsHttpClient = new SecurityAlertsApiClient({
+  scanUrl: `${configProvider.config.securityAlertsApi.baseUrl}/tron/transaction/scan`,
+});
 
 const snapAssetsAdapter = new SnapAssetsAdapter({
   logger,
@@ -199,12 +198,12 @@ const walletService = new WalletService({
   tronWebFactory,
 });
 
-const transactionScanService = new TransactionScanService(
-  securityAlertsApiClient,
-  snapClient,
-  logger,
+const transactionScanService = new TransactionScanService({
+  securityAlertsApiClient: securityAlertsHttpClient,
   analyticsService,
-);
+  logger,
+  trackError,
+});
 
 const confirmationHandler = new ConfirmationHandler({
   snapClient,

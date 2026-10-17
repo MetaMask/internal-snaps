@@ -1,4 +1,5 @@
 export { createSnapErrorHandling, createTrackError } from './trackError';
+export { HttpError } from './httpError';
 export {
   SynchronizationError,
   formatAccountSyncFailures,

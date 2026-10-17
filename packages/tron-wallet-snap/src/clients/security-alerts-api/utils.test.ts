@@ -4,9 +4,73 @@ import type {
   TransferAssetContractParameter,
   TransferContractParameter,
 } from '../trongrid/types';
-import { extractScanParametersFromTransactionData } from './utils';
+import {
+  extractScanParametersFromTransactionData,
+  isContractTypeSupported,
+} from './utils';
 
 describe('SecurityAlertsApiClient utils', () => {
+  describe('isContractTypeSupported', () => {
+    it('supports transfers, contract deployment, and contract calls', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [
+          {
+            type: TronwebTypes.ContractType.TransferContract,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
+              value: {
+                owner_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+                to_address: '4191bba2f3f6e1c4d5c8e8f5b6a7c8d9e0f1a2b3c4',
+                amount: 1000000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(isContractTypeSupported(rawData)).toBe(true);
+    });
+
+    it('does not support other contract types', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [
+          {
+            type: 'FreezeBalanceContract' as TronwebTypes.ContractType,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.FreezeBalanceContract',
+              value: {
+                owner_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+                frozen_balance: 1000,
+              },
+            },
+          },
+        ],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(isContractTypeSupported(rawData)).toBe(false);
+    });
+
+    it('does not support transactions without contracts', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(isContractTypeSupported(rawData)).toBe(false);
+    });
+  });
+
   describe('extractScanParametersFromTransactionData', () => {
     it('extracts scan parameters from a TransferAssetContractParameter', () => {
       const contractInteraction: TransferAssetContractParameter = {
@@ -36,8 +100,7 @@ describe('SecurityAlertsApiClient utils', () => {
       expect(result).toStrictEqual({
         from: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
         to: 'TPFmm695uHPTn8wNmQbF8yMiZxfCeUdXkJ',
-        data: null,
-        value: 1000000,
+        value: '0xf4240',
       });
     });
 
@@ -68,8 +131,7 @@ describe('SecurityAlertsApiClient utils', () => {
       expect(result).toStrictEqual({
         from: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
         to: 'TPFmm695uHPTn8wNmQbF8yMiZxfCeUdXkJ',
-        data: null,
-        value: 500000,
+        value: '0x7a120',
       });
     });
 
@@ -102,13 +164,25 @@ describe('SecurityAlertsApiClient utils', () => {
         from: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
         to: 'TPFmm695uHPTn8wNmQbF8yMiZxfCeUdXkJ',
         data: '0xabcdef',
-        value: 200000,
+        value: '0x30d40',
       });
     });
 
-    it('returns null if no contract parameter is found', () => {
+    it('omits call data and encodes a zero value as hex when the contract has neither', () => {
+      const contractInteraction = {
+        type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+        value: {
+          owner_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+          contract_address: '4191bba2f3f6e1c4d5c8e8f5b6a7c8d9e0f1a2b3c4',
+        },
+      };
       const rawData: TronwebTypes.Transaction['raw_data'] = {
-        contract: [],
+        contract: [
+          {
+            type: TronwebTypes.ContractType.TriggerSmartContract,
+            parameter: contractInteraction,
+          },
+        ],
         ref_block_bytes: '',
         ref_block_hash: '',
         expiration: 0,
@@ -117,7 +191,53 @@ describe('SecurityAlertsApiClient utils', () => {
 
       const result = extractScanParametersFromTransactionData(rawData);
 
-      expect(result).toBeNull();
+      expect(result).toStrictEqual({
+        from: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+        to: 'TPFmm695uHPTn8wNmQbF8yMiZxfCeUdXkJ',
+        value: '0x0',
+      });
+    });
+
+    it('omits the recipient for contract creation', () => {
+      const contractInteraction = {
+        type_url: 'type.googleapis.com/protocol.CreateSmartContract',
+        value: {
+          owner_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+        },
+      };
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [
+          {
+            type: TronwebTypes.ContractType.CreateSmartContract,
+            parameter: contractInteraction,
+          },
+        ],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      const result = extractScanParametersFromTransactionData(rawData);
+
+      expect(result).toStrictEqual({
+        from: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+        value: '0x0',
+      });
+    });
+
+    it('throws if no contract parameter is found', () => {
+      const rawData: TronwebTypes.Transaction['raw_data'] = {
+        contract: [],
+        ref_block_bytes: '',
+        ref_block_hash: '',
+        expiration: 0,
+        timestamp: 0,
+      };
+
+      expect(() => extractScanParametersFromTransactionData(rawData)).toThrow(
+        'Could not extract scan parameters from transaction.',
+      );
     });
   });
 });
