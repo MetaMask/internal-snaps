@@ -2,6 +2,7 @@ import {
   createFetchPolicyError,
   isTransientError,
 } from '@metamask/snap-networks-utils';
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
 import type { RpcTransport } from '@solana/kit';
 
 import { toFetchPolicyError } from '../../../utils/fetchPolicy';
@@ -20,7 +21,7 @@ const logger = noOpLogger;
 export const createFailoverTransport =
   (baseTransports: RpcTransport[], urls: string[]) =>
   async <TResponse>(...args: Parameters<RpcTransport>): Promise<TResponse> => {
-    let lastError;
+    let lastError: FetchPolicyError | undefined;
     const transportCount = baseTransports.length;
     for (const [index, transport] of baseTransports.entries()) {
       try {
