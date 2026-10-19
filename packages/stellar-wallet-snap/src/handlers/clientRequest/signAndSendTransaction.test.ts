@@ -1,8 +1,8 @@
 import { FeeType, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { Networks } from '@stellar/stellar-sdk';
 
 import { KnownCaip19Slip44IdMap, KnownCaip2ChainId } from '../../api';
-import { METAMASK_ORIGIN } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import { AssetMetadataService } from '../../services/asset-metadata';
@@ -750,7 +750,7 @@ describe('SignAndSendTransactionHandler', () => {
       expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Swap,
       });
     });

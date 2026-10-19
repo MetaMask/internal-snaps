@@ -1,3 +1,5 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+
 import { KnownCaip2ChainId } from '../../api';
 import { FieldType } from '../../services/transaction';
 import type { ReadableOperationField } from '../../services/transaction';
@@ -83,7 +85,7 @@ describe('confirmation utils', () => {
       },
       {
         testcase: '"MetaMask" for the internal metamask origin',
-        input: 'metamask',
+        input: DEFAULT_METAMASK_ORIGIN,
         expected: 'MetaMask',
       },
       {
