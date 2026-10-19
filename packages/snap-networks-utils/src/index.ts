@@ -128,6 +128,12 @@ export type {
   CreateFetchPolicyOptions,
   FetchPolicyError,
 } from './utils/fetchPolicy/createFetchPolicy';
+export {
+  executeWithFetchPolicy,
+  fetchWithPolicy,
+  parseRetryAfter,
+} from './utils/fetchPolicy/executeWithFetchPolicy';
+export type { FetchPolicy } from './utils/fetchPolicy/executeWithFetchPolicy';
 export { ActionHeader } from './ui/ActionHeader/ActionHeader';
 export type { ActionHeaderProps } from './ui/ActionHeader/ActionHeader';
 export { Asset, AssetIcon } from './ui/Asset/Asset';

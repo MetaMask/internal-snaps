@@ -1,5 +1,7 @@
+import { isTransientError } from '@metamask/snap-networks-utils';
 import type { RpcTransport } from '@solana/kit';
 
+import { toFetchPolicyError } from '../../../utils/fetchPolicy';
 import { noOpLogger } from '../../../utils/logger';
 
 const logger = noOpLogger;
@@ -20,15 +22,36 @@ export const createFailoverTransport =
     for (const [index, transport] of baseTransports.entries()) {
       try {
         const currentUrl = urls[index];
+        const callerSignal = args[0].signal;
+        const timeoutSignal = AbortSignal.timeout(10_000);
         logger.info(
           `[🚌 FailoverTransport] Attempting to use transport ${
             index + 1
           } of ${transportCount} (URL: ${currentUrl})`,
         );
-        return await transport(...args);
+        return await transport({
+          ...args[0],
+          signal: callerSignal
+            ? AbortSignal.any([callerSignal, timeoutSignal])
+            : timeoutSignal,
+        });
       } catch (error) {
         const currentUrl = urls[index];
-        lastError = error;
+        const callerSignal = args[0].signal;
+        if (callerSignal?.aborted) {
+          throw callerSignal.reason;
+        }
+        if (
+          error instanceof SyntaxError ||
+          (error as { name?: unknown } | undefined)?.name === 'AbortError'
+        ) {
+          throw error;
+        }
+        const transportError = toFetchPolicyError(error);
+        lastError = transportError;
+        if (!isTransientError(transportError)) {
+          throw transportError;
+        }
         const isLastTransport = index === transportCount - 1;
         logger.error(
           `[🚌 FailoverTransport] Transport failed (URL: ${currentUrl}): ${error}. ${
@@ -39,11 +62,12 @@ export const createFailoverTransport =
         );
 
         // Adds URL information to the error for better tracking
-        if (error instanceof Error) {
-          (error as any).currentUrl = currentUrl;
-        }
+        (transportError as Error & { currentUrl?: string }).currentUrl =
+          currentUrl;
       }
     }
     // If all transports fail, throw the last error.
-    throw lastError;
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('All Solana RPC transports failed.');
   };

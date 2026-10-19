@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient Solana RPC and API read failures with the shared fetch policy while sending transaction submissions only once.
+
 ## [7.1.0]
 
 ### Added

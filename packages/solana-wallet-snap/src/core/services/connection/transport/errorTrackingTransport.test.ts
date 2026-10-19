@@ -222,6 +222,28 @@ describe('createErrorTrackingTransport', () => {
         },
       });
     });
+
+    it('should extract status codes from Solana transport errors', async () => {
+      const mockError = Object.assign(new Error('HTTP 429'), {
+        context: { statusCode: 429 },
+      });
+      const mockTransport = jest.fn().mockRejectedValue(mockError);
+      const errorTrackingTransport =
+        createErrorTrackingTransport(mockTransport);
+
+      await expect(
+        errorTrackingTransport({ payload: { method: 'getBalance' } }),
+      ).rejects.toThrow('HTTP 429');
+
+      expect(mockSnap.request).toHaveBeenCalledWith({
+        method: 'snap_trackError',
+        params: {
+          error: expect.objectContaining({
+            message: expect.stringContaining('"statusCode":429'),
+          }),
+        },
+      });
+    });
   });
 
   describe('Different error formats', () => {
