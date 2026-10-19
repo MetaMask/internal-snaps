@@ -40,6 +40,6 @@ module.exports = {
   // extensionsToTreatAsEsm) needs that flag, but then `jest` is not injected as
   // a global and CJS packages like lodash break named imports.
   transformIgnorePatterns: [
-    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml|@metamask/base-data-service|lodash-es)/)',
+    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml|@metamask/base-data-service|@metamask/remote-feature-flag-controller|lodash-es)/)',
   ],
 };

@@ -15,6 +15,9 @@
       "@metamask/*": ["../*/src"],
       "@metamask/base-data-service": [
         "../../node_modules/@metamask/base-data-service/dist/index.d.ts"
+      ],
+      "@metamask/remote-feature-flag-controller": [
+        "../../node_modules/@metamask/remote-feature-flag-controller/dist/index.d.ts"
       ]
     },
     "rootDir": "./src"

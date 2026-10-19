@@ -84,6 +84,8 @@ module.exports = {
     // ESM-only package with an `exports`-only manifest: resolve it explicitly.
     '^@metamask/base-data-service$':
       '<rootDir>/../../node_modules/@metamask/base-data-service/dist/index.js',
+    '^@metamask/remote-feature-flag-controller$':
+      '<rootDir>/../../node_modules/@metamask/remote-feature-flag-controller/dist/index.js',
     // Matches bare package specifiers only (e.g. `@metamask/foo`), so subpath
     // exports such as `@metamask/foo/node` keep resolving through the package
     // `exports` map instead of being redirected to a non-existent source path.
@@ -200,7 +202,7 @@ module.exports = {
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   transformIgnorePatterns: [
-    '/node_modules/(?!(@metamask/base-data-service|lodash-es)/)',
+    '/node_modules/(?!(@metamask/base-data-service|@metamask/remote-feature-flag-controller|lodash-es)/)',
   ],
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
