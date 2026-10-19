@@ -1,4 +1,5 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
@@ -108,7 +109,9 @@ export const onCronjob: OnCronjobHandler = async ({ request }) =>
   middleware.handle(async () => cronHandler.route(request));
 
 export const onClientRequest: OnClientRequestHandler = async ({ request }) =>
-  middleware.handle(async () => rpcHandler.route('metamask', request));
+  middleware.handle(async () =>
+    rpcHandler.route(DEFAULT_METAMASK_ORIGIN, request),
+  );
 
 export const onKeyringRequest: OnKeyringRequestHandler = async ({ request }) =>
   middleware.handle(
