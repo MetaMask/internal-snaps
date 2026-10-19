@@ -2,8 +2,10 @@ import {
   createFetchPolicy,
   createFetchPolicyError,
   FetchPolicyErrorName,
+  fetchWithPolicy,
 } from '@metamask/snap-networks-utils';
 
+import { install as installDOMExceptionPolyfill } from '../../polyfills/dom-exception';
 import { mockLogger } from '../services/__mocks__/logger';
 import { toFetchPolicyError } from './fetchPolicy';
 
@@ -100,5 +102,39 @@ describe('shared policy integration', () => {
 
     expect(await execute()).toBe('ok');
     expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry caller cancellation when the DOMException polyfill is installed', async () => {
+    const originalDOMException = globalThis.DOMException;
+    installDOMExceptionPolyfill();
+    try {
+      const policy = createFetchPolicy({
+        service: 'test',
+        logger: mockLogger,
+      });
+      const controller = new AbortController();
+      const callerReason = new Error('Caller aborted request');
+      const fetchMock = jest.fn().mockImplementation(async () => {
+        controller.abort(callerReason);
+        throw callerReason;
+      });
+
+      await expect(
+        fetchWithPolicy(
+          policy,
+          'https://api.test',
+          { signal: controller.signal },
+          fetchMock as unknown as typeof globalThis.fetch,
+        ),
+      ).rejects.toBe(callerReason);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      Object.defineProperty(globalThis, 'DOMException', {
+        value: originalDOMException,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+    }
   });
 });

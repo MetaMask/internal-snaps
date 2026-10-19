@@ -388,24 +388,40 @@ describe('fetchWithPolicy', () => {
   });
 
   it('falls back to the normalized abort error when a custom aborted signal has no reason', async () => {
-    const customSignal = { aborted: true, reason: undefined } as AbortSignal;
-    const fetchMock = jest
-      .fn()
-      .mockRejectedValue(new Error('Request aborted without reason'));
-
-    let caught: unknown;
+    const originalDOMException = globalThis.DOMException;
+    Object.defineProperty(globalThis, 'DOMException', {
+      value: Error,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
     try {
-      await fetchWithPolicy(
-        makePolicy(),
-        'https://api.test',
-        { signal: customSignal },
-        fetchMock as unknown as typeof globalThis.fetch,
-      );
-    } catch (error) {
-      caught = error;
-    }
+      const customSignal = { aborted: true, reason: undefined } as AbortSignal;
+      const fetchMock = jest
+        .fn()
+        .mockRejectedValue(new Error('Request aborted without reason'));
 
-    expect((caught as Error).name).toBe('AbortError');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+      let caught: unknown;
+      try {
+        await fetchWithPolicy(
+          makePolicy(),
+          'https://api.test',
+          { signal: customSignal },
+          fetchMock as unknown as typeof globalThis.fetch,
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect((caught as Error).name).toBe('AbortError');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      Object.defineProperty(globalThis, 'DOMException', {
+        value: originalDOMException,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+    }
   });
 });

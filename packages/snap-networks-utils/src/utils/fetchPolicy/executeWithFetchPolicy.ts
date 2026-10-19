@@ -150,7 +150,9 @@ export const fetchWithPolicy = async (
         return await response.text();
       } catch (error) {
         if (callerSignal?.aborted) {
-          throw new DOMException('The operation was aborted.', 'AbortError');
+          throw Object.assign(new Error('The operation was aborted.'), {
+            name: 'AbortError',
+          });
         }
         throw error;
       }
