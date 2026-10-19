@@ -9,14 +9,27 @@
 // manifests of each package in the monorepo to ensure they follow a standard
 // format, but also check the presence of certain files as well.
 
-/** @type {import('@yarnpkg/types')} */
-const { hasProperty } = require('@metamask/utils');
 const { defineConfig } = require('@yarnpkg/types');
 const { readFile } = require('fs/promises');
 const { get } = require('lodash');
 const { basename, resolve } = require('path');
 const semver = require('semver');
 const { inspect } = require('util');
+
+/**
+ * Checks whether an object has an own property.
+ *
+ * @param {unknown} value - The value to check.
+ * @param {PropertyKey} property - The property to look for.
+ * @returns {value is object} Whether the value has the property.
+ */
+function hasProperty(value, property) {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, property)
+  );
+}
 
 /**
  * These packages and ranges are allowed to mismatch expected consistency checks
