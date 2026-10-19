@@ -1,5 +1,7 @@
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
-import { serialize } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  serialize,
+} from '@metamask/snap-networks-utils';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';

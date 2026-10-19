@@ -1,6 +1,8 @@
 import { SolMethod } from '@metamask/keyring-api';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
-import { serialize } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  serialize,
+} from '@metamask/snap-networks-utils';
 import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
 
 import { transactionScanService, state } from '../../../../snapContext';

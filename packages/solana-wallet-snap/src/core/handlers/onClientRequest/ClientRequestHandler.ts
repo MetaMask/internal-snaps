@@ -1,6 +1,8 @@
 import { FeeType, TransactionType } from '@metamask/keyring-api';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeError,
+} from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';

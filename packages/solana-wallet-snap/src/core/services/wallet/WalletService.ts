@@ -1,8 +1,8 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import type { TransactionType } from '@metamask/keyring-api';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import {
+  DEFAULT_METAMASK_ORIGIN,
   normalizeError,
   resolveFlowTransactionType,
 } from '@metamask/snap-networks-utils';

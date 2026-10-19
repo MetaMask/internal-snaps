@@ -1,5 +1,4 @@
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
-import { Asset } from '@metamask/snap-networks-utils';
+import { DEFAULT_METAMASK_ORIGIN, Asset } from '@metamask/snap-networks-utils';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
   Address,

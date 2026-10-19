@@ -1,11 +1,13 @@
 import { SolMethod } from '@metamask/keyring-api';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  InMemoryCache,
+} from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   ICache,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { lamports } from '@solana/kit';
 
 import type { AssetEntity } from '../../../entities';
