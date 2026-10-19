@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
@@ -7,7 +8,6 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import {
   FEE_LIMIT,
-  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -195,7 +195,7 @@ describe('SendService', () => {
       expect(
         mockAnalyticsService.trackTransactionSubmitted,
       ).toHaveBeenCalledWith({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
         transactionType: TransactionType.Send,
@@ -229,7 +229,7 @@ describe('SendService', () => {
       expect(
         mockAnalyticsService.trackTransactionSubmitted,
       ).toHaveBeenCalledWith({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
         transactionType: TransactionType.Send,

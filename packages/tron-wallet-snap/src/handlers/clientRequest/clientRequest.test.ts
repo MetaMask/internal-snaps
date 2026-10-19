@@ -3,6 +3,7 @@ import {
   TransactionType,
   TrxAccountType,
 } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
@@ -15,7 +16,6 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FALLBACK_FEE,
   FEE_LIMIT,
-  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -2127,7 +2127,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
       {
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: scope,
         transactionType: TransactionType.Unknown,
@@ -2221,7 +2221,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
       expect(
         mockAnalyticsService.trackTransactionSubmitted,
       ).toHaveBeenCalledWith({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: scope,
         transactionType: expectedType,
@@ -2290,7 +2290,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
 
     expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
       {
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: scope,
         transactionType: TransactionType.Send,

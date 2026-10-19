@@ -1,3 +1,4 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -7,7 +8,7 @@ import { Types as TronwebTypes } from 'tronweb';
 import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
-import { METAMASK_ORIGIN, Network } from '../../constants';
+import { Network } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import { TransactionScanService } from './TransactionScanService';
 import type { TransactionScanResult } from './types';
@@ -849,7 +850,7 @@ describe('TransactionScanService', () => {
       await service.scanTransaction({
         accountAddress: mockAccount.address,
         transactionRawData: createWellFormedTransactionRawData(),
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         scope: Network.Mainnet,
       });
 
