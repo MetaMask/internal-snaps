@@ -19,8 +19,8 @@ dotenv.config();
  */
 const apiBaseUrl = (url: string | undefined): string =>
   process.env.ENVIRONMENT === 'test'
-    ? process.env.LOCAL_API_BASE_URL ?? ''
-    : url ?? '';
+    ? (process.env.LOCAL_API_BASE_URL ?? '')
+    : (url ?? '');
 
 const environment = {
   ENVIRONMENT: process.env.ENVIRONMENT ?? '',
