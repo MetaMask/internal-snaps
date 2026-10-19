@@ -1,10 +1,11 @@
-import { METAMASK_ORIGIN } from '../constants/solana';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+
 import { parseOrigin } from './parseOrigin';
 
 describe('parseOrigin', () => {
   describe('when origin is MetaMask', () => {
     it('returns "MetaMask" for metamask origin', () => {
-      expect(parseOrigin(METAMASK_ORIGIN)).toBe('MetaMask');
+      expect(parseOrigin(DEFAULT_METAMASK_ORIGIN)).toBe('MetaMask');
     });
 
     it('returns "MetaMask" for exact string match', () => {
