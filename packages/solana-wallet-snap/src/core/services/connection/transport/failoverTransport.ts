@@ -1,4 +1,7 @@
-import { isTransientError } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicyError,
+  isTransientError,
+} from '@metamask/snap-networks-utils';
 import type { RpcTransport } from '@solana/kit';
 
 import { toFetchPolicyError } from '../../../utils/fetchPolicy';
@@ -39,7 +42,7 @@ export const createFailoverTransport =
         const currentUrl = urls[index];
         const callerSignal = args[0].signal;
         if (callerSignal?.aborted) {
-          throw callerSignal.reason;
+          throw callerSignal.reason ?? error;
         }
         if (
           error instanceof SyntaxError ||
@@ -47,11 +50,28 @@ export const createFailoverTransport =
         ) {
           throw error;
         }
-        const transportError = toFetchPolicyError(error);
-        lastError = transportError;
+        const baseError = toFetchPolicyError(error);
+        const retryAfterMs =
+          lastError?.retryAfterMs !== undefined ||
+          baseError.retryAfterMs !== undefined
+            ? Math.max(
+                lastError?.retryAfterMs ?? 0,
+                baseError.retryAfterMs ?? 0,
+              )
+            : undefined;
+        const transportError = Object.assign(
+          createFetchPolicyError(baseError.message, {
+            name: baseError.name,
+            httpStatus: baseError.httpStatus,
+            retryAfterMs,
+            cause: baseError.cause,
+          }),
+          { currentUrl },
+        );
         if (!isTransientError(transportError)) {
           throw transportError;
         }
+        lastError = transportError;
         const isLastTransport = index === transportCount - 1;
         logger.error(
           `[🚌 FailoverTransport] Transport failed (URL: ${currentUrl}): ${error}. ${
@@ -60,10 +80,6 @@ export const createFailoverTransport =
               : 'Trying next transport...'
           }`,
         );
-
-        // Adds URL information to the error for better tracking
-        (transportError as Error & { currentUrl?: string }).currentUrl =
-          currentUrl;
       }
     }
     // If all transports fail, throw the last error.

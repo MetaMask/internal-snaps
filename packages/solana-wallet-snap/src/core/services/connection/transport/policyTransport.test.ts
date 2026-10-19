@@ -111,6 +111,48 @@ describe('createPolicyTransport', () => {
     expect(signals[0]).not.toBe(signals[1]);
   });
 
+  it('preserves Retry-After from an earlier endpoint when a fallback fails without one', async () => {
+    jest.useFakeTimers();
+    try {
+      const firstTransport = jest
+        .fn()
+        .mockRejectedValueOnce(
+          createFetchPolicyError('Rate limited', {
+            httpStatus: 429,
+            retryAfterMs: 30_000,
+          }),
+        )
+        .mockResolvedValueOnce({ result: 'ok' });
+      const fallbackError = createFetchPolicyError('offline', {
+        name: FetchPolicyErrorName.Network,
+      });
+      const secondTransport = jest.fn().mockRejectedValue(fallbackError);
+      const transport = createPolicyTransport({
+        oneShotTransport: firstTransport,
+        policy: createFetchPolicy({
+          service: 'solana_rpc',
+          logger: mockLogger,
+        }),
+        readTransport: createFailoverTransport(
+          [firstTransport, secondTransport],
+          ['https://one.test', 'https://two.test'],
+        ),
+      });
+
+      const pending = transport(request('getBalance'));
+      await jest.advanceTimersByTimeAsync(29_999);
+      expect(firstTransport).toHaveBeenCalledTimes(1);
+      expect(secondTransport).toHaveBeenCalledTimes(1);
+      expect(fallbackError.retryAfterMs).toBeUndefined();
+
+      await jest.advanceTimersByTimeAsync(1);
+      expect(await pending).toStrictEqual({ result: 'ok' });
+      expect(firstTransport).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not fail over non-transient read failures', async () => {
     const firstTransport = jest
       .fn()
@@ -137,7 +179,10 @@ describe('createPolicyTransport', () => {
       caught = error;
     }
 
-    expect(caught).toMatchObject({ httpStatus: 400 });
+    expect(caught).toMatchObject({
+      httpStatus: 400,
+      currentUrl: 'https://one.test',
+    });
     expect(firstTransport).toHaveBeenCalledTimes(1);
     expect(secondTransport).not.toHaveBeenCalled();
   });
@@ -210,25 +255,34 @@ describe('createPolicyTransport', () => {
   });
 
   it('throws an abort error when the caller signal has no reason', async () => {
-    const signal = {
-      aborted: true,
-      reason: undefined,
-    } as AbortSignal;
-    const readTransport = jest.fn().mockRejectedValue(new Error('Failed'));
+    const controller = new AbortController();
+    Object.defineProperty(controller.signal, 'reason', {
+      value: undefined,
+    });
+    const firstTransport = jest.fn().mockImplementation(async () => {
+      controller.abort();
+      throw new Error('Failed');
+    });
+    const secondTransport = jest.fn();
     const transport = createPolicyTransport({
-      oneShotTransport: jest.fn(),
+      oneShotTransport: firstTransport,
       policy,
-      readTransport,
+      readTransport: createFailoverTransport(
+        [firstTransport, secondTransport],
+        ['https://one.test', 'https://two.test'],
+      ),
     });
 
     await expect(
       transport({
         ...request('getBalance'),
-        signal,
+        signal: controller.signal,
       }),
     ).rejects.toMatchObject({
       message: 'RPC request aborted by caller',
       name: 'AbortError',
     });
+    expect(firstTransport).toHaveBeenCalledTimes(1);
+    expect(secondTransport).not.toHaveBeenCalled();
   });
 });

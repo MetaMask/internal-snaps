@@ -313,4 +313,99 @@ describe('fetchWithPolicy', () => {
     expect(caught).toMatchObject({ httpStatus: 404 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('retries a default per-attempt timeout and succeeds', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockRejectedValueOnce(
+        new DOMException('The operation timed out.', 'TimeoutError'),
+      )
+      .mockResolvedValueOnce(okResponse());
+
+    expect(
+      await fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        undefined,
+        fetchMock as unknown as typeof globalThis.fetch,
+      ),
+    ).toBe('body');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry caller cancellation during fetch and restores the caller reason', async () => {
+    const controller = new AbortController();
+    const callerReason = new DOMException(
+      'Caller timed out',
+      FetchPolicyErrorName.Timeout,
+    );
+    const fetchMock = jest.fn().mockImplementation(async () => {
+      controller.abort(callerReason);
+      throw callerReason;
+    });
+
+    let caught: unknown;
+    try {
+      await fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        { signal: controller.signal },
+        fetchMock as unknown as typeof globalThis.fetch,
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBe(callerReason);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry caller cancellation during body reading and restores the caller reason', async () => {
+    const controller = new AbortController();
+    const callerReason = new Error('Caller cancelled while reading body');
+    const fetchMock = jest.fn().mockResolvedValue({
+      ...okResponse(),
+      text: async () => {
+        controller.abort(callerReason);
+        throw callerReason;
+      },
+    });
+
+    let caught: unknown;
+    try {
+      await fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        { signal: controller.signal },
+        fetchMock as unknown as typeof globalThis.fetch,
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBe(callerReason);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the normalized abort error when a custom aborted signal has no reason', async () => {
+    const customSignal = { aborted: true, reason: undefined } as AbortSignal;
+    const fetchMock = jest
+      .fn()
+      .mockRejectedValue(new Error('Request aborted without reason'));
+
+    let caught: unknown;
+    try {
+      await fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        { signal: customSignal },
+        fetchMock as unknown as typeof globalThis.fetch,
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect((caught as Error).name).toBe('AbortError');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

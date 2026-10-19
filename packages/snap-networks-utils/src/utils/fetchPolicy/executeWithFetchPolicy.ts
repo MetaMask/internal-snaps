@@ -127,17 +127,38 @@ export const fetchWithPolicy = async (
   url: string,
   init?: RequestInit,
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
-): Promise<string> =>
-  executeWithFetchPolicy(policy, async () => {
-    const response = await fetchImpl(url, {
-      ...init,
-      signal: init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+): Promise<string> => {
+  const callerSignal = init?.signal;
+  try {
+    return await executeWithFetchPolicy(policy, async () => {
+      try {
+        const response = await fetchImpl(url, {
+          ...init,
+          signal: callerSignal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+          throw createFetchPolicyError(
+            `HTTP error! status: ${response.status}`,
+            {
+              httpStatus: response.status,
+              retryAfterMs: parseRetryAfter(
+                response.headers?.get('Retry-After'),
+              ),
+            },
+          );
+        }
+        return await response.text();
+      } catch (error) {
+        if (callerSignal?.aborted) {
+          throw new DOMException('The operation was aborted.', 'AbortError');
+        }
+        throw error;
+      }
     });
-    if (!response.ok) {
-      throw createFetchPolicyError(`HTTP error! status: ${response.status}`, {
-        httpStatus: response.status,
-        retryAfterMs: parseRetryAfter(response.headers?.get('Retry-After')),
-      });
+  } catch (error) {
+    if (callerSignal?.aborted) {
+      throw callerSignal.reason ?? error;
     }
-    return response.text();
-  });
+    throw error;
+  }
+};
