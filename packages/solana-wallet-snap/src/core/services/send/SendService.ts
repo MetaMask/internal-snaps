@@ -1,5 +1,6 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { SolMethod } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   Logger,
   Serializable,
@@ -11,7 +12,7 @@ import { address as asAddress, compileTransaction } from '@solana/kit';
 import { BigNumber } from 'bignumber.js';
 
 import type { Network } from '../../constants/solana';
-import { METAMASK_ORIGIN, Networks } from '../../constants/solana';
+import { Networks } from '../../constants/solana';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import { useCache } from '../../utils/caching';
@@ -137,7 +138,7 @@ export class SendService {
       id: globalThis.crypto.randomUUID(),
       scope,
       account: fromAccountId,
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       request: {
         method: SolMethod.SignAndSendTransaction,
         params: {

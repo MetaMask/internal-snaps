@@ -1,9 +1,10 @@
 import { SolMethod } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { serialize } from '@metamask/snap-networks-utils';
 import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
 
 import { transactionScanService, state } from '../../../../snapContext';
-import { METAMASK_ORIGIN, Network } from '../../../constants/solana';
+import { Network } from '../../../constants/solana';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
@@ -153,7 +154,7 @@ describe('refreshConfirmationEstimation', () => {
   it('does not check blockhash expiry for MetaMask-origin transactions', async () => {
     const interfaceContext = {
       ...setupTest(),
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
     };
     (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
 

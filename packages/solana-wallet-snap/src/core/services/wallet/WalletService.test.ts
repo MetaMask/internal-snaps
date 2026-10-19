@@ -1,7 +1,8 @@
 import { SolMethod, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 
-import { METAMASK_ORIGIN, Network } from '../../constants/solana';
+import { Network } from '../../constants/solana';
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
@@ -286,7 +287,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
           );
 
           expect(mockSigner.partiallySignBase64String).toHaveBeenCalledWith(
@@ -352,7 +353,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
           );
 
           expect(mockSigner.partiallySignBase64String).toHaveBeenCalledWith(
@@ -388,7 +389,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
           );
 
           expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
@@ -396,7 +397,7 @@ describe('WalletService', () => {
             fromAccount.id,
             'confirmed',
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             undefined,
           );
         });
@@ -424,14 +425,14 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
           );
 
           expect(
             mockAnalyticsService.trackTransactionSubmitted,
           ).toHaveBeenCalledWith(
             expect.objectContaining({
-              origin: METAMASK_ORIGIN,
+              origin: DEFAULT_METAMASK_ORIGIN,
               transactionType: TransactionType.Send,
             }),
           );
@@ -442,7 +443,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             undefined,
             TransactionType.TokenApprove,
           );
@@ -486,7 +487,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             undefined,
             TransactionType.TokenApprove,
           );
@@ -499,7 +500,7 @@ describe('WalletService', () => {
             fromAccount.id,
             'confirmed',
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             TransactionType.TokenApprove,
           );
         });
@@ -509,7 +510,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             {
               sourceAssetId:
                 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
@@ -530,7 +531,7 @@ describe('WalletService', () => {
             fromAccount.id,
             'confirmed',
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             TransactionType.Swap,
           );
         });
@@ -540,7 +541,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             {
               sourceAssetId:
                 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
@@ -561,7 +562,7 @@ describe('WalletService', () => {
             fromAccount.id,
             'confirmed',
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             TransactionType.BridgeSend,
           );
         });
@@ -605,7 +606,7 @@ describe('WalletService', () => {
             fromAccount,
             transactionMessageBase64Encoded,
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             {
               sourceAssetId:
                 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
@@ -627,7 +628,7 @@ describe('WalletService', () => {
             fromAccount.id,
             'confirmed',
             scope,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             TransactionType.TokenApprove,
           );
         });

@@ -1,3 +1,4 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { Asset } from '@metamask/snap-networks-utils';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
@@ -12,7 +13,7 @@ import {
 
 import { Domain } from '../../../../core/components/Domain/Domain';
 import type { Network } from '../../../../core/constants/solana';
-import { METAMASK_ORIGIN, Networks } from '../../../../core/constants/solana';
+import { Networks } from '../../../../core/constants/solana';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
 import { formatCryptoBalance } from '../../../../core/utils/formatCryptoBalance';
@@ -50,7 +51,7 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
 }) => {
   const { currency, locale } = preferences;
   const translate = i18n(locale);
-  const isMetaMaskOrigin = origin === METAMASK_ORIGIN;
+  const isMetaMaskOrigin = origin === DEFAULT_METAMASK_ORIGIN;
   const originHostname =
     origin && !isMetaMaskOrigin ? parseOrigin(origin) : null;
 

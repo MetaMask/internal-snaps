@@ -1,6 +1,7 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import type { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import {
   normalizeError,
   resolveFlowTransactionType,
@@ -29,7 +30,6 @@ import {
   verifySignature,
 } from '@solana/kit';
 
-import { METAMASK_ORIGIN } from '../../constants/solana';
 import type { Caip10Address, Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
@@ -224,7 +224,8 @@ export class WalletService {
           }
         : undefined;
 
-    const transactionSource = origin === METAMASK_ORIGIN ? 'metamask' : 'dapp';
+    const transactionSource =
+      origin === DEFAULT_METAMASK_ORIGIN ? 'metamask' : 'dapp';
 
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
@@ -300,7 +301,8 @@ export class WalletService {
           }
         : undefined;
 
-    const transactionSource = origin === METAMASK_ORIGIN ? 'metamask' : 'dapp';
+    const transactionSource =
+      origin === DEFAULT_METAMASK_ORIGIN ? 'metamask' : 'dapp';
 
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
@@ -353,7 +355,7 @@ export class WalletService {
      * classification.
      */
     const flowTransactionType =
-      origin === METAMASK_ORIGIN
+      origin === DEFAULT_METAMASK_ORIGIN
         ? resolveFlowTransactionType({
             sourceAssetId: options?.sourceAssetId,
             destAssetId: options?.destAssetId,
