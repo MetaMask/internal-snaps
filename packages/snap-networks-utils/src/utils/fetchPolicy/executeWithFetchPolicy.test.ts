@@ -156,6 +156,25 @@ describe('executeWithFetchPolicy', () => {
     expect(caught).toBeInstanceOf(Error);
     expect((caught as Error).message).toBe('Network request failed');
   });
+
+  it('rejects when the operation aborts the caller signal synchronously and remains pending', async () => {
+    const controller = new AbortController();
+    const callerReason = new Error('Synchronously aborted during operation');
+    const operation = jest.fn().mockImplementation(async () => {
+      controller.abort(callerReason);
+      return new Promise<string>(() => undefined);
+    });
+
+    await expect(
+      executeWithFetchPolicy(
+        makePolicy(),
+        operation,
+        undefined,
+        controller.signal,
+      ),
+    ).rejects.toBe(callerReason);
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
 });
 
 type StubResponse = {

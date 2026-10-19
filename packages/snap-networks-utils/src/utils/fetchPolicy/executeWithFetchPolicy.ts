@@ -81,6 +81,9 @@ const raceWithSignal = async <Result>(
       reject(createAbortError());
     };
     signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) {
+      onAbort();
+    }
   });
   // Suppress unhandled rejection if `promise` settles after `abortPromise` wins.
   promise.catch(() => undefined);
