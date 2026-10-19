@@ -45,33 +45,12 @@ export const createPolicyTransport =
     const { method } = args[0].payload as { method?: unknown };
     if (typeof method === 'string' && RETRYABLE_RPC_METHODS.has(method)) {
       const callerSignal = args[0].signal;
-      try {
-        return await executeWithFetchPolicy(
-          policy,
-          async () => {
-            try {
-              return await readTransport(...args);
-            } catch (error) {
-              if (callerSignal?.aborted) {
-                throw Object.assign(
-                  new Error('RPC request aborted by caller'),
-                  {
-                    name: 'AbortError',
-                    cause: callerSignal.reason,
-                  },
-                );
-              }
-              throw error;
-            }
-          },
-          toFetchPolicyError,
-        );
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw error.cause instanceof Error ? error.cause : error;
-        }
-        throw error;
-      }
+      return executeWithFetchPolicy(
+        policy,
+        async () => readTransport(...args),
+        toFetchPolicyError,
+        callerSignal,
+      );
     }
     return oneShotTransport(...args);
   };

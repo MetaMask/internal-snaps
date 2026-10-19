@@ -279,10 +279,67 @@ describe('createPolicyTransport', () => {
         signal: controller.signal,
       }),
     ).rejects.toMatchObject({
-      message: 'RPC request aborted by caller',
+      message: 'The operation was aborted.',
       name: 'AbortError',
     });
     expect(firstTransport).toHaveBeenCalledTimes(1);
     expect(secondTransport).not.toHaveBeenCalled();
+  });
+
+  it('rejects promptly during retry backoff when the caller aborts without invoking the transport again', async () => {
+    jest.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const callerReason = new Error('Caller aborted during RPC backoff');
+      const firstTransport = jest.fn().mockRejectedValue(
+        createFetchPolicyError('Rate limited', {
+          httpStatus: 429,
+          retryAfterMs: 30_000,
+        }),
+      );
+      const secondTransport = jest.fn().mockRejectedValue(
+        createFetchPolicyError('Rate limited', {
+          httpStatus: 429,
+          retryAfterMs: 30_000,
+        }),
+      );
+      const transport = createPolicyTransport({
+        oneShotTransport: firstTransport,
+        policy: createFetchPolicy({
+          service: 'solana_rpc',
+          logger: mockLogger,
+        }),
+        readTransport: createFailoverTransport(
+          [firstTransport, secondTransport],
+          ['https://one.test', 'https://two.test'],
+        ),
+      });
+
+      const pending = transport({
+        ...request('getBalance'),
+        signal: controller.signal,
+      });
+      const rejection = pending.then(
+        () => undefined,
+        (error) => error,
+      );
+
+      await jest.advanceTimersByTimeAsync(0);
+      expect(firstTransport).toHaveBeenCalledTimes(1);
+      expect(secondTransport).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[solana_rpc] Retrying (attempt 1'),
+        expect.any(Error),
+      );
+
+      controller.abort(callerReason);
+      expect(await rejection).toBe(callerReason);
+
+      await jest.advanceTimersByTimeAsync(40_000);
+      expect(firstTransport).toHaveBeenCalledTimes(1);
+      expect(secondTransport).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

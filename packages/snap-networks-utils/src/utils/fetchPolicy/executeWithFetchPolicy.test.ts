@@ -396,10 +396,16 @@ describe('fetchWithPolicy', () => {
       enumerable: true,
     });
     try {
-      const customSignal = { aborted: true, reason: undefined } as AbortSignal;
-      const fetchMock = jest
-        .fn()
-        .mockRejectedValue(new Error('Request aborted without reason'));
+      const customSignal = {
+        aborted: false,
+        reason: undefined,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      } as unknown as AbortSignal & { aborted: boolean };
+      const fetchMock = jest.fn().mockImplementation(async () => {
+        customSignal.aborted = true;
+        throw new Error('Request aborted without reason');
+      });
 
       let caught: unknown;
       try {
@@ -423,5 +429,102 @@ describe('fetchWithPolicy', () => {
         enumerable: true,
       });
     }
+  });
+
+  it('rejects promptly during retry backoff when the caller aborts without invoking fetch again', async () => {
+    jest.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const callerReason = new Error('Caller aborted during backoff');
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValue(statusResponse(429, { 'Retry-After': '30' }));
+
+      const pending = fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        { signal: controller.signal },
+        fetchMock as unknown as typeof globalThis.fetch,
+      );
+      const rejection = pending.then(
+        () => undefined,
+        (error) => error,
+      );
+
+      await jest.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[test] Retrying (attempt 1'),
+        expect.any(Error),
+      );
+
+      controller.abort(callerReason);
+      expect(await rejection).toBe(callerReason);
+
+      await jest.advanceTimersByTimeAsync(40_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('falls back to an AbortError when a custom signal aborts during backoff without a reason', async () => {
+    jest.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      Object.defineProperty(controller.signal, 'reason', {
+        value: undefined,
+      });
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValue(statusResponse(429, { 'Retry-After': '30' }));
+
+      const pending = fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        { signal: controller.signal },
+        fetchMock as unknown as typeof globalThis.fetch,
+      );
+      const rejection = pending.then(
+        () => undefined,
+        (error) => error,
+      );
+
+      await jest.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[test] Retrying (attempt 1'),
+        expect.any(Error),
+      );
+
+      controller.abort();
+      expect(await rejection).toMatchObject({
+        message: 'The operation was aborted.',
+        name: 'AbortError',
+      });
+
+      await jest.advanceTimersByTimeAsync(40_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('falls back to an AbortError when a custom signal is already aborted on entry without a reason', async () => {
+    const customSignal = { aborted: true, reason: undefined } as AbortSignal;
+    const fetchMock = jest.fn();
+
+    await expect(
+      fetchWithPolicy(
+        makePolicy(),
+        'https://api.test',
+        { signal: customSignal },
+        fetchMock as unknown as typeof globalThis.fetch,
+      ),
+    ).rejects.toMatchObject({
+      message: 'The operation was aborted.',
+      name: 'AbortError',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

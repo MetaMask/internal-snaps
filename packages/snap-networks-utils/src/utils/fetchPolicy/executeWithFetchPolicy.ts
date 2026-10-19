@@ -55,6 +55,42 @@ const toNetworkError = (error: unknown): FetchPolicyError =>
         cause: error,
       });
 
+const createAbortError = (): Error =>
+  Object.assign(new Error('The operation was aborted.'), {
+    name: 'AbortError',
+  });
+
+/**
+ * Race a promise against an abort signal so caller cancellation interrupts
+ * retry backoff waits without waiting for the timer to expire.
+ *
+ * @param promise - The operation promise.
+ * @param signal - Optional abort signal from the caller.
+ * @returns The operation result, or rejects with the abort reason.
+ */
+const raceWithSignal = async <Result>(
+  promise: Promise<Result>,
+  signal: AbortSignal | undefined,
+): Promise<Result> => {
+  if (!signal) {
+    return promise;
+  }
+  let onAbort!: () => void;
+  const abortPromise = new Promise<never>((_resolve, reject) => {
+    onAbort = (): void => {
+      reject(createAbortError());
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  // Suppress unhandled rejection if `promise` settles after `abortPromise` wins.
+  promise.catch(() => undefined);
+  try {
+    return await Promise.race([promise, abortPromise]);
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
+};
+
 /**
  * Execute a transport-only operation through a fetch policy, mapping errors to
  * the shape the policy decides on.
@@ -77,34 +113,57 @@ const toNetworkError = (error: unknown): FetchPolicyError =>
  * @param mapError - An optional mapper for unrecognized errors. Use it to
  * extract statuses from protocol-specific error shapes (e.g. axios responses
  * or Solana transport errors).
+ * @param signal - Optional caller abort signal. When aborted, skips or
+ * interrupts retry backoff immediately without another transport invocation.
  * @returns The operation result.
  */
 export const executeWithFetchPolicy = async <Result>(
   policy: FetchPolicy,
   operation: () => Promise<Result>,
   mapError: (error: unknown) => FetchPolicyError = toNetworkError,
-): Promise<Result> =>
-  policy.execute(async () => {
-    try {
-      return await operation();
-    } catch (error) {
-      if (
-        error instanceof SyntaxError ||
-        (error as { name?: unknown } | undefined)?.name === 'AbortError'
-      ) {
-        throw error;
-      }
-      if (
-        error instanceof Error &&
-        ((error as FetchPolicyError).httpStatus !== undefined ||
-          error.name === FetchPolicyErrorName.Network ||
-          error.name === FetchPolicyErrorName.Timeout)
-      ) {
-        throw error;
-      }
-      throw mapError(error);
+  signal?: AbortSignal | null,
+): Promise<Result> => {
+  if (signal?.aborted) {
+    throw signal.reason ?? createAbortError();
+  }
+  try {
+    return await raceWithSignal(
+      policy.execute(async () => {
+        if (signal?.aborted) {
+          throw createAbortError();
+        }
+        try {
+          return await operation();
+        } catch (error) {
+          if (signal?.aborted) {
+            throw createAbortError();
+          }
+          if (
+            error instanceof SyntaxError ||
+            (error as { name?: unknown } | undefined)?.name === 'AbortError'
+          ) {
+            throw error;
+          }
+          if (
+            error instanceof Error &&
+            ((error as FetchPolicyError).httpStatus !== undefined ||
+              error.name === FetchPolicyErrorName.Network ||
+              error.name === FetchPolicyErrorName.Timeout)
+          ) {
+            throw error;
+          }
+          throw mapError(error);
+        }
+      }, signal ?? undefined),
+      signal ?? undefined,
+    );
+  } catch (error) {
+    if (signal?.aborted) {
+      throw signal.reason ?? error;
     }
-  });
+    throw error;
+  }
+};
 
 /**
  * Fetch a URL through a fetch policy, throwing a {@link FetchPolicyError} on a
@@ -129,38 +188,22 @@ export const fetchWithPolicy = async (
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
 ): Promise<string> => {
   const callerSignal = init?.signal;
-  try {
-    return await executeWithFetchPolicy(policy, async () => {
-      try {
-        const response = await fetchImpl(url, {
-          ...init,
-          signal: callerSignal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+  return executeWithFetchPolicy(
+    policy,
+    async () => {
+      const response = await fetchImpl(url, {
+        ...init,
+        signal: callerSignal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        throw createFetchPolicyError(`HTTP error! status: ${response.status}`, {
+          httpStatus: response.status,
+          retryAfterMs: parseRetryAfter(response.headers?.get('Retry-After')),
         });
-        if (!response.ok) {
-          throw createFetchPolicyError(
-            `HTTP error! status: ${response.status}`,
-            {
-              httpStatus: response.status,
-              retryAfterMs: parseRetryAfter(
-                response.headers?.get('Retry-After'),
-              ),
-            },
-          );
-        }
-        return await response.text();
-      } catch (error) {
-        if (callerSignal?.aborted) {
-          throw Object.assign(new Error('The operation was aborted.'), {
-            name: 'AbortError',
-          });
-        }
-        throw error;
       }
-    });
-  } catch (error) {
-    if (callerSignal?.aborted) {
-      throw callerSignal.reason ?? error;
-    }
-    throw error;
-  }
+      return response.text();
+    },
+    toNetworkError,
+    callerSignal,
+  );
 };
