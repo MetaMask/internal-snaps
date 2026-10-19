@@ -209,14 +209,72 @@ describe('TrongridApiClient', () => {
 
     it('throws error when HTTP request fails', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-          // eslint-disable-next-line no-restricted-globals
-          new Response('', { status: 500 }),
-        );
+        const fetchMock = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          )
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          )
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          )
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response('', { status: 500 }),
+          );
 
         await expect(
           client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
         ).rejects.toThrow('HTTP error! status: 500');
+        expect(fetchMock).toHaveBeenCalledTimes(4);
+      });
+    });
+
+    it('does not retry 404 responses', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          // eslint-disable-next-line no-restricted-globals
+          new Response('', { status: 404 }),
+        );
+
+        await expect(
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
+        ).rejects.toThrow('HTTP error! status: 404');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('retries when reading the response body fails', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        // eslint-disable-next-line no-restricted-globals
+        const failedResponse = new Response('', { status: 200 });
+        jest
+          .spyOn(failedResponse, 'text')
+          .mockRejectedValueOnce(new Error('Body failed'));
+        const fetchMock = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(failedResponse)
+          .mockResolvedValueOnce(
+            // eslint-disable-next-line no-restricted-globals
+            new Response(
+              JSON.stringify({
+                data: [],
+                success: true,
+                meta: { at: 1770121997373, page_size: 0 },
+              }),
+              { status: 200 },
+            ),
+          );
+
+        expect(
+          await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
+        ).toStrictEqual([]);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
       });
     });
 

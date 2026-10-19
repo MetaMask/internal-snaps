@@ -38,6 +38,7 @@ describe('toClassicBalanceEntry', () => {
         limit: new BigNumber(100_000_000),
         authorized: false,
         sponsor: 'GSPONSOR',
+        sponsored: true,
       }),
     ).toStrictEqual({
       unit: 'USDC',
@@ -46,6 +47,7 @@ describe('toClassicBalanceEntry', () => {
         limit: '10',
         authorized: false,
         sponsor: 'GSPONSOR',
+        sponsored: true,
       },
     });
   });
@@ -64,6 +66,7 @@ describe('toClassicBalanceEntry', () => {
         limit: '0',
         authorized: true,
         sponsor: '',
+        sponsored: false,
       },
     });
   });
@@ -85,6 +88,7 @@ describe('toClassicBalanceEntry', () => {
         limit: '5',
         authorized: true,
         sponsor: '',
+        sponsored: false,
       },
     });
   });

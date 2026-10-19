@@ -1,13 +1,102 @@
-import { TronWeb } from 'tronweb';
+import { createFetchPolicy } from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
+import { providers, TronWeb } from 'tronweb';
 
-import type { Network } from '../../constants';
+import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { executeWithFetchPolicy } from '../../utils/fetchPolicy';
+import logger from '../../utils/logger';
+
+const REQUEST_TIMEOUT_MS = 10_000;
 
 export class TronWebFactory {
   readonly #configProvider: ConfigProvider;
 
-  constructor({ configProvider }: { configProvider: ConfigProvider }) {
+  readonly #policies: Map<Network, ReturnType<typeof createFetchPolicy>>;
+
+  readonly #broadcastPolicies: Map<
+    Network,
+    ReturnType<typeof createFetchPolicy>
+  >;
+
+  constructor({
+    configProvider,
+    logger: clientLogger = logger,
+  }: {
+    configProvider: ConfigProvider;
+    logger?: Logger;
+  }) {
     this.#configProvider = configProvider;
+    this.#policies = new Map(
+      Object.values(Network).map((network) => [
+        network,
+        createFetchPolicy({
+          service: 'tronweb_provider',
+          chainIdCaip: network,
+          logger: clientLogger,
+        }),
+      ]),
+    );
+    this.#broadcastPolicies = new Map(
+      Object.values(Network).map((network) => [
+        network,
+        createFetchPolicy({
+          service: 'tronweb_broadcast',
+          chainIdCaip: network,
+          logger: clientLogger,
+        }),
+      ]),
+    );
+  }
+
+  /**
+   * Execute a read-only TronWeb call through the shared fetch policy.
+   *
+   * Transaction construction, signing, metadata refresh and broadcasting must
+   * not use this method.
+   *
+   * @param network - The network being queried.
+   * @param operation - The read-only TronWeb operation.
+   * @returns The operation result.
+   */
+  async executeRead<Result>(
+    network: Network,
+    operation: () => Promise<Result>,
+  ): Promise<Result> {
+    return this.#execute(network, operation);
+  }
+
+  /**
+   * Rebroadcast an already-signed transaction through the shared fetch policy.
+   *
+   * The operation must capture one immutable signed transaction. Transaction
+   * construction, metadata refresh and signing must happen before this method
+   * so every retry has the same transaction ID.
+   *
+   * @param network - The network being broadcast to.
+   * @param operation - A broadcast of an already-signed transaction.
+   * @returns The broadcast result.
+   */
+  async executeBroadcast<Result>(
+    network: Network,
+    operation: () => Promise<Result>,
+  ): Promise<Result> {
+    const policy = this.#broadcastPolicies.get(network);
+    if (!policy) {
+      throw new Error(`No broadcast policy configured for network: ${network}`);
+    }
+    return executeWithFetchPolicy(policy, operation);
+  }
+
+  async #execute<Result>(
+    network: Network,
+    operation: () => Promise<Result>,
+  ): Promise<Result> {
+    const policy = this.#policies.get(network);
+    if (!policy) {
+      throw new Error(`No policy configured for network: ${network}`);
+    }
+    return executeWithFetchPolicy(policy, operation);
   }
 
   /**
@@ -36,8 +125,12 @@ export class TronWebFactory {
       throw new Error(`No configuration found for network: ${network}`);
     }
 
+    const provider = (): InstanceType<typeof providers.HttpProvider> =>
+      new providers.HttpProvider(fullHost, REQUEST_TIMEOUT_MS);
     const tronWebConfig = {
-      fullHost,
+      fullNode: provider(),
+      solidityNode: provider(),
+      eventServer: provider(),
       ...(privateKey && { privateKey }),
     };
 

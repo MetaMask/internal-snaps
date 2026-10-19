@@ -14,6 +14,7 @@ import { trxToSun } from '../../utils/conversion';
 import { executeOnChainActions } from '../../utils/executeOnChainActions';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { NativeCaipAssetType, StakedCaipAssetType } from '../assets/types';
+import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 
 export class StakingService {
   readonly #logger: Logger;
@@ -24,21 +25,27 @@ export class StakingService {
 
   readonly #snapClient: SnapClient;
 
+  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+
   constructor({
     logger,
     accountsService,
     tronWebFactory,
     snapClient,
+    transactionExpirationRefresherService,
   }: {
     logger: Logger;
     accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
     snapClient: SnapClient;
+    transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#logger = logger.withPrefix('[💸 StakingService]');
     this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
     this.#snapClient = snapClient;
+    this.#transactionExpirationRefresherService =
+      transactionExpirationRefresherService;
   }
 
   async stake({
@@ -71,6 +78,8 @@ export class StakingService {
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
       scope,
       buildTransactions: async (tronWeb) => [
@@ -136,6 +145,8 @@ export class StakingService {
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
       scope,
       buildTransactions: async (tronWeb) => [
@@ -163,6 +174,8 @@ export class StakingService {
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
       scope,
       buildTransactions: async (tronWeb) => [
@@ -188,6 +201,8 @@ export class StakingService {
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
       scope,
       buildTransactions: async (tronWeb) => [

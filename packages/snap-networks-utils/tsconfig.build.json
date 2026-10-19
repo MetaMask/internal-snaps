@@ -5,6 +5,21 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "outDir": "./dist",
+    /**
+     * `ts-bridge` resolves modules the Node10 way, which ignores `exports`, so
+     * it can't find packages that only declare their entry points there.
+     *
+     * NOTE: This replaces the inherited `paths`, so it repeats `@metamask/*`.
+     */
+    "paths": {
+      "@metamask/*": ["../*/src"],
+      "@metamask/base-data-service": [
+        "../../node_modules/@metamask/base-data-service/dist/index.d.ts"
+      ],
+      "@metamask/remote-feature-flag-controller": [
+        "../../node_modules/@metamask/remote-feature-flag-controller/dist/index.d.ts"
+      ]
+    },
     "rootDir": "./src"
   },
   /**

@@ -506,6 +506,50 @@ describe('OnChainAccount', () => {
       );
       expect(expectDefined(restored.getAsset(usdcId)).sponsor).toBe(sponsorId);
     });
+
+    it('drops sponsor when a removed trustline is stored as a tombstone', () => {
+      const { wallet } = createTestWallet();
+      const sponsorId =
+        'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+      const onChainAccount = OnChainAccount.fromHorizon(
+        createMockAccountWithBalances(wallet.address, '1', {
+          nativeBalance: 10,
+          assets: [
+            {
+              assetType: 'credit_alphanum4',
+              assetCode: 'USDC',
+              assetIssuer:
+                'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+              balance: 5,
+              sponsor: sponsorId,
+            },
+          ],
+        }) as unknown as Horizon.AccountResponse,
+        KnownCaip2ChainId.Mainnet,
+      );
+      const usdcId = toCaip19ClassicAssetId(
+        KnownCaip2ChainId.Mainnet,
+        'USDC',
+        'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+      );
+      const liveEntry = expectDefined(onChainAccount.getAsset(usdcId));
+
+      onChainAccount.setTombstoneClassicAsset(usdcId, liveEntry);
+
+      const tombstone = expectDefined(onChainAccount.getRawAsset(usdcId));
+      expect(tombstone.limit?.isZero()).toBe(true);
+      expect(tombstone.sponsored).toBe(false);
+      expect(tombstone.sponsor).toBeUndefined();
+
+      const serialized = onChainAccount
+        .toSerializableFull()
+        .balances.find((row) => row.assetId === usdcId);
+      expect(serialized).toMatchObject({
+        limit: '0',
+        sponsored: false,
+      });
+      expect(serialized).not.toHaveProperty('sponsor');
+    });
   });
 
   describe('getRaw', () => {
