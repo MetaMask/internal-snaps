@@ -1,5 +1,8 @@
 import { TransactionStatus } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeError,
+} from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
@@ -17,7 +20,6 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FALLBACK_FEE,
   FEE_LIMIT,
-  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -431,7 +433,7 @@ export class ClientRequestHandler {
     });
 
     await this.#analyticsService.trackTransactionSubmitted({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
       transactionType,
@@ -711,7 +713,7 @@ export class ClientRequestHandler {
         fees,
         asset,
         accountType: account.type,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionRawData: freshTransactionRawData,
       },
     );

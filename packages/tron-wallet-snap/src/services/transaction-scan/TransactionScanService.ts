@@ -1,3 +1,4 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -14,7 +15,6 @@ import type {
 } from '../../clients/security-alerts-api/structs';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { Network } from '../../constants';
-import { METAMASK_ORIGIN } from '../../constants';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
@@ -110,7 +110,8 @@ export class TransactionScanService {
       const result = await this.#securityAlertsApiClient.scanTransaction({
         accountAddress,
         transactionRawData,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
+        origin:
+          origin === DEFAULT_METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
         options,
       });
 

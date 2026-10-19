@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -12,7 +13,7 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { METAMASK_ORIGIN, ZERO } from '../../constants';
+import { ZERO } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
@@ -318,7 +319,7 @@ export class ConfirmationHandler {
       scope,
       account,
       transaction: { rawDataHex: '', type: '' },
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       preferences,
       networkImage: TRX_IMAGE_SVG,
       scan: null,

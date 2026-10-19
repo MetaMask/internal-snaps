@@ -1,4 +1,5 @@
 import { FeeType, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -7,7 +8,7 @@ import { BigNumber } from 'bignumber.js';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
-import { KnownCaip19Id, METAMASK_ORIGIN, Network, ZERO } from '../../constants';
+import { KnownCaip19Id, Network, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
@@ -468,7 +469,7 @@ describe('ConfirmationHandler', () => {
       fees: defaultFees,
       asset: mockAsset,
       accountType: 'tron:eoa',
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       transactionRawData: mockTransactionRawData,
     };
 
@@ -481,7 +482,7 @@ describe('ConfirmationHandler', () => {
         expect(result).toBe(true);
         expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
           {
-            origin: METAMASK_ORIGIN,
+            origin: DEFAULT_METAMASK_ORIGIN,
             accountType: 'tron:eoa',
             chainIdCaip: Network.Mainnet,
             transactionType: TransactionType.Send,
@@ -490,7 +491,7 @@ describe('ConfirmationHandler', () => {
         expect(
           mockAnalyticsService.trackTransactionApproved,
         ).toHaveBeenCalledWith({
-          origin: METAMASK_ORIGIN,
+          origin: DEFAULT_METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
           transactionType: TransactionType.Send,
@@ -511,7 +512,7 @@ describe('ConfirmationHandler', () => {
         expect(
           mockAnalyticsService.trackTransactionRejected,
         ).toHaveBeenCalledWith({
-          origin: METAMASK_ORIGIN,
+          origin: DEFAULT_METAMASK_ORIGIN,
           accountType: 'tron:eoa',
           chainIdCaip: Network.Mainnet,
           transactionType: TransactionType.Send,
@@ -551,13 +552,13 @@ describe('ConfirmationHandler', () => {
 
           await handler.confirmTransactionRequest({
             ...defaultParams,
-            origin: METAMASK_ORIGIN,
+            origin: DEFAULT_METAMASK_ORIGIN,
           });
 
           expect(mockRenderConfirmTransactionRequest).toHaveBeenCalledWith(
             mockSnapClient,
             mockState,
-            expect.objectContaining({ origin: METAMASK_ORIGIN }),
+            expect.objectContaining({ origin: DEFAULT_METAMASK_ORIGIN }),
           );
         },
       );
