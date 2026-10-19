@@ -36,6 +36,10 @@ import type { TransactionExpirationRefresherService } from '../../services/trans
 import { TransactionMapper } from '../../services/transactions/TransactionsMapper';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
+import {
+  isSuccessfulBroadcast,
+  throwOnTransientBroadcastFailure,
+} from '../../utils/broadcast';
 import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
 import { resolveTransactionType } from '../../utils/transactionType';
@@ -386,16 +390,23 @@ export class ClientRequestHandler {
       });
 
     const signedTx = await tronWeb.trx.sign(freshTransaction);
-    const result = await tronWeb.trx.sendRawTransaction(signedTx);
+    const result = await this.#tronWebFactory.executeBroadcast(
+      scope,
+      async () =>
+        throwOnTransientBroadcastFailure(
+          await tronWeb.trx.sendRawTransaction(signedTx),
+        ),
+    );
 
-    if (!result.result) {
+    if (!isSuccessfulBroadcast(result)) {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
+    const txId = result.txid ?? freshTransaction.txID;
 
     // Immediately create and save a minimal pending transaction
     // This shows the transaction to the user right away
     const pendingTransaction = TransactionMapper.createPendingTransaction({
-      txId: result.txid,
+      txId,
       account,
       scope,
     });
@@ -429,7 +440,7 @@ export class ClientRequestHandler {
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.TrackTransaction,
       params: {
-        txId: result.txid,
+        txId,
         scope,
         accountIds: [accountId],
         attempt: 0,
@@ -439,7 +450,7 @@ export class ClientRequestHandler {
     });
 
     return {
-      transactionId: result.txid,
+      transactionId: txId,
     };
   }
 

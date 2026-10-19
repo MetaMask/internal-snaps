@@ -117,7 +117,7 @@ describe('PriceApiClient', () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(mockResponse),
+            text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
           });
 
           const result = await client.getMultipleSpotPrices([
@@ -127,6 +127,7 @@ describe('PriceApiClient', () => {
 
           expect(mockFetch).toHaveBeenCalledWith(
             'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
           );
           expect(result).toStrictEqual(mockResponse);
         });
@@ -135,7 +136,7 @@ describe('PriceApiClient', () => {
       it('logs and throws an error if fetch fails', async () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           const mockError = new Error('Fetch failed');
-          mockFetch.mockRejectedValueOnce(mockError);
+          mockFetch.mockRejectedValue(mockError);
 
           await expect(
             client.getMultipleSpotPrices([
@@ -144,7 +145,7 @@ describe('PriceApiClient', () => {
             ]),
           ).rejects.toThrow('Fetch failed');
           expect(mockLogger.error).toHaveBeenCalledWith(
-            mockError,
+            expect.objectContaining({ message: 'Fetch failed' }),
             'Error fetching spot prices',
           );
         });
@@ -174,7 +175,7 @@ describe('PriceApiClient', () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(mockResponse),
+            text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
           });
 
           await client.getMultipleSpotPrices(
@@ -184,6 +185,7 @@ describe('PriceApiClient', () => {
 
           expect(mockFetch).toHaveBeenCalledWith(
             'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
           );
         });
       });
@@ -192,7 +194,7 @@ describe('PriceApiClient', () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockRejectedValueOnce(new Error('Invalid JSON')),
+            text: jest.fn().mockResolvedValueOnce('Invalid JSON'),
           });
 
           await expect(
@@ -210,7 +212,7 @@ describe('PriceApiClient', () => {
 
       it('handles network timeout', async () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
-          mockFetch.mockRejectedValueOnce(new Error('Network timeout'));
+          mockFetch.mockRejectedValue(new Error('Network timeout'));
 
           await expect(
             client.getMultipleSpotPrices([
@@ -225,6 +227,30 @@ describe('PriceApiClient', () => {
         });
       });
 
+      it('retries when reading the response body fails', async () => {
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch
+            .mockResolvedValueOnce({
+              ok: true,
+              text: jest.fn().mockRejectedValueOnce(new Error('Body failed')),
+            })
+            .mockResolvedValueOnce({
+              ok: true,
+              text: jest
+                .fn()
+                .mockResolvedValueOnce(JSON.stringify(mockResponse)),
+            });
+
+          expect(
+            await client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).toStrictEqual(mockResponse);
+          expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
+      });
+
       it('throws when malformed response from the Price API', async () => {
         await withPriceApiClient(async ({ client, mockFetch }) => {
           const mockMalformedResponse = cloneDeep(mockResponse);
@@ -232,7 +258,9 @@ describe('PriceApiClient', () => {
 
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(mockMalformedResponse),
+            text: jest
+              .fn()
+              .mockResolvedValueOnce(JSON.stringify(mockMalformedResponse)),
           });
 
           await expect(
@@ -294,10 +322,12 @@ describe('PriceApiClient', () => {
           jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
           mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce({
-              [KnownCaip19Id.UsdtMainnet]:
-                mockResponse[KnownCaip19Id.UsdtMainnet]!,
-            }),
+            text: jest.fn().mockResolvedValueOnce(
+              JSON.stringify({
+                [KnownCaip19Id.UsdtMainnet]:
+                  mockResponse[KnownCaip19Id.UsdtMainnet]!,
+              }),
+            ),
           });
 
           const result = await client.getMultipleSpotPrices([
@@ -310,6 +340,7 @@ describe('PriceApiClient', () => {
           // We should have fetched the second token only
           expect(mockFetch).toHaveBeenCalledWith(
             'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
           );
 
           // The second token should be added to the cache
@@ -381,7 +412,7 @@ describe('PriceApiClient', () => {
       await withPriceApiClient(async ({ client, mockFetch }) => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce({}),
+          text: jest.fn().mockResolvedValueOnce('{}'),
         });
 
         await client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]);
@@ -391,6 +422,7 @@ describe('PriceApiClient', () => {
           expect.stringMatching(
             /^https:\/\/some-mock-url\.com\/v3\/spot-prices\?([^&=]+=[^&]*&)*[^&=]+=.+$/u,
           ),
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
         );
       });
     });
@@ -399,7 +431,7 @@ describe('PriceApiClient', () => {
       await withPriceApiClient(async ({ client, mockFetch }) => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce({}),
+          text: jest.fn().mockResolvedValueOnce('{}'),
         });
 
         await expect(

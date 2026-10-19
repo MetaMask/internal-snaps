@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful. ([#472](https://github.com/MetaMask/internal-snaps/pull/472))
+
 ## [4.2.0]
 
 ### Added

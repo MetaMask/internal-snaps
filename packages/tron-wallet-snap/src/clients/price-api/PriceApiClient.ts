@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { CaipAssetType } from '@metamask/keyring-api';
-import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
+import {
+  UrlStruct,
+  buildUrl,
+  createFetchPolicy,
+  createFetchPolicyError,
+} from '@metamask/snap-networks-utils';
 import type {
   ICache,
   Logger,
@@ -13,6 +18,10 @@ import { mapKeys } from 'lodash';
 
 import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import {
+  executeWithFetchPolicy,
+  parseRetryAfter,
+} from '../../utils/fetchPolicy';
 import logger from '../../utils/logger';
 import type { SpotPrice, SpotPrices, VsCurrencyParam } from './types';
 import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
@@ -27,6 +36,8 @@ export class PriceApiClient {
   readonly #chunkSize: number;
 
   readonly #cache: ICache<Serializable>;
+
+  readonly #policy: ReturnType<typeof createFetchPolicy>;
 
   readonly cacheTtlsMilliseconds: {
     spotPrices: number;
@@ -50,6 +61,10 @@ export class PriceApiClient {
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
 
     this.#cache = _cache;
+    this.#policy = createFetchPolicy({
+      service: 'price_api',
+      logger: this.#logger,
+    });
   }
 
   /**
@@ -91,13 +106,28 @@ export class PriceApiClient {
             },
           });
 
-          const response = await this.#fetch(url);
+          const responseBody = await executeWithFetchPolicy(
+            this.#policy,
+            async () => {
+              const result = await this.#fetch(url, {
+                signal: AbortSignal.timeout(10_000),
+              });
+              if (!result.ok) {
+                throw createFetchPolicyError(
+                  `HTTP error! status: ${result.status}`,
+                  {
+                    httpStatus: result.status,
+                    retryAfterMs: parseRetryAfter(
+                      result.headers?.get('Retry-After'),
+                    ),
+                  },
+                );
+              }
+              return result.text();
+            },
+          );
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const spotPrices = await response.json();
+          const spotPrices = JSON.parse(responseBody);
           assert(spotPrices, SpotPricesStruct);
 
           return spotPrices;
