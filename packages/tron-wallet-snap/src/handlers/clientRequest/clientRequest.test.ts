@@ -55,7 +55,7 @@ const createPassThroughTransactionExpirationRefresherService = () =>
       }) => transaction,
     ),
     ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
-  } as unknown as TransactionExpirationRefresherService);
+  }) as unknown as TransactionExpirationRefresherService;
 
 /**
  * Creates a minimal TronKeyringAccount fixture for tests that only need
@@ -73,7 +73,7 @@ const createMockExtendedKeyringAccount = (
     entropySource: 'test-entropy',
     derivationPath: "m/44'/195'/0'/0/0",
     ...overrides,
-  } as TronKeyringAccount);
+  }) as TronKeyringAccount;
 
 type MockTronWeb = {
   trx: {
