@@ -14,6 +14,10 @@ import {
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
+import {
+  isSuccessfulBroadcast,
+  throwOnTransientBroadcastFailure,
+} from '../../utils/broadcast';
 import { parseTronCaipAssetType } from '../../utils/caip';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
 import { resolveTransactionType } from '../../utils/transactionType';
@@ -436,11 +440,18 @@ export class SendService {
      * Sign and send the transaction atomically after user confirmation
      */
     const signedTransaction = await tronWeb.trx.sign(freshTransaction);
-    const result = await tronWeb.trx.sendRawTransaction(signedTransaction);
+    const result = await this.#tronWebFactory.executeBroadcast(
+      scope,
+      async () =>
+        throwOnTransientBroadcastFailure(
+          await tronWeb.trx.sendRawTransaction(signedTransaction),
+        ),
+    );
 
-    if (!result.result) {
+    if (!isSuccessfulBroadcast(result)) {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
+    const txId = result.txid ?? freshTransaction.txID;
 
     await this.#analyticsService.trackTransactionSubmitted({
       origin,
@@ -452,7 +463,7 @@ export class SendService {
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.TrackTransaction,
       params: {
-        txId: result.txid,
+        txId,
         scope,
         accountIds: [fromAccountId],
         attempt: 0,
@@ -461,7 +472,7 @@ export class SendService {
       duration: TRACK_TX_INTERVAL,
     });
 
-    return result;
+    return { ...result, txid: txId };
   }
 
   /**

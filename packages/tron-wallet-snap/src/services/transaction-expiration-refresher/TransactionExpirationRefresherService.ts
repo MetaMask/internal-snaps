@@ -1,8 +1,10 @@
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
+import { toFetchPolicyError } from '../../utils/fetchPolicy';
 import type {
   HasFreshExpirationMetadataParams,
   HasFreshExpirationMetadataResult,
@@ -12,6 +14,20 @@ import type {
 } from './types';
 
 type Block = TronwebTypes.Block;
+
+class ReferenceBlockLookupError extends Error implements FetchPolicyError {
+  httpStatus?: number;
+
+  retryAfterMs?: number;
+
+  constructor(cause: unknown) {
+    const policyError = toFetchPolicyError(cause);
+    super(policyError.message, { cause });
+    this.name = policyError.name;
+    this.httpStatus = policyError.httpStatus;
+    this.retryAfterMs = policyError.retryAfterMs;
+  }
+}
 
 /**
  * TRON block time is 3 seconds, so refresh if expiration is within the
@@ -104,39 +120,50 @@ export class TransactionExpirationRefresherService {
     rawData: TransactionRawData;
   }): Promise<boolean> {
     const tronWeb = this.#tronWebFactory.createClient(scope);
-    const now = Date.now();
-    const currentBlock = await tronWeb.trx.getCurrentBlock();
+    try {
+      return await this.#tronWebFactory.executeRead(scope, async () => {
+        const now = Date.now();
+        const currentBlock = await tronWeb.trx.getCurrentBlock();
 
-    if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
-      return true;
+        if (!hasFreshExpirationMetadata({ currentBlock, now, rawData })) {
+          return true;
+        }
+
+        const referenceBlockNumber = getReferenceBlockNumber({
+          currentBlockNumber: currentBlock.block_header.raw_data.number,
+          refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
+            .ref_block_bytes,
+        });
+
+        if (
+          !hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })
+        ) {
+          return true;
+        }
+
+        let referencedBlock: Block | undefined;
+        try {
+          referencedBlock = await this.#getReferenceBlock({
+            tronWeb,
+            currentBlock,
+            referenceBlockNumber,
+            suppressErrors: false,
+          });
+        } catch (error) {
+          throw new ReferenceBlockLookupError(error);
+        }
+
+        return !referencedBlockMatchesRawData({
+          rawData: rawData as TransactionRawDataWithExpirationMetadata,
+          referencedBlock,
+        });
+      });
+    } catch (error) {
+      if (hasErrorCause(error, ReferenceBlockLookupError)) {
+        return true;
+      }
+      throw error;
     }
-
-    const referenceBlockNumber = getReferenceBlockNumber({
-      currentBlockNumber: currentBlock.block_header.raw_data.number,
-      refBlockBytes: (rawData as TransactionRawDataWithExpirationMetadata)
-        .ref_block_bytes,
-    });
-
-    if (!hasValidReferenceBlockNumber({ currentBlock, referenceBlockNumber })) {
-      return true;
-    }
-
-    const referencedBlock = await this.#getReferenceBlock({
-      tronWeb,
-      currentBlock,
-      referenceBlockNumber,
-    });
-
-    if (
-      !referencedBlockMatchesRawData({
-        rawData: rawData as TransactionRawDataWithExpirationMetadata,
-        referencedBlock,
-      })
-    ) {
-      return true;
-    }
-
-    return false;
   }
 
   /**
@@ -257,10 +284,12 @@ export class TransactionExpirationRefresherService {
     tronWeb,
     currentBlock,
     referenceBlockNumber,
+    suppressErrors = true,
   }: {
     tronWeb: TronWeb;
     currentBlock: Block;
     referenceBlockNumber: number;
+    suppressErrors?: boolean;
   }): Promise<Block | undefined> {
     const currentBlockNumber = currentBlock.block_header.raw_data.number;
 
@@ -270,7 +299,10 @@ export class TransactionExpirationRefresherService {
 
     try {
       return await tronWeb.trx.getBlockByNumber(referenceBlockNumber);
-    } catch {
+    } catch (error) {
+      if (!suppressErrors) {
+        throw error;
+      }
       return undefined;
     }
   }
@@ -406,6 +438,27 @@ function hasAllowedExpirationWindow({
   const currentBlockTimestamp = currentBlock.block_header.raw_data.timestamp;
 
   return rawData.expiration < currentBlockTimestamp + MAX_EXPIRATION_MS;
+}
+
+/**
+ * Checks an error and its cause chain for a specific error type.
+ *
+ * @param error - Error value to inspect.
+ * @param ErrorType - Error constructor to find.
+ * @returns Whether the error chain contains the requested type.
+ */
+function hasErrorCause(
+  error: unknown,
+  ErrorType: typeof ReferenceBlockLookupError,
+): boolean {
+  let current = error;
+  while (current instanceof Error) {
+    if (current instanceof ErrorType) {
+      return true;
+    }
+    current = current.cause;
+  }
+  return false;
 }
 
 /**
