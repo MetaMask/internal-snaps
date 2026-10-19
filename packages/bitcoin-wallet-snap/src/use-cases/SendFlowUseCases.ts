@@ -2,6 +2,7 @@ import { Address, Amount, Psbt } from '@metamask/bitcoindevkit';
 import type { Network, Transaction } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
 import type {
@@ -35,12 +36,6 @@ import type { AccountUseCases } from './AccountUseCases';
 type SetAccountEventValue = {
   accountId: string;
 };
-
-/**
- * Origin used for requests that originate from MetaMask itself rather than a
- * dApp, such as the built-in send flow.
- */
-const METAMASK_ORIGIN = 'metamask';
 
 export class SendFlowUseCases {
   readonly #logger: Logger;
@@ -148,7 +143,7 @@ export class SendFlowUseCases {
 
     await this.#snapClient.trackTransactionAdded(
       account,
-      METAMASK_ORIGIN,
+      DEFAULT_METAMASK_ORIGIN,
       TransactionType.Send,
     );
 
@@ -159,7 +154,7 @@ export class SendFlowUseCases {
     if (!confirmed) {
       await this.#snapClient.trackTransactionRejected(
         account,
-        METAMASK_ORIGIN,
+        DEFAULT_METAMASK_ORIGIN,
         TransactionType.Send,
       );
       throw new UserActionError('User canceled the confirmation');
@@ -167,7 +162,7 @@ export class SendFlowUseCases {
 
     await this.#snapClient.trackTransactionApproved(
       account,
-      METAMASK_ORIGIN,
+      DEFAULT_METAMASK_ORIGIN,
       TransactionType.Send,
     );
 
@@ -176,7 +171,7 @@ export class SendFlowUseCases {
       await this.#accountUseCases.signPsbt(
         account.id,
         psbt,
-        METAMASK_ORIGIN,
+        DEFAULT_METAMASK_ORIGIN,
         {
           fill: false,
           broadcast: true,
