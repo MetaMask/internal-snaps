@@ -1,4 +1,4 @@
-import { METAMASK_ORIGIN } from '../constants/solana';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
 /**
  * Parses the origin from a string.
@@ -7,7 +7,7 @@ import { METAMASK_ORIGIN } from '../constants/solana';
  * @returns The parsed origin.
  */
 export function parseOrigin(origin: string) {
-  if (origin === METAMASK_ORIGIN) {
+  if (origin === DEFAULT_METAMASK_ORIGIN) {
     return 'MetaMask';
   }
 
