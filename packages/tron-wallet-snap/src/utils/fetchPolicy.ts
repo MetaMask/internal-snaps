@@ -39,6 +39,14 @@ export const parseRetryAfter = (value: unknown): number | undefined => {
 /**
  * Convert fetch and axios-style failures to the shared fetch-policy shape.
  *
+ * The policy operation must contain only transport work (fetch, response
+ * status and body reads): any other `Error` thrown inside it is classified as
+ * a network failure here, and is therefore retried and counted toward circuit
+ * breaking. That catch-all is intentional: real `fetch`/axios network
+ * failures are not recognisable by name or code across runtimes, so they can
+ * only be identified by being the residual case. Keep parsing and validation
+ * outside the operation so they propagate unchanged.
+ *
  * @param error - The upstream error.
  * @returns The error in the shared shape.
  */
