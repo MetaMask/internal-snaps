@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `executeWithFetchPolicy` for wrapping transport-only operations in a policy created by `createFetchPolicy`, passing `SyntaxError` and abort errors through unchanged, passing errors already in the policy shape through unchanged, and mapping any other error with an optional mapper (defaulting to a network failure)
-- Add `fetchWithPolicy` for the common policy-wrapped HTTP call: a fetch with a 10 second timeout, a status check that throws a `FetchPolicyError` for non-2xx responses (honouring `Retry-After`), and a body read inside the policy
-- Add `parseRetryAfter` for parsing a `Retry-After` header value as milliseconds
-- Add the `FetchPolicy` type, the minimal policy surface `executeWithFetchPolicy` and `fetchWithPolicy` accept
+- Add `executeWithFetchPolicy` for wrapping transport-only operations in a policy created by `createFetchPolicy`, passing `SyntaxError` and abort errors through unchanged, passing errors already in the policy shape through unchanged, and mapping any other error with an optional mapper (defaulting to a network failure) ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add `fetchWithPolicy` for the common policy-wrapped HTTP call: a fetch with a 10 second timeout, a status check that throws a `FetchPolicyError` for non-2xx responses (honouring `Retry-After`), and a body read inside the policy ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add `parseRetryAfter` for parsing a `Retry-After` header value as milliseconds ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add the `FetchPolicy` type, the minimal policy surface `executeWithFetchPolicy` and `fetchWithPolicy` accept ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
 
 ## [3.0.0]
 
