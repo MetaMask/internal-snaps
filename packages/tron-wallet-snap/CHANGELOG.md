@@ -7,12 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- test: removed usage of beforeEach from clientRequest.test.ts ([#466](https://github.com/MetaMask/internal-snaps/pull/466))
-- refactor(tron): use shared Metamask origin constant ([#482](https://github.com/MetaMask/internal-snaps/pull/482))
-- chore(deps): bump @metamask/remote-feature-flag-controller from 5.0.0 to 7.0.0 ([#361](https://github.com/MetaMask/internal-snaps/pull/361))
-
 ### Changed
 
 - Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful. ([#472](https://github.com/MetaMask/internal-snaps/pull/472))

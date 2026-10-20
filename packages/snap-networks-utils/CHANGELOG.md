@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- chore(deps): bump @metamask/remote-feature-flag-controller from 5.0.0 to 7.0.0 ([#361](https://github.com/MetaMask/internal-snaps/pull/361))
-
 ## [3.0.0]
 
 ### Added

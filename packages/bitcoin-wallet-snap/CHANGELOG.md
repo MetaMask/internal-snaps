@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- refactor(bitcoin): use shared Metamask origin constant ([#481](https://github.com/MetaMask/internal-snaps/pull/481))
-- Release/17.0.0 ([#467](https://github.com/MetaMask/internal-snaps/pull/467))
-- feat(snap-networks-utils): add shared createFetchPolicy in networks utils ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
-- chore(deps): bump `concurrently`, `oxfmt`, `ts-jest`, `proxy-addr` ([#445](https://github.com/MetaMask/internal-snaps/pull/445))
-
 ## [3.2.0]
 
 ### Added

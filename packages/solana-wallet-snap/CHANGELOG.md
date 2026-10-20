@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- refactor(solana): use shared Metamask origin constant ([#483](https://github.com/MetaMask/internal-snaps/pull/483))
-- Release/17.0.0 ([#467](https://github.com/MetaMask/internal-snaps/pull/467))
-- feat(snap-networks-utils): add shared createFetchPolicy in networks utils ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
-- chore(deps): bump `concurrently`, `oxfmt`, `ts-jest`, `proxy-addr` ([#445](https://github.com/MetaMask/internal-snaps/pull/445))
-
 ## [7.1.0]
 
 ### Added
