@@ -1,9 +1,9 @@
 import { SolMethod, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
 import { render as renderConfirmSignIn } from '../../../features/confirmation/views/ConfirmSignIn/render';
 import { render as renderConfirmSignMessage } from '../../../features/confirmation/views/ConfirmSignMessage/render';
 import { render as renderConfirmTransactionRequest } from '../../../features/confirmation/views/ConfirmTransactionRequest/render';
-import { METAMASK_ORIGIN } from '../../constants/solana';
 import { ScheduleBackgroundEventMethod } from '../../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import type { SolanaKeyringRequest } from '../../handlers/onKeyringRequest/structs';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
@@ -232,7 +232,7 @@ describe('ConfirmationHandler', () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue(true);
 
       await confirmationHandler.handleKeyringRequest(
-        { ...request, origin: METAMASK_ORIGIN },
+        { ...request, origin: DEFAULT_METAMASK_ORIGIN },
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
@@ -240,14 +240,14 @@ describe('ConfirmationHandler', () => {
         [
           expectedScheduleCall(
             ScheduleBackgroundEventMethod.OnTransactionAdded,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             TransactionType.Send,
           ),
         ],
         [
           expectedScheduleCall(
             ScheduleBackgroundEventMethod.OnTransactionApproved,
-            METAMASK_ORIGIN,
+            DEFAULT_METAMASK_ORIGIN,
             TransactionType.Send,
           ),
         ],

@@ -1,6 +1,9 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { KeyringSnapRpcMethod } from '@metamask/keyring-api/v2';
-import { validateOrigin } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  validateOrigin,
+} from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   SnapError,
@@ -8,7 +11,6 @@ import {
 } from '@metamask/snaps-sdk';
 import { string, object } from '@metamask/superstruct';
 
-import { METAMASK_ORIGIN } from '../constants';
 import { originPermissions } from '../permissions';
 import { validateRequest, validateResponse } from './requestResponse';
 
@@ -86,7 +88,7 @@ describe('validateOrigin', () => {
     KeyringSnapRpcMethod.SetSelectedAccounts,
     KeyringSnapRpcMethod.ExportAccount,
   ])('allows method %s for metamask', (method) => {
-    const origin = METAMASK_ORIGIN;
+    const origin = DEFAULT_METAMASK_ORIGIN;
 
     expect(() =>
       validateOrigin(origin, method, originPermissions),

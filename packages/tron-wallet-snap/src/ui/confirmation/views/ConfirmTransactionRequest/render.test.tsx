@@ -1,3 +1,4 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import { Types as TronwebTypes } from 'tronweb';
 
@@ -6,7 +7,7 @@ import {
   extractScanParametersFromTransactionData,
 } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
-import { METAMASK_ORIGIN, Network } from '../../../../constants';
+import { Network } from '../../../../constants';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
@@ -127,7 +128,7 @@ const defaultIncomingContext = {
   amount: '1',
   fees: [] as never[],
   asset: mockAsset,
-  origin: METAMASK_ORIGIN,
+  origin: DEFAULT_METAMASK_ORIGIN,
   accountType: 'tron:eoa',
   transactionRawData: defaultTransactionRawData,
 };
@@ -259,7 +260,7 @@ describe('ConfirmTransactionRequest render', () => {
           expect.objectContaining({
             accountAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
             transactionRawData: expect.any(Object),
-            origin: METAMASK_ORIGIN,
+            origin: DEFAULT_METAMASK_ORIGIN,
             scope: Network.Mainnet,
             options: ['simulation', 'validation'],
           }),

@@ -1,9 +1,12 @@
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
-import { InMemoryCache } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  InMemoryCache,
+} from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
-import { KEYRING_ACCOUNT_TYPE, METAMASK_ORIGIN } from '../../constants';
+import { KEYRING_ACCOUNT_TYPE } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import {
@@ -168,7 +171,7 @@ describe('TrackTransactionHandler', () => {
     });
 
     expect(trackTransactionFinalized).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,
       transactionStatus: TransactionStatus.Confirmed,
@@ -197,7 +200,7 @@ describe('TrackTransactionHandler', () => {
     });
 
     expect(trackTransactionFinalized).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,
       transactionStatus: TransactionStatus.Confirmed,
@@ -370,7 +373,7 @@ describe('TrackTransactionHandler', () => {
     });
 
     expect(trackTransactionFinalized).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: KEYRING_ACCOUNT_TYPE,
       chainIdCaip: scope,
       transactionStatus: TransactionStatus.Failed,

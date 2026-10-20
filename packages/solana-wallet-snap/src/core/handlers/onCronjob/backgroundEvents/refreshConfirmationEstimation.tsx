@@ -1,4 +1,7 @@
-import { serialize } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  serialize,
+} from '@metamask/snap-networks-utils';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
@@ -8,7 +11,6 @@ import {
   state,
   transactionScanService,
 } from '../../../../snapContext';
-import { METAMASK_ORIGIN } from '../../../constants/solana';
 import type { UnencryptedStateValue } from '../../../services/state/stateTypes';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
@@ -69,7 +71,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
 
     // MetaMask-originated transactions receive a fresh blockhash before signing.
     const shouldSkipBlockhashCheck =
-      interfaceContext.origin === METAMASK_ORIGIN;
+      interfaceContext.origin === DEFAULT_METAMASK_ORIGIN;
 
     // Blockhash-only refreshes must not show the scan-in-progress state.
     if (shouldScan) {

@@ -1,3 +1,4 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -6,7 +7,7 @@ import type {
 
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { SecurityAlertSimulationValidationResponse } from '../../clients/security-alerts-api/types';
-import { METAMASK_ORIGIN, METAMASK_ORIGIN_URL } from '../../constants/solana';
+import { METAMASK_ORIGIN_URL } from '../../constants/solana';
 import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import type { TransactionScanResult, TransactionScanValidation } from './types';
@@ -65,7 +66,8 @@ export class TransactionScanService {
         accountAddress,
         transactions: [transaction],
         scope,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
+        origin:
+          origin === DEFAULT_METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
         options,
       });
 
