@@ -1,6 +1,7 @@
 import {
   createFetchPolicy,
   createFetchPolicyError,
+  executeWithFetchPolicy,
   FetchPolicyErrorName,
   fetchWithPolicy,
 } from '@metamask/snap-networks-utils';
@@ -57,27 +58,6 @@ describe('toFetchPolicyError', () => {
     expect(error.message).toBe('Network request failed');
     expect(error.cause).toBe('boom');
   });
-
-  it('maps raw timeouts', () => {
-    const error = new Error('The operation was aborted due to timeout');
-    error.name = FetchPolicyErrorName.Timeout;
-
-    expect(toFetchPolicyError(error).name).toBe(FetchPolicyErrorName.Timeout);
-  });
-
-  it('extracts statuses from fetch-style responses', () => {
-    const error = Object.assign(new Error('Unauthorized'), {
-      response: {
-        status: 401,
-        headers: { 'retry-after': '5' },
-      },
-    });
-
-    expect(toFetchPolicyError(error)).toMatchObject({
-      httpStatus: 401,
-      retryAfterMs: 5000,
-    });
-  });
 });
 
 describe('shared policy integration', () => {
@@ -91,16 +71,9 @@ describe('shared policy integration', () => {
       .mockRejectedValueOnce(new TypeError('fetch failed'))
       .mockResolvedValue('ok');
 
-    const execute = async (): Promise<string> =>
-      policy.execute(async () => {
-        try {
-          return await operation();
-        } catch (error) {
-          throw toFetchPolicyError(error);
-        }
-      });
-
-    expect(await execute()).toBe('ok');
+    expect(
+      await executeWithFetchPolicy(policy, operation, toFetchPolicyError),
+    ).toBe('ok');
     expect(operation).toHaveBeenCalledTimes(2);
   });
 

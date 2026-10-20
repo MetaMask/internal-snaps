@@ -24,7 +24,7 @@ const DEFAULT_TIMEOUT_MS = 10_000;
  * @param value - The header value: a delay in seconds or an HTTP date.
  * @returns The delay in milliseconds, or `undefined` if the value is invalid.
  */
-export const parseRetryAfter = (value: unknown): number | undefined => {
+export function parseRetryAfter(value: unknown): number | undefined {
   if (typeof value !== 'string') {
     return undefined;
   }
@@ -36,7 +36,7 @@ export const parseRetryAfter = (value: unknown): number | undefined => {
 
   const date = Date.parse(value);
   return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
-};
+}
 
 /**
  * Convert an unrecognized error to a network failure.
@@ -44,8 +44,8 @@ export const parseRetryAfter = (value: unknown): number | undefined => {
  * @param error - The upstream error.
  * @returns The error in the policy shape.
  */
-const toNetworkError = (error: unknown): FetchPolicyError =>
-  error instanceof Error
+function toNetworkError(error: unknown): FetchPolicyError {
+  return error instanceof Error
     ? createFetchPolicyError(error.message, {
         name: FetchPolicyErrorName.Network,
         cause: error,
@@ -54,11 +54,17 @@ const toNetworkError = (error: unknown): FetchPolicyError =>
         name: FetchPolicyErrorName.Network,
         cause: error,
       });
+}
 
-const createAbortError = (): Error =>
-  Object.assign(new Error('The operation was aborted.'), {
+function createAbortError(): Error {
+  return Object.assign(new Error('The operation was aborted.'), {
     name: 'AbortError',
   });
+}
+
+function noop(): void {
+  // Intentionally empty.
+}
 
 /**
  * Race a promise against an abort signal so caller cancellation interrupts
@@ -68,10 +74,10 @@ const createAbortError = (): Error =>
  * @param signal - Optional abort signal from the caller.
  * @returns The operation result, or rejects with the abort reason.
  */
-const raceWithSignal = async <Result>(
+async function raceWithSignal<Result>(
   promise: Promise<Result>,
   signal: AbortSignal | undefined,
-): Promise<Result> => {
+): Promise<Result> {
   if (!signal) {
     return promise;
   }
@@ -86,13 +92,13 @@ const raceWithSignal = async <Result>(
     }
   });
   // Suppress unhandled rejection if `promise` settles after `abortPromise` wins.
-  promise.catch(() => undefined);
+  promise.catch(noop);
   try {
     return await Promise.race([promise, abortPromise]);
   } finally {
     signal.removeEventListener('abort', onAbort);
   }
-};
+}
 
 /**
  * Execute a transport-only operation through a fetch policy, mapping errors to
@@ -120,33 +126,43 @@ const raceWithSignal = async <Result>(
  * interrupts retry backoff immediately without another transport invocation.
  * @returns The operation result.
  */
-export const executeWithFetchPolicy = async <Result>(
+export async function executeWithFetchPolicy<Result>(
   policy: FetchPolicy,
   operation: () => Promise<Result>,
   mapError: (error: unknown) => FetchPolicyError = toNetworkError,
   signal?: AbortSignal | null,
-): Promise<Result> => {
+): Promise<Result> {
+  // Skip policy execution entirely if the caller already aborted before entry.
   if (signal?.aborted) {
     throw signal.reason ?? createAbortError();
   }
+
   try {
     return await raceWithSignal(
       policy.execute(async () => {
+        // Guard against Cockatiel waking from a backoff timer after caller abort.
         if (signal?.aborted) {
           throw createAbortError();
         }
+
         try {
           return await operation();
         } catch (error) {
+          // Normalize caller cancellation to an AbortError so the policy does
+          // not retry or count it toward the circuit breaker.
           if (signal?.aborted) {
             throw createAbortError();
           }
+
+          // Parsing failures and explicit aborts are non-transient; pass through.
           if (
             error instanceof SyntaxError ||
             (error as { name?: unknown } | undefined)?.name === 'AbortError'
           ) {
             throw error;
           }
+
+          // Errors already in the policy shape pass through unchanged.
           if (
             error instanceof Error &&
             ((error as FetchPolicyError).httpStatus !== undefined ||
@@ -155,18 +171,22 @@ export const executeWithFetchPolicy = async <Result>(
           ) {
             throw error;
           }
+
+          // Map remaining protocol/transport errors into the policy shape.
           throw mapError(error);
         }
       }, signal ?? undefined),
       signal ?? undefined,
     );
   } catch (error) {
+    // Restore the caller's original abort reason if one was provided.
     if (signal?.aborted) {
       throw signal.reason ?? error;
     }
+
     throw error;
   }
-};
+}
 
 /**
  * Fetch a URL through a fetch policy, throwing a {@link FetchPolicyError} on a
@@ -184,12 +204,12 @@ export const executeWithFetchPolicy = async <Result>(
  * @param fetchImpl - The fetch implementation, defaulting to `globalThis.fetch`.
  * @returns The response body as text.
  */
-export const fetchWithPolicy = async (
+export async function fetchWithPolicy(
   policy: FetchPolicy,
   url: string,
   init?: RequestInit,
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
-): Promise<string> => {
+): Promise<string> {
   const callerSignal = init?.signal;
   return executeWithFetchPolicy(
     policy,
@@ -209,4 +229,4 @@ export const fetchWithPolicy = async (
     toNetworkError,
     callerSignal,
   );
-};
+}

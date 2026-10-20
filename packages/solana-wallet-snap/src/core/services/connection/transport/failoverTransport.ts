@@ -102,7 +102,5 @@ export const createFailoverTransport =
       }
     }
     // If all transports fail, throw the last error.
-    throw lastError instanceof Error
-      ? lastError
-      : new Error('All Solana RPC transports failed.');
+    throw lastError ?? new Error('All Solana RPC transports failed.');
   };

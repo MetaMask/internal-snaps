@@ -5,16 +5,10 @@ import {
   parseRetryAfter,
 } from '@metamask/snap-networks-utils';
 
-export type { FetchPolicy } from '@metamask/snap-networks-utils';
-
 type TransportError = Error & {
   context?: {
     headers?: Headers;
     statusCode?: number;
-  };
-  response?: {
-    headers?: Record<string, unknown>;
-    status?: number;
   };
 };
 
@@ -41,22 +35,12 @@ export const toFetchPolicyError = (error: unknown): FetchPolicyError => {
   ) {
     return transportError;
   }
-  const httpStatus =
-    transportError.context?.statusCode ?? transportError.response?.status;
+  const httpStatus = transportError.context?.statusCode;
   if (httpStatus !== undefined) {
-    const retryAfter =
-      transportError.context?.headers?.get('Retry-After') ??
-      transportError.response?.headers?.['retry-after'];
+    const retryAfter = transportError.context?.headers?.get('Retry-After');
     return createFetchPolicyError(error.message, {
       httpStatus,
       retryAfterMs: parseRetryAfter(retryAfter),
-      cause: error,
-    });
-  }
-
-  if (error.name === FetchPolicyErrorName.Timeout) {
-    return createFetchPolicyError(error.message, {
-      name: FetchPolicyErrorName.Timeout,
       cause: error,
     });
   }
