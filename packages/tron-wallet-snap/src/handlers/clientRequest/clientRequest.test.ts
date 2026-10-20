@@ -77,7 +77,19 @@ const createMockExtendedKeyringAccount = (
 
 type MockTronWeb = {
   trx: {
-    sign: jest.MockedFunction<TronWeb['trx']['sign']>;
+    sign: jest.Mock;
+    signMessageV2: jest.Mock;
+    getCurrentBlock: jest.Mock;
+    getBlockByNumber: jest.Mock;
+    sendRawTransaction: jest.Mock;
+  };
+  utils: {
+    deserializeTx: { deserializeTransaction: jest.Mock };
+    transaction: {
+      txJsonToPb: jest.Mock;
+      txPbToRawDataHex: jest.Mock;
+      txPbToTxID: jest.Mock;
+    };
   };
   transactionBuilder: {
     freezeBalanceV2: jest.MockedFunction<
@@ -86,11 +98,28 @@ type MockTronWeb = {
   };
 };
 
-type MockTronWebFactory = jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
+type MockTronWebFactory = {
+  createClient: jest.Mock;
+  executeBroadcast: jest.Mock;
+};
 
 const createMockTronWeb = (): MockTronWeb => ({
   trx: {
-    sign: jest.fn() as MockTronWeb['trx']['sign'],
+    sign: jest.fn(),
+    signMessageV2: jest.fn(),
+    getCurrentBlock: jest.fn(),
+    getBlockByNumber: jest.fn(),
+    sendRawTransaction: jest
+      .fn()
+      .mockResolvedValue({ result: true, txid: 'mock-tx-id' }),
+  },
+  utils: {
+    deserializeTx: { deserializeTransaction: jest.fn() },
+    transaction: {
+      txJsonToPb: jest.fn((transaction) => transaction),
+      txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
+      txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
+    },
   },
   transactionBuilder: {
     freezeBalanceV2:
@@ -101,56 +130,54 @@ const createMockTronWeb = (): MockTronWeb => ({
 const createMockTronWebFactory = (
   mockTronWeb: MockTronWeb,
 ): MockTronWebFactory => ({
-  createClient: jest
-    .fn<
-      ReturnType<TronWebFactory['createClient']>,
-      Parameters<TronWebFactory['createClient']>
-    >()
-    .mockReturnValue(mockTronWeb as unknown as TronWeb),
+  createClient: jest.fn().mockReturnValue(mockTronWeb as unknown as TronWeb),
+  executeBroadcast: jest.fn(
+    async (_scope: Network, broadcast: () => Promise<unknown>) => broadcast(),
+  ),
 });
+
+type CreateClientRequestHandler = (
+  overrides?: Partial<ConstructorParameters<typeof ClientRequestHandler>[0]>,
+) => ClientRequestHandler;
+
+type MockMethods<MethodNames extends PropertyKey> = {
+  [MethodName in MethodNames]: jest.Mock;
+};
 
 type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
   handler: ClientRequestHandler;
-  mockAccountsService: jest.Mocked<
-    Pick<AccountsService, 'findById' | 'findByIdOrThrow' | 'deriveTronKeypair'>
+  createHandler: CreateClientRequestHandler;
+  mockAccountsService: MockMethods<
+    | 'findById'
+    | 'findByIdOrThrow'
+    | 'findByIds'
+    | 'deriveTronKeypair'
+    | 'deriveTronKeypairs'
   >;
-  mockAssetsService: jest.Mocked<
-    Pick<
-      AssetsService,
-      | 'getAccountAssetsByIDs'
-      | 'getAccountAssetByID'
-      | 'fetchAccountAssetsByIDs'
-      | 'fetchAccountAssetByID'
-    >
+  mockAssetsService: MockMethods<
+    | 'getAccountAssetsByIDs'
+    | 'getAccountAssetByID'
+    | 'fetchAccountAssetsByIDs'
+    | 'fetchAccountAssetByID'
   >;
-  mockSendService: jest.Mocked<
-    Pick<
-      SendService,
-      'buildTransaction' | 'validateSend' | 'signAndSendTransaction'
-    >
+  mockSendService: MockMethods<
+    'buildTransaction' | 'validateSend' | 'signAndSendTransaction'
   >;
-  mockFeeCalculatorService: jest.Mocked<
-    Pick<FeeCalculatorService, 'computeFee'>
+  mockFeeCalculatorService: MockMethods<'computeFee'>;
+  mockStakingService: MockMethods<
+    'claimUnstakedTrx' | 'claimTrxStakingRewards'
   >;
-  mockStakingService: jest.Mocked<
-    Pick<StakingService, 'claimUnstakedTrx' | 'claimTrxStakingRewards'>
-  >;
-  mockConfirmationHandler: jest.Mocked<
-    Pick<
-      ConfirmationHandler,
-      'confirmClaimUnstakedTrx' | 'confirmTransactionRequest'
-    >
+  mockConfirmationHandler: MockMethods<
+    'confirmClaimUnstakedTrx' | 'confirmTransactionRequest'
   >;
   mockTronWebFactory: MockTronWebFactory;
   mockTronWeb: MockTronWeb;
-  mockTransactionExpirationRefresherService: jest.Mocked<
-    Pick<
-      TransactionExpirationRefresherService,
-      'ensureFreshMetadata' | 'ensureFreshRawData'
-    >
+  mockTransactionExpirationRefresherService: MockMethods<
+    'ensureFreshMetadata' | 'ensureFreshRawData'
   >;
-  mockTransactionsService: jest.Mocked<Pick<TransactionsService, 'save'>>;
-  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+  mockTransactionsService: MockMethods<'save'>;
+  mockSnapClient: MockMethods<'scheduleBackgroundEvent' | 'trackError'>;
+  mockAnalyticsService: MockMethods<'trackTransactionSubmitted'>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -162,104 +189,103 @@ type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
 async function withClientRequestHandler<ReturnValue>(
   testFunction: WithClientRequestHandlerCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockAccountsService: jest.Mocked<
-    Pick<AccountsService, 'findById' | 'findByIdOrThrow' | 'deriveTronKeypair'>
+  const mockAccountsService: MockMethods<
+    | 'findById'
+    | 'findByIdOrThrow'
+    | 'findByIds'
+    | 'deriveTronKeypair'
+    | 'deriveTronKeypairs'
   > = {
     findById: jest.fn(),
     findByIdOrThrow: jest.fn(),
+    findByIds: jest.fn(),
     deriveTronKeypair: jest.fn(),
+    deriveTronKeypairs: jest.fn(),
   };
 
-  const mockAssetsService: jest.Mocked<
-    Pick<
-      AssetsService,
-      | 'getAccountAssetsByIDs'
-      | 'getAccountAssetByID'
-      | 'fetchAccountAssetsByIDs'
-      | 'fetchAccountAssetByID'
-    >
+  const mockAssetsService: MockMethods<
+    | 'getAccountAssetsByIDs'
+    | 'getAccountAssetByID'
+    | 'fetchAccountAssetsByIDs'
+    | 'fetchAccountAssetByID'
   > = {
     getAccountAssetsByIDs: jest.fn(),
     getAccountAssetByID: jest.fn(),
-    fetchAccountAssetsByIDs: jest.fn(),
-    fetchAccountAssetByID: jest.fn(),
+    fetchAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
+    fetchAccountAssetByID: jest.fn().mockResolvedValue(null),
   };
 
-  const mockSendService: jest.Mocked<
-    Pick<
-      SendService,
-      'buildTransaction' | 'validateSend' | 'signAndSendTransaction'
-    >
+  const mockSendService: MockMethods<
+    'buildTransaction' | 'validateSend' | 'signAndSendTransaction'
   > = {
     buildTransaction: jest.fn(),
     validateSend: jest.fn(),
     signAndSendTransaction: jest.fn(),
   };
 
-  const mockFeeCalculatorService: jest.Mocked<
-    Pick<FeeCalculatorService, 'computeFee'>
-  > = {
+  const mockFeeCalculatorService: MockMethods<'computeFee'> = {
     computeFee: jest.fn(),
   };
-  const mockStakingService: jest.Mocked<
-    Pick<StakingService, 'claimUnstakedTrx' | 'claimTrxStakingRewards'>
+  const mockStakingService: MockMethods<
+    'claimUnstakedTrx' | 'claimTrxStakingRewards'
   > = {
     claimUnstakedTrx: jest.fn(),
     claimTrxStakingRewards: jest.fn(),
   };
-  const mockConfirmationHandler: jest.Mocked<
-    Pick<
-      ConfirmationHandler,
-      'confirmClaimUnstakedTrx' | 'confirmTransactionRequest'
-    >
+  const mockConfirmationHandler: MockMethods<
+    'confirmClaimUnstakedTrx' | 'confirmTransactionRequest'
   > = {
     confirmClaimUnstakedTrx: jest.fn(),
     confirmTransactionRequest: jest.fn(),
   };
-  const mockTransactionExpirationRefresherService =
-    createPassThroughTransactionExpirationRefresherService() as unknown as jest.Mocked<
-      Pick<
-        TransactionExpirationRefresherService,
-        'ensureFreshMetadata' | 'ensureFreshRawData'
-      >
+  const mockTransactionExpirationRefresherService: MockMethods<
+    'ensureFreshMetadata' | 'ensureFreshRawData'
+  > =
+    createPassThroughTransactionExpirationRefresherService() as unknown as MockMethods<
+      'ensureFreshMetadata' | 'ensureFreshRawData'
     >;
-  const mockTransactionsService: jest.Mocked<
-    Pick<TransactionsService, 'save'>
-  > = {
+  const mockTransactionsService: MockMethods<'save'> = {
     save: jest.fn(),
   };
-  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
-    trackError: jest.fn(),
-  };
+  const mockSnapClient: MockMethods<'scheduleBackgroundEvent' | 'trackError'> =
+    {
+      scheduleBackgroundEvent: jest.fn(),
+      trackError: jest.fn(),
+    };
 
-  const mockAnalyticsService = {
+  const mockAnalyticsService: MockMethods<'trackTransactionSubmitted'> = {
     trackTransactionSubmitted: jest.fn(),
   };
 
   const mockTronWeb = createMockTronWeb();
   const mockTronWebFactory = createMockTronWebFactory(mockTronWeb);
 
-  const handler = new ClientRequestHandler({
-    logger: mockLogger,
-    accountsService: mockAccountsService as unknown as AccountsService,
-    assetsService: mockAssetsService as unknown as AssetsService,
-    sendService: mockSendService as unknown as SendService,
-    feeCalculatorService:
-      mockFeeCalculatorService as unknown as FeeCalculatorService,
-    tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
-    snapClient: mockSnapClient as unknown as SnapClient,
-    stakingService: mockStakingService as unknown as StakingService,
-    confirmationHandler:
-      mockConfirmationHandler as unknown as ConfirmationHandler,
-    transactionsService:
-      mockTransactionsService as unknown as TransactionsService,
-    transactionExpirationRefresherService:
-      mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
-    analyticsService: mockAnalyticsService as unknown as AnalyticsService,
-  });
+  const createHandler: CreateClientRequestHandler = (overrides = {}) =>
+    new ClientRequestHandler({
+      logger: mockLogger,
+      accountsService: mockAccountsService as unknown as AccountsService,
+      assetsService: mockAssetsService as unknown as AssetsService,
+      sendService: mockSendService as unknown as SendService,
+      feeCalculatorService:
+        mockFeeCalculatorService as unknown as FeeCalculatorService,
+      tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
+      snapClient: mockSnapClient as unknown as SnapClient,
+      stakingService: mockStakingService as unknown as StakingService,
+      confirmationHandler:
+        mockConfirmationHandler as unknown as ConfirmationHandler,
+      transactionsService:
+        mockTransactionsService as unknown as TransactionsService,
+      transactionExpirationRefresherService:
+        mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+      analyticsService: mockAnalyticsService as unknown as AnalyticsService,
+      ...overrides,
+    });
+
+  const handler = createHandler();
 
   return await testFunction({
     handler,
+    createHandler,
     mockAccountsService,
     mockAssetsService,
     mockSendService,
@@ -271,37 +297,12 @@ async function withClientRequestHandler<ReturnValue>(
     mockTransactionsService,
     mockStakingService,
     mockSnapClient,
+    mockAnalyticsService,
   });
 }
 
 describe('ClientRequestHandler', () => {
-  /**
-   * Builds an analytics service test double. Each handler instance gets its own
-   * so call-order assertions stay scoped to the test that created it.
-   *
-   * @returns A mocked AnalyticsService.
-   */
-  const createMockAnalyticsService = (): jest.Mocked<AnalyticsService> =>
-    ({
-      trackTransactionSubmitted: jest.fn(),
-    }) as unknown as jest.Mocked<AnalyticsService>;
-
   describe('computeFee', () => {
-    let clientRequestHandler: ClientRequestHandler;
-    let mockAccountsService: jest.Mocked<AccountsService>;
-    let mockAssetsService: jest.Mocked<AssetsService>;
-    let mockSendService: jest.Mocked<SendService>;
-    let mockFeeCalculatorService: jest.Mocked<FeeCalculatorService>;
-    let mockTronWebFactory: jest.Mocked<TronWebFactory>;
-    let mockSnapClient: jest.Mocked<SnapClient>;
-    let mockStakingService: jest.Mocked<StakingService>;
-    let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
-    let mockTronWeb: any;
-    let mockTransactionsService: jest.Mocked<TransactionsService>;
-    let mockTransactionExpirationRefresherService: {
-      ensureFreshMetadata: jest.Mock;
-    };
-
     const TEST_TRANSACTION_BASE64 =
       'CgK0FiII40phBu42/OZAkJyY96YzWrADCB8SqwMKMXR5cGUuZ29vZ2xlYXBpcy5jb20vcHJvdG9jb2wuVHJpZ2dlclNtYXJ0Q29udHJhY3QS9QIKFUEU0B62M0bakw7g2jDVhRrBTODEeRIVQZlGn9WqCM/oNjlc6ZPA69Vn4sFPIsQCnd+TuwAAAAAAAAAAAAAAAKYU+AO2/XgJhqQseOycf3fm3tE8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+vCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnq6OQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1RSWHxzeWtuZjl8MC41fGJyaWRnZXJzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACJUQnNGcUttbVJ5WWNuWUphOFlEeFk1ZDJKQVJhSGVxdUJKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcLzdlPemMw==';
 
@@ -327,803 +328,753 @@ describe('ClientRequestHandler', () => {
     const getRefBlockBytes = (number: number) =>
       number.toString(16).slice(-4).padStart(4, '0');
 
-    beforeEach(() => {
-      mockAccountsService = {
-        findByIdOrThrow: jest.fn(),
-        deriveTronKeypair: jest.fn(),
-      } as unknown as jest.Mocked<AccountsService>;
-
-      mockAssetsService = {
-        getAccountAssetsByIDs: jest.fn(),
-        fetchAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
-        fetchAccountAssetByID: jest.fn().mockResolvedValue(null),
-      } as unknown as jest.Mocked<AssetsService>;
-
-      mockSendService = {} as unknown as jest.Mocked<SendService>;
-
-      mockFeeCalculatorService = {
-        computeFee: jest.fn(),
-      } as unknown as jest.Mocked<FeeCalculatorService>;
-
-      mockTronWeb = {
-        utils: {
-          deserializeTx: {
-            deserializeTransaction: jest.fn(),
-          },
-          transaction: {
-            txJsonToPb: jest.fn().mockImplementation((tx) => tx),
-            txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
-            txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
-          },
-        },
-        trx: {
-          getCurrentBlock: jest.fn().mockResolvedValue(
-            createBlock({
-              number: 200_000,
-              timestamp: Date.now(),
-            }),
-          ),
-          getBlockByNumber: jest.fn(),
-          sign: jest.fn(),
-          sendRawTransaction: jest.fn(),
-        },
-      };
-
-      mockTronWebFactory = {
-        createClient: jest.fn().mockReturnValue(mockTronWeb),
-        executeBroadcast: jest
-          .fn()
-          .mockImplementation(
-            async (_scope: Network, operation: () => Promise<unknown>) =>
-              operation(),
-          ),
-      } as unknown as jest.Mocked<TronWebFactory>;
-
-      mockSnapClient = {
-        scheduleBackgroundEvent: jest.fn(),
-        trackTransactionSubmitted: jest.fn(),
-      } as unknown as jest.Mocked<SnapClient>;
-      mockStakingService = {} as unknown as jest.Mocked<StakingService>;
-      mockConfirmationHandler =
-        {} as unknown as jest.Mocked<ConfirmationHandler>;
-      mockTransactionsService = {
-        save: jest.fn(),
-      } as unknown as jest.Mocked<TransactionsService>;
-      mockTransactionExpirationRefresherService = {
-        ensureFreshMetadata: jest.fn(
-          async <TransactionType>({
-            transaction,
-          }: {
-            transaction: TransactionType;
-          }) => transaction,
-        ),
-      };
-      clientRequestHandler = new ClientRequestHandler({
-        logger: mockLogger,
-        accountsService: mockAccountsService,
-        assetsService: mockAssetsService,
-        sendService: mockSendService,
-        feeCalculatorService: mockFeeCalculatorService,
-        tronWebFactory: mockTronWebFactory,
-        snapClient: mockSnapClient,
-        stakingService: mockStakingService,
-        confirmationHandler: mockConfirmationHandler,
-        transactionsService: mockTransactionsService,
-        transactionExpirationRefresherService:
-          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
-        analyticsService: createMockAnalyticsService(),
+    async function withComputeFeeHandler<ReturnValue>(
+      testFunction: WithClientRequestHandlerCallback<ReturnValue>,
+    ): Promise<ReturnValue> {
+      return withClientRequestHandler(async (setup) => {
+        setup.mockTronWeb.trx.getCurrentBlock.mockResolvedValue(
+          createBlock({ number: 200_000, timestamp: Date.now() }),
+        );
+        return testFunction(setup);
       });
-    });
+    }
 
     describe('when called with valid parameters from external dapp', () => {
-      it('signs and sends a transaction with the default feeLimit', async () => {
-        const scope = Network.Mainnet;
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignAndSendTransaction,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope,
-            options: {
-              visible: false,
-              type: 'TriggerSmartContract',
-            },
-          },
-        };
-
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-        } as any);
-
-        const mockRawData = {
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                value: {
-                  owner_address: TronWeb.address.toHex(
-                    'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-                  ),
-                },
+      it('signs and sends a transaction with the default feeLimit', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, ...mocks } = setup;
+          const { mockAccountsService, mockSnapClient, mockTronWeb } = mocks;
+          const scope = Network.Mainnet;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignAndSendTransaction,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: false,
+                type: 'TriggerSmartContract',
               },
             },
-          ],
-        };
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
-          mockRawData,
-        );
+          };
 
-        const signedTransaction = {
-          txID: 'test-tx-id',
+          mockAccountsService.findByIdOrThrow.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
 
-          raw_data: mockRawData,
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+          });
 
-          raw_data_hex: 'test-hex',
-          signature: ['test-signature'],
-        };
-        mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
-        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-          result: true,
-          txid: 'test-tx-id',
-        });
-
-        const result = await clientRequestHandler.handle(
-          request as JsonRpcRequest,
-        );
-
-        expect(result).toStrictEqual({
-          transactionId: 'test-tx-id',
-        });
-
-        // Verify the default feeLimit was set on rawData before signing
-        expect(mockRawData).toHaveProperty('fee_limit', FEE_LIMIT);
-        expect(mockTronWeb.utils.transaction.txJsonToPb).toHaveBeenCalledWith(
-          expect.objectContaining({
-            raw_data: expect.objectContaining({
-              fee_limit: FEE_LIMIT,
-            }),
-          }),
-        );
-        expect(
-          mockTronWeb.utils.transaction.txPbToRawDataHex,
-        ).toHaveBeenCalled();
-        expect(mockTronWeb.trx.sign).toHaveBeenCalled();
-        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-          method: BackgroundEventMethod.TrackTransaction,
-          params: {
-            txId: 'test-tx-id',
-            scope,
-            accountIds: [TEST_ACCOUNT_ID],
-            attempt: 0,
-            transactionType: TransactionType.Unknown,
-          },
-          duration: TRACK_TX_INTERVAL,
-        });
-      });
-
-      it('refreshes stale transaction metadata before signing and sending an external transaction', async () => {
-        const currentTimestamp = Date.now();
-        const currentBlock = createBlock({
-          number: 200_000,
-          timestamp: currentTimestamp,
-          hashSegment: '0011223344556677',
-        });
-        const scope = Network.Mainnet;
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignAndSendTransaction,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope,
-            options: {
-              visible: false,
-              type: 'TriggerSmartContract',
-            },
-          },
-        };
-
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-        } as any);
-
-        const mockRawData = {
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                value: {
-                  owner_address: TronWeb.address.toHex(
-                    'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-                  ),
-                },
-              },
-            },
-          ],
-
-          ref_block_bytes: '0000',
-
-          ref_block_hash: '0000000000000000',
-          expiration: currentTimestamp - 1,
-          timestamp: currentTimestamp - 60_000,
-        };
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
-          mockRawData,
-        );
-        mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
-        mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
-          ...transaction,
-          signature: ['test-signature'],
-        }));
-        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-          result: true,
-          txid: 'broadcast-tx-id',
-        });
-        const originalRawData = structuredClone(mockRawData);
-        clientRequestHandler = new ClientRequestHandler({
-          logger: mockLogger,
-          accountsService: mockAccountsService,
-          assetsService: mockAssetsService,
-          sendService: mockSendService,
-          feeCalculatorService: mockFeeCalculatorService,
-          tronWebFactory: mockTronWebFactory,
-          snapClient: mockSnapClient,
-          stakingService: mockStakingService,
-          confirmationHandler: mockConfirmationHandler,
-          transactionsService: mockTransactionsService,
-          transactionExpirationRefresherService:
-            new TransactionExpirationRefresherService({
-              tronWebFactory: mockTronWebFactory,
-            }),
-          analyticsService: createMockAnalyticsService(),
-        });
-
-        await clientRequestHandler.handle(request as JsonRpcRequest);
-
-        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
-        expect(signedTransaction.raw_data).not.toBe(mockRawData);
-        expect(signedTransaction.raw_data.ref_block_bytes).toBe(
-          getRefBlockBytes(200_000),
-        );
-        expect(signedTransaction.raw_data.ref_block_hash).toBe(
-          '0011223344556677',
-        );
-        expect(signedTransaction.raw_data.expiration).toBe(
-          currentTimestamp + 60_000,
-        );
-        expect(signedTransaction.raw_data.timestamp).toBe(currentTimestamp);
-        expect(signedTransaction.raw_data_hex).toBe('1234567890abcdef');
-        expect(signedTransaction.txID).toBe('mock-tx-id');
-        expect(mockRawData.ref_block_bytes).toBe(
-          originalRawData.ref_block_bytes,
-        );
-        expect(mockRawData.ref_block_hash).toBe(originalRawData.ref_block_hash);
-        expect(mockRawData.expiration).toBe(originalRawData.expiration);
-        expect(mockRawData.timestamp).toBe(originalRawData.timestamp);
-      });
-
-      it('signs the external transaction returned by the injected expiration refresher', async () => {
-        const scope = Network.Mainnet;
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignAndSendTransaction,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope,
-            options: {
-              visible: false,
-              type: 'TriggerSmartContract',
-            },
-          },
-        };
-
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-        } as any);
-
-        const mockRawData = {
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                value: {
-                  owner_address: TronWeb.address.toHex(
-                    'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-                  ),
-                },
-              },
-            },
-          ],
-        };
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
-          mockRawData,
-        );
-        const freshTransaction = {
-          visible: false,
-          txID: 'fresh-tx-id',
-
-          raw_data: mockRawData,
-
-          raw_data_hex: 'fresh-raw-data-hex',
-        };
-        mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
-          freshTransaction,
-        );
-        mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
-          ...transaction,
-          signature: ['test-signature'],
-        }));
-        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-          result: true,
-          txid: 'broadcast-tx-id',
-        });
-
-        await clientRequestHandler.handle(request as JsonRpcRequest);
-
-        expect(
-          mockTransactionExpirationRefresherService.ensureFreshMetadata,
-        ).toHaveBeenCalledWith(
-          expect.objectContaining({
-            scope,
-            transaction: expect.objectContaining({
-              txID: expect.any(String),
-
-              raw_data: mockRawData,
-            }),
-          }),
-        );
-        expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(freshTransaction);
-      });
-
-      it('computes fee breakdown for TRC20 transfer transaction', async () => {
-        const scope = Network.Shasta;
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.ComputeFee,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope,
-            options: {
-              visible: false,
-              type: 'TriggerSmartContract',
-            },
-          },
-        };
-
-        // Mock account lookup
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-
-        // Mock keypair derivation
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-        } as any);
-
-        // Mock transaction deserialization
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
-                value: {
-                  owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-
-                  contract_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
-                  data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
-                },
-              },
-            },
-          ],
-        });
-
-        // Mock transaction signing
-        const signedTransaction = {
-          txID: 'test-tx-id',
-
-          raw_data: {
+          const mockRawData = {
             contract: [
               {
                 type: 'TriggerSmartContract',
                 parameter: {
                   value: {
-                    owner_address:
-                      '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-
-                    contract_address:
-                      '419946f55aa08cfe8363959ce9930ebd567e2c14f',
-                    data: 'a9059cbb',
+                    owner_address: TronWeb.address.toHex(
+                      'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+                    ),
                   },
                 },
               },
             ],
-          },
+          };
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            mockRawData,
+          );
 
-          raw_data_hex: 'test-hex',
-          signature: ['test-signature'],
-        };
-        mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+          const signedTransaction = {
+            txID: 'test-tx-id',
 
-        // Mock available resources
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { rawAmount: '5000' }, // Bandwidth
-          { rawAmount: '100000' }, // Energy
-        ] as any);
+            raw_data: mockRawData,
 
-        // Mock fee calculation result
-        const feeResult = [
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: Networks[scope].energy.symbol,
-              type: Networks[scope].energy.id,
-              amount: '65000',
-              fungible: true as const,
+            raw_data_hex: 'test-hex',
+            signature: ['test-signature'],
+          };
+          mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+          mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+            result: true,
+            txid: 'test-tx-id',
+          });
+
+          const result = await handler.handle(request as JsonRpcRequest);
+
+          expect(result).toStrictEqual({
+            transactionId: 'test-tx-id',
+          });
+
+          // Verify the default feeLimit was set on rawData before signing
+          expect(mockRawData).toHaveProperty('fee_limit', FEE_LIMIT);
+          expect(mockTronWeb.utils.transaction.txJsonToPb).toHaveBeenCalledWith(
+            expect.objectContaining({
+              raw_data: expect.objectContaining({
+                fee_limit: FEE_LIMIT,
+              }),
+            }),
+          );
+          expect(
+            mockTronWeb.utils.transaction.txPbToRawDataHex,
+          ).toHaveBeenCalled();
+          expect(mockTronWeb.trx.sign).toHaveBeenCalled();
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: 'test-tx-id',
+              scope,
+              accountIds: [TEST_ACCOUNT_ID],
+              attempt: 0,
+              transactionType: TransactionType.Unknown,
             },
-          },
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: Networks[scope].bandwidth.symbol,
-              type: Networks[scope].bandwidth.id,
-              amount: '345',
-              fungible: true as const,
-            },
-          },
-        ];
-        mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+            duration: TRACK_TX_INTERVAL,
+          });
+        }));
 
-        // Execute
-        const result = await clientRequestHandler.handle(
-          request as JsonRpcRequest,
-        );
-
-        // Verify - no signing needed for fee computation
-        expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
-        );
-        // deriveTronKeypair is NOT called - no private key needed for fee computation
-        expect(mockAccountsService.deriveTronKeypair).not.toHaveBeenCalled();
-        expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(scope);
-        expect(
-          mockTronWeb.utils.deserializeTx.deserializeTransaction,
-        ).toHaveBeenCalledWith('TriggerSmartContract', expect.any(String));
-        // trx.sign is NOT called - fee computation uses unsigned transactions
-        expect(mockTronWeb.trx.sign).not.toHaveBeenCalled();
-        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
-          [Networks[scope].bandwidth.id, Networks[scope].energy.id],
-        );
-        // computeFee receives unsigned transaction (no signature field)
-        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
-          scope,
-          transaction: expect.objectContaining({
-            txID: expect.any(String),
-
-            raw_data: expect.any(Object),
-
-            raw_data_hex: expect.any(String),
-            visible: false,
-          }),
-          availableEnergy: BigNumber('100000'),
-          availableBandwidth: BigNumber('5000'),
-          feeLimit: FALLBACK_FEE,
-        });
-        expect(result).toStrictEqual(feeResult);
-      });
-
-      it('computes fee for native TRX transfer', async () => {
-        const scope = Network.Mainnet;
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '2',
-          method: ClientRequestMethod.ComputeFee,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope,
-            options: {
-              visible: true,
-              type: 'TransferContract',
-            },
-          },
-        };
-
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-        } as any);
-
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-          contract: [
-            {
-              type: 'TransferContract',
-              parameter: {
-                type_url: 'type.googleapis.com/protocol.TransferContract',
-                value: {
-                  owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-
-                  to_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
-                  amount: 1000000,
-                },
+      it('refreshes stale transaction metadata before signing and sending an external transaction', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, createHandler, ...mocks } = setup;
+          const { mockAccountsService, mockTronWeb, mockTronWebFactory } =
+            mocks;
+          const currentTimestamp = Date.now();
+          const currentBlock = createBlock({
+            number: 200_000,
+            timestamp: currentTimestamp,
+            hashSegment: '0011223344556677',
+          });
+          const scope = Network.Mainnet;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignAndSendTransaction,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: false,
+                type: 'TriggerSmartContract',
               },
             },
-          ],
-        });
+          };
 
-        const signedTransaction = {
-          txID: 'test-tx-id-2',
+          mockAccountsService.findByIdOrThrow.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+          });
 
-          raw_data: {
+          const mockRawData = {
             contract: [
               {
-                type: 'TransferContract',
+                type: 'TriggerSmartContract',
                 parameter: {
                   value: {
-                    owner_address:
-                      '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-
-                    to_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
-                    amount: 1000000,
+                    owner_address: TronWeb.address.toHex(
+                      'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+                    ),
                   },
                 },
               },
             ],
-          },
 
-          raw_data_hex: 'test-hex-2',
-          signature: ['test-signature-2'],
-        };
-        mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+            ref_block_bytes: '0000',
 
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { rawAmount: '1000' }, // Bandwidth
-          { rawAmount: '0' }, // Energy (not needed for native transfer)
-        ] as any);
+            ref_block_hash: '0000000000000000',
+            expiration: currentTimestamp - 1,
+            timestamp: currentTimestamp - 60_000,
+          };
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            mockRawData,
+          );
+          mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
+          mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
+            ...transaction,
+            signature: ['test-signature'],
+          }));
+          mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+            result: true,
+            txid: 'broadcast-tx-id',
+          });
+          const originalRawData = structuredClone(mockRawData);
+          const refreshedHandler = createHandler({
+            transactionExpirationRefresherService:
+              new TransactionExpirationRefresherService({
+                tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
+              }),
+          });
 
-        // Native transfer only uses bandwidth
-        const feeResult = [
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: Networks[scope].bandwidth.symbol,
-              type: Networks[scope].bandwidth.id,
-              amount: '268',
-              fungible: true as const,
-            },
-          },
-        ];
-        mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+          await refreshedHandler.handle(request as JsonRpcRequest);
 
-        const result = await clientRequestHandler.handle(
-          request as JsonRpcRequest,
-        );
+          const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+          expect(signedTransaction.raw_data).not.toBe(mockRawData);
+          expect(signedTransaction.raw_data.ref_block_bytes).toBe(
+            getRefBlockBytes(200_000),
+          );
+          expect(signedTransaction.raw_data.ref_block_hash).toBe(
+            '0011223344556677',
+          );
+          expect(signedTransaction.raw_data.expiration).toBe(
+            currentTimestamp + 60_000,
+          );
+          expect(signedTransaction.raw_data.timestamp).toBe(currentTimestamp);
+          expect(signedTransaction.raw_data_hex).toBe('1234567890abcdef');
+          expect(signedTransaction.txID).toBe('mock-tx-id');
+          expect(mockRawData.ref_block_bytes).toBe(
+            originalRawData.ref_block_bytes,
+          );
+          expect(mockRawData.ref_block_hash).toBe(
+            originalRawData.ref_block_hash,
+          );
+          expect(mockRawData.expiration).toBe(originalRawData.expiration);
+          expect(mockRawData.timestamp).toBe(originalRawData.timestamp);
+        }));
 
-        expect(result).toStrictEqual(feeResult);
-        // computeFee receives unsigned transaction (no signature field)
-        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
-          scope,
-          transaction: expect.objectContaining({
-            txID: expect.any(String),
-
-            raw_data: expect.any(Object),
-
-            raw_data_hex: expect.any(String),
-          }),
-          availableEnergy: BigNumber('0'),
-          availableBandwidth: BigNumber('1000'),
-          feeLimit: FALLBACK_FEE,
-        });
-      });
-
-      it('handles account with no available resources', async () => {
-        const scope = Network.Nile;
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '3',
-          method: ClientRequestMethod.ComputeFee,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope,
-            options: {
-              visible: false,
-              type: 'TriggerSmartContract',
-            },
-          },
-        };
-
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-        } as any);
-
-        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
-                value: {
-                  owner_address: '41045d01eb63374da930ee0da30d58516ac14ce04c79',
-
-                  contract_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
-                },
+      it('signs the external transaction returned by the injected expiration refresher', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, ...mocks } = setup;
+          const {
+            mockAccountsService,
+            mockTransactionExpirationRefresherService,
+            mockTronWeb,
+          } = mocks;
+          const scope = Network.Mainnet;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignAndSendTransaction,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: false,
+                type: 'TriggerSmartContract',
               },
             },
-          ],
-        });
-        mockTronWeb.trx.sign.mockResolvedValue({
-          txID: 'test-tx-id-3',
+          };
 
-          raw_data: {},
+          mockAccountsService.findByIdOrThrow.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+          });
 
-          raw_data_hex: 'test-hex-3',
-          signature: [],
-        });
+          const mockRawData = {
+            contract: [
+              {
+                type: 'TriggerSmartContract',
+                parameter: {
+                  value: {
+                    owner_address: TronWeb.address.toHex(
+                      'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+                    ),
+                  },
+                },
+              },
+            ],
+          };
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            mockRawData,
+          );
+          const freshTransaction = {
+            visible: false,
+            txID: 'fresh-tx-id',
+            raw_data: mockRawData,
+            raw_data_hex: 'fresh-raw-data-hex',
+          };
+          mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
+            freshTransaction,
+          );
+          mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
+            ...transaction,
+            signature: ['test-signature'],
+          }));
+          mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+            result: true,
+            txid: 'broadcast-tx-id',
+          });
 
-        // No resources available
-        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          undefined, // No bandwidth asset
-          undefined, // No energy asset
-        ] as any);
+          await handler.handle(request as JsonRpcRequest);
 
-        // When no resources available, user pays in TRX
-        const feeResult = [
-          {
-            type: FeeType.Base,
-            asset: {
-              unit: Networks[scope].nativeToken.symbol,
-              type: Networks[scope].nativeToken.id,
-              amount: '13.5',
-              fungible: true as const,
+          expect(
+            mockTransactionExpirationRefresherService.ensureFreshMetadata,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              scope,
+              transaction: expect.objectContaining({
+                txID: expect.any(String),
+
+                raw_data: mockRawData,
+              }),
+            }),
+          );
+          expect(mockTronWeb.trx.sign).toHaveBeenCalledWith(freshTransaction);
+        }));
+
+      it('computes fee breakdown for TRC20 transfer transaction', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, ...mocks } = setup;
+          const {
+            mockAccountsService,
+            mockAssetsService,
+            mockFeeCalculatorService,
+            mockTronWeb,
+            mockTronWebFactory,
+          } = mocks;
+          const scope = Network.Shasta;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.ComputeFee,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: false,
+                type: 'TriggerSmartContract',
+              },
             },
-          },
-        ];
-        mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+          };
 
-        const result = await clientRequestHandler.handle(
-          request as JsonRpcRequest,
-        );
+          // Mock account lookup
+          mockAccountsService.findByIdOrThrow.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
 
-        expect(result).toStrictEqual(feeResult);
-        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
-          scope,
-          transaction: expect.any(Object),
-          availableEnergy: BigNumber('0'),
-          availableBandwidth: BigNumber('0'),
-          feeLimit: FALLBACK_FEE,
-        });
-      });
+          // Mock keypair derivation
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+          });
+
+          // Mock transaction deserialization
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            {
+              contract: [
+                {
+                  type: 'TriggerSmartContract',
+                  parameter: {
+                    type_url:
+                      'type.googleapis.com/protocol.TriggerSmartContract',
+                    value: {
+                      owner_address:
+                        '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+
+                      contract_address:
+                        '419946f55aa08cfe8363959ce9930ebd567e2c14f',
+                      data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                    },
+                  },
+                },
+              ],
+            },
+          );
+
+          // Mock transaction signing
+          const signedTransaction = {
+            txID: 'test-tx-id',
+
+            raw_data: {
+              contract: [
+                {
+                  type: 'TriggerSmartContract',
+                  parameter: {
+                    value: {
+                      owner_address:
+                        '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+
+                      contract_address:
+                        '419946f55aa08cfe8363959ce9930ebd567e2c14f',
+                      data: 'a9059cbb',
+                    },
+                  },
+                },
+              ],
+            },
+
+            raw_data_hex: 'test-hex',
+            signature: ['test-signature'],
+          };
+          mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+
+          // Mock available resources
+          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+            { rawAmount: '5000' }, // Bandwidth
+            { rawAmount: '100000' }, // Energy
+          ]);
+
+          // Mock fee calculation result
+          const feeResult = [
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: Networks[scope].energy.symbol,
+                type: Networks[scope].energy.id,
+                amount: '65000',
+                fungible: true as const,
+              },
+            },
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: Networks[scope].bandwidth.symbol,
+                type: Networks[scope].bandwidth.id,
+                amount: '345',
+                fungible: true as const,
+              },
+            },
+          ];
+          mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+
+          // Execute
+          const result = await handler.handle(request as JsonRpcRequest);
+
+          // Verify - no signing needed for fee computation
+          expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
+            TEST_ACCOUNT_ID,
+          );
+          // deriveTronKeypair is NOT called - no private key needed for fee computation
+          expect(mockAccountsService.deriveTronKeypair).not.toHaveBeenCalled();
+          expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(scope);
+          expect(
+            mockTronWeb.utils.deserializeTx.deserializeTransaction,
+          ).toHaveBeenCalledWith('TriggerSmartContract', expect.any(String));
+          // trx.sign is NOT called - fee computation uses unsigned transactions
+          expect(mockTronWeb.trx.sign).not.toHaveBeenCalled();
+          expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
+            TEST_ACCOUNT_ID,
+            [Networks[scope].bandwidth.id, Networks[scope].energy.id],
+          );
+          // computeFee receives unsigned transaction (no signature field)
+          expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+            scope,
+            transaction: expect.objectContaining({
+              txID: expect.any(String),
+
+              raw_data: expect.any(Object),
+
+              raw_data_hex: expect.any(String),
+              visible: false,
+            }),
+            availableEnergy: BigNumber('100000'),
+            availableBandwidth: BigNumber('5000'),
+            feeLimit: FALLBACK_FEE,
+          });
+          expect(result).toStrictEqual(feeResult);
+        }));
+
+      it('computes fee for native TRX transfer', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, ...mocks } = setup;
+          const {
+            mockAccountsService,
+            mockAssetsService,
+            mockFeeCalculatorService,
+            mockTronWeb,
+          } = mocks;
+          const scope = Network.Mainnet;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '2',
+            method: ClientRequestMethod.ComputeFee,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: true,
+                type: 'TransferContract',
+              },
+            },
+          };
+
+          mockAccountsService.findByIdOrThrow.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+          });
+
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            {
+              contract: [
+                {
+                  type: 'TransferContract',
+                  parameter: {
+                    type_url: 'type.googleapis.com/protocol.TransferContract',
+                    value: {
+                      owner_address:
+                        '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+
+                      to_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
+                      amount: 1000000,
+                    },
+                  },
+                },
+              ],
+            },
+          );
+
+          const signedTransaction = {
+            txID: 'test-tx-id-2',
+
+            raw_data: {
+              contract: [
+                {
+                  type: 'TransferContract',
+                  parameter: {
+                    value: {
+                      owner_address:
+                        '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+
+                      to_address: '419946f55aa08cfe8363959ce9930ebd567e2c14f',
+                      amount: 1000000,
+                    },
+                  },
+                },
+              ],
+            },
+
+            raw_data_hex: 'test-hex-2',
+            signature: ['test-signature-2'],
+          };
+          mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+
+          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+            { rawAmount: '1000' }, // Bandwidth
+            { rawAmount: '0' }, // Energy (not needed for native transfer)
+          ]);
+
+          // Native transfer only uses bandwidth
+          const feeResult = [
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: Networks[scope].bandwidth.symbol,
+                type: Networks[scope].bandwidth.id,
+                amount: '268',
+                fungible: true as const,
+              },
+            },
+          ];
+          mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+
+          const result = await handler.handle(request as JsonRpcRequest);
+
+          expect(result).toStrictEqual(feeResult);
+          // computeFee receives unsigned transaction (no signature field)
+          expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+            scope,
+            transaction: expect.objectContaining({
+              txID: expect.any(String),
+
+              raw_data: expect.any(Object),
+
+              raw_data_hex: expect.any(String),
+            }),
+            availableEnergy: BigNumber('0'),
+            availableBandwidth: BigNumber('1000'),
+            feeLimit: FALLBACK_FEE,
+          });
+        }));
+
+      it('handles account with no available resources', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, ...mocks } = setup;
+          const {
+            mockAccountsService,
+            mockAssetsService,
+            mockFeeCalculatorService,
+            mockTronWeb,
+          } = mocks;
+          const scope = Network.Nile;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '3',
+            method: ClientRequestMethod.ComputeFee,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: false,
+                type: 'TriggerSmartContract',
+              },
+            },
+          };
+
+          mockAccountsService.findByIdOrThrow.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+          });
+
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            {
+              contract: [
+                {
+                  type: 'TriggerSmartContract',
+                  parameter: {
+                    type_url:
+                      'type.googleapis.com/protocol.TriggerSmartContract',
+                    value: {
+                      owner_address:
+                        '41045d01eb63374da930ee0da30d58516ac14ce04c79',
+
+                      contract_address:
+                        '419946f55aa08cfe8363959ce9930ebd567e2c14f',
+                    },
+                  },
+                },
+              ],
+            },
+          );
+          mockTronWeb.trx.sign.mockResolvedValue({
+            txID: 'test-tx-id-3',
+
+            raw_data: {},
+
+            raw_data_hex: 'test-hex-3',
+            signature: [],
+          });
+
+          // No resources available
+          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+            undefined, // No bandwidth asset
+            undefined, // No energy asset
+          ]);
+
+          // When no resources available, user pays in TRX
+          const feeResult = [
+            {
+              type: FeeType.Base,
+              asset: {
+                unit: Networks[scope].nativeToken.symbol,
+                type: Networks[scope].nativeToken.id,
+                amount: '13.5',
+                fungible: true as const,
+              },
+            },
+          ];
+          mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+
+          const result = await handler.handle(request as JsonRpcRequest);
+
+          expect(result).toStrictEqual(feeResult);
+          expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
+            scope,
+            transaction: expect.any(Object),
+            availableEnergy: BigNumber('0'),
+            availableBandwidth: BigNumber('0'),
+            feeLimit: FALLBACK_FEE,
+          });
+        }));
     });
 
     describe('when called with invalid parameters', () => {
-      it('throws InvalidParamsError for missing accountId', async () => {
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '4',
-          method: ClientRequestMethod.ComputeFee,
-          params: {
-            transaction: TEST_TRANSACTION_BASE64,
-            scope: Network.Shasta,
-            options: {
-              visible: false,
-              type: 'TransferContract',
+      it('throws InvalidParamsError for missing accountId', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler } = setup;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '4',
+            method: ClientRequestMethod.ComputeFee,
+            params: {
+              transaction: TEST_TRANSACTION_BASE64,
+              scope: Network.Shasta,
+              options: {
+                visible: false,
+                type: 'TransferContract',
+              },
             },
-          },
-        };
+          };
 
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Invalid method parameter(s)');
-      });
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Invalid method parameter(s)');
+        }));
 
-      it('throws InvalidParamsError for invalid transaction format', async () => {
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '5',
-          method: ClientRequestMethod.ComputeFee,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: 'not-valid-base64!!!',
-            scope: Network.Shasta,
-            options: {
-              visible: false,
-              type: 'TransferContract',
+      it('throws InvalidParamsError for invalid transaction format', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler } = setup;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '5',
+            method: ClientRequestMethod.ComputeFee,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: 'not-valid-base64!!!',
+              scope: Network.Shasta,
+              options: {
+                visible: false,
+                type: 'TransferContract',
+              },
             },
-          },
-        };
+          };
 
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Invalid method parameter(s)');
-      });
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Invalid method parameter(s)');
+        }));
 
-      it('throws error when account not found', async () => {
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '6',
-          method: ClientRequestMethod.ComputeFee,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            transaction: TEST_TRANSACTION_BASE64,
-            scope: Network.Shasta,
-            options: {
-              visible: false,
-              type: 'TransferContract',
+      it('throws error when account not found', async () =>
+        withComputeFeeHandler(async (setup) => {
+          const { handler, mockAccountsService } = setup;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '6',
+            method: ClientRequestMethod.ComputeFee,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope: Network.Shasta,
+              options: {
+                visible: false,
+                type: 'TransferContract',
+              },
             },
-          },
-        };
+          };
 
-        mockAccountsService.findByIdOrThrow.mockRejectedValue(
-          new Error('Account not found'),
-        );
+          mockAccountsService.findByIdOrThrow.mockRejectedValue(
+            new Error('Account not found'),
+          );
 
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Account not found');
-      });
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Account not found');
+        }));
     });
   });
 
   describe('signRewardsMessage', () => {
-    let clientRequestHandler: ClientRequestHandler;
-    let mockAccountsService: jest.Mocked<AccountsService>;
-    let mockAssetsService: jest.Mocked<AssetsService>;
-    let mockSendService: jest.Mocked<SendService>;
-    let mockFeeCalculatorService: jest.Mocked<FeeCalculatorService>;
-    let mockTronWebFactory: jest.Mocked<TronWebFactory>;
-    let mockSnapClient: jest.Mocked<SnapClient>;
-    let mockStakingService: jest.Mocked<StakingService>;
-    let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
-    let mockTronWeb: any;
-    let mockTransactionsService: jest.Mocked<TransactionsService>;
-
     const TEST_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
     const TEST_PRIVATE_KEY = 'test-private-key';
 
@@ -1137,225 +1088,194 @@ describe('ClientRequestHandler', () => {
       return Buffer.from(utf8, 'utf8').toString('base64');
     };
 
-    beforeEach(() => {
-      mockAccountsService = {
-        findById: jest.fn(),
-        findByIds: jest.fn(),
-        deriveTronKeypair: jest.fn(),
-        deriveTronKeypairs: jest.fn(),
-      } as unknown as jest.Mocked<AccountsService>;
-
-      mockAssetsService = {} as unknown as jest.Mocked<AssetsService>;
-      mockSendService = {} as unknown as jest.Mocked<SendService>;
-      mockFeeCalculatorService =
-        {} as unknown as jest.Mocked<FeeCalculatorService>;
-
-      mockTronWeb = {
-        trx: {
-          signMessageV2: jest.fn(),
-        },
-      };
-
-      mockTronWebFactory = {
-        createClient: jest.fn().mockReturnValue(mockTronWeb),
-      } as unknown as jest.Mocked<TronWebFactory>;
-
-      mockSnapClient = {} as unknown as jest.Mocked<SnapClient>;
-      mockStakingService = {} as unknown as jest.Mocked<StakingService>;
-      mockConfirmationHandler =
-        {} as unknown as jest.Mocked<ConfirmationHandler>;
-      mockTransactionsService =
-        {} as unknown as jest.Mocked<TransactionsService>;
-
-      clientRequestHandler = new ClientRequestHandler({
-        logger: mockLogger,
-        accountsService: mockAccountsService,
-        assetsService: mockAssetsService,
-        sendService: mockSendService,
-        feeCalculatorService: mockFeeCalculatorService,
-        tronWebFactory: mockTronWebFactory,
-        snapClient: mockSnapClient,
-        stakingService: mockStakingService,
-        confirmationHandler: mockConfirmationHandler,
-        transactionsService: mockTransactionsService,
-        transactionExpirationRefresherService:
-          createPassThroughTransactionExpirationRefresherService(),
-        analyticsService: createMockAnalyticsService(),
-      });
-    });
-
     describe('when called with valid parameters', () => {
       it('signs a rewards message and returns the signature', async () => {
-        const mockTimestamp = 1736660000;
-        const message = utf8ToBase64(
-          `rewards,${TEST_ADDRESS},${mockTimestamp}`,
-        );
-        const mockSignature = '0x1234567890abcdef';
+        await withClientRequestHandler(
+          async ({
+            handler,
+            mockAccountsService,
+            mockTronWeb,
+            mockTronWebFactory,
+          }) => {
+            const mockTimestamp = 1736660000;
+            const message = utf8ToBase64(
+              `rewards,${TEST_ADDRESS},${mockTimestamp}`,
+            );
+            const mockSignature = '0x1234567890abcdef';
 
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignRewardsMessage,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            message,
+            const request = {
+              jsonrpc: '2.0' as const,
+              id: '1',
+              method: ClientRequestMethod.SignRewardsMessage,
+              params: {
+                accountId: TEST_ACCOUNT_ID,
+                message,
+              },
+            };
+
+            // Mock account lookup
+            mockAccountsService.findById.mockResolvedValue({
+              id: TEST_ACCOUNT_ID,
+              address: TEST_ADDRESS,
+              entropySource: 'test-entropy',
+              derivationPath: [],
+            } as any);
+
+            // Mock keypair derivation
+            mockAccountsService.deriveTronKeypair.mockResolvedValue({
+              privateKeyHex: TEST_PRIVATE_KEY,
+            } as any);
+
+            // Mock message signing
+            mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
+
+            const result = await handler.handle(request);
+
+            expect(mockAccountsService.findById).toHaveBeenCalledWith(
+              TEST_ACCOUNT_ID,
+            );
+            expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+              entropySource: 'test-entropy',
+              derivationPath: [],
+            });
+            expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+              Network.Mainnet,
+              TEST_PRIVATE_KEY,
+            );
+            expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+              `rewards,${TEST_ADDRESS},${mockTimestamp}`,
+              TEST_PRIVATE_KEY,
+            );
+            expect(result).toStrictEqual({
+              signature: mockSignature,
+              signedMessage: message,
+              signatureType: 'secp256k1',
+            });
           },
-        };
-
-        // Mock account lookup
-        mockAccountsService.findById.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: TEST_ADDRESS,
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        } as any);
-
-        // Mock keypair derivation
-        mockAccountsService.deriveTronKeypair.mockResolvedValue({
-          privateKeyHex: TEST_PRIVATE_KEY,
-        } as any);
-
-        // Mock message signing
-        mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
-
-        const result = await clientRequestHandler.handle(request);
-
-        expect(mockAccountsService.findById).toHaveBeenCalledWith(
-          TEST_ACCOUNT_ID,
         );
-        expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        });
-        expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
-          Network.Mainnet,
-          TEST_PRIVATE_KEY,
-        );
-        expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
-          `rewards,${TEST_ADDRESS},${mockTimestamp}`,
-          TEST_PRIVATE_KEY,
-        );
-        expect(result).toStrictEqual({
-          signature: mockSignature,
-          signedMessage: message,
-          signatureType: 'secp256k1',
-        });
       });
     });
 
     describe('when called with invalid parameters', () => {
       it('throws error when message does not start with "rewards,"', async () => {
-        const invalidMessage = utf8ToBase64('invalid-message');
+        await withClientRequestHandler(async ({ handler }) => {
+          const invalidMessage = utf8ToBase64('invalid-message');
 
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignRewardsMessage,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            message: invalidMessage,
-          },
-        };
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignRewardsMessage,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              message: invalidMessage,
+            },
+          };
 
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Invalid method parameter(s)');
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Invalid method parameter(s)');
+        });
       });
 
       it('throws error when account is not found', async () => {
-        const mockTimestamp = 1736660000;
-        const message = utf8ToBase64(
-          `rewards,${TEST_ADDRESS},${mockTimestamp}`,
-        );
+        await withClientRequestHandler(
+          async ({ handler, mockAccountsService }) => {
+            const mockTimestamp = 1736660000;
+            const message = utf8ToBase64(
+              `rewards,${TEST_ADDRESS},${mockTimestamp}`,
+            );
 
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignRewardsMessage,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            message,
+            const request = {
+              jsonrpc: '2.0' as const,
+              id: '1',
+              method: ClientRequestMethod.SignRewardsMessage,
+              params: {
+                accountId: TEST_ACCOUNT_ID,
+                message,
+              },
+            };
+
+            mockAccountsService.findById.mockResolvedValue(null);
+
+            await expect(
+              handler.handle(request as JsonRpcRequest),
+            ).rejects.toThrow('Account not found');
           },
-        };
-
-        mockAccountsService.findById.mockResolvedValue(null);
-
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Account not found');
+        );
       });
 
       it('throws error when address in message does not match signing account', async () => {
-        const mockTimestamp = 1736660000;
-        // Use a different address - validation will catch invalid addresses
-        const differentAddress = 'invalid-address';
-        const message = utf8ToBase64(
-          `rewards,${differentAddress},${mockTimestamp}`,
-        );
+        await withClientRequestHandler(async ({ handler }) => {
+          const mockTimestamp = 1736660000;
+          // Use a different address - validation will catch invalid addresses
+          const differentAddress = 'invalid-address';
+          const message = utf8ToBase64(
+            `rewards,${differentAddress},${mockTimestamp}`,
+          );
 
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignRewardsMessage,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            message,
-          },
-        };
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignRewardsMessage,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              message,
+            },
+          };
 
-        // The validation struct will catch the invalid address format
-        // before we can compare it to the signing account address
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Invalid method parameter(s)');
+          // The validation struct will catch the invalid address format
+          // before we can compare it to the signing account address
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Invalid method parameter(s)');
+        });
       });
 
       it('throws error when message has invalid format', async () => {
-        const invalidMessage = utf8ToBase64('rewards,invalid');
+        await withClientRequestHandler(async ({ handler }) => {
+          const invalidMessage = utf8ToBase64('rewards,invalid');
 
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignRewardsMessage,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            message: invalidMessage,
-          },
-        };
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignRewardsMessage,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              message: invalidMessage,
+            },
+          };
 
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Invalid method parameter(s)');
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Invalid method parameter(s)');
+        });
       });
 
       it('throws error when timestamp is invalid', async () => {
-        const invalidMessage = utf8ToBase64(
-          `rewards,${TEST_ADDRESS},invalid-timestamp`,
-        );
+        await withClientRequestHandler(async ({ handler }) => {
+          const invalidMessage = utf8ToBase64(
+            `rewards,${TEST_ADDRESS},invalid-timestamp`,
+          );
 
-        const request = {
-          jsonrpc: '2.0' as const,
-          id: '1',
-          method: ClientRequestMethod.SignRewardsMessage,
-          params: {
-            accountId: TEST_ACCOUNT_ID,
-            message: invalidMessage,
-          },
-        };
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignRewardsMessage,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              message: invalidMessage,
+            },
+          };
 
-        await expect(
-          clientRequestHandler.handle(request as JsonRpcRequest),
-        ).rejects.toThrow('Invalid method parameter(s)');
+          await expect(
+            handler.handle(request as JsonRpcRequest),
+          ).rejects.toThrow('Invalid method parameter(s)');
+        });
       });
     });
   });
 
   describe('signProofOfOwnership', () => {
-    let clientRequestHandler: ClientRequestHandler;
-    let mockAccountsService: jest.Mocked<AccountsService>;
-    let mockTronWebFactory: jest.Mocked<TronWebFactory>;
-    let mockTronWeb: any;
-
     const TEST_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
     const TEST_PRIVATE_KEY = 'test-private-key';
     const TEST_NONCE = 'a1b2c3d4e5f6789012345678';
@@ -1375,137 +1295,122 @@ describe('ClientRequestHandler', () => {
       params: { accountId, message },
     });
 
-    beforeEach(() => {
-      mockAccountsService = {
-        findById: jest.fn(),
-        findByIds: jest.fn(),
-        deriveTronKeypair: jest.fn(),
-        deriveTronKeypairs: jest.fn(),
-      } as unknown as jest.Mocked<AccountsService>;
-
-      mockTronWeb = {
-        trx: {
-          signMessageV2: jest.fn(),
-        },
-      };
-
-      mockTronWebFactory = {
-        createClient: jest.fn().mockReturnValue(mockTronWeb),
-      } as unknown as jest.Mocked<TronWebFactory>;
-
-      clientRequestHandler = new ClientRequestHandler({
-        logger: mockLogger,
-        accountsService: mockAccountsService,
-        assetsService: {} as unknown as jest.Mocked<AssetsService>,
-        sendService: {} as unknown as jest.Mocked<SendService>,
-        feeCalculatorService:
-          {} as unknown as jest.Mocked<FeeCalculatorService>,
-        tronWebFactory: mockTronWebFactory,
-        snapClient: {} as unknown as jest.Mocked<SnapClient>,
-        stakingService: {} as unknown as jest.Mocked<StakingService>,
-        confirmationHandler: {} as unknown as jest.Mocked<ConfirmationHandler>,
-        transactionsService: {} as unknown as jest.Mocked<TransactionsService>,
-        transactionExpirationRefresherService:
-          createPassThroughTransactionExpirationRefresherService(),
-        analyticsService: createMockAnalyticsService(),
-      });
-    });
-
     it('signs the proof message and returns the signature', async () => {
-      const mockSignature = '0xdeadbeef';
+      await withClientRequestHandler(
+        async ({
+          handler,
+          mockAccountsService,
+          mockTronWeb,
+          mockTronWebFactory,
+        }) => {
+          const mockSignature = '0xdeadbeef';
 
-      mockAccountsService.findById.mockResolvedValue({
-        id: TEST_ACCOUNT_ID,
-        address: TEST_ADDRESS,
-        entropySource: 'test-entropy',
-        derivationPath: [],
-      } as any);
-      mockAccountsService.deriveTronKeypair.mockResolvedValue({
-        privateKeyHex: TEST_PRIVATE_KEY,
-      } as any);
-      mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
+          mockAccountsService.findById.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: TEST_ADDRESS,
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: TEST_PRIVATE_KEY,
+          });
+          mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
 
-      const message = buildProofMessage();
-      const result = await clientRequestHandler.handle(buildRequest(message));
+          const message = buildProofMessage();
+          const result = await handler.handle(buildRequest(message));
 
-      expect(mockAccountsService.findById).toHaveBeenCalledWith(
-        TEST_ACCOUNT_ID,
+          expect(mockAccountsService.findById).toHaveBeenCalledWith(
+            TEST_ACCOUNT_ID,
+          );
+          expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+          expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
+            Network.Mainnet,
+            TEST_PRIVATE_KEY,
+          );
+          expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+            message,
+            TEST_PRIVATE_KEY,
+          );
+          expect(result).toStrictEqual({ signature: mockSignature });
+        },
       );
-      expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
-        entropySource: 'test-entropy',
-        derivationPath: [],
-      });
-      expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
-        Network.Mainnet,
-        TEST_PRIVATE_KEY,
-      );
-      expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
-        message,
-        TEST_PRIVATE_KEY,
-      );
-      expect(result).toStrictEqual({ signature: mockSignature });
     });
 
     it('accepts a nonce that contains colons (splits on the last ":")', async () => {
-      const mockSignature = '0xdeadbeef';
-      mockAccountsService.findById.mockResolvedValue({
-        id: TEST_ACCOUNT_ID,
-        address: TEST_ADDRESS,
-        entropySource: 'test-entropy',
-        derivationPath: [],
-      } as any);
-      mockAccountsService.deriveTronKeypair.mockResolvedValue({
-        privateKeyHex: TEST_PRIVATE_KEY,
-      } as any);
-      mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
+      await withClientRequestHandler(
+        async ({ handler, mockAccountsService, mockTronWeb }) => {
+          const mockSignature = '0xdeadbeef';
+          mockAccountsService.findById.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: TEST_ADDRESS,
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          });
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: TEST_PRIVATE_KEY,
+          });
+          mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
 
-      const message = buildProofMessage(TEST_ADDRESS, 'ns:abc:123');
-      const result = await clientRequestHandler.handle(buildRequest(message));
+          const message = buildProofMessage(TEST_ADDRESS, 'ns:abc:123');
+          const result = await handler.handle(buildRequest(message));
 
-      expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
-        message,
-        TEST_PRIVATE_KEY,
+          expect(mockTronWeb.trx.signMessageV2).toHaveBeenCalledWith(
+            message,
+            TEST_PRIVATE_KEY,
+          );
+          expect(result).toStrictEqual({ signature: mockSignature });
+        },
       );
-      expect(result).toStrictEqual({ signature: mockSignature });
     });
 
     it('throws when the message does not start with the proof prefix', async () => {
-      await expect(
-        clientRequestHandler.handle(
-          buildRequest(`rewards,${TEST_ADDRESS},1736660000`),
-        ),
-      ).rejects.toThrow('Invalid method parameter(s)');
+      await withClientRequestHandler(async ({ handler }) => {
+        await expect(
+          handler.handle(buildRequest(`rewards,${TEST_ADDRESS},1736660000`)),
+        ).rejects.toThrow('Invalid method parameter(s)');
+      });
     });
 
     it('throws when the message has an invalid Tron address', async () => {
-      const message = buildProofMessage('invalid-address');
-      await expect(
-        clientRequestHandler.handle(buildRequest(message)),
-      ).rejects.toThrow('Invalid method parameter(s)');
+      await withClientRequestHandler(async ({ handler }) => {
+        const message = buildProofMessage('invalid-address');
+        await expect(handler.handle(buildRequest(message))).rejects.toThrow(
+          'Invalid method parameter(s)',
+        );
+      });
     });
 
     it('throws when the account is not found', async () => {
-      mockAccountsService.findById.mockResolvedValue(null);
+      await withClientRequestHandler(
+        async ({ handler, mockAccountsService }) => {
+          mockAccountsService.findById.mockResolvedValue(null);
 
-      await expect(
-        clientRequestHandler.handle(buildRequest(buildProofMessage())),
-      ).rejects.toThrow('Account not found');
+          await expect(
+            handler.handle(buildRequest(buildProofMessage())),
+          ).rejects.toThrow('Account not found');
+        },
+      );
     });
 
     it('throws when the address in the message does not match the signing account', async () => {
-      const otherAddress = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
-      mockAccountsService.findById.mockResolvedValue({
-        id: TEST_ACCOUNT_ID,
-        address: TEST_ADDRESS,
-        entropySource: 'test-entropy',
-        derivationPath: [],
-      } as any);
+      await withClientRequestHandler(
+        async ({ handler, mockAccountsService }) => {
+          const otherAddress = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8';
+          mockAccountsService.findById.mockResolvedValue({
+            id: TEST_ACCOUNT_ID,
+            address: TEST_ADDRESS,
+            entropySource: 'test-entropy',
+            derivationPath: [],
+          } as any);
 
-      await expect(
-        clientRequestHandler.handle(
-          buildRequest(buildProofMessage(otherAddress)),
-        ),
-      ).rejects.toThrow('does not match signing account address');
+          await expect(
+            handler.handle(buildRequest(buildProofMessage(otherAddress))),
+          ).rejects.toThrow('does not match signing account address');
+        },
+      );
     });
 
     describe('signProofOfOwnershipBatch', () => {
@@ -1545,225 +1450,245 @@ describe('ClientRequestHandler', () => {
       };
 
       it('signs a batch and returns signatures in input order', async () => {
-        const message1 = buildProofMessage(TEST_ADDRESS);
-        const message2 = buildProofMessage(TEST_ADDRESS_2);
-        mockAccountsService.findByIds.mockResolvedValue([account2, account1]);
-        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
-          {
-            privateKeyBytes: new Uint8Array(),
-            publicKeyBytes: new Uint8Array(),
-            privateKeyHex: 'private-key-1',
-            address: TEST_ADDRESS,
-          },
-          {
-            privateKeyBytes: new Uint8Array(),
-            publicKeyBytes: new Uint8Array(),
-            privateKeyHex: 'private-key-2',
-            address: TEST_ADDRESS_2,
-          },
-        ]);
-        mockTronWeb.trx.signMessageV2
-          .mockReturnValueOnce('0xsignature1')
-          .mockReturnValueOnce('0xsignature2');
+        await withClientRequestHandler(
+          async ({ handler, mockAccountsService, mockTronWeb }) => {
+            const message1 = buildProofMessage(TEST_ADDRESS);
+            const message2 = buildProofMessage(TEST_ADDRESS_2);
+            mockAccountsService.findByIds.mockResolvedValue([
+              account2,
+              account1,
+            ]);
+            mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+              {
+                privateKeyBytes: new Uint8Array(),
+                publicKeyBytes: new Uint8Array(),
+                privateKeyHex: 'private-key-1',
+                address: TEST_ADDRESS,
+              },
+              {
+                privateKeyBytes: new Uint8Array(),
+                publicKeyBytes: new Uint8Array(),
+                privateKeyHex: 'private-key-2',
+                address: TEST_ADDRESS_2,
+              },
+            ]);
+            mockTronWeb.trx.signMessageV2
+              .mockReturnValueOnce('0xsignature1')
+              .mockReturnValueOnce('0xsignature2');
 
-        const result = await clientRequestHandler.handle(
-          buildBatchRequest([
-            { accountId: TEST_ACCOUNT_ID, message: message1 },
-            { accountId: TEST_ACCOUNT_ID_2, message: message2 },
-          ]),
-        );
+            const result = await handler.handle(
+              buildBatchRequest([
+                { accountId: TEST_ACCOUNT_ID, message: message1 },
+                { accountId: TEST_ACCOUNT_ID_2, message: message2 },
+              ]),
+            );
 
-        expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
-          TEST_ACCOUNT_ID,
-          TEST_ACCOUNT_ID_2,
-        ]);
-        expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledWith([
-          account1,
-          account2,
-        ]);
-        expect(mockTronWeb.trx.signMessageV2).toHaveBeenNthCalledWith(
-          1,
-          message1,
-          'private-key-1',
+            expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
+              TEST_ACCOUNT_ID,
+              TEST_ACCOUNT_ID_2,
+            ]);
+            expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledWith(
+              [account1, account2],
+            );
+            expect(mockTronWeb.trx.signMessageV2).toHaveBeenNthCalledWith(
+              1,
+              message1,
+              'private-key-1',
+            );
+            expect(mockTronWeb.trx.signMessageV2).toHaveBeenNthCalledWith(
+              2,
+              message2,
+              'private-key-2',
+            );
+            expect(result).toStrictEqual({
+              results: [
+                { accountId: TEST_ACCOUNT_ID, signature: '0xsignature1' },
+                { accountId: TEST_ACCOUNT_ID_2, signature: '0xsignature2' },
+              ],
+            });
+          },
         );
-        expect(mockTronWeb.trx.signMessageV2).toHaveBeenNthCalledWith(
-          2,
-          message2,
-          'private-key-2',
-        );
-        expect(result).toStrictEqual({
-          results: [
-            { accountId: TEST_ACCOUNT_ID, signature: '0xsignature1' },
-            { accountId: TEST_ACCOUNT_ID_2, signature: '0xsignature2' },
-          ],
-        });
       });
 
       it('matches requested account IDs case-insensitively', async () => {
-        const message = buildProofMessage(TEST_ADDRESS);
-        const requestedAccountId = TEST_ACCOUNT_ID.toUpperCase();
-        mockAccountsService.findByIds.mockResolvedValue([account1]);
-        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
-          {
-            privateKeyBytes: new Uint8Array(),
-            publicKeyBytes: new Uint8Array(),
-            privateKeyHex: 'private-key-1',
-            address: TEST_ADDRESS,
+        await withClientRequestHandler(
+          async ({ handler, mockAccountsService, mockTronWeb }) => {
+            const message = buildProofMessage(TEST_ADDRESS);
+            const requestedAccountId = TEST_ACCOUNT_ID.toUpperCase();
+            mockAccountsService.findByIds.mockResolvedValue([account1]);
+            mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+              {
+                privateKeyBytes: new Uint8Array(),
+                publicKeyBytes: new Uint8Array(),
+                privateKeyHex: 'private-key-1',
+                address: TEST_ADDRESS,
+              },
+            ]);
+            mockTronWeb.trx.signMessageV2.mockReturnValue('0xsignature1');
+
+            const result = await handler.handle(
+              buildBatchRequest([{ accountId: requestedAccountId, message }]),
+            );
+
+            expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
+              requestedAccountId,
+            ]);
+            expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledWith(
+              [account1],
+            );
+            expect(result).toStrictEqual({
+              results: [
+                { accountId: requestedAccountId, signature: '0xsignature1' },
+              ],
+            });
           },
-        ]);
-        mockTronWeb.trx.signMessageV2.mockReturnValue('0xsignature1');
-
-        const result = await clientRequestHandler.handle(
-          buildBatchRequest([{ accountId: requestedAccountId, message }]),
         );
-
-        expect(mockAccountsService.findByIds).toHaveBeenCalledWith([
-          requestedAccountId,
-        ]);
-        expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledWith([
-          account1,
-        ]);
-        expect(result).toStrictEqual({
-          results: [
-            { accountId: requestedAccountId, signature: '0xsignature1' },
-          ],
-        });
       });
 
       it('returns item-level errors for missing accounts and address mismatches', async () => {
-        const missingAccountId = '123e4567-e89b-42d3-a456-426614174099';
-        const validMessage = buildProofMessage(TEST_ADDRESS);
-        const mismatchedMessage = buildProofMessage(TEST_ADDRESS_2);
-        mockAccountsService.findByIds.mockResolvedValue([account1]);
-        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
-          {
-            privateKeyBytes: new Uint8Array(),
-            publicKeyBytes: new Uint8Array(),
-            privateKeyHex: 'private-key-1',
-            address: TEST_ADDRESS,
+        await withClientRequestHandler(
+          async ({ handler, mockAccountsService, mockTronWeb }) => {
+            const missingAccountId = '123e4567-e89b-42d3-a456-426614174099';
+            const validMessage = buildProofMessage(TEST_ADDRESS);
+            const mismatchedMessage = buildProofMessage(TEST_ADDRESS_2);
+            mockAccountsService.findByIds.mockResolvedValue([account1]);
+            mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+              {
+                privateKeyBytes: new Uint8Array(),
+                publicKeyBytes: new Uint8Array(),
+                privateKeyHex: 'private-key-1',
+                address: TEST_ADDRESS,
+              },
+            ]);
+            mockTronWeb.trx.signMessageV2.mockReturnValue('0xsignature1');
+
+            const result = await handler.handle(
+              buildBatchRequest([
+                { accountId: TEST_ACCOUNT_ID, message: validMessage },
+                { accountId: missingAccountId, message: validMessage },
+                { accountId: TEST_ACCOUNT_ID, message: mismatchedMessage },
+              ]),
+            );
+
+            expect(
+              mockAccountsService.deriveTronKeypairs,
+            ).toHaveBeenCalledTimes(1);
+            expect(result).toStrictEqual({
+              results: [
+                { accountId: TEST_ACCOUNT_ID, signature: '0xsignature1' },
+                {
+                  accountId: missingAccountId,
+                  error: `Account not found: ${missingAccountId}`,
+                },
+                {
+                  accountId: TEST_ACCOUNT_ID,
+                  error: `Address in proof-of-ownership message (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
+                },
+              ],
+            });
           },
-        ]);
-        mockTronWeb.trx.signMessageV2.mockReturnValue('0xsignature1');
-
-        const result = await clientRequestHandler.handle(
-          buildBatchRequest([
-            { accountId: TEST_ACCOUNT_ID, message: validMessage },
-            { accountId: missingAccountId, message: validMessage },
-            { accountId: TEST_ACCOUNT_ID, message: mismatchedMessage },
-          ]),
         );
-
-        expect(mockAccountsService.deriveTronKeypairs).toHaveBeenCalledTimes(1);
-        expect(result).toStrictEqual({
-          results: [
-            { accountId: TEST_ACCOUNT_ID, signature: '0xsignature1' },
-            {
-              accountId: missingAccountId,
-              error: `Account not found: ${missingAccountId}`,
-            },
-            {
-              accountId: TEST_ACCOUNT_ID,
-              error: `Address in proof-of-ownership message (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
-            },
-          ],
-        });
       });
 
       it('returns item-level errors from batch key derivation', async () => {
-        const message = buildProofMessage(TEST_ADDRESS);
-        mockAccountsService.findByIds.mockResolvedValue([account1]);
-        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
-          { error: 'Unable to derive private key' },
-        ]);
+        await withClientRequestHandler(
+          async ({ handler, mockAccountsService }) => {
+            const message = buildProofMessage(TEST_ADDRESS);
+            mockAccountsService.findByIds.mockResolvedValue([account1]);
+            mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+              { error: 'Unable to derive private key' },
+            ]);
 
-        const result = await clientRequestHandler.handle(
-          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+            const result = await handler.handle(
+              buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+            );
+
+            expect(result).toStrictEqual({
+              results: [
+                {
+                  accountId: TEST_ACCOUNT_ID,
+                  error: 'Unable to derive private key',
+                },
+              ],
+            });
+          },
         );
-
-        expect(result).toStrictEqual({
-          results: [
-            {
-              accountId: TEST_ACCOUNT_ID,
-              error: 'Unable to derive private key',
-            },
-          ],
-        });
       });
 
       it('returns a generic item-level error when signing throws', async () => {
-        const message = buildProofMessage(TEST_ADDRESS);
-        mockAccountsService.findByIds.mockResolvedValue([account1]);
-        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
-          {
-            privateKeyBytes: new Uint8Array(),
-            publicKeyBytes: new Uint8Array(),
-            privateKeyHex: 'private-key-1',
-            address: TEST_ADDRESS,
+        await withClientRequestHandler(
+          async ({ handler, mockAccountsService, mockTronWeb }) => {
+            const message = buildProofMessage(TEST_ADDRESS);
+            mockAccountsService.findByIds.mockResolvedValue([account1]);
+            mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+              {
+                privateKeyBytes: new Uint8Array(),
+                publicKeyBytes: new Uint8Array(),
+                privateKeyHex: 'private-key-1',
+                address: TEST_ADDRESS,
+              },
+            ]);
+            mockTronWeb.trx.signMessageV2.mockImplementation(() => {
+              throw new Error(`Private key leaked: ${TEST_PRIVATE_KEY}`);
+            });
+
+            const result = await handler.handle(
+              buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+            );
+
+            expect(result).toStrictEqual({
+              results: [
+                {
+                  accountId: TEST_ACCOUNT_ID,
+                  error: 'Failed to sign message',
+                },
+              ],
+            });
           },
-        ]);
-        mockTronWeb.trx.signMessageV2.mockImplementation(() => {
-          throw new Error(`Private key leaked: ${TEST_PRIVATE_KEY}`);
-        });
-
-        const result = await clientRequestHandler.handle(
-          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
         );
-
-        expect(result).toStrictEqual({
-          results: [
-            {
-              accountId: TEST_ACCOUNT_ID,
-              error: 'Failed to sign message',
-            },
-          ],
-        });
       });
 
       it('returns an item-level error when the derived address does not match the account', async () => {
-        const message = buildProofMessage(TEST_ADDRESS);
-        mockAccountsService.findByIds.mockResolvedValue([account1]);
-        mockAccountsService.deriveTronKeypairs.mockResolvedValue([
-          {
-            privateKeyBytes: new Uint8Array(),
-            publicKeyBytes: new Uint8Array(),
-            privateKeyHex: 'private-key-1',
-            address: TEST_ADDRESS_2,
+        await withClientRequestHandler(
+          async ({
+            handler,
+            mockAccountsService,
+            mockTronWeb,
+            mockTronWebFactory,
+          }) => {
+            const message = buildProofMessage(TEST_ADDRESS);
+            mockAccountsService.findByIds.mockResolvedValue([account1]);
+            mockAccountsService.deriveTronKeypairs.mockResolvedValue([
+              {
+                privateKeyBytes: new Uint8Array(),
+                publicKeyBytes: new Uint8Array(),
+                privateKeyHex: 'private-key-1',
+                address: TEST_ADDRESS_2,
+              },
+            ]);
+
+            const result = await handler.handle(
+              buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
+            );
+
+            expect(mockTronWebFactory.createClient).not.toHaveBeenCalled();
+            expect(mockTronWeb.trx.signMessageV2).not.toHaveBeenCalled();
+            expect(result).toStrictEqual({
+              results: [
+                {
+                  accountId: TEST_ACCOUNT_ID,
+                  error: `Derived address (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
+                },
+              ],
+            });
           },
-        ]);
-
-        const result = await clientRequestHandler.handle(
-          buildBatchRequest([{ accountId: TEST_ACCOUNT_ID, message }]),
         );
-
-        expect(mockTronWebFactory.createClient).not.toHaveBeenCalled();
-        expect(mockTronWeb.trx.signMessageV2).not.toHaveBeenCalled();
-        expect(result).toStrictEqual({
-          results: [
-            {
-              accountId: TEST_ACCOUNT_ID,
-              error: `Derived address (${TEST_ADDRESS_2}) does not match signing account address (${TEST_ADDRESS})`,
-            },
-          ],
-        });
       });
     });
   });
 });
 
 describe('ClientRequestHandler - signAndSendTransaction', () => {
-  let clientRequestHandler: ClientRequestHandler;
-  let mockAccountsService: jest.Mocked<AccountsService>;
-  let mockAssetsService: jest.Mocked<AssetsService>;
-  let mockSendService: jest.Mocked<SendService>;
-  let mockFeeCalculatorService: jest.Mocked<FeeCalculatorService>;
-  let mockTronWebFactory: jest.Mocked<TronWebFactory>;
-  let mockSnapClient: jest.Mocked<SnapClient>;
-  let mockAnalyticsService: jest.Mocked<AnalyticsService>;
-  let mockStakingService: jest.Mocked<StakingService>;
-  let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
-  let mockTransactionsService: jest.Mocked<TransactionsService>;
-  let mockTronWeb: any;
-
   const TEST_TRANSACTION_BASE64 =
     'CgK0FiII40phBu42/OZAkJyY96YzWrADCB8SqwMKMXR5cGUuZ29vZ2xlYXBpcy5jb20vcHJvdG9jb2wuVHJpZ2dlclNtYXJ0Q29udHJhY3QS9QIKFUEU0B62M0bakw7g2jDVhRrBTODEeRIVQZlGn9WqCM/oNjlc6ZPA69Vn4sFPIsQCnd+TuwAAAAAAAAAAAAAAAKYU+AO2/XgJhqQseOycf3fm3tE8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+vCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnq6OQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1RSWHxzeWtuZjl8MC41fGJyaWRnZXJzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACJUQnNGcUttbVJ5WWNuWUphOFlEeFk1ZDJKQVJhSGVxdUJKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcLzdlPemMw==';
   const CORRECT_OWNER_ADDRESS_HEX =
@@ -1772,386 +1697,341 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
   const CORRECT_OWNER_ADDRESS_BASE58 = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
   const transactionId = 'mock-tx-id';
 
-  beforeEach(() => {
-    mockAccountsService = {
-      findByIdOrThrow: jest.fn(),
-      deriveTronKeypair: jest.fn(),
-    } as unknown as jest.Mocked<AccountsService>;
-
-    mockAssetsService = {
-      getAccountAssetsByIDs: jest.fn(),
-      fetchAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
-      fetchAccountAssetByID: jest.fn().mockResolvedValue(null),
-    } as unknown as jest.Mocked<AssetsService>;
-
-    mockSendService = {} as unknown as jest.Mocked<SendService>;
-
-    mockFeeCalculatorService = {
-      computeFee: jest.fn(),
-    } as unknown as jest.Mocked<FeeCalculatorService>;
-
-    mockTronWeb = {
-      utils: {
-        deserializeTx: {
-          deserializeTransaction: jest.fn(),
-        },
-        transaction: {
-          txJsonToPb: jest.fn().mockImplementation((tx) => tx),
-          txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
-          txPbToTxID: jest.fn().mockReturnValue(transactionId),
-        },
-      },
-      trx: {
-        sign: jest.fn().mockReturnValue({}),
-        sendRawTransaction: jest
-          .fn()
-          .mockReturnValue({ result: true, txid: transactionId }),
-      },
-    };
-
-    mockTronWebFactory = {
-      createClient: jest.fn().mockReturnValue(mockTronWeb),
-      executeBroadcast: jest
-        .fn()
-        .mockImplementation(
-          async (_scope: Network, operation: () => Promise<unknown>) =>
-            operation(),
-        ),
-    } as unknown as jest.Mocked<TronWebFactory>;
-
-    mockSnapClient = {
-      scheduleBackgroundEvent: jest.fn(),
-    } as unknown as jest.Mocked<SnapClient>;
-
-    mockAnalyticsService = {
-      trackTransactionSubmitted: jest.fn(),
-    } as unknown as jest.Mocked<AnalyticsService>;
-
-    mockStakingService = {} as unknown as jest.Mocked<StakingService>;
-
-    mockConfirmationHandler = {} as unknown as jest.Mocked<ConfirmationHandler>;
-
-    mockTransactionsService = {
-      save: jest.fn(),
-    } as unknown as jest.Mocked<TransactionsService>;
-
-    clientRequestHandler = new ClientRequestHandler({
-      logger: mockLogger,
-      accountsService: mockAccountsService,
-      assetsService: mockAssetsService,
-      sendService: mockSendService,
-      feeCalculatorService: mockFeeCalculatorService,
-      tronWebFactory: mockTronWebFactory,
-      snapClient: mockSnapClient,
-      stakingService: mockStakingService,
-      confirmationHandler: mockConfirmationHandler,
-      transactionsService: mockTransactionsService,
-      transactionExpirationRefresherService:
-        createPassThroughTransactionExpirationRefresherService(),
-      analyticsService: mockAnalyticsService,
-    });
-  });
-
   it('rejects signAndSendTransaction when owner_address does not match the signer', async () => {
-    const scope = Network.Mainnet;
-    const request = {
-      jsonrpc: '2.0' as const,
-      id: '1',
-      method: ClientRequestMethod.SignAndSendTransaction,
-      params: {
-        accountId: TEST_ACCOUNT_ID,
-        transaction: TEST_TRANSACTION_BASE64,
-        scope,
-        options: {
-          visible: false,
-          type: 'TriggerSmartContract',
-        },
-      },
-    };
-
-    mockAccountsService.findByIdOrThrow.mockResolvedValue({
-      id: TEST_ACCOUNT_ID,
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-      entropySource: 'test-entropy',
-      derivationPath: [],
-    } as any);
-
-    mockAccountsService.deriveTronKeypair.mockResolvedValue({
-      privateKeyHex: 'test-private-key',
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-    } as any);
-
-    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-      contract: [
-        {
-          type: 'TriggerSmartContract',
-          parameter: {
-            value: {
-              owner_address: WRONG_OWNER_ADDRESS_HEX,
+    await withClientRequestHandler(
+      async ({ handler, mockAccountsService, mockTronWeb }) => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
             },
           },
-        },
-      ],
-    });
+        };
 
-    await expect(
-      clientRequestHandler.handle(request as JsonRpcRequest),
-    ).rejects.toThrow(
-      `Transaction owner_address (${TronWeb.address.fromHex(
-        WRONG_OWNER_ADDRESS_HEX,
-      )}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
+        mockAccountsService.findByIdOrThrow.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        });
+
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+        });
+
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: {
+                  owner_address: WRONG_OWNER_ADDRESS_HEX,
+                },
+              },
+            },
+          ],
+        });
+
+        await expect(handler.handle(request as JsonRpcRequest)).rejects.toThrow(
+          `Transaction owner_address (${TronWeb.address.fromHex(
+            WRONG_OWNER_ADDRESS_HEX,
+          )}) does not match derived signer address (${CORRECT_OWNER_ADDRESS_BASE58})`,
+        );
+      },
     );
   });
 
   it('accepts signAndSendTransaction when owner_address matches the signer', async () => {
-    const scope = Network.Mainnet;
-    const request = {
-      jsonrpc: '2.0' as const,
-      id: '1',
-      method: ClientRequestMethod.SignAndSendTransaction,
-      params: {
-        accountId: TEST_ACCOUNT_ID,
-        transaction: TEST_TRANSACTION_BASE64,
-        scope,
-        options: {
-          visible: false,
-          type: 'TriggerSmartContract',
-        },
-      },
-    };
-
-    mockAccountsService.findByIdOrThrow.mockResolvedValue({
-      id: TEST_ACCOUNT_ID,
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-      entropySource: 'test-entropy',
-      derivationPath: [],
-    } as any);
-
-    mockAccountsService.deriveTronKeypair.mockResolvedValue({
-      privateKeyHex: 'test-private-key',
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-    } as any);
-
-    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-      contract: [
-        {
-          type: 'TriggerSmartContract',
-          parameter: {
-            value: {
-              owner_address: CORRECT_OWNER_ADDRESS_HEX,
+    await withClientRequestHandler(
+      async ({ handler, mockAccountsService, mockTronWeb }) => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
             },
           },
-        },
-      ],
-    });
+        };
 
-    const result = await clientRequestHandler.handle(request as JsonRpcRequest);
+        mockAccountsService.findByIdOrThrow.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+          entropySource: 'test-entropy',
+          derivationPath: [],
+        });
 
-    expect(result).toStrictEqual({ transactionId });
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+        });
+
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: {
+                  owner_address: CORRECT_OWNER_ADDRESS_HEX,
+                },
+              },
+            },
+          ],
+        });
+
+        const result = await handler.handle(request as JsonRpcRequest);
+
+        expect(result).toStrictEqual({ transactionId });
+      },
+    );
   });
 
   it('signs once and retries the same signed client transaction on a transient broadcast failure', async () => {
-    const scope = Network.Mainnet;
-    const request = {
-      jsonrpc: '2.0' as const,
-      id: '1',
-      method: ClientRequestMethod.SignAndSendTransaction,
-      params: {
-        accountId: TEST_ACCOUNT_ID,
-        transaction: TEST_TRANSACTION_BASE64,
-        scope,
-        options: {
-          visible: false,
-          type: 'TriggerSmartContract',
-        },
-      },
-    };
-    const signedTransaction = { signature: ['test-signature'] };
-    mockAccountsService.findByIdOrThrow.mockResolvedValue(
-      createMockExtendedKeyringAccount({
-        address: CORRECT_OWNER_ADDRESS_BASE58,
-        type: 'tron:eoa',
-        scopes: [scope],
-      }),
-    );
-    mockAccountsService.deriveTronKeypair.mockResolvedValue({
-      privateKeyHex: 'test-private-key',
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-    } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
-    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-      contract: [
-        {
-          type: 'TriggerSmartContract',
-          parameter: {
-            value: { owner_address: CORRECT_OWNER_ADDRESS_HEX },
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockTronWeb,
+        mockTronWebFactory,
+      }) => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
+            },
           },
-        },
-      ],
-    });
-    mockTronWeb.trx.sign.mockReturnValue(signedTransaction);
-    mockTronWebFactory.executeBroadcast.mockImplementation(
-      async (_network: Network, operation: () => Promise<unknown>) => {
-        try {
-          return await operation();
-        } catch {
-          return operation();
-        }
+        };
+        const signedTransaction = { signature: ['test-signature'] };
+        mockAccountsService.findByIdOrThrow.mockResolvedValue(
+          createMockExtendedKeyringAccount({
+            address: CORRECT_OWNER_ADDRESS_BASE58,
+            type: 'tron:eoa',
+            scopes: [scope],
+          }),
+        );
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+        } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: { owner_address: CORRECT_OWNER_ADDRESS_HEX },
+              },
+            },
+          ],
+        });
+        mockTronWeb.trx.sign.mockReturnValue(signedTransaction);
+        mockTronWebFactory.executeBroadcast.mockImplementation(
+          async (_network: Network, operation: () => Promise<unknown>) => {
+            try {
+              return await operation();
+            } catch {
+              return operation();
+            }
+          },
+        );
+        mockTronWeb.trx.sendRawTransaction
+          .mockRejectedValueOnce(
+            Object.assign(new Error('unavailable'), {
+              response: { status: 503 },
+            }),
+          )
+          .mockResolvedValue({ result: true, txid: transactionId });
+
+        await handler.handle(request as JsonRpcRequest);
+
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+          1,
+          signedTransaction,
+        );
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+          2,
+          signedTransaction,
+        );
       },
-    );
-    mockTronWeb.trx.sendRawTransaction
-      .mockRejectedValueOnce(
-        Object.assign(new Error('unavailable'), {
-          response: { status: 503 },
-        }),
-      )
-      .mockResolvedValue({ result: true, txid: transactionId });
-
-    await clientRequestHandler.handle(request as JsonRpcRequest);
-
-    expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
-    expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
-    expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
-      1,
-      signedTransaction,
-    );
-    expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
-      2,
-      signedTransaction,
     );
   });
 
   it('uses the signed transaction ID when a duplicate response omits it', async () => {
-    const scope = Network.Mainnet;
-    const request = {
-      jsonrpc: '2.0' as const,
-      id: '1',
-      method: ClientRequestMethod.SignAndSendTransaction,
-      params: {
-        accountId: TEST_ACCOUNT_ID,
-        transaction: TEST_TRANSACTION_BASE64,
-        scope,
-        options: {
-          visible: false,
-          type: 'TriggerSmartContract',
-        },
-      },
-    };
-    mockAccountsService.findByIdOrThrow.mockResolvedValue(
-      createMockExtendedKeyringAccount({
-        address: CORRECT_OWNER_ADDRESS_BASE58,
-        type: 'tron:eoa',
-        scopes: [scope],
-      }),
-    );
-    mockAccountsService.deriveTronKeypair.mockResolvedValue({
-      privateKeyHex: 'test-private-key',
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-    } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
-    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-      contract: [
-        {
-          type: 'TriggerSmartContract',
-          parameter: {
-            value: { owner_address: CORRECT_OWNER_ADDRESS_HEX },
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockSnapClient,
+        mockTransactionsService,
+        mockTronWeb,
+      }) => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
+            },
           },
-        },
-      ],
-    });
-    mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-      code: 5,
-      message: 'Transaction already exists',
-      result: false,
-    });
+        };
+        mockAccountsService.findByIdOrThrow.mockResolvedValue(
+          createMockExtendedKeyringAccount({
+            address: CORRECT_OWNER_ADDRESS_BASE58,
+            type: 'tron:eoa',
+            scopes: [scope],
+          }),
+        );
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+        } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: { owner_address: CORRECT_OWNER_ADDRESS_HEX },
+              },
+            },
+          ],
+        });
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          code: 5,
+          message: 'Transaction already exists',
+          result: false,
+        });
 
-    const result = await clientRequestHandler.handle(request as JsonRpcRequest);
-    const signedTransactionId = (
-      mockTronWeb.trx.sign.mock.calls[0]?.[0] as { txID: string }
-    ).txID;
+        const result = await handler.handle(request as JsonRpcRequest);
+        const signedTransactionId = (
+          mockTronWeb.trx.sign.mock.calls[0]?.[0] as { txID: string }
+        ).txID;
 
-    expect(result).toStrictEqual({ transactionId: signedTransactionId });
-    expect(mockTransactionsService.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: signedTransactionId }),
-    );
-    expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({ txId: signedTransactionId }),
-      }),
+        expect(result).toStrictEqual({ transactionId: signedTransactionId });
+        expect(mockTransactionsService.save).toHaveBeenCalledWith(
+          expect.objectContaining({ id: signedTransactionId }),
+        );
+        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: expect.objectContaining({ txId: signedTransactionId }),
+          }),
+        );
+      },
     );
   });
 
   it('emits Transaction Submitted before scheduling the background tracker', async () => {
-    const scope = Network.Mainnet;
-    const request = {
-      jsonrpc: '2.0' as const,
-      id: '1',
-      method: ClientRequestMethod.SignAndSendTransaction,
-      params: {
-        accountId: TEST_ACCOUNT_ID,
-        transaction: TEST_TRANSACTION_BASE64,
-        scope,
-        options: {
-          visible: false,
-          type: 'TriggerSmartContract',
-        },
-      },
-    };
-
-    mockAccountsService.findByIdOrThrow.mockResolvedValue(
-      createMockExtendedKeyringAccount({
-        type: 'tron:eoa',
-        scopes: [scope],
-      }),
-    );
-
-    mockAccountsService.deriveTronKeypair.mockResolvedValue({
-      privateKeyHex: 'test-private-key',
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-      privateKeyBytes: new Uint8Array(),
-      publicKeyBytes: new Uint8Array(),
-    });
-
-    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-      contract: [
-        {
-          type: 'TriggerSmartContract',
-          parameter: {
-            value: {
-              owner_address: CORRECT_OWNER_ADDRESS_HEX,
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockTronWeb,
+        mockAnalyticsService,
+        mockSnapClient,
+      }) => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
             },
           },
-        },
-      ],
-    });
+        };
 
-    await clientRequestHandler.handle(request as JsonRpcRequest);
+        mockAccountsService.findByIdOrThrow.mockResolvedValue(
+          createMockExtendedKeyringAccount({
+            type: 'tron:eoa',
+            scopes: [scope],
+          }),
+        );
 
-    expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
-      {
-        origin: DEFAULT_METAMASK_ORIGIN,
-        accountType: 'tron:eoa',
-        chainIdCaip: scope,
-        transactionType: TransactionType.Unknown,
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+          privateKeyBytes: new Uint8Array(),
+          publicKeyBytes: new Uint8Array(),
+        });
+
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: {
+                  owner_address: CORRECT_OWNER_ADDRESS_HEX,
+                },
+              },
+            },
+          ],
+        });
+
+        await handler.handle(request as JsonRpcRequest);
+
+        expect(
+          mockAnalyticsService.trackTransactionSubmitted,
+        ).toHaveBeenCalledWith({
+          origin: DEFAULT_METAMASK_ORIGIN,
+          accountType: 'tron:eoa',
+          chainIdCaip: scope,
+          transactionType: TransactionType.Unknown,
+        });
+
+        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+          method: BackgroundEventMethod.TrackTransaction,
+          params: {
+            txId: transactionId,
+            scope,
+            accountIds: [TEST_ACCOUNT_ID],
+            attempt: 0,
+            transactionType: TransactionType.Unknown,
+          },
+          duration: TRACK_TX_INTERVAL,
+        });
+
+        expect(
+          mockAnalyticsService.trackTransactionSubmitted.mock
+            .invocationCallOrder[0] as number,
+        ).toBeLessThan(
+          mockSnapClient.scheduleBackgroundEvent.mock
+            .invocationCallOrder[0] as number,
+        );
       },
-    );
-
-    expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-      method: BackgroundEventMethod.TrackTransaction,
-      params: {
-        txId: transactionId,
-        scope,
-        accountIds: [TEST_ACCOUNT_ID],
-        attempt: 0,
-        transactionType: TransactionType.Unknown,
-      },
-      duration: TRACK_TX_INTERVAL,
-    });
-
-    expect(
-      mockAnalyticsService.trackTransactionSubmitted.mock
-        .invocationCallOrder[0] as number,
-    ).toBeLessThan(
-      mockSnapClient.scheduleBackgroundEvent.mock
-        .invocationCallOrder[0] as number,
     );
   });
 
@@ -2171,129 +2051,150 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
   ])(
     'classifies the transaction as %s when swap asset ids are provided',
     async (_label, sourceAssetId, destAssetId, expectedType) => {
-      const scope = Network.Mainnet;
-      const request = {
-        jsonrpc: '2.0' as const,
-        id: '1',
-        method: ClientRequestMethod.SignAndSendTransaction,
-        params: {
-          accountId: TEST_ACCOUNT_ID,
-          transaction: TEST_TRANSACTION_BASE64,
-          scope,
-          options: {
-            visible: false,
-            type: 'TriggerSmartContract',
-            sourceAssetId,
-            destAssetId,
-          },
-        },
-      };
-
-      mockAccountsService.findByIdOrThrow.mockResolvedValue(
-        createMockExtendedKeyringAccount({
-          type: 'tron:eoa',
-          scopes: [scope],
-        }),
-      );
-
-      mockAccountsService.deriveTronKeypair.mockResolvedValue({
-        privateKeyHex: 'test-private-key',
-        address: CORRECT_OWNER_ADDRESS_BASE58,
-        privateKeyBytes: new Uint8Array(),
-        publicKeyBytes: new Uint8Array(),
-      });
-
-      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-        contract: [
-          {
-            type: 'TriggerSmartContract',
-            parameter: {
-              value: {
-                owner_address: CORRECT_OWNER_ADDRESS_HEX,
+      await withClientRequestHandler(
+        async ({
+          handler,
+          mockAccountsService,
+          mockTronWeb,
+          mockAnalyticsService,
+          mockSnapClient,
+        }) => {
+          const scope = Network.Mainnet;
+          const request = {
+            jsonrpc: '2.0' as const,
+            id: '1',
+            method: ClientRequestMethod.SignAndSendTransaction,
+            params: {
+              accountId: TEST_ACCOUNT_ID,
+              transaction: TEST_TRANSACTION_BASE64,
+              scope,
+              options: {
+                visible: false,
+                type: 'TriggerSmartContract',
+                sourceAssetId,
+                destAssetId,
               },
             },
-          },
-        ],
-      });
+          };
 
-      await clientRequestHandler.handle(request as JsonRpcRequest);
+          mockAccountsService.findByIdOrThrow.mockResolvedValue(
+            createMockExtendedKeyringAccount({
+              type: 'tron:eoa',
+              scopes: [scope],
+            }),
+          );
 
-      expect(
-        mockAnalyticsService.trackTransactionSubmitted,
-      ).toHaveBeenCalledWith({
-        origin: DEFAULT_METAMASK_ORIGIN,
-        accountType: 'tron:eoa',
-        chainIdCaip: scope,
-        transactionType: expectedType,
-      });
+          mockAccountsService.deriveTronKeypair.mockResolvedValue({
+            privateKeyHex: 'test-private-key',
+            address: CORRECT_OWNER_ADDRESS_BASE58,
+            privateKeyBytes: new Uint8Array(),
+            publicKeyBytes: new Uint8Array(),
+          });
 
-      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
-        method: BackgroundEventMethod.TrackTransaction,
-        params: {
-          txId: transactionId,
-          scope,
-          accountIds: [TEST_ACCOUNT_ID],
-          attempt: 0,
-          transactionType: expectedType,
+          mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+            {
+              contract: [
+                {
+                  type: 'TriggerSmartContract',
+                  parameter: {
+                    value: {
+                      owner_address: CORRECT_OWNER_ADDRESS_HEX,
+                    },
+                  },
+                },
+              ],
+            },
+          );
+
+          await handler.handle(request as JsonRpcRequest);
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith({
+            origin: DEFAULT_METAMASK_ORIGIN,
+            accountType: 'tron:eoa',
+            chainIdCaip: scope,
+            transactionType: expectedType,
+          });
+
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: transactionId,
+              scope,
+              accountIds: [TEST_ACCOUNT_ID],
+              attempt: 0,
+              transactionType: expectedType,
+            },
+            duration: TRACK_TX_INTERVAL,
+          });
         },
-        duration: TRACK_TX_INTERVAL,
-      });
+      );
     },
   );
 
   it('classifies a TRC20 transfer dApp call as send when no asset ids are provided', async () => {
-    const scope = Network.Mainnet;
-    const request = {
-      jsonrpc: '2.0' as const,
-      id: '1',
-      method: ClientRequestMethod.SignAndSendTransaction,
-      params: {
-        accountId: TEST_ACCOUNT_ID,
-        transaction: TEST_TRANSACTION_BASE64,
-        scope,
-        options: {
-          visible: false,
-          type: 'TriggerSmartContract',
-        },
-      },
-    };
-
-    mockAccountsService.findByIdOrThrow.mockResolvedValue(
-      createMockExtendedKeyringAccount({
-        type: 'tron:eoa',
-        scopes: [scope],
-      }),
-    );
-
-    mockAccountsService.deriveTronKeypair.mockResolvedValue({
-      privateKeyHex: 'test-private-key',
-      address: CORRECT_OWNER_ADDRESS_BASE58,
-      privateKeyBytes: new Uint8Array(),
-      publicKeyBytes: new Uint8Array(),
-    });
-
-    mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
-      contract: [
-        {
-          type: 'TriggerSmartContract',
-          parameter: {
-            value: {
-              owner_address: CORRECT_OWNER_ADDRESS_HEX,
-              data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockTronWeb,
+        mockAnalyticsService,
+      }) => {
+        const scope = Network.Mainnet;
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.SignAndSendTransaction,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            transaction: TEST_TRANSACTION_BASE64,
+            scope,
+            options: {
+              visible: false,
+              type: 'TriggerSmartContract',
             },
           },
-        },
-      ],
-    });
+        };
 
-    await clientRequestHandler.handle(request as JsonRpcRequest);
+        mockAccountsService.findByIdOrThrow.mockResolvedValue(
+          createMockExtendedKeyringAccount({
+            type: 'tron:eoa',
+            scopes: [scope],
+          }),
+        );
 
-    expect(mockAnalyticsService.trackTransactionSubmitted).toHaveBeenCalledWith(
-      {
-        origin: DEFAULT_METAMASK_ORIGIN,
-        accountType: 'tron:eoa',
-        chainIdCaip: scope,
-        transactionType: TransactionType.Send,
+        mockAccountsService.deriveTronKeypair.mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: CORRECT_OWNER_ADDRESS_BASE58,
+          privateKeyBytes: new Uint8Array(),
+          publicKeyBytes: new Uint8Array(),
+        });
+
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+          contract: [
+            {
+              type: 'TriggerSmartContract',
+              parameter: {
+                value: {
+                  owner_address: CORRECT_OWNER_ADDRESS_HEX,
+                  data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
+                },
+              },
+            },
+          ],
+        });
+
+        await handler.handle(request as JsonRpcRequest);
+
+        expect(
+          mockAnalyticsService.trackTransactionSubmitted,
+        ).toHaveBeenCalledWith({
+          origin: DEFAULT_METAMASK_ORIGIN,
+          accountType: 'tron:eoa',
+          chainIdCaip: scope,
+          transactionType: TransactionType.Send,
+        });
       },
     );
   });
@@ -3186,9 +3087,11 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         } as any);
 
         // Asset not found
-        (
-          mockAssetsService.fetchAccountAssetsByIDs as jest.Mock
-        ).mockResolvedValue([null, null, null]);
+        mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
+          null,
+          null,
+          null,
+        ]);
 
         const result = await handler.handle(request);
 

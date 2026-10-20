@@ -1309,7 +1309,7 @@
       "count": 3
     },
     "@typescript-eslint/no-explicit-any": {
-      "count": 42
+      "count": 15
     }
   },
   "packages/tron-wallet-snap/src/handlers/cronjob/cronjob.test.tsx": {
