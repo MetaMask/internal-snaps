@@ -1,9 +1,9 @@
 import {
   isMemoRequiredDirectoryAddress,
   MEMO_REQUIRED_DIRECTORY_ADDRESSES,
-} from '.';
+} from './memoRequiredDirectory';
 
-describe('MemoRequiredDirectory', () => {
+describe('memoRequiredDirectory', () => {
   describe('isMemoRequiredDirectoryAddress', () => {
     it('returns true for Coinbase Deposits from the SEP-37 directory snapshot', () => {
       expect(

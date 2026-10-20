@@ -22,13 +22,13 @@ import {
   toCaip19ClassicAssetId,
   toSmallestUnit,
 } from '../../utils';
-import { isMemoRequiredDirectoryAddress } from '../directory';
 import type { SpendableBalance } from './api';
 import {
   OnChainAccountBalanceNotAvailableException,
   OnChainAccountException,
   OnChainAccountMetadataNotAvailableException,
 } from './exceptions';
+import { isMemoRequiredDirectoryAddress } from './memoRequiredDirectory';
 import type {
   OnChainAccountMinimalSerializable,
   OnChainAccountSerializable,

@@ -1,12 +1,15 @@
 /**
- * Auto-derived from StellarExpert Directory (`tag[]=memo-required`).
+ * Hardcoded SEP-37 / StellarExpert Directory addresses tagged `memo-required`.
+ *
+ * Off-chain complement to SEP-29 (`config.memo_required`): many exchange deposit
+ * accounts require a memo for credit attribution but never set the on-chain flag.
  *
  * Refresh: re-export from the Directory API and update via PR (WPN-2335).
- * Source: https://api.stellar.expert/explorer/directory?tag[]=memo-required
- * Spec: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0037.md
  *
- * Snapshot: 107 addresses.
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0037.md
+ * @see https://api.stellar.expert/explorer/directory?tag[]=memo-required
  */
+
 export const MEMO_REQUIRED_DIRECTORY_ADDRESSES = [
   'GA3NTBDIKQVDDM6ZDKJLGXJFESWJ636AGRIW34RH5WL24LUMX3YASKX2',
   'GA5XIGA5C7QTPTWXQHY6MCJRMTRZDOSHR6EFIBNDQTCQHG262N4GGKTM',
@@ -116,3 +119,17 @@ export const MEMO_REQUIRED_DIRECTORY_ADDRESSES = [
   'GDXK7IBK4S63WLVVCW66GFJSWS7YXIJTFTN4ZI2WQ4DLKSKB55GSCYKJ',
   'GDZHDOITT5W2S35LVJZRLUAUXLU7UEDEAN4R7O4VA5FFGKG7RHC4NPSC',
 ] as const;
+
+const MEMO_REQUIRED_DIRECTORY_ADDRESS_SET: ReadonlySet<string> = new Set(
+  MEMO_REQUIRED_DIRECTORY_ADDRESSES,
+);
+
+/**
+ * Whether `address` is in the hardcoded SEP-37 `memo-required` directory.
+ *
+ * @param address - Stellar account public key (`G…`).
+ * @returns `true` when the address is listed as memo-required.
+ */
+export function isMemoRequiredDirectoryAddress(address: string): boolean {
+  return MEMO_REQUIRED_DIRECTORY_ADDRESS_SET.has(address);
+}

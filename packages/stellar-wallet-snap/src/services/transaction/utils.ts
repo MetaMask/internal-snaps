@@ -22,7 +22,6 @@ import {
   parseClassicAssetCodeIssuer,
   toCaip19ClassicAssetId,
 } from '../../utils';
-import { isMemoRequiredDirectoryAddress } from '../directory';
 import { StellarOperationType } from './api';
 import type { StellarKeyringTransaction } from './api';
 import {
@@ -168,11 +167,10 @@ export function assertTransactionTimeBound(transaction: Transaction): void {
 }
 
 /**
- * Throws when the destination requires a memo and the envelope has none.
+ * Throws when `destRequiresMemo` is true and the envelope has no memo.
  *
- * Memo is required when either:
- * - `destRequiresMemo` is true (SEP-29 / simulation state), or
- * - `destAccountAddress` is in the hardcoded SEP-37 `memo-required` directory.
+ * `destRequiresMemo` comes from {@link OnChainAccount.requiresMemo} (SEP-29 and/or
+ * the hardcoded SEP-37 directory) or simulation account state derived from it.
  *
  * Soroban / `invokeHostFunction` envelopes cannot carry a Stellar memo, so this
  * check does not apply (same pattern as the Stellar SDK). Callers still hide memo
@@ -193,13 +191,10 @@ export function assertMemoWhenDestinationRequires(
     return;
   }
 
-  const requiresMemo =
-    destRequiresMemo || isMemoRequiredDirectoryAddress(destAccountAddress);
-
   const memo = transaction.getMemo();
   // Whitespace-only memos count as missing under SEP-29.
   // Hence, we dont consider them.
-  if (!requiresMemo || (memo !== null && /\S/u.test(memo))) {
+  if (!destRequiresMemo || (memo !== null && /\S/u.test(memo))) {
     return;
   }
   throw new RequiresMemoException(destAccountAddress);
