@@ -14,7 +14,7 @@
  *   TRUSTLINE_AMOUNT       default same as XLM_AMOUNT
  *   TRUSTLINE_CODE         default AQUA
  *   TRUSTLINE_ISSUER       default GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA
- *   AQUA_LIMIT             default 1000 (non-zero limit update in trustline-metadata)
+ *   TRUSTLINE_LIMIT             default 1000 (non-zero limit update in trustline-metadata)
  *   BASE_FEE_STROOPS       default 100
  *   DRY_RUN=1              build + sign, print XDR, do not submit
  *   YES=1                  skip the interactive mainnet confirm
@@ -37,7 +37,7 @@
  * `claimable` uses the same asset id and defaults to XLM when it is omitted.
  * A classic asset uses TRUSTLINE_AMOUNT and adds account2's trustline when missing.
  * `trustline-limit` changes only account1's TRUSTLINE_ASSET limit (default AQUA).
- * Pass a limit or omit it to use AQUA_LIMIT. The line must already exist.
+ * Pass a limit or omit it to use TRUSTLINE_LIMIT. The line must already exist.
  * Teardown restores it.
  *
  * Cases that need an id or an ephemeral key (claimable, offers, sponsored
@@ -76,7 +76,6 @@ const BASE_FEE = Number(process.env.BASE_FEE_STROOPS ?? '100');
 const DRY_RUN = process.env.DRY_RUN === '1';
 const SKIP_CONFIRM = process.env.YES === '1';
 
-const AQUA = TRUSTLINE_ASSET;
 const EURC = new Asset(
   'EURC',
   'GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2',
@@ -85,7 +84,7 @@ const PYUSD = new Asset(
   'PYUSD',
   'GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5',
 );
-const AQUA_LIMIT = process.env.AQUA_LIMIT ?? '1000';
+const TRUSTLINE_LIMIT = process.env.TRUSTLINE_LIMIT ?? '1000';
 
 const server = new Horizon.Server(HORIZON_URL);
 
@@ -93,7 +92,7 @@ const server = new Horizon.Server(HORIZON_URL);
  * `balance-move` / `balance-move-trustline` credit/debit existing accounts.
  * `trustline-metadata` covers add / limit-update / sponsored-create.
  * `fee-bump` wraps an account2 inner changeTrust; account1 pays the fee.
- * `authorized` is issuer-only (`setTrustLineFlags`); skip for EURC/AQUA/PYUSD.
+ * `authorized` is issuer-only (`setTrustLineFlags`); skip for EURC, TRUSTLINE_ASSET, and PYUSD.
  * Clawback of a holder's balance is intentionally not a case.
  * `claimable-clawback` only runs when account1 is the issuer of TRUSTLINE_ASSET.
  */
@@ -633,15 +632,14 @@ async function bestBid(selling, buying) {
 /** @type {Record<string, Case>} */
 const CASES = {
   test1: {
-    description:
-      'Account 1: payment (XLM → account 2) + changeTrust enable AQUA in one tx',
+    description: `Account 1: payment (XLM → account 2) + changeTrust enable ${TRUSTLINE_ASSET.getCode()} in one tx`,
     async setup({ account1, account2 }, { submit }) {
       await submit({
-        label: 'account1 payment + enable AQUA',
+        label: `account1 payment + enable ${assetLabel(TRUSTLINE_ASSET)}`,
         signer: account1.keypair,
         operations: [
           nativePayment(account2.keypair.publicKey()),
-          Operation.changeTrust({ asset: AQUA }),
+          Operation.changeTrust({ asset: TRUSTLINE_ASSET }),
         ],
       });
     },
@@ -652,9 +650,11 @@ const CASES = {
         operations: [nativePayment(account1.keypair.publicKey())],
       });
       await submit({
-        label: 'account1 remove AQUA trustline',
+        label: `account1 remove ${assetLabel(TRUSTLINE_ASSET)} trustline`,
         signer: account1.keypair,
-        operations: [Operation.changeTrust({ asset: AQUA, limit: '0' })],
+        operations: [
+          Operation.changeTrust({ asset: TRUSTLINE_ASSET, limit: '0' }),
+        ],
       });
     },
   },
@@ -714,18 +714,17 @@ const CASES = {
   /**
    * One tx (account 1 source, both keys sign):
    * - add EURC trustline on account 1
-   * - update AQUA limit (non-zero) on account 1
+   * - update TRUSTLINE_ASSET limit (non-zero) on account 1
    * - account 1 sponsors account 2 creating a PYUSD trustline
    *
    * Does not toggle `authorized` (issuer-only).
    */
   'trustline-metadata': {
-    description:
-      '1 tx: add EURC, update AQUA limit, sponsor PYUSD trustline on account2',
+    description: `1 tx: add EURC, update ${TRUSTLINE_ASSET.getCode()} limit, sponsor PYUSD trustline on account2`,
     async setup({ account1, account2 }, { submit }) {
       const dest2 = account2.keypair.publicKey();
       const eurcLine = findTrustline(account1.account, EURC);
-      const aquaLine = findTrustline(account1.account, AQUA);
+      const heldLine = findTrustline(account1.account, TRUSTLINE_ASSET);
       const pyusdLine = findTrustline(account2.account, PYUSD);
 
       if (pyusdLine.exists) {
@@ -743,15 +742,19 @@ const CASES = {
         operations.push(Operation.changeTrust({ asset: EURC }));
       }
 
-      const aquaLimit = nonZeroLimitAtLeastBalance(aquaLine, AQUA_LIMIT);
-      if (!aquaLine.exists) {
-        operations.push(Operation.changeTrust({ asset: AQUA }));
-        console.log(`  AQUA missing: add then set limit ${aquaLimit}`);
+      const heldLimit = nonZeroLimitAtLeastBalance(heldLine, TRUSTLINE_LIMIT);
+      if (!heldLine.exists) {
+        operations.push(Operation.changeTrust({ asset: TRUSTLINE_ASSET }));
+        console.log(
+          `  ${assetLabel(
+            TRUSTLINE_ASSET,
+          )} missing: add then set limit ${heldLimit}`,
+        );
       }
       operations.push(
         Operation.changeTrust({
-          asset: AQUA,
-          limit: aquaLimit,
+          asset: TRUSTLINE_ASSET,
+          limit: heldLimit,
         }),
       );
 
@@ -765,7 +768,9 @@ const CASES = {
       );
 
       await submit({
-        label: `account1+2: add EURC, AQUA limit ${aquaLimit}, sponsor PYUSD on account2`,
+        label: `account1+2: add EURC, ${assetLabel(
+          TRUSTLINE_ASSET,
+        )} limit ${heldLimit}, sponsor PYUSD on account2`,
         signer: account1.keypair,
         signers: [account2.keypair],
         operations,
@@ -785,14 +790,16 @@ const CASES = {
         account1Ops.push(Operation.changeTrust({ asset: EURC, limit: '0' }));
       }
 
-      const aquaLine = findTrustline(account1.account, AQUA);
-      if (aquaLine.exists) {
-        account1Ops.push(Operation.changeTrust({ asset: AQUA }));
+      const heldLine = findTrustline(account1.account, TRUSTLINE_ASSET);
+      if (heldLine.exists) {
+        account1Ops.push(Operation.changeTrust({ asset: TRUSTLINE_ASSET }));
       }
 
       if (account1Ops.length > 0) {
         await submit({
-          label: 'account1: remove EURC if empty, restore AQUA limit to max',
+          label: `account1: remove EURC if empty, restore ${assetLabel(
+            TRUSTLINE_ASSET,
+          )} limit to max`,
           signer: account1.keypair,
           operations: account1Ops,
         });
@@ -833,7 +840,7 @@ const CASES = {
    * Teardown sets the limit back to the value saved at setup.
    */
   'trustline-limit': {
-    description: `change only account1's ${TRUSTLINE_ASSET.getCode()} trustline limit (optional arg, default ${AQUA_LIMIT}); teardown restores it`,
+    description: `change only account1's ${TRUSTLINE_ASSET.getCode()} trustline limit (optional arg, default ${TRUSTLINE_LIMIT}); teardown restores it`,
     async setup({ account1 }, { submit }) {
       requireAccount(account1, 'account1');
       const asset = TRUSTLINE_ASSET;
@@ -845,7 +852,7 @@ const CASES = {
       const requested = process.argv[4];
       const nextLimit =
         requested === undefined
-          ? nonZeroLimitAtLeastBalance(line, AQUA_LIMIT)
+          ? nonZeroLimitAtLeastBalance(line, TRUSTLINE_LIMIT)
           : requestedLimit(requested, line, label);
       await submit({
         label: `account1: changeTrust ${label} limit ${line.limit} -> ${nextLimit}`,
