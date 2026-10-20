@@ -9,14 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0]
 
-### Uncategorized
-
-- refactor(stellar): use shared Metamask origin constant ([#488](https://github.com/MetaMask/internal-snaps/pull/488))
-- chore(stellar): add token `deHYB` ([#484](https://github.com/MetaMask/internal-snaps/pull/484))
-- chore(deps): bump @metamask/remote-feature-flag-controller from 5.0.0 to 7.0.0 ([#361](https://github.com/MetaMask/internal-snaps/pull/361))
-- Release/17.0.0 ([#467](https://github.com/MetaMask/internal-snaps/pull/467))
-- feat(snap-networks-utils): add shared createFetchPolicy in networks utils ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
-
 ### Added
 
 - Add `sponsored` to classic keyring balance metadata ([#471](https://github.com/MetaMask/internal-snaps/pull/471))
