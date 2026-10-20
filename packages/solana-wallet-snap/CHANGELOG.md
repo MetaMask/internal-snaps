@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Retry transient Solana RPC and API read failures with the shared fetch policy while sending transaction submissions only once. ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
 
+### Fixed
+
+- Fix a race condition in the WebSocket connection recovery: the resync no longer derives the accounts to sync from the subscription list (which `#reSubscribe` concurrently deletes and re-creates during recovery — a read landing inside that window silently skipped the resync). ([#490](https://github.com/MetaMask/internal-snaps/pull/490))
+
 ## [7.1.0]
 
 ### Added
