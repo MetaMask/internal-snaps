@@ -97,7 +97,7 @@ const analyticsService = new AnalyticsService({
   trackError,
 });
 
-const connection = new SolanaConnection(configProvider, inMemoryCache);
+const connection = new SolanaConnection(configProvider, inMemoryCache, logger);
 
 const webSocketConnectionRepository = new WebSocketConnectionRepository(
   configProvider,

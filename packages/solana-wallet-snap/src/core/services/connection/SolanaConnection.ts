@@ -1,4 +1,8 @@
-import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import type {
+  Serializable,
+  ICache,
+  Logger,
+} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { fetchMint } from '@solana-program/token-2022';
@@ -44,6 +48,8 @@ export class SolanaConnection {
 
   readonly #cache: ICache<Serializable>;
 
+  readonly #logger: Logger;
+
   readonly #cacheTtlsMilliseconds = {
     fetchMint: Duration.Minute,
     fetchJsonParsedAccount: Duration.Minute,
@@ -57,14 +63,23 @@ export class SolanaConnection {
    */
   readonly #networkCaip2IdToRpc: Map<Network, Rpc<SolanaRpcApi>> = new Map();
 
-  constructor(configProvider: ConfigProvider, cache: ICache<Serializable>) {
+  constructor(
+    configProvider: ConfigProvider,
+    cache: ICache<Serializable>,
+    logger: Logger,
+  ) {
     this.#configProvider = configProvider;
     this.#cache = cache;
+    this.#logger = logger;
   }
 
   #createRpc(caip2Id: Network): Rpc<SolanaRpcApi> {
     const network = this.#configProvider.getNetworkBy('caip2Id', caip2Id);
-    const transport = createMainTransport(network.rpcUrls);
+    const transport = createMainTransport(
+      network.rpcUrls,
+      caip2Id,
+      this.#logger,
+    );
     const rpc = createSolanaRpcFromTransport(transport);
     this.#networkCaip2IdToRpc.set(caip2Id, rpc);
     return rpc;
