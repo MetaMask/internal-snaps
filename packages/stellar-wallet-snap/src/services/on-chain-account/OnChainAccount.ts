@@ -22,6 +22,8 @@ import {
   toCaip19ClassicAssetId,
   toSmallestUnit,
 } from '../../utils';
+import { isMemoRequiredDirectoryAddress } from '../directory';
+
 import type { SpendableBalance } from './api';
 import {
   OnChainAccountBalanceNotAvailableException,
@@ -146,8 +148,23 @@ export class OnChainAccount {
     });
   }
 
+  /**
+   * Whether inbound payments to this account should include a memo.
+   *
+   * True when either:
+   * - SEP-29 on-chain `config.memo_required` is set, or
+   * - the account appears in the hardcoded SEP-37 `memo-required` directory
+   *   (exchange / custodial deposit addresses that omit SEP-29).
+   *
+   * @returns `true` when a memo is required for inbound classic payments.
+   * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
+   * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0037.md
+   */
   get requiresMemo(): boolean {
-    return this.#dataEntries?.[MEMO_REQUIRED_KEY] === ACCOUNT_REQUIRES_MEMO;
+    return (
+      this.#dataEntries?.[MEMO_REQUIRED_KEY] === ACCOUNT_REQUIRES_MEMO ||
+      isMemoRequiredDirectoryAddress(this.accountId)
+    );
   }
 
   /**

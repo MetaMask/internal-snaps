@@ -246,7 +246,7 @@ export class PaymentOPSimulator implements OperationSimulator {
       );
     }
 
-    // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
+    // SEP-29 / SEP-37 memo_required applies to inbound payments from other accounts; skip for self-payments.
     if (
       sourceId !== destId &&
       !shouldSkipValidationException(skipExceptions, RequiresMemoException)
@@ -340,7 +340,7 @@ export class PathPaymentOPSimulator implements OperationSimulator {
       op,
     );
 
-    // SEP-29 memo_required applies to inbound payments from other accounts; skip for self-payments.
+    // SEP-29 / SEP-37 memo_required applies to inbound payments from other accounts; skip for self-payments.
     if (
       sourceId !== destId &&
       !shouldSkipValidationException(skipExceptions, RequiresMemoException)
