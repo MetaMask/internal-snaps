@@ -23,7 +23,6 @@ import {
   toSmallestUnit,
 } from '../../utils';
 import { isMemoRequiredDirectoryAddress } from '../directory';
-
 import type { SpendableBalance } from './api';
 import {
   OnChainAccountBalanceNotAvailableException,
