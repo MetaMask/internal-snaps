@@ -22,6 +22,19 @@ export const Network = {
 
 export type Network = (typeof Network)[keyof typeof Network];
 
+const NETWORK_SCOPES: readonly string[] = Object.values(Network);
+
+export const isSupportedNetwork = (scope: string): scope is Network =>
+  NETWORK_SCOPES.includes(scope);
+
+export const assertSupportedNetwork = (scope: string): Network => {
+  if (!isSupportedNetwork(scope)) {
+    throw new Error(`Unsupported network: "${scope}"`);
+  }
+
+  return scope;
+};
+
 export const KnownCaip19Id = {
   SolMainnet: `${Network.Mainnet}/slip44:501`,
   SolDevnet: `${Network.Devnet}/slip44:501`,

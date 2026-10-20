@@ -27,3 +27,21 @@ export const solToLamports = (
     .multipliedBy(LAMPORTS_PER_SOL)
     .integerValue(BigNumber.ROUND_DOWN);
 };
+
+/**
+ * Converts a UI amount (human-readable with decimals) to a raw amount (smallest unit).
+ * For example, with 6 decimals: 1.5 → 1500000
+ *
+ * @param uiAmount - The UI amount to convert.
+ * @param decimals - The number of decimal places for the token.
+ * @returns The raw amount as an integer string.
+ */
+export const toRawAmount = (
+  uiAmount: string | number | BigNumber,
+  decimals: number,
+): string => {
+  return BigNumber(uiAmount.toString())
+    .multipliedBy(BigNumber(10).pow(decimals))
+    .integerValue(BigNumber.ROUND_DOWN)
+    .toFixed(0);
+};

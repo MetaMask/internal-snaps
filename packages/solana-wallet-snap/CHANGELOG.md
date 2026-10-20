@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Route asset reads (`getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, `getAccountAssets`) through the Core AssetsController when the Solana assets migration flag is active, falling back to the Snap adapter while it is off ([#486](https://github.com/MetaMask/internal-snaps/pull/486))
+
 ### Changed
 
 - Retry transient Solana RPC and API read failures with the shared fetch policy while sending transaction submissions only once. ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
