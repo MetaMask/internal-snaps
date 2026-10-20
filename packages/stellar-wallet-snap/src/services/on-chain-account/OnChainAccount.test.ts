@@ -694,6 +694,23 @@ describe('OnChainAccount', () => {
       expect(onChain.requiresMemo).toBe(false);
     });
 
+    it('is true for a SEP-37 directory address without SEP-29 data_attr', () => {
+      // Coinbase Deposits — listed as memo-required in StellarExpert Directory.
+      const accountId =
+        'GDS2WFLIJID6BDM64FGUD7MNOVZUEWHJ5VJPO2GQ32KOZCYIYIRIQTG6';
+      const mockAccount = createMockAccountWithBalances(
+        accountId,
+        '1',
+        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+      );
+      const onChain = OnChainAccount.fromHorizon(
+        mockHorizonAccountResponse(mockAccount, {}),
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(onChain.requiresMemo).toBe(true);
+    });
+
     it('round-trips dataEntries and requiresMemo through toSerializable', () => {
       const accountId = Keypair.random().publicKey();
       const mockAccount = createMockAccountWithBalances(
