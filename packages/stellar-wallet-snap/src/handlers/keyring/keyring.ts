@@ -128,12 +128,14 @@ export class KeyringHandler implements KeyringSnapRpc {
     this.#logger.debug('Handle keyring request', {
       origin,
       method: request.method,
+      request: JSON.stringify(request),
     });
     validateOrigin(origin, request.method, originPermissions);
     const result = await handleKeyringRequest(this, request);
     this.#logger.debug('Keyring request handled', {
       origin,
       method: request.method,
+      result: JSON.stringify(result),
     });
     return result ?? null;
   }
