@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix a race condition in the WebSocket connection recovery: the resync no longer derives the accounts to sync from the subscription list (which `#reSubscribe` concurrently deletes and re-creates during recovery — a read landing inside that window silently skipped the resync). ([#490](https://github.com/MetaMask/internal-snaps/pull/490))
+- Accept scan responses that report the `simulation` or `validation` section as explicit `null` (which the API returns when only the other option is requested), instead of failing the response validation and dropping the scan result
 
 ## [7.1.0]
 
