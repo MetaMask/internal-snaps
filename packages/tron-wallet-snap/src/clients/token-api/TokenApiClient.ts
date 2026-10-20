@@ -1,5 +1,11 @@
-import { UrlStruct, buildUrl, chunks } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  fetchWithPolicy,
+  UrlStruct,
+  buildUrl,
+  chunks,
+} from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
@@ -34,6 +40,8 @@ export class TokenApiClient {
 
   readonly #tokenIconBaseUrl: string;
 
+  readonly #policy: FetchPolicy;
+
   public static readonly supportedNetworks = [
     Network.Mainnet,
     Network.Nile,
@@ -56,6 +64,10 @@ export class TokenApiClient {
     this.#baseUrl = baseUrl;
     this.#chunkSize = chunkSize;
     this.#tokenIconBaseUrl = staticApi.baseUrl;
+    this.#policy = createFetchPolicy({
+      service: 'token_api',
+      logger: this.#logger,
+    });
   }
 
   async #fetchTokenMetadataBatch(
@@ -71,13 +83,13 @@ export class TokenApiClient {
       },
     });
 
-    const response = await this.#fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const body = await fetchWithPolicy(
+      this.#policy,
+      url,
+      undefined,
+      this.#fetch,
+    );
+    const data = JSON.parse(body);
 
     assert(data, TokenMetadataResponseStruct);
 

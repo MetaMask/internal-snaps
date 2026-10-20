@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import { Types as TronwebTypes } from 'tronweb';
 
@@ -54,16 +58,27 @@ export class SecurityAlertsApiClient {
 
   readonly #baseUrl: string;
 
+  readonly #policy: FetchPolicy;
+
   /**
    * Creates a new SecurityAlertsApiClient instance.
    *
    * @param configProvider - The configuration provider.
    * @param logger - Logger instance for logging.
+   * @param _fetch - The fetch implementation, defaulting to `globalThis.fetch`.
    */
-  constructor(configProvider: ConfigProvider, logger: Logger) {
-    this.#fetch = fetch;
+  constructor(
+    configProvider: ConfigProvider,
+    logger: Logger,
+    _fetch: typeof globalThis.fetch = globalThis.fetch,
+  ) {
+    this.#fetch = _fetch;
     this.#logger = logger.withPrefix('[🔒 SecurityAlertsApiClient]');
     this.#baseUrl = configProvider.config.securityAlertsApi.baseUrl;
+    this.#policy = createFetchPolicy({
+      service: 'security_alerts_api',
+      logger: this.#logger,
+    });
   }
 
   /**
@@ -108,7 +123,8 @@ export class SecurityAlertsApiClient {
       throw new Error('Could not extract scan parameters from transaction.');
     }
 
-    const response = await this.#fetch(
+    const body = await fetchWithPolicy(
+      this.#policy,
       `${this.#baseUrl}/tron/transaction/scan`,
       {
         headers,
@@ -122,19 +138,10 @@ export class SecurityAlertsApiClient {
           options,
         }),
       },
+      this.#fetch,
     );
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      this.#logger.error(
-        `Security Alerts API error: ${response.status} - ${errorBody}`,
-      );
-      throw new Error(
-        `Security Alerts API error: ${response.status} - ${errorBody}`,
-      );
-    }
-
-    const data = await response.json();
+    const data = JSON.parse(body);
     assert(data, SecurityAlertResponseStruct);
 
     return data;

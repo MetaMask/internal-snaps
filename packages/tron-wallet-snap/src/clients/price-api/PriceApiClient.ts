@@ -5,9 +5,10 @@ import {
   UrlStruct,
   buildUrl,
   createFetchPolicy,
-  createFetchPolicyError,
+  fetchWithPolicy,
 } from '@metamask/snap-networks-utils';
 import type {
+  FetchPolicy,
   ICache,
   Logger,
   Serializable,
@@ -18,10 +19,6 @@ import { mapKeys } from 'lodash';
 
 import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
-import {
-  executeWithFetchPolicy,
-  parseRetryAfter,
-} from '../../utils/fetchPolicy';
 import logger from '../../utils/logger';
 import type { SpotPrice, SpotPrices, VsCurrencyParam } from './types';
 import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
@@ -37,7 +34,7 @@ export class PriceApiClient {
 
   readonly #cache: ICache<Serializable>;
 
-  readonly #policy: ReturnType<typeof createFetchPolicy>;
+  readonly #policy: FetchPolicy;
 
   readonly cacheTtlsMilliseconds: {
     spotPrices: number;
@@ -106,25 +103,11 @@ export class PriceApiClient {
             },
           });
 
-          const responseBody = await executeWithFetchPolicy(
+          const responseBody = await fetchWithPolicy(
             this.#policy,
-            async () => {
-              const result = await this.#fetch(url, {
-                signal: AbortSignal.timeout(10_000),
-              });
-              if (!result.ok) {
-                throw createFetchPolicyError(
-                  `HTTP error! status: ${result.status}`,
-                  {
-                    httpStatus: result.status,
-                    retryAfterMs: parseRetryAfter(
-                      result.headers?.get('Retry-After'),
-                    ),
-                  },
-                );
-              }
-              return result.text();
-            },
+            url,
+            undefined,
+            this.#fetch,
           );
 
           const spotPrices = JSON.parse(responseBody);
