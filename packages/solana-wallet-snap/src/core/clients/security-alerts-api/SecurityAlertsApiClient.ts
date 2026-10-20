@@ -1,4 +1,8 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
 /* eslint-disable no-restricted-globals */
 import bs58 from 'bs58';
 
@@ -21,6 +25,8 @@ export class SecurityAlertsApiClient {
 
   readonly #baseUrl: string;
 
+  readonly #policy: ReturnType<typeof createFetchPolicy>;
+
   constructor(
     configProvider: ConfigProvider,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
@@ -31,6 +37,10 @@ export class SecurityAlertsApiClient {
     this.#fetch = _fetch;
     this.#logger = _logger;
     this.#baseUrl = baseUrl;
+    this.#policy = createFetchPolicy({
+      service: 'security_alerts_api',
+      logger: this.#logger,
+    });
   }
 
   async scanTransactions({
@@ -54,25 +64,30 @@ export class SecurityAlertsApiClient {
 
     this.#logger.info('Scanning transaction');
 
-    const response = await this.#fetch(`${this.#baseUrl}/solana/message/scan`, {
-      headers: {
-        'Content-Type': 'application/json',
-        accept: 'application/json',
-      },
-      method: 'POST',
-      body: JSON.stringify({
-        method,
-        encoding: 'base64',
-        account_address: base64AccountAddress,
-        metadata: {
-          url: origin,
+    const body = await fetchWithPolicy(
+      this.#policy,
+      `${this.#baseUrl}/solana/message/scan`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'application/json',
         },
-        chain: SCOPE_TO_CHAIN[scope],
-        transactions,
-        options,
-      }),
-    });
+        method: 'POST',
+        body: JSON.stringify({
+          method,
+          encoding: 'base64',
+          account_address: base64AccountAddress,
+          metadata: {
+            url: origin,
+          },
+          chain: SCOPE_TO_CHAIN[scope],
+          transactions,
+          options,
+        }),
+      },
+      this.#fetch,
+    );
 
-    return response.json();
+    return JSON.parse(body);
   }
 }
