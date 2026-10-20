@@ -262,7 +262,7 @@ export class TransactionService {
     });
 
     let requiresMemoRecovery = false;
-    // SEP-29 applies to inbound payments from other accounts; skip self-payments.
+    // SEP-29 / SEP-37 apply to inbound payments from other accounts; skip self-payments.
     // Dest was loaded during the draft build; useCache avoids a second Horizon round-trip.
     if (onChainAccount.accountId !== destination) {
       const destinationAccount = await this.#loadActivatedAccountOrNull(

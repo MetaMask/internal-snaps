@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `sponsored` to classic keyring balance metadata ([#471](https://github.com/MetaMask/internal-snaps/pull/471))
+- Treat StellarExpert SEP-37 `memo-required` directory addresses as memo-required alongside SEP-29 ([#489](https://github.com/MetaMask/internal-snaps/pull/489))
 
 ### Changed
 
