@@ -48,7 +48,8 @@ export const ConfirmTransactionRequest = ({
 
   /**
    * Only disable confirm button upon first load (FetchStatus.Loading)
-   * as opposed to subsequent loads (FetchStatus.Fetching)
+   * as opposed to subsequent loads (FetchStatus.Fetching), and whenever
+   * the simulation has failed.
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
@@ -90,7 +91,7 @@ export const ConfirmTransactionRequest = ({
     <Container>
       <Box>
         {/* Security Alert */}
-        {preferences.useSecurityAlerts ? (
+        {preferences.useSecurityAlerts || scan?.error ? (
           <TransactionAlert
             {...getTransactionAlertProps({
               preferences,
