@@ -25,6 +25,20 @@
  *   node --env-file=.env scripts/horizon-event-fixture.mjs setup balance-move
  *   node --env-file=.env scripts/horizon-event-fixture.mjs teardown balance-move
  *   node --env-file=.env scripts/horizon-event-fixture.mjs setup fee-bump
+ *   node --env-file=.env scripts/horizon-event-fixture.mjs setup claimable [asset-id]
+ *   node --env-file=.env scripts/horizon-event-fixture.mjs setup two-receivers <G-address> <G-address>
+ *   node --env-file=.env scripts/horizon-event-fixture.mjs setup trustline-limit [limit]
+ *   node --env-file=.env scripts/horizon-event-fixture.mjs teardown trustline-limit
+ *   node --env-file=.env scripts/horizon-event-fixture.mjs remove-trustline <G-address> <asset-id>
+ *
+ * `remove-trustline` signs with the env secret for that address. The asset id
+ * is `stellar:pubnet/asset:CODE-ISSUER` or `CODE-ISSUER`. The balance must
+ * already be 0. There is no teardown.
+ * `claimable` uses the same asset id and defaults to XLM when it is omitted.
+ * A classic asset uses TRUSTLINE_AMOUNT and adds account2's trustline when missing.
+ * `trustline-limit` changes only account1's TRUSTLINE_ASSET limit (default AQUA).
+ * Pass a limit or omit it to use AQUA_LIMIT. The line must already exist.
+ * Teardown restores it.
  *
  * Cases that need an id or an ephemeral key (claimable, offers, sponsored
  * accounts) save it in scripts/.horizon-fixture-state.json. That file is
@@ -41,6 +55,7 @@ import {
   LiquidityPoolFeeV18,
   Networks,
   Operation,
+  StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -217,6 +232,21 @@ function nonZeroLimitAtLeastBalance(line, requested) {
   return String(limit);
 }
 
+function requestedLimit(requested, line, label) {
+  const value = Number(requested);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `Invalid limit "${requested}". Use a number greater than 0.`,
+    );
+  }
+  if (value < Number(line.balance)) {
+    throw new Error(
+      `limit ${requested} is below ${label} balance ${line.balance}`,
+    );
+  }
+  return requested;
+}
+
 function isIssuer(binding, asset) {
   return !asset.isNative() && binding.keypair.publicKey() === asset.getIssuer();
 }
@@ -245,12 +275,16 @@ function assertSpendable(binding, asset, amount) {
   const { exists, balance } = findTrustline(binding.account, asset);
   if (!exists) {
     throw new Error(
-      `account1 has no trustline for ${assetLabel(asset)}; enable it first or run setup so it is added`,
+      `account1 has no trustline for ${assetLabel(
+        asset,
+      )}; enable it first or run setup so it is added`,
     );
   }
   if (Number(balance) < needed) {
     throw new Error(
-      `account1 ${assetLabel(asset)} balance ${balance} < ${needed} needed (4× ${amount})`,
+      `account1 ${assetLabel(
+        asset,
+      )} balance ${balance} < ${needed} needed (4× ${amount})`,
     );
   }
 }
@@ -588,7 +622,9 @@ async function bestBid(selling, buying) {
   const bid = book.bids?.[0];
   if (!bid?.price || !bid.amount) {
     throw new Error(
-      `No bid on ${assetLabel(selling)}/${assetLabel(buying)}; cannot force a fill`,
+      `No bid on ${assetLabel(selling)}/${assetLabel(
+        buying,
+      )}; cannot force a fill`,
     );
   }
   return bid;
@@ -694,7 +730,9 @@ const CASES = {
 
       if (pyusdLine.exists) {
         throw new Error(
-          `account2 already has ${assetLabel(PYUSD)}; teardown that line (balance 0) before sponsoring a create`,
+          `account2 already has ${assetLabel(
+            PYUSD,
+          )}; teardown that line (balance 0) before sponsoring a create`,
         );
       }
 
@@ -790,6 +828,59 @@ const CASES = {
   },
 
   /**
+   * changeTrust with a new non-zero limit on account1's TRUSTLINE_ASSET.
+   * The trustline must already exist.
+   * Teardown sets the limit back to the value saved at setup.
+   */
+  'trustline-limit': {
+    description: `change only account1's ${TRUSTLINE_ASSET.getCode()} trustline limit (optional arg, default ${AQUA_LIMIT}); teardown restores it`,
+    async setup({ account1 }, { submit }) {
+      requireAccount(account1, 'account1');
+      const asset = TRUSTLINE_ASSET;
+      const label = assetLabel(asset);
+      const line = findTrustline(account1.account, asset);
+      if (!line.exists) {
+        throw new Error(`account1 has no ${label} trustline`);
+      }
+      const requested = process.argv[4];
+      const nextLimit =
+        requested === undefined
+          ? nonZeroLimitAtLeastBalance(line, AQUA_LIMIT)
+          : requestedLimit(requested, line, label);
+      await submit({
+        label: `account1: changeTrust ${label} limit ${line.limit} -> ${nextLimit}`,
+        signer: account1.keypair,
+        operations: [Operation.changeTrust({ asset, limit: nextLimit })],
+      });
+      remember('trustline-limit', {
+        previousLimit: line.limit,
+      });
+    },
+    async teardown({ account1 }, { submit }) {
+      requireAccount(account1, 'account1');
+      const { previousLimit } = recall('trustline-limit');
+      account1.account = await server.loadAccount(account1.keypair.publicKey());
+      const asset = TRUSTLINE_ASSET;
+      const label = assetLabel(asset);
+      const line = findTrustline(account1.account, asset);
+      if (!line.exists) {
+        throw new Error(`account1 no longer has ${label}`);
+      }
+      if (Number(line.balance) > Number(previousLimit)) {
+        throw new Error(
+          `${label} balance ${line.balance} is above the previous limit ${previousLimit}`,
+        );
+      }
+      await submit({
+        label: `account1: restore ${label} limit ${previousLimit}`,
+        signer: account1.keypair,
+        operations: [Operation.changeTrust({ asset, limit: previousLimit })],
+      });
+      forget('trustline-limit');
+    },
+  },
+
+  /**
    * Inner tx source = account 2 (create / remove a trustline).
    * Outer fee-bump source = account 1 (pays the inclusion fee).
    */
@@ -803,7 +894,9 @@ const CASES = {
         );
       }
       await submit({
-        label: `account2 add ${assetLabel(TRUSTLINE_ASSET)} trustline, account1 fee-bump`,
+        label: `account2 add ${assetLabel(
+          TRUSTLINE_ASSET,
+        )} trustline, account1 fee-bump`,
         signer: account2.keypair,
         feeSource: account1.keypair,
         operations: [Operation.changeTrust({ asset: TRUSTLINE_ASSET })],
@@ -814,17 +907,23 @@ const CASES = {
       const line = findTrustline(account2.account, TRUSTLINE_ASSET);
       if (!line.exists) {
         console.log(
-          `  account2 has no ${assetLabel(TRUSTLINE_ASSET)} trustline; nothing to remove`,
+          `  account2 has no ${assetLabel(
+            TRUSTLINE_ASSET,
+          )} trustline; nothing to remove`,
         );
         return;
       }
       if (Number(line.balance) > 0) {
         throw new Error(
-          `account2 ${assetLabel(TRUSTLINE_ASSET)} balance ${line.balance}; send it away before removing the trustline`,
+          `account2 ${assetLabel(TRUSTLINE_ASSET)} balance ${
+            line.balance
+          }; send it away before removing the trustline`,
         );
       }
       await submit({
-        label: `account2 remove ${assetLabel(TRUSTLINE_ASSET)} trustline, account1 fee-bump`,
+        label: `account2 remove ${assetLabel(
+          TRUSTLINE_ASSET,
+        )} trustline, account1 fee-bump`,
         signer: account2.keypair,
         feeSource: account1.keypair,
         operations: [
@@ -866,7 +965,9 @@ const CASES = {
       requireAccount(account2, 'account2');
       if (isIssuer(account2, TRUSTLINE_ASSET)) {
         throw new Error(
-          `account2 issues ${assetLabel(TRUSTLINE_ASSET)} and cannot receive it`,
+          `account2 issues ${assetLabel(
+            TRUSTLINE_ASSET,
+          )} and cannot receive it`,
         );
       }
       await ensureTrustlineIfNeeded(
@@ -876,7 +977,9 @@ const CASES = {
         'account2',
       );
       const tx = await submit({
-        label: `account1 path-pay ${XLM_AMOUNT} XLM -> ${assetLabel(TRUSTLINE_ASSET)} to account2`,
+        label: `account1 path-pay ${XLM_AMOUNT} XLM -> ${assetLabel(
+          TRUSTLINE_ASSET,
+        )} to account2`,
         signer: account1.keypair,
         operations: [
           pathSwapOp(
@@ -903,7 +1006,9 @@ const CASES = {
     async teardown({ account1, account2 }, { submit }) {
       const { received } = recall('path-payment');
       await submit({
-        label: `account2 path-swap ${received} ${assetLabel(TRUSTLINE_ASSET)} back to account1 as XLM`,
+        label: `account2 path-swap ${received} ${assetLabel(
+          TRUSTLINE_ASSET,
+        )} back to account1 as XLM`,
         signer: account2.keypair,
         operations: [
           pathSwapOp(
@@ -919,21 +1024,37 @@ const CASES = {
   },
 
   /**
-   * Setup locks XLM in a claimable balance and stops.
+   * Setup locks an asset in a claimable balance and stops.
+   * Optional argv asset id; omitted means XLM.
    * Teardown is account 2 claiming it.
    */
   claimable: {
-    description: `account1 locks ${XLM_AMOUNT} XLM as a claimable balance for account2; teardown claims it`,
+    description: `account1 locks ${XLM_AMOUNT} of an asset (default XLM; optional asset id) as a claimable balance for account2; teardown claims it`,
     async setup({ account1, account2 }, { submit }) {
       requireAccount(account1, 'account1');
       requireAccount(account2, 'account2');
+      const asset = assetFromOptionalId(process.argv[4]);
+      const amount = asset.isNative() ? XLM_AMOUNT : TRUSTLINE_AMOUNT;
+      const label = assetLabel(asset);
+      if (!asset.isNative() && !isIssuer(account1, asset)) {
+        const line = findTrustline(account1.account, asset);
+        if (!line.exists) {
+          throw new Error(`account1 has no trustline for ${label}`);
+        }
+        if (Number(line.balance) < Number(amount)) {
+          throw new Error(
+            `account1 ${label} balance ${line.balance} < ${amount}`,
+          );
+        }
+      }
+      await ensureTrustlineIfNeeded(account2, asset, submit, 'account2');
       const tx = await submit({
-        label: `account1 createClaimableBalance ${XLM_AMOUNT} XLM for account2`,
+        label: `account1 createClaimableBalance ${amount} ${label} for account2`,
         signer: account1.keypair,
         operations: [
           Operation.createClaimableBalance({
-            asset: Asset.native(),
-            amount: XLM_AMOUNT,
+            asset,
+            amount,
             claimants: [
               new Claimant(
                 account2.keypair.publicKey(),
@@ -972,11 +1093,15 @@ const CASES = {
       requireAccount(account2, 'account2');
       if (!isIssuer(account1, TRUSTLINE_ASSET)) {
         throw new Error(
-          `account1 is not the issuer of ${assetLabel(TRUSTLINE_ASSET)}. Clawback is issuer-only.`,
+          `account1 is not the issuer of ${assetLabel(
+            TRUSTLINE_ASSET,
+          )}. Clawback is issuer-only.`,
         );
       }
       const tx = await submit({
-        label: `account1 createClaimableBalance ${TRUSTLINE_AMOUNT} ${assetLabel(TRUSTLINE_ASSET)}`,
+        label: `account1 createClaimableBalance ${TRUSTLINE_AMOUNT} ${assetLabel(
+          TRUSTLINE_ASSET,
+        )}`,
         signer: account1.keypair,
         operations: [
           Operation.createClaimableBalance({
@@ -1173,57 +1298,47 @@ const CASES = {
   },
 
   /**
-   * One transaction pays account 2 and a newly sponsored account.
-   * Teardown returns both payments, then fee-bumps a merge of the new account.
+   * One transaction pays XLM to two existing addresses.
+   * Both addresses are required. There is no sponsorship and no rollback.
    */
   'two-receivers': {
-    description: `one tx: account1 pays ${XLM_AMOUNT} XLM to account2 and to a new sponsored account`,
-    async setup({ account1, account2 }, { submit }) {
+    description: `one tx: account1 pays ${XLM_AMOUNT} XLM to two addresses (setup two-receivers <address> <address>)`,
+    async setup({ account1 }, { submit }) {
       requireAccount(account1, 'account1');
-      requireAccount(account2, 'account2');
-      const ephemeral = Keypair.random();
-      console.log(`  second receiver ${ephemeral.publicKey()}`);
+      const [receiver1, receiver2] = [process.argv[4], process.argv[5]];
+      if (!receiver1 || !receiver2) {
+        throw new Error('Usage: setup two-receivers <address> <address>');
+      }
+      for (const address of [receiver1, receiver2]) {
+        if (!StrKey.isValidEd25519PublicKey(address)) {
+          throw new Error(`Invalid account address "${address}"`);
+        }
+      }
+      const [onChain1, onChain2] = await Promise.all([
+        loadAccountIfExists(receiver1),
+        loadAccountIfExists(receiver2),
+      ]);
+      if (!onChain1) {
+        throw new Error(`${receiver1} is not on chain`);
+      }
+      if (!onChain2) {
+        throw new Error(`${receiver2} is not on chain`);
+      }
+      assertBalanceAtLeast(
+        account1,
+        Asset.native(),
+        String(Number(XLM_AMOUNT) * 2),
+      );
       await submit({
-        label: `account1 pays ${XLM_AMOUNT} XLM to account2 and a new account`,
+        label: `account1 pays ${XLM_AMOUNT} XLM to ${receiver1} and ${receiver2}`,
         signer: account1.keypair,
-        signers: [ephemeral],
-        operations: [
-          Operation.beginSponsoringFutureReserves({
-            sponsoredId: ephemeral.publicKey(),
-          }),
-          Operation.createAccount({
-            destination: ephemeral.publicKey(),
-            startingBalance: '0',
-          }),
-          Operation.endSponsoringFutureReserves({
-            source: ephemeral.publicKey(),
-          }),
-          nativePayment(account2.keypair.publicKey()),
-          nativePayment(ephemeral.publicKey()),
-        ],
+        operations: [nativePayment(receiver1), nativePayment(receiver2)],
       });
-      remember('two-receivers', { secret: ephemeral.secret() });
     },
-    async teardown({ account1, account2 }, { submit }) {
-      const { secret } = recall('two-receivers');
-      const ephemeral = Keypair.fromSecret(secret);
-      await submit({
-        label: `account2 returns ${XLM_AMOUNT} XLM to account1`,
-        signer: account2.keypair,
-        operations: [nativePayment(account1.keypair.publicKey())],
-      });
-      await submit({
-        label: `fee-bump: new account returns ${XLM_AMOUNT} XLM, then merges into account1`,
-        signer: ephemeral,
-        feeSource: account1.keypair,
-        operations: [
-          nativePayment(account1.keypair.publicKey()),
-          Operation.accountMerge({
-            destination: account1.keypair.publicKey(),
-          }),
-        ],
-      });
-      forget('two-receivers');
+    async teardown() {
+      throw new Error(
+        'two-receivers does not roll back. The payments went to the addresses you passed.',
+      );
     },
   },
 
@@ -1272,7 +1387,9 @@ const CASES = {
       assertBalanceAtLeast(account1, TRUSTLINE_ASSET, TRUSTLINE_AMOUNT);
       const before = new Set(await listOfferIds(account1.keypair.publicKey()));
       await submit({
-        label: `account1 rest sell ${TRUSTLINE_AMOUNT} ${assetLabel(TRUSTLINE_ASSET)} at 1000000 XLM`,
+        label: `account1 rest sell ${TRUSTLINE_AMOUNT} ${assetLabel(
+          TRUSTLINE_ASSET,
+        )} at 1000000 XLM`,
         signer: account1.keypair,
         operations: [
           Operation.manageSellOffer({
@@ -1292,7 +1409,9 @@ const CASES = {
       );
       if (created.length !== 1) {
         throw new Error(
-          `Expected 1 new offer, found ${created.length} (${created.join(', ')})`,
+          `Expected 1 new offer, found ${created.length} (${created.join(
+            ', ',
+          )})`,
         );
       }
       console.log(`  offer ${created[0]}`);
@@ -1329,7 +1448,9 @@ const CASES = {
       requireAccount(account1, 'account1');
       if (isIssuer(account1, TRUSTLINE_ASSET)) {
         throw new Error(
-          `account1 issues ${assetLabel(TRUSTLINE_ASSET)} and cannot receive it`,
+          `account1 issues ${assetLabel(
+            TRUSTLINE_ASSET,
+          )} and cannot receive it`,
         );
       }
       const line = findTrustline(account1.account, TRUSTLINE_ASSET);
@@ -1382,7 +1503,9 @@ const CASES = {
       const saved = recall('offer-fill');
       if (saved.received) {
         await submit({
-          label: `account1 path-swap ${saved.received} ${assetLabel(TRUSTLINE_ASSET)} back to XLM`,
+          label: `account1 path-swap ${saved.received} ${assetLabel(
+            TRUSTLINE_ASSET,
+          )} back to XLM`,
           signer: account1.keypair,
           operations: [
             pathSwapOp(
@@ -1737,9 +1860,11 @@ function formatBalances(account) {
       if (row.asset_type === 'liquidity_pool_shares') {
         return `  LP ${row.liquidity_pool_id} ${row.balance}`;
       }
-      return `  ${row.asset_code}-${row.asset_issuer} ${row.balance} (limit ${row.limit}${
-        row.sponsor ? `; sponsor ${row.sponsor}` : ''
-      }${row.is_authorized === false ? '; unauthorized' : ''})`;
+      return `  ${row.asset_code}-${row.asset_issuer} ${row.balance} (limit ${
+        row.limit
+      }${row.sponsor ? `; sponsor ${row.sponsor}` : ''}${
+        row.is_authorized === false ? '; unauthorized' : ''
+      })`;
     })
     .join('\n');
 }
@@ -1837,6 +1962,102 @@ function wrapFeeBump(inner, feeSource) {
   return feeBump;
 }
 
+/**
+ * @param {string} assetId - `stellar:<network>/asset:CODE-ISSUER` or `CODE-ISSUER`.
+ * @returns {import('@stellar/stellar-sdk').Asset}
+ */
+function assetFromId(assetId) {
+  const slash = assetId.lastIndexOf('/');
+  let reference = slash === -1 ? assetId : assetId.slice(slash + 1);
+  if (reference.startsWith('asset:')) {
+    reference = reference.slice('asset:'.length);
+  }
+  const separator = reference.includes(':') ? ':' : '-';
+  const splitAt = reference.indexOf(separator);
+  const code = splitAt > 0 ? reference.slice(0, splitAt) : '';
+  const issuer = splitAt > 0 ? reference.slice(splitAt + 1) : '';
+  if (!code || code.length > 12 || !issuer.startsWith('G')) {
+    throw new Error(
+      `Invalid asset id "${assetId}". Use stellar:pubnet/asset:CODE-ISSUER or CODE-ISSUER`,
+    );
+  }
+  return new Asset(code, issuer);
+}
+
+/**
+ * @param {string} [assetId] - Omitted, `XLM`, slip44:148, or a classic asset id.
+ * @returns {import('@stellar/stellar-sdk').Asset}
+ */
+function assetFromOptionalId(assetId) {
+  if (
+    assetId === undefined ||
+    assetId === 'XLM' ||
+    assetId === 'native' ||
+    assetId === 'slip44:148' ||
+    assetId.endsWith('/slip44:148')
+  ) {
+    return Asset.native();
+  }
+  return assetFromId(assetId);
+}
+
+/**
+ * @param {Accounts} accounts
+ * @param {string} address
+ * @returns {AccountBinding}
+ */
+function bindingForAddress(accounts, address) {
+  const binding = Object.values(accounts).find(
+    (entry) => entry?.keypair.publicKey() === address,
+  );
+  if (!binding) {
+    throw new Error(
+      `No secret for ${address}. It must be STELLAR_SECRET_1, STELLAR_SECRET_2, or STELLAR_SECRET_SPONSORED.`,
+    );
+  }
+  if (!binding.account) {
+    throw new Error(`${address} is not on chain`);
+  }
+  return binding;
+}
+
+/**
+ * Submits changeTrust limit 0. Does not move a remaining balance.
+ *
+ * @param {object} params
+ * @param {Accounts} params.accounts
+ * @param {string} params.accountAddress
+ * @param {string} params.assetId
+ */
+async function removeTrustline({ accounts, accountAddress, assetId }) {
+  const binding = bindingForAddress(accounts, accountAddress);
+  const asset = assetFromId(assetId);
+  const label = assetLabel(asset);
+  const line = findTrustline(binding.account, asset);
+  if (!line.exists) {
+    console.log(
+      `  ${accountAddress} has no ${label} trustline; nothing to remove`,
+    );
+    return;
+  }
+  if (Number(line.balance) > 0) {
+    throw new Error(
+      `${label} balance is ${line.balance}. Remove the trustline only when the balance is 0.`,
+    );
+  }
+
+  await confirmMainnet(
+    'remove-trustline',
+    accountAddress,
+    `changeTrust ${label} limit 0`,
+  );
+  await submitPlan({
+    label: `${accountAddress}: remove ${label} trustline`,
+    signer: binding.keypair,
+    operations: [Operation.changeTrust({ asset, limit: '0' })],
+  });
+}
+
 function getCase(name) {
   const testCase = CASES[name];
   if (!testCase) {
@@ -1861,7 +2082,8 @@ async function main() {
   list
   status
   setup <case>
-  teardown <case>`);
+  teardown <case>
+  remove-trustline <account-address> <asset-id>`);
     printCases();
     return;
   }
@@ -1875,6 +2097,15 @@ async function main() {
 
   if (command === 'status') {
     await printStatus(accounts);
+    return;
+  }
+
+  if (command === 'remove-trustline') {
+    const [accountAddress, assetId] = process.argv.slice(3);
+    if (!accountAddress || !assetId) {
+      throw new Error('Usage: remove-trustline <account-address> <asset-id>');
+    }
+    await removeTrustline({ accounts, accountAddress, assetId });
     return;
   }
 
