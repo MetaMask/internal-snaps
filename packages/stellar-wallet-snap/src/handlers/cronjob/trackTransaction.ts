@@ -1,9 +1,9 @@
 import type { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 
 import type { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
-import { METAMASK_ORIGIN } from '../../constants';
 import type { AccountService } from '../../services/account';
 import {
   TransactionNotFoundException,
@@ -225,7 +225,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
     }
 
     await this.#analyticsService.trackTransactionFinalized({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: senderAccount.type,
       chainIdCaip: scope,
       transactionStatus,

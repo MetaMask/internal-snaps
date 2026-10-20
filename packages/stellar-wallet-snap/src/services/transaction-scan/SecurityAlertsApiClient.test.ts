@@ -1,3 +1,5 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+
 import {
   SecurityAlertsApiClient,
   TransactionScanOption,
@@ -21,7 +23,7 @@ describe('SecurityAlertsApiClient', () => {
 
   const defaultScanRequest = {
     accountAddress,
-    origin: 'metamask',
+    origin: DEFAULT_METAMASK_ORIGIN,
     scope: KnownCaip2ChainId.Mainnet,
     transaction,
     options: [TransactionScanOption.Validation],
@@ -92,7 +94,7 @@ describe('SecurityAlertsApiClient', () => {
 
     await client.scanTransaction({
       accountAddress,
-      origin: 'metamask',
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope: KnownCaip2ChainId.Testnet,
       transaction,
       options: [TransactionScanOption.Validation],
@@ -116,7 +118,7 @@ describe('SecurityAlertsApiClient', () => {
     await expect(
       client.scanTransaction({
         accountAddress,
-        origin: 'metamask',
+        origin: DEFAULT_METAMASK_ORIGIN,
         scope: KnownCaip2ChainId.Mainnet,
         transaction,
         options: [TransactionScanOption.Validation],

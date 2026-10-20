@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   Logger,
@@ -10,7 +11,6 @@ import { ensureError, isObject } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { METAMASK_ORIGIN } from '../../constants';
 import type { StellarKeyringAccount } from '../../services/account';
 import type {
   AssetMetadataService,
@@ -201,7 +201,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       }
 
       const trackingProperties: TransactionEventProperties = {
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
         transactionType: TransactionType.Send,
@@ -396,7 +396,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     const result =
       await this.#confirmationUIController.renderConfirmationDialog({
         scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         renderContext: {
           account,
           toAddress,
@@ -470,7 +470,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
     await this.#confirmationUIController.renderConfirmationDialog({
       scope,
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       renderContext: {
         account,
         toAddress,

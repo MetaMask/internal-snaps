@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
@@ -7,10 +8,7 @@ import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import {
-  CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO,
-  METAMASK_ORIGIN,
-} from '../../constants';
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import type { StellarAssetMetadata } from '../../services/asset-metadata';
@@ -314,7 +312,7 @@ describe('ConfirmSendHandler', () => {
       scope,
       interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
       fee: transaction.totalFee.toString(),
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       renderContext: {
         account,
         toAddress: destinationAddress,
@@ -612,7 +610,7 @@ describe('ConfirmSendHandler', () => {
           scope,
           interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
           fee: '',
-          origin: METAMASK_ORIGIN,
+          origin: DEFAULT_METAMASK_ORIGIN,
           renderContext: {
             account,
             toAddress: destinationAddress,
@@ -924,7 +922,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionAddedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
     });
@@ -945,7 +943,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
     });
@@ -956,7 +954,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
     });
@@ -973,7 +971,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
 

@@ -1,14 +1,12 @@
 import { TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import {
-  CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO,
-  METAMASK_ORIGIN,
-} from '../../constants';
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import type { StellarAssetMetadata } from '../../services/asset-metadata';
@@ -433,7 +431,7 @@ describe('ChangeTrustOptHandler', () => {
 
     expect(resolve).toHaveBeenCalledWith(assetId);
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
       fee: '',
@@ -472,7 +470,7 @@ describe('ChangeTrustOptHandler', () => {
     );
 
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
       fee: '',
@@ -510,7 +508,7 @@ describe('ChangeTrustOptHandler', () => {
     );
 
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptIn,
       fee: '',
@@ -794,7 +792,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionAddedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
     });
@@ -815,7 +813,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
     });
@@ -826,7 +824,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
     });
@@ -843,7 +841,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
 
