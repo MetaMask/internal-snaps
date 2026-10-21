@@ -15,7 +15,6 @@
 
 import { SLIP10Node } from '@metamask/key-tree';
 import { Keypair } from '@stellar/stellar-sdk';
-import { stdin as input, stdout as output } from 'node:process';
 import { createInterface } from 'node:readline/promises';
 
 const DEFAULT_INDICES = [0, 1];
@@ -42,7 +41,10 @@ async function readMnemonic() {
     return fromEnv.replace(/\s+/gu, ' ');
   }
 
-  const rl = createInterface({ input, output });
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   const typed = await rl.question(
     'Paste SRP (spaces between words; input is not saved): ',
   );
@@ -67,8 +69,8 @@ async function deriveAtIndex(mnemonic, index) {
   if (!node.privateKey) {
     throw new Error(`No private key at m/44'/148'/${index}'`);
   }
-  const hex = node.privateKey.replace(/^0x/iu, '');
-  const seed = Uint8Array.from(Buffer.from(hex, 'hex'));
+  const privateKeyHex = node.privateKey.replace(/^0x/iu, '');
+  const seed = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
   return Keypair.fromRawEd25519Seed(seed);
 }
 

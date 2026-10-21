@@ -98,7 +98,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   readonly #handlers: Record<MultichainMethod, IKeyringRequestHandler>;
 
-  readonly #liveOnChainAccountCache: InMemoryCache;
+  readonly #fetchOnChainAccountCache: InMemoryCache;
 
   constructor({
     logger,
@@ -116,7 +116,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
     this.#logger = logger.withPrefix(KEYRING_HANDLER_LOGGER_PREFIX);
-    this.#liveOnChainAccountCache = new InMemoryCache(this.#logger);
+    this.#fetchOnChainAccountCache = new InMemoryCache(this.#logger);
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;
@@ -128,14 +128,12 @@ export class KeyringHandler implements KeyringSnapRpc {
     this.#logger.debug('Handle keyring request', {
       origin,
       method: request.method,
-      request: JSON.stringify(request),
     });
     validateOrigin(origin, request.method, originPermissions);
     const result = await handleKeyringRequest(this, request);
     this.#logger.debug('Keyring request handled', {
       origin,
       method: request.method,
-      result: JSON.stringify(result),
     });
     return result ?? null;
   }
@@ -221,7 +219,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     validateRequest(accountId, ListAccountAssetsRequestStruct);
 
     const scope = AppConfig.selectedNetwork;
-    const onChainAccount = await this.#resolveAccountByAccountId({
+    const onChainAccount = await this.#fetchOnChainAccountByAccountId({
       accountId,
       scope,
       // Always refresh the cache to get the latest on-chain account.
@@ -329,7 +327,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     const scope = AppConfig.selectedNetwork;
     const assetBalances = {} as Record<KnownCaip19AssetIdOrSlip44Id, Balance>;
 
-    const onChainAccount = await this.#resolveAccountByAccountId({
+    const onChainAccount = await this.#fetchOnChainAccountByAccountId({
       accountId,
       scope,
       refresh: false,
@@ -344,12 +342,13 @@ export class KeyringHandler implements KeyringSnapRpc {
       return assetBalances;
     }
 
-    // `#resolveAccountByAccountId` returns watched assets balance from Tokens API.
-    // But, the watched assets from Tokens API can omit SEP-41 ids the client asked for.
+    // `#fetchOnChainAccountByAccountId` returns watched assets balance from Tokens API.
+    // But, the watched assets from Tokens API may not contain the SEP-41 ids the client asked for.
     const missingSep41AssetIds = knownAssets.filter(
       (assetId): assetId is KnownCaip19Sep41AssetId =>
         isSep41Id(assetId) && onChainAccount.getRawAsset(assetId) === undefined,
     );
+    // Try to fetch the SEP-41 balances for the missing SEP-41 asset ids.
     if (missingSep41AssetIds.length > 0) {
       await this.#onChainAccountService.fetchAndBindSep41Balances(
         onChainAccount,
@@ -510,7 +509,7 @@ export class KeyringHandler implements KeyringSnapRpc {
    * Loads a Horizon account for the keyring asset/balance pair.
    *
    * `getAccountAssets` always refreshes and stores the result. `getAccountBalances`
-   * reuses that entry until `AppConfig.cache.ttlMilliseconds.keyringLiveAccount`, then loads Horizon.
+   * reuses that entry until `AppConfig.cache.ttlMilliseconds.fetchOnChainAccount`, then loads Horizon.
    * A failed load is not cached. An unactivated account is cached as `null`.
    *
    * @param params - Account id, scope, and whether to skip the cache.
@@ -519,7 +518,7 @@ export class KeyringHandler implements KeyringSnapRpc {
    * @param params.refresh - When true, load Horizon and replace the cache entry.
    * @returns The live account, or `null` when it is not activated.
    */
-  async #resolveAccountByAccountId({
+  async #fetchOnChainAccountByAccountId({
     accountId,
     scope,
     refresh,
@@ -532,12 +531,12 @@ export class KeyringHandler implements KeyringSnapRpc {
       accountId,
     });
     const serialized = await useCache(
-      this.#resolveOnChainAccount.bind(this),
-      this.#liveOnChainAccountCache,
+      this.#fetchOnChainAccount.bind(this),
+      this.#fetchOnChainAccountCache,
       {
         logger: this.#logger,
-        functionName: 'KeyringHandler:resolveOnChainAccount',
-        ttlMilliseconds: AppConfig.cache.ttlMilliseconds.keyringLiveAccount,
+        functionName: 'KeyringHandler:fetchOnChainAccount',
+        ttlMilliseconds: AppConfig.cache.ttlMilliseconds.fetchOnChainAccount,
         refreshCache: refresh,
       },
     )(account.address, scope);
@@ -549,7 +548,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     return OnChainAccount.fromSerializable(serialized);
   }
 
-  async #resolveOnChainAccount(
+  async #fetchOnChainAccount(
     accountAddress: string,
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccountSerializableFull | null> {
@@ -558,7 +557,7 @@ export class KeyringHandler implements KeyringSnapRpc {
         await this.#onChainAccountService.resolveOnChainAccount(
           accountAddress,
           scope,
-          { resolveWithFullBalance: true },
+          { fetchWithSep41Balances: true },
         );
       return onChainAccount.toSerializableFull();
     } catch (error: unknown) {

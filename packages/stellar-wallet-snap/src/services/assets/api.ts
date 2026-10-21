@@ -154,7 +154,6 @@ function isZeroTrustlineLimit(limit: string): boolean {
  * - If it is an integer, it is returned unchanged.
  *
  * @param limit - Trustline limit.
- * @param decimals - Asset decimals used to scale a display amount.
  * @returns Integer stroop string.
  */
 function normalizeCoreTrustlineLimit(limit: string): string {

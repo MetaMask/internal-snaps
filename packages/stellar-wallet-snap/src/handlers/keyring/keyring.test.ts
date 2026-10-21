@@ -461,7 +461,7 @@ describe('KeyringHandler', () => {
       expect(resolveOnChainAccountSpy).toHaveBeenCalledWith(
         mockAccount.address,
         KnownCaip2ChainId.Mainnet,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
       expect(result).toStrictEqual(onChainAccount.assetIds);
     });
@@ -602,7 +602,7 @@ describe('KeyringHandler', () => {
       expect(resolveOnChainAccountSpy).toHaveBeenCalledWith(
         mockAccount.address,
         KnownCaip2ChainId.Mainnet,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
       expect(result).toStrictEqual({
         [slipId]: {
@@ -652,7 +652,7 @@ describe('KeyringHandler', () => {
 
       await keyringHandler.getAccountAssets(mockAccountId);
       nowSpy.mockReturnValue(
-        1_000 + AppConfig.cache.ttlMilliseconds.keyringLiveAccount + 1,
+        1_000 + AppConfig.cache.ttlMilliseconds.fetchOnChainAccount + 1,
       );
       resolveOnChainAccountSpy.mockClear();
 

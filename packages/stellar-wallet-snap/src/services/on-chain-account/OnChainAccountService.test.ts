@@ -227,7 +227,7 @@ describe('OnChainAccountService', () => {
       ).rejects.toThrow(DerivedAccountAddressMismatchException);
     });
 
-    it('binds SEP-41 balances including zero when resolveWithFullBalance is set', async () => {
+    it('binds SEP-41 balances including zero when fetchWithSep41Balances is set', async () => {
       const {
         accountAddress,
         scope,
@@ -245,7 +245,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
@@ -274,7 +274,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(result.accountId).toStrictEqual(accountAddress);
@@ -295,7 +295,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
@@ -316,7 +316,7 @@ describe('OnChainAccountService', () => {
 
       await expect(
         onChainAccountService.resolveOnChainAccount(accountAddress, scope, {
-          resolveWithFullBalance: true,
+          fetchWithSep41Balances: true,
         }),
       ).rejects.toThrow(
         new OnChainAccountSep41BalanceNotFoundException(accountAddress),
@@ -337,7 +337,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(result.getRawAsset(USDC_SEP41)).toBeUndefined();
@@ -357,7 +357,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe('1');
@@ -372,7 +372,7 @@ describe('OnChainAccountService', () => {
 
       await expect(
         onChainAccountService.resolveOnChainAccount(accountAddress, scope, {
-          resolveWithFullBalance: true,
+          fetchWithSep41Balances: true,
         }),
       ).rejects.toThrow('Failed to load SEP-41 token balance');
     });

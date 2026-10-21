@@ -59,7 +59,6 @@ import {
   TransactionBuilder,
 } from '@stellar/stellar-sdk';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { stdin as input, stdout as output } from 'node:process';
 import { createInterface } from 'node:readline/promises';
 
 const HORIZON_URL = process.env.HORIZON_URL ?? 'https://horizon.stellar.org';
@@ -1914,7 +1913,10 @@ async function confirmMainnet(command, caseName, description) {
   console.log(
     `\nMAINNET ${command} ${caseName}: ${description}\nType "mainnet" to broadcast.`,
   );
-  const rl = createInterface({ input, output });
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   const answer = await rl.question('> ');
   rl.close();
   if (answer.trim() !== 'mainnet') {

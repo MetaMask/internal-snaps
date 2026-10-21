@@ -115,19 +115,19 @@ export class OnChainAccountService {
    * @param accountAddress - Stellar address (strkey) expected to match Horizon `account_id`.
    * @param scope - CAIP-2 network to load the account from (Horizon `loadAccount`).
    * @param options - Optional extra loads.
-   * @param options.resolveWithFullBalance - When true, also read SEP-41 balances for the
+   * @param options.fetchWithSep41Balances - When true, also read SEP-41 balances for the
    * persisted catalog and bind them onto the Horizon account.
    * @returns Loaded {@link OnChainAccount} for simulation, fees, and sequence.
    * @throws {AccountNotActivatedException} When the account is not funded (from {@link NetworkService.loadOnChainAccount}).
    * @throws {DerivedAccountAddressMismatchException} When loaded id does not match `accountAddress`.
-   * @throws {OnChainAccountSep41BalanceNotFoundException} When `resolveWithFullBalance` is set and
+   * @throws {OnChainAccountSep41BalanceNotFoundException} When `fetchWithSep41Balances` is set and
    * mainnet returns no SEP-41 map for the account.
    */
   async resolveOnChainAccount(
     accountAddress: string,
     scope: KnownCaip2ChainId,
     options?: {
-      resolveWithFullBalance?: boolean;
+      fetchWithSep41Balances?: boolean;
     },
   ): Promise<OnChainAccount> {
     const loaded = await this.#networkService.loadOnChainAccount(
@@ -137,7 +137,7 @@ export class OnChainAccountService {
 
     assertSameAddress(accountAddress, loaded.accountId);
 
-    if (options?.resolveWithFullBalance) {
+    if (options?.fetchWithSep41Balances) {
       await this.#bindSep41Balances(loaded, scope);
     }
 
@@ -183,7 +183,7 @@ export class OnChainAccountService {
     const sep41Assets =
       assetIds === undefined
         ? await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope)
-        : await this.#assetMetadataService.fetchSep41AssetsMetadata(assetIds);
+        : await this.#assetMetadataService.fetchSep41AssetsByAssetIds(assetIds);
 
     const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
     const assetMetadataByAssetId: Record<
@@ -340,7 +340,7 @@ export class OnChainAccountService {
 
     if (assets.length === 0) {
       // If the account has no assets from core,
-      // Possiblly not indexed, or not activated
+      // Possibly not indexed, or not activated
       // Return null to categorize it as not activated
       return null;
     }
