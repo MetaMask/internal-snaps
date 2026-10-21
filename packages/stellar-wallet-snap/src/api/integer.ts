@@ -44,7 +44,7 @@ export const ValidStellarAmountStruct = refine(
       if (
         (decimalPlaces && decimalPlaces > STELLAR_DECIMAL_PLACES) ||
         // > Max value
-        toSmallestUnit(amount).gt(new BigNumber(MAX_INT64).toString())
+        toSmallestUnit(amount).gt(MAX_INT64)
       ) {
         return 'Invalid amount';
       }
