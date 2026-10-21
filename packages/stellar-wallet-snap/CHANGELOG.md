@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Read asset metadata from AssetsController when feature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493))
-  - `enableAssetMigration` defaults to false, so this path stays off until it is turned on.
+  - `enableAssetMigration` set to off.
 
 ## [1.3.0]
 
