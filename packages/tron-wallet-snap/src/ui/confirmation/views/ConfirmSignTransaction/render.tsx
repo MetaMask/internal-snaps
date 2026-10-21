@@ -1,4 +1,7 @@
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  SecurityAlertsScanOption,
+} from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
@@ -198,7 +201,7 @@ export async function render(
     let scan: TransactionScanResult | null = null;
 
     if (securityScanEnabled) {
-      const options: string[] = [];
+      const options: SecurityAlertsScanOption[] = [];
 
       if (simulateOnChainActions) {
         options.push('simulation');

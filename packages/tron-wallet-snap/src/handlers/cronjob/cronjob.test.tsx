@@ -63,10 +63,7 @@ type MockState = {
  * `refreshConfirmationSend`.
  */
 type MockTransactionScanService = jest.Mocked<
-  Pick<
-    TransactionScanService,
-    'scanTransaction' | 'getSecurityAlertDescription'
-  >
+  Pick<TransactionScanService, 'scanTransaction'>
 >;
 
 type MockTronWebFactory = jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
@@ -302,7 +299,6 @@ function buildMockTransactionScanService(
 ): MockTransactionScanService {
   return {
     scanTransaction: jest.fn().mockResolvedValue(scanResult),
-    getSecurityAlertDescription: jest.fn().mockReturnValue('description'),
   };
 }
 

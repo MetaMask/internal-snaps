@@ -5,6 +5,7 @@ import type {
   ExtendedKeyringAccount,
   IStateManager,
   Logger,
+  SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
@@ -368,7 +369,7 @@ export class CronHandler {
         fetchingContext,
       );
 
-      const options: string[] = ['simulation'];
+      const options: SecurityAlertsScanOption[] = ['simulation'];
       if (preferences.useSecurityAlerts) {
         options.push('validation');
       }
@@ -529,7 +530,7 @@ export class CronHandler {
       }
 
       if (shouldRefreshScan && rawData) {
-        const options: string[] = [];
+        const options: SecurityAlertsScanOption[] = [];
         if (preferences.simulateOnChainActions) {
           options.push('simulation');
         }

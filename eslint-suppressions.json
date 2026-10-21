@@ -1321,7 +1321,7 @@
   },
   "packages/tron-wallet-snap/src/services/transaction-scan/TransactionScanService.ts": {
     "no-restricted-syntax": {
-      "count": 5
+      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.test.ts": {
