@@ -22,23 +22,25 @@ import {
   StellarTransactionScanResponseStruct,
   TransactionScanErrorId,
   TransactionScanOption,
+  SecurityAlertsChain,
 } from './api';
 import type {
-  SecurityAlertsApiRequest,
   StellarAssetDiff,
   StellarTransactionScanResponse,
   TransactionScanAssetChange,
   TransactionScanError,
   TransactionScanResult,
   TransactionScanValidation,
+  SecurityAlertsChain as SecurityAlertsChainType,
+  SecurityAlertsMetadata,
 } from './api';
 
 const SCOPE_TO_SECURITY_ALERTS_CHAIN: Record<
   KnownCaip2ChainId,
-  SecurityAlertsApiRequest['chain']
+  SecurityAlertsChainType
 > = {
-  [KnownCaip2ChainId.Mainnet]: 'pubnet',
-  [KnownCaip2ChainId.Testnet]: 'testnet',
+  [KnownCaip2ChainId.Mainnet]: SecurityAlertsChain.Mainnet,
+  [KnownCaip2ChainId.Testnet]: SecurityAlertsChain.Testnet,
 };
 
 export class TransactionScanService extends BaseTransactionScanService {
@@ -64,7 +66,7 @@ export class TransactionScanService extends BaseTransactionScanService {
         ? this.#preflightValidation(transaction, scope)
         : null;
 
-      const requestBody: SecurityAlertsApiRequest = {
+      const requestBody = {
         account_address: accountAddress,
         chain: SCOPE_TO_SECURITY_ALERTS_CHAIN[scope],
         metadata: this.#getMetadata(origin),
@@ -113,7 +115,7 @@ export class TransactionScanService extends BaseTransactionScanService {
    * @param origin - The origin of the scan request.
    * @returns The metadata for the scan request.
    */
-  #getMetadata(origin: string): SecurityAlertsApiRequest['metadata'] {
+  #getMetadata(origin: string): SecurityAlertsMetadata {
     try {
       const url = new URL(origin);
       return {

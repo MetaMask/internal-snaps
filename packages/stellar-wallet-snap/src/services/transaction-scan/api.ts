@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
@@ -15,7 +14,7 @@ import {
   unknown,
 } from '@metamask/superstruct';
 
-import { KnownCaip2ChainId } from '../../api';
+import { KnownCaip2ChainId, XdrStruct } from '../../api';
 
 /**
  * TransactionScanErrorId
@@ -69,27 +68,20 @@ export type AssetChangeDirection =
   (typeof AssetChangeDirection)[keyof typeof AssetChangeDirection];
 
 /** Security Alerts API chain identifier. */
-export type SecurityAlertsChain = 'pubnet' | 'testnet' | 'futurenet';
+export const SecurityAlertsChain = {
+  Mainnet: 'pubnet',
+  Testnet: 'testnet',
+} as const;
 
-export type SecurityAlertsMetadata =
-  | {
-      type: 'wallet';
-      url: string;
-    }
-  | {
-      type: 'in_app';
-    };
+export type SecurityAlertsChain =
+  (typeof SecurityAlertsChain)[keyof typeof SecurityAlertsChain];
 
-/**
- * Request body sent to `POST /stellar/transaction/scan`.
- */
-export type SecurityAlertsApiRequest = {
-  account_address: string;
-  chain: SecurityAlertsChain;
-  metadata: SecurityAlertsMetadata;
-  transaction: string;
-  options?: TransactionScanOption[];
-};
+export const SecurityAlertsMetadataStruct = union([
+  type({ type: literal('wallet'), url: nonempty(string()) }),
+  type({ type: literal('in_app') }),
+]);
+
+export type SecurityAlertsMetadata = Infer<typeof SecurityAlertsMetadataStruct>;
 
 /** ScanTransactionRequest */
 export const SecurityScanRequestStruct = type({
@@ -101,12 +93,9 @@ export const SecurityScanRequestStruct = type({
 
 export const ScanTransactionRequestStruct = type({
   account_address: nonempty(string()),
-  chain: enums(['pubnet', 'testnet', 'futurenet']),
-  metadata: union([
-    type({ type: literal('wallet'), url: nonempty(string()) }),
-    type({ type: literal('in_app') }),
-  ]),
-  transaction: string(),
+  chain: enums(Object.values(SecurityAlertsChain)),
+  metadata: SecurityAlertsMetadataStruct,
+  transaction: XdrStruct,
   options: optional(array(enums(Object.values(TransactionScanOption)))),
 });
 
