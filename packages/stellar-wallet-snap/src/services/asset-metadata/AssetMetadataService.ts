@@ -95,7 +95,7 @@ export class AssetMetadataService {
   /**
    * Resolves SEP-41 metadata for ids that are not in the watched catalog.
    *
-   * Rows already stored in Core or snap state are reused. Newly fetched rows
+   * Rows already stored in AssetsController or snap state are reused. Newly fetched rows
    * are persisted, same as {@link resolve}.
    *
    * @param assetIds - SEP-41 asset ids to resolve.
@@ -194,7 +194,7 @@ export class AssetMetadataService {
       result.push(getNativeAssetMetadata(chainId));
     }
 
-    // persisted: Core then snap when migration is on; snap only when off
+    // persisted: AssetsController then snap when migration is on; snap only when off
     const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
     if (allNonNativeAssetIds.length === 0) {
       return result;
@@ -228,9 +228,9 @@ export class AssetMetadataService {
   }
 
   /**
-   * Resolves persisted metadata. Core first when the Stellar assets migration
-   * flag is on, then snap state for remaining ids. When the flag is off, skip
-   * Core and read snap state only.
+   * Resolves persisted metadata. AssetsController first when the Stellar assets
+   * migration flag is on, then snap state for remaining ids. When the flag is
+   * off, skip AssetsController and read snap state only.
    *
    * @param assetIds - Non-native CAIP-19 ids to look up.
    * @returns Hits plus ids still missing after persisted lookups.
@@ -240,17 +240,22 @@ export class AssetMetadataService {
     missingAssetIds: KnownCaip19AssetId[];
   }> {
     if (await this.#assetsService.isMigrationEnabled()) {
-      const { hits: coreHits, missing: missingAssetIdsFromCore } =
-        await this.#getCoreAssetMetadata(assetIds);
+      const {
+        hits: assetsControllerHits,
+        missing: missingAssetIdsFromAssetsController,
+      } = await this.#getAssetsControllerAssetMetadata(assetIds);
 
-      if (missingAssetIdsFromCore.length === 0) {
-        return { assets: coreHits, missingAssetIds: [] };
+      if (missingAssetIdsFromAssetsController.length === 0) {
+        return { assets: assetsControllerHits, missingAssetIds: [] };
       }
 
       const { hits: snapHits, missing: missingAssetIds } =
-        await this.#getSnapAssetMetadata(missingAssetIdsFromCore);
+        await this.#getSnapAssetMetadata(missingAssetIdsFromAssetsController);
 
-      return { assets: [...coreHits, ...snapHits], missingAssetIds };
+      return {
+        assets: [...assetsControllerHits, ...snapHits],
+        missingAssetIds,
+      };
     }
 
     const { hits, missing } = await this.#getSnapAssetMetadata(assetIds);
@@ -266,14 +271,18 @@ export class AssetMetadataService {
     return this.#partitionHitsAndMissingByArray(assetIds, cachedAssets);
   }
 
-  async #getCoreAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{
+  async #getAssetsControllerAssetMetadata(
+    assetIds: KnownCaip19AssetId[],
+  ): Promise<{
     hits: StellarAssetMetadata[];
     missing: KnownCaip19AssetId[];
   }> {
     const hits: StellarAssetMetadata[] = [];
     const missing: KnownCaip19AssetId[] = [];
 
-    this.#logger.debug('Getting asset metadata from Core', { assetIds });
+    this.#logger.debug('Getting asset metadata from AssetsController', {
+      assetIds,
+    });
     if (assetIds.length > 0) {
       // The order doesn't matter here, as we are not using the order of the assets.
       await Promise.all(
@@ -295,7 +304,10 @@ export class AssetMetadataService {
         }),
       );
     }
-    this.#logger.debug('Asset metadata from Core', { hits, missing });
+    this.#logger.debug('Asset metadata from AssetsController', {
+      hits,
+      missing,
+    });
     return { hits, missing };
   }
 

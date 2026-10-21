@@ -323,7 +323,7 @@ export class OnChainAccountService {
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccount | null> {
     if (await this.#assetsService.isMigrationEnabled()) {
-      return this.#getOnChainAccountFromCore(
+      return this.#getOnChainAccountFromAssetsController(
         scope,
         keyringAccountId,
         accountAddress,
@@ -362,7 +362,7 @@ export class OnChainAccountService {
    * @returns Bound account, or `null` when AssetsController has no holdings for the account.
    * @throws {OnChainAccountException} When AssetsController holdings cannot be mapped into a snapshot.
    */
-  async #getOnChainAccountFromCore(
+  async #getOnChainAccountFromAssetsController(
     scope: KnownCaip2ChainId,
     keyringAccountId: string,
     accountAddress: string,
@@ -386,7 +386,7 @@ export class OnChainAccountService {
     });
 
     try {
-      const serializable = this.#mapCoreAssetsToSerializable({
+      const serializable = this.#mapAssetsControllerAssetsToSerializable({
         accountAddress,
         scope,
         assets,
@@ -418,7 +418,7 @@ export class OnChainAccountService {
    * @param params.ledger - Optional ledger overlay for sequence, meta, and native stroops.
    * @returns Full serializable binding for {@link OnChainAccount.fromSerializable}.
    */
-  #mapCoreAssetsToSerializable({
+  #mapAssetsControllerAssetsToSerializable({
     accountAddress,
     scope,
     assets,
@@ -525,7 +525,7 @@ export class OnChainAccountService {
   ): Promise<void> {
     if (await this.#assetsService.isMigrationEnabled()) {
       this.#logger.debug(
-        'Skipping on-chain account synchronization; Core migration is on',
+        'Skipping on-chain account synchronization; assets migration is on',
       );
       return;
     }

@@ -696,7 +696,7 @@ describe('OnChainAccountService', () => {
       );
     });
 
-    it('skips persist when Core migration is on', async () => {
+    it('skips persist when assets migration is on', async () => {
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
       jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Read Stellar account holdings and asset metadata from Core when the Stellar snaps assets migration flag is not off ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
+- Read Stellar account holdings and asset metadata from AssetsController when the Stellar snaps assets migration flag is not off ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
   - Request `endowment:messenger` for `RemoteFeatureFlagController:getState` and AssetsController account-asset and metadata actions.
   - Include SEP-41 balances on keyring `getAccountAssets` and `getAccountBalances`.
 

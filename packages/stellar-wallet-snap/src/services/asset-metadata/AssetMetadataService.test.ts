@@ -407,7 +407,7 @@ describe('AssetMetadataService', () => {
     });
   });
 
-  it('persists catalog during synchronize when Core migration is on', async () => {
+  it('persists catalog during synchronize when assets migration is on', async () => {
     const sep41AssetId =
       'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19AssetId;
     const { service, assetsService, saveMany } = createService({});
@@ -442,7 +442,7 @@ describe('AssetMetadataService', () => {
     );
   });
 
-  it('maps Core catalog metadata into StellarAssetMetadata without reading snap state', async () => {
+  it('maps AssetsController catalog metadata into StellarAssetMetadata without reading snap state', async () => {
     const classicId = MAINNET_CLASSIC_USDC;
     const { service, assetsService, getByAssetIds, saveMany } = createService(
       {},
@@ -472,7 +472,7 @@ describe('AssetMetadataService', () => {
     expect(saveMany).not.toHaveBeenCalled();
   });
 
-  it('falls back to snap catalog when Core misses', async () => {
+  it('falls back to snap catalog when AssetsController misses', async () => {
     const classicId = MAINNET_CLASSIC_USDC;
     const cached = createCachedRow(classicId, KnownCaip2ChainId.Mainnet);
     const { service, assetsService, getByAssetIds } = createService({

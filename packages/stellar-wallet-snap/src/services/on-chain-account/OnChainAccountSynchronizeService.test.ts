@@ -182,7 +182,7 @@ describe('OnChainAccountSynchronizeService', () => {
   const setupSynchronizeService = () => {
     const { onChainAccountService, onChainAccountRepository, assetsService } =
       mockOnChainAccountService();
-    // These cases cover the snap-state sync path, which is skipped when Core migration is on.
+    // These cases cover the snap-state sync path, which is skipped when assets migration is on.
     jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
     return {
       onChainAccountService,
