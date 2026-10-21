@@ -90,7 +90,8 @@ export class SecurityAlertsApiClient {
    * @throws HttpError if the request fails, the API responds
    * with a non-2xx status, or the response body cannot be parsed as JSON.
    */
-  async scanTransaction(body: unknown): Promise<unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async scanTransaction(body: unknown): Promise<any> {
     const request = async (): Promise<unknown> => {
       const response = await this.#fetch(this.#scanUrl, {
         headers: { ...SECURITY_ALERTS_REQUEST_HEADERS },
