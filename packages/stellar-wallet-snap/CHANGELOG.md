@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Read Stellar asset metadata from AssetsController when `enableAssetMigration` is on and the snaps assets migration flag is not off
+  - Request `endowment:messenger` for `RemoteFeatureFlagController:getState` and AssetsController account-asset and metadata actions.
+  - `enableAssetMigration` defaults to false, so this path stays off until it is turned on.
+
 ## [1.3.0]
 
 ### Added

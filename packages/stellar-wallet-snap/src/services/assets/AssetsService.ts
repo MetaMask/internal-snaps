@@ -11,6 +11,7 @@ import type {
 } from '../../api';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { parseCoreStellarAsset, parseCoreAssetMetadata } from './api';
+import { AppConfig } from '../../config';
 import type { CoreAsset, CoreAssetMetadata } from './api';
 
 /**
@@ -33,14 +34,19 @@ export class AssetsService {
   }
 
   /**
-   * Returns whether Stellar should read assets from
-   * AssetsController instead of snap state.
+   * Returns whether Stellar should read assets from AssetsController
+   * instead of snap state.
    *
-   * Any migration stage other than Off enables Core reads.
+   * `AppConfig.enableAssetMigration` stays false until the migration is ready
+   * to ship, so this returns false without reading the feature flag. When that
+   * config is true, any migration stage other than Off enables the read.
    *
-   * @returns Whether the Stellar assets migration flag is active.
+   * @returns Whether AssetsController reads are active.
    */
   async isMigrationEnabled(): Promise<boolean> {
+    if (!AppConfig.enableAssetMigration) {
+      return false;
+    }
     const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
       SNAPS_ASSETS_MIGRATION_FLAG_KEYS.stellar,
     );

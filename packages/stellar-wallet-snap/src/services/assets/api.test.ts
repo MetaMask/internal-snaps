@@ -159,6 +159,53 @@ describe('parseCoreStellarAsset', () => {
     });
   });
 
+  it('scales a display trustline limit to stroops and leaves an integer limit unchanged', () => {
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            ...classicAsset.balance.metadata,
+            limit: '922337203685.4775807',
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: { metadata: { limit: MAX_INT64 } },
+    });
+
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            ...classicAsset.balance.metadata,
+            limit: '100000000',
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: { metadata: { limit: '100000000' } },
+    });
+
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            ...classicAsset.balance.metadata,
+            limit: '10.5',
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: { metadata: { limit: '105000000' } },
+    });
+  });
+
   it('forces sponsored true when sponsor is a non-empty string', () => {
     const sponsor = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
     expect(
