@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
+    "@metamask/assets-controller": "^19.1.0",
     "@metamask/auto-changelog": "^6.2.1",
     "@metamask/key-tree": "^10.1.1",
     "@metamask/keyring-api": "^24.1.0",
