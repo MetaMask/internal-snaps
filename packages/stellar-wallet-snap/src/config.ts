@@ -130,8 +130,8 @@ export type Config = Infer<typeof ConfigStruct>;
  * replaced with its build-time value (see `snap.config.ts`).
  */
 const ENVIRONMENT = {
-  environment: 'production',
-  logLevel: 'debug',
+  environment: process.env.ENVIRONMENT,
+  logLevel: process.env.LOG_LEVEL,
   networks: {
     [KnownCaip2ChainId.Mainnet]: {
       rpcUrl: process.env.STELLAR_RPC_URL_MAINNET,
