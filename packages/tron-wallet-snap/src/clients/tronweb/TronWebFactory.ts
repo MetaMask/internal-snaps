@@ -1,10 +1,13 @@
-import { createFetchPolicy } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  executeWithFetchPolicy,
+} from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 import { providers, TronWeb } from 'tronweb';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
-import { executeWithFetchPolicy } from '../../utils/fetchPolicy';
+import { toFetchPolicyError } from '../../utils/fetchPolicy';
 import logger from '../../utils/logger';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -12,12 +15,9 @@ const REQUEST_TIMEOUT_MS = 10_000;
 export class TronWebFactory {
   readonly #configProvider: ConfigProvider;
 
-  readonly #policies: Map<Network, ReturnType<typeof createFetchPolicy>>;
+  readonly #policies: Map<Network, FetchPolicy>;
 
-  readonly #broadcastPolicies: Map<
-    Network,
-    ReturnType<typeof createFetchPolicy>
-  >;
+  readonly #broadcastPolicies: Map<Network, FetchPolicy>;
 
   constructor({
     configProvider,
@@ -85,7 +85,7 @@ export class TronWebFactory {
     if (!policy) {
       throw new Error(`No broadcast policy configured for network: ${network}`);
     }
-    return executeWithFetchPolicy(policy, operation);
+    return executeWithFetchPolicy(policy, operation, toFetchPolicyError);
   }
 
   async #execute<Result>(
@@ -96,7 +96,7 @@ export class TronWebFactory {
     if (!policy) {
       throw new Error(`No policy configured for network: ${network}`);
     }
-    return executeWithFetchPolicy(policy, operation);
+    return executeWithFetchPolicy(policy, operation, toFetchPolicyError);
   }
 
   /**

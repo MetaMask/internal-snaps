@@ -2,16 +2,14 @@ import {
   buildUrl,
   createFetchPolicy,
   createFetchPolicyError,
+  executeWithFetchPolicy,
+  parseRetryAfter,
 } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
-import {
-  executeWithFetchPolicy,
-  parseRetryAfter,
-} from '../../utils/fetchPolicy';
 import { hexToString } from '../../utils/hex';
 import logger from '../../utils/logger';
 import {
@@ -49,7 +47,7 @@ export class TronHttpClient {
     }
   > = new Map();
 
-  readonly #policies: Map<Network, ReturnType<typeof createFetchPolicy>>;
+  readonly #policies: Map<Network, FetchPolicy>;
 
   constructor({
     configProvider,

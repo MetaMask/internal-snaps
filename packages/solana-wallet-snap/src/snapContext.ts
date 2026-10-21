@@ -1,6 +1,7 @@
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import {
   AnalyticsService,
+  createFetchPolicy,
   InMemoryCache,
   SecurityAlertsApiClient,
   State,
@@ -185,6 +186,10 @@ const accountsSynchronizer = new AccountsSynchronizer(
 
 const securityAlertsApiClient = new SecurityAlertsApiClient({
   scanUrl: `${configProvider.config.securityAlertsApi.baseUrl}/solana/message/scan`,
+  policy: createFetchPolicy({
+    service: 'security_alerts_api',
+    logger,
+  }),
 });
 
 const transactionScanService = new TransactionScanService({

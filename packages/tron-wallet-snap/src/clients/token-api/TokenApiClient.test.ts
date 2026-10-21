@@ -90,7 +90,9 @@ describe('TokenApiClient', () => {
         ];
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce(MOCK_METADATA_RESPONSE),
+          text: jest
+            .fn()
+            .mockResolvedValueOnce(JSON.stringify(MOCK_METADATA_RESPONSE)),
         });
 
         const metadata = await client.getTokensMetadata(tokenAddresses);
@@ -140,7 +142,9 @@ describe('TokenApiClient', () => {
 
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(MOCK_METADATA_RESPONSE),
+          text: jest
+            .fn()
+            .mockResolvedValue(JSON.stringify(MOCK_METADATA_RESPONSE)),
         });
 
         await client.getTokensMetadata(tokenAddresses);
@@ -185,18 +189,22 @@ describe('TokenApiClient', () => {
         mockFetch
           .mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce(MOCK_METADATA_RESPONSE),
+            text: jest
+              .fn()
+              .mockResolvedValueOnce(JSON.stringify(MOCK_METADATA_RESPONSE)),
           })
           .mockResolvedValueOnce({
             ok: true,
-            json: jest.fn().mockResolvedValueOnce([
-              {
-                decimals: 6,
-                assetId: thirdTokenAddress,
-                name: 'Third token',
-                symbol: 'THIRD',
-              },
-            ]),
+            text: jest.fn().mockResolvedValueOnce(
+              JSON.stringify([
+                {
+                  decimals: 6,
+                  assetId: thirdTokenAddress,
+                  name: 'Third token',
+                  symbol: 'THIRD',
+                },
+              ]),
+            ),
           });
 
         const metadata = await client.getTokensMetadata(tokenAddresses);
@@ -242,15 +250,58 @@ describe('TokenApiClient', () => {
         ];
 
         const errorMessage = 'Error fetching token metadata';
-        mockFetch.mockRejectedValueOnce(new Error(errorMessage));
+        mockFetch.mockRejectedValue(new Error(errorMessage));
 
         await expect(client.getTokensMetadata(tokenAddresses)).rejects.toThrow(
           errorMessage,
         );
+        expect(mockFetch).toHaveBeenCalledTimes(4);
         expect(logger.error).toHaveBeenCalledWith(
-          new Error(errorMessage),
+          expect.objectContaining({ message: errorMessage }),
           errorMessage,
         );
+      });
+    });
+
+    it('retries transient HTTP errors and does not retry 404 responses', async () => {
+      await withTokenApiClient(async ({ client, mockFetch }) => {
+        const tokenAddresses = [
+          `${
+            Networks[Network.Mainnet].caip2Id
+          }/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` as TokenCaipAssetType,
+        ];
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 503,
+            headers: { get: () => null },
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            text: jest
+              .fn()
+              .mockResolvedValueOnce(
+                JSON.stringify([MOCK_METADATA_RESPONSE[0]]),
+              ),
+          });
+
+        const metadata = await client.getTokensMetadata(tokenAddresses);
+
+        const firstTokenAddress = tokenAddresses[0] as TokenCaipAssetType;
+        expect(metadata[firstTokenAddress]).toBeDefined();
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+
+        mockFetch.mockClear();
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          headers: { get: () => null },
+        });
+
+        await expect(client.getTokensMetadata(tokenAddresses)).rejects.toThrow(
+          'HTTP error! status: 404',
+        );
+        expect(mockFetch).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -267,14 +318,16 @@ describe('TokenApiClient', () => {
 
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce([
-            {
-              decimals: 9,
-              assetId: 'bad-asset-id',
-              name: 'Popcat 1',
-              symbol: 'POPCAT',
-            },
-          ]),
+          text: jest.fn().mockResolvedValueOnce(
+            JSON.stringify([
+              {
+                decimals: 9,
+                assetId: 'bad-asset-id',
+                name: 'Popcat 1',
+                symbol: 'POPCAT',
+              },
+            ]),
+          ),
         });
 
         await expect(client.getTokensMetadata(tokenAddresses)).rejects.toThrow(
@@ -295,7 +348,9 @@ describe('TokenApiClient', () => {
         const tokenAddresses = [supportedAssetType, unsupportedAssetType];
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValueOnce([MOCK_METADATA_RESPONSE[0]]),
+          text: jest
+            .fn()
+            .mockResolvedValueOnce(JSON.stringify([MOCK_METADATA_RESPONSE[0]])),
         });
 
         const metadata = await client.getTokensMetadata(tokenAddresses);

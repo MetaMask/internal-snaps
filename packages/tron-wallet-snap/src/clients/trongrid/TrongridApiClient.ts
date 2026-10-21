@@ -1,9 +1,11 @@
 import {
   createFetchPolicy,
+  executeWithFetchPolicy,
   useCacheUntil,
   buildUrl,
 } from '@metamask/snap-networks-utils';
 import type {
+  FetchPolicy,
   ICache,
   Logger,
   ResultWithExpiry,
@@ -13,7 +15,6 @@ import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
-import { executeWithFetchPolicy } from '../../utils/fetchPolicy';
 import logger from '../../utils/logger';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
@@ -67,7 +68,7 @@ export class TrongridApiClient {
 
   readonly #cache: ICache<Serializable>;
 
-  readonly #policies: Map<Network, ReturnType<typeof createFetchPolicy>>;
+  readonly #policies: Map<Network, FetchPolicy>;
 
   /**
    * Cached version of getChainParameters that uses maintenance-aligned expiry.
