@@ -13,8 +13,17 @@
      */
     "paths": {
       "@metamask/*": ["../*/src"],
+      "@metamask/assets-controller": [
+        "../../node_modules/@metamask/assets-controller/dist/index.d.ts"
+      ],
+      "@metamask/base-controller": [
+        "../../node_modules/@metamask/base-controller/dist/index.d.ts"
+      ],
       "@metamask/base-data-service": [
         "../../node_modules/@metamask/base-data-service/dist/index.d.ts"
+      ],
+      "@metamask/messenger": [
+        "../../node_modules/@metamask/messenger/dist/index.d.cts"
       ],
       "@metamask/remote-feature-flag-controller": [
         "../../node_modules/@metamask/remote-feature-flag-controller/dist/index.d.ts"
