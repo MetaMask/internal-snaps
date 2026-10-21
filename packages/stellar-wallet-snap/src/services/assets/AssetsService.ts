@@ -9,9 +9,9 @@ import type {
   KnownCaip19AssetIdOrSlip44Id,
   KnownCaip2ChainId,
 } from '../../api';
+import { AppConfig } from '../../config';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { parseCoreStellarAsset, parseCoreAssetMetadata } from './api';
-import { AppConfig } from '../../config';
 import type { CoreAsset, CoreAssetMetadata } from './api';
 
 /**
