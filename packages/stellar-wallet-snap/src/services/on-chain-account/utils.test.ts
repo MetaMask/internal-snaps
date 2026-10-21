@@ -6,16 +6,16 @@ import {
 } from '../../constants';
 import {
   minimumBalanceStroops,
-  subentryCountFromMinimumReserveStroops,
+  calculateSubentryFromMinReserve,
 } from './utils';
 
-describe('subentryCountFromMinimumReserveStroops', () => {
+describe('calculateSubentryFromMinReserve', () => {
   it('returns 0 for an empty account (2 base reserves)', () => {
     const emptyAccountReserve = new BigNumber(ACCOUNT_MINIMUM_BASE_RESERVE_UNIT)
       .times(BASE_RESERVE_STROOPS)
       .toFixed(0);
 
-    expect(subentryCountFromMinimumReserveStroops(emptyAccountReserve)).toBe(0);
+    expect(calculateSubentryFromMinReserve(emptyAccountReserve)).toBe(0);
   });
 
   it('recovers subentries when sponsoring fields are 0', () => {
@@ -25,10 +25,10 @@ describe('subentryCountFromMinimumReserveStroops', () => {
       numSponsored: 0,
     }).toFixed(0);
 
-    expect(subentryCountFromMinimumReserveStroops(stroops)).toBe(4);
+    expect(calculateSubentryFromMinReserve(stroops)).toBe(4);
   });
 
   it('clamps below the account base reserve at 0', () => {
-    expect(subentryCountFromMinimumReserveStroops('0')).toBe(0);
+    expect(calculateSubentryFromMinReserve('0')).toBe(0);
   });
 });

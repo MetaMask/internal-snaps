@@ -727,7 +727,7 @@ describe('KeyringHandler', () => {
         .mockResolvedValue(onChainAccount);
       const fetchAndBindSpy = jest
         .spyOn(OnChainAccountService.prototype, 'fetchAndBindSep41Balances')
-        .mockImplementation(async (account, _scope, assetIds) => {
+        .mockImplementation(async (account, _scope, assetIds = []) => {
           for (const assetId of assetIds) {
             account.setAsset(assetId, {
               balance: new BigNumber(10_000_000),

@@ -29,7 +29,10 @@ import {
   horizonSource,
   mockOnChainAccountService,
 } from './__mocks__/onChainAccount.fixtures';
-import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
+import {
+  OnChainAccountException,
+  OnChainAccountSep41BalanceNotFoundException,
+} from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountSerializableFull } from './OnChainAccountSerializable';
 import { OnChainAccountService } from './OnChainAccountService';
@@ -45,10 +48,6 @@ describe('OnChainAccountService', () => {
 
   const getNetworkServiceSpies = () => ({
     getAccountSpy: jest.spyOn(NetworkService.prototype, 'getAccount'),
-    getAccountLedgerMetaSpy: jest.spyOn(
-      NetworkService.prototype,
-      'getAccountLedgerMetadata',
-    ),
     loadOnChainAccountSpy: jest.spyOn(
       NetworkService.prototype,
       'loadOnChainAccount',
@@ -491,31 +490,38 @@ describe('OnChainAccountService', () => {
         KnownCaip2ChainId.Mainnet,
       );
     });
-  });
 
-  describe('resolveOnChainAccountFromCore', () => {
-    const usdcIssuer = USDC_CLASSIC.split('-').at(1) as string;
-
-    it('returns null when Core returns no holdings', async () => {
-      const { onChainAccountService, assetsService } =
+    it('returns null when migration is on and AssetsController returns no holdings', async () => {
+      const keyringAccountId = globalThis.crypto.randomUUID();
+      const { onChainAccountService, assetsService, onChainAccountRepository } =
         mockOnChainAccountService();
       jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      jest
+      const getAccountAssetsByScopeSpy = jest
         .spyOn(assetsService, 'getAccountAssetsByScope')
         .mockResolvedValue([]);
+      const findByAccountIdSpy = jest.spyOn(
+        onChainAccountRepository,
+        'findByKeyringAccountId',
+      );
 
       expect(
-        await onChainAccountService.resolveOnChainAccountFromCore(
-          KnownCaip2ChainId.Mainnet,
-          globalThis.crypto.randomUUID(),
+        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+          keyringAccountId,
           Keypair.random().publicKey(),
+          KnownCaip2ChainId.Mainnet,
         ),
       ).toBeNull();
+      expect(getAccountAssetsByScopeSpy).toHaveBeenCalledWith(
+        KnownCaip2ChainId.Mainnet,
+        keyringAccountId,
+      );
+      expect(findByAccountIdSpy).not.toHaveBeenCalled();
     });
 
-    it('binds native, classic, and SEP-41 holdings from Core', async () => {
+    it('binds native, classic, and SEP-41 holdings from AssetsController when migration is on', async () => {
       const accountAddress = Keypair.random().publicKey();
       const keyringAccountId = globalThis.crypto.randomUUID();
+      const usdcIssuer = USDC_CLASSIC.split('-').at(1) as string;
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
       jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
@@ -556,11 +562,12 @@ describe('OnChainAccountService', () => {
           },
         ]);
 
-      const result = await onChainAccountService.resolveOnChainAccountFromCore(
-        KnownCaip2ChainId.Mainnet,
-        keyringAccountId,
-        accountAddress,
-      );
+      const result =
+        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+          keyringAccountId,
+          accountAddress,
+          KnownCaip2ChainId.Mainnet,
+        );
 
       expect(result).toBeInstanceOf(OnChainAccount);
       const full = result?.toSerializableFull();
@@ -600,17 +607,9 @@ describe('OnChainAccountService', () => {
       );
     });
 
-    it('overlays RPC ledger meta when resolveAccountFromNetwork is true', async () => {
+    it('wraps an AssetsController asset mapping failure and keeps the cause', async () => {
       const accountAddress = Keypair.random().publicKey();
-      const { getAccountLedgerMetaSpy } = getNetworkServiceSpies();
-      getAccountLedgerMetaSpy.mockResolvedValue({
-        sequenceNumber: '99',
-        subentryCount: 4,
-        numSponsoring: 2,
-        numSponsored: 0,
-        rawNativeBalance: '351010623',
-      });
-
+      const keyringAccountId = globalThis.crypto.randomUUID();
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
       jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
@@ -629,51 +628,31 @@ describe('OnChainAccountService', () => {
           metadata: { symbol: 'XLM', decimals: 7 },
         },
       ]);
+      const cause = new Error('invalid snapshot');
+      const fromSerializableSpy = jest
+        .spyOn(OnChainAccount, 'fromSerializable')
+        .mockImplementation(() => {
+          throw cause;
+        });
 
-      const result = await onChainAccountService.resolveOnChainAccountFromCore(
-        KnownCaip2ChainId.Mainnet,
-        globalThis.crypto.randomUUID(),
-        accountAddress,
-        { resolveAccountFromNetwork: true },
-      );
-
-      expect(result?.sequenceNumber).toBe('99');
-      expect(result?.subentryCount).toBe(4);
-      expect(result?.numSponsoring).toBe(2);
-      expect(result?.numSponsored).toBe(0);
-      expect(result?.nativeRawBalance.toFixed(0)).toBe('351010623');
-      expect(getAccountLedgerMetaSpy).toHaveBeenCalledWith(
-        accountAddress,
-        KnownCaip2ChainId.Mainnet,
-      );
-    });
-
-    it('returns null when Horizon says the account is not activated', async () => {
-      const accountAddress = Keypair.random().publicKey();
-      const { getAccountLedgerMetaSpy } = getNetworkServiceSpies();
-      getAccountLedgerMetaSpy.mockRejectedValue(
-        new AccountNotActivatedException(
+      let caught: unknown;
+      try {
+        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+          keyringAccountId,
           accountAddress,
           KnownCaip2ChainId.Mainnet,
-        ),
-      );
-      const { onChainAccountService, assetsService } =
-        mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      const getAccountAssetsByScopeSpy = jest.spyOn(
-        assetsService,
-        'getAccountAssetsByScope',
-      );
+        );
+      } catch (error: unknown) {
+        caught = error;
+      } finally {
+        fromSerializableSpy.mockRestore();
+      }
 
-      expect(
-        await onChainAccountService.resolveOnChainAccountFromCore(
-          KnownCaip2ChainId.Mainnet,
-          globalThis.crypto.randomUUID(),
-          accountAddress,
-          { resolveAccountFromNetwork: true },
-        ),
-      ).toBeNull();
-      expect(getAccountAssetsByScopeSpy).not.toHaveBeenCalled();
+      expect(caught).toBeInstanceOf(OnChainAccountException);
+      expect(caught).toMatchObject({
+        message: `Failed to map AssetsController assets for account ${accountAddress}`,
+        cause,
+      });
     });
   });
 

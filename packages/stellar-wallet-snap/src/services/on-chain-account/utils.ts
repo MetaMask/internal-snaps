@@ -35,15 +35,15 @@ export function minimumBalanceStroops(
 }
 
 /**
- * Best-effort `subentry_count` from Core native `minimumReserveBalance` (stroops).
+ * Best-effort `subentry_count` from AssetsController native `minimumReserveBalance` (stroops).
  *
  * Inverts {@link minimumBalanceStroops} when `numSponsoring` and `numSponsored`
  * are 0: `subentryCount = minimumReserve / BASE_RESERVE − 2`. Clamped at 0.
  *
- * @param minimumReserveBalanceStroops - Core `minimumReserveBalance` (integer stroops).
+ * @param minimumReserveBalanceStroops - AssetsController `minimumReserveBalance` (integer stroops).
  * @returns Estimated Horizon `subentry_count`.
  */
-export function subentryCountFromMinimumReserveStroops(
+export function calculateSubentryFromMinReserve(
   minimumReserveBalanceStroops: string,
 ): number {
   const reserveUnits = new BigNumber(minimumReserveBalanceStroops).div(
