@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful. ([#472](https://github.com/MetaMask/internal-snaps/pull/472))
+- Extend the shared `BaseTransactionScanService` from `@metamask/snap-networks-utils` in the transaction scan service. Align the Tron security-scan request and response handling with the Blockaid API documentation ([#397](https://github.com/MetaMask/internal-snaps/pull/397))
+
 ## [4.2.0]
 
 ### Added

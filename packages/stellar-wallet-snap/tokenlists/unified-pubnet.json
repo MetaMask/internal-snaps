@@ -326,6 +326,14 @@
       "name": "JTRSY deRWA",
       "icon": "https://assets.coingecko.com/coins/images/102175872/thumb/Centrifuge_Token_from_SVG_to_PNG.png?1787820266",
       "decimals": 18
+    },
+    {
+      "code": "deHYB",
+      "issuer": "",
+      "contract": "CCRTH4IJKVIBU6VQLRHFKDQYWXBEBJJXKDFNWVETLKUJJ7U62HBAZOIH",
+      "name": "HYB deRWA",
+      "icon": "https://assets.coingecko.com/coins/images/102175871/thumb/Centrifuge_Token_from_SVG_to_PNG.png?1787820251",
+      "decimals": 18
     }
   ]
 }

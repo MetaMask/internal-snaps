@@ -1,9 +1,13 @@
+import { createFetchPolicy } from '@metamask/snap-networks-utils';
+import type { Logger } from '@metamask/snap-networks-utils';
 import { pipe } from '@solana/kit';
+import type { RpcTransport } from '@solana/kit';
 
+import type { Network } from '../../../constants/solana';
 import { createToggleInfuraBigtableLookupsTransport } from './createToggleInfuraBigtableLookupsTransports';
 import { createErrorTrackingTransport } from './errorTrackingTransport';
 import { createFailoverTransport } from './failoverTransport';
-import { createRetryingTransport } from './retryingTransport';
+import { createPolicyTransport } from './policyTransport';
 
 /**
  * A functional programming utility to iterate over an array and apply a function to each item.
@@ -22,17 +26,35 @@ const forEach =
  * - Error Tracking: Tracks all RPC errors (4xx, 5xx, and 2xx with errors) using snap_trackError.
  * - BigTable Lookups: Toggles BigTable lookups on Infura via the `x-bigtable` header.
  * - Failover: Switches to the next transport on failure.
- * - Retrying: Retries the request up to MAX_ATTEMPTS times before failing.
+ * - Policy: Retries transient read failures; writes and unknown methods are
+ * sent once to the first endpoint.
  *
  * @param urls - The URL to use for the transport.
+ * @param chainIdCaip - The CAIP-2 chain ID used to isolate circuit state.
+ * @param logger - Where policy activity is logged.
  * @returns The transport.
  */
-export const createMainTransport = (urls: string[]) => {
-  return pipe(
+export const createMainTransport = (
+  urls: string[],
+  chainIdCaip: Network,
+  logger: Logger,
+): RpcTransport => {
+  const transports = pipe(
     urls,
-    forEach(createToggleInfuraBigtableLookupsTransport), // For each URL, create a transport that toggles BigTable lookups on Infura
-    (transports) => createFailoverTransport(transports, urls), // Wrap the list of above transports into a single transport that fails over each wrapped transport on failure, passing URLs for error tracking
-    createRetryingTransport, // Wrap the previous transport into a transport that retries failed requests
-    (transport) => createErrorTrackingTransport(transport), // Add error tracking as the most outer layer
+    forEach(createToggleInfuraBigtableLookupsTransport),
   );
+  const oneShotTransport = transports[0];
+  if (!oneShotTransport) {
+    throw new Error('At least one Solana RPC URL is required.');
+  }
+  const transport = createPolicyTransport({
+    readTransport: createFailoverTransport(transports, urls),
+    oneShotTransport,
+    policy: createFetchPolicy({
+      service: 'solana_rpc',
+      chainIdCaip,
+      logger,
+    }),
+  });
+  return createErrorTrackingTransport(transport);
 };

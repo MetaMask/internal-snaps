@@ -99,7 +99,11 @@ function extractErrorInfo(error: any, method: string): ErrorTrackingInfo {
   }
 
   // Get status code if available
-  if (error?.status) {
+  if (error?.httpStatus) {
+    errorInfo.statusCode = error.httpStatus;
+  } else if (error?.context?.statusCode) {
+    errorInfo.statusCode = error.context.statusCode;
+  } else if (error?.status) {
     errorInfo.statusCode = error.status;
   } else if (error?.statusCode) {
     errorInfo.statusCode = error.statusCode;

@@ -918,6 +918,54 @@ describe('TransactionService', () => {
       expect(result.transaction.getMemo()).toBeNull();
     });
 
+    it('returns requiresMemoRecovery true for a SEP-37 directory destination without SEP-29', async () => {
+      const { transactionService } = createMockTransactionService();
+      const sourceWallet = getTestWallet();
+      // Coinbase Deposits — listed in the hardcoded SEP-37 directory.
+      const directoryDestination =
+        'GDS2WFLIJID6BDM64FGUD7MNOVZUEWHJ5VJPO2GQ32KOZCYIYIRIQTG6';
+
+      const sourceAcc = createMockAccountWithBalances(
+        sourceWallet.address,
+        '1',
+        { ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES, nativeBalance: 500 },
+      );
+      const sourceOnChain = new OnChainAccount(
+        sourceAcc,
+        KnownCaip2ChainId.Mainnet,
+        horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
+      );
+
+      const destAcc = createMockAccountWithBalances(directoryDestination, '1', {
+        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+        nativeBalance: 50,
+      });
+      const destOnChain = OnChainAccount.fromHorizon(
+        mockHorizonAccountResponse(destAcc, {}),
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      jest
+        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
+        .mockResolvedValue(destOnChain);
+      jest
+        .spyOn(NetworkService.prototype, 'getBaseFee')
+        .mockResolvedValue(new BigNumber('100'));
+
+      const result =
+        await transactionService.createDraftSendTransactionForConfirm({
+          onChainAccount: sourceOnChain,
+          amount: new BigNumber('1000000'),
+          scope: KnownCaip2ChainId.Mainnet,
+          assetId: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          destination: directoryDestination,
+        });
+
+      expect(destOnChain.requiresMemo).toBe(true);
+      expect(result.requiresMemoRecovery).toBe(true);
+      expect(result.transaction.getMemo()).toBeNull();
+    });
+
     it('returns requiresMemoRecovery false when a memo is already attached', async () => {
       const { transactionService } = createMockTransactionService();
       const sourceWallet = getTestWallet();

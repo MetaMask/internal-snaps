@@ -1,12 +1,14 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   IStateManager,
+  SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
 import type { DialogResult, Json } from '@metamask/snaps-sdk';
 import type { Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
-import { METAMASK_ORIGIN, Network } from '../../../../constants';
+import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
@@ -35,7 +37,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
     uiAmount: '0',
     iconUrl: '',
   },
-  origin: METAMASK_ORIGIN,
+  origin: DEFAULT_METAMASK_ORIGIN,
   networkImage: TRX_IMAGE_SVG,
   tokenPrices: {},
   tokenPricesFetchStatus: FetchStatus.Initial,
@@ -134,7 +136,7 @@ export async function render(
   if (transactionScanService) {
     // Always request simulation for estimated changes;
     // conditionally add validation based on user preference
-    const options: string[] = ['simulation'];
+    const options: SecurityAlertsScanOption[] = ['simulation'];
 
     if (useSecurityAlerts) {
       options.push('validation');

@@ -34,7 +34,7 @@ describe('SecurityAlertsApiClient', () => {
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockResponse),
+        text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
       });
 
       const scanResult = await client.scanTransactions({
@@ -51,7 +51,7 @@ describe('SecurityAlertsApiClient', () => {
 
     it('throws an error if the fetch fails', async () => {
       const mockError = new Error('Fetch failed');
-      mockFetch.mockRejectedValueOnce(mockError);
+      mockFetch.mockRejectedValue(mockError);
 
       await expect(
         client.scanTransactions({
@@ -62,15 +62,13 @@ describe('SecurityAlertsApiClient', () => {
           options: ['simulation', 'validation'],
           origin: 'https://metamask.io',
         }),
-      ).rejects.toThrow(mockError);
+      ).rejects.toThrow(mockError.message);
     });
 
     it('throws an error if the response is not ok', async () => {
-      const mockError = new Error('Fetch failed');
       mockFetch.mockResolvedValueOnce({
-        ok: true,
+        ok: false,
         status: 404,
-        json: jest.fn().mockRejectedValue(new Error('HTTP error! status: 404')),
       });
 
       await expect(

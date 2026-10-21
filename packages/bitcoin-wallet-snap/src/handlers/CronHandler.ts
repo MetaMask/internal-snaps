@@ -1,5 +1,6 @@
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import {
+  DEFAULT_METAMASK_ORIGIN,
   InFlightCoalescer,
   SynchronizationError,
   getSyncFailuresFromSettledResult,
@@ -207,7 +208,7 @@ export class CronHandler {
 
       const results = await Promise.allSettled(
         selectedAccounts.map(async (account) =>
-          this.#accountsUseCases.synchronize(account, 'metamask'),
+          this.#accountsUseCases.synchronize(account, DEFAULT_METAMASK_ORIGIN),
         ),
       );
 

@@ -108,11 +108,6 @@ export const MAX_INT64 = '9223372036854775807';
 export const KEYRING_ACCOUNT_TYPE = XlmAccountType.Account;
 
 /**
- * The origin for the MetaMask wallet.
- */
-export const METAMASK_ORIGIN = 'metamask';
-
-/**
  * The maximum page size for the transactions.
  *
  * @see https://developers.stellar.org/docs/data/apis/horizon/api-reference/get-transactions-by-account-id

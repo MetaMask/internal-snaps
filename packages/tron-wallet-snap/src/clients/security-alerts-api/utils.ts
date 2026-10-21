@@ -4,9 +4,41 @@ import { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { SecurityScanPayload } from './types';
 
 /**
+ * Contract types for which the Security Alerts API can produce reliable
+ * simulation results.
+ */
+const SUPPORTED_CONTRACT_TYPES: ReadonlySet<TronwebTypes.ContractType> =
+  new Set([
+    TronwebTypes.ContractType.TransferContract,
+    TronwebTypes.ContractType.CreateSmartContract,
+    TronwebTypes.ContractType.TriggerSmartContract,
+  ]);
+
+/**
+ * Checks whether the first contract type in the transaction is supported
+ * by the Security Alerts API simulation.
+ *
+ * Only the first contract in `raw_data.contract` is considered because
+ * the Tron protocol currently only executes one contract per
+ * transaction (see {@link extractScanParametersFromTransactionData}).
+ *
+ * @param rawData - The raw transaction data.
+ * @returns True if the contract type is supported for simulation.
+ */
+export function isContractTypeSupported(
+  rawData: TronwebTypes.Transaction['raw_data'],
+): boolean {
+  const [contractInteraction] = rawData.contract;
+  if (!contractInteraction) {
+    return false;
+  }
+  return SUPPORTED_CONTRACT_TYPES.has(contractInteraction.type);
+}
+
+/**
  * Extracts scan parameters from the raw transaction data. This function
  * can be used as adapter between a Tron transaction and the payload
- * supported by SecurityAlertsApiClient.
+ * supported by the Security Alerts API scan request.
  *
  * Only the first contract in `raw_data.contract` is used because
  * the Tron protocol currently only executes one contract per
@@ -20,35 +52,36 @@ import type { SecurityScanPayload } from './types';
  */
 export function extractScanParametersFromTransactionData(
   rawData: TronwebTypes.Transaction['raw_data'],
-): SecurityScanPayload | null {
+): SecurityScanPayload {
   const contractParam = rawData.contract[0]?.parameter.value;
 
   if (!contractParam) {
-    return null;
+    throw new Error('Could not extract scan parameters from transaction.');
   }
 
-  const from = TronWeb.address.fromHex(contractParam.owner_address);
-
-  let to = '';
-  if ('contract_address' in contractParam && contractParam.contract_address) {
-    to = TronWeb.address.fromHex(contractParam.contract_address);
-  } else if ('to_address' in contractParam && contractParam.to_address) {
-    to = TronWeb.address.fromHex(contractParam.to_address);
-  }
-
-  let value = 0;
+  let callValue = 0;
   if ('call_value' in contractParam && contractParam.call_value) {
-    value = contractParam.call_value;
+    callValue = contractParam.call_value;
   } else if ('amount' in contractParam && contractParam.amount) {
-    value = contractParam.amount;
+    callValue = contractParam.amount;
   }
 
-  let data: string | null = null;
+  const payload: SecurityScanPayload = {
+    from: TronWeb.address.fromHex(contractParam.owner_address),
+    value: `0x${callValue.toString(16)}`,
+  };
+
+  if ('contract_address' in contractParam && contractParam.contract_address) {
+    payload.to = TronWeb.address.fromHex(contractParam.contract_address);
+  } else if ('to_address' in contractParam && contractParam.to_address) {
+    payload.to = TronWeb.address.fromHex(contractParam.to_address);
+  }
+
   if ('data' in contractParam && contractParam.data) {
-    data = add0x(contractParam.data);
+    payload.data = add0x(contractParam.data);
   }
 
-  return { from, to, data, value };
+  return payload;
 }
 
 /**

@@ -1,5 +1,8 @@
 import { FeeType, TransactionType } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeError,
+} from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -14,7 +17,7 @@ import {
   pipe,
 } from '@solana/kit';
 
-import { METAMASK_ORIGIN, Networks } from '../../constants/solana';
+import { Networks } from '../../constants/solana';
 import { FeeCalculator } from '../../fees';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import type { AccountsService, ApproveTokenService } from '../../services';
@@ -174,7 +177,7 @@ export class ClientRequestHandler {
       account,
       base64EncodedTransaction,
       scope,
-      METAMASK_ORIGIN,
+      DEFAULT_METAMASK_ORIGIN,
       options,
     );
   }
@@ -206,7 +209,7 @@ export class ClientRequestHandler {
       account,
       base64EncodedTransaction,
       scope,
-      METAMASK_ORIGIN,
+      DEFAULT_METAMASK_ORIGIN,
       options,
     );
 
@@ -462,7 +465,7 @@ export class ClientRequestHandler {
       account,
       base64EncodedTransaction,
       network,
-      METAMASK_ORIGIN,
+      DEFAULT_METAMASK_ORIGIN,
       undefined,
       TransactionType.TokenApprove,
     );

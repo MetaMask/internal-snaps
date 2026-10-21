@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
@@ -7,7 +8,6 @@ import type { Types as TronwebTypes } from 'tronweb';
 
 import {
   FEE_LIMIT,
-  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
@@ -133,6 +133,10 @@ describe('SendService', () => {
 
       mockTronWebFactory = {
         createClient: jest.fn().mockReturnValue(mockTronWeb),
+        executeBroadcast: jest.fn(
+          async (_network: Network, operation: () => Promise<unknown>) =>
+            operation(),
+        ),
       };
 
       mockFeeCalculatorService = {
@@ -191,7 +195,7 @@ describe('SendService', () => {
       expect(
         mockAnalyticsService.trackTransactionSubmitted,
       ).toHaveBeenCalledWith({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
         transactionType: TransactionType.Send,
@@ -225,7 +229,7 @@ describe('SendService', () => {
       expect(
         mockAnalyticsService.trackTransactionSubmitted,
       ).toHaveBeenCalledWith({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: 'tron:eoa',
         chainIdCaip: Network.Mainnet,
         transactionType: TransactionType.Send,
@@ -392,6 +396,10 @@ describe('SendService', () => {
 
       mockTronWebFactory = {
         createClient: jest.fn().mockReturnValue(mockTronWeb),
+        executeBroadcast: jest.fn(
+          async (_network: Network, operation: () => Promise<unknown>) =>
+            operation(),
+        ),
       };
 
       mockFeeCalculatorService = {
@@ -1446,6 +1454,130 @@ describe('SendService', () => {
             transaction: transaction as never,
           }),
         ).rejects.toThrow('Failed to send transaction: expired');
+      });
+
+      it('treats an already-broadcast transaction as successful', async () => {
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
+          code: 5,
+          message: 'Transaction already exists',
+          result: false,
+        });
+
+        const result = await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({ txid: transaction.txID }),
+        );
+        expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: expect.objectContaining({ txId: transaction.txID }),
+          }),
+        );
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(1);
+      });
+
+      it('signs once and retries the same signed transaction on a transient broadcast failure', async () => {
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        const signedTransaction = {
+          transaction,
+          signature: ['test-signature'],
+        };
+        mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+        mockTronWebFactory.executeBroadcast.mockImplementation(
+          async (_network: Network, operation: () => Promise<unknown>) => {
+            try {
+              return await operation();
+            } catch {
+              return operation();
+            }
+          },
+        );
+        mockTronWeb.trx.sendRawTransaction
+          .mockRejectedValueOnce(
+            Object.assign(new Error('unavailable'), {
+              response: { status: 503 },
+            }),
+          )
+          .mockResolvedValue({
+            result: true,
+            txid: 'broadcast-tx-id',
+          });
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
+        expect(
+          mockTransactionExpirationRefresherService.ensureFreshMetadata,
+        ).toHaveBeenCalledTimes(1);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+          1,
+          signedTransaction,
+        );
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+          2,
+          signedTransaction,
+        );
+      });
+
+      it('retries a transient Tron node response with the same signed transaction', async () => {
+        const transaction = createMockTransaction();
+        transaction.raw_data.contract[0].parameter.value.owner_address =
+          ownerAddressHex;
+        const signedTransaction = {
+          transaction,
+          signature: ['test-signature'],
+        };
+        mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+        mockTronWebFactory.executeBroadcast.mockImplementation(
+          async (_network: Network, operation: () => Promise<unknown>) => {
+            try {
+              return await operation();
+            } catch {
+              return operation();
+            }
+          },
+        );
+        mockTronWeb.trx.sendRawTransaction
+          .mockResolvedValueOnce({
+            code: 'SERVER_BUSY',
+            message: 'Server busy',
+            result: false,
+          })
+          .mockResolvedValue({
+            result: true,
+            txid: 'broadcast-tx-id',
+          });
+
+        await sendService.signAndSendTransaction({
+          scope,
+          fromAccountId: TEST_ACCOUNT_ID,
+          transaction: transaction as never,
+        });
+
+        expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+          1,
+          signedTransaction,
+        );
+        expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+          2,
+          signedTransaction,
+        );
       });
     });
   });

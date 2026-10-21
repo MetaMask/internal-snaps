@@ -1,5 +1,6 @@
 import { BtcScope } from '@metamask/keyring-api';
 import {
+  DEFAULT_METAMASK_ORIGIN,
   normalizeError,
   resolveFlowTransactionType,
 } from '@metamask/snap-networks-utils';
@@ -469,7 +470,7 @@ export class RpcHandler {
     const signature = await this.#accountUseCases.signMessage(
       accountId,
       decodedMessage,
-      'metamask',
+      DEFAULT_METAMASK_ORIGIN,
       { skipConfirmation: true },
     );
 
@@ -530,7 +531,7 @@ export class RpcHandler {
     const signature = await this.#accountUseCases.signMessage(
       accountId,
       message,
-      'metamask',
+      DEFAULT_METAMASK_ORIGIN,
       { skipConfirmation: true },
     );
 

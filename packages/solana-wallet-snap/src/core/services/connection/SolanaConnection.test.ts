@@ -67,7 +67,11 @@ describe('SolanaConnection', () => {
 
     mockCache = new InMemoryCache(mockLogger);
 
-    connection = new SolanaConnection(mockConfigProvider, mockCache);
+    connection = new SolanaConnection(
+      mockConfigProvider,
+      mockCache,
+      mockLogger,
+    );
   });
 
   describe('getRpc', () => {

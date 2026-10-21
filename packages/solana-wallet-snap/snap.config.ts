@@ -1,7 +1,9 @@
 /* eslint-disable import-x/no-nodejs-modules, no-restricted-globals -- Snap configuration executes in Node.js. */
 import type { SnapConfig } from '@metamask/snaps-cli';
+import { merge } from '@metamask/snaps-cli';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';
+import { ProvidePlugin } from 'webpack';
 
 dotenv.config();
 
@@ -43,6 +45,14 @@ const environment = {
 
 const config: SnapConfig = {
   input: resolve(__dirname, 'src/index.ts'),
+  customizeWebpackConfig: (webpackConfig) =>
+    merge(webpackConfig, {
+      plugins: [
+        new ProvidePlugin({
+          performance: '@metamask/snap-networks-utils/performance-shim',
+        }),
+      ],
+    }),
   typescript: {
     enabled: true,
   },

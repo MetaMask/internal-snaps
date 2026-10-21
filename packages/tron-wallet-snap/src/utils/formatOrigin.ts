@@ -1,3 +1,5 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+
 /**
  * Formats an origin for display purposes.
  *
@@ -10,7 +12,7 @@ export function formatOrigin(origin: string | undefined): string {
   }
 
   // Special case: format 'metamask' as 'MetaMask' (case-insensitive)
-  if (origin.toLowerCase() === 'metamask') {
+  if (origin.toLowerCase() === DEFAULT_METAMASK_ORIGIN) {
     return 'MetaMask';
   }
 
