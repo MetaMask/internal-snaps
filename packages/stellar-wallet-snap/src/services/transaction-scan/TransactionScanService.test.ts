@@ -36,12 +36,37 @@ const USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 const SEP41_ADDRESS =
   'CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN';
 
+/**
+ * Builds a valid, non-expired transaction XDR for scan request fixtures —
+ * the request struct validates the XDR envelope, so fixture scans need a
+ * real (mock-signed) transaction rather than a placeholder string.
+ *
+ * @returns The base64-encoded XDR of the mock transaction.
+ */
+function buildValidTransactionXdr(): string {
+  return buildMockClassicTransaction(
+    [
+      {
+        type: 'payment',
+        params: {
+          destination: FIXTURE_ACCOUNT_ADDRESS,
+          asset: 'native',
+          amount: '1',
+        },
+      },
+    ],
+    { networkPassphrase: Networks.PUBLIC },
+  )
+    .getRaw()
+    .toXdr();
+}
+
 describe('TransactionScanService', () => {
   const scanParams = {
     accountAddress: FIXTURE_ACCOUNT_ADDRESS,
     origin: 'https://example.com',
     scope: KnownCaip2ChainId.Mainnet,
-    transaction: 'AAAAAgAAAAA=',
+    transaction: buildValidTransactionXdr(),
     options: [
       TransactionScanOption.Simulation,
       TransactionScanOption.Validation,
@@ -487,7 +512,7 @@ describe('TransactionScanService', () => {
 
       const result = await service.scanTransaction({
         ...scanParams,
-        transaction: 'AAAAAgAAAAA=',
+        transaction: buildValidTransactionXdr(),
       });
 
       expect(result).toMatchObject({
