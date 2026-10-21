@@ -120,7 +120,6 @@ const securityAlertsHttpClient = new SecurityAlertsApiClient({
     service: 'security_alerts_api',
     logger,
   }),
-  logger,
 });
 
 const snapAssetsAdapter = new SnapAssetsAdapter({

@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add the `FetchPolicy` type, the minimal policy surface `executeWithFetchPolicy` and `fetchWithPolicy` accept ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
 - Add the shared `BaseTransactionScanService` base class for network snap transaction scan services, owning the shared scan dependencies (Security Alerts API client, analytics, logger, error reporting) and the scan analytics orchestration ([#397](https://github.com/MetaMask/internal-snaps/pull/397))
   - Add the shared Security Alerts API HTTP client for `BaseTransactionScanService`.
-- Add an optional `policy` and `logger` to the shared Security Alerts API client options, retrying transient scan failures (network errors, timeouts, HTTP 408, 425, 429, 500, 502, 503 and 504) with backoff and circuit breaking when given ([#492](https://github.com/MetaMask/internal-snaps/pull/492))
+- Add an optional `policy` to the shared Security Alerts API client options, retrying transient scan failures (network errors, timeouts, HTTP 408, 425, 429, 500, 502, 503 and 504) with backoff and circuit breaking when given ([#492](https://github.com/MetaMask/internal-snaps/pull/492))
 
 ## [3.0.0]
 

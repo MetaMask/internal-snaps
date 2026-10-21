@@ -17,7 +17,6 @@ describe('SecurityAlertsApiClient', () => {
       ok: true,
       status: 200,
       statusText: '',
-      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({ verdict: 'Benign' }),
       ...overrides,
     }) as unknown as Response;
@@ -77,16 +76,6 @@ describe('SecurityAlertsApiClient', () => {
     );
   });
 
-  it('throws when a policy is given without a logger', () => {
-    expect(
-      () =>
-        new SecurityAlertsApiClient({
-          scanUrl: SCAN_URL,
-          policy: { execute: jest.fn() },
-        }),
-    ).toThrow('A logger is required when a fetch policy is given.');
-  });
-
   it('posts the body to the scan URL with the shared headers', async () => {
     fetchMock.mockResolvedValue(responseWith());
 
@@ -126,11 +115,28 @@ describe('SecurityAlertsApiClient', () => {
       .mockRejectedValueOnce(new TypeError('fetch failed'))
       .mockResolvedValue(responseWith());
 
-    expect(await scan({ policy, logger })).toStrictEqual({
+    expect(await scan({ policy })).toStrictEqual({
       verdict: 'Benign',
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('wraps exhausted network failures in an HttpError when a policy is provided', async () => {
+    const { policy } = createPolicy();
+    const fetchFailure = new TypeError('fetch failed', {
+      cause: new Error('ECONNREFUSED'),
+    });
+    fetchMock.mockRejectedValue(fetchFailure);
+
+    const error = await caughtError(scan({ policy }));
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error).toMatchObject({
+      name: 'HttpError',
+      message: 'Security Alerts API error',
+      cause: fetchFailure,
+    });
   });
 
   it('retries transient 503 responses through the policy when one is provided', async () => {
@@ -141,7 +147,7 @@ describe('SecurityAlertsApiClient', () => {
       )
       .mockResolvedValue(responseWith());
 
-    expect(await scan({ policy, logger })).toStrictEqual({
+    expect(await scan({ policy })).toStrictEqual({
       verdict: 'Benign',
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -149,46 +155,47 @@ describe('SecurityAlertsApiClient', () => {
   });
 
   it('does not retry 400 responses through the policy when one is provided', async () => {
-    const { policy, logger } = createPolicy();
+    const { policy } = createPolicy();
     fetchMock.mockResolvedValue(
       responseWith({ ok: false, status: 400, statusText: '' }),
     );
 
-    expect(await caughtError(scan({ policy, logger }))).toBeInstanceOf(
-      HttpError,
-    );
-    expect(
-      (await caughtError(scan({ policy, logger }))) as Error,
-    ).toMatchObject({ message: 'HTTP error! status: 400' });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const error = await caughtError(scan({ policy }));
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error).toMatchObject({ message: 'HTTP error! status: 400' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('retries timeouts mapped from the abort cause through the policy when one is provided', async () => {
-    const { policy, logger } = createPolicy();
+  it('retries timeouts through the policy when one is provided', async () => {
+    const { policy } = createPolicy();
     const timeout = Object.assign(new Error('The operation was aborted'), {
       name: 'TimeoutError',
     });
     fetchMock.mockRejectedValueOnce(timeout).mockResolvedValue(responseWith());
 
-    expect(await scan({ policy, logger })).toStrictEqual({
+    expect(await scan({ policy })).toStrictEqual({
       verdict: 'Benign',
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('does not retry malformed-response errors through the policy when one is provided', async () => {
+  it('does not retry malformed JSON responses through the policy when one is provided', async () => {
     const { policy, logger } = createPolicy();
     fetchMock
-      .mockRejectedValueOnce(
-        new HttpError('Security Alerts API error', {
-          cause: new SyntaxError('Unexpected end of JSON input'),
+      .mockResolvedValueOnce(
+        responseWith({
+          json: jest
+            .fn()
+            .mockRejectedValue(new SyntaxError('Unexpected end of JSON input')),
         }),
       )
       .mockResolvedValue(responseWith());
 
-    expect(await caughtError(scan({ policy, logger }))).toBeInstanceOf(
-      HttpError,
-    );
+    const error = await caughtError(scan({ policy }));
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as Error).cause).toBeInstanceOf(SyntaxError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(logger.warn).not.toHaveBeenCalled();
   });
@@ -197,33 +204,17 @@ describe('SecurityAlertsApiClient', () => {
     const { policy, logger } = createPolicy();
     fetchMock
       .mockRejectedValueOnce(
-        new HttpError('Security Alerts API error', {
-          cause: Object.assign(new Error('The operation was aborted'), {
-            name: 'AbortError',
-          }),
+        Object.assign(new Error('The operation was aborted'), {
+          name: 'AbortError',
         }),
       )
       .mockResolvedValue(responseWith());
 
-    expect(await caughtError(scan({ policy, logger }))).toBeInstanceOf(
-      HttpError,
-    );
+    const error = await caughtError(scan({ policy }));
+
+    expect(error).toBeInstanceOf(HttpError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(logger.warn).not.toHaveBeenCalled();
-  });
-
-  it('does not retry errors with an unrecognizable cause through the policy', async () => {
-    const { policy, logger } = createPolicy();
-    fetchMock
-      .mockRejectedValueOnce(
-        new HttpError('Security Alerts API error', { cause: 'string failure' }),
-      )
-      .mockResolvedValue(responseWith());
-
-    expect(await caughtError(scan({ policy, logger }))).toBeInstanceOf(
-      HttpError,
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('returns the parsed response body', async () => {
