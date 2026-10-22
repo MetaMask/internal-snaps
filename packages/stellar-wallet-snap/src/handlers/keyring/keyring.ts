@@ -529,8 +529,6 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Loads the indexed on-chain snapshot for a keyring account.
    *
-   * Used when `AppConfig.enableAssetMigration` is false. Does not call Horizon.
-   *
    * @param params - Account id and scope.
    * @param params.accountId - Keyring account id.
    * @param params.scope - CAIP-2 network.
@@ -555,12 +553,6 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   /**
    * Loads a Horizon account for the keyring asset and balance reads.
-   *
-   * `getAccountAssets` always refreshes and stores the result. `getAccountBalances`
-   * reuses that entry until `AppConfig.cache.ttlMilliseconds.fetchOnChainAccount`, then loads Horizon.
-   * A failed load is not cached. An unactivated account is cached as `null`.
-   *
-   * Used when `AppConfig.enableAssetMigration` is true.
    *
    * @param params - Account id, scope, and whether to skip the cache.
    * @param params.accountId - Keyring account id.

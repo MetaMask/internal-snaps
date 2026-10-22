@@ -284,7 +284,7 @@ describe('KeyringHandler', () => {
       (index: number) => Promise<Wallet>
     > => {
       const walletResolver = jest.fn(
-        async (_index: number) => ({ address: mockAccount.address } as Wallet),
+        async (_index: number) => ({ address: mockAccount.address }) as Wallet,
       );
       jest
         .spyOn(WalletService.prototype, 'getWalletResolver')
