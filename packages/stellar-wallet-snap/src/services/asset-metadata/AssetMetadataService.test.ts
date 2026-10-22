@@ -199,7 +199,7 @@ describe('AssetMetadataService', () => {
     const { service, saveMany } = createService({});
     mockGetAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
 
-    const result = await service.fetchAssetsByAssetIds([USDC_SEP41]);
+    const result = await service.fetchAndPersistAssetsByAssetIds([USDC_SEP41]);
 
     expect(result).toStrictEqual([
       expect.objectContaining({

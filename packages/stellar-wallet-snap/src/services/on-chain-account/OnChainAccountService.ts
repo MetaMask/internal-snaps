@@ -221,7 +221,7 @@ export class OnChainAccountService {
     const sep41Assets =
       assetIds === undefined
         ? await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope)
-        : await this.#assetMetadataService.fetchSep41AssetsByAssetIds(assetIds);
+        : await this.#assetMetadataService.fetchAndPersistAssetsByAssetIds(assetIds);
 
     const assetMetadataByAssetId: Record<
       KnownCaip19Sep41AssetId,

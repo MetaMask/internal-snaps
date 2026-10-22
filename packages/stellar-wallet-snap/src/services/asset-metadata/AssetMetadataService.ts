@@ -93,16 +93,13 @@ export class AssetMetadataService {
   }
 
   /**
-   * Resolves SEP-41 metadata for ids that are not in the watched catalog.
+   * Resolves asset metadata for ids that are not in the watched catalog.
    *
-   * Rows already stored in AssetsController or snap state are reused. Newly fetched rows
-   * are persisted, same as {@link resolve}.
-   *
-   * @param assetIds - SEP-41 asset ids to resolve.
+   * @param assetIds - Aasset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
    */
-  async fetchAssetsByAssetIds(
-    assetIds: KnownCaip19Sep41AssetId[],
+  async fetchAndPersistAssetsByAssetIds(
+    assetIds: KnownCaip19AssetId[],
   ): Promise<StellarAssetMetadata[]> {
     return this.#fetchAndPersistAssetsByAssetIds(assetIds);
   }
