@@ -430,7 +430,7 @@ describe('OnChainAccountService', () => {
     });
   });
 
-  describe('resolveOnChainAccountByKeyringAccountId', () => {
+  describe('getOnChainAccountSnapshot', () => {
     it('returns null when no snapshot exists for the keyring id and scope', async () => {
       const keyringAccountId = globalThis.crypto.randomUUID();
       const accountAddress = Keypair.random().publicKey();
@@ -443,12 +443,11 @@ describe('OnChainAccountService', () => {
       );
       findByAccountIdSpy.mockResolvedValue(null);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-          keyringAccountId,
-          accountAddress,
-          KnownCaip2ChainId.Mainnet,
-        );
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        accountAddress,
+        KnownCaip2ChainId.Mainnet,
+      );
 
       expect(result).toBeNull();
       expect(findByAccountIdSpy).toHaveBeenCalledWith(
@@ -479,12 +478,11 @@ describe('OnChainAccountService', () => {
       );
       findByAccountIdSpy.mockResolvedValue(binding);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-          keyringAccountId,
-          signer.publicKey(),
-          KnownCaip2ChainId.Mainnet,
-        );
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        signer.publicKey(),
+        KnownCaip2ChainId.Mainnet,
+      );
 
       expect(result).toBeInstanceOf(OnChainAccount);
       expect(result?.accountId).toStrictEqual(signer.publicKey());
@@ -508,7 +506,7 @@ describe('OnChainAccountService', () => {
       );
 
       expect(
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+        await onChainAccountService.getOnChainAccountSnapshot(
           keyringAccountId,
           Keypair.random().publicKey(),
           KnownCaip2ChainId.Mainnet,
@@ -565,12 +563,11 @@ describe('OnChainAccountService', () => {
           },
         ]);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-          keyringAccountId,
-          accountAddress,
-          KnownCaip2ChainId.Mainnet,
-        );
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        accountAddress,
+        KnownCaip2ChainId.Mainnet,
+      );
 
       expect(result).toBeInstanceOf(OnChainAccount);
       const full = result?.toSerializableFull();
@@ -640,7 +637,7 @@ describe('OnChainAccountService', () => {
 
       let caught: unknown;
       try {
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+        await onChainAccountService.getOnChainAccountSnapshot(
           keyringAccountId,
           accountAddress,
           KnownCaip2ChainId.Mainnet,

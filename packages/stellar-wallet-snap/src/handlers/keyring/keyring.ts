@@ -218,7 +218,7 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Returns the assets of an account.
    *
-   * It gated by local config `enableAssetMigration`.
+   * It is gated by local config `enableAssetMigration`.
    * When `enableAssetMigration` is true, the account is fetched from on-chain.
    * When `enableAssetMigration` is false, the account is fetched from the state.
    *
@@ -339,7 +339,7 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Returns the balances of an account for the given assets.
    *
-   * It gated by local config `enableAssetMigration`.
+   * It is gated by local config `enableAssetMigration`.
    * When `enableAssetMigration` is true, the account is fetched from on-chain.
    * When `enableAssetMigration` is false, the account is fetched from the state.
    *
@@ -567,7 +567,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     const { account } = await this.#accountService.resolveAccount({
       accountId,
     });
-    return this.#onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+    return this.#onChainAccountService.getOnChainAccountSnapshot(
       accountId,
       account.address,
       scope,

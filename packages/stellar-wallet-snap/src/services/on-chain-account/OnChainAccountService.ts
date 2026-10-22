@@ -313,13 +313,14 @@ export class OnChainAccountService {
   /**
    * Loads the on-chain account for the given keyring account id from snap state or AssetsController.
    *
+   * @note Do not use this method to build a transaction for sign and execute.
    * @param keyringAccountId - The keyring account id to load the on-chain account for.
    * @param accountAddress - Stellar G-address for the account header.
    * @param scope - The CAIP-2 chain id to load the on-chain account for.
    * @returns The on-chain account, or `null` if not found.
    * @throws {OnChainAccountException} When the assets migration is on and AssetsController holdings cannot be mapped.
    */
-  async resolveOnChainAccountByKeyringAccountId(
+  async getOnChainAccountSnapshot(
     keyringAccountId: string,
     accountAddress: string,
     scope: KnownCaip2ChainId,

@@ -480,10 +480,7 @@ describe('KeyringHandler', () => {
         resolveAccountSpy.mockResolvedValue({ account: mockAccount });
         const onChainAccount = createTestOnChainAccount(mockAccount.address);
         const resolveByKeyringAccountIdSpy = jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockResolvedValue(onChainAccount);
         const resolveOnChainAccountSpy = jest.spyOn(
           OnChainAccountService.prototype,
@@ -506,10 +503,7 @@ describe('KeyringHandler', () => {
         const { resolveAccountSpy } = getAccountServiceSpies();
         resolveAccountSpy.mockResolvedValue({ account: mockAccount });
         jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockResolvedValue(null);
 
         const result = await keyringHandler.getAccountAssets(mockAccountId);
@@ -521,10 +515,7 @@ describe('KeyringHandler', () => {
         const { resolveAccountSpy } = getAccountServiceSpies();
         resolveAccountSpy.mockResolvedValue({ account: mockAccount });
         jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockRejectedValue(new Error('state unavailable'));
 
         await expect(
@@ -694,10 +685,7 @@ describe('KeyringHandler', () => {
           nativeBalance: 2.000001,
         });
         const resolveByKeyringAccountIdSpy = jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockResolvedValue(onChainAccount);
         const resolveOnChainAccountSpy = jest.spyOn(
           OnChainAccountService.prototype,
@@ -743,10 +731,7 @@ describe('KeyringHandler', () => {
         const { resolveAccountSpy } = getAccountServiceSpies();
         resolveAccountSpy.mockResolvedValue({ account: mockAccount });
         jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockResolvedValue(null);
         const fetchAndBindSpy = jest.spyOn(
           OnChainAccountService.prototype,
@@ -777,10 +762,7 @@ describe('KeyringHandler', () => {
         resolveAccountSpy.mockResolvedValue({ account: mockAccount });
         const onChainAccount = createTestOnChainAccount(mockAccount.address);
         jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockResolvedValue(onChainAccount);
         const fetchAndBindSpy = bindRequestedSep41Balances();
 
@@ -811,10 +793,7 @@ describe('KeyringHandler', () => {
           decimals: 7,
         });
         jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockResolvedValue(onChainAccount);
         const fetchAndBindSpy = jest.spyOn(
           OnChainAccountService.prototype,
@@ -840,10 +819,7 @@ describe('KeyringHandler', () => {
         const { resolveAccountSpy } = getAccountServiceSpies();
         resolveAccountSpy.mockResolvedValue({ account: mockAccount });
         jest
-          .spyOn(
-            OnChainAccountService.prototype,
-            'resolveOnChainAccountByKeyringAccountId',
-          )
+          .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
           .mockRejectedValue(new Error('state unavailable'));
 
         await expect(
