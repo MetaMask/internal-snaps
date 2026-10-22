@@ -44,7 +44,7 @@ describe('toClassicBalanceEntry', () => {
       unit: 'USDC',
       amount: '1.25',
       metadata: {
-        limit: '10',
+        limit: '100000000',
         authorized: false,
         sponsor: 'GSPONSOR',
         sponsored: true,
@@ -85,7 +85,7 @@ describe('toClassicBalanceEntry', () => {
       unit: 'TOKEN',
       amount: '1',
       metadata: {
-        limit: '5',
+        limit: '5000',
         authorized: true,
         sponsor: '',
         sponsored: false,
