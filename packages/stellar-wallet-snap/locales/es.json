@@ -128,7 +128,7 @@
       "message": "Memo must be 28 bytes or fewer"
     },
     "confirmation.memo.error.saveFailed": {
-      "message": "No se pudo guardar el memo. Inténtalo de nuevo."
+      "message": "Could not save memo. Please try again."
     },
     "confirmation.asset": {
       "message": "Asset"
@@ -398,7 +398,7 @@
       "message": "Function"
     },
     "confirmation.transaction.param.deployer": {
-      "message": "Desplegador"
+      "message": "Deployer"
     },
     "confirmation.transaction.param.salt": {
       "message": "Salt"
