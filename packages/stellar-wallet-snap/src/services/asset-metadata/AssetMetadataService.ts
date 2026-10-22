@@ -95,7 +95,7 @@ export class AssetMetadataService {
   /**
    * Resolves asset metadata for ids that are not in the watched catalog.
    *
-   * @param assetIds - Aasset ids to resolve.
+   * @param assetIds - Asset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
    */
   async fetchAndPersistAssetsByAssetIds(

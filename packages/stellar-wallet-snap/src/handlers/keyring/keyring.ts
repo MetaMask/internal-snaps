@@ -215,6 +215,16 @@ export class KeyringHandler implements KeyringSnapRpc {
     return createdAccounts.map(asStrictKeyringAccount);
   }
 
+  /**
+   * Returns the assets of an account.
+   *
+   * It gated by local config `enableAssetMigration`.
+   * When `enableAssetMigration` is true, the account is fetched from on-chain.
+   * When `enableAssetMigration` is false, the account is fetched from the state.
+   *
+   * @param accountId - The id of the account to get the assets for.
+   * @returns The assets of the account.
+   */
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
     validateRequest(accountId, ListAccountAssetsRequestStruct);
 
@@ -222,6 +232,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     let onChainAccount: OnChainAccount | null = null;
 
+    // TDOO: remove this gate after asset migration is fully enabled.
     if (enableAssetMigration) {
       onChainAccount = await this.#fetchOnChainAccountWithCache({
         accountId,
@@ -325,6 +336,17 @@ export class KeyringHandler implements KeyringSnapRpc {
     return activityOnScopes.some((active) => active);
   }
 
+  /**
+   * Returns the balances of an account for the given assets.
+   *
+   * It gated by local config `enableAssetMigration`.
+   * When `enableAssetMigration` is true, the account is fetched from on-chain.
+   * When `enableAssetMigration` is false, the account is fetched from the state.
+   *
+   * @param accountId - The id of the account to get the balances for.
+   * @param assets - The assets to get the balances for.
+   * @returns The balances of the account.
+   */
   async getAccountBalances(
     accountId: string,
     assets: CaipAssetType[],
@@ -340,6 +362,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     let onChainAccount: OnChainAccount | null = null;
 
+    // TDOO: remove this gate after asset migration is fully enabled.
     if (enableAssetMigration) {
       onChainAccount = await this.#fetchOnChainAccountWithCache({
         accountId,
