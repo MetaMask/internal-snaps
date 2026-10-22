@@ -1,14 +1,21 @@
-import { UrlStruct, buildUrl, chunks } from '@metamask/snap-networks-utils';
-import type { Logger } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  fetchWithPolicy,
+  UrlStruct,
+  buildUrl,
+  chunks,
+} from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 import type { FungibleAssetMetadata } from '@metamask/snaps-sdk';
 import { array, assert } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
-import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
+import { CaipAssetTypeStruct } from '@metamask/utils';
 
 import { Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import logger from '../../utils/logger';
 import { TokenMetadataResponseStruct } from './structs';
 
@@ -33,6 +40,8 @@ export class TokenApiClient {
 
   readonly #tokenIconBaseUrl: string;
 
+  readonly #policy: FetchPolicy;
+
   public static readonly supportedNetworks = [
     Network.Mainnet,
     Network.Nile,
@@ -55,6 +64,10 @@ export class TokenApiClient {
     this.#baseUrl = baseUrl;
     this.#chunkSize = chunkSize;
     this.#tokenIconBaseUrl = staticApi.baseUrl;
+    this.#policy = createFetchPolicy({
+      service: 'token_api',
+      logger: this.#logger,
+    });
   }
 
   async #fetchTokenMetadataBatch(
@@ -70,13 +83,13 @@ export class TokenApiClient {
       },
     });
 
-    const response = await this.#fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const body = await fetchWithPolicy(
+      this.#policy,
+      url,
+      undefined,
+      this.#fetch,
+    );
+    const data = JSON.parse(body);
 
     assert(data, TokenMetadataResponseStruct);
 
@@ -96,8 +109,8 @@ export class TokenApiClient {
         if (SNAP_OWNED_ASSETS.includes(assetType)) {
           return false;
         }
-        const { chainId } = parseCaipAssetType(assetType);
-        return TokenApiClient.supportedNetworks.includes(chainId as Network);
+        const { chainId } = parseTronCaipAssetType(assetType);
+        return TokenApiClient.supportedNetworks.includes(chainId);
       });
 
       if (supportedAssetTypes.length !== assetTypes.length) {

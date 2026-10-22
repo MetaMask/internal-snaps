@@ -2,6 +2,7 @@ import { parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage } fr
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
 
 import { StellarAddressStruct } from '../../api/address';
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import type { Transaction } from '../../services/transaction';
 import {
   InsufficientBalanceException,
@@ -25,15 +26,16 @@ import type { LocalizedMessage } from '../../utils';
 /**
  * Guards the user-approved fee during submit-time transaction refresh.
  *
- * Fee is visible in the confirmation dialog, so we fail closed instead of
- * silently signing a refreshed transaction with a higher fee than the user saw.
+ * Allows the refreshed fee to be up to
+ * {@link CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO} times the fee on
+ * {@link params.confirmedTransaction}. Larger increases fail closed.
  *
  * @param params - Confirmed and refreshed transaction pair.
- * @param params.confirmedTransaction - Transaction shown in the confirmation dialog.
+ * @param params.confirmedTransaction - Draft transaction from when the confirmation dialog opened.
  * @param params.refreshedTransaction - Transaction rebuilt after confirmation from fresh on-chain state.
- * @throws {TransactionValidationException} When the refreshed fee is higher than the confirmed fee.
+ * @throws {TransactionValidationException} When the refreshed fee exceeds the buffer.
  */
-export function assertRefreshedTransactionFeeNotHigher(params: {
+export function assertRefreshedTransactionFeeWithinBuffer(params: {
   confirmedTransaction: Transaction;
   refreshedTransaction: Transaction;
 }): void {
@@ -42,9 +44,12 @@ export function assertRefreshedTransactionFeeNotHigher(params: {
   // the request, so the only thing that can change is payment vs createAccount
   // (when the destination gets funded/unfunded), and both move the same funds.
   const { confirmedTransaction, refreshedTransaction } = params;
-  if (refreshedTransaction.totalFee.gt(confirmedTransaction.totalFee)) {
+  const maxAllowedFee = confirmedTransaction.totalFee.multipliedBy(
+    CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO,
+  );
+  if (refreshedTransaction.totalFee.gt(maxAllowedFee)) {
     throw new TransactionValidationException(
-      'Refreshed transaction fee exceeds confirmed fee',
+      'Refreshed transaction fee exceeds confirmed fee buffer',
     );
   }
 }

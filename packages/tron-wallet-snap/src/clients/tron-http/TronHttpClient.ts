@@ -1,9 +1,17 @@
-import { buildUrl } from '@metamask/snap-networks-utils';
+import {
+  buildUrl,
+  createFetchPolicy,
+  createFetchPolicyError,
+  executeWithFetchPolicy,
+  parseRetryAfter,
+} from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
-import type { Network } from '../../constants';
+import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { hexToString } from '../../utils/hex';
+import logger from '../../utils/logger';
 import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
@@ -39,19 +47,37 @@ export class TronHttpClient {
     }
   > = new Map();
 
-  constructor({ configProvider }: { configProvider: ConfigProvider }) {
+  readonly #policies: Map<Network, FetchPolicy>;
+
+  constructor({
+    configProvider,
+    logger: clientLogger = logger,
+  }: {
+    configProvider: ConfigProvider;
+    logger?: Logger;
+  }) {
     const { baseUrls } = configProvider.config.tronHttpApi;
 
     // Initialize clients for all networks
-    Object.entries(baseUrls).forEach(([network, baseUrl]) => {
+    Object.values(Network).forEach((network) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Allow-Origin': '*',
       };
 
-      this.#clients.set(network as Network, { baseUrl, headers });
+      this.#clients.set(network, { baseUrl: baseUrls[network], headers });
     });
+    this.#policies = new Map(
+      Object.values(Network).map((network) => [
+        network,
+        createFetchPolicy({
+          service: 'tronweb_provider',
+          chainIdCaip: network,
+          logger: clientLogger,
+        }),
+      ]),
+    );
   }
 
   /**
@@ -80,17 +106,13 @@ export class TronHttpClient {
       value: tokenId,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const tokenData: TRC10TokenInfo = await response.json();
+    const tokenData: TRC10TokenInfo = JSON.parse(response.body);
 
     // Validate response schema
     assert(tokenData, TRC10TokenInfoStruct);
@@ -148,17 +170,13 @@ export class TronHttpClient {
       visible: true,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const accountResources: AccountResources = await response.json();
+    const accountResources: AccountResources = JSON.parse(response.body);
 
     // Validate response schema
     assert(accountResources, AccountResourcesStruct);
@@ -193,20 +211,22 @@ export class TronHttpClient {
       value: txId,
     });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body,
-    });
+    const response = await this.#fetch(
+      network,
+      url,
+      {
+        method: 'POST',
+        headers,
+        body,
+      },
+      [404],
+    );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null; // Transaction not found
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (response.status === 404) {
+      return null; // Transaction not found
     }
 
-    const txInfo: FullNodeTransactionInfo = await response.json();
+    const txInfo: FullNodeTransactionInfo = JSON.parse(response.body);
 
     // If the response is empty or doesn't have the expected data, return null
     // Note: GetTransactionInfoById only returns data for confirmed transactions
@@ -240,16 +260,12 @@ export class TronHttpClient {
       path: '/wallet/getnextmaintenancetime',
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = JSON.parse(response.body);
 
     // Validate response schema
     assert(data, NextMaintenanceTimeStruct);
@@ -276,13 +292,9 @@ export class TronHttpClient {
       path: '/wallet/getchainparameters',
     });
 
-    const response = await fetch(url, { headers });
+    const response = await this.#fetch(network, url, { headers });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const rawData = await response.json();
+    const rawData = JSON.parse(response.body);
 
     // Validate response schema
     assert(rawData, ChainParametersResponseStruct);
@@ -323,7 +335,7 @@ export class TronHttpClient {
       path: '/wallet/triggerconstantcontract',
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body: JSON.stringify(
@@ -335,11 +347,7 @@ export class TronHttpClient {
       ),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result: TriggerConstantContractResponse = await response.json();
+    const result: TriggerConstantContractResponse = JSON.parse(response.body);
 
     // Validate response schema
     assert(result, TriggerConstantContractResponseStruct);
@@ -375,17 +383,13 @@ export class TronHttpClient {
       visible: false,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const contractInfo: ContractInfo = await response.json();
+    const contractInfo: ContractInfo = JSON.parse(response.body);
 
     // Empty response means contract not found (TRON returns {} for non-existent contracts)
     if (!contractInfo || Object.keys(contractInfo).length === 0) {
@@ -424,21 +428,49 @@ export class TronHttpClient {
       visible: true,
     });
 
-    const response = await fetch(url, {
+    const response = await this.#fetch(network, url, {
       method: 'POST',
       headers,
       body,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const rewardResponse: GetRewardResponse = await response.json();
+    const rewardResponse: GetRewardResponse = JSON.parse(response.body);
 
     // Validate response schema
     assert(rewardResponse, GetRewardResponseStruct);
 
     return rewardResponse.reward ?? 0;
+  }
+
+  async #fetch(
+    network: Network,
+    url: string,
+    init: RequestInit,
+    allowedStatuses: number[] = [],
+  ): Promise<{ body: string; status: number }> {
+    const policy = this.#policies.get(network);
+    if (!policy) {
+      throw new Error(`No policy configured for network: ${network}`);
+    }
+
+    return executeWithFetchPolicy(policy, async () => {
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok && !allowedStatuses.includes(response.status)) {
+        throw createFetchPolicyError(`HTTP error! status: ${response.status}`, {
+          httpStatus: response.status,
+          retryAfterMs: parseRetryAfter(response.headers.get('Retry-After')),
+        });
+      }
+      if (allowedStatuses.includes(response.status)) {
+        return { body: '', status: response.status };
+      }
+      return {
+        body: await response.text(),
+        status: response.status,
+      };
+    });
   }
 }

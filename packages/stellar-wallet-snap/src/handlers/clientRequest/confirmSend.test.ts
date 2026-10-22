@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import {
   InvalidParamsError,
   UserRejectedRequestError,
@@ -7,7 +8,7 @@ import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import { METAMASK_ORIGIN } from '../../constants';
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import type { StellarAssetMetadata } from '../../services/asset-metadata';
@@ -311,7 +312,7 @@ describe('ConfirmSendHandler', () => {
       scope,
       interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
       fee: transaction.totalFee.toString(),
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       renderContext: {
         account,
         toAddress: destinationAddress,
@@ -453,7 +454,7 @@ describe('ConfirmSendHandler', () => {
     });
   });
 
-  it('returns invalid when refreshed transaction fee is higher than confirmed fee', async () => {
+  it('returns invalid when refreshed transaction fee exceeds the 20% buffer', async () => {
     const {
       handler,
       wallet,
@@ -461,7 +462,9 @@ describe('ConfirmSendHandler', () => {
       signTransactionSpy,
       sendTransaction,
     } = setup();
-    const higherFeeTransaction = buildMockClassicTransaction(
+    // Default confirmed fee is 200 stroops; just over the buffer limit.
+    const confirmedFee = '200';
+    const exceedsBufferTransaction = buildMockClassicTransaction(
       [
         {
           type: 'payment',
@@ -482,10 +485,15 @@ describe('ConfirmSendHandler', () => {
           accountId: wallet.address,
           sequence: '2',
         },
-        baseFeePerOperation: '300',
+        baseFeePerOperation: new BigNumber(confirmedFee)
+          .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+          .plus(1)
+          .toFixed(0),
       },
     );
-    createValidatedSendTransaction.mockResolvedValueOnce(higherFeeTransaction);
+    createValidatedSendTransaction.mockResolvedValueOnce(
+      exceedsBufferTransaction,
+    );
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,
@@ -493,6 +501,54 @@ describe('ConfirmSendHandler', () => {
     });
     expect(signTransactionSpy).not.toHaveBeenCalled();
     expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('allows a refreshed fee within the 20% buffer of the confirmed fee', async () => {
+    const {
+      handler,
+      wallet,
+      createValidatedSendTransaction,
+      signTransactionSpy,
+      sendTransaction,
+    } = setup();
+    const withinBufferTransaction = buildMockClassicTransaction(
+      [
+        {
+          type: 'payment',
+          params: {
+            destination: destinationAddress,
+            asset: {
+              code: 'USDC',
+              issuer:
+                'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+            },
+            amount: '1',
+          },
+        },
+      ],
+      {
+        networkPassphrase: Networks.PUBLIC,
+        source: {
+          accountId: wallet.address,
+          sequence: '2',
+        },
+        // Default confirmed fee is 200 stroops; exactly at the buffer limit.
+        baseFeePerOperation: new BigNumber('200')
+          .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+          .toFixed(0),
+      },
+    );
+    createValidatedSendTransaction.mockResolvedValueOnce(
+      withinBufferTransaction,
+    );
+
+    expect(await handler.handle(baseRequest())).toStrictEqual({
+      valid: true,
+      errors: [],
+      transactionId,
+    });
+    expect(signTransactionSpy).toHaveBeenCalledWith(withinBufferTransaction);
+    expect(sendTransaction).toHaveBeenCalled();
   });
 
   describe('pre-submit validation errors', () => {
@@ -554,7 +610,7 @@ describe('ConfirmSendHandler', () => {
           scope,
           interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
           fee: '',
-          origin: METAMASK_ORIGIN,
+          origin: DEFAULT_METAMASK_ORIGIN,
           renderContext: {
             account,
             toAddress: destinationAddress,
@@ -866,7 +922,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionAddedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
     });
@@ -887,7 +943,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
     });
@@ -898,7 +954,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
     });
@@ -915,7 +971,7 @@ describe('ConfirmSendHandler', () => {
       expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Send,
       });
 

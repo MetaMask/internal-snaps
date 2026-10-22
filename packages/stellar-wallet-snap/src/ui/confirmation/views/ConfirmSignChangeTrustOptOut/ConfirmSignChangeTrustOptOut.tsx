@@ -1,9 +1,9 @@
+import { ActionHeader, Asset } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
   Container,
-  Heading,
   Icon,
   Section,
   Text as SnapText,
@@ -22,8 +22,6 @@ import type {
 } from '../../api';
 import { FetchStatus } from '../../api';
 import {
-  Asset,
-  AssetIcon,
   ConfirmationAlerts,
   ConfirmationFooter,
   FeeRow,
@@ -77,19 +75,12 @@ export const ConfirmSignChangeTrustOptOut = ({
           transactionsFetchStatus={transactionsFetchStatus}
           errorMessage={errorMessage}
         />
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">
-            {t('confirmation.signChangeTrustOptOut.title', {
-              asset: assetMetadata.symbol,
-            })}
-          </Heading>
-          <Box>
-            <AssetIcon iconUrl={assetMetadata.iconUrl} size="xl" />
-          </Box>
-          <Box>{null}</Box>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader
+          title={t('confirmation.signChangeTrustOptOut.title', {
+            asset: assetMetadata.symbol,
+          })}
+          iconUrl={assetMetadata.iconUrl}
+        />
 
         <Section>
           {origin ? (

@@ -1,10 +1,15 @@
 import { BtcScope } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeError,
+  resolveFlowTransactionType,
+} from '@metamask/snap-networks-utils';
 import type {
   ProofOfOwnershipBatchRequestItem,
   ProofOfOwnershipBatchResponse,
 } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
+import type { CaipAssetType } from '@metamask/utils';
 import { Verifier } from 'bip322-js';
 import {
   assert,
@@ -164,7 +169,12 @@ export class RpcHandler {
       }
       case RpcMethod.SignAndSendTransaction: {
         assert(params, SendPsbtRequest);
-        return this.#signAndSend(params.accountId, params.transaction, origin);
+        return this.#signAndSend(
+          params.accountId,
+          params.transaction,
+          origin,
+          params.options,
+        );
       }
       case RpcMethod.ComputeFee: {
         assert(params, ComputeFeeRequest);
@@ -242,8 +252,29 @@ export class RpcHandler {
     accountId: string,
     transaction: string,
     origin: string,
+    options?: Record<string, unknown>,
   ): Promise<SendTransactionResponse | null> {
     const psbt = parsePsbt(transaction);
+
+    /**
+     * The unified swap/bridge flow passes the source and destination asset ids
+     * in the request options, which classify the transaction as a same-chain
+     * swap or a cross-chain bridge. Bitcoin transactions carry no destination
+     * chain, so this is the only signal available. Other callers omit the
+     * options and fall back to the balance-derived classification.
+     */
+    const sourceAssetId = options?.sourceAssetId;
+    const destAssetId = options?.destAssetId;
+    const transactionType = resolveFlowTransactionType({
+      sourceAssetId:
+        typeof sourceAssetId === 'string'
+          ? (sourceAssetId as CaipAssetType)
+          : undefined,
+      destAssetId:
+        typeof destAssetId === 'string'
+          ? (destAssetId as CaipAssetType)
+          : undefined,
+    });
 
     const { txid, canBeMalleable } = await this.#accountUseCases.signPsbt(
       accountId,
@@ -253,6 +284,8 @@ export class RpcHandler {
         fill: true,
         broadcast: true,
       },
+      undefined,
+      transactionType,
     );
     if (!txid) {
       throw new AssertionError('Missing transaction ID');
@@ -437,7 +470,7 @@ export class RpcHandler {
     const signature = await this.#accountUseCases.signMessage(
       accountId,
       decodedMessage,
-      'metamask',
+      DEFAULT_METAMASK_ORIGIN,
       { skipConfirmation: true },
     );
 
@@ -498,7 +531,7 @@ export class RpcHandler {
     const signature = await this.#accountUseCases.signMessage(
       accountId,
       message,
-      'metamask',
+      DEFAULT_METAMASK_ORIGIN,
       { skipConfirmation: true },
     );
 

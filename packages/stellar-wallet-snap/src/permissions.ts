@@ -1,11 +1,10 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { KeyringSnapRpcMethod } from '@metamask/keyring-api/v2';
 import {
+  DEFAULT_METAMASK_ORIGIN,
   createOriginPermissions,
   DEFAULT_PROD_ORIGINS,
 } from '@metamask/snap-networks-utils';
-
-import { METAMASK_ORIGIN } from './constants';
 
 const metamaskMethods = [
   KeyringSnapRpcMethod.GetAccounts,
@@ -37,5 +36,5 @@ export const originPermissions = createOriginPermissions({
   dappMethods: [],
   metamaskMethods,
   origins: DEFAULT_PROD_ORIGINS,
-  metamaskOrigin: METAMASK_ORIGIN,
+  metamaskOrigin: DEFAULT_METAMASK_ORIGIN,
 });

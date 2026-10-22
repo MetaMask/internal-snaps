@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { CaipAssetType } from '@metamask/keyring-api';
-import type { ICache, Serializable } from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
@@ -10,36 +14,48 @@ import { mockLogger } from '../../utils/mockLogger';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
 
-describe('PriceApiClient', () => {
-  let mockFetch: jest.Mock;
-  let mockCache: ICache<Serializable>;
-  let client: PriceApiClient;
+type PriceApiClientSetup = {
+  client: PriceApiClient;
+  mockCache: ICache<Serializable>;
+  mockFetch: jest.Mock;
+};
 
-  beforeEach(() => {
-    mockFetch = jest.fn();
+/**
+ * Creates a Price API client and executes a test with its isolated dependencies.
+ *
+ * @param testFn - The test body receiving the client, fetch mock, and cache.
+ * @returns Whatever the test function returns.
+ */
+async function withPriceApiClient(
+  testFn: (setup: PriceApiClientSetup) => void | Promise<void>,
+): Promise<void> {
+  const mockFetch = jest.fn();
+  const logger = mockLogger as unknown as Logger;
 
-    const mockConfigProvider: ConfigProvider = {
-      config: {
-        priceApi: {
-          baseUrl: 'https://some-mock-url.com',
-          chunkSize: 50,
-          cacheTtlsMilliseconds: {
-            spotPrices: 0,
-          },
+  const mockConfigProvider: ConfigProvider = {
+    config: {
+      priceApi: {
+        baseUrl: 'https://some-mock-url.com',
+        chunkSize: 50,
+        cacheTtlsMilliseconds: {
+          spotPrices: 0,
         },
       },
-    } as ConfigProvider;
+    },
+  } as ConfigProvider;
 
-    mockCache = new InMemoryCache(mockLogger);
+  const mockCache = new InMemoryCache(logger);
+  const client = new PriceApiClient(
+    mockConfigProvider,
+    mockCache,
+    mockFetch,
+    logger,
+  );
 
-    client = new PriceApiClient(
-      mockConfigProvider,
-      mockCache,
-      mockFetch,
-      mockLogger,
-    );
-  });
+  await testFn({ client, mockCache, mockFetch });
+}
 
+describe('PriceApiClient', () => {
   describe('getMultipleSpotPrices', () => {
     const mockResponse: SpotPrices = {
       [KnownCaip19Id.TrxMainnet]: {
@@ -98,270 +114,333 @@ describe('PriceApiClient', () => {
 
     describe('when the data is not cached', () => {
       it('fetches multiple spot prices successfully', async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockResolvedValueOnce(mockResponse),
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch.mockResolvedValueOnce({
+            ok: true,
+            text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
+          });
+
+          const result = await client.getMultipleSpotPrices([
+            KnownCaip19Id.TrxMainnet,
+            KnownCaip19Id.UsdtMainnet,
+          ]);
+
+          expect(mockFetch).toHaveBeenCalledWith(
+            'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
+          );
+          expect(result).toStrictEqual(mockResponse);
         });
-
-        const result = await client.getMultipleSpotPrices([
-          KnownCaip19Id.TrxMainnet,
-          KnownCaip19Id.UsdtMainnet,
-        ]);
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
-        );
-        expect(result).toStrictEqual(mockResponse);
       });
 
       it('logs and throws an error if fetch fails', async () => {
-        const mockError = new Error('Fetch failed');
-        mockFetch.mockRejectedValueOnce(mockError);
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          const mockError = new Error('Fetch failed');
+          mockFetch.mockRejectedValue(mockError);
 
-        await expect(
-          client.getMultipleSpotPrices([
-            KnownCaip19Id.TrxMainnet,
-            KnownCaip19Id.UsdtMainnet,
-          ]),
-        ).rejects.toThrow('Fetch failed');
-        expect(mockLogger.error).toHaveBeenCalledWith(
-          mockError,
-          'Error fetching spot prices',
-        );
+          await expect(
+            client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).rejects.toThrow('Fetch failed');
+          expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Fetch failed' }),
+            'Error fetching spot prices',
+          );
+        });
       });
 
       it('throws an error if response is not ok', async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-        });
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch.mockResolvedValueOnce({
+            ok: false,
+            status: 404,
+          });
 
-        await expect(
-          client.getMultipleSpotPrices([
-            KnownCaip19Id.TrxMainnet,
-            KnownCaip19Id.UsdtMainnet,
-          ]),
-        ).rejects.toThrow('HTTP error! status: 404');
-        expect(mockLogger.error).toHaveBeenCalledWith(
-          expect.any(Error),
-          'Error fetching spot prices',
-        );
+          await expect(
+            client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).rejects.toThrow('HTTP error! status: 404');
+          expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.any(Error),
+            'Error fetching spot prices',
+          );
+        });
       });
 
       it('fetches spot price with custom vsCurrency', async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockResolvedValueOnce(mockResponse),
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch.mockResolvedValueOnce({
+            ok: true,
+            text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
+          });
+
+          await client.getMultipleSpotPrices(
+            [KnownCaip19Id.TrxMainnet, KnownCaip19Id.UsdtMainnet],
+            'eur',
+          );
+
+          expect(mockFetch).toHaveBeenCalledWith(
+            'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
+          );
         });
-
-        await client.getMultipleSpotPrices(
-          [KnownCaip19Id.TrxMainnet, KnownCaip19Id.UsdtMainnet],
-          'eur',
-        );
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=eur&assetIds=tron%3A728126428%2Fslip44%3A195%2Ctron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
-        );
       });
 
       it('handles malformed JSON response', async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockRejectedValueOnce(new Error('Invalid JSON')),
-        });
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch.mockResolvedValueOnce({
+            ok: true,
+            text: jest.fn().mockResolvedValueOnce('Invalid JSON'),
+          });
 
-        await expect(
-          client.getMultipleSpotPrices([
-            KnownCaip19Id.TrxMainnet,
-            KnownCaip19Id.UsdtMainnet,
-          ]),
-        ).rejects.toThrow('Invalid JSON');
-        expect(mockLogger.error).toHaveBeenCalledWith(
-          expect.any(Error),
-          'Error fetching spot prices',
-        );
+          await expect(
+            client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).rejects.toThrow('Invalid JSON');
+          expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.any(Error),
+            'Error fetching spot prices',
+          );
+        });
       });
 
       it('handles network timeout', async () => {
-        mockFetch.mockRejectedValueOnce(new Error('Network timeout'));
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch.mockRejectedValue(new Error('Network timeout'));
 
-        await expect(
-          client.getMultipleSpotPrices([
-            KnownCaip19Id.TrxMainnet,
-            KnownCaip19Id.UsdtMainnet,
-          ]),
-        ).rejects.toThrow('Network timeout');
-        expect(mockLogger.error).toHaveBeenCalledWith(
-          expect.any(Error),
-          'Error fetching spot prices',
-        );
+          await expect(
+            client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).rejects.toThrow('Network timeout');
+          expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.any(Error),
+            'Error fetching spot prices',
+          );
+        });
+      });
+
+      it('retries when reading the response body fails', async () => {
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          mockFetch
+            .mockResolvedValueOnce({
+              ok: true,
+              text: jest.fn().mockRejectedValueOnce(new Error('Body failed')),
+            })
+            .mockResolvedValueOnce({
+              ok: true,
+              text: jest
+                .fn()
+                .mockResolvedValueOnce(JSON.stringify(mockResponse)),
+            });
+
+          expect(
+            await client.getMultipleSpotPrices([
+              KnownCaip19Id.TrxMainnet,
+              KnownCaip19Id.UsdtMainnet,
+            ]),
+          ).toStrictEqual(mockResponse);
+          expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
       });
 
       it('throws when malformed response from the Price API', async () => {
-        const mockMalformedResponse = cloneDeep(mockResponse);
-        mockMalformedResponse[KnownCaip19Id.TrxMainnet]!.price = -999; // Price must be a positive number
+        await withPriceApiClient(async ({ client, mockFetch }) => {
+          const mockMalformedResponse = cloneDeep(mockResponse);
+          mockMalformedResponse[KnownCaip19Id.TrxMainnet]!.price = -999; // Price must be a positive number
 
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockResolvedValueOnce(mockMalformedResponse),
+          mockFetch.mockResolvedValueOnce({
+            ok: true,
+            text: jest
+              .fn()
+              .mockResolvedValueOnce(JSON.stringify(mockMalformedResponse)),
+          });
+
+          await expect(
+            client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]),
+          ).rejects.toThrow(
+            'At path: tron:728126428/slip44:195.price -- Expected a number greater than or equal to 0 but received `-999`',
+          );
         });
-
-        await expect(
-          client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]),
-        ).rejects.toThrow(
-          'At path: tron:728126428/slip44:195.price -- Expected a number greater than or equal to 0 but received `-999`',
-        );
       });
     });
 
     describe('when the data is fully cached', () => {
       it('returns the cached data', async () => {
-        const cachedData = {
-          'PriceApiClient:getMultipleSpotPrices:tron:728126428/slip44:195:usd':
-            mockResponse[KnownCaip19Id.TrxMainnet]!,
-          'PriceApiClient:getMultipleSpotPrices:tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:usd':
-            mockResponse[KnownCaip19Id.UsdtMainnet]!,
-        };
-        jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
-        jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
+        await withPriceApiClient(async ({ client, mockCache, mockFetch }) => {
+          const cachedData = {
+            'PriceApiClient:getMultipleSpotPrices:tron:728126428/slip44:195:usd':
+              mockResponse[KnownCaip19Id.TrxMainnet]!,
+            'PriceApiClient:getMultipleSpotPrices:tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:usd':
+              mockResponse[KnownCaip19Id.UsdtMainnet]!,
+          };
+          jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
+          jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
 
-        const result = await client.getMultipleSpotPrices([
-          KnownCaip19Id.TrxMainnet,
-          KnownCaip19Id.UsdtMainnet,
-        ]);
+          const result = await client.getMultipleSpotPrices([
+            KnownCaip19Id.TrxMainnet,
+            KnownCaip19Id.UsdtMainnet,
+          ]);
 
-        expect(result).toStrictEqual(mockResponse);
-        expect(mockFetch).not.toHaveBeenCalled();
-        expect(mockCache.mset).not.toHaveBeenCalled();
+          expect(result).toStrictEqual(mockResponse);
+          expect(mockFetch).not.toHaveBeenCalled();
+          expect(mockCache.mset).not.toHaveBeenCalled();
+        });
       });
     });
 
     describe('when the cache returns an unexpected key', () => {
       it('throws an invalid cache key error', async () => {
-        jest.spyOn(mockCache, 'mget').mockResolvedValueOnce({
-          INVALID_KEY: mockResponse[KnownCaip19Id.TrxMainnet]!,
-        });
+        await withPriceApiClient(async ({ client, mockCache }) => {
+          jest.spyOn(mockCache, 'mget').mockResolvedValueOnce({
+            INVALID_KEY: mockResponse[KnownCaip19Id.TrxMainnet]!,
+          });
 
-        await expect(
-          client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]),
-        ).rejects.toThrow('Invalid cache key');
+          await expect(
+            client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]),
+          ).rejects.toThrow('Invalid cache key');
+        });
       });
     });
 
     describe('when the data is partially cached', () => {
       it('returns the cached data', async () => {
-        // Only the first token is cached, we will need to fetch the second one
-        const cachedData = {
-          'PriceApiClient:getMultipleSpotPrices:tron:728126428/slip44:195:usd':
-            mockResponse[KnownCaip19Id.TrxMainnet]!,
-        };
-        jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
-        jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: jest.fn().mockResolvedValueOnce({
-            [KnownCaip19Id.UsdtMainnet]:
-              mockResponse[KnownCaip19Id.UsdtMainnet]!,
-          }),
+        await withPriceApiClient(async ({ client, mockCache, mockFetch }) => {
+          // Only the first token is cached, we will need to fetch the second one
+          const cachedData = {
+            'PriceApiClient:getMultipleSpotPrices:tron:728126428/slip44:195:usd':
+              mockResponse[KnownCaip19Id.TrxMainnet]!,
+          };
+          jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
+          jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
+          mockFetch.mockResolvedValueOnce({
+            ok: true,
+            text: jest.fn().mockResolvedValueOnce(
+              JSON.stringify({
+                [KnownCaip19Id.UsdtMainnet]:
+                  mockResponse[KnownCaip19Id.UsdtMainnet]!,
+              }),
+            ),
+          });
+
+          const result = await client.getMultipleSpotPrices([
+            KnownCaip19Id.TrxMainnet,
+            KnownCaip19Id.UsdtMainnet,
+          ]);
+
+          expect(result).toStrictEqual(mockResponse);
+
+          // We should have fetched the second token only
+          expect(mockFetch).toHaveBeenCalledWith(
+            'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
+          );
+
+          // The second token should be added to the cache
+          expect(mockCache.mset).toHaveBeenCalledWith([
+            {
+              key: 'PriceApiClient:getMultipleSpotPrices:tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:usd',
+              value: mockResponse[KnownCaip19Id.UsdtMainnet]!,
+              ttlMilliseconds: 0,
+            },
+          ]);
         });
-
-        const result = await client.getMultipleSpotPrices([
-          KnownCaip19Id.TrxMainnet,
-          KnownCaip19Id.UsdtMainnet,
-        ]);
-
-        expect(result).toStrictEqual(mockResponse);
-
-        // We should have fetched the second token only
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://some-mock-url.com/v3/spot-prices?vsCurrency=usd&assetIds=tron%3A728126428%2Ftrc20%3ATR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&includeMarketData=true',
-        );
-
-        // The second token should be added to the cache
-        expect(mockCache.mset).toHaveBeenCalledWith([
-          {
-            key: 'PriceApiClient:getMultipleSpotPrices:tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:usd',
-            value: mockResponse[KnownCaip19Id.UsdtMainnet]!,
-            ttlMilliseconds: 0,
-          },
-        ]);
       });
     });
   });
 
   describe('security', () => {
-    it('rejects invalid base URLs in constructor', () => {
-      const invalidConfigProvider = {
-        config: {
-          priceApi: {
-            baseUrl: 'invalid-url',
-            chunkSize: 50,
-            cacheTtlsMilliseconds: {
-              spotPrices: 0,
+    it('rejects invalid base URLs in constructor', async () => {
+      await withPriceApiClient(async ({ mockCache, mockFetch }) => {
+        const logger = mockLogger as unknown as Logger;
+        const invalidConfigProvider = {
+          config: {
+            priceApi: {
+              baseUrl: 'invalid-url',
+              chunkSize: 50,
+              cacheTtlsMilliseconds: {
+                spotPrices: 0,
+              },
             },
           },
-        },
-      } as ConfigProvider;
+        } as ConfigProvider;
 
-      expect(
-        () =>
-          new PriceApiClient(
-            invalidConfigProvider,
-            mockCache,
-            mockFetch,
-            mockLogger,
-          ),
-      ).toThrow('Invalid URL format');
+        expect(
+          () =>
+            new PriceApiClient(
+              invalidConfigProvider,
+              mockCache,
+              mockFetch,
+              logger,
+            ),
+        ).toThrow('Invalid URL format');
+      });
     });
 
     it('rejects tokenCaipAssetTypes that are invalid or that include malicious inputs', async () => {
-      await expect(
-        client.getMultipleSpotPrices([
-          KnownCaip19Id.TrxMainnet,
-          'INVALID<script>alert(1)</script>' as CaipAssetType,
-        ]),
-      ).rejects.toThrow(
-        'At path: 1 -- Expected a value of type `CaipAssetType`, but received: `"INVALID<script>alert(1)</script>"`',
-      );
+      await withPriceApiClient(async ({ client }) => {
+        await expect(
+          client.getMultipleSpotPrices([
+            KnownCaip19Id.TrxMainnet,
+            'INVALID<script>alert(1)</script>' as CaipAssetType,
+          ]),
+        ).rejects.toThrow(
+          'At path: 1 -- Expected a value of type `CaipAssetType`, but received: `"INVALID<script>alert(1)</script>"`',
+        );
+      });
     });
 
     it('rejects vsCurrency parameters that are invalid or that include malicious inputs', async () => {
-      await expect(
-        client.getMultipleSpotPrices(
-          [KnownCaip19Id.TrxMainnet],
-          'INVALID<script>alert(1)</script>' as VsCurrencyParam,
-        ),
-      ).rejects.toThrow(/Expected/u);
+      await withPriceApiClient(async ({ client }) => {
+        await expect(
+          client.getMultipleSpotPrices(
+            [KnownCaip19Id.TrxMainnet],
+            'INVALID<script>alert(1)</script>' as VsCurrencyParam,
+          ),
+        ).rejects.toThrow(/Expected/u);
+      });
     });
 
     it('handles URLs with multiple query parameters safely', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: jest.fn().mockResolvedValueOnce({}),
+      await withPriceApiClient(async ({ client, mockFetch }) => {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          text: jest.fn().mockResolvedValueOnce('{}'),
+        });
+
+        await client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]);
+
+        // Verify URL is properly constructed with encoded parameters
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringMatching(
+            /^https:\/\/some-mock-url\.com\/v3\/spot-prices\?([^&=]+=[^&]*&)*[^&=]+=.+$/u,
+          ),
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
       });
-
-      await client.getMultipleSpotPrices([KnownCaip19Id.TrxMainnet]);
-
-      // Verify URL is properly constructed with encoded parameters
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /^https:\/\/some-mock-url\.com\/v3\/spot-prices\?([^&=]+=[^&]*&)*[^&=]+=.+$/u,
-        ),
-      );
     });
 
     it('rejects non-printable characters in input', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: jest.fn().mockResolvedValueOnce({}),
-      });
+      await withPriceApiClient(async ({ client, mockFetch }) => {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          text: jest.fn().mockResolvedValueOnce('{}'),
+        });
 
-      await expect(
-        client.getMultipleSpotPrices(
-          [KnownCaip19Id.TrxMainnet],
-          'usd\x00\x1F' as VsCurrencyParam,
-        ),
-      ).rejects.toThrow(/Expected/u);
+        await expect(
+          client.getMultipleSpotPrices(
+            [KnownCaip19Id.TrxMainnet],
+            'usd\x00\x1F' as VsCurrencyParam,
+          ),
+        ).rejects.toThrow(/Expected/u);
+      });
     });
   });
 });

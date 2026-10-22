@@ -1,22 +1,22 @@
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
-import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
-import {
-  METAMASK_ORIGIN,
-  Networks,
-  TRACK_TX_INTERVAL,
-  ZERO,
-} from '../../constants';
+import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
+import {
+  isSuccessfulBroadcast,
+  throwOnTransientBroadcastFailure,
+} from '../../utils/broadcast';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { toRawAmount, trxToSun } from '../../utils/conversion';
-import { mapRawTransactionType } from '../../utils/transactionType';
+import { resolveTransactionType } from '../../utils/transactionType';
 import { assertTransactionSignerConsistency } from '../../validation/transaction';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
@@ -233,7 +233,7 @@ export class SendService {
     | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
     | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>
   > {
-    const { chainId, assetNamespace, assetReference } = parseCaipAssetType(
+    const { chainId, assetNamespace, assetReference } = parseTronCaipAssetType(
       asset.assetType,
     );
 
@@ -242,7 +242,7 @@ export class SendService {
         case 'slip44':
           this.#logger.log('Sending TRX transaction');
           return this.buildSendTrxTransaction({
-            scope: chainId as Network,
+            scope: chainId,
             fromAccountId,
             toAddress,
             amount,
@@ -252,7 +252,7 @@ export class SendService {
         case 'trc10':
           this.#logger.log(`Sending TRC10 token: ${assetReference}`);
           return this.buildSendTrc10Transaction({
-            scope: chainId as Network,
+            scope: chainId,
             fromAccountId,
             toAddress,
             amount,
@@ -264,7 +264,7 @@ export class SendService {
         case 'trc20':
           this.#logger.log(`Sending TRC20 token: ${assetReference}`);
           return this.buildSendTrc20Transaction({
-            scope: chainId as Network,
+            scope: chainId,
             fromAccountId,
             toAddress,
             contractAddress: assetReference,
@@ -388,7 +388,7 @@ export class SendService {
     scope,
     fromAccountId,
     transaction,
-    origin = METAMASK_ORIGIN,
+    origin = DEFAULT_METAMASK_ORIGIN,
   }: {
     scope: Network;
     fromAccountId: string;
@@ -424,19 +424,30 @@ export class SendService {
     /**
      * Resolve the classification before signing so the submitted event and the
      * background tracker both carry it. A broadcast transaction has no
-     * account-balance context, so it is derived from the contract type.
+     * account-balance context, so it is derived from the contract type and, for
+     * TRC20 transfers, the call selector. This keeps the unified send path on
+     * `send` even when the transfer is a smart-contract call.
      */
-    const transactionType = mapRawTransactionType(freshTransaction.raw_data);
+    const transactionType = resolveTransactionType({
+      rawData: freshTransaction.raw_data,
+    });
 
     /**
      * Sign and send the transaction atomically after user confirmation
      */
     const signedTransaction = await tronWeb.trx.sign(freshTransaction);
-    const result = await tronWeb.trx.sendRawTransaction(signedTransaction);
+    const result = await this.#tronWebFactory.executeBroadcast(
+      scope,
+      async () =>
+        throwOnTransientBroadcastFailure(
+          await tronWeb.trx.sendRawTransaction(signedTransaction),
+        ),
+    );
 
-    if (!result.result) {
+    if (!isSuccessfulBroadcast(result)) {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
+    const txId = result.txid ?? freshTransaction.txID;
 
     await this.#analyticsService.trackTransactionSubmitted({
       origin,
@@ -448,7 +459,7 @@ export class SendService {
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.TrackTransaction,
       params: {
-        txId: result.txid,
+        txId,
         scope,
         accountIds: [fromAccountId],
         attempt: 0,
@@ -457,7 +468,7 @@ export class SendService {
       duration: TRACK_TX_INTERVAL,
     });
 
-    return result;
+    return { ...result, txid: txId };
   }
 
   /**

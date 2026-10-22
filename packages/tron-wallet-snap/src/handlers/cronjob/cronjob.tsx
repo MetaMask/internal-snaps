@@ -1,9 +1,11 @@
 import type { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
   IStateManager,
   Logger,
+  SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
@@ -11,11 +13,7 @@ import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { Network } from '../../constants';
-import {
-  METAMASK_ORIGIN,
-  TRACK_TX_INTERVAL,
-  TRACK_TX_MAX_ATTEMPTS,
-} from '../../constants';
+import { TRACK_TX_INTERVAL, TRACK_TX_MAX_ATTEMPTS } from '../../constants';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { UnencryptedStateValue } from '../../services/state/stateTypes';
 import type { TransactionExpirationRefresherService } from '../../services/transaction-expiration-refresher/TransactionExpirationRefresherService';
@@ -33,6 +31,8 @@ import { ConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTr
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { mapTransactionInfoStatus } from '../../utils/transactionStatus';
+import { TrackTransactionParamsStruct } from '../../validation/structs';
+import { validateRequest } from '../../validation/validators';
 
 export const CronjobMethod = {
   ContinuouslySynchronizeSelectedAccounts:
@@ -143,15 +143,7 @@ export class CronHandler {
         await this.refreshSignTransaction();
         break;
       case BackgroundEventMethod.TrackTransaction:
-        await this.trackTransaction(
-          params as {
-            txId: string;
-            scope: Network;
-            accountIds: string[];
-            attempt: number;
-            transactionType?: TransactionType;
-          },
-        );
+        await this.handleTrackTransaction(request);
         break;
       default:
         throw new Error(`Unknown cronjob method: ${method}`);
@@ -377,7 +369,7 @@ export class CronHandler {
         fetchingContext,
       );
 
-      const options: string[] = ['simulation'];
+      const options: SecurityAlertsScanOption[] = ['simulation'];
       if (preferences.useSecurityAlerts) {
         options.push('validation');
       }
@@ -538,7 +530,7 @@ export class CronHandler {
       }
 
       if (shouldRefreshScan && rawData) {
-        const options: string[] = [];
+        const options: SecurityAlertsScanOption[] = [];
         if (preferences.simulateOnChainActions) {
           options.push('simulation');
         }
@@ -655,6 +647,11 @@ export class CronHandler {
     }
   }
 
+  async handleTrackTransaction(request: JsonRpcRequest): Promise<void> {
+    validateRequest(request.params, TrackTransactionParamsStruct);
+    await this.trackTransaction(request.params);
+  }
+
   /**
    * Background job to track a transaction's confirmation status.
    * Continues polling until confirmed, then syncs accounts and emits finalized event.
@@ -748,7 +745,7 @@ export class CronHandler {
 
       // Track Transaction Finalized event now that transaction is confirmed
       await this.#analyticsService.trackTransactionFinalized({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: senderAccount.type,
         chainIdCaip: scope,
         transactionStatus,

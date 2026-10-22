@@ -1080,6 +1080,19 @@ describe('NetworkService', () => {
       ).rejects.toThrow(TransactionPollException);
     });
 
+    it('throws TransactionSendException when RPC returns TRY_AGAIN_LATER', async () => {
+      const { sendTransactionSpy } = getRpcServerSpies();
+      sendTransactionSpy.mockResolvedValue({
+        status: 'TRY_AGAIN_LATER',
+        hash: testTransactionHash,
+      } as never);
+      const mockTransaction = createMockTransaction();
+
+      await expect(
+        networkService.send({ transaction: mockTransaction, scope }),
+      ).rejects.toThrow(TransactionSendException);
+    });
+
     it('throws TransactionRetryableException when RPC returns ERROR with txBadSeq', async () => {
       const { sendTransactionSpy } = getRpcServerSpies();
       sendTransactionSpy.mockResolvedValue({

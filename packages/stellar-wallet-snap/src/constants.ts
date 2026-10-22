@@ -77,6 +77,15 @@ export const NATIVE_ASSET_NAME = 'XLM';
 export const BASE_FEE = 100;
 
 /**
+ * Max allowed fee increase vs the confirmation-time draft (20%).
+ *
+ * SEP-41 / Soroban resource fees can move between dialog open and the
+ * post-confirm rebuild; a small buffer avoids dropping otherwise-valid txs.
+ * Baseline is the draft built when the dialog opened (not later UI refreshes).
+ */
+export const CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO = 2.0;
+
+/**
  * The maximum int64 balance for the Stellar network.
  *
  * @see https://stellar.org/learn/lumens
@@ -87,11 +96,6 @@ export const MAX_INT64 = '9223372036854775807';
  * The type for the keyring account.
  */
 export const KEYRING_ACCOUNT_TYPE = XlmAccountType.Account;
-
-/**
- * The origin for the MetaMask wallet.
- */
-export const METAMASK_ORIGIN = 'metamask';
 
 /**
  * The maximum page size for the transactions.

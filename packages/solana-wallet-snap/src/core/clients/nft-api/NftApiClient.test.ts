@@ -65,10 +65,12 @@ describe('NftApiClient', () => {
     it('should correctly map the API response, covering the logic from mapListAddressSolanaNftsResponse.test.ts', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
-          ...MOCK_NFTS_LIST_RESPONSE_RAW,
-          cursor: null,
-        }),
+        text: jest.fn().mockResolvedValueOnce(
+          JSON.stringify({
+            ...MOCK_NFTS_LIST_RESPONSE_RAW,
+            cursor: null,
+          }),
+        ),
       });
 
       const nfts = await client.listAddressSolanaNfts('some-address');
@@ -86,15 +88,19 @@ describe('NftApiClient', () => {
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
+        text: jest
           .fn()
-          .mockResolvedValueOnce(MOCK_NFTS_LIST_RESPONSE_RAW_PAGE_1),
+          .mockResolvedValueOnce(
+            JSON.stringify(MOCK_NFTS_LIST_RESPONSE_RAW_PAGE_1),
+          ),
       });
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
+        text: jest
           .fn()
-          .mockResolvedValueOnce(MOCK_NFTS_LIST_RESPONSE_RAW_PAGE_2),
+          .mockResolvedValueOnce(
+            JSON.stringify(MOCK_NFTS_LIST_RESPONSE_RAW_PAGE_2),
+          ),
       });
       const nfts = await client.listAddressSolanaNfts('some-address');
       expect(nfts).toStrictEqual([
@@ -109,7 +115,11 @@ describe('NftApiClient', () => {
     it('should fetch and parse solana nft metadata for a given token address', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(MOCK_NFT_METADATA_RESPONSE_RAW),
+        text: jest
+          .fn()
+          .mockResolvedValueOnce(
+            JSON.stringify(MOCK_NFT_METADATA_RESPONSE_RAW),
+          ),
       });
       const nft = await client.getNftMetadata('some-token-address');
       expect(nft).toStrictEqual(MOCK_NFT_METADATA_RESPONSE_MAPPED);
@@ -117,10 +127,12 @@ describe('NftApiClient', () => {
 
     it('should return null if the fetch fails', async () => {
       const error = new Error('some-error');
-      mockFetch.mockRejectedValueOnce(error);
+      mockFetch.mockRejectedValue(error);
       const nft = await client.getNftMetadata('some-token-address');
       expect(nft).toBeNull();
-      expect(trackError).toHaveBeenCalledWith(error);
+      expect(trackError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: error.message }),
+      );
     });
   });
 
@@ -128,7 +140,9 @@ describe('NftApiClient', () => {
     it('should fetch and parse solana nft metadata for a given array of token addresses', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(MOCK_NFT_METADATA_RESPONSE_RAW),
+        text: jest
+          .fn()
+          .mockResolvedValue(JSON.stringify(MOCK_NFT_METADATA_RESPONSE_RAW)),
       });
       const nfts = await client.getNftsMetadata([
         'some-token-address-1',

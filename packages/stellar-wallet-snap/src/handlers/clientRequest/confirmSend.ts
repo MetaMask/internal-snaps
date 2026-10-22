@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   Logger,
@@ -10,7 +11,6 @@ import { ensureError, isObject } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
-import { METAMASK_ORIGIN } from '../../constants';
 import type { StellarKeyringAccount } from '../../services/account';
 import type {
   AssetMetadataService,
@@ -58,7 +58,7 @@ import {
 } from './api';
 import { BaseClientRequestHandler } from './base';
 import {
-  assertRefreshedTransactionFeeNotHigher,
+  assertRefreshedTransactionFeeWithinBuffer,
   getTxnErrorMessageKey,
 } from './utils';
 
@@ -201,7 +201,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       }
 
       const trackingProperties: TransactionEventProperties = {
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         accountType: stellarKeyringAccount.type,
         chainIdCaip: scope,
         transactionType: TransactionType.Send,
@@ -284,6 +284,14 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         transactionId,
       };
     } catch (error: unknown) {
+      // User rejection must propagate so MetaMask can dismiss the send flow.
+      if (error instanceof UserRejectedRequestError) {
+        throw error;
+      }
+
+      // Unexpected errors are swallowed into `{ valid: false }`, so track them for debugging.
+      await trackError(error);
+
       // Expected validation failures are user-facing outcomes; return them without tracking.
       if (error instanceof InsufficientBalanceException) {
         return {
@@ -305,14 +313,6 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           errors: [{ code: MultiChainSendErrorCodes.Invalid }],
         };
       }
-
-      // User rejection must propagate so MetaMask can dismiss the send flow.
-      if (error instanceof UserRejectedRequestError) {
-        throw error;
-      }
-
-      // Unexpected errors are swallowed into `{ valid: false }`, so track them for debugging.
-      await trackError(error);
 
       this.#logger.warn(
         'Failed to confirm send transaction due to unexpected issue',
@@ -352,9 +352,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         memo,
       });
 
-    // Reject if the refreshed fee is higher than what the user approved, so we
-    // never sign a transaction that differs from what was shown on the confirmation screen.
-    assertRefreshedTransactionFeeNotHigher({
+    // Allow a small fee drift vs the open-time draft (see
+    // CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO); larger increases fail closed.
+    assertRefreshedTransactionFeeWithinBuffer({
       confirmedTransaction,
       refreshedTransaction,
     });
@@ -396,7 +396,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     const result =
       await this.#confirmationUIController.renderConfirmationDialog({
         scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         renderContext: {
           account,
           toAddress,
@@ -470,7 +470,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
     await this.#confirmationUIController.renderConfirmationDialog({
       scope,
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       renderContext: {
         account,
         toAddress,

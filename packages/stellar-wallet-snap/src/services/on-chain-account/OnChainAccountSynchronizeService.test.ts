@@ -7,7 +7,11 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import { NATIVE_ASSET_SYMBOL, STELLAR_DECIMAL_PLACES } from '../../constants';
+import {
+  MAX_INT64,
+  NATIVE_ASSET_SYMBOL,
+  STELLAR_DECIMAL_PLACES,
+} from '../../constants';
 import { bufferToUint8Array } from '../../utils/buffer';
 import * as errorsUtils from '../../utils/errors';
 import { logger } from '../../utils/logger';
@@ -55,7 +59,7 @@ const NATIVE_BALANCE_ENTRY = {
 const classicBalanceEntry = (
   unit: string,
   amount: string,
-  limit = '922337203685.4775807',
+  limit = MAX_INT64,
 ) => ({
   unit,
   amount,
@@ -63,6 +67,7 @@ const classicBalanceEntry = (
     limit,
     authorized: true,
     sponsor: '',
+    sponsored: false,
   },
 });
 

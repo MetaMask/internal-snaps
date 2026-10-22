@@ -10,6 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
+- Read asset metadata from AssetsController when feature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493))
+  - `enableAssetMigration` set to off.
+
+### Changed
+
+- **BREAKING:** Return classic keyring balance metadata `limit` in integer stroop string ([#495](https://github.com/MetaMask/internal-snaps/pull/495))
+  - Keyring method `getAccountBalances` and the Keyring event `AccountBalancesUpdated` now return this `limit` in stroops.
+
+## [1.3.0]
+
+### Added
+
+- Add `sponsored` to classic keyring balance metadata ([#471](https://github.com/MetaMask/internal-snaps/pull/471))
+- Treat StellarExpert SEP-37 `memo-required` directory addresses as memo-required alongside SEP-29 ([#489](https://github.com/MetaMask/internal-snaps/pull/489))
+
+### Changed
+
+- Keep `onAmountInput` valid when a classic amount would exceed the sender's trustline limit ([#469](https://github.com/MetaMask/internal-snaps/pull/469))
+
+## [1.2.0]
+
+### Changed
+
+- Bump `@stellar/stellar-sdk` from `^17.0.1` to `^17.2.1` ([#435](https://github.com/MetaMask/internal-snaps/pull/435))
+
+### Fixed
+
+- Fail transaction submit on Soroban RPC `TRY_AGAIN_LATER` instead of treating it as success ([#451](https://github.com/MetaMask/internal-snaps/pull/451))
+- Hot-reload the token API asset catalog during account sync when the last catalog sync has expired, so newly listed SEP-41 tokens appear without waiting for the hourly `synchronizeAssets` cron ([#448](https://github.com/MetaMask/internal-snaps/pull/448))
+- Preserve Soroban `sorobanData` when rebuilding a transaction after `txBadSeq` so SEP-41 sends can retry successfully ([#444](https://github.com/MetaMask/internal-snaps/pull/444))
+- Allow up to a 100% network-fee increase after confirmation and show the latest fee estimate on the confirmation dialog ([#447](https://github.com/MetaMask/internal-snaps/pull/447))
+- Use generic security-alert copy instead of Blockaid `description` ([#433](https://github.com/MetaMask/internal-snaps/pull/433))
 
 ## [1.1.1]
 
@@ -76,7 +108,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...HEAD
+[1.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...@metamask/stellar-wallet-snap@1.3.0
+[1.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...@metamask/stellar-wallet-snap@1.2.0
 [1.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.0...@metamask/stellar-wallet-snap@1.1.1
 [1.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.0.0...@metamask/stellar-wallet-snap@1.1.0
 [1.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@0.1.0...@metamask/stellar-wallet-snap@1.0.0

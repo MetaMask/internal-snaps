@@ -44,8 +44,28 @@ export const ValidStellarAmountStruct = refine(
       if (
         (decimalPlaces && decimalPlaces > STELLAR_DECIMAL_PLACES) ||
         // > Max value
-        toSmallestUnit(amount).gt(new BigNumber(MAX_INT64).toString())
+        toSmallestUnit(amount).gt(MAX_INT64)
       ) {
+        return 'Invalid amount';
+      }
+      return true;
+    } catch {
+      return 'Invalid amount';
+    }
+  },
+);
+
+/**
+ * Non-empty non-negative integer string already in smallest units (stroops /
+ * trustline limit), not above {@link MAX_INT64}. Does not scale by decimals.
+ */
+export const ValidStellarInt64Struct = refine(
+  ValidAmountStruct,
+  'valid_stellar_int64',
+  (value: string) => {
+    try {
+      const amount = new BigNumber(value);
+      if (!amount.isInteger() || amount.gt(MAX_INT64)) {
         return 'Invalid amount';
       }
       return true;

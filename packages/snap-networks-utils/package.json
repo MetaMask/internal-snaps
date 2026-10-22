@@ -1,6 +1,6 @@
 {
   "name": "@metamask/snap-networks-utils",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "Shared utilities for MetaMask network snaps",
   "keywords": [
     "Ethereum",
@@ -19,38 +19,24 @@
     "dist/"
   ],
   "sideEffects": false,
-  "main": "./dist/index.cjs",
-  "types": "./dist/index.d.cts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     },
     "./dedupe": {
-      "import": {
-        "types": "./dist/utils/dedupe/InFlightCoalescer.d.mts",
-        "default": "./dist/utils/dedupe/InFlightCoalescer.mjs"
-      },
-      "require": {
-        "types": "./dist/utils/dedupe/InFlightCoalescer.d.cts",
-        "default": "./dist/utils/dedupe/InFlightCoalescer.cjs"
-      }
+      "types": "./dist/utils/dedupe/InFlightCoalescer.d.mts",
+      "default": "./dist/utils/dedupe/InFlightCoalescer.mjs"
+    },
+    "./performance-shim": {
+      "types": "./dist/utils/fetchPolicy/performanceShim.d.mts",
+      "default": "./dist/utils/fetchPolicy/performanceShim.mjs"
     },
     "./logger": {
-      "import": {
-        "types": "./dist/utils/logger/Logger.d.mts",
-        "default": "./dist/utils/logger/Logger.mjs"
-      },
-      "require": {
-        "types": "./dist/utils/logger/Logger.d.cts",
-        "default": "./dist/utils/logger/Logger.cjs"
-      }
+      "types": "./dist/utils/logger/Logger.d.mts",
+      "default": "./dist/utils/logger/Logger.mjs"
     },
     "./package.json": "./package.json"
   },
@@ -59,23 +45,25 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "ts-bridge --project tsconfig.build.json --verbose --clean --no-references",
-    "build:all": "ts-bridge --project tsconfig.build.json --verbose --clean",
+    "build": "ts-bridge --format module --project tsconfig.build.json --verbose --clean --no-references && yarn build:assets",
+    "build:all": "ts-bridge --format module --project tsconfig.build.json --verbose --clean && yarn build:assets",
+    "build:assets": "rsync -a --prune-empty-dirs --include='*/' --include='*.svg' --exclude='*' src/ dist/",
     "build:docs": "typedoc",
     "changelog:update": "../../scripts/update-changelog.sh @metamask/snap-networks-utils",
     "changelog:validate": "../../scripts/validate-changelog.sh @metamask/snap-networks-utils",
     "since-latest-release": "../../scripts/since-latest-release.sh",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter && yarn coverage:ratchet",
+    "test": "jest --reporters=jest-silent-reporter && yarn coverage:ratchet",
     "coverage:ratchet": "[ -n \"$CI\" ] || jest-it-up",
-    "test:clean": "NODE_OPTIONS=--experimental-vm-modules jest --clearCache",
-    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
-    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+    "test:clean": "jest --clearCache",
+    "test:verbose": "jest --verbose",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
-    "@metamask/assets-controller": "^15.0.0",
+    "@metamask/assets-controller": "^19.1.0",
+    "@metamask/base-data-service": "^2.1.0",
     "@metamask/keyring-api": "^24.1.0",
     "@metamask/keyring-internal-api": "^12.0.0",
-    "@metamask/remote-feature-flag-controller": "^5.0.0",
+    "@metamask/remote-feature-flag-controller": "^7.0.0",
     "@metamask/snaps-sdk": "^12.0.1",
     "@metamask/superstruct": "^3.4.1",
     "@metamask/utils": "^11.11.0",
@@ -92,7 +80,7 @@
     "deepmerge": "^4.2.2",
     "jest": "30.0.3",
     "jest-it-up": "^2.0.2",
-    "ts-jest": "^29.4.1",
+    "ts-jest": "^29.4.14",
     "tsx": "^4.20.5",
     "typedoc": "^0.25.13",
     "typedoc-plugin-missing-exports": "^2.0.0",

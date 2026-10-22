@@ -1,3 +1,4 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -6,7 +7,6 @@ import {
   Button,
   Container,
   Footer,
-  Heading,
   Icon,
   Section,
   Text as SnapText,
@@ -48,13 +48,7 @@ export const ConfirmSignAuthEntry = ({
   return (
     <Container>
       <Box>
-        <Box alignment="center" center>
-          <Box>{null}</Box>
-          <Heading size="lg">
-            {translate('confirmation.signAuthEntry.title')}
-          </Heading>
-          <Box>{null}</Box>
-        </Box>
+        <ActionHeader title={translate('confirmation.signAuthEntry.title')} />
 
         <Banner severity="warning" title="">
           <SnapText>{translate('confirmation.signAuthEntry.warning')}</SnapText>

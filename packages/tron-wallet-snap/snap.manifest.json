@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0",
+  "version": "4.2.0",
   "description": "Manage Tron using MetaMask",
   "proposedName": "Tron",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "lgMdbXW2azl1A32pRmed4B/Te5j8mQs5uim9HXUUSWs=",
+    "shasum": "/3vuQO7V39joKnNBJ+U31oXiBI56fOxSp1/HmMlxuYo=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -68,7 +68,8 @@
         "RemoteFeatureFlagController:getState",
         "AssetsController:getAccountAssetByID",
         "AssetsController:getAccountAssetsByIDs",
-        "AssetsController:getAccountAssetsByScope"
+        "AssetsController:getAccountAssetsByScope",
+        "AssetsController:getAssets"
       ]
     }
   },

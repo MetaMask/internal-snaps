@@ -7,16 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient Solana RPC and API read failures with the shared fetch policy while sending transaction submissions only once. ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+
+### Fixed
+
+- Fix a race condition in the WebSocket connection recovery: the resync no longer derives the accounts to sync from the subscription list (which `#reSubscribe` concurrently deletes and re-creates during recovery — a read landing inside that window silently skipped the resync). ([#490](https://github.com/MetaMask/internal-snaps/pull/490))
+- Accept scan responses that report the `simulation` or `validation` section as explicit `null` (which the API returns when only the other option is requested), instead of failing the response validation and dropping the scan result
+
+## [7.1.0]
+
 ### Added
 
 - Emit `transaction_type` on the transaction lifecycle events. ([#401](https://github.com/MetaMask/internal-snaps/pull/401))
 
 ### Changed
 
+- `getAccountAssets` and `getAccountBalances` now fetch live assets and balances from the chain through the Snap's Solana RPC clients instead of returning persisted state. ([#432](https://github.com/MetaMask/internal-snaps/pull/432))
+- Classify `transaction_type` for the unified swap/bridge flow with the shared `resolveFlowTransactionType` utility and the new optional `sourceAssetId`/`destAssetId` request options, carried through to `Transaction Finalized`. ([#439](https://github.com/MetaMask/internal-snaps/pull/439))
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#384](https://github.com/MetaMask/internal-snaps/pull/384))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#409](https://github.com/MetaMask/internal-snaps/pull/409))
   - A "Checking for security issues" banner is now shown while the transaction scan is in progress, instead of no banner
+- Render the confirmation network fee with the shared `Asset` component from `@metamask/snap-networks-utils` ([#427](https://github.com/MetaMask/internal-snaps/pull/427))
+- Render the confirmation title with the shared `ActionHeader` component from `@metamask/snap-networks-utils` ([#436](https://github.com/MetaMask/internal-snaps/pull/436))
+  - The sign message and sign-in screens now have the same spacing below the title as the transaction request screen
 
 ## [7.0.0]
 
@@ -78,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Re-licensed split into LICENSE.MIT or LICENSE.APACHE2 files (SPDX expression unchanged) ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 - This package was migrated from [snap-solana-wallet](https://github.com/MetaMask/snap-solana-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-solana-wallet/blob/main/packages/snap/CHANGELOG.md). ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.1.0...HEAD
+[7.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.0.0...@metamask/solana-wallet-snap@7.1.0
 [7.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@6.0.0...@metamask/solana-wallet-snap@7.0.0
 [6.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.1...@metamask/solana-wallet-snap@6.0.0
 [5.0.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.0...@metamask/solana-wallet-snap@5.0.1

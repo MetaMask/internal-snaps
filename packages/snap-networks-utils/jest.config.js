@@ -14,6 +14,11 @@ module.exports = merge(baseConfig, {
   // The display name when running multiple projects
   displayName,
 
+  transform: {
+    '^.+\\.(t|j)sx?$': 'ts-jest',
+    '^.+\\.svg$': '<rootDir>/../../jest.svg-transformer.js',
+  },
+
   coveragePathIgnorePatterns: [
     ...(baseConfig.coveragePathIgnorePatterns ?? []),
     '.*/__mocks__/',

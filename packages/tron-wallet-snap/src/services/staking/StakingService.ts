@@ -2,7 +2,6 @@ import type {
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
-import { parseCaipAssetType } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -10,10 +9,12 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
 import { CONSENSYS_SR_NODE_ADDRESS, KnownCaip19Id } from '../../constants';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
 import { executeOnChainActions } from '../../utils/executeOnChainActions';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { NativeCaipAssetType, StakedCaipAssetType } from '../assets/types';
+import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 
 export class StakingService {
   readonly #logger: Logger;
@@ -24,21 +25,27 @@ export class StakingService {
 
   readonly #snapClient: SnapClient;
 
+  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+
   constructor({
     logger,
     accountsService,
     tronWebFactory,
     snapClient,
+    transactionExpirationRefresherService,
   }: {
     logger: Logger;
     accountsService: AccountsService;
     tronWebFactory: TronWebFactory;
     snapClient: SnapClient;
+    transactionExpirationRefresherService: TransactionExpirationRefresherService;
   }) {
     this.#logger = logger.withPrefix('[💸 StakingService]');
     this.#accountsService = accountsService;
     this.#tronWebFactory = tronWebFactory;
     this.#snapClient = snapClient;
+    this.#transactionExpirationRefresherService =
+      transactionExpirationRefresherService;
   }
 
   async stake({
@@ -58,21 +65,23 @@ export class StakingService {
      */
     srNodeAddress?: string;
   }): Promise<void> {
-    const { chainId } = parseCaipAssetType(assetId);
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
     const amountInSun = Number(trxToSun(amount));
     const availableVotes = amount.integerValue(BigNumber.ROUND_DOWN).toNumber();
     const voteRecipient = srNodeAddress ?? CONSENSYS_SR_NODE_ADDRESS;
 
     this.#logger.info(
-      `Staking ${amount.toString()} ${assetId} for ${purpose} for ${account.address} on ${chainId}...`,
+      `Staking ${amount.toString()} ${assetId} for ${purpose} for ${account.address} on ${scope}...`,
     );
 
     await executeOnChainActions({
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
-      scope: chainId as Network,
+      scope,
       buildTransactions: async (tronWeb) => [
         await tronWeb.transactionBuilder.freezeBalanceV2(
           amountInSun,
@@ -96,34 +105,27 @@ export class StakingService {
     assetId: StakedCaipAssetType;
     amount: BigNumber;
   }): Promise<void> {
-    const { chainId } = parseCaipAssetType(assetId);
-
     /**
      * Check which resource we are unstaking.
      */
+    const bandwidthAssetIds: readonly KnownCaip19Id[] = [
+      KnownCaip19Id.TrxStakedForBandwidthMainnet,
+      KnownCaip19Id.TrxStakedForBandwidthNile,
+      KnownCaip19Id.TrxStakedForBandwidthShasta,
+    ];
+    const energyAssetIds: readonly KnownCaip19Id[] = [
+      KnownCaip19Id.TrxStakedForEnergyMainnet,
+      KnownCaip19Id.TrxStakedForEnergyNile,
+      KnownCaip19Id.TrxStakedForEnergyShasta,
+    ];
+
     let purpose: TronwebTypes.Resource | undefined;
 
-    if (
-      (
-        [
-          KnownCaip19Id.TrxStakedForBandwidthMainnet,
-          KnownCaip19Id.TrxStakedForBandwidthNile,
-          KnownCaip19Id.TrxStakedForBandwidthShasta,
-        ] as readonly KnownCaip19Id[]
-      ).includes(assetId as KnownCaip19Id)
-    ) {
+    if (bandwidthAssetIds.includes(assetId)) {
       purpose = 'BANDWIDTH';
     }
 
-    if (
-      (
-        [
-          KnownCaip19Id.TrxStakedForEnergyMainnet,
-          KnownCaip19Id.TrxStakedForEnergyNile,
-          KnownCaip19Id.TrxStakedForEnergyShasta,
-        ] as readonly KnownCaip19Id[]
-      ).includes(assetId as KnownCaip19Id)
-    ) {
+    if (energyAssetIds.includes(assetId)) {
       purpose = 'ENERGY';
     }
 
@@ -131,18 +133,22 @@ export class StakingService {
       throw new Error('Invalid asset ID');
     }
 
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
     const amountInSun = Number(trxToSun(amount));
 
     this.#logger.info(
-      `Unstaking ${amount.toString()} ${assetId} for ${account.address} on ${chainId}...`,
+      `Unstaking ${amount.toString()} ${assetId} for ${account.address} on ${scope}...`,
     );
 
     await executeOnChainActions({
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
-      scope: chainId as Network,
+      scope,
       buildTransactions: async (tronWeb) => [
         await tronWeb.transactionBuilder.unfreezeBalanceV2(
           amountInSun,
@@ -168,6 +174,8 @@ export class StakingService {
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
       scope,
       buildTransactions: async (tronWeb) => [
@@ -193,6 +201,8 @@ export class StakingService {
       accountsService: this.#accountsService,
       tronWebFactory: this.#tronWebFactory,
       snapClient: this.#snapClient,
+      transactionExpirationRefresherService:
+        this.#transactionExpirationRefresherService,
       account,
       scope,
       buildTransactions: async (tronWeb) => [

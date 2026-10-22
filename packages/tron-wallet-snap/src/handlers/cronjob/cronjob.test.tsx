@@ -1,4 +1,5 @@
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   IStateManager,
@@ -9,7 +10,6 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
-  METAMASK_ORIGIN,
   Network,
   TRACK_TX_INTERVAL,
   TRACK_TX_MAX_ATTEMPTS,
@@ -63,10 +63,7 @@ type MockState = {
  * `refreshConfirmationSend`.
  */
 type MockTransactionScanService = jest.Mocked<
-  Pick<
-    TransactionScanService,
-    'scanTransaction' | 'getSecurityAlertDescription'
-  >
+  Pick<TransactionScanService, 'scanTransaction'>
 >;
 
 type MockTronWebFactory = jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
@@ -140,7 +137,7 @@ function buildMockInterfaceContext(
   overrides: Partial<ConfirmTransactionRequestContext> = {},
 ): ConfirmTransactionRequestContext {
   return {
-    origin: METAMASK_ORIGIN,
+    origin: DEFAULT_METAMASK_ORIGIN,
     scope: Network.Mainnet,
     fromAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
     toAddress: 'TQkE4s6hQqxym4fYvtVLNEGPsaAChFqxPk',
@@ -302,7 +299,6 @@ function buildMockTransactionScanService(
 ): MockTransactionScanService {
   return {
     scanTransaction: jest.fn().mockResolvedValue(scanResult),
-    getSecurityAlertDescription: jest.fn().mockReturnValue('description'),
   };
 }
 
@@ -1033,11 +1029,73 @@ describe('CronHandler', () => {
           expect(
             mockAnalyticsService.trackTransactionFinalized,
           ).toHaveBeenCalledWith({
-            origin: METAMASK_ORIGIN,
+            origin: DEFAULT_METAMASK_ORIGIN,
             accountType: mockAccount.type,
             chainIdCaip: Network.Mainnet,
             transactionStatus: TransactionStatus.Confirmed,
             transactionType: TransactionType.Send,
+          });
+        },
+      );
+    });
+
+    it('carries a swap classification through to the finalized event', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
+          } as never);
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            transactionType: TransactionType.Swap,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: DEFAULT_METAMASK_ORIGIN,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.Swap,
+          });
+        },
+      );
+    });
+
+    it('carries a bridgeSend classification through to the finalized event', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
+          } as never);
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            transactionType: TransactionType.BridgeSend,
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: DEFAULT_METAMASK_ORIGIN,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.BridgeSend,
           });
         },
       );

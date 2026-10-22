@@ -1,11 +1,12 @@
 import { TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
-import { METAMASK_ORIGIN } from '../../constants';
+import { CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO } from '../../constants';
 import { AccountService } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
 import type { StellarAssetMetadata } from '../../services/asset-metadata';
@@ -430,7 +431,7 @@ describe('ChangeTrustOptHandler', () => {
 
     expect(resolve).toHaveBeenCalledWith(assetId);
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
       fee: '',
@@ -469,7 +470,7 @@ describe('ChangeTrustOptHandler', () => {
     );
 
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
       fee: '',
@@ -507,7 +508,7 @@ describe('ChangeTrustOptHandler', () => {
     );
 
     expect(renderConfirmationDialog).toHaveBeenCalledWith({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       interfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptIn,
       fee: '',
@@ -624,7 +625,7 @@ describe('ChangeTrustOptHandler', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('throws when refreshed transaction fee is higher than confirmed fee', async () => {
+  it('throws when refreshed transaction fee exceeds the 20% buffer', async () => {
     const {
       handler,
       wallet,
@@ -634,6 +635,7 @@ describe('ChangeTrustOptHandler', () => {
       networkSendSpy,
       savePendingKeyringTransaction,
     } = setup();
+    const confirmedFee = '100';
     const confirmedTransaction = buildMockClassicTransaction(
       [
         {
@@ -654,10 +656,10 @@ describe('ChangeTrustOptHandler', () => {
           accountId: wallet.address,
           sequence: '1',
         },
-        baseFeePerOperation: '100',
+        baseFeePerOperation: confirmedFee,
       },
     );
-    const higherFeeTransaction = buildMockClassicTransaction(
+    const exceedsBufferTransaction = buildMockClassicTransaction(
       [
         {
           type: 'changeTrust',
@@ -677,12 +679,15 @@ describe('ChangeTrustOptHandler', () => {
           accountId: wallet.address,
           sequence: '2',
         },
-        baseFeePerOperation: '200',
+        baseFeePerOperation: new BigNumber(confirmedFee)
+          .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+          .plus(1)
+          .toFixed(0),
       },
     );
     createValidatedChangeTrustTransaction
       .mockResolvedValueOnce(confirmedTransaction)
-      .mockResolvedValueOnce(higherFeeTransaction);
+      .mockResolvedValueOnce(exceedsBufferTransaction);
 
     await expect(handler.handle(addRequest)).rejects.toThrow(
       TransactionValidationException,
@@ -692,6 +697,75 @@ describe('ChangeTrustOptHandler', () => {
     expect(sendTransaction).not.toHaveBeenCalled();
     expect(networkSendSpy).not.toHaveBeenCalled();
     expect(savePendingKeyringTransaction).not.toHaveBeenCalled();
+  });
+
+  it('allows a refreshed fee within the 20% buffer of the confirmed fee', async () => {
+    const {
+      handler,
+      wallet,
+      createValidatedChangeTrustTransaction,
+      signTransactionSpy,
+      sendTransaction,
+    } = setup();
+    const confirmedFee = '100';
+    const confirmedTransaction = buildMockClassicTransaction(
+      [
+        {
+          type: 'changeTrust',
+          params: {
+            asset: {
+              code: 'USDC',
+              issuer:
+                'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+            },
+            limit: '1.5',
+          },
+        },
+      ],
+      {
+        networkPassphrase: Networks.PUBLIC,
+        source: {
+          accountId: wallet.address,
+          sequence: '1',
+        },
+        baseFeePerOperation: confirmedFee,
+      },
+    );
+    const withinBufferTransaction = buildMockClassicTransaction(
+      [
+        {
+          type: 'changeTrust',
+          params: {
+            asset: {
+              code: 'USDC',
+              issuer:
+                'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+            },
+            limit: '1.5',
+          },
+        },
+      ],
+      {
+        networkPassphrase: Networks.PUBLIC,
+        source: {
+          accountId: wallet.address,
+          sequence: '2',
+        },
+        baseFeePerOperation: new BigNumber(confirmedFee)
+          .multipliedBy(CONFIRMED_TRANSACTION_FEE_BUFFER_RATIO)
+          .toFixed(0),
+      },
+    );
+    createValidatedChangeTrustTransaction
+      .mockResolvedValueOnce(confirmedTransaction)
+      .mockResolvedValueOnce(withinBufferTransaction);
+
+    expect(await handler.handle(addRequest)).toStrictEqual({
+      status: true,
+      transactionId: transactionHash,
+    });
+    expect(signTransactionSpy).toHaveBeenCalledWith(withinBufferTransaction);
+    expect(sendTransaction).toHaveBeenCalled();
   });
 
   it('continues successfully when saving pending transaction fails', async () => {
@@ -718,7 +792,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionAddedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
     });
@@ -739,7 +813,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
     });
@@ -750,7 +824,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
     });
@@ -767,7 +841,7 @@ describe('ChangeTrustOptHandler', () => {
       expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
         accountType: account.type,
         chainIdCaip: scope,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.TokenApprove,
       });
 

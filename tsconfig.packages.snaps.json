@@ -12,8 +12,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "lib": ["ES2023", "DOM"],
-    "module": "preserve",
-    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "target": "ES2023"
   }

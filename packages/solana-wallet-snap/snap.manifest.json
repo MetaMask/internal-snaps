@@ -1,5 +1,5 @@
 {
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Manage Solana using MetaMask",
   "proposedName": "Solana",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "sBM046Sahl2/hyH2vdMDpfs9i2iYhxlCO4AFdIjAiAI=",
+    "shasum": "agl4zPvmUHwStdo/Z9s6fEHn+T4NoXu+/NzpAAOJ5JI=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -87,7 +87,16 @@
     "snap_manageAccounts": {},
     "snap_manageState": {},
     "snap_dialog": {},
-    "snap_getPreferences": {}
+    "snap_getPreferences": {},
+    "endowment:messenger": {
+      "actions": [
+        "RemoteFeatureFlagController:getState",
+        "AssetsController:getAccountAssetByID",
+        "AssetsController:getAccountAssetsByIDs",
+        "AssetsController:getAccountAssetsByScope",
+        "AssetsController:getAssets"
+      ]
+    }
   },
   "platformVersion": "12.0.1",
   "manifestVersion": "0.1"

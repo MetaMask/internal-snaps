@@ -1,3 +1,4 @@
+import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Box,
@@ -6,7 +7,6 @@ import {
   Field,
   Footer,
   Form,
-  Heading,
   Input,
   Text as SnapText,
 } from '@metamask/snaps-sdk/jsx';
@@ -42,9 +42,7 @@ export const MemoEditScreen = ({
   return (
     <Container>
       <Box>
-        <Box alignment="center" center>
-          <Heading size="lg">{translate('confirmation.memo.title')}</Heading>
-        </Box>
+        <ActionHeader title={translate('confirmation.memo.title')} />
         <SnapText color="alternative">
           {translate('confirmation.memo.description')}
         </SnapText>

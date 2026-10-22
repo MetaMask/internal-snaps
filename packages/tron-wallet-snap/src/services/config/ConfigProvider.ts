@@ -12,7 +12,7 @@ import { Duration } from '@metamask/utils';
 
 import { Network } from '../../constants';
 
-const NetworkStruct = enums(Object.values(Network) as [Network, ...Network[]]);
+const NetworkStruct = enums(Object.values(Network));
 
 /**
  * The default base URLs for the price, token, and static APIs, used when

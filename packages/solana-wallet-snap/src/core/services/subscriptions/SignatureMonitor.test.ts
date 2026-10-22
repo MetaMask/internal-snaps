@@ -293,6 +293,44 @@ describe('SignatureMonitor', () => {
       });
     });
 
+    it('reports the swap classification carried from submit time on finalized', async () => {
+      const mockNotification = {} as unknown as SignatureNotification;
+      const mockSubscription = {
+        id: 'subscription-id-123',
+        method: 'signatureSubscribe',
+        network: Network.Mainnet,
+        params: [signature, { commitment, enableReceivedNotification: false }],
+        metadata: {
+          accountId,
+          origin,
+          transactionType: TransactionType.Swap,
+        },
+      } as unknown as Subscription;
+
+      await signatureMonitor.monitor(
+        signature,
+        accountId,
+        'confirmed',
+        network,
+        origin,
+        TransactionType.Swap,
+      );
+
+      // Simulate notification received
+      const handler = notificationHandlers[0]!;
+      await handler(mockNotification, mockSubscription);
+
+      expect(
+        mockAnalyticsService.trackTransactionFinalized,
+      ).toHaveBeenCalledWith({
+        origin,
+        accountType: mockAccount.type,
+        chainIdCaip: mockTransaction.chain,
+        transactionStatus: mockTransaction.status,
+        transactionType: TransactionType.Swap,
+      });
+    });
+
     it('tracks notification handling errors and still unsubscribes', async () => {
       const error = new Error('Save failed');
       const mockNotification = {} as unknown as SignatureNotification;

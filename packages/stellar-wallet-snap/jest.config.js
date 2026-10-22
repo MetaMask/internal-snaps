@@ -5,10 +5,7 @@ module.exports = {
   preset: '@metamask/snaps-jest',
   transform: {
     '^.+\\.(t|j)sx?$': 'ts-jest',
-  },
-  moduleNameMapper: {
-    ...baseConfig.moduleNameMapper,
-    '\\.svg$': 'jest-transform-stub',
+    '^.+\\.svg$': '<rootDir>/../../jest.svg-transformer.js',
   },
   testMatch: ['**/src/**/?(*.)+(spec|test).[tj]s?(x)'],
   setupFilesAfterEnv: [
@@ -31,10 +28,10 @@ module.exports = {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 71.15,
-      functions: 81.63,
-      lines: 86.74,
-      statements: 86.77,
+      branches: 75.8,
+      functions: 85.61,
+      lines: 88.94,
+      statements: 88.95,
     },
   },
 
@@ -43,6 +40,6 @@ module.exports = {
   // extensionsToTreatAsEsm) needs that flag, but then `jest` is not injected as
   // a global and CJS packages like lodash break named imports.
   transformIgnorePatterns: [
-    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml)/)',
+    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml|@metamask|lodash-es)/)',
   ],
 };

@@ -1,10 +1,9 @@
 import { TransactionStatus } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
-import type {
-  AnalyticsService,
-  ExtendedKeyringAccount,
-  Logger,
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeError,
 } from '@metamask/snap-networks-utils';
+import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import {
   InvalidParamsError,
@@ -12,12 +11,7 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import {
-  bytesToHex,
-  hexToBytes,
-  parseCaipAssetType,
-  sha256,
-} from '@metamask/utils';
+import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
@@ -26,19 +20,16 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FALLBACK_FEE,
   FEE_LIMIT,
-  METAMASK_ORIGIN,
   Network,
   Networks,
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { isDerivedTronKeypair } from '../../services/accounts/AccountsService';
 import type { AccountsService } from '../../services/accounts/AccountsService';
 import type { AssetsService } from '../../services/assets/AssetsService';
-import type {
-  NativeCaipAssetType,
-  StakedCaipAssetType,
-} from '../../services/assets/types';
+import type { StakedCaipAssetType } from '../../services/assets/types';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
 import type { FeeCalculatorService } from '../../services/send/FeeCalculatorService';
 import type { SendService } from '../../services/send/SendService';
@@ -47,8 +38,13 @@ import type { TransactionExpirationRefresherService } from '../../services/trans
 import { TransactionMapper } from '../../services/transactions/TransactionsMapper';
 import type { TransactionsService } from '../../services/transactions/TransactionsService';
 import { assertOrThrow } from '../../utils/assertOrThrow';
+import {
+  isSuccessfulBroadcast,
+  throwOnTransientBroadcastFailure,
+} from '../../utils/broadcast';
+import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
-import { mapRawTransactionType } from '../../utils/transactionType';
+import { resolveTransactionType } from '../../utils/transactionType';
 import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
@@ -88,7 +84,7 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
 type SigningRequest = {
   index: number;
   accountId: string;
-  account: ExtendedKeyringAccount;
+  account: TronKeyringAccount;
   message: string;
 };
 
@@ -118,9 +114,9 @@ function getUniqueAccountIds(items: { accountId: string }[]): string[] {
 }
 
 function getAccountsByNormalizedId(
-  accounts: ExtendedKeyringAccount[],
-): Map<string, ExtendedKeyringAccount> {
-  const accountsByNormalizedId = new Map<string, ExtendedKeyringAccount>();
+  accounts: TronKeyringAccount[],
+): Map<string, TronKeyringAccount> {
+  const accountsByNormalizedId = new Map<string, TronKeyringAccount>();
 
   accounts.forEach((account) => {
     accountsByNormalizedId.set(account.id.toLowerCase(), account);
@@ -138,7 +134,7 @@ function validateSigningRequest(
     message: string;
   },
   index: number,
-  accountsById: Map<string, ExtendedKeyringAccount>,
+  accountsById: Map<string, TronKeyringAccount>,
 ): SigningRequestValidation {
   const account = accountsById.get(accountId.toLowerCase());
   if (account === undefined) {
@@ -350,7 +346,7 @@ export class ClientRequestHandler {
       transaction: transactionBase64,
       accountId,
       scope,
-      options: { type },
+      options: { type, sourceAssetId, destAssetId },
     } = request.params;
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
@@ -396,16 +392,23 @@ export class ClientRequestHandler {
       });
 
     const signedTx = await tronWeb.trx.sign(freshTransaction);
-    const result = await tronWeb.trx.sendRawTransaction(signedTx);
+    const result = await this.#tronWebFactory.executeBroadcast(
+      scope,
+      async () =>
+        throwOnTransientBroadcastFailure(
+          await tronWeb.trx.sendRawTransaction(signedTx),
+        ),
+    );
 
-    if (!result.result) {
+    if (!isSuccessfulBroadcast(result)) {
       throw new Error(`Failed to send transaction: ${result.message}`);
     }
+    const txId = result.txid ?? freshTransaction.txID;
 
     // Immediately create and save a minimal pending transaction
     // This shows the transaction to the user right away
     const pendingTransaction = TransactionMapper.createPendingTransaction({
-      txId: result.txid,
+      txId,
       account,
       scope,
     });
@@ -417,11 +420,20 @@ export class ClientRequestHandler {
      * unified send path and the background transaction tracker. The origin is
      * lowercased so it is recognized as MetaMask by the security alerts scan
      * and stays consistent with the other non-EVM snaps.
+     *
+     * The swap/bridge flow also passes the source and destination asset ids,
+     * which let the transaction be classified as a same-chain swap or a
+     * cross-chain bridge. Without them (unified send, dApp calls) the
+     * classification falls back to the contract type.
      */
-    const transactionType = mapRawTransactionType(rawData);
+    const transactionType = resolveTransactionType({
+      rawData,
+      sourceAssetId,
+      destAssetId,
+    });
 
     await this.#analyticsService.trackTransactionSubmitted({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
       transactionType,
@@ -430,7 +442,7 @@ export class ClientRequestHandler {
     await this.#snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.TrackTransaction,
       params: {
-        txId: result.txid,
+        txId,
         scope,
         accountIds: [accountId],
         attempt: 0,
@@ -440,7 +452,7 @@ export class ClientRequestHandler {
     });
 
     return {
-      transactionId: result.txid,
+      transactionId: txId,
     };
   }
 
@@ -497,8 +509,7 @@ export class ClientRequestHandler {
       /**
        * Check if we have enough of the asset we want to send...
        */
-      const { chainId } = parseCaipAssetType(assetId);
-      const scope = chainId as Network;
+      const { chainId: scope } = parseTronCaipAssetType(assetId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
         await this.#assetsService.getAccountAssetsByIDs(accountId, [
@@ -614,10 +625,18 @@ export class ClientRequestHandler {
       };
     }
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
-      assetId,
-    );
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    /**
+     * Fetch the sent asset and the account resources fresh, so the
+     * validation and fee estimation below never act on stale balances.
+     */
+    const [asset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.fetchAccountAssetsByIDs(account, [
+        assetId,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
 
     if (!asset) {
       return {
@@ -625,9 +644,6 @@ export class ClientRequestHandler {
         errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
-
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
 
     const amountBN = new BigNumber(amount);
 
@@ -654,27 +670,13 @@ export class ClientRequestHandler {
       };
     }
 
-    const [[bandwidthAsset, energyAsset], transaction] = await Promise.all([
-      /**
-       * Get available Energy and Bandwidth from account assets.
-       */
-      this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-        Networks[scope].bandwidth.id,
-        Networks[scope].energy.id,
-      ]),
-      /**
-       * Build the unsigned transaction.
-       * Fee estimation uses a constant overhead for the signature (134 bytes).
-       * Signing happens after user confirmation in sendTransaction().
-       */
-      this.#sendService.buildTransaction({
-        fromAccountId,
-        toAddress,
-        asset,
-        amount: amountBN,
-        feeLimit: FEE_LIMIT,
-      }),
-    ]);
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId,
+      toAddress,
+      asset,
+      amount: amountBN,
+      feeLimit: FEE_LIMIT,
+    });
 
     const availableEnergy = energyAsset
       ? new BigNumber(energyAsset.rawAmount)
@@ -711,7 +713,7 @@ export class ClientRequestHandler {
         fees,
         asset,
         accountType: account.type,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionRawData: freshTransactionRawData,
       },
     );
@@ -983,8 +985,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      fromAccountId,
+    const asset = await this.#assetsService.fetchAccountAssetByID(
+      account,
       assetId,
     );
 
@@ -1005,7 +1007,7 @@ export class ClientRequestHandler {
      */
     await this.#stakingService.stake({
       account,
-      assetId: assetId as NativeCaipAssetType,
+      assetId,
       amount: requestBalance,
       purpose,
       srNodeAddress,
@@ -1099,8 +1101,8 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(accountId);
 
-    const asset = await this.#assetsService.getAccountAssetByID(
-      accountId,
+    const asset = await this.#assetsService.fetchAccountAssetByID(
+      account,
       stakedAssetId,
     );
 
@@ -1153,8 +1155,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     const confirmed = await this.#confirmationHandler.confirmClaimUnstakedTrx({
       account,
@@ -1191,8 +1192,7 @@ export class ClientRequestHandler {
 
     const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-    const scope = chainId as Network;
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
 
     await this.#stakingService.claimTrxStakingRewards({ account, scope });
 
@@ -1338,7 +1338,7 @@ export class ClientRequestHandler {
       items.length,
     );
     const signingRequests: SigningRequest[] = [];
-    const accountsToDerive: ExtendedKeyringAccount[] = [];
+    const accountsToDerive: TronKeyringAccount[] = [];
 
     items.forEach((item, index) => {
       const validationResult = validateSigningRequest(

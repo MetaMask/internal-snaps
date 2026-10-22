@@ -1,7 +1,11 @@
 import type { SLIP10Node } from '@metamask/key-tree';
 import { SolMethod } from '@metamask/keyring-api';
 import type { TransactionType } from '@metamask/keyring-api';
-import { normalizeError } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  normalizeError,
+  resolveFlowTransactionType,
+} from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
@@ -26,7 +30,6 @@ import {
   verifySignature,
 } from '@solana/kit';
 
-import { METAMASK_ORIGIN } from '../../constants/solana';
 import type { Caip10Address, Network } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
@@ -221,7 +224,8 @@ export class WalletService {
           }
         : undefined;
 
-    const transactionSource = origin === METAMASK_ORIGIN ? 'metamask' : 'dapp';
+    const transactionSource =
+      origin === DEFAULT_METAMASK_ORIGIN ? 'metamask' : 'dapp';
 
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
@@ -297,7 +301,8 @@ export class WalletService {
           }
         : undefined;
 
-    const transactionSource = origin === METAMASK_ORIGIN ? 'metamask' : 'dapp';
+    const transactionSource =
+      origin === DEFAULT_METAMASK_ORIGIN ? 'metamask' : 'dapp';
 
     const partiallySignedTransaction =
       await this.#signer.partiallySignBase64String(
@@ -344,9 +349,23 @@ export class WalletService {
       sendConfig,
     );
 
+    /**
+     * Only MetaMask-originated transactions can belong to the unified
+     * swap/bridge flow. DApp-provided asset ids must not influence analytics
+     * classification.
+     */
+    const flowTransactionType =
+      origin === DEFAULT_METAMASK_ORIGIN
+        ? resolveFlowTransactionType({
+            sourceAssetId: options?.sourceAssetId,
+            destAssetId: options?.destAssetId,
+          })
+        : undefined;
+    const explicitTransactionType = transactionType ?? flowTransactionType;
+
     const resolvedTransactionType = resolveTransactionType({
       origin,
-      transactionType,
+      transactionType: explicitTransactionType,
     });
 
     await this.#analyticsService.trackTransactionSubmitted({
@@ -382,9 +401,10 @@ export class WalletService {
       options?.commitment ?? 'confirmed',
       scope,
       origin,
-      // Only the explicit caller classification may override the on-chain
-      // type on `Transaction Finalized`; origin-derived defaults must not.
-      transactionType,
+      // Only the explicit caller classification or the swap/bridge flow
+      // classification may override the on-chain type on `Transaction
+      // Finalized`; origin-derived defaults must not.
+      explicitTransactionType,
     );
 
     const result = {

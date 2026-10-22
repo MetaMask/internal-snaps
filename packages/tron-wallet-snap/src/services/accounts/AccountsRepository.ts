@@ -1,9 +1,7 @@
 import type { EntropySourceId } from '@metamask/keyring-api';
-import type {
-  ExtendedKeyringAccount,
-  IStateManager,
-} from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 
 /**
@@ -17,7 +15,7 @@ type AccountCreationRange = {
   to: number;
 };
 
-type KeyringAccountsState = Record<string, ExtendedKeyringAccount>;
+type KeyringAccountsState = Record<string, TronKeyringAccount>;
 
 /**
  * Result of merging accounts into `keyringAccounts`.
@@ -27,8 +25,8 @@ type KeyringAccountsState = Record<string, ExtendedKeyringAccount>;
  * conflict losers are omitted (their winners are present in `merged`).
  */
 export type KeyringAccountsMergeResult = {
-  merged: Record<string, ExtendedKeyringAccount>;
-  added: Record<string, ExtendedKeyringAccount>;
+  merged: Record<string, TronKeyringAccount>;
+  added: Record<string, TronKeyringAccount>;
 };
 
 /**
@@ -37,7 +35,7 @@ export type KeyringAccountsMergeResult = {
  * @param account - The account to key.
  * @returns A stable conflict key for the account.
  */
-function getAccountIndexKey(account: ExtendedKeyringAccount): string {
+function getAccountIndexKey(account: TronKeyringAccount): string {
   return `${account.entropySource}:${account.index}`;
 }
 
@@ -51,7 +49,7 @@ function getAccountIndexKey(account: ExtendedKeyringAccount): string {
 function findAccountByIndexKey(
   accounts: KeyringAccountsState,
   indexKey: string,
-): ExtendedKeyringAccount | undefined {
+): TronKeyringAccount | undefined {
   return Object.values(accounts).find(
     (account) => getAccountIndexKey(account) === indexKey,
   );
@@ -104,7 +102,7 @@ export class AccountsRepository {
    *
    * @returns All accounts from the state.
    */
-  async getAll(): Promise<ExtendedKeyringAccount[]> {
+  async getAll(): Promise<TronKeyringAccount[]> {
     const accounts = await this.#state.getKey<
       UnencryptedStateValue['keyringAccounts']
     >(this.#storageKey);
@@ -122,7 +120,7 @@ export class AccountsRepository {
   async findByEntropySourceAndRange(
     entropySource: EntropySourceId,
     range: AccountCreationRange,
-  ): Promise<ExtendedKeyringAccount[]> {
+  ): Promise<TronKeyringAccount[]> {
     const accounts = await this.getAll();
 
     return accounts
@@ -135,7 +133,7 @@ export class AccountsRepository {
       .sort((first, second) => first.index - second.index);
   }
 
-  async findById(id: string): Promise<ExtendedKeyringAccount | null> {
+  async findById(id: string): Promise<TronKeyringAccount | null> {
     const accounts = await this.getAll();
     return accounts.find((account) => account.id === id) ?? null;
   }
@@ -147,13 +145,13 @@ export class AccountsRepository {
    * @returns The matching accounts. Result ordering follows stored account
    * ordering, not input ordering.
    */
-  async findByIds(ids: string[]): Promise<ExtendedKeyringAccount[]> {
+  async findByIds(ids: string[]): Promise<TronKeyringAccount[]> {
     const accounts = await this.getAll();
     const normalizedIds = new Set<string>();
 
     ids.forEach((id) => normalizedIds.add(id.toLowerCase()));
 
-    const matchedAccounts: ExtendedKeyringAccount[] = [];
+    const matchedAccounts: TronKeyringAccount[] = [];
     accounts.forEach((account) => {
       if (normalizedIds.has(account.id.toLowerCase())) {
         matchedAccounts.push(account);
@@ -163,15 +161,13 @@ export class AccountsRepository {
     return matchedAccounts;
   }
 
-  async findByAddress(address: string): Promise<ExtendedKeyringAccount | null> {
+  async findByAddress(address: string): Promise<TronKeyringAccount | null> {
     const accounts = await this.getAll();
 
     return accounts.find((account) => account.address === address) ?? null;
   }
 
-  async create(
-    account: ExtendedKeyringAccount,
-  ): Promise<ExtendedKeyringAccount> {
+  async create(account: TronKeyringAccount): Promise<TronKeyringAccount> {
     let persistedAccount = account;
 
     await this.#state.setKeyWith<KeyringAccountsState>(
@@ -204,7 +200,7 @@ export class AccountsRepository {
    * without re-reading state.
    */
   async mergeKeyringAccounts(
-    newAccounts: Record<string, ExtendedKeyringAccount>,
+    newAccounts: Record<string, TronKeyringAccount>,
   ): Promise<KeyringAccountsMergeResult> {
     let result: KeyringAccountsMergeResult = { merged: {}, added: {} };
 

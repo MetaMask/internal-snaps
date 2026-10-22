@@ -7,16 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use the shared `executeWithFetchPolicy`, `fetchWithPolicy`, and `parseRetryAfter` helpers from `@metamask/snap-networks-utils`, and apply the shared fetch policy to `TokenApiClient` and the Security Alerts API client. ([#492](https://github.com/MetaMask/internal-snaps/pull/492))
+- Retry transient TronGrid, Tron provider, price API, and signed transaction broadcast failures with bounded backoff and per-attempt timeouts. Broadcast retries reuse the same signed transaction ID, and duplicate broadcasts are treated as successful. ([#472](https://github.com/MetaMask/internal-snaps/pull/472))
+- Extend the shared `BaseTransactionScanService` from `@metamask/snap-networks-utils` in the transaction scan service. Align the Tron security-scan request and response handling with the Blockaid API documentation ([#397](https://github.com/MetaMask/internal-snaps/pull/397))
+
+## [4.2.0]
+
+### Added
+
+- Fetch fresh asset data before send, stake, unstake, and claim flows so validation, fee estimation, and confirmations never act on stale balances. When the assets migration is active, everything (including special assets) is fetched through an `AssetsController` one-time fetch with `forceUpdate` and `bypassServerCache`; otherwise the Snap syncs from Tron RPC and reads local state ([#390](https://github.com/MetaMask/internal-snaps/pull/390))
+
+### Fixed
+
+- Allow self-sends of TRX ([#454](https://github.com/MetaMask/internal-snaps/pull/454))
+
+## [4.1.0]
+
 ### Added
 
 - Emit `transaction_type` and `transaction_status` on the transaction lifecycle events, with `transaction_type` derived from the contract type (so a flow can be attributed by combining `origin` and `transaction_type`) and `transaction_status` reporting the on-chain outcome on `Transaction Finalized`. ([#399](https://github.com/MetaMask/internal-snaps/pull/399), [#405](https://github.com/MetaMask/internal-snaps/pull/405))
 
 ### Changed
 
+- Classify `transaction_type` for the unified swap/bridge flow with the new optional `sourceAssetId`/`destAssetId` request options. Classify TRC20 smart-contract calls by function selector (so a `transfer` reports `send` and an `approve` reports `tokenApprove` instead of `unknown`) ([#434](https://github.com/MetaMask/internal-snaps/pull/434))
+- Change the last behaviours missing for the `AssetsController` migration to happen ([#424](https://github.com/MetaMask/internal-snaps/pull/424))
+  - When the assets migration feature flag is active, the snap no longer fetches, persists, or publishes assets: the periodic sync cronjob and the synchronization triggered by selected account changes no longer touch assets or emit `AccountAssetListUpdated` and `AccountBalancesUpdated` events, leaving asset syncing to the `AssetsController`
+  - When the live assets and balances are fetched by `getAccountAssets` and `getAccountBalances`, they are persisted to local state without emitting `AccountAssetListUpdated` and `AccountBalancesUpdated` events
+- Validate network and CAIP asset type values coming from untrusted boundaries (RPC request params, the Keyring API, the AssetsController) instead of force-casting them, so unsupported values fail fast with an `Invalid params` error ([#403](https://github.com/MetaMask/internal-snaps/pull/403))
 - Render the confirmation "Estimated changes" section with the shared `EstimatedChanges` component from `@metamask/snap-networks-utils` ([#396](https://github.com/MetaMask/internal-snaps/pull/396))
   - Estimated changes from the previous scan now stay visible while a confirmation re-scans, instead of showing a loading skeleton
 - Render the confirmation security alert banner with the shared `TransactionAlert` component from `@metamask/snap-networks-utils` ([#414](https://github.com/MetaMask/internal-snaps/pull/414))
   - A "Checking for security issues" banner is now shown while the transaction scan is in progress, instead of a loading skeleton
+- Render the confirmation fee asset rows with the shared `Asset` component from `@metamask/snap-networks-utils` ([#429](https://github.com/MetaMask/internal-snaps/pull/429))
+- Render the confirmation title with the shared `ActionHeader` component from `@metamask/snap-networks-utils` ([#438](https://github.com/MetaMask/internal-snaps/pull/438))
 - `listAccountAssets` and `getAccountBalances` now fetch live assets and balances from the chain through the Snap's TronGrid clients instead of returning persisted state. ([#388](https://github.com/MetaMask/internal-snaps/pull/388))
 
 ### Fixed
@@ -102,7 +127,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.2.0...HEAD
+[4.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.1.0...@metamask/tron-wallet-snap@4.2.0
+[4.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...@metamask/tron-wallet-snap@4.1.0
 [4.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.2.0...@metamask/tron-wallet-snap@4.0.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.1.0...@metamask/tron-wallet-snap@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@3.0.0...@metamask/tron-wallet-snap@3.1.0

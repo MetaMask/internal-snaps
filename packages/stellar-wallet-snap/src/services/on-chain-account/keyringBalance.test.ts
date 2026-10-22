@@ -38,14 +38,16 @@ describe('toClassicBalanceEntry', () => {
         limit: new BigNumber(100_000_000),
         authorized: false,
         sponsor: 'GSPONSOR',
+        sponsored: true,
       }),
     ).toStrictEqual({
       unit: 'USDC',
       amount: '1.25',
       metadata: {
-        limit: '10',
+        limit: '100000000',
         authorized: false,
         sponsor: 'GSPONSOR',
+        sponsored: true,
       },
     });
   });
@@ -64,6 +66,7 @@ describe('toClassicBalanceEntry', () => {
         limit: '0',
         authorized: true,
         sponsor: '',
+        sponsored: false,
       },
     });
   });
@@ -82,9 +85,10 @@ describe('toClassicBalanceEntry', () => {
       unit: 'TOKEN',
       amount: '1',
       metadata: {
-        limit: '5',
+        limit: '5000',
         authorized: true,
         sponsor: '',
+        sponsored: false,
       },
     });
   });

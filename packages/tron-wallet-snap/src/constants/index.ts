@@ -1,13 +1,8 @@
+import type { CaipAssetType } from '@metamask/keyring-api';
+import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { BigNumber } from 'bignumber.js';
 
 export const ZERO = BigNumber(0);
-
-/**
- * Origin used for operations initiated by MetaMask itself (unified send,
- * background tracking), as opposed to a dApp origin. Must stay lowercase to
- * match the origin granted to the keyring methods and the other non-EVM snaps.
- */
-export const METAMASK_ORIGIN = 'metamask';
 
 export const ACCOUNT_ACTIVATION_FEE_TRX = BigNumber(1);
 export const MEMO_FEE_TRX = BigNumber(1);
@@ -65,6 +60,19 @@ export const Network = {
 } as const;
 
 export type Network = (typeof Network)[keyof typeof Network];
+
+const NETWORK_SCOPES: readonly string[] = Object.values(Network);
+
+export const isSupportedNetwork = (scope: string): scope is Network =>
+  NETWORK_SCOPES.includes(scope);
+
+export const assertSupportedNetwork = (scope: string): Network => {
+  if (!isSupportedNetwork(scope)) {
+    throw new InvalidParamsError(`Unsupported network: "${scope}"`) as Error;
+  }
+
+  return scope;
+};
 
 export const KnownCaip19Id = {
   TrxMainnet: `${Network.Mainnet}/slip44:195`,
@@ -419,7 +427,7 @@ export const Networks = {
   },
 } as const;
 
-export const SNAP_OWNED_ASSETS: string[] = [
+export const SNAP_OWNED_ASSETS: readonly CaipAssetType[] = [
   KnownCaip19Id.TrxStakedForBandwidthMainnet,
   KnownCaip19Id.TrxStakedForBandwidthNile,
   KnownCaip19Id.TrxStakedForBandwidthShasta,

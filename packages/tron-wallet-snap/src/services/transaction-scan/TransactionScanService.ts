@@ -1,52 +1,40 @@
 import type {
-  AnalyticsService,
   ExtendedKeyringAccount,
-  Logger,
+  SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
+import {
+  BaseTransactionScanService,
+  DEFAULT_METAMASK_ORIGIN,
+} from '@metamask/snap-networks-utils';
+import { assert } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
-import { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type {
   AssetChange,
   AssetDiff,
   SecurityAlertSimulationValidationResponse,
+  TronScanRequestBody,
 } from '../../clients/security-alerts-api/structs';
-import type { SnapClient } from '../../clients/snap/SnapClient';
+import {
+  SecurityAlertResponseStruct,
+  SecurityAlertRequestStruct,
+} from '../../clients/security-alerts-api/structs';
+import type { SecurityAlertsMetadata } from '../../clients/security-alerts-api/types';
+import {
+  extractScanParametersFromTransactionData,
+  isContractTypeSupported,
+} from '../../clients/security-alerts-api/utils';
 import type { Network } from '../../constants';
-import { METAMASK_ORIGIN } from '../../constants';
 import { isTransactionWellFormed } from '../../validation/transaction';
 import type {
   TransactionScanAssetChange,
   TransactionScanError,
   TransactionScanResult,
-  TransactionScanValidation,
 } from './types';
-import { ScanStatus, SecurityAlertResponse, SimulationStatus } from './types';
+import { SimulationStatus } from './types';
 
-const METAMASK_ORIGIN_URL = 'https://metamask.io';
-
-export class TransactionScanService {
-  readonly #securityAlertsApiClient: SecurityAlertsApiClient;
-
-  readonly #snapClient: SnapClient;
-
-  readonly #logger: Logger;
-
-  readonly #analyticsService: AnalyticsService;
-
-  constructor(
-    securityAlertsApiClient: SecurityAlertsApiClient,
-    snapClient: SnapClient,
-    logger: Logger,
-    analyticsService: AnalyticsService,
-  ) {
-    this.#securityAlertsApiClient = securityAlertsApiClient;
-    this.#snapClient = snapClient;
-    this.#logger = logger;
-    this.#analyticsService = analyticsService;
-  }
-
+export class TransactionScanService extends BaseTransactionScanService {
   /**
    * Scans a Tron transaction for security issues.
    *
@@ -71,11 +59,11 @@ export class TransactionScanService {
     transactionRawData: TronwebTypes.Transaction['raw_data'];
     origin: string;
     scope: Network;
-    options?: string[] | undefined;
+    options?: SecurityAlertsScanOption[];
     account?: ExtendedKeyringAccount;
   }): Promise<TransactionScanResult | null> {
     if (!isTransactionWellFormed(transactionRawData)) {
-      this.#logger.warn(
+      this.logger.warn(
         'Malformed transaction: Tron transactions must contain exactly one contract',
       );
 
@@ -92,8 +80,8 @@ export class TransactionScanService {
       };
     }
 
-    if (!SecurityAlertsApiClient.isContractTypeSupported(transactionRawData)) {
-      this.#logger.info(
+    if (!isContractTypeSupported(transactionRawData)) {
+      this.logger.info(
         'Transaction contract type is not supported for simulation, skipping scan',
       );
 
@@ -107,126 +95,57 @@ export class TransactionScanService {
     }
 
     try {
-      const result = await this.#securityAlertsApiClient.scanTransaction({
-        accountAddress,
-        transactionRawData,
-        origin: origin === METAMASK_ORIGIN ? METAMASK_ORIGIN_URL : origin,
+      this.logger.info('Scanning Tron transaction with Security Alerts API');
+
+      const scanParameters =
+        extractScanParametersFromTransactionData(transactionRawData);
+
+      const requestBody = {
+        account_address: accountAddress,
+        metadata: this.#buildMetadata(origin),
+        data: scanParameters,
         options,
-      });
+      } satisfies TronScanRequestBody;
+
+      assert(requestBody, SecurityAlertRequestStruct, 'Tron scan request body');
+
+      const result =
+        await this.securityAlertsApiClient.scanTransaction(requestBody);
+
+      assert(result, SecurityAlertResponseStruct, 'Tron scan response body');
 
       const scan = this.#mapScan(result);
 
-      if (!scan?.status) {
-        this.#logger.warn(
-          'Invalid scan result received from security alerts API',
-        );
-
-        // Track error if account is provided
-        if (account) {
-          await this.#analyticsService.trackSecurityScanCompleted({
-            origin,
-            accountType: account.type,
-            chainIdCaip: scope,
-            scanStatus: ScanStatus.ERROR,
-            hasSecurityAlerts: false,
-          });
-        }
-
-        return null;
-      }
-
-      // Track security scan completion
-      if (account) {
-        const isValidScanStatus = Object.values(ScanStatus).includes(
-          scan.status as ScanStatus,
-        );
-        const scanStatus = isValidScanStatus
-          ? (scan.status as ScanStatus)
-          : ScanStatus.ERROR;
-
-        const hasSecurityAlert = Boolean(
-          scan.validation?.type &&
-          scan.validation.type !== SecurityAlertResponse.Benign,
-        );
-
-        // Track scan completed
-        await this.#analyticsService.trackSecurityScanCompleted({
-          origin,
-          accountType: account.type,
-          chainIdCaip: scope,
-          scanStatus,
-          hasSecurityAlerts: hasSecurityAlert,
-        });
-
-        // Track security alert if detected
-        if (hasSecurityAlert) {
-          const isValidSecurityAlertType = Object.values(
-            SecurityAlertResponse,
-          ).includes(scan.validation.type as SecurityAlertResponse);
-          const securityAlertType = isValidSecurityAlertType
-            ? (scan.validation.type as SecurityAlertResponse)
-            : SecurityAlertResponse.Warning;
-
-          await this.#analyticsService.trackSecurityAlertDetected({
-            origin,
-            accountType: account.type,
-            chainIdCaip: scope,
-            securityAlertResponse: securityAlertType,
-            securityAlertReason: scan.validation.reason ?? null,
-            securityAlertDescription: this.getSecurityAlertDescription(
-              scan.validation,
-            ),
-          });
-        }
-      }
+      await this.trackScanCompleted(
+        { origin, scope, accountType: account?.type },
+        scan,
+      );
 
       return scan;
     } catch (error) {
-      await this.#snapClient.trackError(error as Error);
-      this.#logger.error(error);
+      await this.trackError(error);
+      this.logger.error(error);
 
-      // Track error if account is provided
-      if (account) {
-        await this.#analyticsService.trackSecurityScanCompleted({
-          origin,
-          accountType: account.type,
-          chainIdCaip: scope,
-          scanStatus: ScanStatus.ERROR,
-          hasSecurityAlerts: false,
-        });
-      }
+      await this.trackScanFailed({ origin, scope, accountType: account?.type });
 
       return null;
     }
   }
 
   /**
-   * Gets a human-readable description for a security alert.
+   * Builds the scan request metadata for an origin.
    *
-   * @param validation - The validation result from the scan.
-   * @returns A description of the security alert.
+   * In-app transactions report the `metamask` pseudo-origin, which is not a
+   * dapp URL; it is reported with the non-dApp marker so in-app scans are
+   * not attributed to a dapp. DApp origins are reported as the dApp's URL.
+   *
+   * @param origin - The origin of the transaction.
+   * @returns The scan request metadata.
    */
-  getSecurityAlertDescription(validation: TransactionScanValidation): string {
-    if (!validation?.reason) {
-      return 'Security alert: Unknown reason';
-    }
-
-    // Tron-specific reason descriptions
-    const reasonDescriptions: Record<string, string> = {
-      unfair_trade:
-        "Unfair trade of assets, without adequate compensation to the owner's account",
-      transfer_farming:
-        "Substantial transfer of the account's assets to untrusted entities",
-      known_attacker:
-        "A known attacker's account is involved in the transaction",
-      other:
-        'The transaction was marked as malicious for other reason, further details would be described in features field',
-    };
-
-    return (
-      reasonDescriptions[validation.reason] ??
-      `Security alert: ${validation.reason}`
-    );
+  #buildMetadata(origin: string): SecurityAlertsMetadata {
+    return origin === DEFAULT_METAMASK_ORIGIN
+      ? { non_dapp: true }
+      : { domain: origin };
   }
 
   /**
@@ -237,11 +156,7 @@ export class TransactionScanService {
    */
   #mapScan(
     result: SecurityAlertSimulationValidationResponse,
-  ): TransactionScanResult | null {
-    if (!result) {
-      return null;
-    }
-
+  ): TransactionScanResult {
     const status = this.#resolveStatus(result);
 
     return {
@@ -264,8 +179,10 @@ export class TransactionScanService {
   }
 
   /**
-   * Resolves the scan status from API simulation and validation statuses.
-   * Returns ERROR only if either status is explicitly 'Error'.
+   * Resolves the scan status from the API simulation status. Validation
+   * failures are not reflected here: per the Blockaid schema the validation
+   * `status` is always 'Success' (even in the validation-error variant),
+   * and a failed validation is surfaced through `result_type` instead.
    *
    * @param result - The raw API response.
    * @returns The resolved scan status.
@@ -274,7 +191,7 @@ export class TransactionScanService {
     result: SecurityAlertSimulationValidationResponse,
   ): TransactionScanResult['status'] {
     return result.simulation?.status === 'Error' ||
-      result.validation?.status === 'Error'
+      result.validation?.result_type === 'Error'
       ? 'ERROR'
       : 'SUCCESS';
   }
@@ -292,47 +209,45 @@ export class TransactionScanService {
       return [];
     }
 
-    return assetDiffs
-      .filter((asset) => this.#hasDisplayableChange(asset))
-      .map((asset) => this.#mapAssetDiff(asset));
+    return assetDiffs.flatMap((asset) => {
+      const change = asset.in?.[0] ?? asset.out?.[0];
+
+      return change && this.#isDisplayableChange(change)
+        ? [this.#mapAssetDiff(asset, change)]
+        : [];
+    });
   }
 
   /**
-   * Checks whether an asset diff has a displayable change (value or token_id).
+   * Checks whether an asset change is displayable (value or token_id).
    *
-   * @param asset - The asset diff to check.
-   * @returns True if the asset diff has a displayable change.
+   * @param change - The asset change to check.
+   * @returns True if the asset change is displayable.
    */
-  #hasDisplayableChange(asset: AssetDiff): boolean {
-    const change = asset.in?.[0] ?? asset.out?.[0];
-    if (!change) {
-      return false;
-    }
+  #isDisplayableChange(change: AssetChange): boolean {
     // NFT types (ERC721/ERC1155) use token_id instead of value
-    if ('token_id' in change) {
-      return true;
-    }
-    return change?.value !== undefined;
+    return 'token_id' in change || change.value !== undefined;
   }
 
   /**
    * Maps a single asset diff to our internal asset change format.
    *
    * @param asset - The asset diff to map.
+   * @param change - The first change of the diff, as picked by
+   * {@link #mapAssetDiffs}.
    * @returns The mapped asset change.
    */
-  #mapAssetDiff(asset: AssetDiff): TransactionScanAssetChange {
-    const inChange = asset.in?.[0];
-    const outChange = asset.out?.[0];
-    const change = inChange ?? outChange;
-
+  #mapAssetDiff(
+    asset: AssetDiff,
+    change: AssetChange,
+  ): TransactionScanAssetChange {
     return {
-      type: inChange ? ('in' as const) : ('out' as const),
+      type: asset.in?.[0] ? ('in' as const) : ('out' as const),
       symbol: asset.asset.symbol ?? asset.asset_type,
       name: asset.asset.name ?? asset.asset_type,
       logo: asset.asset.logo_url ?? null,
       value: this.#computeDisplayValue(change, asset.asset.decimals),
-      price: change?.usd_price ?? null,
+      price: change.usd_price ?? null,
       assetType: asset.asset_type,
     };
   }
@@ -346,13 +261,9 @@ export class TransactionScanService {
    * @returns The display value string.
    */
   #computeDisplayValue(
-    change: AssetChange | undefined,
+    change: AssetChange,
     decimals: number | undefined,
   ): string {
-    if (!change) {
-      return '0';
-    }
-
     if ('token_id' in change) {
       // NFT assets (ERC721): each token is a single unit
       // ERC1155: use the value field if present
@@ -379,19 +290,17 @@ export class TransactionScanService {
   #mapSimulationError(
     simulation: SecurityAlertSimulationValidationResponse['simulation'],
   ): TransactionScanError | null {
-    if (!simulation?.error && !simulation?.error_details) {
+    if (!simulation) {
+      return null;
+    }
+
+    if (!simulation.error && !simulation.error_details) {
       return null;
     }
 
     return {
-      type:
-        simulation.error_details && 'type' in simulation.error_details
-          ? simulation.error_details.type
-          : null,
-      code:
-        simulation.error_details && 'code' in simulation.error_details
-          ? simulation.error_details.code
-          : null,
+      type: null,
+      code: simulation.error_details?.code ?? null,
       message: simulation.error ?? null,
     };
   }

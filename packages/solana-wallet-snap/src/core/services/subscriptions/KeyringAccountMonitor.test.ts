@@ -121,6 +121,7 @@ describe('KeyringAccountMonitor', () => {
 
     mockAccountService = {
       getAll: jest.fn(),
+      getAllSelected: jest.fn(),
       findByAddress: jest.fn(),
     } as unknown as AccountsService;
 
@@ -705,6 +706,11 @@ describe('KeyringAccountMonitor', () => {
       // Setup 2 accounts
       jest.spyOn(mockAccountService, 'getAll').mockResolvedValue(accounts);
 
+      // The selected accounts are the monitored accounts
+      jest
+        .spyOn(mockAccountService, 'getAllSelected')
+        .mockResolvedValue(accounts);
+
       // These accounts are currently monitored
       jest
         .spyOn(mockSubscriptionService, 'getAll')
@@ -725,6 +731,43 @@ describe('KeyringAccountMonitor', () => {
 
       expect(syncSpy).toHaveBeenCalledTimes(1);
       expect(syncSpy).toHaveBeenCalledWith(accounts);
+    });
+
+    it('syncs the selected accounts even when the subscription list is empty', async () => {
+      // `SubscriptionService.#reSubscribe` runs CONCURRENTLY with this
+      // handler on every connection recovery and deletes + re-creates the
+      // subscriptions. If this handler derived the accounts to sync from the
+      // subscription list, a read landing inside that delete window would
+      // silently skip the resync (~12% of recoveries under realistic IPC
+      // latency). The resync must therefore not depend on the subscriptions.
+      jest.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
+
+      const syncSpy = jest.spyOn(mockAccountsSynchronizer, 'synchronize');
+
+      // Simulate connection recovery
+      const recoveryHandler = (
+        mockSubscriptionService.registerConnectionRecoveryHandler as jest.Mock
+      ).mock.calls[0][1];
+      await recoveryHandler(Network.Mainnet);
+
+      expect(syncSpy).toHaveBeenCalledWith(accounts);
+    });
+
+    it('skips the resync when there are no selected accounts', async () => {
+      jest.spyOn(mockAccountService, 'getAllSelected').mockResolvedValue([]);
+
+      const syncSpy = jest.spyOn(mockAccountsSynchronizer, 'synchronize');
+
+      // Simulate connection recovery
+      const recoveryHandler = (
+        mockSubscriptionService.registerConnectionRecoveryHandler as jest.Mock
+      ).mock.calls[0][1];
+      await recoveryHandler(Network.Mainnet);
+
+      expect(syncSpy).not.toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'No selected accounts found. Skipping connection recovery.',
+      );
     });
   });
 });

@@ -1,7 +1,7 @@
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
 import type { Transaction, Txid } from '@metamask/bitcoindevkit';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
-import { BtcScope, FeeType } from '@metamask/keyring-api';
+import { BtcScope, FeeType, TransactionType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -429,11 +429,74 @@ describe('RpcHandler', () => {
         mockPsbt,
         'metamask',
         { broadcast: true, fill: true },
+        undefined,
+        undefined,
       );
       expect(result).toStrictEqual({
         transactionId: 'txId',
         canBeMalleable: false,
       });
+    });
+
+    it('classifies a same-chain swap from the swap asset ids', async () => {
+      mockAccountsUseCases.signPsbt.mockResolvedValue({
+        psbt: 'psbtBase64',
+        txid: mock<Txid>({
+          toString: jest.fn().mockReturnValue('txId'),
+        }),
+        canBeMalleable: false,
+      });
+
+      await handler.route(origin, {
+        ...request,
+        params: {
+          ...request.params,
+          options: {
+            sourceAssetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+            destAssetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+          },
+        },
+      } as JsonRpcRequest);
+
+      expect(mockAccountsUseCases.signPsbt).toHaveBeenCalledWith(
+        validAccountId,
+        mockPsbt,
+        'metamask',
+        { broadcast: true, fill: true },
+        undefined,
+        TransactionType.Swap,
+      );
+    });
+
+    it('classifies a cross-chain bridge from the swap asset ids', async () => {
+      mockAccountsUseCases.signPsbt.mockResolvedValue({
+        psbt: 'psbtBase64',
+        txid: mock<Txid>({
+          toString: jest.fn().mockReturnValue('txId'),
+        }),
+        canBeMalleable: false,
+      });
+
+      await handler.route(origin, {
+        ...request,
+        params: {
+          ...request.params,
+          options: {
+            sourceAssetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+            destAssetId:
+              'eip155:1/erc20:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          },
+        },
+      } as JsonRpcRequest);
+
+      expect(mockAccountsUseCases.signPsbt).toHaveBeenCalledWith(
+        validAccountId,
+        mockPsbt,
+        'metamask',
+        { broadcast: true, fill: true },
+        undefined,
+        TransactionType.BridgeSend,
+      );
     });
 
     it('propagates errors from signAndSendTransaction', async () => {

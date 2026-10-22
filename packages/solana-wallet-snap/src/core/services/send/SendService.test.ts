@@ -1,19 +1,17 @@
 import { SolMethod } from '@metamask/keyring-api';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  InMemoryCache,
+} from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   ICache,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { lamports } from '@solana/kit';
 
 import type { AssetEntity } from '../../../entities';
-import {
-  KnownCaip19Id,
-  METAMASK_ORIGIN,
-  Network,
-  Networks,
-} from '../../constants/solana';
+import { KnownCaip19Id, Network, Networks } from '../../constants/solana';
 import { ClientRequestMethod } from '../../handlers/onClientRequest/types';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
@@ -159,7 +157,7 @@ describe('SendService', () => {
         id: globalThis.crypto.randomUUID(),
         scope: Network.Mainnet,
         account: mockAccount.id,
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         request: {
           method: SolMethod.SignAndSendTransaction,
           params: {
