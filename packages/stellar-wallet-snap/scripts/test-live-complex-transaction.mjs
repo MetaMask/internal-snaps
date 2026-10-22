@@ -20,16 +20,16 @@
  *   YES=1                  skip the interactive mainnet confirm
  *
  * Usage (from packages/stellar-wallet-snap):
- *   node --env-file=.env scripts/horizon-event-fixture.mjs status
- *   node --env-file=.env scripts/horizon-event-fixture.mjs list
- *   node --env-file=.env scripts/horizon-event-fixture.mjs setup balance-move
- *   node --env-file=.env scripts/horizon-event-fixture.mjs teardown balance-move
- *   node --env-file=.env scripts/horizon-event-fixture.mjs setup fee-bump
- *   node --env-file=.env scripts/horizon-event-fixture.mjs setup claimable [asset-id]
- *   node --env-file=.env scripts/horizon-event-fixture.mjs setup two-receivers <G-address> <G-address>
- *   node --env-file=.env scripts/horizon-event-fixture.mjs setup trustline-limit [limit]
- *   node --env-file=.env scripts/horizon-event-fixture.mjs teardown trustline-limit
- *   node --env-file=.env scripts/horizon-event-fixture.mjs remove-trustline <G-address> <asset-id>
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs status
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs list
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs setup balance-move
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs teardown balance-move
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs setup fee-bump
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs setup claimable [asset-id]
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs setup two-receivers <G-address> <G-address>
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs setup trustline-limit [limit]
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs teardown trustline-limit
+ *   node --env-file=.env scripts/test-live-complex-transaction.mjs remove-trustline <G-address> <asset-id>
  *
  * `remove-trustline` signs with the env secret for that address. The asset id
  * is `stellar:pubnet/asset:CODE-ISSUER` or `CODE-ISSUER`. The balance must
@@ -41,7 +41,7 @@
  * Teardown restores it.
  *
  * Cases that need an id or an ephemeral key (claimable, offers, sponsored
- * accounts) save it in scripts/.horizon-fixture-state.json. That file is
+ * accounts) save it in scripts/.horizon-fixture-state.mjson. That file is
  * gitignored. Run teardown to roll the case back.
  */
 
@@ -392,7 +392,7 @@ async function claimableBalanceIdFromTx(hash) {
   return created.balance_id;
 }
 
-const STATE_PATH = new URL('./.horizon-fixture-state.json', import.meta.url);
+const STATE_PATH = new URL('./.horizon-fixture-state.mjson', import.meta.url);
 
 function readStateFile() {
   try {

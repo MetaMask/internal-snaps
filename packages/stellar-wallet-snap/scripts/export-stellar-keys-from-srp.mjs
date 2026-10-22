@@ -2,15 +2,15 @@
  * Derive Stellar secret seeds (S…) and public keys (G…) from an SRP the same
  * way the Stellar snap does: SLIP-10 ed25519 at m/44'/148'/index'.
  *
- *   STELLAR_SRP="word1 … word12/24" node scripts/export-stellar-keys-from-srp.js
- *   STELLAR_SRP="…" node scripts/export-stellar-keys-from-srp.js --indices 0,1
+ *   STELLAR_SRP="word1 … word12/24" node scripts/export-stellar-keys-from-srp.mjs
+ *   STELLAR_SRP="…" node scripts/export-stellar-keys-from-srp.mjs --indices 0,1
  *
  * Optional:
  *   STELLAR_SRP          BIP-39 mnemonic (preferred over typing it as an argv)
  *   STELLAR_ACCOUNT_INDICES   comma-separated, default 0,1
  *
  * Prints STELLAR_SECRET_1 / STELLAR_SECRET_2 lines you can paste into .env
- * for test-live-complex-transaction.js. Do not commit those values.
+ * for test-live-complex-transaction.mjs. Do not commit those values.
  */
 
 import { SLIP10Node } from '@metamask/key-tree';

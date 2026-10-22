@@ -236,8 +236,8 @@ const config = createConfig([
     // Local operator CLIs. They read env, keep a sync state file, and prompt
     // on stdin.
     files: [
-      'packages/stellar-wallet-snap/scripts/test-live-complex-transaction.js',
-      'packages/stellar-wallet-snap/scripts/export-stellar-keys-from-srp.js',
+      'packages/stellar-wallet-snap/scripts/test-live-complex-transaction.mjs',
+      'packages/stellar-wallet-snap/scripts/export-stellar-keys-from-srp.mjs',
     ],
     rules: {
       'n/no-process-env': 'off',
