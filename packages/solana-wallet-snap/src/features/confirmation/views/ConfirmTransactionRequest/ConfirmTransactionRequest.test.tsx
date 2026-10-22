@@ -25,6 +25,8 @@ const context: ConfirmTransactionRequestContext = {
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetched',
   origin: '',
+  acknowledgementScreen: false,
+  acknowledged: false,
   preferences: {
     locale: 'en',
     currency: 'usd',
@@ -91,10 +93,7 @@ describe('ConfirmTransactionRequest', () => {
       expect(serialized).not.toContain('This is a deceptive request');
     });
 
-    it.each([
-      ['Malicious', 'danger'],
-      ['Warning', 'warning'],
-    ] as const)(
+    it.each([['Malicious', 'danger']] as const)(
       'renders the security banner for a %s validation',
       (type, severity) => {
         const serialized = render({
@@ -107,6 +106,49 @@ describe('ConfirmTransactionRequest', () => {
       },
     );
 
+    it('renders the soft warning copy for a warning validation', () => {
+      const serialized = render({
+        scan: scan({ validation: { type: 'Warning', reason: null } }),
+      });
+
+      expect(serialized).toContain('"severity":"warning"');
+      expect(serialized).toContain('This request may be risky');
+      expect(serialized).not.toContain('This is a deceptive request');
+    });
+
+    it('swaps the confirm button for "Review alert" on a malicious validation', () => {
+      const serialized = render({
+        scan: scan({ validation: { type: 'Malicious', reason: null } }),
+      });
+
+      expect(serialized).toContain('Review alert');
+      expect(serialized).not.toContain(
+        'confirm-sign-and-send-transaction-confirm',
+      );
+    });
+
+    it('keeps the confirm button for a warning validation', () => {
+      const serialized = render({
+        scan: scan({ validation: { type: 'Warning', reason: null } }),
+      });
+
+      expect(serialized).not.toContain('Review alert');
+      expect(serialized).toContain('confirm-sign-and-send-transaction-confirm');
+    });
+
+    it('disables confirm when the scan errored even with a malicious validation', () => {
+      const serialized = render({
+        scan: scan({
+          status: 'ERROR',
+          error: { type: 'simulation', code: 'ResultWithNegativeLamports' },
+          validation: { type: 'Malicious', reason: null },
+        }),
+      });
+
+      expect(serialized).not.toContain('Review alert');
+      expect(serialized).toContain('"disabled":true');
+    });
+
     it('renders no banner for a benign validation', () => {
       expect(render({ scan: scan({}) })).not.toContain('"type":"Banner"');
     });
@@ -118,6 +160,56 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).not.toContain('"type":"Banner"');
+    });
+
+    it('renders the fetch-error banner when security alerts are disabled but simulation is on', () => {
+      const serialized = render({
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: true,
+        },
+        scanFetchStatus: 'error',
+      });
+
+      expect(serialized).toContain('"severity":"danger"');
+      expect(serialized).toContain(
+        "Because of an error, we couldn't check for security alerts.",
+      );
+    });
+
+    it('renders no banner when all scan preferences are disabled', () => {
+      const serialized = render({
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: false,
+        },
+        scanFetchStatus: 'error',
+      });
+
+      expect(serialized).not.toContain('"type":"Banner"');
+    });
+  });
+
+  describe('malicious acknowledgement', () => {
+    it('renders the acknowledgement screen when active', () => {
+      const serialized = render({ acknowledgementScreen: true });
+
+      expect(serialized).toContain('Malicious request');
+      expect(serialized).toContain(
+        'I have acknowledged the risk and still want to proceed',
+      );
+      expect(serialized).toContain('"disabled":true');
+    });
+
+    it('enables the proceed button once the risk is acknowledged', () => {
+      const serialized = render({
+        acknowledgementScreen: true,
+        acknowledged: true,
+      });
+
+      expect(serialized).not.toContain('"disabled":true');
     });
   });
 

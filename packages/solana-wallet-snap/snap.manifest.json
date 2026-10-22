@@ -26,9 +26,13 @@
       "snaps": false
     },
     "endowment:keyring": {
-      "allowedOrigins": ["https://portfolio.metamask.io"],
+      "allowedOrigins": [
+        "https://portfolio.metamask.io"
+      ],
       "capabilities": {
-        "scopes": ["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+        "scopes": [
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
         "privateKey": {
           "exportFormats": [
             {
@@ -45,7 +49,11 @@
     },
     "snap_getBip32Entropy": [
       {
-        "path": ["m", "44'", "501'"],
+        "path": [
+          "m",
+          "44'",
+          "501'"
+        ],
         "curve": "ed25519"
       }
     ],

@@ -1,5 +1,12 @@
-import { ActionHeader, TransactionAlert } from '@metamask/snap-networks-utils';
-import { Box, Button, Container, Footer } from '@metamask/snaps-sdk/jsx';
+import {
+  ActionHeader,
+  ConfirmationFooter,
+  MaliciousAcknowledgementFormNames,
+  MaliciousAcknowledgementScreen,
+  TransactionAlert,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
+import { Box, Container } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../core/constants/solana';
 import { i18n } from '../../../../core/utils/i18n';
@@ -9,6 +16,7 @@ import { TransactionDetails } from '../../components/TransactionDetails/Transact
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import { getErrorMessage } from './getErrorMessage';
 import type { ConfirmTransactionRequestContext } from './types';
+import { shouldDisableConfirmation } from './utils';
 
 export const ConfirmTransactionRequest = ({
   context,
@@ -17,17 +25,44 @@ export const ConfirmTransactionRequest = ({
 }) => {
   const translate = i18n(context.preferences.locale);
 
+  if (context.acknowledgementScreen) {
+    return (
+      <MaliciousAcknowledgementScreen
+        labels={{
+          title: translate('confirmation.maliciousAck.title'),
+          description: translate('confirmation.maliciousAck.description'),
+          checkbox: translate('confirmation.maliciousAck.checkbox'),
+          proceed: translate('confirmation.maliciousAck.proceed'),
+          back: translate('confirmation.maliciousAck.back'),
+        }}
+        acknowledged={context.acknowledged}
+      />
+    );
+  }
+
   const feeInSol = context.feeEstimatedInSol;
   const { nativeToken } = Networks[context.scope];
   const nativePrice = context.tokenPrices[nativeToken.caip19Id]?.price ?? null;
 
-  const isScanError = context.scan?.status === 'ERROR';
-
-  const shouldDisableConfirmButton =
-    context.scanFetchStatus === 'fetching' || isScanError;
-
-  const shouldShowAlert = context.preferences.useSecurityAlerts || isScanError;
+  const { useSecurityAlerts, simulateOnChainActions } = context.preferences;
   const scanError = context.scan?.error;
+
+  // The scan banner slot is active while any scan preference is on; verdict
+  // banners are additionally gated on the security-alerts preference.
+  const shouldShowAlert = useSecurityAlerts || simulateOnChainActions;
+
+  const shouldDisableConfirmButton = shouldDisableConfirmation({
+    scanFetchStatus: context.scanFetchStatus,
+    scan: context.scan,
+  });
+
+  // A blocking state takes priority over the acknowledgement swap: the shared
+  // footer falls back to the disabled "Confirm" button so the user can never
+  // enter the acknowledgement flow for a transaction that is no longer valid.
+  const requiresAcknowledgement = requiresMaliciousAcknowledgement({
+    useSecurityAlerts,
+    scan: context.scan,
+  });
 
   return (
     <Container>
@@ -47,8 +82,10 @@ export const ConfirmTransactionRequest = ({
               maliciousMessage: translate(
                 'confirmation.validationErrorSubtitle',
               ),
-              warningTitle: translate('confirmation.validationErrorTitle'),
-              warningMessage: translate('confirmation.validationErrorSubtitle'),
+              warningTitle: translate('confirmation.validationWarningTitle'),
+              warningMessage: translate(
+                'confirmation.validationWarningSubtitle',
+              ),
               learnMore: translate('confirmation.validationErrorLearnMore'),
               securityAdvisedBy: translate(
                 'confirmation.validationErrorSecurityAdviced',
@@ -66,7 +103,9 @@ export const ConfirmTransactionRequest = ({
                   }
                 : null
             }
-            validation={context.scan?.validation ?? null}
+            validation={
+              useSecurityAlerts ? (context.scan?.validation ?? null) : null
+            }
           />
         ) : null}
         <ActionHeader
@@ -100,17 +139,18 @@ export const ConfirmTransactionRequest = ({
           scope={context.scope}
         />
       </Box>
-      <Footer>
-        <Button name={ConfirmSignAndSendTransactionFormNames.Cancel}>
-          {translate('confirmation.cancelButton')}
-        </Button>
-        <Button
-          name={ConfirmSignAndSendTransactionFormNames.Confirm}
-          disabled={shouldDisableConfirmButton}
-        >
-          {translate('confirmation.confirmButton')}
-        </Button>
-      </Footer>
+      <ConfirmationFooter
+        labels={{
+          cancelButton: translate('confirmation.cancelButton'),
+          confirmButton: translate('confirmation.confirmButton'),
+          reviewAlertsButton: translate('confirmation.reviewAlertsButton'),
+        }}
+        cancelButtonName={ConfirmSignAndSendTransactionFormNames.Cancel}
+        confirmButtonName={ConfirmSignAndSendTransactionFormNames.Confirm}
+        reviewAlertsName={MaliciousAcknowledgementFormNames.Review}
+        confirmDisabled={shouldDisableConfirmButton}
+        requiresAcknowledgement={requiresAcknowledgement}
+      />
     </Container>
   );
 };
