@@ -234,11 +234,10 @@ const config = createConfig([
   },
   {
     // Local operator CLIs. They read env, keep a sync state file, and prompt
-    // on stdin. eslint-plugin-n still marks `readline/promises` experimental
-    // on the Node 22 range this repo supports.
+    // on stdin.
     files: [
-      'packages/stellar-wallet-snap/scripts/horizon-event-fixture.mjs',
-      'packages/stellar-wallet-snap/scripts/export-stellar-keys-from-srp.mjs',
+      'packages/stellar-wallet-snap/scripts/test-live-complex-transaction.js',
+      'packages/stellar-wallet-snap/scripts/export-stellar-keys-from-srp.js',
     ],
     rules: {
       'n/no-process-env': 'off',
