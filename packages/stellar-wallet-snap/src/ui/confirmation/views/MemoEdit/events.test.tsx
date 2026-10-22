@@ -106,6 +106,16 @@ describe('MemoEdit event handlers', () => {
         }),
       );
     });
+
+    it('no-ops when context is missing', async () => {
+      await handlers[MemoEditFormNames.Open]?.({
+        id: 'interface-id',
+        event: buttonEvent(MemoEditFormNames.Open),
+        context: null,
+      });
+
+      expect(updateInterfaceIfExists).not.toHaveBeenCalled();
+    });
   });
 
   describe('Save', () => {
@@ -335,6 +345,17 @@ describe('MemoEdit event handlers', () => {
         }),
       );
     });
+
+    it('no-ops when context is missing', async () => {
+      await handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: formSubmitEvent('exchange-ref'),
+        context: null,
+      });
+
+      expect(scheduleSpy).not.toHaveBeenCalled();
+      expect(updateInterfaceIfExists).not.toHaveBeenCalled();
+    });
   });
 
   describe('Back', () => {
@@ -361,6 +382,16 @@ describe('MemoEdit event handlers', () => {
           memoScreen: false,
         }),
       );
+    });
+
+    it('no-ops when context is missing', async () => {
+      await handlers[MemoEditFormNames.Back]?.({
+        id: 'interface-id',
+        event: buttonEvent(MemoEditFormNames.Back),
+        context: null,
+      });
+
+      expect(updateInterfaceIfExists).not.toHaveBeenCalled();
     });
   });
 });
