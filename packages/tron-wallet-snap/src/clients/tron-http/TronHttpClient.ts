@@ -3,7 +3,9 @@ import {
   createFetchPolicy,
   createFetchPolicyError,
   executeWithFetchPolicy,
+  InMemoryCache,
   parseRetryAfter,
+  useCache,
 } from '@metamask/snap-networks-utils';
 import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
@@ -11,7 +13,7 @@ import { assert } from '@metamask/superstruct';
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { hexToString } from '../../utils/hex';
-import logger from '../../utils/logger';
+import logger, { noOpLogger } from '../../utils/logger';
 import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
@@ -35,6 +37,12 @@ import type {
 } from './types';
 
 /**
+ * How long identical request results are reused, covering keyring calls that
+ * arrive in quick succession (e.g. `getAccountAssets` + `getAccountBalances`).
+ */
+const REQUEST_CACHE_TTL_MS = 5_000;
+
+/**
  * Client for Tron JSON-RPC HTTP endpoints (not the REST API)
  * Handles contract interactions, constant contract calls, etc.
  */
@@ -48,6 +56,15 @@ export class TronHttpClient {
   > = new Map();
 
   readonly #policies: Map<Network, FetchPolicy>;
+
+  readonly #requestCache: (
+    network: Network,
+    url: string,
+    method: string,
+    headers: Record<string, string> | undefined,
+    body: string,
+    allowedStatuses: number[],
+  ) => Promise<{ body: string; status: number }>;
 
   constructor({
     configProvider,
@@ -77,6 +94,14 @@ export class TronHttpClient {
           logger: clientLogger,
         }),
       ]),
+    );
+    this.#requestCache = useCache(
+      this.#fetchUncached.bind(this),
+      new InMemoryCache(noOpLogger),
+      {
+        ttlMilliseconds: REQUEST_CACHE_TTL_MS,
+        functionName: 'TronHttpClient:#fetch',
+      },
     );
   }
 
@@ -448,6 +473,24 @@ export class TronHttpClient {
     init: RequestInit,
     allowedStatuses: number[] = [],
   ): Promise<{ body: string; status: number }> {
+    return this.#requestCache(
+      network,
+      url,
+      init.method ?? 'GET',
+      init.headers as Record<string, string> | undefined,
+      typeof init.body === 'string' ? init.body : '',
+      allowedStatuses,
+    );
+  }
+
+  async #fetchUncached(
+    network: Network,
+    url: string,
+    method: string,
+    headers: Record<string, string> | undefined,
+    body: string,
+    allowedStatuses: number[],
+  ): Promise<{ body: string; status: number }> {
     const policy = this.#policies.get(network);
     if (!policy) {
       throw new Error(`No policy configured for network: ${network}`);
@@ -455,7 +498,9 @@ export class TronHttpClient {
 
     return executeWithFetchPolicy(policy, async () => {
       const response = await fetch(url, {
-        ...init,
+        method,
+        headers,
+        ...(body ? { body } : {}),
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok && !allowedStatuses.includes(response.status)) {

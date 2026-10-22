@@ -57,4 +57,67 @@ describe('TronHttpClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(textMock).not.toHaveBeenCalled();
   });
+
+  describe('request cache', () => {
+    it('serves identical requests from the cache within the TTL', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+        async () =>
+          new globalThis.Response(JSON.stringify({ freeNetUsed: 1 }), {
+            status: 200,
+          }),
+      );
+      const client = new TronHttpClient({ configProvider });
+
+      const first = await client.getAccountResources(
+        Network.Mainnet,
+        'address',
+      );
+      const cached = await client.getAccountResources(
+        Network.Mainnet,
+        'address',
+      );
+
+      expect(first).toStrictEqual({ freeNetUsed: 1 });
+      expect(cached).toStrictEqual({ freeNetUsed: 1 });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('refetches identical requests after the cache TTL elapses', async () => {
+      jest.useFakeTimers();
+      try {
+        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+          async () =>
+            new globalThis.Response(JSON.stringify({ freeNetUsed: 1 }), {
+              status: 200,
+            }),
+        );
+        const client = new TronHttpClient({ configProvider });
+
+        await client.getAccountResources(Network.Mainnet, 'address');
+        jest.advanceTimersByTime(5_001);
+        await client.getAccountResources(Network.Mainnet, 'address');
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not deduplicate requests with different arguments', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+        async () =>
+          new globalThis.Response(JSON.stringify({ freeNetUsed: 1 }), {
+            status: 200,
+          }),
+      );
+      const client = new TronHttpClient({ configProvider });
+
+      await Promise.all([
+        client.getAccountResources(Network.Mainnet, 'address-1'),
+        client.getAccountResources(Network.Mainnet, 'address-2'),
+      ]);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
 });
