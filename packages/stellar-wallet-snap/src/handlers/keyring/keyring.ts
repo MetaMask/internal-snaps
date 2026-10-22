@@ -218,13 +218,23 @@ export class KeyringHandler implements KeyringSnapRpc {
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
     validateRequest(accountId, ListAccountAssetsRequestStruct);
 
-    const scope = AppConfig.selectedNetwork;
-    const onChainAccount = await this.#fetchOnChainAccountByAccountId({
-      accountId,
-      scope,
-      // Always refresh the cache to get the latest on-chain account.
-      refresh: true,
-    });
+    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
+
+    let onChainAccount: OnChainAccount | null = null;
+
+    if (enableAssetMigration) {
+      onChainAccount = await this.#fetchOnChainAccountWithCache({
+        accountId,
+        scope,
+        // Always refresh the cache to get the latest on-chain account.
+        refresh: true,
+      });
+    } else {
+      onChainAccount = await this.#getOnChainAccountFromState({
+        accountId,
+        scope,
+      });
+    }
 
     // Unfunded accounts have no trustlines. Return native so the client can ask for a zero balance.
     if (onChainAccount === null) {
@@ -324,14 +334,25 @@ export class KeyringHandler implements KeyringSnapRpc {
       GetAccountBalancesRequestStruct,
     );
 
-    const scope = AppConfig.selectedNetwork;
+    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
+
     const assetBalances = {} as Record<KnownCaip19AssetIdOrSlip44Id, Balance>;
 
-    const onChainAccount = await this.#fetchOnChainAccountByAccountId({
-      accountId,
-      scope,
-      refresh: false,
-    });
+    let onChainAccount: OnChainAccount | null = null;
+
+    if (enableAssetMigration) {
+      onChainAccount = await this.#fetchOnChainAccountWithCache({
+        accountId,
+        scope,
+        // Use the cached on-chain account.
+        refresh: false,
+      });
+    } else {
+      onChainAccount = await this.#getOnChainAccountFromState({
+        accountId,
+        scope,
+      });
+    }
 
     // Unfunded accounts have no trustlines. Return native zero when it was requested.
     if (onChainAccount === null) {
@@ -342,8 +363,8 @@ export class KeyringHandler implements KeyringSnapRpc {
       return assetBalances;
     }
 
-    // `#fetchOnChainAccountByAccountId` returns watched assets balance from Tokens API.
-    // But, the watched assets from Tokens API may not contain the SEP-41 ids the client asked for.
+    // Indexed snapshots and the Tokens API watchlist can both omit a SEP-41 id
+    // the client asked for. Fetch those balances when nothing was stored.
     const missingSep41AssetIds = knownAssets.filter(
       (assetId): assetId is KnownCaip19Sep41AssetId =>
         isSep41Id(assetId) && onChainAccount.getRawAsset(assetId) === undefined,
@@ -506,11 +527,40 @@ export class KeyringHandler implements KeyringSnapRpc {
   }
 
   /**
-   * Loads a Horizon account for the keyring asset/balance pair.
+   * Loads the indexed on-chain snapshot for a keyring account.
+   *
+   * Used when `AppConfig.enableAssetMigration` is false. Does not call Horizon.
+   *
+   * @param params - Account id and scope.
+   * @param params.accountId - Keyring account id.
+   * @param params.scope - CAIP-2 network.
+   * @returns The indexed account, or `null` when no snapshot exists.
+   */
+  async #getOnChainAccountFromState({
+    accountId,
+    scope,
+  }: {
+    accountId: string;
+    scope: KnownCaip2ChainId;
+  }): Promise<OnChainAccount | null> {
+    const { account } = await this.#accountService.resolveAccount({
+      accountId,
+    });
+    return this.#onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+      accountId,
+      account.address,
+      scope,
+    );
+  }
+
+  /**
+   * Loads a Horizon account for the keyring asset and balance reads.
    *
    * `getAccountAssets` always refreshes and stores the result. `getAccountBalances`
    * reuses that entry until `AppConfig.cache.ttlMilliseconds.fetchOnChainAccount`, then loads Horizon.
    * A failed load is not cached. An unactivated account is cached as `null`.
+   *
+   * Used when `AppConfig.enableAssetMigration` is true.
    *
    * @param params - Account id, scope, and whether to skip the cache.
    * @param params.accountId - Keyring account id.
@@ -518,7 +568,7 @@ export class KeyringHandler implements KeyringSnapRpc {
    * @param params.refresh - When true, load Horizon and replace the cache entry.
    * @returns The live account, or `null` when it is not activated.
    */
-  async #fetchOnChainAccountByAccountId({
+  async #fetchOnChainAccountWithCache({
     accountId,
     scope,
     refresh,

@@ -107,6 +107,22 @@ describe('KeyringHandler', () => {
     );
   };
 
+  const bindRequestedSep41Balances = (): jest.SpiedFunction<
+    OnChainAccountService['fetchAndBindSep41Balances']
+  > =>
+    jest
+      .spyOn(OnChainAccountService.prototype, 'fetchAndBindSep41Balances')
+      .mockImplementation(async (account, _scope, assetIds = []) => {
+        for (const assetId of assetIds) {
+          account.setAsset(assetId, {
+            balance: new BigNumber(10_000_000),
+            symbol: 'USDC',
+            decimals: 7,
+          });
+        }
+        return account;
+      });
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySourceId);
@@ -268,7 +284,7 @@ describe('KeyringHandler', () => {
       (index: number) => Promise<Wallet>
     > => {
       const walletResolver = jest.fn(
-        async (_index: number) => ({ address: mockAccount.address }) as Wallet,
+        async (_index: number) => ({ address: mockAccount.address } as Wallet),
       );
       jest
         .spyOn(WalletService.prototype, 'getWalletResolver')
@@ -448,52 +464,127 @@ describe('KeyringHandler', () => {
   });
 
   describe('getAccountAssets', () => {
-    it('returns live on-chain asset ids and caches the account', async () => {
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address);
-      const resolveOnChainAccountSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockResolvedValue(onChainAccount);
+    const originalEnableAssetMigration = AppConfig.enableAssetMigration;
 
-      const result = await keyringHandler.getAccountAssets(mockAccountId);
-
-      expect(resolveOnChainAccountSpy).toHaveBeenCalledWith(
-        mockAccount.address,
-        KnownCaip2ChainId.Mainnet,
-        { fetchWithSep41Balances: true },
-      );
-      expect(result).toStrictEqual(onChainAccount.assetIds);
+    afterEach(() => {
+      AppConfig.enableAssetMigration = originalEnableAssetMigration;
     });
 
-    it('returns native asset id when the account is not activated on-chain', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockRejectedValue(
-          new AccountNotActivatedException(
-            mockAccount.address,
-            KnownCaip2ChainId.Mainnet,
-          ),
+    describe('when local config asset migration is disabled', () => {
+      beforeEach(() => {
+        AppConfig.enableAssetMigration = false;
+      });
+
+      it('returns indexed asset ids without loading Horizon', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        const resolveByKeyringAccountIdSpy = jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(onChainAccount);
+        const resolveOnChainAccountSpy = jest.spyOn(
+          OnChainAccountService.prototype,
+          'resolveOnChainAccount',
         );
 
-      const result = await keyringHandler.getAccountAssets(mockAccountId);
+        const result = await keyringHandler.getAccountAssets(mockAccountId);
 
-      expect(result).toStrictEqual([slipId]);
+        expect(resolveByKeyringAccountIdSpy).toHaveBeenCalledWith(
+          mockAccountId,
+          mockAccount.address,
+          KnownCaip2ChainId.Mainnet,
+        );
+        expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
+        expect(result).toStrictEqual(onChainAccount.assetIds);
+      });
+
+      it('returns native asset id when the account is not indexed', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(null);
+
+        const result = await keyringHandler.getAccountAssets(mockAccountId);
+
+        expect(result).toStrictEqual([slipId]);
+      });
+
+      it('propagates errors when the indexed account cannot be read', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockRejectedValue(new Error('state unavailable'));
+
+        await expect(
+          keyringHandler.getAccountAssets(mockAccountId),
+        ).rejects.toThrow('state unavailable');
+      });
     });
 
-    it('propagates errors when listing assets fails for another reason', async () => {
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockRejectedValue(new Error('Horizon unavailable'));
+    describe('when asset migration is enabled', () => {
+      beforeEach(() => {
+        AppConfig.enableAssetMigration = true;
+      });
 
-      await expect(
-        keyringHandler.getAccountAssets(mockAccountId),
-      ).rejects.toThrow('Horizon unavailable');
+      it('returns live on-chain asset ids and caches the account', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        const resolveOnChainAccountSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockResolvedValue(onChainAccount);
+
+        const result = await keyringHandler.getAccountAssets(mockAccountId);
+
+        expect(resolveOnChainAccountSpy).toHaveBeenCalledWith(
+          mockAccount.address,
+          KnownCaip2ChainId.Mainnet,
+          { fetchWithSep41Balances: true },
+        );
+        expect(result).toStrictEqual(onChainAccount.assetIds);
+      });
+
+      it('returns native asset id when the account is not activated on-chain', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockRejectedValue(
+            new AccountNotActivatedException(
+              mockAccount.address,
+              KnownCaip2ChainId.Mainnet,
+            ),
+          );
+
+        const result = await keyringHandler.getAccountAssets(mockAccountId);
+
+        expect(result).toStrictEqual([slipId]);
+      });
+
+      it('propagates errors when listing assets fails for another reason', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockRejectedValue(new Error('Horizon unavailable'));
+
+        await expect(
+          keyringHandler.getAccountAssets(mockAccountId),
+        ).rejects.toThrow('Horizon unavailable');
+      });
     });
 
     it('rejects invalid account id', async () => {
@@ -583,220 +674,404 @@ describe('KeyringHandler', () => {
   });
 
   describe('getAccountBalances', () => {
-    it('returns balances for assets with positive balance and metadata', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address, {
-        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-        nativeBalance: 2.000001,
-      });
-      const resolveOnChainAccountSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockResolvedValue(onChainAccount);
+    const originalEnableAssetMigration = AppConfig.enableAssetMigration;
 
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        slipId,
-      ]);
-
-      expect(resolveOnChainAccountSpy).toHaveBeenCalledWith(
-        mockAccount.address,
-        KnownCaip2ChainId.Mainnet,
-        { fetchWithSep41Balances: true },
-      );
-      expect(result).toStrictEqual({
-        [slipId]: {
-          unit: 'XLM',
-          amount: '2.000001',
-          metadata: {
-            spendableBalance: '10000010',
-            minimumReserveBalance: '10000000',
-            decimal: 7,
-          },
-        },
-      });
+    afterEach(() => {
+      AppConfig.enableAssetMigration = originalEnableAssetMigration;
     });
 
-    it('reuses the account cached by getAccountAssets', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address, {
-        ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
-        nativeBalance: 2.000001,
+    describe('when local config asset migration is disabled', () => {
+      beforeEach(() => {
+        AppConfig.enableAssetMigration = false;
       });
-      const resolveOnChainAccountSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockResolvedValue(onChainAccount);
 
-      await keyringHandler.getAccountAssets(mockAccountId);
-      resolveOnChainAccountSpy.mockClear();
-
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        slipId,
-      ]);
-
-      expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
-      expect(result[slipId]?.amount).toBe('2.000001');
-    });
-
-    it('loads Horizon again when the cached account has expired', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address);
-      const resolveOnChainAccountSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockResolvedValue(onChainAccount);
-      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
-
-      await keyringHandler.getAccountAssets(mockAccountId);
-      nowSpy.mockReturnValue(
-        1_000 + AppConfig.cache.ttlMilliseconds.fetchOnChainAccount + 1,
-      );
-      resolveOnChainAccountSpy.mockClear();
-
-      await keyringHandler.getAccountBalances(mockAccountId, [slipId]);
-
-      expect(resolveOnChainAccountSpy).toHaveBeenCalledTimes(1);
-      nowSpy.mockRestore();
-    });
-
-    it('returns zero native balance when the account is not activated on-chain', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const resolveOnChainAccountSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockRejectedValue(
-          new AccountNotActivatedException(
-            mockAccount.address,
-            KnownCaip2ChainId.Mainnet,
-          ),
+      it('returns balances from the same indexed account as getAccountAssets', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address, {
+          ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+          nativeBalance: 2.000001,
+        });
+        const resolveByKeyringAccountIdSpy = jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(onChainAccount);
+        const resolveOnChainAccountSpy = jest.spyOn(
+          OnChainAccountService.prototype,
+          'resolveOnChainAccount',
         );
 
-      await keyringHandler.getAccountAssets(mockAccountId);
-      resolveOnChainAccountSpy.mockClear();
+        const assets = await keyringHandler.getAccountAssets(mockAccountId);
+        const balances = await keyringHandler.getAccountBalances(
+          mockAccountId,
+          [slipId],
+        );
 
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        slipId,
-      ]);
-
-      expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({
-        [slipId]: {
-          unit: 'XLM',
-          amount: '0',
-          metadata: {
-            spendableBalance: '0',
-            minimumReserveBalance: '0',
-            decimal: 7,
+        expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
+        expect(resolveByKeyringAccountIdSpy).toHaveBeenCalledTimes(2);
+        expect(resolveByKeyringAccountIdSpy).toHaveBeenNthCalledWith(
+          1,
+          mockAccountId,
+          mockAccount.address,
+          KnownCaip2ChainId.Mainnet,
+        );
+        expect(resolveByKeyringAccountIdSpy).toHaveBeenNthCalledWith(
+          2,
+          mockAccountId,
+          mockAccount.address,
+          KnownCaip2ChainId.Mainnet,
+        );
+        expect(assets).toStrictEqual(onChainAccount.assetIds);
+        expect(balances).toStrictEqual({
+          [slipId]: {
+            unit: 'XLM',
+            amount: '2.000001',
+            metadata: {
+              spendableBalance: '10000010',
+              minimumReserveBalance: '10000000',
+              decimal: 7,
+            },
           },
-        },
-      });
-    });
-
-    it('loads Horizon when a previous asset read failed and was not cached', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address);
-      const resolveOnChainAccountSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockRejectedValueOnce(new Error('Horizon unavailable'))
-        .mockResolvedValue(onChainAccount);
-
-      await expect(
-        keyringHandler.getAccountAssets(mockAccountId),
-      ).rejects.toThrow('Horizon unavailable');
-
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        slipId,
-      ]);
-
-      expect(resolveOnChainAccountSpy).toHaveBeenCalledTimes(2);
-      expect(result[slipId]?.amount).toBe('1');
-    });
-
-    it('binds a requested SEP-41 asset missing from the watched account', async () => {
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address);
-      jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockResolvedValue(onChainAccount);
-      const fetchAndBindSpy = jest
-        .spyOn(OnChainAccountService.prototype, 'fetchAndBindSep41Balances')
-        .mockImplementation(async (account, _scope, assetIds = []) => {
-          for (const assetId of assetIds) {
-            account.setAsset(assetId, {
-              balance: new BigNumber(10_000_000),
-              symbol: 'USDC',
-              decimals: 7,
-            });
-          }
-          return account;
         });
+      });
 
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        USDC_SEP41,
-      ]);
+      it('returns zero native balance when the account is not indexed', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(null);
+        const fetchAndBindSpy = jest.spyOn(
+          OnChainAccountService.prototype,
+          'fetchAndBindSep41Balances',
+        );
 
-      expect(fetchAndBindSpy).toHaveBeenCalledWith(
-        onChainAccount,
-        KnownCaip2ChainId.Mainnet,
-        [USDC_SEP41],
-      );
-      expect(result).toStrictEqual({
-        [USDC_SEP41]: {
-          unit: 'USDC',
-          amount: '1',
-        },
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+          USDC_SEP41,
+        ]);
+
+        expect(fetchAndBindSpy).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({
+          [slipId]: {
+            unit: 'XLM',
+            amount: '0',
+            metadata: {
+              spendableBalance: '0',
+              minimumReserveBalance: '0',
+              decimal: 7,
+            },
+          },
+        });
+      });
+
+      it('fetches a requested SEP-41 asset that was not indexed', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(onChainAccount);
+        const fetchAndBindSpy = bindRequestedSep41Balances();
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          USDC_SEP41,
+        ]);
+
+        expect(fetchAndBindSpy).toHaveBeenCalledWith(
+          onChainAccount,
+          KnownCaip2ChainId.Mainnet,
+          [USDC_SEP41],
+        );
+        expect(result).toStrictEqual({
+          [USDC_SEP41]: {
+            unit: 'USDC',
+            amount: '1',
+          },
+        });
+      });
+
+      it('does not fetch a SEP-41 balance already indexed', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        onChainAccount.setAsset(USDC_SEP41, {
+          balance: new BigNumber(10_000_000),
+          symbol: 'USDC',
+          decimals: 7,
+        });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(onChainAccount);
+        const fetchAndBindSpy = jest.spyOn(
+          OnChainAccountService.prototype,
+          'fetchAndBindSep41Balances',
+        );
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          USDC_SEP41,
+          USDC_CLASSIC,
+        ]);
+
+        expect(fetchAndBindSpy).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({
+          [USDC_SEP41]: {
+            unit: 'USDC',
+            amount: '1',
+          },
+        });
+      });
+
+      it('propagates errors when the indexed account cannot be read', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockRejectedValue(new Error('state unavailable'));
+
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow('state unavailable');
       });
     });
 
-    it('does not fetch a SEP-41 balance already stored on the account', async () => {
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      const onChainAccount = createTestOnChainAccount(mockAccount.address);
-      onChainAccount.setAsset(USDC_SEP41, {
-        balance: new BigNumber(10_000_000),
-        symbol: 'USDC',
-        decimals: 7,
+    describe('when local config asset migration is enabled', () => {
+      beforeEach(() => {
+        AppConfig.enableAssetMigration = true;
       });
-      jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockResolvedValue(onChainAccount);
-      const fetchAndBindSpy = jest.spyOn(
-        OnChainAccountService.prototype,
-        'fetchAndBindSep41Balances',
-      );
 
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        USDC_SEP41,
-        USDC_CLASSIC,
-      ]);
+      it('returns balances for assets with positive balance and metadata', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address, {
+          ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+          nativeBalance: 2.000001,
+        });
+        const resolveOnChainAccountSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockResolvedValue(onChainAccount);
 
-      expect(fetchAndBindSpy).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({
-        [USDC_SEP41]: {
-          unit: 'USDC',
-          amount: '1',
-        },
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+        ]);
+
+        expect(resolveOnChainAccountSpy).toHaveBeenCalledWith(
+          mockAccount.address,
+          KnownCaip2ChainId.Mainnet,
+          { fetchWithSep41Balances: true },
+        );
+        expect(result).toStrictEqual({
+          [slipId]: {
+            unit: 'XLM',
+            amount: '2.000001',
+            metadata: {
+              spendableBalance: '10000010',
+              minimumReserveBalance: '10000000',
+              decimal: 7,
+            },
+          },
+        });
       });
-    });
 
-    it('propagates errors when balance resolution fails for another reason', async () => {
-      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
-      const { resolveAccountSpy } = getAccountServiceSpies();
-      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
-      jest
-        .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
-        .mockRejectedValue(new Error('Horizon unavailable'));
+      it('reuses the account cached by getAccountAssets', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address, {
+          ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+          nativeBalance: 2.000001,
+        });
+        const resolveOnChainAccountSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockResolvedValue(onChainAccount);
 
-      await expect(
-        keyringHandler.getAccountBalances(mockAccountId, [slipId]),
-      ).rejects.toThrow('Horizon unavailable');
+        await keyringHandler.getAccountAssets(mockAccountId);
+        resolveOnChainAccountSpy.mockClear();
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+        ]);
+
+        expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
+        expect(result[slipId]?.amount).toBe('2.000001');
+      });
+
+      it('loads Horizon again when the cached account has expired', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        const resolveOnChainAccountSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockResolvedValue(onChainAccount);
+        const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+
+        await keyringHandler.getAccountAssets(mockAccountId);
+        nowSpy.mockReturnValue(
+          1_000 + AppConfig.cache.ttlMilliseconds.fetchOnChainAccount + 1,
+        );
+        resolveOnChainAccountSpy.mockClear();
+
+        await keyringHandler.getAccountBalances(mockAccountId, [slipId]);
+
+        expect(resolveOnChainAccountSpy).toHaveBeenCalledTimes(1);
+        nowSpy.mockRestore();
+      });
+
+      it('returns zero native balance when the account is not activated on-chain', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const resolveOnChainAccountSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockRejectedValue(
+            new AccountNotActivatedException(
+              mockAccount.address,
+              KnownCaip2ChainId.Mainnet,
+            ),
+          );
+
+        await keyringHandler.getAccountAssets(mockAccountId);
+        resolveOnChainAccountSpy.mockClear();
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+        ]);
+
+        expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({
+          [slipId]: {
+            unit: 'XLM',
+            amount: '0',
+            metadata: {
+              spendableBalance: '0',
+              minimumReserveBalance: '0',
+              decimal: 7,
+            },
+          },
+        });
+      });
+
+      it('loads Horizon when a previous asset read failed and was not cached', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        const resolveOnChainAccountSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockRejectedValueOnce(new Error('Horizon unavailable'))
+          .mockResolvedValue(onChainAccount);
+
+        await expect(
+          keyringHandler.getAccountAssets(mockAccountId),
+        ).rejects.toThrow('Horizon unavailable');
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+        ]);
+
+        expect(resolveOnChainAccountSpy).toHaveBeenCalledTimes(2);
+        expect(result[slipId]?.amount).toBe('1');
+      });
+
+      it('binds a requested SEP-41 asset missing from the watched account', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockResolvedValue(onChainAccount);
+        const fetchAndBindSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'fetchAndBindSep41Balances')
+          .mockImplementation(async (account, _scope, assetIds = []) => {
+            for (const assetId of assetIds) {
+              account.setAsset(assetId, {
+                balance: new BigNumber(10_000_000),
+                symbol: 'USDC',
+                decimals: 7,
+              });
+            }
+            return account;
+          });
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          USDC_SEP41,
+        ]);
+
+        expect(fetchAndBindSpy).toHaveBeenCalledWith(
+          onChainAccount,
+          KnownCaip2ChainId.Mainnet,
+          [USDC_SEP41],
+        );
+        expect(result).toStrictEqual({
+          [USDC_SEP41]: {
+            unit: 'USDC',
+            amount: '1',
+          },
+        });
+      });
+
+      it('does not fetch a SEP-41 balance already stored on the account', async () => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        const onChainAccount = createTestOnChainAccount(mockAccount.address);
+        onChainAccount.setAsset(USDC_SEP41, {
+          balance: new BigNumber(10_000_000),
+          symbol: 'USDC',
+          decimals: 7,
+        });
+        jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockResolvedValue(onChainAccount);
+        const fetchAndBindSpy = jest.spyOn(
+          OnChainAccountService.prototype,
+          'fetchAndBindSep41Balances',
+        );
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          USDC_SEP41,
+          USDC_CLASSIC,
+        ]);
+
+        expect(fetchAndBindSpy).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({
+          [USDC_SEP41]: {
+            unit: 'USDC',
+            amount: '1',
+          },
+        });
+      });
+
+      it('propagates errors when balance resolution fails for another reason', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
+          .mockRejectedValue(new Error('Horizon unavailable'));
+
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow('Horizon unavailable');
+      });
     });
   });
 
