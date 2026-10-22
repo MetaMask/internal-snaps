@@ -7,13 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Emit `transaction_type` on the transaction lifecycle events. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
-
 ### Fixed
 
-- Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation.
+- Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
 
 ## [1.1.1]
 
