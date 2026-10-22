@@ -1,12 +1,21 @@
-import { FormSubmitEventStruct } from '@metamask/snaps-sdk';
 import type { UserInputEvent } from '@metamask/snaps-sdk';
+import { FormSubmitEventStruct } from '@metamask/snaps-sdk';
+import {
+  array,
+  assert,
+  nonempty,
+  optional,
+  string,
+  type,
+} from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
 
-import type { ConfirmSendJsonRpcRequest } from '../../../../handlers/clientRequest/api';
+import { KnownCaip2ChainIdStruct } from '../../../../api';
 import { getMemoValidationErrorKey } from '../../../../handlers/clientRequest/utils';
 import type { ConfirmationDataContext } from '../../../../handlers/cronjob/refreshConfirmationContext';
 import {
   ConfirmationContextRefresherKey,
+  ConfirmationContextRefresherKeyStruct,
   RefreshConfirmationContextHandler,
 } from '../../../../handlers/cronjob/refreshConfirmationContext';
 import type {
@@ -19,9 +28,19 @@ import {
   updateInterfaceIfExists,
 } from '../../../../utils';
 import type { ConfirmationInterfaceKey } from '../../api';
-import { FetchStatus } from '../../api';
+import { ConfirmationInterfaceKeyStruct, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
 import { MemoEditFormNames } from './constants';
+
+/**
+ * Context fields required to save a memo and restart confirmation refresh.
+ */
+const MemoSaveContextStruct = type({
+  scope: KnownCaip2ChainIdStruct,
+  interfaceKey: ConfirmationInterfaceKeyStruct,
+  backgroundEventId: optional(string()),
+  enabledRefresherKeys: nonempty(array(ConfirmationContextRefresherKeyStruct)),
+});
 
 /**
  * Re-renders the interface with a patched context.
@@ -45,23 +64,6 @@ async function reRender(
 }
 
 /**
- * Whether this confirmation has a live refresh pipeline to restart.
- *
- * Hard pre-submit error dialogs have `request` but no transaction /
- * localSimulation refresh — still allow saving the memo onto context.
- *
- * @param context - Confirmation interface context.
- * @returns True when Save should cancel-and-replace the refresh pipeline.
- */
-function canRestartRefresh(context: Record<string, Json>): boolean {
-  return (
-    typeof context.transaction === 'string' &&
-    typeof context.accountId === 'string' &&
-    context.transactionsFetchStatus !== undefined
-  );
-}
-
-/**
  * Opens the memo edit screen from send confirmation.
  *
  * @param options - The user input handler context.
@@ -76,6 +78,7 @@ async function onOpenClick(
   await reRender(id, context, {
     memoScreen: true,
     memoError: null,
+    memoDraft: null,
   });
 }
 
@@ -96,8 +99,8 @@ function memoFromSubmitEvent(event: UserInputEvent): string {
 
 /**
  * Saves the memo onto confirmation context and restarts the open-time
- * preference-enabled refreshers when a live refresh pipeline is present, so
- * clearing a required memo cannot leave Confirm enabled on a stale success.
+ * preference-enabled refreshers so clearing a required memo cannot leave
+ * Confirm enabled on a stale success.
  *
  * @param options - The user input handler context.
  */
@@ -112,19 +115,12 @@ async function onSaveSubmit(
   const memo = memoFromSubmitEvent(event);
   const memoValidationError = getMemoValidationErrorKey(memo);
   if (memoValidationError) {
-    // Keep the submitted text in `memo` so the input is not reset when we
-    // re-render with the validation error.
+    // Keep the submitted text in `memoDraft` so the input is not reset, without
+    // committing it as the saved memo (Back must not persist drafts).
     await reRender(id, context, {
-      memo,
+      memoDraft: memo,
       memoError: memoValidationError,
     });
-    return;
-  }
-
-  const { interfaceKey } = context as {
-    interfaceKey?: ConfirmationInterfaceKey;
-  };
-  if (!interfaceKey) {
     return;
   }
 
@@ -134,75 +130,65 @@ async function onSaveSubmit(
     await getInterfaceContextIfExists<ConfirmationDataContext>(id);
   const baseContext = interfaceContext ?? context;
 
-  const nextContext = {
-    ...baseContext,
-    memo,
-    memoScreen: false,
-    memoError: null,
-  };
+  try {
+    assert(baseContext, MemoSaveContextStruct);
 
-  const { scope } = baseContext;
-  const enabledRefresherKeys = Array.isArray(baseContext.enabledRefresherKeys)
-    ? (baseContext.enabledRefresherKeys as ConfirmationContextRefresherKey[])
-    : [];
+    const { scope, interfaceKey, backgroundEventId, enabledRefresherKeys } =
+      baseContext;
 
-  if (
-    canRestartRefresh(baseContext) &&
-    typeof scope === 'string' &&
-    enabledRefresherKeys.length > 0
-  ) {
-    let previousEventId: string | undefined;
-    if (typeof baseContext.backgroundEventId === 'string') {
-      previousEventId = baseContext.backgroundEventId;
-    } else if (typeof context.backgroundEventId === 'string') {
-      previousEventId = context.backgroundEventId;
-    }
-
-    // Clear any prior banner; the restarted transaction refresher will set a
-    // new error (e.g. RequiresMemo again) or leave it cleared on success.
     // Only reset slices that were preference-enabled at open.
-    const refreshedContext: Record<string, Json> = {
-      ...nextContext,
+    const nextContext: Record<string, Json> = {
+      ...baseContext,
+      memo,
+      memoDraft: null,
+      memoScreen: false,
+      memoError: null,
+      // Clear any prior banner; the restarted transaction refresher will set a
+      // new error (e.g. RequiresMemo again) or leave it cleared on success.
       errorMessage: null,
     };
     if (
       enabledRefresherKeys.includes(ConfirmationContextRefresherKey.Transaction)
     ) {
-      refreshedContext.transactionsFetchStatus = FetchStatus.Fetched;
+      nextContext.transactionsFetchStatus = FetchStatus.Fetched;
     }
     if (enabledRefresherKeys.includes(ConfirmationContextRefresherKey.Scan)) {
-      refreshedContext.scanFetchStatus = FetchStatus.Fetching;
+      nextContext.scanFetchStatus = FetchStatus.Fetching;
     }
 
-    const backgroundEventId =
+    const nextBackgroundEventId =
       await RefreshConfirmationContextHandler.scheduleBackgroundEvent(
         {
-          scope: scope as ConfirmSendJsonRpcRequest['params']['scope'],
+          scope,
           interfaceId: id,
           interfaceKey,
           refresherKeys: enabledRefresherKeys,
         },
         Duration.OneSecond,
-        { replaceEventId: previousEventId },
+        { replaceEventId: backgroundEventId },
       );
-    const contextWithEventId = { ...refreshedContext, backgroundEventId };
+
+    const contextWithEventId = {
+      ...nextContext,
+      backgroundEventId: nextBackgroundEventId,
+    };
     await updateInterfaceIfExists(
       id,
       renderConfirmationView(interfaceKey, contextWithEventId),
       contextWithEventId,
     );
-    return;
+  } catch {
+    await reRender(id, context, {
+      memoScreen: true,
+      memoDraft: memo,
+      memoError: 'confirmation.memo.error.saveFailed',
+    });
   }
-
-  await updateInterfaceIfExists(
-    id,
-    renderConfirmationView(interfaceKey, nextContext),
-    nextContext,
-  );
 }
 
 /**
- * Returns from the memo edit screen to the confirmation view.
+ * Returns from the memo edit screen to the confirmation view without
+ * committing any in-progress draft.
  *
  * @param options - The user input handler context.
  */
@@ -216,6 +202,7 @@ async function onBackClick(
   await reRender(id, context, {
     memoScreen: false,
     memoError: null,
+    memoDraft: null,
   });
 }
 

@@ -127,6 +127,9 @@
     "confirmation.memo.error.tooLong": {
       "message": "Memo must be 28 bytes or fewer"
     },
+    "confirmation.memo.error.saveFailed": {
+      "message": "No se pudo guardar el memo. Inténtalo de nuevo."
+    },
     "confirmation.asset": {
       "message": "Asset"
     },

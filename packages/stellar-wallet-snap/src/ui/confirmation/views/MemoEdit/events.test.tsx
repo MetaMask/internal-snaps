@@ -48,6 +48,16 @@ const scheduleArgs = {
   refresherKeys: allRefresherKeys,
 };
 
+const liveSendContext = {
+  interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+  scope: 'stellar:pubnet',
+  transaction: 'xdr',
+  accountId: 'account-id',
+  transactionsFetchStatus: FetchStatus.Fetched,
+  enabledRefresherKeys: allRefresherKeys,
+  backgroundEventId: 'live-event',
+};
+
 describe('MemoEdit event handlers', () => {
   const handlers = createEventHandlers();
   let scheduleSpy: jest.SpiedFunction<
@@ -80,6 +90,7 @@ describe('MemoEdit event handlers', () => {
           interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
           errorMessage: 'confirmation.txnError.requiresMemo',
           backgroundEventId: 'live-event',
+          memoDraft: 'stale-draft',
         },
       });
 
@@ -90,6 +101,7 @@ describe('MemoEdit event handlers', () => {
         expect.objectContaining({
           memoScreen: true,
           memoError: null,
+          memoDraft: null,
           backgroundEventId: 'live-event',
         }),
       );
@@ -99,12 +111,7 @@ describe('MemoEdit event handlers', () => {
   describe('Save', () => {
     it('restarts open-time enabled refresher keys using the latest event id', async () => {
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
-        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-        scope: 'stellar:pubnet',
-        transaction: 'xdr',
-        accountId: 'account-id',
-        transactionsFetchStatus: FetchStatus.Fetched,
-        enabledRefresherKeys: allRefresherKeys,
+        ...liveSendContext,
         backgroundEventId: 'latest-event',
       });
 
@@ -112,10 +119,7 @@ describe('MemoEdit event handlers', () => {
         id: 'interface-id',
         event: formSubmitEvent('exchange-ref'),
         context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          scope: 'stellar:pubnet',
-          transaction: 'xdr',
-          accountId: 'account-id',
+          ...liveSendContext,
           transactionsFetchStatus: FetchStatus.Error,
           errorMessage: 'confirmation.txnError.requiresMemo',
           backgroundEventId: 'stale-click-event',
@@ -132,6 +136,7 @@ describe('MemoEdit event handlers', () => {
         'RENDERED',
         expect.objectContaining({
           memo: 'exchange-ref',
+          memoDraft: null,
           memoScreen: false,
           errorMessage: null,
           transactionsFetchStatus: FetchStatus.Fetched,
@@ -144,25 +149,17 @@ describe('MemoEdit event handlers', () => {
     it('schedules only preference-enabled keys from the open-time snapshot', async () => {
       const transactionOnly = [ConfirmationContextRefresherKey.Transaction];
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
-        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-        scope: 'stellar:pubnet',
-        transaction: 'xdr',
-        accountId: 'account-id',
+        ...liveSendContext,
         transactionsFetchStatus: FetchStatus.Error,
         enabledRefresherKeys: transactionOnly,
-        backgroundEventId: 'live-event',
       });
 
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',
         event: formSubmitEvent('memo-only-tx'),
         context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          scope: 'stellar:pubnet',
-          transaction: 'xdr',
-          accountId: 'account-id',
+          ...liveSendContext,
           transactionsFetchStatus: FetchStatus.Error,
-          backgroundEventId: 'live-event',
         },
       });
 
@@ -196,14 +193,9 @@ describe('MemoEdit event handlers', () => {
       // Click/open still see the in-flight tick id; Save must cancel that id and
       // persist a new one so the orphan tick observes ownership loss.
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
-        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-        scope: 'stellar:pubnet',
-        transaction: 'xdr',
-        accountId: 'account-id',
-        transactionsFetchStatus: FetchStatus.Fetched,
+        ...liveSendContext,
         scanFetchStatus: FetchStatus.Fetched,
         memoScreen: true,
-        enabledRefresherKeys: allRefresherKeys,
         backgroundEventId: 'in-flight-tick-event',
       });
 
@@ -211,11 +203,7 @@ describe('MemoEdit event handlers', () => {
         id: 'interface-id',
         event: formSubmitEvent('during-flight'),
         context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          scope: 'stellar:pubnet',
-          transaction: 'xdr',
-          accountId: 'account-id',
-          transactionsFetchStatus: FetchStatus.Fetched,
+          ...liveSendContext,
           scanFetchStatus: FetchStatus.Fetched,
           memoScreen: true,
           backgroundEventId: 'in-flight-tick-event',
@@ -240,29 +228,18 @@ describe('MemoEdit event handlers', () => {
 
     it('restarts when clearing a memo so Confirm cannot stay enabled on stale success', async () => {
       jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
-        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-        scope: 'stellar:pubnet',
-        transaction: 'xdr',
-        accountId: 'account-id',
-        transactionsFetchStatus: FetchStatus.Fetched,
+        ...liveSendContext,
         scanFetchStatus: FetchStatus.Fetched,
         memo: 'exchange-ref',
-        enabledRefresherKeys: allRefresherKeys,
-        backgroundEventId: 'live-event',
       });
 
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',
         event: formSubmitEvent(''),
         context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          scope: 'stellar:pubnet',
-          transaction: 'xdr',
-          accountId: 'account-id',
-          transactionsFetchStatus: FetchStatus.Fetched,
+          ...liveSendContext,
           scanFetchStatus: FetchStatus.Fetched,
           memo: 'exchange-ref',
-          backgroundEventId: 'live-event',
         },
       });
 
@@ -283,7 +260,31 @@ describe('MemoEdit event handlers', () => {
       );
     });
 
-    it('persists the memo without rescheduling when there is no live refresh pipeline', async () => {
+    it('keeps a draft and shows validation error without committing memo or rescheduling', async () => {
+      await handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: formSubmitEvent('é'.repeat(15)),
+        context: {
+          ...liveSendContext,
+          memo: 'committed-memo',
+          errorMessage: 'confirmation.txnError.requiresMemo',
+          transactionsFetchStatus: FetchStatus.Error,
+        },
+      });
+
+      expect(scheduleSpy).not.toHaveBeenCalled();
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.objectContaining({
+          memo: 'committed-memo',
+          memoDraft: 'é'.repeat(15),
+          memoError: 'confirmation.memo.error.tooLong',
+        }),
+      );
+    });
+
+    it('shows a save error when context cannot restart refresh', async () => {
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',
         event: formSubmitEvent('optional-ref'),
@@ -298,32 +299,66 @@ describe('MemoEdit event handlers', () => {
         'interface-id',
         'RENDERED',
         expect.objectContaining({
+          memoScreen: true,
+          memoDraft: 'optional-ref',
+          memoError: 'confirmation.memo.error.saveFailed',
+        }),
+      );
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.not.objectContaining({
           memo: 'optional-ref',
-          memoScreen: false,
         }),
       );
     });
 
-    it('keeps the memo and shows validation error without rescheduling', async () => {
+    it('shows a save error when scheduling fails', async () => {
+      jest
+        .mocked(getInterfaceContextIfExists)
+        .mockResolvedValue(liveSendContext);
+      scheduleSpy.mockRejectedValueOnce(new Error('schedule failed'));
+
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',
-        event: formSubmitEvent('é'.repeat(15)),
-        context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          errorMessage: 'confirmation.txnError.requiresMemo',
-          transaction: 'xdr',
-          accountId: 'account-id',
-          transactionsFetchStatus: FetchStatus.Error,
-        },
+        event: formSubmitEvent('exchange-ref'),
+        context: liveSendContext,
       });
 
-      expect(scheduleSpy).not.toHaveBeenCalled();
       expect(updateInterfaceIfExists).toHaveBeenCalledWith(
         'interface-id',
         'RENDERED',
         expect.objectContaining({
-          memo: 'é'.repeat(15),
+          memoScreen: true,
+          memoDraft: 'exchange-ref',
+          memoError: 'confirmation.memo.error.saveFailed',
+        }),
+      );
+    });
+  });
+
+  describe('Back', () => {
+    it('closes the editor without committing the draft memo', async () => {
+      await handlers[MemoEditFormNames.Back]?.({
+        id: 'interface-id',
+        event: buttonEvent(MemoEditFormNames.Back),
+        context: {
+          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+          memo: 'committed-memo',
+          memoDraft: 'unsaved-draft',
           memoError: 'confirmation.memo.error.tooLong',
+          memoScreen: true,
+        },
+      });
+
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.objectContaining({
+          memo: 'committed-memo',
+          memoDraft: null,
+          memoError: null,
+          memoScreen: false,
         }),
       );
     });
