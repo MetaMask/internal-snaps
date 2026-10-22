@@ -178,7 +178,7 @@ async function onSaveSubmit(
       contextWithEventId,
     );
   } catch {
-    await reRender(id, context, {
+    await reRender(id, baseContext, {
       memoScreen: true,
       memoDraft: memo,
       memoError: 'confirmation.memo.error.saveFailed',
