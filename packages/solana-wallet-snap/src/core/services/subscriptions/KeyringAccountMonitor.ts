@@ -330,6 +330,8 @@ export class KeyringAccountMonitor {
     const decimals = 9;
 
     await Promise.all([
+      // Update the balance of the native asset; silent while the assets
+      // migration is active (see `AssetsService.save`)
       this.#assetsService.save({
         assetType: `${network}/${SolanaCaip19Tokens.SOL}`,
         keyringAccountId: keyringAccount.id,
@@ -407,7 +409,8 @@ export class KeyringAccountMonitor {
     ];
 
     await Promise.all([
-      // Update the balance of the token asset
+      // Update the balance of the token asset; silent while the assets
+      // migration is active (see `AssetsService.save`)
       this.#assetsService.save({
         assetType,
         keyringAccountId: keyringAccount.id,
