@@ -159,11 +159,6 @@
       "count": 2
     }
   },
-  "packages/solana-wallet-snap/src/core/clients/security-alerts-api/types.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
-  },
   "packages/solana-wallet-snap/src/core/fees/FeeCalculator.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
@@ -459,9 +454,9 @@
       "count": 1
     }
   },
-  "packages/solana-wallet-snap/src/core/services/transaction-scan/TransactionScan.ts": {
+  "packages/solana-wallet-snap/src/core/services/transaction-scan/TransactionScanService.ts": {
     "no-restricted-syntax": {
-      "count": 5
+      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/core/services/transactions/TransactionMapper.test.ts": {
@@ -1127,11 +1122,6 @@
     },
     "n/no-sync": {
       "count": 3
-    }
-  },
-  "packages/stellar-wallet-snap/src/services/transaction-scan/SecurityAlertsApiClient.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": {
-      "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/services/transaction-scan/TransactionScanService.test.ts": {

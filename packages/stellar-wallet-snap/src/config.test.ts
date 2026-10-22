@@ -24,6 +24,7 @@ const FULL_ENVIRONMENT = {
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
+  enableAssetMigration: false,
   transaction: {
     timeout: '120',
     pollingAttempts: '5',
@@ -126,6 +127,7 @@ describe('ConfigProvider', () => {
         },
       });
       expect(config.selectedNetwork).toBe(KnownCaip2ChainId.Mainnet);
+      expect(config.enableAssetMigration).toBe(false);
     });
 
     it.each([

@@ -19,7 +19,8 @@ import type {
   IConfirmationContextRefresher,
 } from './api';
 
-type SecurityScanContext = ConfirmationDataContext & ContextWithSecurityScan;
+type SecurityScanContext = ConfirmationDataContext &
+  ContextWithSecurityScan & { account?: { type: string } };
 
 /**
  * Refreshes the Blockaid scan in the confirmation dialog context.
@@ -94,9 +95,10 @@ export class ConfirmationScanRefresher implements IConfirmationContextRefresher 
     const preferRemoteEstimatedChanges = Boolean(scanCtx.remoteSimulation);
 
     try {
-      const scan = await this.#transactionScanService.scanTransactionSafe({
+      const scan = await this.#transactionScanService.scanTransaction({
         ...scanRequest,
         options,
+        accountType: scanCtx.account?.type,
       });
 
       return {

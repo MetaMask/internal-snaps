@@ -81,18 +81,18 @@ module.exports = {
   // NOTE: This must be synchronized with the `paths` option in `tsconfig.packages.json`.
   moduleNameMapper: {
     '^@metamask/utils/node$': require.resolve('@metamask/utils/node'),
-    // ESM-only package with an `exports`-only manifest: resolve it explicitly.
-    '^@metamask/base-data-service$':
-      '<rootDir>/../../node_modules/@metamask/base-data-service/dist/index.js',
-    '^@metamask/remote-feature-flag-controller$':
-      '<rootDir>/../../node_modules/@metamask/remote-feature-flag-controller/dist/index.js',
     // Matches bare package specifiers only (e.g. `@metamask/foo`), so subpath
     // exports such as `@metamask/foo/node` keep resolving through the package
     // `exports` map instead of being redirected to a non-existent source path.
     '^@metamask/([^/]+)$': [
       '<rootDir>/../$1/src',
       // Some @metamask/* packages we are referencing aren't in this monorepo,
-      // so in that case use their published versions
+      // so in that case use their published versions. Recent releases are
+      // ESM-only (an `exports`-only manifest without `main`), so prefer the
+      // ESM dist entry and let `transformIgnorePatterns` below transpile them
+      // for CJS Jest; packages that still ship a CJS `main` (no ESM
+      // `dist/index.js`) fall through to their package directory.
+      '<rootDir>/../../node_modules/@metamask/$1/dist/index.js',
       '<rootDir>/../../node_modules/@metamask/$1',
     ],
   },
@@ -201,9 +201,7 @@ module.exports = {
   // transform: undefined,
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
-  transformIgnorePatterns: [
-    '/node_modules/(?!(@metamask/base-data-service|@metamask/remote-feature-flag-controller|lodash-es)/)',
-  ],
+  transformIgnorePatterns: ['/node_modules/(?!(@metamask|lodash-es)/)'],
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
   // unmockedModulePathPatterns: undefined,

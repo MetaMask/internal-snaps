@@ -28,10 +28,10 @@ module.exports = {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 75.62,
-      functions: 85.47,
-      lines: 88.95,
-      statements: 88.97,
+      branches: 75.8,
+      functions: 85.61,
+      lines: 88.94,
+      statements: 88.95,
     },
   },
 
@@ -40,6 +40,6 @@ module.exports = {
   // extensionsToTreatAsEsm) needs that flag, but then `jest` is not injected as
   // a global and CJS packages like lodash break named imports.
   transformIgnorePatterns: [
-    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml|@metamask/base-data-service|@metamask/remote-feature-flag-controller|lodash-es)/)',
+    '/node_modules/(?!.*(?:@exodus|uint8array-extras|@noble|eventsource|smol-toml|@metamask|lodash-es)/)',
   ],
 };

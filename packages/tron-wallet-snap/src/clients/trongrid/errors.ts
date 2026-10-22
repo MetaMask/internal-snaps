@@ -1,6 +1,5 @@
 import type { FetchPolicyError } from '@metamask/snap-networks-utils';
-
-import { parseRetryAfter } from '../../utils/fetchPolicy';
+import { parseRetryAfter } from '@metamask/snap-networks-utils';
 
 /**
  * Error thrown when a TronGrid HTTP request fails with a non-2xx status.

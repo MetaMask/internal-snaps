@@ -46,9 +46,9 @@ describe('ConfirmationScanRefresher', () => {
 
   function setup() {
     const transactionScanService: jest.Mocked<
-      Pick<TransactionScanService, 'scanTransactionSafe'>
+      Pick<TransactionScanService, 'scanTransaction'>
     > = {
-      scanTransactionSafe: jest.fn().mockResolvedValue(scanResult),
+      scanTransaction: jest.fn().mockResolvedValue(scanResult),
     };
     const refresher = new ConfirmationScanRefresher({
       logger,
@@ -83,7 +83,7 @@ describe('ConfirmationScanRefresher', () => {
 
     const result = await refresher.refresh(createScanContext());
 
-    expect(transactionScanService.scanTransactionSafe).toHaveBeenCalledWith({
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith({
       ...securityScanRequest,
       options: [
         TransactionScanOption.Simulation,
@@ -96,6 +96,28 @@ describe('ConfirmationScanRefresher', () => {
         scanFetchStatus: FetchStatus.Fetched,
       },
       reschedule: true,
+    });
+  });
+
+  it('passes the context account type for scan analytics', async () => {
+    const { refresher, transactionScanService } = setup();
+
+    await refresher.refresh(
+      createScanContext({
+        account: {
+          type: 'xlm:account',
+          address: securityScanRequest.accountAddress,
+        },
+      }),
+    );
+
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith({
+      ...securityScanRequest,
+      options: [
+        TransactionScanOption.Simulation,
+        TransactionScanOption.Validation,
+      ],
+      accountType: 'xlm:account',
     });
   });
 
@@ -113,7 +135,7 @@ describe('ConfirmationScanRefresher', () => {
       }),
     );
 
-    expect(transactionScanService.scanTransactionSafe).toHaveBeenCalledWith({
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith({
       ...securityScanRequest,
       options: [TransactionScanOption.Simulation],
     });
@@ -124,7 +146,7 @@ describe('ConfirmationScanRefresher', () => {
 
     await refresher.refresh(createScanContext({ remoteSimulation: false }));
 
-    expect(transactionScanService.scanTransactionSafe).toHaveBeenCalledWith({
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith({
       ...securityScanRequest,
       options: [TransactionScanOption.Validation],
     });
@@ -183,7 +205,7 @@ describe('ConfirmationScanRefresher', () => {
       ...scanResult,
       estimatedChanges: { assets: [] },
     };
-    transactionScanService.scanTransactionSafe.mockResolvedValueOnce(
+    transactionScanService.scanTransaction.mockResolvedValueOnce(
       emptyRemoteScan,
     );
 
@@ -250,7 +272,7 @@ describe('ConfirmationScanRefresher', () => {
 
   it('returns error status preserving estimated changes when scan returns null', async () => {
     const { refresher, transactionScanService } = setup();
-    transactionScanService.scanTransactionSafe.mockResolvedValueOnce(null);
+    transactionScanService.scanTransaction.mockResolvedValueOnce(null);
     const localEstimatedChanges = {
       assets: [
         {
