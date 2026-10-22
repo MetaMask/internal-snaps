@@ -45,10 +45,12 @@ export class AssetsService {
   }
 
   /**
-   * Whether asset reads should be served by the AssetsController, as told by
-   * the per-network migration remote feature flag.
+   * Whether the Solana assets migration is active, as told by the per-network
+   * migration remote feature flag. Once active, asset reads go through the
+   * Core adapter, and saving the Snap's own asset state is silent: local
+   * state stays warm, but no keyring events are emitted.
    */
-  async #shouldReturnAssetsFromCore(): Promise<boolean> {
+  async isAssetsMigrationEnabled(): Promise<boolean> {
     const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
       SNAPS_ASSETS_MIGRATION_FLAG_KEYS.solana,
     );
@@ -102,8 +104,20 @@ export class AssetsService {
     await this.saveMany([asset]);
   }
 
+  /**
+   * Persists the given assets to the Snap's local state. While the assets
+   * migration is active, this is silent: the AssetsController owns the
+   * client's asset view, so no keyring events are emitted. Otherwise, the
+   * corresponding keyring events are emitted too.
+   *
+   * @param assets - The assets to persist.
+   */
   async saveMany(assets: AssetEntity[]): Promise<void> {
-    return this.#snapAdapter.saveMany(assets);
+    if (await this.isAssetsMigrationEnabled()) {
+      return this.#snapAdapter.saveMany(assets);
+    }
+
+    return this.#snapAdapter.saveManyAndEmit(assets);
   }
 
   async getAll(): Promise<AssetEntity[]> {
@@ -120,7 +134,7 @@ export class AssetsService {
     accountId: string,
     assetId: CaipAssetType,
   ): Promise<AssetEntity | null> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       return this.#coreAdapter.getAccountAssetByID(accountId, assetId);
     }
 
@@ -138,7 +152,7 @@ export class AssetsService {
     accountId: string,
     assetIds: CaipAssetType[],
   ): Promise<Record<CaipAssetType, AssetEntity | null>> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       const assets = await this.#coreAdapter.getAccountAssetsByIDs(
         accountId,
         assetIds,
@@ -162,7 +176,7 @@ export class AssetsService {
     scope: CaipChainId,
     accountId: string,
   ): Promise<AssetEntity[]> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       return this.#coreAdapter.getAccountAssetsByScope(scope, accountId);
     }
 
@@ -175,7 +189,7 @@ export class AssetsService {
    * @param accountId - Keyring account ID.
    */
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
-    if (await this.#shouldReturnAssetsFromCore()) {
+    if (await this.isAssetsMigrationEnabled()) {
       return this.#coreAdapter.getAccountAssets(accountId);
     }
 

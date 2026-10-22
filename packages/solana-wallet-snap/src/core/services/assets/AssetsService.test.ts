@@ -270,6 +270,17 @@ describe('AssetsService', () => {
       expect(saveManySpy).toHaveBeenCalledWith(MOCK_ASSET_ENTITIES);
     });
 
+    it('persists without emitting keyring events while the assets migration is active', async () => {
+      enableAssetsMigration();
+
+      await assetsService.saveMany(MOCK_ASSET_ENTITIES);
+
+      expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
+        MOCK_ASSET_ENTITIES,
+      );
+      expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+    });
+
     it('emits event "AccountAssetListUpdated" with ALL assets in added list, and removed assets in removed list', async () => {
       jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
 
@@ -838,6 +849,18 @@ describe('AssetsService', () => {
       expect(
         mockAssetsRepository.findByKeyringAccountId,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('isAssetsMigrationEnabled', () => {
+    it('returns false while the migration is off', async () => {
+      expect(await assetsService.isAssetsMigrationEnabled()).toBe(false);
+    });
+
+    it('returns true once the migration is active', async () => {
+      enableAssetsMigration();
+
+      expect(await assetsService.isAssetsMigrationEnabled()).toBe(true);
     });
   });
 
