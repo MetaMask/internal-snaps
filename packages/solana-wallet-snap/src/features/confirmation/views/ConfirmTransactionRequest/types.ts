@@ -22,6 +22,10 @@ export type ConfirmTransactionRequestContext = {
   tokenPricesFetchStatus: FetchStatus;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
+  /** Whether the malicious-acknowledgement screen is currently shown. */
+  acknowledgementScreen: boolean;
+  /** Whether the malicious-risk checkbox is currently checked. */
+  acknowledged: boolean;
   origin: string;
   advanced: {
     shown: boolean;
