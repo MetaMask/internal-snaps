@@ -10,7 +10,7 @@
  *   STELLAR_ACCOUNT_INDICES   comma-separated, default 0,1
  *
  * Prints STELLAR_SECRET_1 / STELLAR_SECRET_2 lines you can paste into .env
- * for horizon-event-fixture.mjs. Do not commit those values.
+ * for test-live-complex-transaction.mjs. Do not commit those values.
  */
 
 import { SLIP10Node } from '@metamask/key-tree';
