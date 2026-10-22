@@ -37,6 +37,8 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   transaction: '',
   scan: null,
   scanFetchStatus: 'fetching',
+  acknowledgementScreen: false,
+  acknowledged: false,
   feeEstimatedInSol: '0',
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetching',

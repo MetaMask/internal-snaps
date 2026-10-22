@@ -38,7 +38,7 @@ jest.mock('../../../utils/interface', () => ({
 jest.mock(
   '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest',
   () => ({
-    ConfirmTransactionRequest: () => null,
+    ConfirmTransactionRequest: (): null => null,
   }),
 );
 
@@ -54,7 +54,15 @@ jest.mock('../../../../snapContext', () => ({
   },
 }));
 
-const setupTest = () => {
+const setupTest = (): {
+  account: { address: string };
+  transaction: string;
+  scope: Network;
+  method: SolMethod;
+  origin: string;
+  preferences: { simulateOnChainActions: boolean };
+  scanFetchStatus: string;
+} => {
   jest.clearAllMocks();
 
   const interfaceContext = {
@@ -78,6 +86,9 @@ const setupTest = () => {
   (updateInterface as jest.Mock).mockResolvedValue(undefined);
   (serialize as jest.Mock).mockImplementation((value) => value);
   jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
+  (globalThis as unknown as { snap: unknown }).snap = {
+    request: jest.fn().mockResolvedValue(undefined),
+  };
 
   return interfaceContext;
 };
@@ -167,7 +178,7 @@ describe('refreshConfirmationEstimation', () => {
     expect(isTransactionBlockhashExpired).not.toHaveBeenCalled();
   });
 
-  it('preserves the existing scan without a fetching state while checking a valid blockhash without simulation', async () => {
+  it('re-scans validation-only and preserves the scan result without a fetching state when simulation is disabled', async () => {
     const existingScan = { status: 'SUCCESS' };
     const interfaceContext = {
       ...setupTest(),
@@ -176,12 +187,18 @@ describe('refreshConfirmationEstimation', () => {
     };
 
     (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
+    (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue({
+      status: 'SUCCESS',
+    });
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,
     });
 
-    expect(transactionScanService.scanTransaction).not.toHaveBeenCalled();
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledTimes(1);
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ options: ['validation'] }),
+    );
     expect(updateInterface).not.toHaveBeenCalledWith(
       'interface-id',
       null,
@@ -191,8 +208,68 @@ describe('refreshConfirmationEstimation', () => {
       'interface-id',
       null,
       expect.objectContaining({
-        scan: existingScan,
+        scan: { status: 'SUCCESS' },
         scanFetchStatus: 'fetched',
+      }),
+    );
+  });
+
+  it('re-scans with preference-respecting options when simulation is enabled', async () => {
+    setupTest();
+
+    (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue({
+      status: 'SUCCESS',
+    });
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ options: ['simulation'] }),
+    );
+  });
+
+  it('never sets the fetching state while re-scanning so confirm stays enabled', async () => {
+    setupTest();
+
+    (transactionScanService.scanTransaction as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          // The scan is in flight while the pre-scan interface update happens.
+          setTimeout(() => resolve({ status: 'SUCCESS' }), 50);
+        }),
+    );
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).not.toHaveBeenCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({ scanFetchStatus: 'fetching' }),
+    );
+    expect(updateInterface).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks the scan as errored without blocking confirm when the re-scan fails', async () => {
+    setupTest();
+
+    (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue(
+      null,
+    );
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        scan: null,
+        scanFetchStatus: 'error',
       }),
     );
   });
