@@ -528,7 +528,28 @@ export class SnapAssetsAdapter {
     await this.saveMany([asset]);
   }
 
+  /**
+   * Persists the given assets to local state without emitting any keyring
+   * events. Use when the client's asset view is owned by someone else (e.g.
+   * while the assets migration is active), but the local state should stay
+   * warm.
+   *
+   * @param assets - The assets to persist.
+   */
   async saveMany(assets: AssetEntity[]): Promise<void> {
+    this.#logger.info('Saving assets without emitting keyring events', assets);
+
+    await this.#assetsRepository.saveMany(assets);
+  }
+
+  /**
+   * Persists the given assets to local state and emits the corresponding
+   * keyring events to inform the client about new/removed assets and changed
+   * balances.
+   *
+   * @param assets - The assets to persist and notify about.
+   */
+  async saveManyAndEmit(assets: AssetEntity[]): Promise<void> {
     this.#logger.info('Saving assets', assets);
 
     /**

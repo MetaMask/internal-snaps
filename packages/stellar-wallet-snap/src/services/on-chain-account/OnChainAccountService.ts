@@ -1,22 +1,13 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
-import { KnownCaip2ChainId } from '../../api';
 import type { KnownCaip19Sep41AssetId } from '../../api';
-import {
-  entries,
-  getAssetReference,
-  isSep41Id,
-  keys,
-  parseClassicAssetCodeIssuer,
-  rethrowIfInstanceElseThrow,
-  toSmallestUnit,
-  trackError,
-} from '../../utils';
+import { AssetType, KnownCaip2ChainId } from '../../api';
+import { entries } from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type {
   AssetMetadataService,
-  StellarAssetMetadata,
+  Sep41StellarAssetMetadata,
 } from '../asset-metadata';
 import type { AssetsService } from '../assets';
 import {
@@ -219,21 +210,17 @@ export class OnChainAccountService {
     assetIds?: KnownCaip19Sep41AssetId[],
   ): Promise<Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>> {
     const sep41Assets =
-      assetIds === undefined
-        ? await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope)
-        : await this.#assetMetadataService.fetchAndPersistAssetsByAssetIds(
-            assetIds,
-          );
-
-    const assetMetadataByAssetId: Record<
-      KnownCaip19Sep41AssetId,
-      StellarAssetMetadata
+      await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
+    const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
+    const assetMetadataByAssetId: Partial<
+      Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>
     > = {};
     for (const assetMetadata of sep41Assets) {
-      const { assetId } = assetMetadata;
-      if (!isSep41Id(assetId)) {
+      if (assetMetadata.assetType !== AssetType.Sep41) {
         continue;
       }
+      const { assetId } = assetMetadata;
+      sep41AssetIds.push(assetId);
       assetMetadataByAssetId[assetId] = assetMetadata;
     }
 
@@ -291,7 +278,7 @@ export class OnChainAccountService {
     onChainAccount: OnChainAccount;
     assetId: KnownCaip19Sep41AssetId;
     balance: BigNumber | null | undefined;
-    assetMetadata: StellarAssetMetadata;
+    assetMetadata: Sep41StellarAssetMetadata;
   }): void {
     // A cell can fail without failing the batch, for example reading a
     // trustline asset through its SEP-41 contract when the account is not
@@ -527,7 +514,7 @@ export class OnChainAccountService {
   async synchronize(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<void> {
     if (await this.#assetsService.isMigrationEnabled()) {
       this.#logger.debug(

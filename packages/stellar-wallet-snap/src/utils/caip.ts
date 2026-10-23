@@ -13,6 +13,8 @@ import {
   KnownCaip19ClassicAssetStruct,
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdMap,
+  KnownCaip19Slip44IdStruct,
+  KnownCaip2ChainIdStruct,
 } from '../api';
 
 /**
@@ -64,9 +66,7 @@ export function isStellarAssetId(assetId: string): boolean {
 export function isSlip44Id(
   assetId: KnownCaip19AssetIdOrSlip44Id | string,
 ): assetId is KnownCaip19Slip44Id {
-  return Object.values(KnownCaip19Slip44IdMap).includes(
-    assetId as KnownCaip19Slip44Id,
-  );
+  return KnownCaip19Slip44IdStruct.is(assetId);
 }
 
 /**
@@ -78,8 +78,7 @@ export function isSlip44Id(
 export function isSep41Id(
   assetId: KnownCaip19AssetIdOrSlip44Id | string,
 ): assetId is KnownCaip19Sep41AssetId {
-  const [error] = KnownCaip19Sep41AssetStruct.validate(assetId);
-  return error === undefined;
+  return KnownCaip19Sep41AssetStruct.is(assetId);
 }
 
 /**
@@ -91,8 +90,7 @@ export function isSep41Id(
 export function isClassicAssetId(
   assetId: KnownCaip19AssetIdOrSlip44Id | string,
 ): assetId is KnownCaip19ClassicAssetId {
-  const [error] = KnownCaip19ClassicAssetStruct.validate(assetId);
-  return error === undefined;
+  return KnownCaip19ClassicAssetStruct.is(assetId);
 }
 
 /**
@@ -106,6 +104,23 @@ export function getAssetReference(
 ): string {
   const { assetReference } = parseCaipAssetType(assetId);
   return assetReference;
+}
+
+/**
+ * Returns the known Stellar chain id from a CAIP-19 asset id.
+ *
+ * @param assetId - CAIP-19 asset id.
+ * @returns The CAIP-2 chain id, `stellar:pubnet` or `stellar:testnet`.
+ * @throws {Error} When the parsed chain id is not a known Stellar chain.
+ */
+export function getStellarAssetChainId(
+  assetId: KnownCaip19AssetIdOrSlip44Id,
+): KnownCaip2ChainId {
+  const { chainId } = parseCaipAssetType(assetId);
+  if (!KnownCaip2ChainIdStruct.is(chainId)) {
+    throw new Error(`Invalid chain id: ${chainId}`);
+  }
+  return chainId;
 }
 
 /**

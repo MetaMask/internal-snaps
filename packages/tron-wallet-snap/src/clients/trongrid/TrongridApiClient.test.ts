@@ -639,4 +639,102 @@ describe('TrongridApiClient', () => {
       });
     });
   });
+
+  describe('request cache', () => {
+    const mockAddress = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+
+    it('serves identical requests from the cache within the TTL', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        const mockTrc20Balances: Trc20Balance[] = [
+          { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' },
+        ];
+        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+          async () =>
+            // eslint-disable-next-line no-restricted-globals
+            new Response(
+              JSON.stringify({
+                data: mockTrc20Balances,
+                success: true,
+                meta: { at: 1770121997373, page_size: 4 },
+              }),
+              {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            ),
+        );
+
+        const first = await client.getTrc20BalancesByAddress(
+          Network.Mainnet,
+          mockAddress,
+        );
+        const cached = await client.getTrc20BalancesByAddress(
+          Network.Mainnet,
+          mockAddress,
+        );
+
+        expect(first).toStrictEqual(mockTrc20Balances);
+        expect(cached).toStrictEqual(mockTrc20Balances);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('refetches identical requests after the cache TTL elapses', async () => {
+      jest.useFakeTimers();
+      try {
+        await withTrongridApiClient(async ({ client }) => {
+          const mockTrc20Balances: Trc20Balance[] = [
+            { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' },
+          ];
+          const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+            async () =>
+              // eslint-disable-next-line no-restricted-globals
+              new Response(
+                JSON.stringify({
+                  data: mockTrc20Balances,
+                  success: true,
+                  meta: { at: 1770121997373, page_size: 4 },
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                },
+              ),
+          );
+
+          await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress);
+          jest.advanceTimersByTime(5_001);
+          await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress);
+
+          expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not deduplicate different requests', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+          async () =>
+            // eslint-disable-next-line no-restricted-globals
+            new Response(
+              JSON.stringify({
+                data: [],
+                success: true,
+                meta: { at: 1770121997373, page_size: 4 },
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } },
+            ),
+        );
+
+        await Promise.all([
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
+          client.getTrc20BalancesByAddress(Network.Nile, mockAddress),
+        ]);
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
 });

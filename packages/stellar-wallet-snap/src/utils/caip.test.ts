@@ -1,9 +1,11 @@
 import { Asset } from '@stellar/stellar-sdk';
 
+import type { KnownCaip19AssetIdOrSlip44Id } from '../api';
 import { AssetType, KnownCaip19Slip44IdMap, KnownCaip2ChainId } from '../api';
 import {
   getAssetReference,
   getSlip44AssetId,
+  getStellarAssetChainId,
   isClassicAssetId,
   isSep41Id,
   isSlip44Id,
@@ -94,6 +96,31 @@ describe('getAssetReference', () => {
       'CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J',
     );
     expect(getAssetReference(SLIP44_ASSET_ID)).toBe('148');
+  });
+});
+
+describe('getStellarAssetChainId', () => {
+  it('returns the known chain id for classic, sep41, and slip44 ids', () => {
+    expect(getStellarAssetChainId(CLASSIC_ASSET_ID)).toBe(
+      KnownCaip2ChainId.Mainnet,
+    );
+    expect(getStellarAssetChainId(SEP41_ASSET_ID)).toBe(
+      KnownCaip2ChainId.Mainnet,
+    );
+    expect(getStellarAssetChainId(SLIP44_ASSET_ID)).toBe(
+      KnownCaip2ChainId.Mainnet,
+    );
+    expect(
+      getStellarAssetChainId(KnownCaip19Slip44IdMap[KnownCaip2ChainId.Testnet]),
+    ).toBe(KnownCaip2ChainId.Testnet);
+  });
+
+  it('throws when the parsed chain id is not a known Stellar chain', () => {
+    expect(() =>
+      getStellarAssetChainId(
+        'eip155:1/slip44:60' as KnownCaip19AssetIdOrSlip44Id,
+      ),
+    ).toThrow('Invalid chain id: eip155:1');
   });
 });
 

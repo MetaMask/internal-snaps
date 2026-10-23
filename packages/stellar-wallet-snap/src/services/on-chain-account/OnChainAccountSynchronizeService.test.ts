@@ -6,7 +6,7 @@ import { hexToBytes } from '@metamask/utils';
 import { Keypair } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
-import { KnownCaip2ChainId } from '../../api';
+import { AssetType, KnownCaip2ChainId } from '../../api';
 import {
   MAX_INT64,
   NATIVE_ASSET_SYMBOL,
@@ -289,16 +289,14 @@ describe('OnChainAccountSynchronizeService', () => {
     const metadata = generateMockStellarAssetMetadata();
     const usdcSep41Row = metadata[USDC_SEP41];
     const usdtSep41Row = metadata[USDT_SEP41];
-    expect(usdcSep41Row).toBeDefined();
-    expect(usdtSep41Row).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by expects above
-    const assuredUsdcSep41Row = usdcSep41Row!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by expects above
-    const assuredUsdtSep41Row = usdtSep41Row!;
-    assuredUsdcSep41Row.units = [
-      { ...assuredUsdcSep41Row.units[0], decimals: 2 },
-    ];
-    const customSep41Assets = [assuredUsdcSep41Row, assuredUsdtSep41Row];
+    if (
+      usdcSep41Row?.assetType !== AssetType.Sep41 ||
+      usdtSep41Row?.assetType !== AssetType.Sep41
+    ) {
+      throw new Error('expected SEP-41 mock rows');
+    }
+    usdcSep41Row.units = [{ ...usdcSep41Row.units[0], decimals: 2 }];
+    const customSep41Assets = [usdcSep41Row, usdtSep41Row];
 
     const { signer, keyringAccount, binding } =
       setupOnChainAccountWithBalance('entropy-sync-2');

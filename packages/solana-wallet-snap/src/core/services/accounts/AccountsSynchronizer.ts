@@ -46,6 +46,8 @@ export class AccountsSynchronizer {
     return this.#coalescer.run(key, async () => {
       this.#logger.info('Synchronizing accounts', accountsToSync);
 
+      // While the assets migration is active, saving is silent: the
+      // AssetsController owns the client's asset view then.
       const responses = await Promise.allSettled(
         accountsToSync.map(async (account) =>
           this.#assetsService.fetchAccountAssets(account),

@@ -17,7 +17,7 @@ import {
   isSlip44Id,
   trackError,
 } from '../../utils';
-import type { StellarAssetMetadata } from '../asset-metadata';
+import type { Sep41StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
 import {
@@ -35,7 +35,10 @@ type AccountAssetListDelta =
 
 type Sep41BalanceFetchResult = {
   assetIds: KnownCaip19Sep41AssetId[];
-  assetMetadataByAssetId: Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>;
+  assetMetadataByAssetId: Record<
+    KnownCaip19Sep41AssetId,
+    Sep41StellarAssetMetadata
+  >;
   balancesByAccountId: Record<
     string,
     Record<string, BigNumber | null | undefined>
@@ -80,7 +83,7 @@ export class OnChainAccountSynchronizeService {
   async synchronize(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<void> {
     if (activatedAccountPairs.length === 0) {
       this.#logger.debug('No accounts to synchronize');
@@ -238,15 +241,14 @@ export class OnChainAccountSynchronizeService {
   }: {
     stellarAccountIds: string[];
     scope: KnownCaip2ChainId;
-    sep41Assets: StellarAssetMetadata[];
+    sep41Assets: Sep41StellarAssetMetadata[];
   }): Promise<Sep41BalanceFetchResult> {
     const assetIds: KnownCaip19Sep41AssetId[] = [];
     const assetMetadataByAssetId = sep41Assets.reduce<
-      Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>
+      Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>
     >((acc, asset) => {
-      const assetId = asset.assetId as KnownCaip19Sep41AssetId;
-      acc[assetId] = asset;
-      assetIds.push(assetId);
+      acc[asset.assetId] = asset;
+      assetIds.push(asset.assetId);
       return acc;
     }, {});
 

@@ -1,23 +1,64 @@
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import {
+  SNAPS_ASSETS_MIGRATION_FLAG_KEYS,
+  SnapsAssetsMigrationStage,
+  parseSnapsAssetsMigrationStage,
+} from '@metamask/assets-controller';
+import type {
+  ExtendedKeyringAccount,
+  RemoteFeatureFlagsProvider,
+} from '@metamask/snap-networks-utils';
 /* eslint-disable jsdoc/require-returns */
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
 import type { AssetEntity } from '../../../entities';
+import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetMetadata } from './types';
 
 /**
- * Assets domain facade. Currently delegates all behavior to SnapAssetsAdapter
- * (legacy snap-owned reads/writes).
+ * Assets domain facade. Reads and sync fetch/save use the Snap adapter while
+ * migration is off. Once migration is active, reads go through the Core
+ * adapter (the AssetsController).
  */
 export class AssetsService {
   readonly #snapAdapter: SnapAssetsAdapter;
 
+  readonly #coreAdapter: CoreAssetsAdapter;
+
+  readonly #remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+
   readonly cacheTtlsMilliseconds: typeof SnapAssetsAdapter.cacheTtlsMilliseconds;
 
-  constructor({ snapAdapter }: { snapAdapter: SnapAssetsAdapter }) {
+  constructor({
+    snapAdapter,
+    coreAdapter,
+    remoteFeatureFlagsProvider,
+  }: {
+    snapAdapter: SnapAssetsAdapter;
+    coreAdapter: CoreAssetsAdapter;
+    remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
+  }) {
     this.#snapAdapter = snapAdapter;
+    this.#coreAdapter = coreAdapter;
+    this.#remoteFeatureFlagsProvider = remoteFeatureFlagsProvider;
     this.cacheTtlsMilliseconds = SnapAssetsAdapter.cacheTtlsMilliseconds;
+  }
+
+  /**
+   * Whether the Solana assets migration is active, as told by the per-network
+   * migration remote feature flag. Once active, asset reads go through the
+   * Core adapter, and saving the Snap's own asset state is silent: local
+   * state stays warm, but no keyring events are emitted.
+   */
+  async isAssetsMigrationEnabled(): Promise<boolean> {
+    const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
+      SNAPS_ASSETS_MIGRATION_FLAG_KEYS.solana,
+    );
+
+    return (
+      parseSnapsAssetsMigrationStage(flagValue) !==
+      SnapsAssetsMigrationStage.Off
+    );
   }
 
   static hasChanged(asset: AssetEntity, assetsLookup: AssetEntity[]): boolean {
@@ -63,8 +104,20 @@ export class AssetsService {
     await this.saveMany([asset]);
   }
 
+  /**
+   * Persists the given assets to the Snap's local state. While the assets
+   * migration is active, this is silent: the AssetsController owns the
+   * client's asset view, so no keyring events are emitted. Otherwise, the
+   * corresponding keyring events are emitted too.
+   *
+   * @param assets - The assets to persist.
+   */
   async saveMany(assets: AssetEntity[]): Promise<void> {
-    return this.#snapAdapter.saveMany(assets);
+    if (await this.isAssetsMigrationEnabled()) {
+      return this.#snapAdapter.saveMany(assets);
+    }
+
+    return this.#snapAdapter.saveManyAndEmit(assets);
   }
 
   async getAll(): Promise<AssetEntity[]> {
@@ -81,6 +134,10 @@ export class AssetsService {
     accountId: string,
     assetId: CaipAssetType,
   ): Promise<AssetEntity | null> {
+    if (await this.isAssetsMigrationEnabled()) {
+      return this.#coreAdapter.getAccountAssetByID(accountId, assetId);
+    }
+
     return this.#snapAdapter.getAccountAssetByID(accountId, assetId);
   }
 
@@ -95,6 +152,17 @@ export class AssetsService {
     accountId: string,
     assetIds: CaipAssetType[],
   ): Promise<Record<CaipAssetType, AssetEntity | null>> {
+    if (await this.isAssetsMigrationEnabled()) {
+      const assets = await this.#coreAdapter.getAccountAssetsByIDs(
+        accountId,
+        assetIds,
+      );
+
+      return Object.fromEntries(
+        assetIds.map((assetId, index) => [assetId, assets[index] ?? null]),
+      ) as Record<CaipAssetType, AssetEntity | null>;
+    }
+
     return this.#snapAdapter.getAccountAssetsByIDs(accountId, assetIds);
   }
 
@@ -108,6 +176,10 @@ export class AssetsService {
     scope: CaipChainId,
     accountId: string,
   ): Promise<AssetEntity[]> {
+    if (await this.isAssetsMigrationEnabled()) {
+      return this.#coreAdapter.getAccountAssetsByScope(scope, accountId);
+    }
+
     return this.#snapAdapter.getAccountAssetsByScope(scope, accountId);
   }
 
@@ -117,6 +189,10 @@ export class AssetsService {
    * @param accountId - Keyring account ID.
    */
   async getAccountAssets(accountId: string): Promise<AssetEntity[]> {
+    if (await this.isAssetsMigrationEnabled()) {
+      return this.#coreAdapter.getAccountAssets(accountId);
+    }
+
     return this.#snapAdapter.getAccountAssets(accountId);
   }
 

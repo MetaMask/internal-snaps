@@ -156,6 +156,8 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   memoScreen?: boolean;
   // Saved memo for the pending send (UI-owned; not on confirmSend RPC params).
   memo?: string;
+  // In-progress memo edit text (not committed until Save succeeds).
+  memoDraft?: string | null;
   // Locale key for memo validation errors on the edit screen.
   memoError?: LocalizedMessage | null;
   // When false, hide Add/Update memo controls.
@@ -166,4 +168,9 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
    * of stacking parallel refresh chains (e.g. MemoEdit Save vs open cron).
    */
   backgroundEventId?: string;
+  /**
+   * Preference- and flow-enabled refresher keys resolved at dialog open.
+   * MemoEdit Save reuses this snapshot for restart.
+   */
+  enabledRefresherKeys?: string[];
 };

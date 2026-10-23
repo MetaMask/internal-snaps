@@ -1,4 +1,4 @@
-import { InMemoryState, InMemoryCache } from '@metamask/snap-networks-utils';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 
 import type {
   KnownCaip19ClassicAssetId,
@@ -8,10 +8,9 @@ import type {
 import { AssetType, KnownCaip2ChainId } from '../../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../../constants';
 import { getSlip44AssetId } from '../../../utils/caip';
-import { logger, noOpLogger } from '../../../utils/logger';
+import { logger } from '../../../utils/logger';
 import { createMockAssetsService } from '../../assets/__mocks__/assetsService.fixtures';
-import { NetworkService } from '../../network';
-import type { AssetMetadataByAssetId, StellarAssetMetadata } from '../api';
+import type { AssetMetadataByAssetId, Sep41StellarAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
 import { AssetMetadataService } from '../AssetMetadataService';
 
@@ -69,11 +68,14 @@ export const generateMockStellarAssetMetadata = (): AssetMetadataByAssetId => {
   } as AssetMetadataByAssetId;
 };
 
-export const getMockSep41Assets = (): StellarAssetMetadata[] => {
+export const getMockSep41Assets = (): Sep41StellarAssetMetadata[] => {
   const metadata = generateMockStellarAssetMetadata();
   const usdcSep41 = metadata[USDC_SEP41];
   const usdtSep41 = metadata[USDT_SEP41];
-  if (!usdcSep41 || !usdtSep41) {
+  if (
+    usdcSep41?.assetType !== AssetType.Sep41 ||
+    usdtSep41?.assetType !== AssetType.Sep41
+  ) {
     throw new Error('expected SEP-41 assets in mock metadata');
   }
   return [usdcSep41, usdtSep41];
@@ -82,10 +84,6 @@ export const getMockSep41Assets = (): StellarAssetMetadata[] => {
 export const createMockAssetMetadataService = () => {
   const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
-    networkService: new NetworkService({
-      logger,
-      cache: new InMemoryCache(noOpLogger),
-    }),
     assetMetadataRepository: new AssetMetadataRepository(
       new InMemoryState({
         assets: generateMockStellarAssetMetadata(),
