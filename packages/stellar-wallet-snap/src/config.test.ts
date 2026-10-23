@@ -55,7 +55,7 @@ const FULL_ENVIRONMENT = {
       loadOnChainAccount: '30000',
       simulateTransaction: '8000',
       sep41AssetBalance: '15000',
-      fetchOnChainAccount: '20000',
+      fetchOnChainAccount: '5000',
       assetMetadata: '900000',
     },
   },
