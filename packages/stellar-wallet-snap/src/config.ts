@@ -150,7 +150,7 @@ const ENVIRONMENT = {
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
-  enableAssetMigration: false,
+  enableAssetMigration: true,
   transaction: {
     timeout: process.env.STELLAR_TRANSACTION_TIMEOUT,
     pollingAttempts: process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS,
