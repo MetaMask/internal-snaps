@@ -241,7 +241,7 @@ export class KeyringHandler implements KeyringSnapRpc {
         refresh: true,
       });
     } else {
-      onChainAccount = await this.#getOnChainAccountFromState({
+      onChainAccount = await this.#getOnChainAccountSnapshot({
         accountId,
         scope,
       });
@@ -371,7 +371,7 @@ export class KeyringHandler implements KeyringSnapRpc {
         refresh: false,
       });
     } else {
-      onChainAccount = await this.#getOnChainAccountFromState({
+      onChainAccount = await this.#getOnChainAccountSnapshot({
         accountId,
         scope,
       });
@@ -557,7 +557,7 @@ export class KeyringHandler implements KeyringSnapRpc {
    * @param params.scope - CAIP-2 network.
    * @returns The indexed account, or `null` when no snapshot exists.
    */
-  async #getOnChainAccountFromState({
+  async #getOnChainAccountSnapshot({
     accountId,
     scope,
   }: {

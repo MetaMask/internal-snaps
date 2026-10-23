@@ -114,7 +114,7 @@ export const ConfigStruct = object({
       // SEP-41 balance reads (multicall on mainnet)
       sep41AssetBalance: parseIntegerStruct(1000, 30 * 1000),
       // Keyring getAccountAssets result reused by the following getAccountBalances call
-      fetchOnChainAccount: parseIntegerStruct(1000, 30 * 1000),
+      fetchOnChainAccount: parseIntegerStruct(1000, 5 * 1000),
       // 1 hour — token API asset catalog. Account sync hot-reloads when older.
       assetMetadata: parseIntegerStruct(1000, 60 * 60 * 1000),
     }),
