@@ -51,6 +51,10 @@ export class AssetMetadataService {
   /**
    * Loads asset metadata from persisted state, then the token API.
    *
+   * Native assets resolve locally. Ids the token API does not return are left
+   * unresolved and are not persisted, including unknown mainnet assets and
+   * testnet assets.
+   *
    * @param assetId - Native, classic, or SEP-41 CAIP-19 asset id.
    * @returns Resolved asset data for wallet / transaction use.
    */
@@ -70,8 +74,9 @@ export class AssetMetadataService {
   /**
    * Resolves SEP-41 metadata for ids that are not in the watched catalog.
    *
-   * Rows already stored in AssetsController or snap state are reused. Newly fetched rows
-   * are persisted, same as {@link resolve}.
+   * Rows already stored in AssetsController or snap state are reused. Newly fetched
+   * rows are persisted, same as {@link resolve}. Ids missing from the token API
+   * are omitted.
    *
    * @param assetIds - SEP-41 asset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
@@ -163,6 +168,7 @@ export class AssetMetadataService {
   ): Promise<StellarAssetMetadata[]> {
     const { nativeAssets: nativeAssetsByChainId, assets: assetsByChainId } =
       groupAssetsByChainId(assetIds);
+
     const result: StellarAssetMetadata[] = [];
     // fetch native assets
     for (const [chainId] of nativeAssetsByChainId) {
@@ -181,25 +187,16 @@ export class AssetMetadataService {
       return result.concat(assets);
     }
 
-    // fetch missing assets by chain id
-    const missingAssets: StellarAssetMetadata[] = [];
-    const { assets: missingAssetIdsByChainId } =
-      groupAssetsByChainId(missingAssetIds);
+    // A missing token API row is not persisted.
+    const { assets: assetsToPersist } =
+      await this.#fetchTokenAssetsFromApi(missingAssetIds);
 
-    for (const [chainId, chainAssetIds] of missingAssetIdsByChainId) {
-      const fetchedAssets = await this.#fetchMissingAssetsMetadata(
-        chainAssetIds,
-        chainId,
-      );
-      missingAssets.push(...fetchedAssets);
+    // backfill in state
+    if (assetsToPersist.length > 0) {
+      await this.#assetMetadataRepository.saveMany(assetsToPersist);
     }
 
-    // Backfill in state
-    if (missingAssets.length > 0) {
-      await this.#assetMetadataRepository.saveMany(missingAssets);
-    }
-
-    return result.concat(assets, missingAssets);
+    return result.concat(assets, assetsToPersist);
   }
 
   /**
@@ -286,19 +283,6 @@ export class AssetMetadataService {
     return { hits, missing };
   }
 
-  async #fetchMissingAssetsMetadata(
-    assetIds: KnownCaip19AssetId[],
-    scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
-    if (scope !== KnownCaip2ChainId.Mainnet) {
-      return [];
-    }
-
-    // The token API only supports mainnet.
-    const { assets } = await this.#fetchTokenAssetsFromApi(assetIds);
-    return assets;
-  }
-
   async #fetchTokenAssetsFromApi(assetIds: KnownCaip19AssetId[]): Promise<{
     assets: StellarAssetMetadata[];
     missingAssetIds: KnownCaip19AssetId[];
@@ -311,7 +295,7 @@ export class AssetMetadataService {
     const tokensMetadata = await this.#getAssetsByAssetIds(assetIds);
     const { hits: assets, missing: missingAssetIds } =
       this.#partitionHitsAndMissingByArray(assetIds, tokensMetadata);
-    this.#logger.debug('Token assets from API', { missingAssetIds });
+    this.#logger.debug('Token assets missing from API', { missingAssetIds });
     return { assets, missingAssetIds };
   }
 

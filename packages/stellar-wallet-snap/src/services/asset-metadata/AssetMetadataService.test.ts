@@ -7,7 +7,7 @@ import type {
 import { AssetType, KnownCaip2ChainId } from '../../api';
 import { getSlip44AssetId, logger } from '../../utils';
 import { createMockAssetsService } from '../assets/__mocks__/assetsService.fixtures';
-import { USDC_SEP41 } from './__mocks__/assets.fixtures';
+import { TESTNET_SEP41_USDC, USDC_SEP41 } from './__mocks__/assets.fixtures';
 import type {
   ClassicStellarAssetMetadata,
   Sep41StellarAssetMetadata,
@@ -22,6 +22,9 @@ import { toStellarAssetMetadata } from './utils';
 /** Mainnet classic USDC (matches CAIP-19 pattern used across Stellar fixtures). */
 const MAINNET_CLASSIC_USDC =
   'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19ClassicAssetId;
+
+const TESTNET_CLASSIC_USDC =
+  'stellar:testnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19ClassicAssetId;
 
 jest.mock('../../config', () => ({
   AppConfig: {
@@ -126,6 +129,67 @@ describe('AssetMetadataService', () => {
     expect(result.assetId).toBe(slipId);
     expect(getByAssetIds).not.toHaveBeenCalled();
     expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
+  });
+
+  it('throws for an uncached testnet classic asset when the token API returns no row', async () => {
+    const { service, saveMany } = createService({});
+
+    await expect(service.resolve(TESTNET_CLASSIC_USDC)).rejects.toThrow(
+      AssetMetadataServiceException,
+    );
+    expect(mockGetAssetsByAssetIds).toHaveBeenCalledWith([
+      TESTNET_CLASSIC_USDC,
+    ]);
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('returns a cached testnet classic asset without calling the token API', async () => {
+    const cached = createCachedRow(
+      TESTNET_CLASSIC_USDC,
+      KnownCaip2ChainId.Testnet,
+    );
+    const { service, getByAssetIds, saveMany } = createService({
+      repo: {
+        getByAssetIds: jest.fn().mockResolvedValue([cached]),
+      },
+    });
+
+    const result = await service.resolve(TESTNET_CLASSIC_USDC);
+
+    expect(result).toStrictEqual(cached);
+    expect(getByAssetIds).toHaveBeenCalledWith([TESTNET_CLASSIC_USDC]);
+    expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('persists only the ids returned by the token API', async () => {
+    const tokenRow: TokenMetadata = {
+      assetId: USDC_SEP41,
+      decimals: 7,
+      name: 'USDC',
+      symbol: 'USDC',
+    };
+    const { service, saveMany } = createService({});
+    mockGetAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+
+    const result = await service.fetchAssetsByAssetIds([
+      USDC_SEP41,
+      TESTNET_SEP41_USDC,
+    ]);
+
+    expect(mockGetAssetsByAssetIds).toHaveBeenCalledWith([
+      USDC_SEP41,
+      TESTNET_SEP41_USDC,
+    ]);
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        assetId: USDC_SEP41,
+        assetType: AssetType.Sep41,
+      }),
+    ]);
+    expect(saveMany).toHaveBeenCalledWith([
+      expect.objectContaining({ assetId: USDC_SEP41 }),
+    ]);
   });
 
   it('throws when the token API does not return metadata for a mainnet classic asset', async () => {
