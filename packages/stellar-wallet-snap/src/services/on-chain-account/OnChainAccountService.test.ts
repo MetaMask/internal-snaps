@@ -605,6 +605,48 @@ describe('OnChainAccountService', () => {
         KnownCaip2ChainId.Mainnet,
         keyringAccountId,
       );
+      expect(result?.nativeSpendableBalance.toFixed(0)).toBe('40000000');
+      expect(result?.minimumReserveBalance.toFixed(0)).toBe('10000000');
+    });
+
+    it('preserves native spendable when AssetsController reserve is below two base reserves', async () => {
+      const accountAddress = Keypair.random().publicKey();
+      const keyringAccountId = globalThis.crypto.randomUUID();
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      jest.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
+        {
+          id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          chainId: KnownCaip2ChainId.Mainnet,
+          balance: {
+            amount: '5',
+            metadata: {
+              spendableBalance: '45000000',
+              minimumReserveBalance: '5000000',
+              decimal: 7,
+            },
+          },
+          metadata: { symbol: 'XLM', decimals: 7 },
+        },
+      ]);
+
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        accountAddress,
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(result?.toSerializableFull()).toMatchObject({
+        rawNativeBalance: '50000000',
+        meta: {
+          subentryCount: 0,
+          numSponsoring: 0,
+          numSponsored: 1,
+        },
+      });
+      expect(result?.minimumReserveBalance.toFixed(0)).toBe('5000000');
+      expect(result?.nativeSpendableBalance.toFixed(0)).toBe('45000000');
     });
 
     it('wraps an AssetsController asset mapping failure and keeps the cause', async () => {

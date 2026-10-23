@@ -42,7 +42,7 @@ import type {
   SerializableSpendableBalance,
 } from './OnChainAccountSerializable';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
-import { calculateSubentryFromMinReserve } from './utils';
+import { calculateLedgerMetaFromMinReserve } from './utils';
 
 /**
  * Stellar on-chain account operations: activation checks and loading {@link OnChainAccount}
@@ -364,8 +364,9 @@ export class OnChainAccountService {
    * Maps AssetsController holdings into a full on-chain snapshot.
    *
    * Best-effort account ledger metadata from AssetsController:
-   * - Derived `subentryCount` from native balance metadata `minimumReserveBalance`
-   * - Set `sequenceNumber` to `0`, `numSponsoring` to `0`, and `numSponsored` to `0`
+   * - Derived reserve meta from native balance metadata `minimumReserveBalance`
+   *   (including `numSponsored` when the reserve is below two base reserves)
+   * - Set `sequenceNumber` to `0` when no ledger overlay is supplied
    *
    * @param params - Account header and AssetsController assets for one scope.
    * @param params.accountAddress - Stellar G-address for the snapshot header.
@@ -407,13 +408,16 @@ export class OnChainAccountService {
       ).toFixed(0);
 
       if (isCoreNativeAsset(asset)) {
-        // When ledger meta is missing, derive subentryCount from AssetsController XLM metadata.
+        // When ledger meta is missing, derive reserve meta from AssetsController XLM metadata.
         if (ledger === undefined) {
           const { minimumReserveBalance } = asset.balance.metadata;
-          accountLedgerMeta.rawNativeBalance = balance;
-          accountLedgerMeta.subentryCount = calculateSubentryFromMinReserve(
+          const reserveMeta = calculateLedgerMetaFromMinReserve(
             minimumReserveBalance,
           );
+          accountLedgerMeta.rawNativeBalance = balance;
+          accountLedgerMeta.subentryCount = reserveMeta.subentryCount;
+          accountLedgerMeta.numSponsoring = reserveMeta.numSponsoring;
+          accountLedgerMeta.numSponsored = reserveMeta.numSponsored;
         }
         continue;
       }

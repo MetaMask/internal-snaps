@@ -60,6 +60,7 @@ import type { WalletService } from '../../services/wallet';
 import {
   Duration,
   getSlip44AssetId,
+  getStellarAssetChainId,
   isClassicAssetId,
   isSep41Id,
   isSlip44Id,
@@ -390,7 +391,9 @@ export class KeyringHandler implements KeyringSnapRpc {
     // the client asked for. Fetch those balances when nothing was stored.
     const missingSep41AssetIds = knownAssets.filter(
       (assetId): assetId is KnownCaip19Sep41AssetId =>
-        isSep41Id(assetId) && onChainAccount.getRawAsset(assetId) === undefined,
+        isSep41Id(assetId) &&
+        onChainAccount.getRawAsset(assetId) === undefined &&
+        getStellarAssetChainId(assetId) === scope,
     );
     // Try to fetch the SEP-41 balances for the missing SEP-41 asset ids.
     if (missingSep41AssetIds.length > 0) {
