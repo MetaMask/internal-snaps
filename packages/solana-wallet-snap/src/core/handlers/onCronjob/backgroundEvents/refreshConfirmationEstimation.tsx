@@ -2,6 +2,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   serialize,
 } from '@metamask/snap-networks-utils';
+import type { SecurityAlertsScanOption } from '@metamask/snap-networks-utils';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
@@ -65,29 +66,26 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       return;
     }
 
-    const shouldScan = Boolean(
-      interfaceContext.preferences?.simulateOnChainActions,
-    );
+    // Re-scan with the same options the initial scan used, per preference:
+    // simulation only when simulation is enabled, validation only when
+    // security alerts are enabled.
+    const options: SecurityAlertsScanOption[] = [];
+    if (interfaceContext.preferences?.simulateOnChainActions) {
+      options.push('simulation');
+    }
+    if (interfaceContext.preferences?.useSecurityAlerts) {
+      options.push('validation');
+    }
+    const shouldScan = options.length > 0;
 
     // MetaMask-originated transactions receive a fresh blockhash before signing.
     const shouldSkipBlockhashCheck =
       interfaceContext.origin === DEFAULT_METAMASK_ORIGIN;
 
-    // Blockhash-only refreshes must not show the scan-in-progress state.
-    if (shouldScan) {
-      const fetchingConfirmationContext = {
-        ...interfaceContext,
-        scanFetchStatus: 'fetching',
-      } as ConfirmTransactionRequestContext;
-
-      await updateInterface(
-        confirmationInterfaceId,
-        <ConfirmTransactionRequest
-          context={serialize(fetchingConfirmationContext) as any}
-        />,
-        fetchingConfirmationContext,
-      );
-    } else {
+    // Background re-scans never surface the scan-in-progress state: per the
+    // transaction warning contract, they must never disable confirm. The
+    // interface is only updated once the re-scan settles.
+    if (!shouldScan) {
       logger.info(`Transaction simulation is disabled in preferences`);
     }
 
@@ -100,6 +98,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
             scope: interfaceContext.scope,
             origin: interfaceContext.origin,
             account: interfaceContext.account,
+            options,
           })
         : Promise.resolve(interfaceContext.scan),
       shouldSkipBlockhashCheck
@@ -121,11 +120,18 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       return;
     }
 
-    // Update the current context with the new rates
+    // Update the current context with the new rates. A failed re-scan (null)
+    // keeps the previous scan result for its estimates and reports the error
+    // so the "scan failed" banner shows — the user is warned, not blocked.
+    const scanFailed = shouldScan && scan === null && !isExpired;
+    const nextScan = isExpired
+      ? EXPIRED_TRANSACTION_SCAN
+      : (scan ?? updatedInterfaceContextFinal.scan ?? null);
+
     const updatedInterfaceContext = {
       ...updatedInterfaceContextFinal,
-      scanFetchStatus: 'fetched' as const,
-      scan: isExpired ? EXPIRED_TRANSACTION_SCAN : scan,
+      scanFetchStatus: scanFailed ? ('error' as const) : ('fetched' as const),
+      scan: nextScan,
     };
 
     if (shouldScan) {

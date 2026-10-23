@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Retry transient Solana RPC and API read failures with the shared fetch policy while sending transaction submissions only once. ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Align transaction confirmation security alerts with the shared transaction warning contract ([#502](https://github.com/MetaMask/internal-snaps/pull/502))
 
 ### Fixed
 
