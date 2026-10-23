@@ -1051,7 +1051,7 @@
       "count": 1
     },
     "jest/unbound-method": {
-      "count": 4
+      "count": 2
     }
   },
   "packages/stellar-wallet-snap/src/services/asset-metadata/__mocks__/assets.fixtures.ts": {

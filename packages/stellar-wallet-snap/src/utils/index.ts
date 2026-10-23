@@ -10,7 +10,6 @@ export * from './buffer';
 export {
   batchesAll,
   batchesAllSettled,
-  batchesAllSettledWithChunks,
   batchesAllWithChunks,
   chunks,
 } from '@metamask/snap-networks-utils';
