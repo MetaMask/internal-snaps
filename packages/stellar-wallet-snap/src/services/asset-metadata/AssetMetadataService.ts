@@ -78,7 +78,7 @@ export class AssetMetadataService {
    * rows are persisted, same as {@link resolve}. Ids missing from the token API
    * are omitted.
    *
-   * @param assetIds - SEP-41 asset ids to resolve.
+   * @param assetIds - Classic or SEP-41 CAIP-19 asset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
    */
   async fetchAndPersistAssetsByAssetIds(
