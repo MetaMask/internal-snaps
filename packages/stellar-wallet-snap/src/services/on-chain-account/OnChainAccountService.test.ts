@@ -164,7 +164,7 @@ describe('OnChainAccountService', () => {
 
       const fetchSep41Spy = jest.spyOn(
         AssetMetadataService.prototype,
-        'fetchSep41AssetsOrSyncOnce',
+        'fetchAndPersistSep41AssetMetadata',
       );
       const shouldStubSep41 =
         stubSep41Catalog ||

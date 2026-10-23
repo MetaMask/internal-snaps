@@ -2,8 +2,15 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip19Sep41AssetId } from '../../api';
-import { AssetType, KnownCaip2ChainId } from '../../api';
-import { entries } from '../../utils';
+import { KnownCaip2ChainId } from '../../api';
+import {
+  entries,
+  getAssetReference,
+  parseClassicAssetCodeIssuer,
+  rethrowIfInstanceElseThrow,
+  toSmallestUnit,
+  trackError,
+} from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type {
   AssetMetadataService,
@@ -158,26 +165,47 @@ export class OnChainAccountService {
     scope: KnownCaip2ChainId,
     assetIds?: KnownCaip19Sep41AssetId[],
   ): Promise<OnChainAccount> {
-    const assetMetadataByAssetId = await this.#getSep41AssetMetadata(
-      scope,
-      assetIds,
-    );
-    const assetIdsWithMetadata = keys(assetMetadataByAssetId);
+    const sep41Assets =
+      await this.#assetMetadataService.fetchAndPersistSep41AssetMetadata({
+        scope,
+        assetIds,
+      });
 
     // if there are no asset metadata, we can return early.
     // This can happen if there are no SEP-41 assets for the scope.
-    if (assetIdsWithMetadata.length === 0) {
+    if (sep41Assets.length === 0) {
       return onChainAccount;
     }
 
-    const sep41Balances = await this.#fetchSep41Balances(
-      onChainAccount.accountId,
-      assetIdsWithMetadata,
-      scope,
-    );
+    const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
+    const sep41AssetMetadataMap: Map<
+      KnownCaip19Sep41AssetId,
+      Sep41StellarAssetMetadata
+    > = new Map();
+    for (const asset of sep41Assets) {
+      sep41AssetMetadataMap.set(asset.assetId, asset);
+      sep41AssetIds.push(asset.assetId);
+    }
 
+    const balancesByAccount = await this.#networkService.getSep41AssetBalances({
+      accounts: [onChainAccount.accountId],
+      assetIds: sep41AssetIds,
+      scope,
+    });
+    // Safe guard to throw an error if it is mainnet
+    // It is unexpected we don't have any balances.
+    if (
+      scope === KnownCaip2ChainId.Mainnet &&
+      balancesByAccount[onChainAccount.accountId] === undefined
+    ) {
+      throw new OnChainAccountSep41BalanceNotFoundException(
+        onChainAccount.accountId,
+      );
+    }
+
+    const sep41Balances = balancesByAccount[onChainAccount.accountId] ?? {};
     for (const [assetId, balance] of entries(sep41Balances)) {
-      const assetMetadata = assetMetadataByAssetId[assetId];
+      const assetMetadata = sep41AssetMetadataMap.get(assetId);
       // Asset metadata is important for setting the correct decimals and symbol for the balance.
       if (assetMetadata === undefined) {
         // This is unexpected, but we can continue.
@@ -195,68 +223,6 @@ export class OnChainAccountService {
     }
 
     return onChainAccount;
-  }
-
-  /**
-   * Loads SEP-41 metadata for the requested ids, or the persisted catalog when ids are omitted.
-   * Non-SEP-41 rows are skipped.
-   *
-   * @param scope - CAIP-2 network.
-   * @param assetIds - SEP-41 asset ids. Omit to use the persisted catalog.
-   * @returns Metadata keyed by SEP-41 asset id.
-   */
-  async #getSep41AssetMetadata(
-    scope: KnownCaip2ChainId,
-    assetIds?: KnownCaip19Sep41AssetId[],
-  ): Promise<Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>> {
-    const sep41Assets =
-      await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
-    const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
-    const assetMetadataByAssetId: Partial<
-      Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>
-    > = {};
-    for (const assetMetadata of sep41Assets) {
-      if (assetMetadata.assetType !== AssetType.Sep41) {
-        continue;
-      }
-      const { assetId } = assetMetadata;
-      sep41AssetIds.push(assetId);
-      assetMetadataByAssetId[assetId] = assetMetadata;
-    }
-
-    return assetMetadataByAssetId;
-  }
-
-  /**
-   * Reads SEP-41 balances for one account.
-   *
-   * @param accountAddress - Stellar G-address.
-   * @param assetIds - SEP-41 asset ids to read.
-   * @param scope - CAIP-2 network.
-   * @returns Balance by asset id. Empty on testnet when no map is returned.
-   * @throws {OnChainAccountSep41BalanceNotFoundException} When mainnet returns no map for the account.
-   */
-  async #fetchSep41Balances(
-    accountAddress: string,
-    assetIds: KnownCaip19Sep41AssetId[],
-    scope: KnownCaip2ChainId,
-  ): Promise<Record<KnownCaip19Sep41AssetId, BigNumber | null>> {
-    const balancesByAccount = await this.#networkService.getSep41AssetBalances({
-      accounts: [accountAddress],
-      assetIds,
-      scope,
-    });
-    const sep41Balances = balancesByAccount[accountAddress];
-    // If it is testnet, we won't have any balances, so we return early.
-    // If it is mainnet, we throw an error as it is unexpected.
-    if (sep41Balances === undefined) {
-      if (scope === KnownCaip2ChainId.Mainnet) {
-        throw new OnChainAccountSep41BalanceNotFoundException(accountAddress);
-      }
-      return {};
-    }
-
-    return sep41Balances;
   }
 
   /**
