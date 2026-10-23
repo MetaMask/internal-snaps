@@ -1,5 +1,5 @@
 {
-  "version": "4.2.1",
+  "version": "4.3.0",
   "description": "Manage Tron using MetaMask",
   "proposedName": "Tron",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "1zhXgHHRIjb6SiedSVtKtfcBE29UgCpVsUkhGP0SFAg=",
+    "shasum": "2NUzURUf52yUyJyLA/Kag7IuNSOhyllhYiCHxt02Yh4=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",

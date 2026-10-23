@@ -1,6 +1,6 @@
 {
   "name": "@metamask/stellar-wallet-snap",
-  "version": "2.0.0",
+  "version": "1.3.0",
   "description": "A Stellar wallet Snap",
   "keywords": [
     "Ethereum",
