@@ -25,7 +25,6 @@ import {
   getBase64Codec,
   getSignatureFromTransaction,
   getUtf8Codec,
-  pipe,
   sendTransactionWithoutConfirmingFactory,
   verifySignature,
 } from '@solana/kit';
@@ -418,10 +417,9 @@ export class WalletService {
    * Signs the provided base64 encoded message using the provided account's
    * private key.
    *
-   * It DOES NOT decode the message to UTF-8 before signing, meaning that the
-   * signature must be verified using the base64 encoded message as well.
-   *
-   * You can then verify the signature with {@link WalletService.verifySignature}.
+   * Base64 is only the transport encoding. The signature covers the decoded
+   * bytes without converting them to text. Pass the base64-encoded bytes to
+   * {@link WalletService.verifySignature} to verify the signature.
    *
    * @param account - The account to sign the message.
    * @param message - The message to sign.
@@ -525,12 +523,10 @@ export class WalletService {
     privateKeyBytes: Uint8Array,
   ): Promise<SolanaSignMessageResponse> {
     const addressAsAddress = asAddress(account.address);
-    const messageUtf8 = pipe(
-      message,
-      getBase64Codec().encode,
-      getUtf8Codec().decode,
-    );
-    const signableMessage = createSignableMessage(messageUtf8);
+    // Text decoding can remove NUL bytes or replace invalid UTF-8 sequences.
+    // Sign the original bytes so the signature matches `signedMessage`.
+    const messageBytes = new Uint8Array(getBase64Codec().encode(message));
+    const signableMessage = createSignableMessage(messageBytes);
 
     const signer =
       await createKeyPairSignerFromPrivateKeyBytes(privateKeyBytes);
