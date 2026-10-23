@@ -232,7 +232,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     let onChainAccount: OnChainAccount | null = null;
 
-    // TDOO: remove this gate after asset migration is fully enabled.
+    // TODO: remove this gate after asset migration is fully enabled.
     if (enableAssetMigration) {
       onChainAccount = await this.#fetchOnChainAccountWithCache({
         accountId,
@@ -362,7 +362,7 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     let onChainAccount: OnChainAccount | null = null;
 
-    // TDOO: remove this gate after asset migration is fully enabled.
+    // TODO: remove this gate after asset migration is fully enabled.
     if (enableAssetMigration) {
       onChainAccount = await this.#fetchOnChainAccountWithCache({
         accountId,

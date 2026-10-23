@@ -479,6 +479,9 @@ export class OnChainAccountService {
             address,
             authorized,
             sponsored,
+            ...(asset.balance.metadata.sponsor
+              ? { sponsor: asset.balance.metadata.sponsor }
+              : {}),
           }),
         );
         continue;
