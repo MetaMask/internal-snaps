@@ -24,7 +24,7 @@ import {
   pattern,
 } from '@metamask/superstruct';
 import type { JsonRpcRequest } from '@metamask/utils';
-import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
+import { CaipAssetTypeStruct } from '@metamask/utils';
 
 import {
   JsonRpcRequestStruct,
@@ -40,7 +40,7 @@ import {
   ValidStellarAmountStruct,
   SwapTransactionXdrStruct,
 } from '../../api';
-import { isSep41Id } from '../../utils';
+import { getStellarAssetChainId, isSep41Id } from '../../utils';
 import { parseProofOfOwnershipMessage } from './utils';
 
 /**
@@ -159,8 +159,7 @@ export const ChangeTrustOptJsonRpcRequestStruct = refine(
   ),
   'change-trust-asset-id-scope-match',
   ({ params }) => {
-    const result =
-      parseCaipAssetType(params.assetId).chainId === String(params.scope);
+    const result = getStellarAssetChainId(params.assetId) === params.scope;
     if (result) {
       return true;
     }
@@ -272,7 +271,7 @@ const OnAmountInputJsonRpcRequestCoercedStruct = coerce(
     ...request,
     params: {
       ...request.params,
-      scope: parseCaipAssetType(request.params.assetId).chainId,
+      scope: getStellarAssetChainId(request.params.assetId),
     },
   }),
 );
@@ -348,7 +347,7 @@ export const ConfirmSendJsonRpcRequestCoercedStruct = coerce(
     params: {
       ...request.params,
       accountId: request.params.fromAccountId,
-      scope: parseCaipAssetType(request.params.assetId).chainId,
+      scope: getStellarAssetChainId(request.params.assetId),
     },
   }),
 );

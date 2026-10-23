@@ -9,12 +9,11 @@ import {
   Text as SnapText,
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type { StellarKeyringAccount } from '../../../../services/account';
 import type { StellarAssetMetadata } from '../../../../services/asset-metadata';
 import type { Locale } from '../../../../utils';
-import { i18n } from '../../../../utils';
+import { getAssetReference, i18n } from '../../../../utils';
 import type {
   ConfirmationBaseProps,
   ContextWithPrices,
@@ -117,7 +116,7 @@ export const ConfirmSignChangeTrustOptOut = ({
               symbol={assetMetadata.symbol}
               iconUrl={assetMetadata.iconUrl}
               link={getClassicAssetExplorerUrl(
-                parseCaipAssetType(assetMetadata.assetId).assetReference,
+                getAssetReference(assetMetadata.assetId),
               )}
             />
           </Box>

@@ -4,7 +4,6 @@ import type {
   Serializable,
 } from '@metamask/snap-networks-utils';
 import { useCache } from '@metamask/snap-networks-utils';
-import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
   Contract,
@@ -34,6 +33,7 @@ import {
   rethrowIfInstanceElseThrow,
   batchesAllSettled,
   getAddress,
+  getAssetReference,
 } from '../../utils';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
@@ -431,9 +431,7 @@ export class NetworkService {
       // getLedgerEntries returns only entries that exist; missing contracts are omitted.
       const ledgerEntries = await client.getLedgerEntries(
         ...assetIds.map((assetId) =>
-          new Contract(
-            parseCaipAssetType(assetId).assetReference,
-          ).getFootprint(),
+          new Contract(getAssetReference(assetId)).getFootprint(),
         ),
       );
 
@@ -495,7 +493,7 @@ export class NetworkService {
     try {
       const client = this.#getHorizonClient(scope);
       const { assetCode, assetIssuer } = parseClassicAssetCodeIssuer(
-        parseCaipAssetType(assetId).assetReference,
+        getAssetReference(assetId),
       );
       const assetData = await client
         .assets()
@@ -572,7 +570,7 @@ export class NetworkService {
         for (const assetId of assetIds) {
           invocations.push(
             new InvocationV1({
-              contract: parseCaipAssetType(assetId).assetReference,
+              contract: getAssetReference(assetId),
               method: 'balance',
               args: [new Address(account).toScVal()],
               // Allow the batch simulation to continue when a cell fails (missing contract, etc.).
