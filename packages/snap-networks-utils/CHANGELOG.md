@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat(solana-wallet-snap): add Core messenger plumbing for AssetsProvider ([#485](https://github.com/MetaMask/internal-snaps/pull/485))
+- chore(solana): use BaseTransactionScanService from shared lib ([#398](https://github.com/MetaMask/internal-snaps/pull/398))
+- chore(deps): bump @metamask/remote-feature-flag-controller from 5.0.0 to 7.0.0 ([#361](https://github.com/MetaMask/internal-snaps/pull/361))
+
 ### Added
 
 - Add `executeWithFetchPolicy` for wrapping transport-only operations in a policy created by `createFetchPolicy`, passing `SyntaxError` and abort errors through unchanged, passing errors already in the policy shape through unchanged, and mapping any other error with an optional mapper (defaulting to a network failure) ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
