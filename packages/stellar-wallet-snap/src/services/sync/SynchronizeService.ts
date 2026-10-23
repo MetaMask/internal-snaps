@@ -8,7 +8,7 @@ import { Duration, scheduleBackgroundEvent, trackError } from '../../utils';
 import type { StellarKeyringAccount } from '../account';
 import type {
   AssetMetadataService,
-  StellarAssetMetadata,
+  Sep41StellarAssetMetadata,
 } from '../asset-metadata';
 import { AccountNotActivatedException } from '../network';
 import type { OnChainAccountService } from '../on-chain-account';
@@ -221,7 +221,7 @@ export class SynchronizeService {
    */
   async #loadSep41AssetsSafe(
     scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
+  ): Promise<Sep41StellarAssetMetadata[]> {
     try {
       return await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
     } catch (error: unknown) {

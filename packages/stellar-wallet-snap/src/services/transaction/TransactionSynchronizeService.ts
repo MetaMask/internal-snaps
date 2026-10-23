@@ -25,7 +25,7 @@ import type {
   KeyringAccountId,
   StellarKeyringAccount,
 } from '../account';
-import type { StellarAssetMetadata } from '../asset-metadata';
+import type { Sep41StellarAssetMetadata } from '../asset-metadata';
 import { TransactionNotFoundException } from '../network';
 import type { NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
@@ -54,7 +54,10 @@ type SyncContext = {
   lastScanTokenByAccountId: Record<KeyringAccountId, string | null>;
   /** Mapped keyring txs collected during steps 2–3; emitted then persisted in step 4. */
   transactionsToSave: Record<KeyringAccountId, StellarKeyringTransaction[]>;
-  sep41AssetsMetadata: Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>;
+  sep41AssetsMetadata: Record<
+    KnownCaip19Sep41AssetId,
+    Sep41StellarAssetMetadata
+  >;
 };
 
 /**
@@ -103,7 +106,7 @@ export class TransactionSynchronizeService {
   async synchronize(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<void> {
     if (activatedAccountPairs.length === 0) {
       this.#logger.debug('No accounts to synchronize');
@@ -141,7 +144,7 @@ export class TransactionSynchronizeService {
   async #createSyncContext(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<SyncContext> {
     const keyringAccounts: StellarKeyringAccount[] = [];
     const keyringAccountIds: KeyringAccountId[] = [];
@@ -197,12 +200,12 @@ export class TransactionSynchronizeService {
   }
 
   #toSep41AssetsMetadata(
-    sep41Assets: StellarAssetMetadata[],
-  ): Record<KnownCaip19Sep41AssetId, StellarAssetMetadata> {
+    sep41Assets: Sep41StellarAssetMetadata[],
+  ): Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata> {
     return sep41Assets.reduce<
-      Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>
+      Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>
     >((acc, asset) => {
-      acc[asset.assetId as KnownCaip19Sep41AssetId] = asset;
+      acc[asset.assetId] = asset;
       return acc;
     }, {});
   }

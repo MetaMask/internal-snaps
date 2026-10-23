@@ -18,7 +18,7 @@ import {
   toDisplayBalance,
 } from '../../utils';
 import type { StellarKeyringAccount } from '../account/api';
-import type { StellarAssetMetadata } from '../asset-metadata';
+import type { Sep41StellarAssetMetadata } from '../asset-metadata';
 import { StellarOperationType } from './api';
 import { TransactionMapperException } from './exceptions';
 import type {
@@ -78,7 +78,7 @@ export class TransactionMapper {
   mapTransactionSafe(params: {
     transaction: Transaction;
     keyringAccount: StellarKeyringAccount;
-    assetMetadata: Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>;
+    assetMetadata: Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>;
     transactionFromState?: KeyringTransaction;
   }): KeyringTransaction | undefined {
     const { transaction, keyringAccount, assetMetadata, transactionFromState } =
@@ -125,7 +125,7 @@ export class TransactionMapper {
   #mapTransaction(
     transaction: Transaction,
     keyringAccount: StellarKeyringAccount,
-    assetMetadata: Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>,
+    assetMetadata: Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>,
   ): KeyringTransaction | undefined {
     const { address } = keyringAccount;
 
@@ -451,7 +451,7 @@ export class TransactionMapper {
   #mapSep41SendTransaction(
     transaction: Transaction,
     keyringAccount: StellarKeyringAccount,
-    assetMetadata: Record<KnownCaip19Sep41AssetId, StellarAssetMetadata>,
+    assetMetadata: Record<KnownCaip19Sep41AssetId, Sep41StellarAssetMetadata>,
   ): KeyringTransaction | undefined {
     const { scope } = transaction;
     const [firstOperation] = transaction.transactionOperations;
