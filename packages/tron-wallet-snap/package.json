@@ -1,6 +1,6 @@
 {
   "name": "@metamask/tron-wallet-snap",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "A Tron wallet Snap",
   "keywords": [
     "Ethereum",
@@ -55,7 +55,7 @@
     "@metamask/keyring-snap-sdk": "^10.0.0",
     "@metamask/messenger": "^2.0.0",
     "@metamask/remote-feature-flag-controller": "^7.0.0",
-    "@metamask/snap-networks-utils": "^3.0.0",
+    "@metamask/snap-networks-utils": "^3.1.0",
     "@metamask/snaps-cli": "^8.4.1",
     "@metamask/snaps-jest": "^10.2.1",
     "@metamask/snaps-sdk": "^12.0.1",

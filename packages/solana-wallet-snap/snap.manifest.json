@@ -1,5 +1,5 @@
 {
-  "version": "7.1.0",
+  "version": "7.2.0",
   "description": "Manage Solana using MetaMask",
   "proposedName": "Solana",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "agl4zPvmUHwStdo/Z9s6fEHn+T4NoXu+/NzpAAOJ5JI=",
+    "shasum": "cqTY0FyKjnaDQmSdXtg6YxAPj2W4PCwKBSTU0asdU54=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
