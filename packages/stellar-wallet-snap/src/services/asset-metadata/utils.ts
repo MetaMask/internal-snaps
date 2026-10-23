@@ -1,7 +1,5 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
-import { assert } from '@metamask/superstruct';
 import type { NonEmptyArray } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type {
   KnownCaip2ChainId,
@@ -11,7 +9,7 @@ import type {
   KnownCaip19Slip44Id,
   KnownCaip19AssetId,
 } from '../../api';
-import { AssetType, KnownCaip2ChainIdStruct } from '../../api';
+import { AssetType } from '../../api';
 import { AppConfig } from '../../config';
 import {
   NATIVE_ASSET_NAME,
@@ -20,6 +18,7 @@ import {
 } from '../../constants';
 import {
   getSlip44AssetId,
+  getStellarAssetChainId,
   isClassicAssetId,
   isSep41Id,
   isSlip44Id,
@@ -86,7 +85,7 @@ export function toStellarAssetMetadata(
   assetData: ToStellarAssetMetadataInput<KnownCaip19AssetIdOrSlip44Id>,
 ): StellarAssetMetadata {
   const name = assetData.name ?? assetData.symbol;
-  const { chainId } = parseCaipAssetType(assetData.assetId);
+  const chainId = getStellarAssetChainId(assetData.assetId);
   const { assetId } = assetData;
   const units: NonEmptyArray<AssetUnit> = [
     {
@@ -99,7 +98,7 @@ export function toStellarAssetMetadata(
   const metadata = {
     name,
     symbol: assetData.symbol,
-    chainId: chainId as KnownCaip2ChainId,
+    chainId,
     fungible: true as const,
     iconUrl: assetData.iconUrl ?? getIconUrl(assetId),
     units,
@@ -172,9 +171,7 @@ export function groupAssetsByChainId(
     }
     uniqueAssetIds.add(assetId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-
-    assert(chainId, KnownCaip2ChainIdStruct);
+    const chainId = getStellarAssetChainId(assetId);
 
     if (isSlip44Id(assetId)) {
       if (!nativeAssets.has(chainId)) {

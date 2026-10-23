@@ -14,6 +14,7 @@ import {
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdMap,
   KnownCaip19Slip44IdStruct,
+  KnownCaip2ChainIdStruct,
 } from '../api';
 
 /**
@@ -103,6 +104,23 @@ export function getAssetReference(
 ): string {
   const { assetReference } = parseCaipAssetType(assetId);
   return assetReference;
+}
+
+/**
+ * Returns the known Stellar chain id from a CAIP-19 asset id.
+ *
+ * @param assetId - CAIP-19 asset id.
+ * @returns The CAIP-2 chain id, `stellar:pubnet` or `stellar:testnet`.
+ * @throws {Error} When the parsed chain id is not a known Stellar chain.
+ */
+export function getStellarAssetChainId(
+  assetId: KnownCaip19AssetIdOrSlip44Id,
+): KnownCaip2ChainId {
+  const { chainId } = parseCaipAssetType(assetId);
+  if (!KnownCaip2ChainIdStruct.is(chainId)) {
+    throw new Error(`Invalid chain id: ${chainId}`);
+  }
+  return chainId;
 }
 
 /**

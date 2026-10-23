@@ -5,7 +5,6 @@ import {
 } from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type {
   KnownCaip19AssetIdOrSlip44Id,
@@ -27,6 +26,7 @@ import type { Transaction } from '../../services/transaction/Transaction';
 import type { TransactionService } from '../../services/transaction/TransactionService';
 import { isPathPaymentOperation } from '../../services/transaction/utils';
 import {
+  getAssetReference,
   isClassicAssetId,
   isSlip44Id,
   parseClassicAssetCodeIssuer,
@@ -326,7 +326,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
     if (isSlip44Id(assetId)) {
       return getNativeAssetMetadata(scope);
     } else if (isClassicAssetId(assetId)) {
-      const { assetReference } = parseCaipAssetType(assetId);
+      const assetReference = getAssetReference(assetId);
       const { assetCode } = parseClassicAssetCodeIssuer(assetReference);
       return toStellarAssetMetadata({
         assetId,
@@ -342,7 +342,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
         'Failed to resolve asset metadata; using fallback symbol',
         { assetId, error },
       );
-      const { assetReference } = parseCaipAssetType(assetId);
+      const assetReference = getAssetReference(assetId);
       return toStellarAssetMetadata({
         assetId,
         decimals: STELLAR_DECIMAL_PLACES,

@@ -1,7 +1,6 @@
 import { KeyringEvent, TransactionStatus } from '@metamask/keyring-api';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import { parseCaipAssetType } from '@metamask/utils';
 import type { Operation, OperationRecord } from '@stellar/stellar-sdk';
 import { Asset } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
@@ -15,8 +14,10 @@ import { SwapTransactionXdrStruct } from '../../api';
 import { AppConfig } from '../../config';
 import { DUST_XLM_AMOUNT } from '../../constants';
 import {
+  getAssetReference,
   getSlip44AssetId,
   getSnapProvider,
+  getStellarAssetChainId,
   isClassicAssetId,
   isSlip44Id,
   parseClassicAssetCodeIssuer,
@@ -52,7 +53,7 @@ export function caip19ToStellarAsset(
     return Asset.native();
   }
   if (isClassicAssetId(assetId)) {
-    const { assetReference } = parseCaipAssetType(assetId);
+    const assetReference = getAssetReference(assetId);
     const { assetCode, assetIssuer } =
       parseClassicAssetCodeIssuer(assetReference);
     return new Asset(assetCode, assetIssuer);
@@ -142,7 +143,7 @@ export function assertAssetScopeMatch(
   assetId: KnownCaip19AssetIdOrSlip44Id,
   expectedScope: KnownCaip2ChainId,
 ): void {
-  const { chainId } = parseCaipAssetType(assetId);
+  const chainId = getStellarAssetChainId(assetId);
   if (chainId !== String(expectedScope)) {
     throw new TransactionValidationException(
       `Asset ${assetId} scope does not match expected scope ${expectedScope}`,
