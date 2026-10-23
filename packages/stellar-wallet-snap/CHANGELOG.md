@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Read account asset balance from AssetsController whfeature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
+- Read account asset balances from AssetsController when the feature flag `enableAssetMigration` and local flag `enableAssetMigration` are on ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
   - Include SEP-41 balances on keyring `getAccountAssets` and `getAccountBalances`.
 - Read asset metadata from AssetsController when feature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493))
   - `enableAssetMigration` set to off.
