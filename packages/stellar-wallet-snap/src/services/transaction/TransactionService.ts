@@ -11,7 +11,7 @@ import type {
 import { isSep41Id, isSlip44Id, trackError } from '../../utils';
 import type { AnyErrorConstructor } from '../../utils';
 import type { AccountService } from '../account';
-import type { StellarAssetMetadata } from '../asset-metadata';
+import type { Sep41StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
 import {
   AccountNotActivatedException,
@@ -742,7 +742,7 @@ export class TransactionService {
   async synchronize(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<void> {
     await this.#transactionSynchronizeService.synchronize(
       activatedAccountPairs,

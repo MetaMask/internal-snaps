@@ -1,25 +1,45 @@
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
-import type { KnownCaip19AssetId } from '../../api';
+import type {
+  KnownCaip19ClassicAssetId,
+  KnownCaip19Sep41AssetId,
+} from '../../api';
 import { AssetType, KnownCaip2ChainId } from '../../api';
-import type { AssetMetadataState, StellarAssetMetadata } from './api';
+import type {
+  AssetMetadataState,
+  ClassicStellarAssetMetadata,
+  Sep41StellarAssetMetadata,
+} from './api';
 import { AssetMetadataRepository } from './AssetMetadataRepository';
 
 const classicId =
-  'stellar:testnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19AssetId;
+  'stellar:testnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19ClassicAssetId;
 
 const sep41Id =
-  'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19AssetId;
+  'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
 
-function generateAssetData(
-  assetId: KnownCaip19AssetId,
-  assetType: AssetType,
+function generateClassicAsset(
   chainId: KnownCaip2ChainId,
-): StellarAssetMetadata {
+): ClassicStellarAssetMetadata {
   return {
-    assetId,
-    assetType,
+    assetId: classicId,
+    assetType: AssetType.Token,
+    chainId,
+    name: 'N',
+    symbol: 'S',
+    fungible: true,
+    iconUrl: 'https://example.test/icon.png',
+    units: [{ name: 'N', symbol: 'S', decimals: 7 }],
+  };
+}
+
+function generateSep41Asset(
+  chainId: KnownCaip2ChainId,
+): Sep41StellarAssetMetadata {
+  return {
+    assetId: sep41Id,
+    assetType: AssetType.Sep41,
     chainId,
     name: 'N',
     symbol: 'S',
@@ -61,16 +81,8 @@ function createMockStateManager(
 
 describe('AssetMetadataRepository', () => {
   it('returns rows for getByAssetIds in request order', async () => {
-    const classic = generateAssetData(
-      classicId,
-      AssetType.Token,
-      KnownCaip2ChainId.Testnet,
-    );
-    const sep41 = generateAssetData(
-      sep41Id,
-      AssetType.Sep41,
-      KnownCaip2ChainId.Mainnet,
-    );
+    const classic = generateClassicAsset(KnownCaip2ChainId.Testnet);
+    const sep41 = generateSep41Asset(KnownCaip2ChainId.Mainnet);
     const manager = createMockStateManager({
       assets: { [classicId]: classic, [sep41Id]: sep41 },
     });
@@ -83,16 +95,8 @@ describe('AssetMetadataRepository', () => {
   });
 
   it('filters getByAssetType by assetType and chainId', async () => {
-    const classic = generateAssetData(
-      classicId,
-      AssetType.Token,
-      KnownCaip2ChainId.Testnet,
-    );
-    const sep41 = generateAssetData(
-      sep41Id,
-      AssetType.Sep41,
-      KnownCaip2ChainId.Mainnet,
-    );
+    const classic = generateClassicAsset(KnownCaip2ChainId.Testnet);
+    const sep41 = generateSep41Asset(KnownCaip2ChainId.Mainnet);
     const manager = createMockStateManager({
       assets: { [classicId]: classic, [sep41Id]: sep41 },
     });
@@ -106,11 +110,7 @@ describe('AssetMetadataRepository', () => {
   it('sets persistedAt when saving without advancing catalog sync time', async () => {
     const manager = createMockStateManager({ assets: {} });
     const repo = new AssetMetadataRepository(manager);
-    const row = generateAssetData(
-      sep41Id,
-      AssetType.Sep41,
-      KnownCaip2ChainId.Mainnet,
-    );
+    const row = generateSep41Asset(KnownCaip2ChainId.Mainnet);
     const before = Date.now();
 
     await repo.saveMany([row]);
@@ -128,11 +128,7 @@ describe('AssetMetadataRepository', () => {
   it('stamps assetMetadataLastSyncedAt only for a non-empty full catalog sync', async () => {
     const manager = createMockStateManager({ assets: {} });
     const repo = new AssetMetadataRepository(manager);
-    const row = generateAssetData(
-      sep41Id,
-      AssetType.Sep41,
-      KnownCaip2ChainId.Mainnet,
-    );
+    const row = generateSep41Asset(KnownCaip2ChainId.Mainnet);
     const before = Date.now();
 
     await repo.saveMany([row], true);
@@ -154,11 +150,7 @@ describe('AssetMetadataRepository', () => {
   });
 
   it('resolves getByAssetId from assets map', async () => {
-    const row = generateAssetData(
-      classicId,
-      AssetType.Token,
-      KnownCaip2ChainId.Testnet,
-    );
+    const row = generateClassicAsset(KnownCaip2ChainId.Testnet);
     const manager = createMockStateManager({ assets: { [classicId]: row } });
     const repo = new AssetMetadataRepository(manager);
 

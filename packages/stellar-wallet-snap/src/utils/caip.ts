@@ -13,6 +13,7 @@ import {
   KnownCaip19ClassicAssetStruct,
   KnownCaip19Sep41AssetStruct,
   KnownCaip19Slip44IdMap,
+  KnownCaip19Slip44IdStruct,
 } from '../api';
 
 /**
@@ -64,9 +65,7 @@ export function isStellarAssetId(assetId: string): boolean {
 export function isSlip44Id(
   assetId: KnownCaip19AssetIdOrSlip44Id | string,
 ): assetId is KnownCaip19Slip44Id {
-  return Object.values(KnownCaip19Slip44IdMap).includes(
-    assetId as KnownCaip19Slip44Id,
-  );
+  return KnownCaip19Slip44IdStruct.is(assetId);
 }
 
 /**
@@ -78,8 +77,7 @@ export function isSlip44Id(
 export function isSep41Id(
   assetId: KnownCaip19AssetIdOrSlip44Id | string,
 ): assetId is KnownCaip19Sep41AssetId {
-  const [error] = KnownCaip19Sep41AssetStruct.validate(assetId);
-  return error === undefined;
+  return KnownCaip19Sep41AssetStruct.is(assetId);
 }
 
 /**
@@ -91,8 +89,7 @@ export function isSep41Id(
 export function isClassicAssetId(
   assetId: KnownCaip19AssetIdOrSlip44Id | string,
 ): assetId is KnownCaip19ClassicAssetId {
-  const [error] = KnownCaip19ClassicAssetStruct.validate(assetId);
-  return error === undefined;
+  return KnownCaip19ClassicAssetStruct.is(assetId);
 }
 
 /**

@@ -1,6 +1,4 @@
 import type { Logger } from '@metamask/snap-networks-utils';
-import type { NonEmptyArray } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type {
   KnownCaip19AssetId,
@@ -18,13 +16,16 @@ import {
 } from '../../utils';
 import type { AssetsService } from '../assets';
 import type { AssetDataResponse, NetworkService } from '../network';
-import type { AssetUnit, StellarAssetMetadata } from './api';
+import type {
+  ClassicStellarAssetMetadata,
+  Sep41StellarAssetMetadata,
+  StellarAssetMetadata,
+} from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataServiceException } from './exceptions';
 import type { TokenMetadata } from './token-api/api';
 import { TokenApiClient } from './token-api/TokenApiClient';
 import {
-  getIconUrl,
   getNativeAssetMetadata,
   groupAssetsByChainId,
   toStellarAssetMetadata,
@@ -115,7 +116,7 @@ export class AssetMetadataService {
    */
   async getPersistedSep41AssetsMetadata(
     scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
+  ): Promise<Sep41StellarAssetMetadata[]> {
     const persistedAssets = await this.#assetMetadataRepository.getByAssetType(
       AssetType.Sep41,
       scope,
@@ -149,7 +150,7 @@ export class AssetMetadataService {
    */
   async fetchSep41AssetsOrSyncOnce(
     scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
+  ): Promise<Sep41StellarAssetMetadata[]> {
     if (
       await this.#assetMetadataRepository.isStale(
         AppConfig.cache.ttlMilliseconds.assetMetadata,
@@ -397,7 +398,7 @@ export class AssetMetadataService {
   async #fetchClassicTokenAssets(
     assetIds: KnownCaip19ClassicAssetId[],
     scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
+  ): Promise<ClassicStellarAssetMetadata[]> {
     if (assetIds.length === 0) {
       return [];
     }
@@ -424,7 +425,10 @@ export class AssetMetadataService {
       );
     }
 
-    return assets;
+    return assets.filter(
+      (asset): asset is ClassicStellarAssetMetadata =>
+        asset.assetType === AssetType.Token,
+    );
   }
 
   #extractSuccessAndMissingFromSettled(
@@ -480,22 +484,14 @@ export class AssetMetadataService {
   #toAssetMetadata(tokenMetadata: TokenMetadata): StellarAssetMetadata {
     const name = tokenMetadata.name ?? 'UNKNOWN';
     const symbol = tokenMetadata.symbol ?? 'UNKNOWN';
-    const { decimals } = tokenMetadata;
-    const { assetId } = tokenMetadata;
-    const units: NonEmptyArray<AssetUnit> = [{ name, symbol, decimals }];
 
-    const { assetNamespace, chainId } = parseCaipAssetType(assetId);
-
-    return {
-      name,
+    return toStellarAssetMetadata({
+      assetId: tokenMetadata.assetId,
+      decimals: tokenMetadata.decimals,
       symbol,
-      assetId,
-      chainId: chainId as KnownCaip2ChainId,
-      assetType: assetNamespace as AssetType,
-      fungible: true as const,
-      iconUrl: tokenMetadata.iconUrl ?? getIconUrl(assetId),
-      units,
-    };
+      name,
+      iconUrl: tokenMetadata.iconUrl,
+    });
   }
 
   /**
