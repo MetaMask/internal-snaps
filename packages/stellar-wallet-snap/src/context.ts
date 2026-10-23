@@ -114,7 +114,6 @@ const assetsService = new AssetsService({
   remoteFeatureFlagsProvider,
 });
 const assetMetadataService = new AssetMetadataService({
-  networkService,
   assetMetadataRepository,
   logger,
   assetsService,

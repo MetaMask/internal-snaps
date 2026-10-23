@@ -9,10 +9,8 @@ import {
 } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
-import type { KnownCaip19ClassicAssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
-import { STELLAR_DECIMAL_PLACES } from '../../constants';
 import { toSmallestUnit } from '../../utils';
 import { logger } from '../../utils/logger';
 import {
@@ -452,114 +450,6 @@ describe('NetworkService', () => {
       ).rejects.toThrow(
         `Failed to get account ledger meta for address: ${testAddress} for scope: ${scope}`,
       );
-    });
-  });
-
-  describe('getSep41AssetsData', () => {
-    it('throws NetworkServiceException when getLedgerEntries fails', async () => {
-      const { getLedgerEntriesSpy } = getRpcServerSpies();
-      getLedgerEntriesSpy.mockRejectedValue(new Error('RPC error'));
-
-      await expect(
-        networkService.getSep41AssetsData([USDC_SEP41], scope),
-      ).rejects.toThrow(NetworkServiceException);
-    });
-  });
-
-  describe('getClassicAssetData', () => {
-    const classicAssetId =
-      'stellar:pubnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19ClassicAssetId;
-    const issuer = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-
-    it('returns classic asset metadata from Horizon', async () => {
-      const call = jest.fn().mockResolvedValue({
-        records: [
-          {
-            asset_code: 'USDC',
-            asset_issuer: issuer,
-          },
-        ],
-      });
-      const assetsSpy = jest
-        .spyOn(StellarHorizon.Server.prototype, 'assets')
-        .mockReturnValue({
-          forCode: jest.fn().mockReturnValue({
-            forIssuer: jest.fn().mockReturnValue({ call }),
-          }),
-        } as never);
-
-      const result = await networkService.getClassicAssetData(
-        classicAssetId,
-        scope,
-      );
-
-      expect(result).toStrictEqual({
-        assetId: classicAssetId,
-        symbol: 'USDC',
-        decimals: STELLAR_DECIMAL_PLACES,
-        name: 'USDC',
-      });
-      expect(call).toHaveBeenCalled();
-      assetsSpy.mockRestore();
-    });
-
-    it('throws NetworkServiceException when Horizon returns no rows', async () => {
-      const call = jest.fn().mockResolvedValue({ records: [] });
-      const assetsSpy = jest
-        .spyOn(StellarHorizon.Server.prototype, 'assets')
-        .mockReturnValue({
-          forCode: jest.fn().mockReturnValue({
-            forIssuer: jest.fn().mockReturnValue({ call }),
-          }),
-        } as never);
-
-      await expect(
-        networkService.getClassicAssetData(classicAssetId, scope),
-      ).rejects.toThrow(NetworkServiceException);
-
-      assetsSpy.mockRestore();
-    });
-
-    it('throws NetworkServiceException when the matching row issuer does not match', async () => {
-      const call = jest.fn().mockResolvedValue({
-        records: [
-          {
-            asset_code: 'USDC',
-            asset_issuer:
-              'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
-          },
-        ],
-      });
-      const assetsSpy = jest
-        .spyOn(StellarHorizon.Server.prototype, 'assets')
-        .mockReturnValue({
-          forCode: jest.fn().mockReturnValue({
-            forIssuer: jest.fn().mockReturnValue({ call }),
-          }),
-        } as never);
-
-      await expect(
-        networkService.getClassicAssetData(classicAssetId, scope),
-      ).rejects.toThrow(NetworkServiceException);
-
-      assetsSpy.mockRestore();
-    });
-
-    it('wraps unexpected Horizon errors in NetworkServiceException', async () => {
-      const call = jest.fn().mockRejectedValue(new Error('Horizon outage'));
-      const assetsSpy = jest
-        .spyOn(StellarHorizon.Server.prototype, 'assets')
-        .mockReturnValue({
-          forCode: jest.fn().mockReturnValue({
-            forIssuer: jest.fn().mockReturnValue({ call }),
-          }),
-        } as never);
-
-      await expect(
-        networkService.getClassicAssetData(classicAssetId, scope),
-      ).rejects.toThrow(NetworkServiceException);
-
-      assetsSpy.mockRestore();
     });
   });
 

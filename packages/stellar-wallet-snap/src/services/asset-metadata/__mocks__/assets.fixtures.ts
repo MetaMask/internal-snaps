@@ -1,4 +1,4 @@
-import { InMemoryState, InMemoryCache } from '@metamask/snap-networks-utils';
+import { InMemoryState } from '@metamask/snap-networks-utils';
 
 import type {
   KnownCaip19ClassicAssetId,
@@ -8,9 +8,8 @@ import type {
 import { AssetType, KnownCaip2ChainId } from '../../../api';
 import { NATIVE_ASSET_NAME, NATIVE_ASSET_SYMBOL } from '../../../constants';
 import { getSlip44AssetId } from '../../../utils/caip';
-import { logger, noOpLogger } from '../../../utils/logger';
+import { logger } from '../../../utils/logger';
 import { createMockAssetsService } from '../../assets/__mocks__/assetsService.fixtures';
-import { NetworkService } from '../../network';
 import type { AssetMetadataByAssetId, Sep41StellarAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
 import { AssetMetadataService } from '../AssetMetadataService';
@@ -85,10 +84,6 @@ export const getMockSep41Assets = (): Sep41StellarAssetMetadata[] => {
 export const createMockAssetMetadataService = () => {
   const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
-    networkService: new NetworkService({
-      logger,
-      cache: new InMemoryCache(noOpLogger),
-    }),
     assetMetadataRepository: new AssetMetadataRepository(
       new InMemoryState({
         assets: generateMockStellarAssetMetadata(),

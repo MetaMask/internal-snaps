@@ -7,7 +7,6 @@ import type {
 import { AssetType, KnownCaip2ChainId } from '../../api';
 import { getSlip44AssetId, logger } from '../../utils';
 import { createMockAssetsService } from '../assets/__mocks__/assetsService.fixtures';
-import type { NetworkService } from '../network';
 import { USDC_SEP41 } from './__mocks__/assets.fixtures';
 import type {
   ClassicStellarAssetMetadata,
@@ -15,6 +14,7 @@ import type {
 } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataService } from './AssetMetadataService';
+import { AssetMetadataServiceException } from './exceptions';
 import type { TokenMetadata } from './token-api/api';
 import { TokenApiClient } from './token-api/TokenApiClient';
 import { toStellarAssetMetadata } from './utils';
@@ -67,10 +67,7 @@ function createCachedRow(
   };
 }
 
-function createService(deps: {
-  repo?: Partial<AssetMetadataRepository>;
-  network?: Partial<NetworkService>;
-}) {
+function createService(deps: { repo?: Partial<AssetMetadataRepository> }) {
   const defaults = {
     getByAssetIds: jest.fn().mockResolvedValue([]),
     saveMany: jest.fn().mockResolvedValue(undefined),
@@ -86,12 +83,6 @@ function createService(deps: {
     ...deps.repo,
   } as unknown as AssetMetadataRepository;
 
-  const network = {
-    getSep41AssetsData: jest.fn().mockResolvedValue([]),
-    getClassicAssetData: jest.fn(),
-    ...deps.network,
-  } as unknown as NetworkService;
-
   (TokenApiClient as jest.Mock).mockImplementation(() => ({
     getAssetsByAssetIds: mockGetAssetsByAssetIds,
     getAssetsByChainId: mockGetAssetsByChainId,
@@ -99,7 +90,6 @@ function createService(deps: {
 
   const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
-    networkService: network,
     assetMetadataRepository: repo,
     logger,
     assetsService,
@@ -113,12 +103,6 @@ function createService(deps: {
     >,
     saveMany: repo.saveMany as jest.MockedFunction<
       AssetMetadataRepository['saveMany']
-    >,
-    getSep41AssetsData: network.getSep41AssetsData as jest.MockedFunction<
-      NetworkService['getSep41AssetsData']
-    >,
-    getClassicAssetData: network.getClassicAssetData as jest.MockedFunction<
-      NetworkService['getClassicAssetData']
     >,
   };
 }
@@ -144,29 +128,15 @@ describe('AssetMetadataService', () => {
     expect(mockGetAssetsByAssetIds).not.toHaveBeenCalled();
   });
 
-  it('loads mainnet classic from Horizon when token API and cache miss', async () => {
-    const classicId = MAINNET_CLASSIC_USDC;
-    const rpcRow = {
-      assetId: classicId,
-      symbol: 'USDC',
-      decimals: 7,
-      name: 'USD Coin',
-    };
-    const { service, getClassicAssetData } = createService({
-      network: {
-        getClassicAssetData: jest.fn().mockResolvedValue(rpcRow),
-      },
-    });
+  it('throws when the token API does not return metadata for a mainnet classic asset', async () => {
+    const { service } = createService({});
 
-    const result = await service.resolve(classicId);
-
-    expect(result.assetId).toBe(classicId);
-    expect(result.symbol).toBe('USDC');
-    expect(mockGetAssetsByAssetIds).toHaveBeenCalled();
-    expect(getClassicAssetData).toHaveBeenCalledWith(
-      classicId,
-      KnownCaip2ChainId.Mainnet,
+    await expect(service.resolve(MAINNET_CLASSIC_USDC)).rejects.toThrow(
+      AssetMetadataServiceException,
     );
+    expect(mockGetAssetsByAssetIds).toHaveBeenCalledWith([
+      MAINNET_CLASSIC_USDC,
+    ]);
   });
 
   it('returns cached mainnet classic asset without calling token API', async () => {
@@ -250,7 +220,7 @@ describe('AssetMetadataService', () => {
       name: 'USD Coin',
       symbol: 'USDC',
     };
-    const { service, getClassicAssetData, saveMany } = createService({});
+    const { service, saveMany } = createService({});
     mockGetAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
 
     const result = await service.resolve(classicId);
@@ -272,7 +242,6 @@ describe('AssetMetadataService', () => {
         encodePathParams: false,
       }),
     });
-    expect(getClassicAssetData).not.toHaveBeenCalled();
     expect(saveMany).toHaveBeenCalledWith([
       expect.objectContaining({ assetId: classicId }),
     ]);
