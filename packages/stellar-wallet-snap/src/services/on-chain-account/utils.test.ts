@@ -16,13 +16,13 @@ describe('calculateLedgerMetaFromMinReserve', () => {
       .times(BASE_RESERVE_STROOPS)
       .toFixed(0);
 
-    expect(calculateLedgerMetaFromMinReserve(emptyAccountReserve)).toStrictEqual(
-      {
-        subentryCount: 0,
-        numSponsoring: 0,
-        numSponsored: 0,
-      },
-    );
+    expect(
+      calculateLedgerMetaFromMinReserve(emptyAccountReserve),
+    ).toStrictEqual({
+      subentryCount: 0,
+      numSponsoring: 0,
+      numSponsored: 0,
+    });
   });
 
   it('recovers subentries when the reserve is at or above two base reserves', () => {
