@@ -9,14 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.2.1]
 
-### Uncategorized
-
-- feat(solana-wallet-snap): add Core messenger plumbing for AssetsProvider ([#485](https://github.com/MetaMask/internal-snaps/pull/485))
-- Release/18.0.0 ([#491](https://github.com/MetaMask/internal-snaps/pull/491))
-- test: removed usage of beforeEach from clientRequest.test.ts ([#466](https://github.com/MetaMask/internal-snaps/pull/466))
-- refactor(tron): use shared Metamask origin constant ([#482](https://github.com/MetaMask/internal-snaps/pull/482))
-- chore(deps): bump @metamask/remote-feature-flag-controller from 5.0.0 to 7.0.0 ([#361](https://github.com/MetaMask/internal-snaps/pull/361))
-
 ### Changed
 
 - Cache identical TronGrid and Tron provider requests for 5 seconds, so rapid keyring calls such as `getAccountAssets` and `getAccountBalances` reuse the previous result instead of repeating the network call. ([#500](https://github.com/MetaMask/internal-snaps/pull/500))

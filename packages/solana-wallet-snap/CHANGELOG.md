@@ -9,18 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [7.2.0]
 
-### Uncategorized
-
-- feat(solana): skip Snap asset sync and persistence while migration is active ([#487](https://github.com/MetaMask/internal-snaps/pull/487))
-- feat(solana-wallet-snap): add Core messenger plumbing for AssetsProvider ([#485](https://github.com/MetaMask/internal-snaps/pull/485))
-- feat(tron): use shared fetch policy helpers ([#492](https://github.com/MetaMask/internal-snaps/pull/492))
-- chore(solana): use BaseTransactionScanService from shared lib ([#398](https://github.com/MetaMask/internal-snaps/pull/398))
-- Release/18.0.0 ([#491](https://github.com/MetaMask/internal-snaps/pull/491))
-- refactor(solana): use shared Metamask origin constant ([#483](https://github.com/MetaMask/internal-snaps/pull/483))
-- Release/17.0.0 ([#467](https://github.com/MetaMask/internal-snaps/pull/467))
-- feat(snap-networks-utils): add shared createFetchPolicy in networks utils ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
-- chore(deps): bump `concurrently`, `oxfmt`, `ts-jest`, `proxy-addr` ([#445](https://github.com/MetaMask/internal-snaps/pull/445))
-
 ### Added
 
 - Route asset reads (`getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, `getAccountAssets`) through the Core AssetsController when the Solana assets migration flag is active, falling back to the Snap adapter while it is off ([#486](https://github.com/MetaMask/internal-snaps/pull/486))
