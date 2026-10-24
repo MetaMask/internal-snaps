@@ -191,10 +191,10 @@
       "message": "Si aprueba esta solicitud, un tercero conocido por sus estafas se quedará con todos sus activos."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Conozca más"
+      "message": "Ver detalles"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Asesoramiento de seguridad por"
+      "message": "Con tecnología de"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Comprobando problemas de seguridad"

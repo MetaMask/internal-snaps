@@ -209,10 +209,10 @@
       "message": "If you approve this request, a third party known for scams will take all your assets."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Learn more"
+      "message": "See details"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Security advice by"
+      "message": "Powered by"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Checking for security issues"
