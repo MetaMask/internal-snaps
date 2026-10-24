@@ -72,7 +72,7 @@ export function formatMessageForDisplay(bytes: Uint8Array): {
   // control/format characters. JSON escapes controls; escape format units too.
   const preview =
     isBinary && !isLossy
-      ? JSON.stringify(message).replace(/\p{Cf}/gu, (character) =>
+      ? JSON.stringify(message).replace(/[\p{Cc}\p{Cf}]/gu, (character) =>
           character
             .split('')
             .map(

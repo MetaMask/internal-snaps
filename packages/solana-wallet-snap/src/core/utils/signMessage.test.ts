@@ -113,4 +113,19 @@ describe('message signing safety', () => {
       isBinary: false,
     });
   });
+
+  it.each([0x7f, 0x80, 0x85, 0x9f])(
+    'visibly escapes remaining control U+%s',
+    (code) => {
+      const message = `Approve login${String.fromCharCode(
+        code,
+      )}Resources: example`;
+      const displayed = formatMessageForDisplay(Buffer.from(message));
+      expect(displayed.preview).toContain(
+        `\\u${code.toString(16).padStart(4, '0')}`,
+      );
+      expect(displayed.preview).not.toContain(String.fromCharCode(code));
+      expect(JSON.parse(displayed.preview ?? 'null')).toBe(message);
+    },
+  );
 });
