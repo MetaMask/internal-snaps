@@ -41,6 +41,7 @@ import { trackError } from '../../utils/errors';
 import { getSolanaCoinTypeNode } from '../../utils/getBip32Entropy';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 import logger from '../../utils/logger';
+import { assertIsNotTransactionMessage } from '../../utils/signMessage';
 import { resolveTransactionType } from '../../utils/transactionType';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
@@ -526,6 +527,7 @@ export class WalletService {
     // Text decoding can remove NUL bytes or replace invalid UTF-8 sequences.
     // Sign the original bytes so the signature matches `signedMessage`.
     const messageBytes = new Uint8Array(getBase64Codec().encode(message));
+    assertIsNotTransactionMessage(messageBytes);
     const signableMessage = createSignableMessage(messageBytes);
 
     const signer =

@@ -2,6 +2,7 @@ import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
+import { address, getCompiledTransactionMessageEncoder } from '@solana/kit';
 
 import { Network } from '../../constants/solana';
 import {
@@ -771,6 +772,40 @@ describe('WalletService', () => {
   );
 
   describe('signMessage byte preservation', () => {
+    it.each(['legacy', 0] as const)(
+      'rejects transaction messages through single and batch signing (%s)',
+      async (version) => {
+        const bytes = getCompiledTransactionMessageEncoder().encode({
+          version,
+          header: {
+            numSignerAccounts: 1,
+            numReadonlySignerAccounts: 0,
+            numReadonlyNonSignerAccounts: 0,
+          },
+          staticAccounts: [address('11111111111111111111111111111111')],
+          lifetimeToken: '11111111111111111111111111111111',
+          instructions: [],
+        });
+        const account = MOCK_SOLANA_KEYRING_ACCOUNT_3;
+        const message = Buffer.from(bytes).toString('base64');
+        await expect(service.signMessage(account, message)).rejects.toThrow(
+          'Cannot sign a transaction message using signMessage',
+        );
+        const text = Buffer.from('Still an ordinary message').toString(
+          'base64',
+        );
+        const batch = await service.signMessages([
+          { account, message },
+          { account, message: text },
+        ]);
+        expect(batch[0]).toStrictEqual({
+          error: 'Cannot sign a transaction message using signMessage',
+        });
+        expect(batch[1]).toMatchObject({ signedMessage: text });
+        expect(mockSigner.partiallySignBase64String).not.toHaveBeenCalled();
+      },
+    );
+
     it.each<[string, Buffer]>([
       ['NUL bytes', Buffer.from([0, 65, 0, 66, 0])],
       ['invalid UTF-8', Buffer.from([0xff, 0xfe, 0x80, 0xc3, 0x28])],

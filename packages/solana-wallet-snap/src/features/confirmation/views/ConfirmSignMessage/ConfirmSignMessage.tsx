@@ -26,6 +26,7 @@ import { ConfirmSignMessageFormNames } from './events';
 
 export type ConfirmSignMessageProps = {
   message: string;
+  isBinary?: boolean;
   account: ExtendedKeyringAccount;
   accountDomain: string | null;
   scope: Network;
@@ -36,6 +37,7 @@ export type ConfirmSignMessageProps = {
 
 export const ConfirmSignMessage: SnapComponent<ConfirmSignMessageProps> = ({
   message,
+  isBinary = false,
   account,
   accountDomain,
   scope,
@@ -56,9 +58,18 @@ export const ConfirmSignMessage: SnapComponent<ConfirmSignMessageProps> = ({
         <Section>
           <Box direction="horizontal" center>
             <Text fontWeight="medium">
-              {translate('confirmation.signMessage.message')}
+              {translate(
+                isBinary
+                  ? 'confirmation.signMessage.binaryMessage'
+                  : 'confirmation.signMessage.message',
+              )}
             </Text>
           </Box>
+          {isBinary ? (
+            <Text color="warning">
+              {translate('confirmation.signMessage.binaryWarning')}
+            </Text>
+          ) : null}
           <Box alignment="space-between">
             <Text>{message}</Text>
           </Box>
