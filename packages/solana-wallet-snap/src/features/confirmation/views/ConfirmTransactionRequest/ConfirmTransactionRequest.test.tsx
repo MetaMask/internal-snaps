@@ -102,7 +102,8 @@ describe('ConfirmTransactionRequest', () => {
 
         expect(serialized).toContain(`"severity":"${severity}"`);
         expect(serialized).toContain('This is a deceptive request');
-        expect(serialized).toContain('Security advice by');
+        expect(serialized).toContain('See details');
+        expect(serialized).toContain('Powered by');
       },
     );
 
@@ -113,6 +114,8 @@ describe('ConfirmTransactionRequest', () => {
 
       expect(serialized).toContain('"severity":"warning"');
       expect(serialized).toContain('This request may be risky');
+      expect(serialized).toContain('See details');
+      expect(serialized).toContain('Powered by');
       expect(serialized).not.toContain('This is a deceptive request');
     });
 
