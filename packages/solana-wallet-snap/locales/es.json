@@ -276,6 +276,9 @@
     },
     "confirmation.signMessage.binaryWarning": {
       "message": "Este mensaje contiene datos binarios u ocultos. Los bytes completos se muestran en Base64. Firma solo si confías en el sitio que lo solicita."
+    },
+    "confirmation.signMessage.textPreview": {
+      "message": "Vista previa de texto (con escapes)"
     }
   }
 }

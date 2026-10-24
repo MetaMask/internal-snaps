@@ -26,6 +26,18 @@ describe('message signing safety', () => {
     expect(() => assertIsNotTransactionMessage(new Uint8Array(bytes))).toThrow(
       'Cannot sign a transaction message using signMessage',
     );
+    // V1 has a larger packet limit than legacy/v0. Plausible messages above
+    // 1232 bytes still require the transaction signing flow.
+    expect(() =>
+      assertIsNotTransactionMessage(
+        new Uint8Array([...bytes, ...new Uint8Array(2000)]),
+      ),
+    ).toThrow('Cannot sign a transaction message using signMessage');
+    expect(() =>
+      assertIsNotTransactionMessage(
+        new Uint8Array([...bytes, ...new Uint8Array(5000)]),
+      ),
+    ).not.toThrow();
   });
 
   it.each(['legacy', 0] as const)(
@@ -65,8 +77,6 @@ describe('message signing safety', () => {
     Buffer.from([65, 66, 0]),
     Buffer.from([0xef, 0xbb, 0xbf, 65]),
     Buffer.from([0xff, 0xfe, 0x80]),
-    Buffer.from('A\u202eB', 'utf8'),
-    Buffer.from('A\rB', 'utf8'),
   ])(
     'shows hidden or lossy content as the complete Base64 payload',
     (bytes) => {
@@ -76,6 +86,25 @@ describe('message signing safety', () => {
       });
     },
   );
+
+  it.each(['I, the', '10 i', '1. T'])(
+    'allows large text starting with %s that cannot fit a transaction',
+    (prefix) => {
+      expect(() =>
+        assertIsNotTransactionMessage(Buffer.from(prefix + 'a'.repeat(30000))),
+      ).not.toThrow();
+    },
+  );
+
+  it('shows a readable escaped preview alongside full bytes for emoji and CRLF', () => {
+    const message = 'Welcome 👩‍💻\r\nSign to log in';
+    const bytes = Buffer.from(message);
+    expect(formatMessageForDisplay(bytes)).toStrictEqual({
+      message: bytes.toString('base64'),
+      isBinary: true,
+      preview: '"Welcome 👩\\u200d💻\\r\\nSign to log in"',
+    });
+  });
 
   it('keeps valid Unicode and multiline messages readable', () => {
     const message = 'Hello, 世界 👋\nSecond line';

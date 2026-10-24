@@ -10,6 +10,7 @@ describe('ConfirmSignMessage', () => {
       ConfirmSignMessage({
         message: 'QQBC',
         isBinary: true,
+        preview: '"A\\u0000B"',
         account: {
           address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
         } as ExtendedKeyringAccount,
@@ -21,6 +22,7 @@ describe('ConfirmSignMessage', () => {
       }),
     );
     expect(serialized).toContain('Binary message (Base64)');
+    expect(serialized).toContain('Text preview (escaped)');
     expect(serialized).toContain(
       'This message contains binary or hidden data.',
     );
