@@ -95,5 +95,8 @@
   "transactionScan.errors.insufficientSol": "Account does not have enough SOL to perform the operation.",
   "transactionScan.errors.slippageToleranceExceeded": "The transaction was reverted because the slippage tolerance was exceeded.",
   "transactionScan.errors.transactionBlockhashExpired": "Please go back and try again",
-  "transactionScan.errors.unknownError": "An unknown error occurred."
+  "transactionScan.errors.unknownError": "An unknown error occurred.",
+  "confirmation.signMessage.binaryMessage": "Binary message (Base64)",
+  "confirmation.signMessage.binaryWarning": "This message contains binary or hidden data. The full bytes are shown in Base64. Sign only if you trust the requesting site.",
+  "confirmation.signMessage.textPreview": "Text preview (escaped)"
 }

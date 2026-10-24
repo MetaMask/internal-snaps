@@ -1,6 +1,8 @@
 import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
+import { assert } from '@metamask/superstruct';
+import { address, getCompiledTransactionMessageEncoder } from '@solana/kit';
 
 import { Network } from '../../constants/solana';
 import {
@@ -34,6 +36,7 @@ import {
   MOCK_SIGN_TRANSACTION_REQUEST,
 } from './mocks';
 import type { SolanaWalletRequest } from './structs';
+import { SolanaSignMessageResponseStruct } from './structs';
 import { WalletService } from './WalletService';
 
 jest.mock('../../utils/getBip32Entropy', () => ({
@@ -768,9 +771,111 @@ describe('WalletService', () => {
     },
   );
 
+  describe('signMessage byte preservation', () => {
+    it.each(['legacy', 0] as const)(
+      'rejects transaction messages through single and batch signing (%s)',
+      async (version) => {
+        const bytes = getCompiledTransactionMessageEncoder().encode({
+          version,
+          header: {
+            numSignerAccounts: 1,
+            numReadonlySignerAccounts: 0,
+            numReadonlyNonSignerAccounts: 0,
+          },
+          staticAccounts: [address('11111111111111111111111111111111')],
+          lifetimeToken: '11111111111111111111111111111111',
+          instructions: [],
+        });
+        const account = MOCK_SOLANA_KEYRING_ACCOUNT_3;
+        const message = Buffer.from(bytes).toString('base64');
+        await expect(service.signMessage(account, message)).rejects.toThrow(
+          'Cannot sign a transaction message using signMessage',
+        );
+        const text = Buffer.from('Still an ordinary message').toString(
+          'base64',
+        );
+        const batch = await service.signMessages([
+          { account, message },
+          { account, message: text },
+        ]);
+        expect(batch[0]).toStrictEqual({
+          error: 'Cannot sign a transaction message using signMessage',
+        });
+        expect(batch[1]).toMatchObject({ signedMessage: text });
+        expect(mockSigner.partiallySignBase64String).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each<[string, Buffer]>([
+      ['NUL bytes', Buffer.from([0, 65, 0, 66, 0])],
+      ['invalid UTF-8', Buffer.from([0xff, 0xfe, 0x80, 0xc3, 0x28])],
+      ['UTF-8 byte order mark', Buffer.from([0xef, 0xbb, 0xbf, 65])],
+      [
+        'all byte values',
+        Buffer.from(Array.from({ length: 256 }, (_, i) => i)),
+      ],
+      ['Unicode text', Buffer.from('Hello, 世界 👋', 'utf8')],
+    ])('signs the original bytes for %s', async (_description, bytes) => {
+      const account = MOCK_SOLANA_KEYRING_ACCOUNT_3;
+      const message = bytes.toString('base64');
+
+      const result = await service.signMessage(account, message);
+
+      expect(result.signedMessage).toBe(message);
+      expect(
+        await service.verifySignature(account, result.signature, message),
+      ).toBe(true);
+    });
+
+    it('produces distinct signatures when only NUL byte positions differ', async () => {
+      const account = MOCK_SOLANA_KEYRING_ACCOUNT_3;
+      const message0 = Buffer.from([65, 0, 66]).toString('base64');
+      const message1 = Buffer.from([65, 66, 0]).toString('base64');
+
+      const result0 = await service.signMessage(account, message0);
+      const result1 = await service.signMessage(account, message1);
+
+      expect(result0.signature).not.toBe(result1.signature);
+      expect(
+        await service.verifySignature(account, result0.signature, message1),
+      ).toBe(false);
+      expect(
+        await service.verifySignature(account, result1.signature, message0),
+      ).toBe(false);
+    });
+  });
+
   describe('signMessages', () => {
     const utf8ToBase64 = (utf8: string): string =>
       Buffer.from(utf8, 'utf8').toString('base64');
+
+    it('signs binary messages without changing their bytes in a batch', async () => {
+      const requests = [
+        {
+          account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
+          message: Buffer.from([0, 65, 0xff, 0x80, 66, 0]).toString('base64'),
+        },
+        {
+          account: MOCK_SOLANA_KEYRING_ACCOUNT_1,
+          message: Buffer.from([0xef, 0xbb, 0xbf, 65]).toString('base64'),
+        },
+      ];
+
+      const results = await service.signMessages(requests);
+
+      expect(results).toHaveLength(requests.length);
+      for (const [index, { account, message }] of requests.entries()) {
+        const result = results[index];
+        expect(result).toMatchObject({
+          signedMessage: message,
+          signatureType: 'ed25519',
+        });
+        assert(result, SolanaSignMessageResponseStruct);
+        expect(
+          await service.verifySignature(account, result.signature, message),
+        ).toBe(true);
+      }
+    });
 
     it('signs messages with one entropy fetch for accounts sharing an entropy source', async () => {
       const message0 = utf8ToBase64('proof message 0');

@@ -291,6 +291,15 @@
     },
     "transactionScan.errors.unknownError": {
       "message": "An unknown error occurred."
+    },
+    "confirmation.signMessage.binaryMessage": {
+      "message": "Binary message (Base64)"
+    },
+    "confirmation.signMessage.binaryWarning": {
+      "message": "This message contains binary or hidden data. The full bytes are shown in Base64. Sign only if you trust the requesting site."
+    },
+    "confirmation.signMessage.textPreview": {
+      "message": "Text preview (escaped)"
     }
   }
 }
