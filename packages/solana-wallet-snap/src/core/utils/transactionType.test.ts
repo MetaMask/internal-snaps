@@ -1,13 +1,13 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
-import { METAMASK_ORIGIN } from '../constants/solana';
 import { resolveTransactionType } from './transactionType';
 
 describe('resolveTransactionType', () => {
   it('uses the classification supplied by the caller when present', () => {
     expect(
       resolveTransactionType({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         transactionType: TransactionType.Receive,
       }),
     ).toBe(TransactionType.Receive);
@@ -23,7 +23,7 @@ describe('resolveTransactionType', () => {
   });
 
   it('reports a MetaMask-originated transaction as a send', () => {
-    expect(resolveTransactionType({ origin: METAMASK_ORIGIN })).toBe(
+    expect(resolveTransactionType({ origin: DEFAULT_METAMASK_ORIGIN })).toBe(
       TransactionType.Send,
     );
   });

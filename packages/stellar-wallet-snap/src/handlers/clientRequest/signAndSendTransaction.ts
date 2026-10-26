@@ -1,14 +1,16 @@
 import { TransactionType } from '@metamask/keyring-api';
-import { resolveUnifiedSwapTransactionType } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  resolveUnifiedSwapTransactionType,
+} from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type {
   KnownCaip19AssetIdOrSlip44Id,
   KnownCaip2ChainId,
 } from '../../api';
-import { METAMASK_ORIGIN, STELLAR_DECIMAL_PLACES } from '../../constants';
+import { STELLAR_DECIMAL_PLACES } from '../../constants';
 import type { StellarKeyringAccount } from '../../services/account';
 import type {
   AssetMetadataService,
@@ -24,6 +26,7 @@ import type { Transaction } from '../../services/transaction/Transaction';
 import type { TransactionService } from '../../services/transaction/TransactionService';
 import { isPathPaymentOperation } from '../../services/transaction/utils';
 import {
+  getAssetReference,
   isClassicAssetId,
   isSlip44Id,
   parseClassicAssetCodeIssuer,
@@ -150,7 +153,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
     }
 
     await this.#analyticsService.trackTransactionSubmitted({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
       transactionType,
@@ -323,7 +326,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
     if (isSlip44Id(assetId)) {
       return getNativeAssetMetadata(scope);
     } else if (isClassicAssetId(assetId)) {
-      const { assetReference } = parseCaipAssetType(assetId);
+      const assetReference = getAssetReference(assetId);
       const { assetCode } = parseClassicAssetCodeIssuer(assetReference);
       return toStellarAssetMetadata({
         assetId,
@@ -339,7 +342,7 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
         'Failed to resolve asset metadata; using fallback symbol',
         { assetId, error },
       );
-      const { assetReference } = parseCaipAssetType(assetId);
+      const assetReference = getAssetReference(assetId);
       return toStellarAssetMetadata({
         assetId,
         decimals: STELLAR_DECIMAL_PLACES,

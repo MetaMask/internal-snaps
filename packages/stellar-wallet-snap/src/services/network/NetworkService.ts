@@ -4,43 +4,33 @@ import type {
   Serializable,
 } from '@metamask/snap-networks-utils';
 import { useCache } from '@metamask/snap-networks-utils';
-import { parseCaipAssetType } from '@metamask/utils';
 import {
   Address,
-  Contract,
   Horizon as StellarHorizon,
   NotFoundError,
   rpc,
 } from '@stellar/stellar-sdk';
 
-import type {
-  KnownCaip19ClassicAssetId,
-  KnownCaip19Sep41AssetId,
-} from '../../api';
+import type { KnownCaip19Sep41AssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import type { NetworkConfig } from '../../config';
 import { AppConfig } from '../../config';
 import {
   MAX_TRANSACTION_SCAN_PAGES,
   MAX_TRANSACTIONS_PAGE_SIZE,
-  STELLAR_DECIMAL_PLACES,
 } from '../../constants';
 import type { AnyErrorConstructor } from '../../utils';
 import {
   isSameStr,
-  parseClassicAssetCodeIssuer,
-  toCaip19ClassicAssetId,
-  toCaip19Sep41AssetId,
   rethrowIfInstanceElseThrow,
   batchesAllSettled,
-  getAddress,
+  getAssetReference,
 } from '../../utils';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
 import { assertInvokeHostFunctionSoleOperation } from '../transaction/utils';
-import { extractAssetDataFromContractData } from '../transaction/xdrParser';
-import type { AccountLedgerMeta, AssetDataResponse } from './api';
+import type { AccountLedgerMeta } from './api';
 import { KnownRpcError } from './api';
 import {
   AccountNotActivatedException,
@@ -65,9 +55,8 @@ import {
 
 /**
  * Stellar network access through **Horizon** and **Soroban RPC**: base fee, account loading (full
- * Horizon account vs RPC sequence-only), contract token metadata (`getLedgerEntries`), SEP-41
- * balance simulation, Soroban simulation / fee computation, transaction submission, and optional
- * post-submit polling.
+ * Horizon account vs RPC sequence-only), SEP-41 balance simulation, Soroban simulation / fee
+ * computation, transaction submission, and optional post-submit polling.
  */
 export class NetworkService {
   readonly #logger: Logger;
@@ -413,122 +402,6 @@ export class NetworkService {
   }
 
   /**
-   * Batch loads token contract ledger entries over Soroban RPC.
-   *
-   * @param assetIds - SEP-41 CAIP-19 asset ids (`…/sep41:C…`) for contracts on `scope`.
-   * @param scope - The CAIP-2 chain ID.
-   * @returns One {@link AssetDataResponse} per returned ledger entry, in RPC order. Ids with no matching
-   * contract entry are omitted (this is not an error).
-   * @throws {NetworkServiceException} When the RPC request fails.
-   */
-  async getSep41AssetsData(
-    assetIds: KnownCaip19Sep41AssetId[],
-    scope: KnownCaip2ChainId,
-  ): Promise<AssetDataResponse[]> {
-    try {
-      const client = this.#getRpcClient(scope);
-
-      // getLedgerEntries returns only entries that exist; missing contracts are omitted.
-      const ledgerEntries = await client.getLedgerEntries(
-        ...assetIds.map((assetId) =>
-          new Contract(
-            parseCaipAssetType(assetId).assetReference,
-          ).getFootprint(),
-        ),
-      );
-
-      const assets: AssetDataResponse[] = [];
-      for (const ledgerEntry of ledgerEntries.entries) {
-        if (ledgerEntry.val.type !== 'contractData') {
-          continue;
-        }
-        const { contractData } = ledgerEntry.val;
-        const contractAddress = getAddress(contractData.contract);
-
-        const extractedAssetData = extractAssetDataFromContractData(
-          contractData,
-          contractAddress,
-        );
-
-        if (extractedAssetData.isStellarClassicAsset) {
-          const { assetCode, assetIssuer } = parseClassicAssetCodeIssuer(
-            extractedAssetData.name,
-          );
-          assets.push({
-            // Normalize to use CAIP-19 classic asset id - ${CAIP_2_CHAIN_ID}/token:${ASSET_CODE}-${ASSET_ISSUER}
-            assetId: toCaip19ClassicAssetId(scope, assetCode, assetIssuer),
-            symbol: extractedAssetData.symbol,
-            decimals: extractedAssetData.decimals,
-            name: assetCode,
-          });
-        } else {
-          assets.push({
-            // Normalize to use CAIP-19 SEP-41 asset id - ${CAIP_2_CHAIN_ID}/sep41:${CONTRACT_ADDRESS}
-            assetId: toCaip19Sep41AssetId(scope, extractedAssetData.name),
-            name: extractedAssetData.name,
-            symbol: extractedAssetData.symbol,
-            decimals: extractedAssetData.decimals,
-          });
-        }
-      }
-      return assets;
-    } catch (error: unknown) {
-      return this.#throwError({
-        error,
-        fallbackError: 'Failed to get assets data from Soroban',
-      });
-    }
-  }
-
-  /**
-   * Fetches classic asset data from Horizon via `assets` for a CAIP-19 classic asset id.
-   *
-   * @param assetId - CAIP-19 classic asset id (`…/asset:CODE-ISSUER`).
-   * @param scope - The CAIP-2 chain ID.
-   * @returns for the classic asset.
-   * @throws {NetworkServiceException} When Horizon returns no entry for this asset or the request fails.
-   */
-  async getClassicAssetData(
-    assetId: KnownCaip19ClassicAssetId,
-    scope: KnownCaip2ChainId,
-  ): Promise<AssetDataResponse> {
-    try {
-      const client = this.#getHorizonClient(scope);
-      const { assetCode, assetIssuer } = parseClassicAssetCodeIssuer(
-        parseCaipAssetType(assetId).assetReference,
-      );
-      const assetData = await client
-        .assets()
-        .forCode(assetCode)
-        .forIssuer(assetIssuer)
-        .call();
-
-      if (
-        !assetData ||
-        assetData.records.length === 0 ||
-        assetData.records[0]?.asset_code !== assetCode ||
-        assetData.records[0]?.asset_issuer !== assetIssuer
-      ) {
-        throw new NetworkServiceException(
-          `Failed to get assets data from Horizon for asset id: ${assetId}`,
-        );
-      }
-
-      return {
-        assetId,
-        symbol: assetCode,
-        decimals: STELLAR_DECIMAL_PLACES,
-        name: assetCode,
-      };
-    } catch (error: unknown) {
-      return this.#throwError({
-        error,
-        fallbackError: 'Failed to get assets data from Horizon',
-      });
-    }
-  }
-
-  /**
    * Fetches SEP-41 asset balances for multiple accounts via Soroban simulation of `balance(Address)`.
    *
    * **Mainnet only** — uses the Stellar MultiCall router (single simulation). On testnet this method
@@ -572,7 +445,7 @@ export class NetworkService {
         for (const assetId of assetIds) {
           invocations.push(
             new InvocationV1({
-              contract: parseCaipAssetType(assetId).assetReference,
+              contract: getAssetReference(assetId),
               method: 'balance',
               args: [new Address(account).toScVal()],
               // Allow the batch simulation to continue when a cell fails (missing contract, etc.).

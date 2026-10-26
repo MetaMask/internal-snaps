@@ -14,6 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails
   - Simulates the transaction to find what other programs charge the user through the System and token programs, so it doesn't need to know each program
 
+## [7.2.0]
+
+### Added
+
+- Route asset reads (`getAccountAssetByID`, `getAccountAssetsByIDs`, `getAccountAssetsByScope`, `getAccountAssets`) through the Core AssetsController when the Solana assets migration flag is active, falling back to the Snap adapter while it is off ([#486](https://github.com/MetaMask/internal-snaps/pull/486))
+
+### Changed
+
+- Retry transient Solana RPC and API read failures with the shared fetch policy while sending transaction submissions only once. ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+
+### Fixed
+
+- Fix a race condition in the WebSocket connection recovery: the resync no longer derives the accounts to sync from the subscription list (which `#reSubscribe` concurrently deletes and re-creates during recovery — a read landing inside that window silently skipped the resync). ([#490](https://github.com/MetaMask/internal-snaps/pull/490))
+- Accept scan responses that report the `simulation` or `validation` section as explicit `null` (which the API returns when only the other option is requested), instead of failing the response validation and dropping the scan result
+
 ## [7.1.0]
 
 ### Added
@@ -92,7 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Re-licensed split into LICENSE.MIT or LICENSE.APACHE2 files (SPDX expression unchanged) ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 - This package was migrated from [snap-solana-wallet](https://github.com/MetaMask/snap-solana-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-solana-wallet/blob/main/packages/snap/CHANGELOG.md). ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.2.0...HEAD
+[7.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.1.0...@metamask/solana-wallet-snap@7.2.0
 [7.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.0.0...@metamask/solana-wallet-snap@7.1.0
 [7.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@6.0.0...@metamask/solana-wallet-snap@7.0.0
 [6.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@5.0.1...@metamask/solana-wallet-snap@6.0.0

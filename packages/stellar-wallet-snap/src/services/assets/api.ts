@@ -2,6 +2,7 @@ import {
   boolean,
   create,
   defaulted,
+  nullable,
   number,
   optional,
   string,
@@ -9,6 +10,7 @@ import {
   union,
 } from '@metamask/superstruct';
 import type { Infer } from '@metamask/superstruct';
+import { BigNumber } from 'bignumber.js';
 
 import {
   KnownCaip19AssetIdOrSlip44IdStruct,
@@ -20,6 +22,8 @@ import {
   ValidStellarAmountStruct,
   ValidStellarInt64Struct,
 } from '../../api';
+import { STELLAR_DECIMAL_PLACES } from '../../constants';
+import { hasDecimals, toSmallestUnit } from '../../utils';
 import { InvalidCoreAssetException } from './exceptions';
 
 /**
@@ -56,13 +60,16 @@ export const CoreNativeBalanceStruct = type({
 
 /**
  * Core `Asset.balance` for classic assets: human `amount` plus trustline
- * metadata (`limit` is unscaled int64 stroops).
+ * metadata. `limit` is a finite, non-negative string: either a display amount
+ * (`"0.0"`, `"922337203685.4775807"`) or an integer stroop string.
  */
 export const CoreClassicBalanceStruct = type({
   amount: ValidStellarAmountStruct,
   metadata: type({
-    limit: ValidStellarInt64Struct,
+    limit: ValidAmountStruct,
     authorized: defaulted(boolean(), true),
+    // Keyring may omit sponsor or send null / "" when not sponsored.
+    sponsor: optional(nullable(string())),
     sponsored: defaulted(boolean(), false),
   }),
 });
@@ -130,6 +137,53 @@ const StellarCoreAssetIdStruct = type({
 });
 
 /**
+ * A removed trustline is stored with a zero limit (`"0"`, `"0.0"`, `"0.0000000"`).
+ *
+ * @param limit - Classic trustline limit from Core balance metadata.
+ * @returns Whether the limit is numeric zero.
+ */
+function isZeroTrustlineLimit(limit: string): boolean {
+  const amount = new BigNumber(limit);
+  return amount.isFinite() && amount.isZero();
+}
+
+/**
+ * Convert a trustline limit to a stroop string.
+ *
+ * - If it has a fractional part, it is scaled to stroops.
+ * - If it is an integer, it is returned unchanged.
+ *
+ * @param limit - Trustline limit.
+ * @returns Integer stroop string.
+ */
+function normalizeCoreTrustlineLimit(limit: string): string {
+  const amount = new BigNumber(limit);
+  if (!amount.isFinite() || !hasDecimals(amount)) {
+    return limit;
+  }
+  return toSmallestUnit(amount, STELLAR_DECIMAL_PLACES).toFixed(0);
+}
+
+/**
+ * Whether classic trustline reserve is sponsored.
+ * A non-empty sponsor on a removed trustline (limit 0) is stale and does not count.
+ *
+ * @param sponsor - Trustline sponsor account address, if any.
+ * @param limit - Trustline limit.
+ * @returns `true` when `sponsor` is a non-empty string and `limit` is not zero.
+ */
+function isSponsored(
+  sponsor: string | null | undefined,
+  limit: string,
+): boolean {
+  return (
+    typeof sponsor === 'string' &&
+    sponsor.length > 0 &&
+    !isZeroTrustlineLimit(limit)
+  );
+}
+
+/**
  * Validates a Stellar `Asset` into {@link CoreAsset}.
  *
  * @param value - Raw AssetsController asset.
@@ -146,12 +200,23 @@ export function parseCoreStellarAsset(value: unknown): CoreAsset | null {
     if (!asset.id.startsWith(`${asset.chainId}/`)) {
       throw new Error('Asset ID does not match chain ID');
     }
+    if (isCoreClassicAsset(asset)) {
+      const { sponsor } = asset.balance.metadata;
+      const limit = normalizeCoreTrustlineLimit(asset.balance.metadata.limit);
+      asset.balance.metadata.limit = limit;
+      if (isZeroTrustlineLimit(limit)) {
+        // A removed trustline must not keep the previous sponsor account id.
+        asset.balance.metadata.sponsor = null;
+      }
+      asset.balance.metadata.sponsored = isSponsored(sponsor, limit);
+    }
     return asset;
   } catch (error) {
     throw new InvalidCoreAssetException(
       `${value.id} is not a valid Stellar asset`,
       {
         cause: error,
+        data: value,
       },
     );
   }

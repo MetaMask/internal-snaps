@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Read account asset balances from AssetsController when the feature flag `enableAssetMigration` and local flag `enableAssetMigration` are on ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
+  - Include SEP-41 balances on keyring `getAccountAssets` and `getAccountBalances`.
+- Read asset metadata from AssetsController when feature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493))
+  - `enableAssetMigration` set to off.
+
+### Changed
+
+- **BREAKING:** Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
+  - Fetch asset metadata from the local catalog or the mainnet token API.
+- **BREAKING:** Return classic keyring balance metadata `limit` in integer stroop string ([#495](https://github.com/MetaMask/internal-snaps/pull/495))
+  - Keyring method `getAccountBalances` and the Keyring event `AccountBalancesUpdated` now return this `limit` in stroops.
+
+### Fixed
+
+- Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
+
+## [1.3.0]
+
+### Added
+
+- Add `sponsored` to classic keyring balance metadata ([#471](https://github.com/MetaMask/internal-snaps/pull/471))
+- Treat StellarExpert SEP-37 `memo-required` directory addresses as memo-required alongside SEP-29 ([#489](https://github.com/MetaMask/internal-snaps/pull/489))
+
+### Changed
+
+- Keep `onAmountInput` valid when a classic amount would exceed the sender's trustline limit ([#469](https://github.com/MetaMask/internal-snaps/pull/469))
+
 ## [1.2.0]
 
 ### Changed
@@ -86,7 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...HEAD
+[1.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...@metamask/stellar-wallet-snap@1.3.0
 [1.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...@metamask/stellar-wallet-snap@1.2.0
 [1.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.0...@metamask/stellar-wallet-snap@1.1.1
 [1.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.0.0...@metamask/stellar-wallet-snap@1.1.0

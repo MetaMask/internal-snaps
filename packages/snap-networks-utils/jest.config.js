@@ -15,6 +15,7 @@ module.exports = merge(baseConfig, {
   displayName,
 
   transform: {
+    '^.+\\.(t|j)sx?$': 'ts-jest',
     '^.+\\.svg$': '<rootDir>/../../jest.svg-transformer.js',
   },
 

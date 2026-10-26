@@ -11,7 +11,7 @@ import type {
 import { isSep41Id, isSlip44Id, trackError } from '../../utils';
 import type { AnyErrorConstructor } from '../../utils';
 import type { AccountService } from '../account';
-import type { StellarAssetMetadata } from '../asset-metadata';
+import type { Sep41StellarAssetMetadata } from '../asset-metadata';
 import type { NetworkService } from '../network';
 import {
   AccountNotActivatedException,
@@ -262,7 +262,7 @@ export class TransactionService {
     });
 
     let requiresMemoRecovery = false;
-    // SEP-29 applies to inbound payments from other accounts; skip self-payments.
+    // SEP-29 / SEP-37 apply to inbound payments from other accounts; skip self-payments.
     // Dest was loaded during the draft build; useCache avoids a second Horizon round-trip.
     if (onChainAccount.accountId !== destination) {
       const destinationAccount = await this.#loadActivatedAccountOrNull(
@@ -742,7 +742,7 @@ export class TransactionService {
   async synchronize(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<void> {
     await this.#transactionSynchronizeService.synchronize(
       activatedAccountPairs,

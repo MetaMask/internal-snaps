@@ -23,6 +23,27 @@ export type {
   TransactionFinalizedEventProperties,
   WebSocketConnectionClosedEventProperties,
 } from './services/analytics/AnalyticsService';
+export {
+  SecurityAlertsApiClient,
+  SECURITY_ALERTS_REQUEST_HEADERS,
+} from './clients/security-alerts-api/SecurityAlertsApiClient';
+export type { SecurityAlertsApiClientOptions } from './clients/security-alerts-api/SecurityAlertsApiClient';
+export {
+  SECURITY_ALERTS_SCAN_OPTIONS,
+  SecurityAlertResponse,
+  SecurityAlertsScanStatus,
+} from './services/security-alerts/types';
+export type {
+  BaseScanParams,
+  BaseTransactionScanServiceOptions,
+  SecurityAlertsScanOption,
+  SecurityScanOutcome,
+} from './services/security-alerts/types';
+export { BaseTransactionScanService } from './services/security-alerts/BaseTransactionScanService';
+export {
+  deriveSecurityAlert,
+  getSecurityAlertDescription,
+} from './services/security-alerts/utils';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export {
   resolveFlowTransactionType,
@@ -110,12 +131,31 @@ export {
   createWithCatchAndThrowSnapError,
   formatAccountSyncFailures,
   getSyncFailuresFromSettledResult,
+  HttpError,
   isSnapRpcError,
   normalizeError,
   stringifyReason,
   SynchronizationError,
 } from './utils/errors';
 export { InFlightCoalescer } from './utils/dedupe/InFlightCoalescer';
+export {
+  BrokenCircuitError,
+  createFetchPolicy,
+  createFetchPolicyError,
+  FetchPolicyErrorName,
+  isTransientError,
+  MAX_RETRY_AFTER_MS,
+} from './utils/fetchPolicy/createFetchPolicy';
+export type {
+  CreateFetchPolicyOptions,
+  FetchPolicyError,
+} from './utils/fetchPolicy/createFetchPolicy';
+export {
+  executeWithFetchPolicy,
+  fetchWithPolicy,
+  parseRetryAfter,
+} from './utils/fetchPolicy/executeWithFetchPolicy';
+export type { FetchPolicy } from './utils/fetchPolicy/executeWithFetchPolicy';
 export { ActionHeader } from './ui/ActionHeader/ActionHeader';
 export type { ActionHeaderProps } from './ui/ActionHeader/ActionHeader';
 export { Asset, AssetIcon } from './ui/Asset/Asset';

@@ -1,4 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   Logger,
@@ -7,7 +8,6 @@ import type {
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
-import { METAMASK_ORIGIN } from '../../constants';
 import type { StellarKeyringAccount } from '../../services/account';
 import type {
   AssetMetadataService,
@@ -161,7 +161,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
         : TransactionType.TokenDisapprove;
 
     const trackingProperties: TransactionEventProperties = {
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       accountType: account.type,
       chainIdCaip: scope,
       transactionType,
@@ -383,7 +383,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
 
     return (
       (await this.#confirmationUIController.renderConfirmationDialog({
-        origin: METAMASK_ORIGIN,
+        origin: DEFAULT_METAMASK_ORIGIN,
         scope,
         renderContext: {
           account,
@@ -432,7 +432,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     const { scope, action } = request.params;
 
     await this.#confirmationUIController.renderConfirmationDialog({
-      origin: METAMASK_ORIGIN,
+      origin: DEFAULT_METAMASK_ORIGIN,
       scope,
       renderContext: {
         account,

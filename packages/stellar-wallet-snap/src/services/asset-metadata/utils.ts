@@ -1,23 +1,45 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
-import { assert } from '@metamask/superstruct';
-import { parseCaipAssetType } from '@metamask/utils';
+import type { NonEmptyArray } from '@metamask/utils';
 
 import type {
-  AssetType,
   KnownCaip2ChainId,
   KnownCaip19AssetIdOrSlip44Id,
+  KnownCaip19ClassicAssetId,
+  KnownCaip19Sep41AssetId,
   KnownCaip19Slip44Id,
   KnownCaip19AssetId,
 } from '../../api';
-import { KnownCaip2ChainIdStruct } from '../../api';
+import { AssetType } from '../../api';
 import { AppConfig } from '../../config';
 import {
   NATIVE_ASSET_NAME,
   NATIVE_ASSET_SYMBOL,
   STELLAR_DECIMAL_PLACES,
 } from '../../constants';
-import { getSlip44AssetId, isSlip44Id } from '../../utils';
-import type { StellarAssetMetadata } from './api';
+import {
+  getSlip44AssetId,
+  getStellarAssetChainId,
+  isClassicAssetId,
+  isSep41Id,
+  isSlip44Id,
+} from '../../utils';
+import type {
+  AssetUnit,
+  ClassicStellarAssetMetadata,
+  NativeStellarAssetMetadata,
+  Sep41StellarAssetMetadata,
+  StellarAssetMetadata,
+} from './api';
+
+type ToStellarAssetMetadataInput<
+  TAssetId extends KnownCaip19AssetIdOrSlip44Id,
+> = {
+  assetId: TAssetId;
+  decimals: number;
+  symbol: string;
+  name?: string;
+  iconUrl?: string;
+};
 
 /**
  * Returns the icon URL for a given asset ID.
@@ -44,44 +66,76 @@ export function getIconUrl(assetId: KnownCaip19AssetIdOrSlip44Id): string {
  * @param assetData.decimals - Smallest-unit decimal count for the primary unit.
  * @param assetData.symbol - Ticker or short symbol for display.
  * @param assetData.name - Optional long name; defaults to `symbol` when omitted.
- * @returns Cached metadata including icon URL and units.
+ * @param assetData.iconUrl - Optional icon URL; defaults to the icon URL from the token API.
+ * @returns Cached metadata including icon URL and units. The variant follows `assetId`.
  */
-export function toStellarAssetMetadata(assetData: {
-  assetId: KnownCaip19AssetIdOrSlip44Id;
-  decimals: number;
-  symbol: string;
-  name?: string;
-}): StellarAssetMetadata {
+export function toStellarAssetMetadata(
+  assetData: ToStellarAssetMetadataInput<KnownCaip19Sep41AssetId>,
+): Sep41StellarAssetMetadata;
+export function toStellarAssetMetadata(
+  assetData: ToStellarAssetMetadataInput<KnownCaip19ClassicAssetId>,
+): ClassicStellarAssetMetadata;
+export function toStellarAssetMetadata(
+  assetData: ToStellarAssetMetadataInput<KnownCaip19Slip44Id>,
+): NativeStellarAssetMetadata;
+export function toStellarAssetMetadata(
+  assetData: ToStellarAssetMetadataInput<KnownCaip19AssetIdOrSlip44Id>,
+): StellarAssetMetadata;
+export function toStellarAssetMetadata(
+  assetData: ToStellarAssetMetadataInput<KnownCaip19AssetIdOrSlip44Id>,
+): StellarAssetMetadata {
   const name = assetData.name ?? assetData.symbol;
-  const { assetNamespace, chainId } = parseCaipAssetType(assetData.assetId);
+  const chainId = getStellarAssetChainId(assetData.assetId);
+  const { assetId } = assetData;
+  const units: NonEmptyArray<AssetUnit> = [
+    {
+      name,
+      symbol: assetData.symbol,
+      decimals: assetData.decimals,
+    },
+  ];
 
-  return {
-    assetId: assetData.assetId,
+  const metadata = {
     name,
     symbol: assetData.symbol,
-    chainId: chainId as KnownCaip2ChainId,
-    assetType: assetNamespace as AssetType,
-    fungible: true,
-    iconUrl: getIconUrl(assetData.assetId),
-    units: [
-      {
-        name,
-        symbol: assetData.symbol,
-        decimals: assetData.decimals,
-      },
-    ],
+    chainId,
+    fungible: true as const,
+    iconUrl: assetData.iconUrl ?? getIconUrl(assetId),
+    units,
+  };
+
+  if (isSep41Id(assetId)) {
+    return {
+      ...metadata,
+      assetId,
+      assetType: AssetType.Sep41,
+    };
+  }
+
+  if (isClassicAssetId(assetId)) {
+    return {
+      ...metadata,
+      assetId,
+      assetType: AssetType.Token,
+    };
+  }
+
+  return {
+    ...metadata,
+    assetId,
+    assetType: AssetType.Native,
   };
 }
 
 /**
- * Builds {@link StellarAssetMetadata} for the native XLM slip44 id on the given network.
+ * Builds {@link NativeStellarAssetMetadata} for the native XLM slip44 id on the given network.
  *
  * @param scope - The CAIP-2 chain id.
- * @returns Metadata with standard name, symbol, and 7 decimals.
+ * @returns Native metadata with standard name, symbol, and 7 decimals.
  */
 export function getNativeAssetMetadata(
   scope: KnownCaip2ChainId,
-): StellarAssetMetadata {
+): NativeStellarAssetMetadata {
   return toStellarAssetMetadata({
     assetId: getSlip44AssetId(scope),
     decimals: STELLAR_DECIMAL_PLACES,
@@ -117,9 +171,7 @@ export function groupAssetsByChainId(
     }
     uniqueAssetIds.add(assetId);
 
-    const { chainId } = parseCaipAssetType(assetId);
-
-    assert(chainId, KnownCaip2ChainIdStruct);
+    const chainId = getStellarAssetChainId(assetId);
 
     if (isSlip44Id(assetId)) {
       if (!nativeAssets.has(chainId)) {

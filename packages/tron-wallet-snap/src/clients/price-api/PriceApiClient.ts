@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import type { CaipAssetType } from '@metamask/keyring-api';
-import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
+import {
+  UrlStruct,
+  buildUrl,
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
 import type {
+  FetchPolicy,
   ICache,
   Logger,
   Serializable,
@@ -28,6 +34,8 @@ export class PriceApiClient {
 
   readonly #cache: ICache<Serializable>;
 
+  readonly #policy: FetchPolicy;
+
   readonly cacheTtlsMilliseconds: {
     spotPrices: number;
   };
@@ -50,6 +58,10 @@ export class PriceApiClient {
     this.cacheTtlsMilliseconds = cacheTtlsMilliseconds;
 
     this.#cache = _cache;
+    this.#policy = createFetchPolicy({
+      service: 'price_api',
+      logger: this.#logger,
+    });
   }
 
   /**
@@ -91,13 +103,14 @@ export class PriceApiClient {
             },
           });
 
-          const response = await this.#fetch(url);
+          const responseBody = await fetchWithPolicy(
+            this.#policy,
+            url,
+            undefined,
+            this.#fetch,
+          );
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const spotPrices = await response.json();
+          const spotPrices = JSON.parse(responseBody);
           assert(spotPrices, SpotPricesStruct);
 
           return spotPrices;

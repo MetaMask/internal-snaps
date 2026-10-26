@@ -1,6 +1,5 @@
 import { TransactionType } from '@metamask/keyring-api';
-
-import { METAMASK_ORIGIN } from '../constants/solana';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
 /**
  * Resolves the transaction classification to report for a lifecycle event.
@@ -35,7 +34,7 @@ export function resolveTransactionType({
     return transactionType;
   }
 
-  return origin === METAMASK_ORIGIN
+  return origin === DEFAULT_METAMASK_ORIGIN
     ? TransactionType.Send
     : TransactionType.Unknown;
 }

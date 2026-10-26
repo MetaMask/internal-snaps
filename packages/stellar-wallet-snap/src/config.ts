@@ -6,7 +6,7 @@ import {
   UrlStruct,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
-import { enums, object } from '@metamask/superstruct';
+import { boolean, enums, object } from '@metamask/superstruct';
 
 /* eslint-disable no-restricted-globals */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -49,6 +49,7 @@ export const ConfigStruct = object({
     [KnownCaip2ChainId.Mainnet]: networkConfigStruct,
     [KnownCaip2ChainId.Testnet]: networkConfigStruct,
   }),
+  enableAssetMigration: boolean(),
   selectedNetwork: enums(getSupportedScopes()),
   transaction: object({
     timeout: parseIntegerStruct(100, 180),
@@ -112,6 +113,8 @@ export const ConfigStruct = object({
       simulateTransaction: parseIntegerStruct(1000, 10 * 1000),
       // SEP-41 balance reads (multicall on mainnet)
       sep41AssetBalance: parseIntegerStruct(1000, 30 * 1000),
+      // Keyring getAccountAssets result reused by the following getAccountBalances call
+      fetchOnChainAccount: parseIntegerStruct(1000, 5 * 1000),
       // 1 hour — token API asset catalog. Account sync hot-reloads when older.
       assetMetadata: parseIntegerStruct(1000, 60 * 60 * 1000),
     }),
@@ -147,6 +150,7 @@ const ENVIRONMENT = {
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
+  enableAssetMigration: false,
   transaction: {
     timeout: process.env.STELLAR_TRANSACTION_TIMEOUT,
     pollingAttempts: process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS,
@@ -183,6 +187,8 @@ const ENVIRONMENT = {
         process.env.STELLAR_SIMULATE_TRANSACTION_TTL_MILLISECONDS,
       sep41AssetBalance:
         process.env.STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS,
+      fetchOnChainAccount:
+        process.env.STELLAR_KEYRING_LIVE_ACCOUNT_TTL_MILLISECONDS,
       assetMetadata: process.env.STELLAR_ASSET_METADATA_TTL_MILLISECONDS,
     },
   },

@@ -1,29 +1,19 @@
 import type { Logger } from '@metamask/snap-networks-utils';
-import type { NonEmptyArray } from '@metamask/utils';
-import { parseCaipAssetType } from '@metamask/utils';
 
 import type {
   KnownCaip19AssetId,
   KnownCaip19AssetIdOrSlip44Id,
-  KnownCaip19ClassicAssetId,
   KnownCaip19Sep41AssetId,
 } from '../../api';
 import { KnownCaip2ChainId, AssetType } from '../../api';
 import { AppConfig } from '../../config';
-import {
-  batchesAllSettled,
-  batchesAllSettledWithChunks,
-  isClassicAssetId,
-  isSep41Id,
-} from '../../utils';
-import type { AssetDataResponse, NetworkService } from '../network';
-import type { AssetUnit, StellarAssetMetadata } from './api';
+import type { AssetsService } from '../assets';
+import type { Sep41StellarAssetMetadata, StellarAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataServiceException } from './exceptions';
 import type { TokenMetadata } from './token-api/api';
 import { TokenApiClient } from './token-api/TokenApiClient';
 import {
-  getIconUrl,
   getNativeAssetMetadata,
   groupAssetsByChainId,
   toStellarAssetMetadata,
@@ -33,42 +23,37 @@ import {
  * Resolves CAIP-19 asset identifiers and caches fungible asset metadata for lookups.
  */
 export class AssetMetadataService {
-  // Batch sizes for fetching assets from RPC, it is lower because we can fetch multiple assets at once
-  readonly #sepAssetBatchSize = 5;
-
-  // Chunk size for fetching SEP-41 assets from RPC
-  readonly #sepAssetChunkSize = 10;
-
-  // Batch sizes for fetching assets from Horizon
-  readonly #classicAssetBatchSize = 10;
-
-  readonly #networkService: NetworkService;
-
   readonly #tokenApiClient: TokenApiClient;
 
   readonly #assetMetadataRepository: AssetMetadataRepository;
 
   readonly #logger: Logger;
 
+  readonly #assetsService: AssetsService;
+
   constructor({
-    networkService,
     assetMetadataRepository,
     logger,
+    assetsService,
   }: {
-    networkService: NetworkService;
     assetMetadataRepository: AssetMetadataRepository;
     logger: Logger;
+    assetsService: AssetsService;
   }) {
-    this.#networkService = networkService;
     this.#tokenApiClient = new TokenApiClient({
       baseUrl: AppConfig.api.tokenApi.baseUrl,
     });
     this.#assetMetadataRepository = assetMetadataRepository;
     this.#logger = logger.withPrefix('[🪙 AssetMetadataService]');
+    this.#assetsService = assetsService;
   }
 
   /**
-   * Loads decimals for the asset; for SEP-41, fetches symbol and contract metadata from the token contract.
+   * Loads asset metadata from persisted state, then the token API.
+   *
+   * Native assets resolve locally. Ids the token API does not return are left
+   * unresolved and are not persisted, including unknown mainnet assets and
+   * testnet assets.
    *
    * @param assetId - Native, classic, or SEP-41 CAIP-19 asset id.
    * @returns Resolved asset data for wallet / transaction use.
@@ -87,20 +72,19 @@ export class AssetMetadataService {
   }
 
   /**
-   * Returns all persisted SEP-41 assets for the given chain ID.
+   * Resolves asset metadata for ids that are not in the watched catalog.
    *
-   * @param scope - The chain ID to look up.
-   * @returns A Promise that resolves to all persisted SEP-41 assets for the given chain ID.
+   * Rows already stored in AssetsController or snap state are reused. Newly fetched
+   * rows are persisted, same as {@link resolve}. Ids missing from the token API
+   * are omitted.
+   *
+   * @param assetIds - Classic or SEP-41 CAIP-19 asset ids to resolve.
+   * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
    */
-  async getPersistedSep41AssetsMetadata(
-    scope: KnownCaip2ChainId,
+  async fetchAndPersistAssetsByAssetIds(
+    assetIds: KnownCaip19AssetId[],
   ): Promise<StellarAssetMetadata[]> {
-    const persistedAssets = await this.#assetMetadataRepository.getByAssetType(
-      AssetType.Sep41,
-      scope,
-    );
-
-    return persistedAssets;
+    return this.#fetchAndPersistAssetsByAssetIds(assetIds);
   }
 
   /**
@@ -116,37 +100,47 @@ export class AssetMetadataService {
   }
 
   /**
-   * Returns persisted SEP-41 assets for the given scope, refreshing the token API
-   * catalog first when {@link AssetMetadataRepository.isStale} reports the last
-   * full catalog sync has expired (or never completed).
-   *
-   * Used during account / transaction sync so newly listed SEP-41 tokens are
-   * picked up without waiting for the hourly `synchronizeAssets` cron.
+   * Returns all persisted assets for the given scope and type.
    *
    * @param scope - The chain ID to look up.
-   * @returns A Promise that resolves to all SEP-41 assets for the given scope.
+   * @param assetType - The asset type to look up.
+   * @returns A Promise that resolves to all persisted assets for the given scope and type.
    */
-  async fetchSep41AssetsOrSyncOnce(
+  async getAssetsByScopeAndType<TAssetType extends AssetType>(
     scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
-    if (
-      await this.#assetMetadataRepository.isStale(
-        AppConfig.cache.ttlMilliseconds.assetMetadata,
-      )
-    ) {
-      this.#logger.debug('Asset catalog is stale, synchronizing assets', {
-        scope,
-      });
-      await this.synchronize(scope);
+    assetType: TAssetType,
+  ): Promise<Extract<StellarAssetMetadata, { assetType: TAssetType }>[]> {
+    const assetsMetadata = await this.#assetMetadataRepository.getByAssetType(
+      assetType,
+      scope,
+    );
+
+    return assetsMetadata;
+  }
+
+  /**
+   * Loads SEP-41 metadata for the requested ids, or the persisted catalog when ids are omitted.
+   * Non-SEP-41 rows are skipped.
+   *
+   * @param params - SEP-41 metadata lookup.
+   * @param params.scope - CAIP-2 network.
+   * @param params.assetIds - SEP-41 asset ids. Omit or pass an empty list to use the persisted catalog.
+   * @returns SEP-41 metadata for the requested ids, or the persisted catalog.
+   */
+  async fetchAndPersistSep41AssetMetadata(params: {
+    scope: KnownCaip2ChainId;
+    assetIds?: KnownCaip19Sep41AssetId[];
+  }): Promise<Sep41StellarAssetMetadata[]> {
+    const { scope, assetIds = [] } = params;
+    if (assetIds.length > 0) {
+      const assetsMetadata =
+        await this.fetchAndPersistAssetsByAssetIds(assetIds);
+      return assetsMetadata.filter(
+        (asset) => asset.assetType === AssetType.Sep41,
+      );
     }
 
-    const sep41Assets = await this.getPersistedSep41AssetsMetadata(scope);
-
-    this.#logger.debug('SEP-41 assets found in the state', {
-      noOfAssets: sep41Assets.length,
-    });
-
-    return sep41Assets;
+    return this.getAssetsByScopeAndType(scope, AssetType.Sep41);
   }
 
   /**
@@ -162,19 +156,41 @@ export class AssetMetadataService {
     await this.#assetMetadataRepository.saveMany(tokensMetadata, true);
   }
 
+  /**
+   * Synchronizes the asset catalog if it is stale.
+   *
+   * @param scope - The chain ID to synchronize the asset catalog for.
+   */
+  async synchronizeIfStale(scope: KnownCaip2ChainId): Promise<void> {
+    if (
+      await this.#assetMetadataRepository.isStale(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      )
+    ) {
+      this.#logger.debug('Asset catalog is stale, synchronizing assets', {
+        scope,
+      });
+      await this.synchronize(scope);
+    }
+  }
+
   async #fetchAndPersistAssetsByAssetIds(
     assetIds: KnownCaip19AssetIdOrSlip44Id[],
   ): Promise<StellarAssetMetadata[]> {
     const { nativeAssets: nativeAssetsByChainId, assets: assetsByChainId } =
       groupAssetsByChainId(assetIds);
+
     const result: StellarAssetMetadata[] = [];
     // fetch native assets
     for (const [chainId] of nativeAssetsByChainId) {
       result.push(getNativeAssetMetadata(chainId));
     }
 
-    // fetch assets from state
+    // persisted: AssetsController then snap when migration is on; snap only when off
     const allNonNativeAssetIds = [...assetsByChainId.values()].flat();
+    if (allNonNativeAssetIds.length === 0) {
+      return result;
+    }
     const { assets, missingAssetIds } =
       await this.#getPersistedAssetMetadata(allNonNativeAssetIds);
 
@@ -182,72 +198,100 @@ export class AssetMetadataService {
       return result.concat(assets);
     }
 
-    // fetch missing assets by chain id
-    const missingAssets: StellarAssetMetadata[] = [];
-    const { assets: missingAssetIdsByChainId } =
-      groupAssetsByChainId(missingAssetIds);
+    // A missing token API row is not persisted.
+    const { assets: assetsToPersist } =
+      await this.#fetchTokenAssetsFromApi(missingAssetIds);
 
-    for (const [chainId, chainAssetIds] of missingAssetIdsByChainId) {
-      const fetchedAssets = await this.#fetchMissingAssetsMetadata(
-        chainAssetIds,
-        chainId,
-      );
-      missingAssets.push(...fetchedAssets);
+    // backfill in state
+    if (assetsToPersist.length > 0) {
+      await this.#assetMetadataRepository.saveMany(assetsToPersist);
     }
 
-    // Backfill in state
-    if (missingAssets.length > 0) {
-      await this.#assetMetadataRepository.saveMany(missingAssets);
-    }
-
-    return result.concat(assets, missingAssets);
+    return result.concat(assets, assetsToPersist);
   }
 
+  /**
+   * Resolves persisted metadata. AssetsController first when the Stellar assets
+   * migration flag is on, then snap state for remaining ids. When the flag is
+   * off, skip AssetsController and read snap state only.
+   *
+   * @param assetIds - Non-native CAIP-19 ids to look up.
+   * @returns Hits plus ids still missing after persisted lookups.
+   */
   async #getPersistedAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{
     assets: StellarAssetMetadata[];
     missingAssetIds: KnownCaip19AssetId[];
   }> {
-    const cachedAssets =
-      await this.#assetMetadataRepository.getByAssetIds(assetIds);
-    const { hits: assets, missing: missingAssetIds } =
-      this.#partitionHitsAndMissingByArray(assetIds, cachedAssets);
+    if (await this.#assetsService.isMigrationEnabled()) {
+      const {
+        hits: assetsControllerHits,
+        missing: missingAssetIdsFromAssetsController,
+      } = await this.#getAssetsControllerAssetMetadata(assetIds);
 
-    return { assets, missingAssetIds };
+      if (missingAssetIdsFromAssetsController.length === 0) {
+        return { assets: assetsControllerHits, missingAssetIds: [] };
+      }
+
+      const { hits: snapHits, missing: missingAssetIds } =
+        await this.#getSnapAssetMetadata(missingAssetIdsFromAssetsController);
+
+      return {
+        assets: [...assetsControllerHits, ...snapHits],
+        missingAssetIds,
+      };
+    }
+
+    const { hits, missing } = await this.#getSnapAssetMetadata(assetIds);
+    return { assets: hits, missingAssetIds: missing };
   }
 
-  async #fetchMissingAssetsMetadata(
+  async #getSnapAssetMetadata(assetIds: KnownCaip19AssetId[]): Promise<{
+    hits: StellarAssetMetadata[];
+    missing: KnownCaip19AssetId[];
+  }> {
+    const cachedAssets =
+      await this.#assetMetadataRepository.getByAssetIds(assetIds);
+    return this.#partitionHitsAndMissingByArray(assetIds, cachedAssets);
+  }
+
+  async #getAssetsControllerAssetMetadata(
     assetIds: KnownCaip19AssetId[],
-    scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
-    let missingAssetIds: KnownCaip19AssetId[] = [];
-    let apiTokenAssets: StellarAssetMetadata[] = [];
+  ): Promise<{
+    hits: StellarAssetMetadata[];
+    missing: KnownCaip19AssetId[];
+  }> {
+    const hits: StellarAssetMetadata[] = [];
+    const missing: KnownCaip19AssetId[] = [];
 
-    if (scope === KnownCaip2ChainId.Mainnet) {
-      // No scope required for the token API, as it only supports mainnet
-      const apiResult = await this.#fetchTokenAssetsFromApi(assetIds);
-      apiTokenAssets = apiResult.assets;
-      missingAssetIds = apiResult.missingAssetIds;
-    } else {
-      missingAssetIds = assetIds;
+    this.#logger.debug('Getting asset metadata from AssetsController', {
+      assetIds,
+    });
+    if (assetIds.length > 0) {
+      // The order doesn't matter here, as we are not using the order of the assets.
+      await Promise.all(
+        assetIds.map(async (assetId) => {
+          const metadata = await this.#assetsService.getAssetMetadata(assetId);
+          if (metadata) {
+            hits.push(
+              toStellarAssetMetadata({
+                assetId,
+                decimals: metadata.decimals,
+                symbol: metadata.symbol,
+                name: metadata.name,
+                iconUrl: metadata.image,
+              }),
+            );
+            return;
+          }
+          missing.push(assetId);
+        }),
+      );
     }
-
-    const missingSep41AssetIds: KnownCaip19Sep41AssetId[] = [];
-    const missingClassicAssetIds: KnownCaip19ClassicAssetId[] = [];
-
-    for (const assetId of missingAssetIds) {
-      if (isSep41Id(assetId)) {
-        missingSep41AssetIds.push(assetId);
-      } else if (isClassicAssetId(assetId)) {
-        missingClassicAssetIds.push(assetId);
-      }
-      // there is no other asset type that is not SEP-41 or classic
-    }
-
-    const [sepTokenAssets, classicTokenAssets] = await Promise.all([
-      this.#fetchSepTokenAssets(missingSep41AssetIds, scope),
-      this.#fetchClassicTokenAssets(missingClassicAssetIds, scope),
-    ]);
-    return [...apiTokenAssets, ...sepTokenAssets, ...classicTokenAssets];
+    this.#logger.debug('Asset metadata from AssetsController', {
+      hits,
+      missing,
+    });
+    return { hits, missing };
   }
 
   async #fetchTokenAssetsFromApi(assetIds: KnownCaip19AssetId[]): Promise<{
@@ -262,98 +306,8 @@ export class AssetMetadataService {
     const tokensMetadata = await this.#getAssetsByAssetIds(assetIds);
     const { hits: assets, missing: missingAssetIds } =
       this.#partitionHitsAndMissingByArray(assetIds, tokensMetadata);
-    this.#logger.debug('Token assets from API', { missingAssetIds });
+    this.#logger.debug('Token assets missing from API', { missingAssetIds });
     return { assets, missingAssetIds };
-  }
-
-  async #fetchSepTokenAssets(
-    assetIds: KnownCaip19Sep41AssetId[],
-    scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
-    if (assetIds.length === 0) {
-      return [];
-    }
-
-    this.#logger.debug('Fetching SEP-41 token assets from RPC', { assetIds });
-
-    const settled = await batchesAllSettledWithChunks(
-      assetIds,
-      this.#sepAssetChunkSize,
-      this.#sepAssetBatchSize,
-      async (chunk: KnownCaip19Sep41AssetId[]) =>
-        this.#networkService.getSep41AssetsData(chunk, scope),
-    );
-
-    const { assets, missingAssetIds } =
-      this.#extractSuccessAndMissingFromSettled(settled, assetIds);
-
-    if (missingAssetIds.length > 0) {
-      this.#logger.warn(
-        `Failed to fetch token metadata for assets: ${Array.from(missingAssetIds).join(', ')}`,
-      );
-    }
-
-    return assets;
-  }
-
-  async #fetchClassicTokenAssets(
-    assetIds: KnownCaip19ClassicAssetId[],
-    scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
-    if (assetIds.length === 0) {
-      return [];
-    }
-
-    this.#logger.debug('Fetching Classic token assets from Horizon', {
-      assetIds,
-    });
-
-    const settled = await batchesAllSettled(
-      assetIds,
-      this.#classicAssetBatchSize,
-      async (assetId: KnownCaip19ClassicAssetId) =>
-        this.#networkService.getClassicAssetData(assetId, scope),
-    );
-
-    const { assets, missingAssetIds } =
-      this.#extractSuccessAndMissingFromSettled(settled, assetIds);
-
-    if (missingAssetIds.length > 0) {
-      this.#logger.warn(
-        `Failed to fetch token metadata for assets: ${Array.from(missingAssetIds).join(', ')}`,
-      );
-    }
-
-    return assets;
-  }
-
-  #extractSuccessAndMissingFromSettled(
-    settled: PromiseSettledResult<AssetDataResponse | AssetDataResponse[]>[],
-    assetIds: KnownCaip19AssetId[],
-  ): { assets: StellarAssetMetadata[]; missingAssetIds: string[] } {
-    const assets: StellarAssetMetadata[] = [];
-    const missingTokenAssetIds = new Set<string>(assetIds);
-
-    for (const entry of settled) {
-      if (entry.status === 'rejected') {
-        this.#logger.warn('Failed to fetch assets metadata', {
-          error: entry.reason,
-        });
-        continue;
-      }
-
-      if (Array.isArray(entry.value)) {
-        for (const asset of entry.value) {
-          assets.push(toStellarAssetMetadata(asset));
-          missingTokenAssetIds.delete(asset.assetId);
-        }
-      } else {
-        assets.push(toStellarAssetMetadata(entry.value));
-        missingTokenAssetIds.delete(entry.value.assetId);
-      }
-    }
-
-    return { assets, missingAssetIds: Array.from(missingTokenAssetIds) };
   }
 
   async #getAssetsByAssetIds(
@@ -380,22 +334,14 @@ export class AssetMetadataService {
   #toAssetMetadata(tokenMetadata: TokenMetadata): StellarAssetMetadata {
     const name = tokenMetadata.name ?? 'UNKNOWN';
     const symbol = tokenMetadata.symbol ?? 'UNKNOWN';
-    const { decimals } = tokenMetadata;
-    const { assetId } = tokenMetadata;
-    const units: NonEmptyArray<AssetUnit> = [{ name, symbol, decimals }];
 
-    const { assetNamespace, chainId } = parseCaipAssetType(assetId);
-
-    return {
-      name,
+    return toStellarAssetMetadata({
+      assetId: tokenMetadata.assetId,
+      decimals: tokenMetadata.decimals,
       symbol,
-      assetId,
-      chainId: chainId as KnownCaip2ChainId,
-      assetType: assetNamespace as AssetType,
-      fungible: true as const,
-      iconUrl: tokenMetadata.iconUrl ?? getIconUrl(assetId),
-      units,
-    };
+      name,
+      iconUrl: tokenMetadata.iconUrl,
+    });
   }
 
   /**

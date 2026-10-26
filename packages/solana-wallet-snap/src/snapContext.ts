@@ -1,13 +1,21 @@
-import type { IStateManager } from '@metamask/snap-networks-utils';
 import {
   AnalyticsService,
+  AssetsProvider,
+  createFetchPolicy,
   InMemoryCache,
+  RemoteFeatureFlagsProvider,
+  SecurityAlertsApiClient,
   State,
 } from '@metamask/snap-networks-utils';
+import type {
+  AssetsProviderMessenger,
+  IStateManager,
+  RemoteFeatureFlagsProviderMessenger,
+} from '@metamask/snap-networks-utils';
+import { getMessenger } from '@metamask/snaps-sdk';
 
 import { NftApiClient } from './core/clients/nft-api/NftApiClient';
 import { PriceApiClient } from './core/clients/price-api/PriceApiClient';
-import { SecurityAlertsApiClient } from './core/clients/security-alerts-api/SecurityAlertsApiClient';
 import { TokenApiClient } from './core/clients/token-api-client/TokenApiClient';
 import { ClientRequestHandler } from './core/handlers';
 import { SolanaKeyring } from './core/handlers/onKeyringRequest/Keyring';
@@ -16,6 +24,7 @@ import {
   AccountsService,
   AccountsSynchronizer,
   ApproveTokenService,
+  CoreAssetsAdapter,
   SnapAssetsAdapter,
   AssetsRepository,
   AssetsService,
@@ -44,8 +53,9 @@ import { NameResolutionService } from './core/services/name-resolution/NameResol
 import { registerStateMigration } from './core/services/state/registerStateMigration';
 import { DEFAULT_UNENCRYPTED_STATE } from './core/services/state/stateTypes';
 import type { UnencryptedStateValue } from './core/services/state/stateTypes';
-import { TransactionScanService } from './core/services/transaction-scan/TransactionScan';
+import { TransactionScanService } from './core/services/transaction-scan/TransactionScanService';
 import { WalletService } from './core/services/wallet/WalletService';
+import type { CoreMessenger } from './core/types/core-messenger';
 import { trackError } from './core/utils/errors';
 import logger, { noOpLogger } from './core/utils/logger';
 import { getSnapProvider } from './core/utils/snap';
@@ -97,7 +107,7 @@ const analyticsService = new AnalyticsService({
   trackError,
 });
 
-const connection = new SolanaConnection(configProvider, inMemoryCache);
+const connection = new SolanaConnection(configProvider, inMemoryCache, logger);
 
 const webSocketConnectionRepository = new WebSocketConnectionRepository(
   configProvider,
@@ -158,8 +168,29 @@ const snapAssetsAdapter = new SnapAssetsAdapter({
   nftApiClient,
 });
 
+/**
+ * Core controllers plumbing
+ */
+const coreMessenger = getMessenger<CoreMessenger>();
+const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({
+  messenger: coreMessenger as RemoteFeatureFlagsProviderMessenger,
+});
+const assetsProvider = new AssetsProvider({
+  messenger: coreMessenger as AssetsProviderMessenger,
+});
+
+const coreAssetsAdapter = new CoreAssetsAdapter({
+  getAccountAssetByID: assetsProvider.getAccountAssetByID.bind(assetsProvider),
+  getAccountAssetsByIDs:
+    assetsProvider.getAccountAssetsByIDs.bind(assetsProvider),
+  getAccountAssetsByScope:
+    assetsProvider.getAccountAssetsByScope.bind(assetsProvider),
+});
+
 const assetsService = new AssetsService({
   snapAdapter: snapAssetsAdapter,
+  coreAdapter: coreAssetsAdapter,
+  remoteFeatureFlagsProvider,
 });
 
 const transactionsRepository = new TransactionsRepository(state);
@@ -183,11 +214,20 @@ const accountsSynchronizer = new AccountsSynchronizer(
   logger,
 );
 
-const transactionScanService = new TransactionScanService(
-  new SecurityAlertsApiClient(configProvider),
+const securityAlertsApiClient = new SecurityAlertsApiClient({
+  scanUrl: `${configProvider.config.securityAlertsApi.baseUrl}/solana/message/scan`,
+  policy: createFetchPolicy({
+    service: 'security_alerts_api',
+    logger,
+  }),
+});
+
+const transactionScanService = new TransactionScanService({
+  securityAlertsApiClient,
   analyticsService,
   logger,
-);
+  trackError,
+});
 
 const confirmationHandler = new ConfirmationHandler();
 

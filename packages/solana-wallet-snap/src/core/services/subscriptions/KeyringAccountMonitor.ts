@@ -7,7 +7,7 @@ import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import type { Base58EncodedBytes } from '@solana/kit';
 import { address as asAddress, lamports } from '@solana/kit';
-import { get, uniq } from 'lodash';
+import { get } from 'lodash';
 
 import type { SubscriptionService } from '.';
 import type {
@@ -330,6 +330,8 @@ export class KeyringAccountMonitor {
     const decimals = 9;
 
     await Promise.all([
+      // Update the balance of the native asset; silent while the assets
+      // migration is active (see `AssetsService.save`)
       this.#assetsService.save({
         assetType: `${network}/${SolanaCaip19Tokens.SOL}`,
         keyringAccountId: keyringAccount.id,
@@ -407,7 +409,8 @@ export class KeyringAccountMonitor {
     ];
 
     await Promise.all([
-      // Update the balance of the token asset
+      // Update the balance of the token asset; silent while the assets
+      // migration is active (see `AssetsService.save`)
       this.#assetsService.save({
         assetType,
         keyringAccountId: keyringAccount.id,
@@ -472,45 +475,29 @@ export class KeyringAccountMonitor {
 
   /**
    * Recover from potential missed messages (while connection was down)
-   * by syncing all monitored accounts.
+   * by syncing all selected accounts.
+   *
+   * The accounts are deliberately NOT derived from the subscription list:
+   * `SubscriptionService.#reSubscribe` runs concurrently with this handler
+   * and deletes + re-creates the subscriptions, so a subscription-derived
+   * list races with it — a read landing inside the delete window would
+   * silently skip the resync.
    *
    * @param network - The network to handle the connection recovery for.
    */
   async #handleConnectionRecovery(network: Network): Promise<void> {
     this.#logger.info('Handling connection recovery', { network });
 
-    const [allAccounts, allSubscriptions] = await Promise.all([
-      this.#accountService.getAll(),
-      this.#subscriptionService.getAll(),
-    ]);
+    const selectedAccounts = await this.#accountService.getAllSelected();
 
-    // Find all 'accountSubscribe' and 'programSubscribe' subscriptions
-    const relevantSubscriptions = allSubscriptions.filter(
-      (subscription) =>
-        KeyringAccountMonitor.#isAccountSubscribeSubscription(subscription) ||
-        KeyringAccountMonitor.#isProgramSubscribeSubscription(subscription),
-    );
-
-    // Map the addresses
-    const monitoredAccountsAddresses = uniq(
-      relevantSubscriptions.map((subscription) =>
-        KeyringAccountMonitor.#extractAddress(subscription),
-      ),
-    );
-
-    // Find the matching accounts
-    const monitoredAccounts = allAccounts.filter((account) =>
-      monitoredAccountsAddresses.includes(account.address),
-    );
-
-    if (!monitoredAccounts.length) {
+    if (!selectedAccounts.length) {
       this.#logger.info(
-        'No monitored accounts found. Skipping connection recovery.',
+        'No selected accounts found. Skipping connection recovery.',
       );
       return;
     }
 
-    await this.#accountsSynchronizer.synchronize(monitoredAccounts);
+    await this.#accountsSynchronizer.synchronize(selectedAccounts);
   }
 
   static #isAccountSubscribeSubscription(subscription: Subscription): boolean {

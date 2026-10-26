@@ -1,12 +1,22 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
-import type { ICache, Serializable } from '@metamask/snap-networks-utils';
+import {
+  UrlStruct,
+  buildUrl,
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
+import type {
+  ICache,
+  Logger,
+  Serializable,
+} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 
 import type { ConfigProvider } from '../../services/config';
 import { useCache } from '../../utils/caching';
 import { trackError } from '../../utils/errors';
+import logger from '../../utils/logger';
 import type {
   Balance,
   Nft,
@@ -22,6 +32,8 @@ export class NftApiClient {
 
   readonly #cache: ICache<Serializable>;
 
+  readonly #policy: ReturnType<typeof createFetchPolicy>;
+
   readonly #cacheTtlsMilliseconds: {
     listAddressSolanaNfts: number;
     getNftMetadata: number;
@@ -31,6 +43,7 @@ export class NftApiClient {
     configProvider: ConfigProvider,
     _cache: ICache<Serializable>,
     _fetch: typeof globalThis.fetch = globalThis.fetch,
+    _logger: Logger = logger,
   ) {
     const { baseUrl, cacheTtlsMilliseconds } = configProvider.config.nftApi;
 
@@ -41,6 +54,26 @@ export class NftApiClient {
     this.#cacheTtlsMilliseconds = cacheTtlsMilliseconds;
 
     this.#cache = _cache;
+    this.#policy = createFetchPolicy({
+      service: 'nft_api',
+      logger: _logger,
+    });
+  }
+
+  async #request(url: string): Promise<unknown> {
+    const body = await fetchWithPolicy(
+      this.#policy,
+      url,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'application/json',
+          version: '1',
+        },
+      },
+      this.#fetch,
+    );
+    return JSON.parse(body);
   }
 
   #mapListAddressSolanaNftsResponse(
@@ -72,16 +105,11 @@ export class NftApiClient {
         path: `/users/${address}/solana-tokens`,
         queryParams: currentCursor ? { cursor: currentCursor } : undefined,
       });
-      const response = await this.#fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          accept: 'application/json',
-          version: '1',
-        },
-      });
-      const data = await response.json();
+      const data = await this.#request(url);
 
-      const mappedData = this.#mapListAddressSolanaNftsResponse(data);
+      const mappedData = this.#mapListAddressSolanaNftsResponse(
+        data as PaginatedResponse<NftApiBalanceType>,
+      );
 
       allItems = [...allItems, ...mappedData.items];
       currentCursor = mappedData.cursor ?? undefined;
@@ -182,16 +210,11 @@ export class NftApiClient {
         baseUrl: this.#baseUrl,
         path: `/nfts/contracts/solana/${tokenAddress}/1`,
       });
-      const response = await this.#fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          accept: 'application/json',
-          version: '1',
-        },
-      });
-      const data = await response.json();
+      const data = await this.#request(url);
 
-      const mappedData = this.#mapGetNftMetadataResponse(data);
+      const mappedData = this.#mapGetNftMetadataResponse(
+        data as NftApiItemType,
+      );
 
       return mappedData;
     } catch (error) {

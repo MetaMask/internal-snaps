@@ -161,8 +161,9 @@ export class AccountResolver {
       );
     }
     const onChainAccount =
-      await this.#onChainAccountService.resolveOnChainAccountByKeyringAccountId(
+      await this.#onChainAccountService.getOnChainAccountSnapshot(
         account.id,
+        account.address,
         scope,
       );
     // It is a tradeoff when loading on-chain account from state,

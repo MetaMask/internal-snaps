@@ -1,4 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
+import type { SecurityAlertsScanOption } from '@metamask/snap-networks-utils';
 
 import { Network, Networks } from '../../../../core/constants/solana';
 import { FeeCalculator } from '../../../../core/fees';
@@ -259,7 +260,7 @@ export async function render(
     ...updatedContext1,
   };
 
-  const options = [];
+  const options: SecurityAlertsScanOption[] = [];
 
   if (simulateOnChainActions) {
     options.push('simulation');

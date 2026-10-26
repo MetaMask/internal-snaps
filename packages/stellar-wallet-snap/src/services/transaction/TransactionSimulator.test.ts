@@ -884,6 +884,176 @@ describe('TransactionSimulator', () => {
       ).toThrow(TrustlineExceedLimitException);
     });
 
+    it('skips the destination trustline limit when TrustlineExceedLimitException is in skipExceptions', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 1,
+        assets: [
+          {
+            assetType: 'credit_alphanum4',
+            assetCode: 'USDC',
+            assetIssuer: USDC_ISSUER,
+            balance: 100,
+          },
+        ],
+      });
+
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              source: wallet.address,
+              destination: destinationAddress,
+              asset: MOCK_USDC_ASSET,
+              amount: '50',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(
+        simulator.simulate(tx, onChainAccount, {
+          preloadedAccounts: [
+            onChainFromMockBalances(destinationAddress, '1', {
+              nativeBalance: 50,
+              subentryCount: 1,
+              assets: [
+                {
+                  assetType: 'credit_alphanum4',
+                  assetCode: 'USDC',
+                  assetIssuer: USDC_ISSUER,
+                  balance: 99,
+                  limit: '100',
+                },
+              ],
+            }),
+          ],
+          skipExceptions: [TrustlineExceedLimitException],
+        }),
+      ).toHaveLength(2);
+    });
+
+    it('throws for a self-payment when the current balance is already above the trustline limit', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 1,
+        assets: [
+          {
+            assetType: 'credit_alphanum4',
+            assetCode: 'USDC',
+            assetIssuer: USDC_ISSUER,
+            balance: 150,
+            limit: '100',
+          },
+        ],
+      });
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              source: wallet.address,
+              destination: wallet.address,
+              asset: MOCK_USDC_ASSET,
+              amount: '1',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(() =>
+        simulator.simulate(tx, onChainAccount, {
+          expectedOPTypes: [SupportedOperations.Payment],
+        }),
+      ).toThrow(TrustlineExceedLimitException);
+    });
+
+    it('skips that self-payment limit check when TrustlineExceedLimitException is in skipExceptions', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 1,
+        assets: [
+          {
+            assetType: 'credit_alphanum4',
+            assetCode: 'USDC',
+            assetIssuer: USDC_ISSUER,
+            balance: 150,
+            limit: '100',
+          },
+        ],
+      });
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              source: wallet.address,
+              destination: wallet.address,
+              asset: MOCK_USDC_ASSET,
+              amount: '1',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(
+        simulator.simulate(tx, onChainAccount, {
+          expectedOPTypes: [SupportedOperations.Payment],
+          skipExceptions: [TrustlineExceedLimitException],
+        }),
+      ).toHaveLength(2);
+    });
+
+    it('still throws when the destination trustline is missing and the limit check is skipped', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 1,
+        assets: [
+          {
+            assetType: 'credit_alphanum4',
+            assetCode: 'USDC',
+            assetIssuer: USDC_ISSUER,
+            balance: 100,
+          },
+        ],
+      });
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'payment',
+            params: {
+              source: wallet.address,
+              destination: destinationAddress,
+              asset: MOCK_USDC_ASSET,
+              amount: '1',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(() =>
+        simulator.simulate(tx, onChainAccount, {
+          preloadedAccounts: [
+            onChainFromMockBalances(destinationAddress, '1', {
+              nativeBalance: 50,
+              subentryCount: 0,
+              assets: [],
+            }),
+          ],
+          skipExceptions: [TrustlineExceedLimitException],
+        }),
+      ).toThrow(TrustlineNotFoundException);
+    });
+
     it('succeeds for credit asset self-payment when naive balance+amount would exceed trustline limit', () => {
       const wallet = getTestWallet();
       const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
@@ -1123,6 +1293,59 @@ describe('TransactionSimulator', () => {
       expect(
         simulator.simulate(tx, onChainAccount, {
           expectedOPTypes: [SupportedOperations.PathPayment],
+        }),
+      ).toHaveLength(2);
+    });
+
+    it('skips a path-payment trustline limit when TrustlineExceedLimitException is in skipExceptions', () => {
+      const wallet = getTestWallet();
+      const onChainAccount = onChainFromMockBalances(wallet.address, '1', {
+        nativeBalance: 500,
+        subentryCount: 0,
+        assets: [],
+      });
+      const destination = onChainFromMockBalances(destinationAddress, '1', {
+        nativeBalance: 50,
+        subentryCount: 1,
+        assets: [
+          {
+            assetType: 'credit_alphanum4',
+            assetCode: 'USDC',
+            assetIssuer: USDC_ISSUER,
+            balance: 99,
+            limit: '100',
+          },
+        ],
+      });
+      const tx = buildMockClassicTransaction(
+        [
+          {
+            type: 'pathPaymentStrictSend',
+            params: {
+              source: wallet.address,
+              sendAsset: 'native',
+              sendAmount: '10',
+              destination: destinationAddress,
+              destAsset: MOCK_USDC_ASSET,
+              destMin: '50',
+            },
+          },
+        ],
+        mainnetSimulatorTxOptions(wallet.address, '1'),
+      );
+
+      expect(() =>
+        simulator.simulate(tx, onChainAccount, {
+          expectedOPTypes: [SupportedOperations.PathPayment],
+          preloadedAccounts: [destination],
+        }),
+      ).toThrow(TrustlineExceedLimitException);
+
+      expect(
+        simulator.simulate(tx, onChainAccount, {
+          expectedOPTypes: [SupportedOperations.PathPayment],
+          preloadedAccounts: [destination],
+          skipExceptions: [TrustlineExceedLimitException],
         }),
       ).toHaveLength(2);
     });

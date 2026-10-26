@@ -6,8 +6,6 @@ export const SOL_IMAGE_URL =
 export const MICRO_LAMPORTS_PER_LAMPORTS = 1_000_000n;
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 export const DEFAULT_NETWORK_BLOCK_EXPLORER_URL = 'https://solscan.io';
-export const METAMASK_ORIGIN = 'metamask';
-export const METAMASK_ORIGIN_URL = 'https://metamask.io';
 export const MAX_SUPPORTED_TRANSACTION_VERSION = 1;
 
 /**
@@ -23,6 +21,19 @@ export const Network = {
 } as const;
 
 export type Network = (typeof Network)[keyof typeof Network];
+
+const NETWORK_SCOPES: readonly string[] = Object.values(Network);
+
+export const isSupportedNetwork = (scope: string): scope is Network =>
+  NETWORK_SCOPES.includes(scope);
+
+export const assertSupportedNetwork = (scope: string): Network => {
+  if (!isSupportedNetwork(scope)) {
+    throw new Error(`Unsupported network: "${scope}"`);
+  }
+
+  return scope;
+};
 
 export const KnownCaip19Id = {
   SolMainnet: `${Network.Mainnet}/slip44:501`,

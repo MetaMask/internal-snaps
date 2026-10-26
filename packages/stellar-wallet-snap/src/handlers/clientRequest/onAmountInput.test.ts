@@ -30,6 +30,7 @@ import {
   InsufficientBalanceException,
   InsufficientBalanceToCoverFeeException,
   TransactionValidationException,
+  TrustlineExceedLimitException,
   XdrParseException,
 } from '../../services/transaction/exceptions';
 import { WalletService } from '../../services/wallet';
@@ -82,11 +83,8 @@ describe('OnAmountInputHandler', () => {
     jest.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
       account,
     });
-    const resolveOnChainAccountByKeyringAccountIdSpy = jest
-      .spyOn(
-        OnChainAccountService.prototype,
-        'resolveOnChainAccountByKeyringAccountId',
-      )
+    const getOnChainAccountSnapshotSpy = jest
+      .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
       .mockResolvedValue(onChainAccount);
     jest
       .spyOn(WalletService.prototype, 'resolveWallet')
@@ -124,7 +122,7 @@ describe('OnAmountInputHandler', () => {
       onChainAccount,
       wallet,
       createValidatedSendTransaction,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
     };
   }
 
@@ -176,14 +174,15 @@ describe('OnAmountInputHandler', () => {
       account,
       onChainAccount,
       createValidatedSendTransaction,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
     } = setup();
 
     const result = await handler.handle(baseRequest());
 
     expect(result).toStrictEqual({ valid: true, errors: [] });
-    expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
+    expect(getOnChainAccountSnapshotSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       scope,
     );
     expect(createValidatedSendTransaction).toHaveBeenCalledWith({
@@ -192,6 +191,7 @@ describe('OnAmountInputHandler', () => {
       assetId,
       amount: new BigNumber('10000000'),
       destination: onChainAccount.accountId,
+      skipExceptions: [TrustlineExceedLimitException],
       useCache: true,
     });
   });
@@ -202,19 +202,21 @@ describe('OnAmountInputHandler', () => {
       handler,
       account,
       createValidatedSendTransaction,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
     } = setup();
 
     await handler.handle(baseRequest({ assetId: testnetAssetId }));
 
-    expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
+    expect(getOnChainAccountSnapshotSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       KnownCaip2ChainId.Testnet,
     );
     expect(createValidatedSendTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
         scope: KnownCaip2ChainId.Testnet,
         assetId: testnetAssetId,
+        skipExceptions: [TrustlineExceedLimitException],
       }),
     );
   });
@@ -230,6 +232,7 @@ describe('OnAmountInputHandler', () => {
       assetId,
       amount: new BigNumber('10000000'),
       destination: onChainAccount.accountId,
+      skipExceptions: [TrustlineExceedLimitException],
       useCache: true,
     });
   });
@@ -285,8 +288,8 @@ describe('OnAmountInputHandler', () => {
   });
 
   it('returns invalid when keyring state has no on-chain snapshot', async () => {
-    const { handler, resolveOnChainAccountByKeyringAccountIdSpy } = setup();
-    resolveOnChainAccountByKeyringAccountIdSpy.mockResolvedValueOnce(null);
+    const { handler, getOnChainAccountSnapshotSpy } = setup();
+    getOnChainAccountSnapshotSpy.mockResolvedValueOnce(null);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,

@@ -159,6 +159,122 @@ describe('parseCoreStellarAsset', () => {
     });
   });
 
+  it('scales a display trustline limit to stroops and leaves an integer limit unchanged', () => {
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            ...classicAsset.balance.metadata,
+            limit: '922337203685.4775807',
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: { metadata: { limit: MAX_INT64 } },
+    });
+
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            ...classicAsset.balance.metadata,
+            limit: '100000000',
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: { metadata: { limit: '100000000' } },
+    });
+
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            ...classicAsset.balance.metadata,
+            limit: '10.5',
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: { metadata: { limit: '105000000' } },
+    });
+  });
+
+  it('forces sponsored true when sponsor is a non-empty string', () => {
+    const sponsor = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+    expect(
+      parseCoreStellarAsset({
+        ...classicAsset,
+        balance: {
+          ...classicAsset.balance,
+          metadata: {
+            limit: MAX_INT64,
+            authorized: true,
+            sponsor,
+            sponsored: false,
+          },
+        },
+      }),
+    ).toMatchObject({
+      balance: {
+        metadata: { sponsor, sponsored: true },
+      },
+    });
+  });
+
+  it('clears a leftover sponsor when the trustline limit is zero', () => {
+    const sponsor = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+    for (const limit of ['0', '0.0', '0.0000000']) {
+      expect(
+        parseCoreStellarAsset({
+          ...classicAsset,
+          balance: {
+            ...classicAsset.balance,
+            metadata: {
+              limit,
+              authorized: true,
+              sponsor,
+              sponsored: true,
+            },
+          },
+        }),
+      ).toMatchObject({
+        balance: {
+          metadata: { limit, sponsor: null, sponsored: false },
+        },
+      });
+    }
+  });
+
+  it('forces sponsored false when sponsor is empty, missing, or null', () => {
+    for (const sponsor of ['', undefined, null] as const) {
+      expect(
+        parseCoreStellarAsset({
+          ...classicAsset,
+          balance: {
+            ...classicAsset.balance,
+            metadata: {
+              limit: MAX_INT64,
+              authorized: true,
+              ...(sponsor === undefined ? {} : { sponsor }),
+              sponsored: true,
+            },
+          },
+        }),
+      ).toMatchObject({
+        balance: {
+          metadata: { sponsored: false },
+        },
+      });
+    }
+  });
+
   it('returns null when the payload is not Stellar-shaped', () => {
     expect(parseCoreStellarAsset({ id: 'not-an-asset' })).toBeNull();
   });

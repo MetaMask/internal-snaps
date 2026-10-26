@@ -1,6 +1,12 @@
+import type { Asset } from '@metamask/assets-controller';
+import { SnapsAssetsMigrationStage } from '@metamask/assets-controller';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import type {
+  RemoteFeatureFlagsProvider,
+  Serializable,
+  ICache,
+} from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 
@@ -22,6 +28,7 @@ import { MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE } from '../__mocks
 import type { AccountsService } from '../accounts/AccountsService';
 import type { ConfigProvider } from '../config';
 import type { SolanaConnection } from '../connection';
+import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';
@@ -33,6 +40,12 @@ jest.mock('@metamask/keyring-snap-sdk', () => ({
 describe('AssetsService', () => {
   let assetsService: AssetsService;
   let snapAssetsAdapter: SnapAssetsAdapter;
+  let mockAssetsProvider: {
+    getAccountAssetByID: jest.Mock;
+    getAccountAssetsByIDs: jest.Mock;
+    getAccountAssetsByScope: jest.Mock;
+  };
+  let mockRemoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
   let mockConnection: SolanaConnection;
   let mockConfigProvider: ConfigProvider;
   let mockAssetsRepository: AssetsRepository;
@@ -89,10 +102,38 @@ describe('AssetsService', () => {
       nftApiClient: mockNftApiClient,
     });
 
+    mockAssetsProvider = {
+      getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
+      getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
+      getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+    };
+
+    mockRemoteFeatureFlagsProvider = {
+      getFeatureFlag: jest.fn().mockResolvedValue(undefined),
+    } as unknown as RemoteFeatureFlagsProvider;
+
     assetsService = new AssetsService({
       snapAdapter: snapAssetsAdapter,
+      coreAdapter: new CoreAssetsAdapter({
+        getAccountAssetByID: mockAssetsProvider.getAccountAssetByID,
+        getAccountAssetsByIDs: mockAssetsProvider.getAccountAssetsByIDs,
+        getAccountAssetsByScope: mockAssetsProvider.getAccountAssetsByScope,
+      }),
+      remoteFeatureFlagsProvider: mockRemoteFeatureFlagsProvider,
     });
   });
+
+  /**
+   * Enables the assets migration by pointing the remote feature flag at an
+   * active stage.
+   */
+  function enableAssetsMigration(): void {
+    (
+      mockRemoteFeatureFlagsProvider.getFeatureFlag as jest.Mock
+    ).mockResolvedValue({
+      stage: SnapsAssetsMigrationStage.ReadAssetsControllerOnly,
+    });
+  }
 
   describe('fetchAccountAssets', () => {
     it('fetches native and token assets', async () => {
@@ -227,6 +268,17 @@ describe('AssetsService', () => {
       await assetsService.saveMany(MOCK_ASSET_ENTITIES);
 
       expect(saveManySpy).toHaveBeenCalledWith(MOCK_ASSET_ENTITIES);
+    });
+
+    it('persists without emitting keyring events while the assets migration is active', async () => {
+      enableAssetsMigration();
+
+      await assetsService.saveMany(MOCK_ASSET_ENTITIES);
+
+      expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
+        MOCK_ASSET_ENTITIES,
+      );
+      expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
     });
 
     it('emits event "AccountAssetListUpdated" with ALL assets in added list, and removed assets in removed list', async () => {
@@ -797,6 +849,149 @@ describe('AssetsService', () => {
       expect(
         mockAssetsRepository.findByKeyringAccountId,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('isAssetsMigrationEnabled', () => {
+    it('returns false while the migration is off', async () => {
+      expect(await assetsService.isAssetsMigrationEnabled()).toBe(false);
+    });
+
+    it('returns true once the migration is active', async () => {
+      enableAssetsMigration();
+
+      expect(await assetsService.isAssetsMigrationEnabled()).toBe(true);
+    });
+  });
+
+  describe('assets migration routing', () => {
+    const usdcControllerAsset = {
+      id: MOCK_ASSET_ENTITY_1.assetType,
+      chainId: Network.Mainnet,
+      balance: { amount: '123.456789' },
+      metadata: {
+        type: 'fungible',
+        symbol: 'USDC',
+        name: 'USD Coin',
+        decimals: 6,
+      },
+      price: { price: 0, lastUpdated: 0 },
+      fiatValue: 0,
+    } as unknown as Asset;
+
+    it('serves reads through the Snap adapter while the migration is off, without calling the controller', async () => {
+      const snapSpy = jest
+        .spyOn(snapAssetsAdapter, 'getAccountAssetByID')
+        .mockResolvedValue(MOCK_ASSET_ENTITY_1);
+
+      const asset = await assetsService.getAccountAssetByID(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        MOCK_ASSET_ENTITY_1.assetType,
+      );
+
+      expect(asset).toStrictEqual(MOCK_ASSET_ENTITY_1);
+      expect(snapSpy).toHaveBeenCalledWith(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        MOCK_ASSET_ENTITY_1.assetType,
+      );
+      expect(mockAssetsProvider.getAccountAssetByID).not.toHaveBeenCalled();
+    });
+
+    describe('when the migration flag is active', () => {
+      beforeEach(() => {
+        enableAssetsMigration();
+      });
+
+      it('routes getAccountAssetByID through the Core adapter', async () => {
+        mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
+          usdcControllerAsset,
+        );
+        const snapSpy = jest.spyOn(snapAssetsAdapter, 'getAccountAssetByID');
+
+        const asset = await assetsService.getAccountAssetByID(
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          MOCK_ASSET_ENTITY_1.assetType,
+        );
+
+        expect(mockAssetsProvider.getAccountAssetByID).toHaveBeenCalledWith(
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          MOCK_ASSET_ENTITY_1.assetType,
+        );
+        expect(snapSpy).not.toHaveBeenCalled();
+        expect(asset).toStrictEqual(MOCK_ASSET_ENTITY_1);
+      });
+
+      it('routes getAccountAssetsByIDs through the Core adapter, adapting the list to a record', async () => {
+        mockAssetsProvider.getAccountAssetsByIDs.mockResolvedValue({
+          [MOCK_ASSET_ENTITY_1.assetType]: usdcControllerAsset,
+        });
+        const snapSpy = jest.spyOn(snapAssetsAdapter, 'getAccountAssetsByIDs');
+
+        const assets = await assetsService.getAccountAssetsByIDs(
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          [MOCK_ASSET_ENTITY_1.assetType, MOCK_ASSET_ENTITY_2.assetType],
+        );
+
+        expect(mockAssetsProvider.getAccountAssetsByIDs).toHaveBeenCalledWith(
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          [MOCK_ASSET_ENTITY_1.assetType, MOCK_ASSET_ENTITY_2.assetType],
+        );
+        expect(snapSpy).not.toHaveBeenCalled();
+        expect(assets).toStrictEqual({
+          [MOCK_ASSET_ENTITY_1.assetType]: MOCK_ASSET_ENTITY_1,
+          [MOCK_ASSET_ENTITY_2.assetType]: null,
+        });
+      });
+
+      it('routes getAccountAssetsByScope through the Core adapter', async () => {
+        mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
+          [MOCK_ASSET_ENTITY_1.assetType]: usdcControllerAsset,
+        });
+        const snapSpy = jest.spyOn(
+          snapAssetsAdapter,
+          'getAccountAssetsByScope',
+        );
+
+        const assets = await assetsService.getAccountAssetsByScope(
+          Network.Mainnet,
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        );
+
+        expect(mockAssetsProvider.getAccountAssetsByScope).toHaveBeenCalledWith(
+          Network.Mainnet,
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        );
+        expect(snapSpy).not.toHaveBeenCalled();
+        expect(assets).toStrictEqual([MOCK_ASSET_ENTITY_1]);
+      });
+
+      it('routes getAccountAssets through the Core adapter across the Mainnet and Devnet scopes', async () => {
+        mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
+          [MOCK_ASSET_ENTITY_1.assetType]: usdcControllerAsset,
+        });
+        const snapSpy = jest.spyOn(snapAssetsAdapter, 'getAccountAssets');
+
+        const assets = await assetsService.getAccountAssets(
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        );
+
+        expect(
+          mockAssetsProvider.getAccountAssetsByScope,
+        ).toHaveBeenCalledTimes(2);
+        expect(mockAssetsProvider.getAccountAssetsByScope).toHaveBeenCalledWith(
+          Network.Mainnet,
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        );
+        expect(mockAssetsProvider.getAccountAssetsByScope).toHaveBeenCalledWith(
+          Network.Devnet,
+          MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        );
+        expect(snapSpy).not.toHaveBeenCalled();
+        expect(assets).toStrictEqual([
+          MOCK_ASSET_ENTITY_1,
+          MOCK_ASSET_ENTITY_1,
+        ]);
+      });
     });
   });
 });

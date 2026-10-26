@@ -97,15 +97,17 @@ export class AssetMetadataRepository {
    * @param scope - The chain ID to look up.
    * @returns A Promise that resolves to the persisted assets for the given asset type and chain ID.
    */
-  async getByAssetType(
-    assetType: AssetType,
+  async getByAssetType<TAssetType extends AssetType>(
+    assetType: TAssetType,
     scope: KnownCaip2ChainId,
-  ): Promise<StellarAssetMetadata[]> {
+  ): Promise<Extract<StellarAssetMetadata, { assetType: TAssetType }>[]> {
     const assets =
       (await this.#state.getKey<AssetMetadataByAssetId>(this.#stateKey)) ?? {};
 
     return Object.values(assets).filter(
-      (asset): asset is StellarAssetMetadata =>
+      (
+        asset,
+      ): asset is Extract<StellarAssetMetadata, { assetType: TAssetType }> =>
         asset?.assetType === assetType && asset?.chainId === scope,
     );
   }

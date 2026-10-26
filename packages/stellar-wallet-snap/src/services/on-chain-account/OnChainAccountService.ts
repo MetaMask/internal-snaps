@@ -3,19 +3,46 @@ import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip19Sep41AssetId } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
-import { entries, isSep41Id } from '../../utils';
+import {
+  entries,
+  getAssetReference,
+  parseClassicAssetCodeIssuer,
+  rethrowIfInstanceElseThrow,
+  toSmallestUnit,
+  trackError,
+} from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type {
   AssetMetadataService,
-  StellarAssetMetadata,
+  Sep41StellarAssetMetadata,
 } from '../asset-metadata';
+import type { AssetsService } from '../assets';
+import {
+  isCoreClassicAsset,
+  isCoreNativeAsset,
+  isCoreSep41Asset,
+} from '../assets/api';
+import type { CoreAsset } from '../assets/api';
 import { AccountNotActivatedException } from '../network';
-import type { NetworkService } from '../network';
+import type { AccountLedgerMeta, NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
-import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
+import {
+  OnChainAccountException,
+  OnChainAccountSep41BalanceNotFoundException,
+} from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountRepository } from './OnChainAccountRepository';
+import {
+  OnChainAccountSerializableFullStruct,
+  SerializableClassicSpendableBalanceStruct,
+  SerializableSep41SpendableBalanceStruct,
+} from './OnChainAccountSerializable';
+import type {
+  OnChainAccountSerializableFull,
+  SerializableSpendableBalance,
+} from './OnChainAccountSerializable';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
+import { calculateLedgerMetaFromMinReserve } from './utils';
 
 /**
  * Stellar on-chain account operations: activation checks and loading {@link OnChainAccount}
@@ -28,17 +55,23 @@ export class OnChainAccountService {
 
   readonly #onChainAccountRepository: OnChainAccountRepository;
 
+  readonly #assetsService: AssetsService;
+
   readonly #assetMetadataService: AssetMetadataService;
+
+  readonly #logger: Logger;
 
   constructor({
     networkService,
     onChainAccountRepository,
     logger,
+    assetsService,
     assetMetadataService,
   }: {
     networkService: NetworkService;
     onChainAccountRepository: OnChainAccountRepository;
     logger: Logger;
+    assetsService: AssetsService;
     assetMetadataService: AssetMetadataService;
   }) {
     this.#networkService = networkService;
@@ -48,7 +81,9 @@ export class OnChainAccountService {
         onChainAccountRepository,
         logger,
       });
+    this.#logger = logger.withPrefix('💼 OnChainAccountService');
     this.#onChainAccountRepository = onChainAccountRepository;
+    this.#assetsService = assetsService;
     this.#assetMetadataService = assetMetadataService;
   }
 
@@ -83,19 +118,19 @@ export class OnChainAccountService {
    * @param accountAddress - Stellar address (strkey) expected to match Horizon `account_id`.
    * @param scope - CAIP-2 network to load the account from (Horizon `loadAccount`).
    * @param options - Optional extra loads.
-   * @param options.resolveWithFullBalance - When true, also read SEP-41 balances for the
+   * @param options.fetchWithSep41Balances - When true, also read SEP-41 balances for the
    * persisted catalog and bind them onto the Horizon account.
    * @returns Loaded {@link OnChainAccount} for simulation, fees, and sequence.
    * @throws {AccountNotActivatedException} When the account is not funded (from {@link NetworkService.loadOnChainAccount}).
    * @throws {DerivedAccountAddressMismatchException} When loaded id does not match `accountAddress`.
-   * @throws {OnChainAccountSep41BalanceNotFoundException} When `resolveWithFullBalance` is set and
+   * @throws {OnChainAccountSep41BalanceNotFoundException} When `fetchWithSep41Balances` is set and
    * mainnet returns no SEP-41 map for the account.
    */
   async resolveOnChainAccount(
     accountAddress: string,
     scope: KnownCaip2ChainId,
     options?: {
-      resolveWithFullBalance?: boolean;
+      fetchWithSep41Balances?: boolean;
     },
   ): Promise<OnChainAccount> {
     const loaded = await this.#networkService.loadOnChainAccount(
@@ -105,43 +140,51 @@ export class OnChainAccountService {
 
     assertSameAddress(accountAddress, loaded.accountId);
 
-    if (options?.resolveWithFullBalance) {
-      await this.#bindSep41Balances(loaded, scope);
+    if (options?.fetchWithSep41Balances) {
+      await this.fetchAndBindSep41Balances(loaded, scope);
     }
 
     return loaded;
   }
 
   /**
-   * Reads SEP-41 balances for the persisted catalog and binds them onto `onChainAccount`.
-   * Empty balances record (`null` or missing) are skipped.
+   * Fetches SEP-41 balances and binds them onto `onChainAccount`.
    *
-   * @param onChainAccount - Horizon account to attach SEP-41 entries to.
+   * When `assetIds` is omitted, balances are read for the persisted SEP-41 catalog.
+   * When `assetIds` is set, only those ids are resolved.
+   * Empty balance cells (`null` or missing) are skipped.
+   *
+   * @param onChainAccount - Horizon account to attach the SEP-41 entries to.
    * @param scope - CAIP-2 network.
+   * @param assetIds - Optional SEP-41 asset ids.
+   * @returns The same account, with any resolved balances bound.
    * @throws {OnChainAccountSep41BalanceNotFoundException} When mainnet returns no map for the account.
    */
-  async #bindSep41Balances(
+  async fetchAndBindSep41Balances(
     onChainAccount: OnChainAccount,
     scope: KnownCaip2ChainId,
-  ): Promise<void> {
+    assetIds?: KnownCaip19Sep41AssetId[],
+  ): Promise<OnChainAccount> {
     const sep41Assets =
-      await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
-    const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
-    const assetMetadataByAssetId: Record<
-      KnownCaip19Sep41AssetId,
-      StellarAssetMetadata
-    > = {};
-    for (const assetMetadata of sep41Assets) {
-      const { assetId } = assetMetadata;
-      if (!isSep41Id(assetId)) {
-        continue;
-      }
-      sep41AssetIds.push(assetId);
-      assetMetadataByAssetId[assetId] = assetMetadata;
+      await this.#assetMetadataService.fetchAndPersistSep41AssetMetadata({
+        scope,
+        assetIds,
+      });
+
+    // if there are no asset metadata, we can return early.
+    // This can happen if there are no SEP-41 assets for the scope.
+    if (sep41Assets.length === 0) {
+      return onChainAccount;
     }
 
-    if (sep41AssetIds.length === 0) {
-      return;
+    const sep41AssetIds: KnownCaip19Sep41AssetId[] = [];
+    const sep41AssetMetadataMap: Map<
+      KnownCaip19Sep41AssetId,
+      Sep41StellarAssetMetadata
+    > = new Map();
+    for (const asset of sep41Assets) {
+      sep41AssetMetadataMap.set(asset.assetId, asset);
+      sep41AssetIds.push(asset.assetId);
     }
 
     const balancesByAccount = await this.#networkService.getSep41AssetBalances({
@@ -149,27 +192,37 @@ export class OnChainAccountService {
       assetIds: sep41AssetIds,
       scope,
     });
-
-    const sep41Balances = balancesByAccount[onChainAccount.accountId];
-    // If it is testnet, we won't have any balances, so we return early.
-    // If it is mainnet, we throw an error as it is unexpected.
-    if (sep41Balances === undefined) {
-      if (scope === KnownCaip2ChainId.Mainnet) {
-        throw new OnChainAccountSep41BalanceNotFoundException(
-          onChainAccount.accountId,
-        );
-      }
-      return;
+    // Safe guard to throw an error if it is mainnet
+    // It is unexpected we don't have any balances.
+    if (
+      scope === KnownCaip2ChainId.Mainnet &&
+      balancesByAccount[onChainAccount.accountId] === undefined
+    ) {
+      throw new OnChainAccountSep41BalanceNotFoundException(
+        onChainAccount.accountId,
+      );
     }
 
-    for (const [assetId, assetMetadata] of entries(assetMetadataByAssetId)) {
-      this.#setSep41BalanceForAccount({
+    const sep41Balances = balancesByAccount[onChainAccount.accountId] ?? {};
+    for (const [assetId, balance] of entries(sep41Balances)) {
+      const assetMetadata = sep41AssetMetadataMap.get(assetId);
+      // Asset metadata is important for setting the correct decimals and symbol for the balance.
+      if (assetMetadata === undefined) {
+        // This is unexpected, but we can continue.
+        await trackError(
+          new Error(`Asset metadata not found for asset id: ${assetId}`),
+        );
+        continue;
+      }
+      this.#bindSep41BalanceForAccount({
         onChainAccount,
         assetId,
-        balance: sep41Balances[assetId],
+        balance,
         assetMetadata,
       });
     }
+
+    return onChainAccount;
   }
 
   /**
@@ -182,7 +235,7 @@ export class OnChainAccountService {
    * @param params.balance - Balance in smallest units. `null` or `undefined` means the cell was not read.
    * @param params.assetMetadata - Metadata for `assetId`, including symbol and decimals.
    */
-  #setSep41BalanceForAccount({
+  #bindSep41BalanceForAccount({
     onChainAccount,
     assetId,
     balance,
@@ -191,7 +244,7 @@ export class OnChainAccountService {
     onChainAccount: OnChainAccount;
     assetId: KnownCaip19Sep41AssetId;
     balance: BigNumber | null | undefined;
-    assetMetadata: StellarAssetMetadata;
+    assetMetadata: Sep41StellarAssetMetadata;
   }): void {
     // A cell can fail without failing the batch, for example reading a
     // trustline asset through its SEP-41 contract when the account is not
@@ -211,13 +264,38 @@ export class OnChainAccountService {
   }
 
   /**
-   * Loads the on-chain account for the given keyring account id from the State.
+   * Loads the on-chain account for the given keyring account id from snap state or AssetsController.
    *
+   * @note Do not use this method to build a transaction for sign and execute.
    * @param keyringAccountId - The keyring account id to load the on-chain account for.
+   * @param accountAddress - Stellar G-address for the account header.
    * @param scope - The CAIP-2 chain id to load the on-chain account for.
    * @returns The on-chain account, or `null` if not found.
+   * @throws {OnChainAccountException} When the assets migration is on and AssetsController holdings cannot be mapped.
    */
-  async resolveOnChainAccountByKeyringAccountId(
+  async getOnChainAccountSnapshot(
+    keyringAccountId: string,
+    accountAddress: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<OnChainAccount | null> {
+    if (await this.#assetsService.isMigrationEnabled()) {
+      return this.#getOnChainAccountFromAssetsController(
+        scope,
+        keyringAccountId,
+        accountAddress,
+      );
+    }
+    return this.#getOnChainAccountFromState(keyringAccountId, scope);
+  }
+
+  /**
+   * Gets a persisted on-chain snapshot for a keyring account.
+   *
+   * @param keyringAccountId - MetaMask keyring account id.
+   * @param scope - CAIP-2 network.
+   * @returns The on-chain account, or `null` when no snapshot exists.
+   */
+  async #getOnChainAccountFromState(
     keyringAccountId: string,
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccount | null> {
@@ -232,8 +310,172 @@ export class OnChainAccountService {
   }
 
   /**
+   * Gets an {@link OnChainAccount} from AssetsController holdings.
+   *
+   * @param scope - CAIP-2 network.
+   * @param keyringAccountId - MetaMask keyring account id.
+   * @param accountAddress - Stellar G-address for the account header.
+   * @returns Bound account, or `null` when AssetsController has no holdings for the account.
+   * @throws {OnChainAccountException} When AssetsController holdings cannot be mapped into a snapshot.
+   */
+  async #getOnChainAccountFromAssetsController(
+    scope: KnownCaip2ChainId,
+    keyringAccountId: string,
+    accountAddress: string,
+  ): Promise<OnChainAccount | null> {
+    const assets = await this.#assetsService.getAccountAssetsByScope(
+      scope,
+      keyringAccountId,
+    );
+
+    if (assets.length === 0) {
+      // If the account has no assets from AssetsController,
+      // Possibly not indexed, or not activated
+      // Return null to categorize it as not activated
+      return null;
+    }
+
+    this.#logger.debug('Resolved on-chain account from AssetsController', {
+      accountAddress,
+      scope,
+      assets,
+    });
+
+    try {
+      const serializable = this.#mapAssetsControllerAssetsToSerializable({
+        accountAddress,
+        scope,
+        assets,
+      });
+      return OnChainAccount.fromSerializable(serializable);
+    } catch (error: unknown) {
+      return rethrowIfInstanceElseThrow(
+        error,
+        [OnChainAccountException],
+        new OnChainAccountException(
+          `Failed to map AssetsController assets for account ${accountAddress}`,
+          { cause: error },
+        ),
+      );
+    }
+  }
+
+  /**
+   * Maps AssetsController holdings into a full on-chain snapshot.
+   *
+   * Best-effort account ledger metadata from AssetsController:
+   * - Derived reserve meta from native balance metadata `minimumReserveBalance`
+   *   (including `numSponsored` when the reserve is below two base reserves)
+   * - Set `sequenceNumber` to `0` when no ledger overlay is supplied
+   *
+   * @param params - Account header and AssetsController assets for one scope.
+   * @param params.accountAddress - Stellar G-address for the snapshot header.
+   * @param params.scope - CAIP-2 network.
+   * @param params.assets - Assets held by the account.
+   * @param params.ledger - Optional ledger overlay for sequence, meta, and native stroops.
+   * @returns Full serializable binding for {@link OnChainAccount.fromSerializable}.
+   */
+  #mapAssetsControllerAssetsToSerializable({
+    accountAddress,
+    scope,
+    assets,
+    ledger,
+  }: {
+    accountAddress: string;
+    scope: KnownCaip2ChainId;
+    assets: CoreAsset[];
+    ledger?: AccountLedgerMeta;
+  }): OnChainAccountSerializableFull {
+    const balances: SerializableSpendableBalance[] = [];
+    const accountLedgerMeta: AccountLedgerMeta = ledger ?? {
+      sequenceNumber: '0',
+      subentryCount: 0,
+      numSponsoring: 0,
+      numSponsored: 0,
+      rawNativeBalance: '0',
+    };
+
+    for (const asset of assets) {
+      if (asset.chainId !== scope) {
+        continue;
+      }
+
+      const assetId = asset.id;
+      const { decimals, symbol } = asset.metadata;
+      const balance = toSmallestUnit(
+        new BigNumber(asset.balance.amount),
+        decimals,
+      ).toFixed(0);
+
+      if (isCoreNativeAsset(asset)) {
+        // When ledger meta is missing, derive reserve meta from AssetsController XLM metadata.
+        if (ledger === undefined) {
+          const { minimumReserveBalance } = asset.balance.metadata;
+          const reserveMeta = calculateLedgerMetaFromMinReserve(
+            minimumReserveBalance,
+          );
+          accountLedgerMeta.rawNativeBalance = balance;
+          accountLedgerMeta.subentryCount = reserveMeta.subentryCount;
+          accountLedgerMeta.numSponsoring = reserveMeta.numSponsoring;
+          accountLedgerMeta.numSponsored = reserveMeta.numSponsored;
+        }
+        continue;
+      }
+
+      if (isCoreClassicAsset(asset)) {
+        const { limit, authorized, sponsored } = asset.balance.metadata;
+        const { assetIssuer: address } = parseClassicAssetCodeIssuer(
+          getAssetReference(assetId),
+        );
+        balances.push(
+          SerializableClassicSpendableBalanceStruct.create({
+            assetId,
+            symbol,
+            balance,
+            limit,
+            address,
+            authorized,
+            sponsored,
+            ...(asset.balance.metadata.sponsor
+              ? { sponsor: asset.balance.metadata.sponsor }
+              : {}),
+          }),
+        );
+        continue;
+      }
+
+      if (isCoreSep41Asset(asset)) {
+        balances.push(
+          SerializableSep41SpendableBalanceStruct.create({
+            assetId,
+            symbol,
+            balance,
+            decimals,
+          }),
+        );
+      }
+    }
+
+    return OnChainAccountSerializableFullStruct.create({
+      accountId: accountAddress,
+      sequenceNumber: accountLedgerMeta.sequenceNumber,
+      scope,
+      meta: {
+        subentryCount: accountLedgerMeta.subentryCount,
+        numSponsoring: accountLedgerMeta.numSponsoring,
+        numSponsored: accountLedgerMeta.numSponsored,
+      },
+      balances,
+      rawNativeBalance: accountLedgerMeta.rawNativeBalance,
+    });
+  }
+
+  /**
    * Enriches accounts with SEP-41 balances, persists snapshots, then notifies the keyring when
    * balances or the tracked asset set changed. Delegates to {@link OnChainAccountSynchronizeService}.
+   *
+   * When the Stellar assets migration flag is on, skips persist and keyring events;
+   * AssetsController owns fungible holdings.
    *
    * @param activatedAccountPairs - Activated account pairs to synchronize.
    * @param scope - CAIP-2 network.
@@ -242,8 +484,15 @@ export class OnChainAccountService {
   async synchronize(
     activatedAccountPairs: ActivatedAccountPair[],
     scope: KnownCaip2ChainId,
-    sep41Assets: StellarAssetMetadata[],
+    sep41Assets: Sep41StellarAssetMetadata[],
   ): Promise<void> {
+    if (await this.#assetsService.isMigrationEnabled()) {
+      this.#logger.debug(
+        'Skipping on-chain account synchronization; assets migration is on',
+      );
+      return;
+    }
+
     await this.#onChainAccountSynchronizeService.synchronize(
       activatedAccountPairs,
       scope,

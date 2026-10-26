@@ -1,25 +1,28 @@
-import type { Logger } from '@metamask/snap-networks-utils';
+import { BaseTransactionScanService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
-import type { KnownCaip2ChainId } from '../../api';
+import { KnownCaip2ChainId } from '../../api';
 import { xlmIcon } from '../../ui/images';
-import {
-  toCaip19ClassicAssetId,
-  toCaip19Sep41AssetId,
-  trackError,
-} from '../../utils';
+import { toCaip19ClassicAssetId, toCaip19Sep41AssetId } from '../../utils';
 import { toDisplayBalance } from '../../utils/currency';
+import {
+  assertHttpRequestParams,
+  assertHttpResponse,
+} from '../../utils/errors';
 import { getIconUrl } from '../asset-metadata/utils';
 import { TransactionExpireException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
 import { assertTransactionTimeBound } from '../transaction/utils';
 import {
   AssetChangeDirection,
+  ScanTransactionRequestStruct,
   StellarClassicAssetDetailsStruct,
   StellarNativeAssetDetailsStruct,
   StellarSep41AssetDetailsStruct,
+  StellarTransactionScanResponseStruct,
   TransactionScanErrorId,
   TransactionScanOption,
+  SecurityAlertsChain,
 } from './api';
 import type {
   StellarAssetDiff,
@@ -28,37 +31,33 @@ import type {
   TransactionScanError,
   TransactionScanResult,
   TransactionScanValidation,
+  SecurityAlertsChain as SecurityAlertsChainType,
+  SecurityAlertsMetadata,
 } from './api';
-import type { SecurityAlertsApiClient } from './SecurityAlertsApiClient';
 
-export class TransactionScanService {
-  readonly #securityAlertsApiClient: SecurityAlertsApiClient;
+const SCOPE_TO_SECURITY_ALERTS_CHAIN: Record<
+  KnownCaip2ChainId,
+  SecurityAlertsChainType
+> = {
+  [KnownCaip2ChainId.Mainnet]: SecurityAlertsChain.Mainnet,
+  [KnownCaip2ChainId.Testnet]: SecurityAlertsChain.Testnet,
+};
 
-  readonly #logger: Logger;
-
-  constructor({
-    securityAlertsApiClient,
-    logger,
-  }: {
-    securityAlertsApiClient: SecurityAlertsApiClient;
-    logger: Logger;
-  }) {
-    this.#securityAlertsApiClient = securityAlertsApiClient;
-    this.#logger = logger.withPrefix('[🛡️ TransactionScanService]');
-  }
-
-  async scanTransactionSafe({
+export class TransactionScanService extends BaseTransactionScanService {
+  async scanTransaction({
     accountAddress,
     origin,
     scope,
     transaction,
     options,
+    accountType,
   }: {
     accountAddress: string;
     origin: string;
     scope: KnownCaip2ChainId;
     transaction: string;
     options: TransactionScanOption[];
+    accountType?: string;
   }): Promise<TransactionScanResult | null> {
     try {
       const preflightValidationErrorResult = options.includes(
@@ -67,29 +66,66 @@ export class TransactionScanService {
         ? this.#preflightValidation(transaction, scope)
         : null;
 
-      const result = await this.#securityAlertsApiClient.scanTransaction({
-        accountAddress,
-        origin,
-        scope,
+      const requestBody = {
+        account_address: accountAddress,
+        chain: SCOPE_TO_SECURITY_ALERTS_CHAIN[scope],
+        metadata: this.#getMetadata(origin),
         transaction,
         options,
-      });
+      };
 
-      return this.#mapScan(
+      assertHttpRequestParams(requestBody, ScanTransactionRequestStruct);
+
+      const result =
+        await this.securityAlertsApiClient.scanTransaction(requestBody);
+
+      assertHttpResponse(result, StellarTransactionScanResponseStruct);
+
+      const scan = this.#mapScan(
         result,
         preflightValidationErrorResult,
         options,
         scope,
         accountAddress,
       );
+
+      await this.trackScanCompleted({ origin, scope, accountType }, scan);
+
+      return scan;
     } catch (error: unknown) {
-      this.#logger.warn('Error scanning Stellar transaction', {
+      this.logger.warn('Error scanning Stellar transaction', {
         reason: error,
       });
 
-      await trackError(error);
+      await this.trackError(error);
+
+      await this.trackScanFailed({ origin, scope, accountType });
 
       return null;
+    }
+  }
+
+  /**
+   * Builds the scan request metadata from the origin.
+   *
+   * Requests from a dApp origin are reported as `wallet` metadata with the
+   * origin URL; origins that are not URLs (e.g. the MetaMask in-app
+   * pseudo-origin) are reported as `in_app`.
+   *
+   * @param origin - The origin of the scan request.
+   * @returns The metadata for the scan request.
+   */
+  #getMetadata(origin: string): SecurityAlertsMetadata {
+    try {
+      const url = new URL(origin);
+      return {
+        type: 'wallet',
+        url: url.origin,
+      };
+    } catch {
+      return {
+        type: 'in_app',
+      };
     }
   }
 

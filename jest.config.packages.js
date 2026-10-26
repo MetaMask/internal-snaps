@@ -87,7 +87,12 @@ module.exports = {
     '^@metamask/([^/]+)$': [
       '<rootDir>/../$1/src',
       // Some @metamask/* packages we are referencing aren't in this monorepo,
-      // so in that case use their published versions
+      // so in that case use their published versions. Recent releases are
+      // ESM-only (an `exports`-only manifest without `main`), so prefer the
+      // ESM dist entry and let `transformIgnorePatterns` below transpile them
+      // for CJS Jest; packages that still ship a CJS `main` (no ESM
+      // `dist/index.js`) fall through to their package directory.
+      '<rootDir>/../../node_modules/@metamask/$1/dist/index.js',
       '<rootDir>/../../node_modules/@metamask/$1',
     ],
   },
@@ -196,7 +201,7 @@ module.exports = {
   // transform: undefined,
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
-  // transformIgnorePatterns: undefined
+  transformIgnorePatterns: ['/node_modules/(?!(@metamask|lodash-es)/)'],
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
   // unmockedModulePathPatterns: undefined,

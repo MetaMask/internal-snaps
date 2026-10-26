@@ -12,6 +12,8 @@ import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+import type { TransactionWithMetadata } from '../transaction-expiration-refresher/types';
 import { StakingService } from './StakingService';
 
 describe('StakingService', () => {
@@ -19,6 +21,7 @@ describe('StakingService', () => {
   let mockAccountsService: jest.Mocked<AccountsService>;
   let mockTronWebFactory: jest.Mocked<TronWebFactory>;
   let mockSnapClient: jest.Mocked<SnapClient>;
+  let mockTransactionExpirationRefresherService: jest.Mocked<TransactionExpirationRefresherService>;
   let mockTronWeb: any;
 
   const mockAccount: ExtendedKeyringAccount = {
@@ -51,8 +54,13 @@ describe('StakingService', () => {
 
   const mockTransaction = {
     txID: 'mock-transaction-id',
+    raw_data_hex: 'mock-raw-data-hex',
 
     raw_data: {
+      expiration: 1_700_000_060_000,
+      ref_block_bytes: '0001',
+      ref_block_hash: '0011223344556677',
+      timestamp: 1_700_000_000_000,
       contract: [
         {
           type: 'FreezeBalanceV2Contract',
@@ -67,7 +75,7 @@ describe('StakingService', () => {
         },
       ],
     },
-  };
+  } as unknown as TransactionWithMetadata;
 
   const mockSignedTransaction = {
     ...mockTransaction,
@@ -100,17 +108,30 @@ describe('StakingService', () => {
 
     mockTronWebFactory = {
       createClient: jest.fn().mockReturnValue(mockTronWeb),
+      executeBroadcast: jest
+        .fn()
+        .mockImplementation(
+          async (_scope: Network, operation: () => Promise<unknown>) =>
+            operation(),
+        ),
     } as unknown as jest.Mocked<TronWebFactory>;
 
     mockSnapClient = {
       scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<SnapClient>;
+    mockTransactionExpirationRefresherService = {
+      ensureFreshMetadata: jest
+        .fn()
+        .mockImplementation(async ({ transaction }) => transaction),
+    } as unknown as jest.Mocked<TransactionExpirationRefresherService>;
 
     stakingService = new StakingService({
       logger: mockLogger,
       accountsService: mockAccountsService,
       tronWebFactory: mockTronWebFactory,
       snapClient: mockSnapClient,
+      transactionExpirationRefresherService:
+        mockTransactionExpirationRefresherService,
     });
   });
 
@@ -155,6 +176,164 @@ describe('StakingService', () => {
         params: { accountId: mockAccount.id },
         duration: 'PT5S',
       });
+    });
+
+    it('builds and signs once when retrying a transient broadcast failure', async () => {
+      mockTronWebFactory.executeBroadcast.mockImplementation(
+        async (_scope: Network, operation: () => Promise<unknown>) => {
+          try {
+            return await operation();
+          } catch {
+            return operation();
+          }
+        },
+      );
+      mockTronWeb.trx.sendRawTransaction
+        .mockRejectedValueOnce(
+          Object.assign(new Error('unavailable'), {
+            response: { status: 503 },
+          }),
+        )
+        .mockResolvedValue({ result: true, txid: 'mock-tx-id' });
+
+      await stakingService.stake({
+        account: mockAccount,
+        assetId: KnownCaip19Id.TrxMainnet,
+        amount: BigNumber(1000000),
+        purpose: 'BANDWIDTH',
+      });
+
+      expect(
+        mockTronWeb.transactionBuilder.freezeBalanceV2,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockTronWeb.transactionBuilder.vote).toHaveBeenCalledTimes(1);
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(2);
+      expect(mockTronWeb.trx.sign).toHaveBeenNthCalledWith(1, mockTransaction);
+      expect(mockTronWeb.trx.sign).toHaveBeenNthCalledWith(2, mockTransaction);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(3);
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+        1,
+        mockSignedTransaction,
+      );
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+        2,
+        mockSignedTransaction,
+      );
+      expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenNthCalledWith(
+        3,
+        mockSignedTransaction,
+      );
+    });
+
+    it('refreshes each prebuilt transaction immediately before signing', async () => {
+      let releaseFreezeBroadcast = (): void => undefined;
+      const freezeBroadcastPending = new Promise<void>((resolve) => {
+        releaseFreezeBroadcast = resolve;
+      });
+      let markFreezeBroadcastStarted = (): void => undefined;
+      const freezeBroadcastStarted = new Promise<void>((resolve) => {
+        markFreezeBroadcastStarted = resolve;
+      });
+      const freezeTransaction = {
+        ...mockTransaction,
+        txID: 'freeze-transaction-id',
+      };
+      const voteTransaction = {
+        ...mockTransaction,
+        txID: 'expired-vote-transaction-id',
+      };
+      const freshVoteTransaction = {
+        ...voteTransaction,
+        txID: 'fresh-vote-transaction-id',
+      };
+      mockTronWeb.transactionBuilder.freezeBalanceV2.mockResolvedValueOnce(
+        freezeTransaction,
+      );
+      mockTronWeb.transactionBuilder.vote.mockResolvedValueOnce(
+        voteTransaction,
+      );
+      mockTransactionExpirationRefresherService.ensureFreshMetadata
+        .mockResolvedValueOnce(freezeTransaction)
+        .mockResolvedValueOnce(freshVoteTransaction);
+      mockTronWebFactory.executeBroadcast
+        .mockImplementationOnce(async (_scope, operation) => {
+          markFreezeBroadcastStarted();
+          await freezeBroadcastPending;
+          return operation();
+        })
+        .mockImplementation(async (_scope, operation) => operation());
+
+      const stakePromise = stakingService.stake({
+        account: mockAccount,
+        assetId: KnownCaip19Id.TrxMainnet,
+        amount: BigNumber(1000000),
+        purpose: 'BANDWIDTH',
+      });
+
+      await freezeBroadcastStarted;
+      expect(
+        mockTransactionExpirationRefresherService.ensureFreshMetadata,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
+
+      releaseFreezeBroadcast();
+      await stakePromise;
+
+      expect(
+        mockTransactionExpirationRefresherService.ensureFreshMetadata,
+      ).toHaveBeenNthCalledWith(1, {
+        scope: Network.Mainnet,
+        transaction: freezeTransaction,
+      });
+      expect(
+        mockTransactionExpirationRefresherService.ensureFreshMetadata,
+      ).toHaveBeenNthCalledWith(2, {
+        scope: Network.Mainnet,
+        transaction: voteTransaction,
+      });
+      expect(mockTronWeb.trx.sign).toHaveBeenNthCalledWith(
+        2,
+        freshVoteTransaction,
+      );
+    });
+
+    it('synchronizes after a vote rejection following a successful freeze', async () => {
+      mockTronWeb.trx.sendRawTransaction
+        .mockResolvedValueOnce({ result: true, txid: 'freeze-tx-id' })
+        .mockResolvedValueOnce({ result: false, message: 'Vote rejected' });
+
+      await expect(
+        stakingService.stake({
+          account: mockAccount,
+          assetId: KnownCaip19Id.TrxMainnet,
+          amount: BigNumber(1000000),
+          purpose: 'BANDWIDTH',
+        }),
+      ).rejects.toThrow('Failed to send transaction: Vote rejected');
+
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.SynchronizeAccount,
+        params: { accountId: mockAccount.id },
+        duration: 'PT5S',
+      });
+    });
+
+    it('preserves the vote rejection if synchronization scheduling fails', async () => {
+      mockTronWeb.trx.sendRawTransaction
+        .mockResolvedValueOnce({ result: true, txid: 'freeze-tx-id' })
+        .mockResolvedValueOnce({ result: false, message: 'Vote rejected' });
+      mockSnapClient.scheduleBackgroundEvent.mockRejectedValueOnce(
+        new Error('Scheduling failed'),
+      );
+
+      await expect(
+        stakingService.stake({
+          account: mockAccount,
+          assetId: KnownCaip19Id.TrxMainnet,
+          amount: BigNumber(1000000),
+          purpose: 'BANDWIDTH',
+        }),
+      ).rejects.toThrow('Failed to send transaction: Vote rejected');
     });
 
     it('successfully stakes TRX for ENERGY', async () => {

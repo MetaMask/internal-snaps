@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0]
+
+### Added
+
+- Add `executeWithFetchPolicy` for wrapping transport-only operations in a policy created by `createFetchPolicy`, passing `SyntaxError` and abort errors through unchanged, passing errors already in the policy shape through unchanged, and mapping any other error with an optional mapper (defaulting to a network failure) ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add `fetchWithPolicy` for the common policy-wrapped HTTP call: a fetch with a 10 second timeout, a status check that throws a `FetchPolicyError` for non-2xx responses (honouring `Retry-After`), and a body read inside the policy ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add `parseRetryAfter` for parsing a `Retry-After` header value as milliseconds ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add the `FetchPolicy` type, the minimal policy surface `executeWithFetchPolicy` and `fetchWithPolicy` accept ([#478](https://github.com/MetaMask/internal-snaps/pull/478))
+- Add the shared `BaseTransactionScanService` base class for network snap transaction scan services, owning the shared scan dependencies (Security Alerts API client, analytics, logger, error reporting) and the scan analytics orchestration ([#397](https://github.com/MetaMask/internal-snaps/pull/397))
+  - Add the shared Security Alerts API HTTP client for `BaseTransactionScanService`.
+- Add an optional `policy` to the shared Security Alerts API client options, retrying transient scan failures (network errors, timeouts, HTTP 408, 425, 429, 500, 502, 503 and 504) with backoff and circuit breaking when given ([#492](https://github.com/MetaMask/internal-snaps/pull/492))
+
+## [3.0.0]
+
+### Added
+
+- Add `createFetchPolicy`, a retry and circuit-breaker policy for calls to one upstream service, built on `createServicePolicy` from `@metamask/base-data-service` ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
+  - Retries only transient errors (network failures, timeouts and HTTP 408, 425, 429, 500, 502, 503 and 504), up to 3 times, with exponential backoff and jitter
+  - Waits for the error's `retryAfterMs` when it is longer than the backoff, and doesn't retry when it is over `MAX_RETRY_AFTER_MS` (30 seconds)
+  - Opens the circuit for 30 seconds on repeated transient errors or 5xx responses, but not on other 4xx, aborts or validation errors
+  - Logs retries, give-ups, `Retry-After` values over the cap and circuit breaks to the given `logger`
+- Add the `FetchPolicyError` type, `createFetchPolicyError`, `FetchPolicyErrorName` and `isTransientError` for converting errors to the shape `createFetchPolicy` decides on ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
+- Re-export `BrokenCircuitError` from `@metamask/base-data-service`, the error `createFetchPolicy` policies throw while the circuit is open ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
+  - Its `name` is `Error`, so check for it with `instanceof`
+- Add a `@metamask/snap-networks-utils/performance-shim` export, which snaps must provide as the `performance` global (e.g. with webpack's `ProvidePlugin`) to use `createFetchPolicy` ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
+
 ### Removed
 
 - **BREAKING:** Remove the CommonJS build; the package is now published as ESM only ([#452](https://github.com/MetaMask/internal-snaps/pull/452))
@@ -81,6 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.1.0...HEAD
+[3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.0.0...@metamask/snap-networks-utils@3.1.0
+[3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...@metamask/snap-networks-utils@3.0.0
 [2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@1.0.0...@metamask/snap-networks-utils@2.0.0
 [1.0.0]: https://github.com/MetaMask/internal-snaps/releases/tag/@metamask/snap-networks-utils@1.0.0

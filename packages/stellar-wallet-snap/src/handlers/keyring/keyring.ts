@@ -19,6 +19,8 @@ import type {
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import {
   asStrictKeyringAccount,
+  InMemoryCache,
+  useCache,
   validateOrigin,
 } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
@@ -33,32 +35,34 @@ import type {
 
 import type {
   KnownCaip19AssetIdOrSlip44Id,
+  KnownCaip19Sep41AssetId,
   KnownCaip2ChainId,
 } from '../../api';
 import { StellarSecretKeyStruct } from '../../api';
 import { AppConfig } from '../../config';
 import { originPermissions } from '../../permissions';
-import type {
-  AccountService,
-  StellarKeyringAccount,
-} from '../../services/account';
+import type { AccountService } from '../../services/account';
 import { AccountNotFoundException } from '../../services/account/exceptions';
-import type {
-  OnChainAccount,
-  OnChainAccountService,
-} from '../../services/on-chain-account';
+import { AccountNotActivatedException } from '../../services/network/exceptions';
 import {
+  OnChainAccount,
   toClassicBalanceEntry,
   getDefaultBalanceEntry,
   toNativeBalanceEntry,
   toStandardBalanceEntry,
+} from '../../services/on-chain-account';
+import type {
+  OnChainAccountSerializableFull,
+  OnChainAccountService,
 } from '../../services/on-chain-account';
 import type { TransactionService } from '../../services/transaction/TransactionService';
 import type { WalletService } from '../../services/wallet';
 import {
   Duration,
   getSlip44AssetId,
+  getStellarAssetChainId,
   isClassicAssetId,
+  isSep41Id,
   isSlip44Id,
   rethrowIfInstanceElseThrow,
   validateRequest,
@@ -95,6 +99,8 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   readonly #handlers: Record<MultichainMethod, IKeyringRequestHandler>;
 
+  readonly #fetchOnChainAccountCache: InMemoryCache;
+
   constructor({
     logger,
     accountService,
@@ -111,6 +117,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     handlers: Record<MultichainMethod, IKeyringRequestHandler>;
   }) {
     this.#logger = logger.withPrefix(KEYRING_HANDLER_LOGGER_PREFIX);
+    this.#fetchOnChainAccountCache = new InMemoryCache(this.#logger);
     this.#accountService = accountService;
     this.#onChainAccountService = onChainAccountService;
     this.#transactionService = transactionService;
@@ -209,17 +216,39 @@ export class KeyringHandler implements KeyringSnapRpc {
     return createdAccounts.map(asStrictKeyringAccount);
   }
 
+  /**
+   * Returns the assets of an account.
+   *
+   * It is gated by local config `enableAssetMigration`.
+   * When `enableAssetMigration` is true, the account is fetched from on-chain.
+   * When `enableAssetMigration` is false, the account is fetched from the state.
+   *
+   * @param accountId - The id of the account to get the assets for.
+   * @returns The assets of the account.
+   */
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
     validateRequest(accountId, ListAccountAssetsRequestStruct);
 
-    const scope = AppConfig.selectedNetwork;
+    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
 
-    const { onChainAccount } = await this.#resolveAccountByAccountId(
-      accountId,
-      scope,
-    );
+    let onChainAccount: OnChainAccount | null = null;
 
-    // If the account is not activated or not yet synced, return the native asset with zero balance
+    // TODO: remove this gate after asset migration is fully enabled.
+    if (enableAssetMigration) {
+      onChainAccount = await this.#fetchOnChainAccountWithCache({
+        accountId,
+        scope,
+        // Always refresh the cache to get the latest on-chain account.
+        refresh: true,
+      });
+    } else {
+      onChainAccount = await this.#getOnChainAccountSnapshot({
+        accountId,
+        scope,
+      });
+    }
+
+    // Unfunded accounts have no trustlines. Return native so the client can ask for a zero balance.
     if (onChainAccount === null) {
       return [getSlip44AssetId(scope)];
     }
@@ -308,6 +337,17 @@ export class KeyringHandler implements KeyringSnapRpc {
     return activityOnScopes.some((active) => active);
   }
 
+  /**
+   * Returns the balances of an account for the given assets.
+   *
+   * It is gated by local config `enableAssetMigration`.
+   * When `enableAssetMigration` is true, the account is fetched from on-chain.
+   * When `enableAssetMigration` is false, the account is fetched from the state.
+   *
+   * @param accountId - The id of the account to get the balances for.
+   * @param assets - The assets to get the balances for.
+   * @returns The balances of the account.
+   */
   async getAccountBalances(
     accountId: string,
     assets: CaipAssetType[],
@@ -317,21 +357,51 @@ export class KeyringHandler implements KeyringSnapRpc {
       GetAccountBalancesRequestStruct,
     );
 
-    const scope = AppConfig.selectedNetwork;
+    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
+
     const assetBalances = {} as Record<KnownCaip19AssetIdOrSlip44Id, Balance>;
 
-    const { onChainAccount } = await this.#resolveAccountByAccountId(
-      accountId,
-      scope,
-    );
+    let onChainAccount: OnChainAccount | null = null;
 
-    // If the account is not activated or not yet synced, return the native asset with zero balance
+    // TODO: remove this gate after asset migration is fully enabled.
+    if (enableAssetMigration) {
+      onChainAccount = await this.#fetchOnChainAccountWithCache({
+        accountId,
+        scope,
+        // Use the cached on-chain account.
+        refresh: false,
+      });
+    } else {
+      onChainAccount = await this.#getOnChainAccountSnapshot({
+        accountId,
+        scope,
+      });
+    }
+
+    // Unfunded accounts have no trustlines. Return native zero when it was requested.
     if (onChainAccount === null) {
       const nativeAssetId = knownAssets.find(isSlip44Id);
       if (nativeAssetId !== undefined) {
         assetBalances[nativeAssetId] = getDefaultBalanceEntry();
       }
       return assetBalances;
+    }
+
+    // Indexed snapshots and the Tokens API watchlist can both omit a SEP-41 id
+    // the client asked for. Fetch those balances when nothing was stored.
+    const missingSep41AssetIds = knownAssets.filter(
+      (assetId): assetId is KnownCaip19Sep41AssetId =>
+        isSep41Id(assetId) &&
+        onChainAccount.getRawAsset(assetId) === undefined &&
+        getStellarAssetChainId(assetId) === scope,
+    );
+    // Try to fetch the SEP-41 balances for the missing SEP-41 asset ids.
+    if (missingSep41AssetIds.length > 0) {
+      await this.#onChainAccountService.fetchAndBindSep41Balances(
+        onChainAccount,
+        scope,
+        missingSep41AssetIds,
+      );
     }
 
     for (const assetId of knownAssets) {
@@ -482,26 +552,87 @@ export class KeyringHandler implements KeyringSnapRpc {
     validateRequest(method, MultichainMethodStruct);
   }
 
-  async #resolveAccountByAccountId(
-    accountId: string,
-    scope: KnownCaip2ChainId,
-  ): Promise<{
-    account: StellarKeyringAccount;
-    onChainAccount: OnChainAccount | null;
-  }> {
+  /**
+   * Loads the indexed on-chain snapshot for a keyring account.
+   *
+   * @param params - Account id and scope.
+   * @param params.accountId - Keyring account id.
+   * @param params.scope - CAIP-2 network.
+   * @returns The indexed account, or `null` when no snapshot exists.
+   */
+  async #getOnChainAccountSnapshot({
+    accountId,
+    scope,
+  }: {
+    accountId: string;
+    scope: KnownCaip2ChainId;
+  }): Promise<OnChainAccount | null> {
     const { account } = await this.#accountService.resolveAccount({
       accountId,
     });
+    return this.#onChainAccountService.getOnChainAccountSnapshot(
+      accountId,
+      account.address,
+      scope,
+    );
+  }
 
-    // We read the on-chain account from state, which is synced in the background.
-    // This improves performance compared to fetching account data from the network on every request.
-    // The trade-off is that the data can be slightly stale within the sync window.
-    const onChainAccount =
-      await this.#onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-        accountId,
-        scope,
-      );
+  /**
+   * Loads a Horizon account for the keyring asset and balance reads.
+   *
+   * @param params - Account id, scope, and whether to skip the cache.
+   * @param params.accountId - Keyring account id.
+   * @param params.scope - CAIP-2 network.
+   * @param params.refresh - When true, load Horizon and replace the cache entry.
+   * @returns The live account, or `null` when it is not activated.
+   */
+  async #fetchOnChainAccountWithCache({
+    accountId,
+    scope,
+    refresh,
+  }: {
+    accountId: string;
+    scope: KnownCaip2ChainId;
+    refresh: boolean;
+  }): Promise<OnChainAccount | null> {
+    const { account } = await this.#accountService.resolveAccount({
+      accountId,
+    });
+    const serialized = await useCache(
+      this.#fetchOnChainAccount.bind(this),
+      this.#fetchOnChainAccountCache,
+      {
+        logger: this.#logger,
+        functionName: 'KeyringHandler:fetchOnChainAccount',
+        ttlMilliseconds: AppConfig.cache.ttlMilliseconds.fetchOnChainAccount,
+        refreshCache: refresh,
+      },
+    )(account.address, scope);
 
-    return { account, onChainAccount };
+    if (serialized === null) {
+      return null;
+    }
+
+    return OnChainAccount.fromSerializable(serialized);
+  }
+
+  async #fetchOnChainAccount(
+    accountAddress: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<OnChainAccountSerializableFull | null> {
+    try {
+      const onChainAccount =
+        await this.#onChainAccountService.resolveOnChainAccount(
+          accountAddress,
+          scope,
+          { fetchWithSep41Balances: true },
+        );
+      return onChainAccount.toSerializableFull();
+    } catch (error: unknown) {
+      if (error instanceof AccountNotActivatedException) {
+        return null;
+      }
+      throw error;
+    }
   }
 }

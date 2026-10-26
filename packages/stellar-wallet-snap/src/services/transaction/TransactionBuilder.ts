@@ -1,4 +1,3 @@
-import { parseCaipAssetType } from '@metamask/utils';
 import type {
   Transaction as StellarSdkTransaction,
   xdr,
@@ -22,6 +21,7 @@ import type {
 } from '../../api';
 import { AppConfig } from '../../config';
 import {
+  getAssetReference,
   isSep41Id,
   isSlip44Id,
   normalizeAmount,
@@ -129,7 +129,7 @@ export class TransactionBuilder {
 
     try {
       // If it is a SEP-41 asset, the asset reference is the token address
-      const { assetReference: tokenAddress } = parseCaipAssetType(assetId);
+      const tokenAddress = getAssetReference(assetId);
 
       const token = new Contract(tokenAddress);
       // Contract token transfer function expects the amount in the token's smallest units (i128),
