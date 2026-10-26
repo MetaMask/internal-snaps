@@ -5,7 +5,6 @@ import {
 } from '@metamask/assets-controller';
 
 import { KnownCaip19AssetIdOrSlip44Id, KnownCaip2ChainId } from '../../api';
-import { AppConfig } from '../../config';
 import { MAX_INT64 } from '../../constants';
 import { getSlip44AssetId } from '../../utils';
 import {
@@ -108,24 +107,7 @@ describe('AssetsService', () => {
   };
 
   describe('isMigrationEnabled', () => {
-    const originalEnableAssetMigration = AppConfig.enableAssetMigration;
-
-    afterEach(() => {
-      AppConfig.enableAssetMigration = originalEnableAssetMigration;
-    });
-
-    it('returns false without reading the feature flag when asset migration is disabled', async () => {
-      AppConfig.enableAssetMigration = false;
-      const { service, remoteFeatureFlagsProvider } = createMockAssetsService({
-        migrationStage: SnapsAssetsMigrationStage.ReadAssetsControllerOnly,
-      });
-
-      expect(await service.isMigrationEnabled()).toBe(false);
-      expect(remoteFeatureFlagsProvider.getFeatureFlag).not.toHaveBeenCalled();
-    });
-
     it('returns false when the Stellar flag is Off', async () => {
-      AppConfig.enableAssetMigration = true;
       const { service, remoteFeatureFlagsProvider } = createMockAssetsService();
 
       expect(await service.isMigrationEnabled()).toBe(false);
@@ -134,8 +116,7 @@ describe('AssetsService', () => {
       );
     });
 
-    it('returns true when asset migration is enabled and the Stellar flag is active', async () => {
-      AppConfig.enableAssetMigration = true;
+    it('returns true when Stellar flag is active', async () => {
       const { service } = createMockAssetsService({
         migrationStage: SnapsAssetsMigrationStage.ReadAssetsControllerOnly,
       });
