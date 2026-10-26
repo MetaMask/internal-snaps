@@ -376,6 +376,53 @@ describe('NetworkService', () => {
     });
   });
 
+  describe('read retries', () => {
+    const testAddress =
+      'GB5QOHJZ6RACA26NFDIEHD7I7SLROLC5P4NATSG43OJV2C5WUR4VEUKG';
+    const mockAccount = (): StellarHorizon.AccountResponse =>
+      createMockAccountWithBalances(testAddress, '1', {
+        nativeBalance: 1,
+        assets: [],
+      }) as unknown as StellarHorizon.AccountResponse;
+
+    it('retries a transient Horizon failure on the primary endpoint', async () => {
+      const { loadAccountSpy } = getHorizonClientSpies();
+      loadAccountSpy
+        .mockRejectedValueOnce(new Error('Failed to fetch'))
+        .mockResolvedValueOnce(mockAccount());
+
+      const result = await networkService.loadOnChainAccount(
+        testAddress,
+        scope,
+      );
+
+      expect(result.accountId).toBe(testAddress);
+      expect(loadAccountSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry a confirmed missing account', async () => {
+      const { loadAccountSpy } = getHorizonClientSpies();
+      loadAccountSpy.mockRejectedValue(
+        new NotFoundError('Not Found', { status: 404 }),
+      );
+
+      await expect(
+        networkService.loadOnChainAccount(testAddress, scope),
+      ).rejects.toThrow(AccountNotActivatedException);
+      expect(loadAccountSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats an empty-body 404 as a network failure, not a missing account', async () => {
+      const { loadAccountSpy } = getHorizonClientSpies();
+      loadAccountSpy.mockRejectedValue(new NotFoundError('Not Found', ''));
+
+      await expect(
+        networkService.loadOnChainAccount(testAddress, scope),
+      ).rejects.toThrow(NetworkServiceException);
+      expect(loadAccountSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+  });
+
   describe('getAccountLedgerMetadata', () => {
     const testAddress =
       'GB5QOHJZ6RACA26NFDIEHD7I7SLROLC5P4NATSG43OJV2C5WUR4VEUKG';

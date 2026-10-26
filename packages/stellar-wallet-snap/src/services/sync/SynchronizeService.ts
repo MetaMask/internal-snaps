@@ -15,6 +15,14 @@ import type { OnChainAccountService } from '../on-chain-account';
 import type { TransactionService } from '../transaction';
 import type { ActivatedAccountPair, SynchronizeOptions } from './api';
 
+/** Per-account outcome of the account load step of a sync run. */
+type AccountLoadOutcome = {
+  /** Accounts whose load failed (network error): their sync failed. */
+  failedIds: string[];
+  /** Accounts the network confirmed as unfunded: their (zero) balance is up to date. */
+  unfundedIds: string[];
+};
+
 /**
  * Orchestrates Stellar wallet synchronization: on-chain account snapshots, transaction
  * history, and asset metadata. Loads SEP-41 assets once per account sync run and passes
@@ -98,8 +106,12 @@ export class SynchronizeService {
 
         try {
           // Both async loads are fail-safe, so we can use Promise.all.
+          const loadOutcome: AccountLoadOutcome = {
+            failedIds: [],
+            unfundedIds: [],
+          };
           const [activatedAccountPairs, sep41Assets] = await Promise.all([
-            this.#loadActivatedPairsSafe(accounts, scope),
+            this.#loadActivatedPairsSafe(accounts, scope, loadOutcome),
             this.#loadSep41AssetsSafe(scope),
           ]);
 
@@ -141,6 +153,29 @@ export class SynchronizeService {
               });
             }
           }
+
+          // Sync health (stale-balance detection): an account load failure is a failed sync;
+          // a success needs the snapshot to be saved, i.e. the accounts task to succeed.
+          const accountsTaskSucceeded =
+            syncAccounts && results[0]?.status === 'fulfilled';
+          const pairIds = activatedAccountPairs.map(
+            ({ keyringAccount }) => keyringAccount.id,
+          );
+          await this.#onChainAccountService.recordSyncOutcome(
+            {
+              succeededIds: syncAccounts
+                ? [
+                    ...loadOutcome.unfundedIds,
+                    ...(accountsTaskSucceeded ? pairIds : []),
+                  ]
+                : [],
+              failedIds: [
+                ...loadOutcome.failedIds,
+                ...(syncAccounts && !accountsTaskSucceeded ? pairIds : []),
+              ],
+            },
+            scope,
+          );
         } finally {
           this.#accountsInSync.clear();
           this.#logger.debug('Synchronize finished', {
@@ -240,16 +275,19 @@ export class SynchronizeService {
    *
    * @param accounts - Keyring accounts to load.
    * @param scope - CAIP-2 network to query.
+   * @param outcome - Collects the ids of the accounts whose load failed or that are unfunded.
    * @returns Pairs keyed for SEP-41 sync and persistence.
    */
   async #loadActivatedPairsSafe(
     accounts: StellarKeyringAccount[],
     scope: KnownCaip2ChainId,
+    outcome: AccountLoadOutcome = { failedIds: [], unfundedIds: [] },
   ): Promise<ActivatedAccountPair[]> {
     this.#logger.debug('number of accounts to synchronize', {
       noOfAccounts: accounts.length,
     });
 
+    const unfundedAccountIds: string[] = [];
     const results = await Promise.all(
       accounts.map(async (account): Promise<ActivatedAccountPair | null> => {
         try {
@@ -264,7 +302,10 @@ export class SynchronizeService {
         } catch (error: unknown) {
           // Only capture the error if it is unexpected.
           // AccountNotActivatedException is expected when the account is not activated yet.
-          if (!(error instanceof AccountNotActivatedException)) {
+          if (error instanceof AccountNotActivatedException) {
+            unfundedAccountIds.push(account.id);
+          } else {
+            outcome.failedIds.push(account.id);
             await trackError(error);
 
             this.#logger.warn('Failed to load account for sync', {
@@ -281,6 +322,22 @@ export class SynchronizeService {
     const pairs: ActivatedAccountPair[] = results.filter(
       (result): result is ActivatedAccountPair => result !== null,
     );
+
+    outcome.unfundedIds.push(...unfundedAccountIds);
+
+    // Remember which accounts the network confirmed as unfunded, so the keyring reports their
+    // balance as 0 while a never-synchronized account (every load failed) stays unknown.
+    if (unfundedAccountIds.length > 0) {
+      try {
+        await this.#onChainAccountService.markAccountsUnfunded(
+          unfundedAccountIds,
+          scope,
+        );
+      } catch (error: unknown) {
+        await trackError(error);
+        this.#logger.warn('Failed to record unfunded accounts', { error });
+      }
+    }
 
     this.#logger.debug('number of activated account pairs', {
       noOfAccounts: pairs.length,

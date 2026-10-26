@@ -1,5 +1,10 @@
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicyError,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
 import { ensureError } from '@metamask/utils';
-import { Networks, NotFoundError } from '@stellar/stellar-sdk';
+import { NetworkError, Networks, NotFoundError } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -72,6 +77,18 @@ export function sep41MulticallCellToBalance(value: unknown): BigNumber | null {
 }
 
 /**
+ * @param body - A parsed HTTP response body.
+ * @returns Whether the body is empty (no body, or an empty / whitespace-only string).
+ */
+export function isEmptyHttpBody(body: unknown): boolean {
+  return (
+    body === undefined ||
+    body === null ||
+    (typeof body === 'string' && body.trim() === '')
+  );
+}
+
+/**
  * Detects the error shape thrown by Soroban RPC `getAccount` / `getAccountEntry` when the account
  * ledger entry is missing (`Error` with message `Account not found: <G… address>`).
  *
@@ -84,7 +101,11 @@ export function isAccountNotFoundError(
   accountAddress: string,
 ): boolean {
   if (error instanceof NotFoundError) {
-    return true;
+    // Horizon answers a missing account with a JSON problem body. An empty 404 comes from
+    // something in front of Horizon (e.g. a provider router rejecting a mis-routed,
+    // HTTP/2-coalesced request): it says nothing about the account, so it must not be read as
+    // "unfunded" (which reports a confident zero balance).
+    return !isEmptyHttpBody(error.getResponse());
   }
   return ensureError(error).message === `Account not found: ${accountAddress}`;
 }
@@ -121,4 +142,64 @@ export function baseInclusionFee(
     new BigNumber(baseFee),
     AppConfig.transaction.baseFeeMultiplier,
   );
+}
+
+/**
+ * Maps an error thrown by the Horizon / Soroban RPC SDK clients on a read to the shape the
+ * fetch policy decides on, keeping the original error as `cause` so callers can still
+ * classify it (see {@link unwrapFetchPolicyError}).
+ *
+ * - A confirmed missing account (Horizon 404 with a body, or the RPC "Account not found"
+ * error) is a definitive 404: never retried nor sent to a fallback.
+ * - An empty Horizon 404 is treated as a transport failure (see {@link isAccountNotFoundError}).
+ * - A Horizon error response carrying a numeric `status` keeps it (5xx / 429 are retried).
+ * - Anything else (e.g. a bare `Failed to fetch` / `Network Error`) is a network failure.
+ *
+ * @param error - The SDK error.
+ * @param accountAddress - The account the read was about, if any.
+ * @returns The error in the fetch policy shape.
+ */
+export function toStellarFetchPolicyError(
+  error: unknown,
+  accountAddress?: string,
+): FetchPolicyError {
+  const { message } = ensureError(error);
+  if (
+    accountAddress !== undefined &&
+    isAccountNotFoundError(error, accountAddress)
+  ) {
+    return createFetchPolicyError(message, { httpStatus: 404, cause: error });
+  }
+  if (error instanceof NetworkError && !(error instanceof NotFoundError)) {
+    const status = (error.getResponse() as { status?: unknown } | undefined)
+      ?.status;
+    if (typeof status === 'number') {
+      return createFetchPolicyError(message, {
+        httpStatus: status,
+        cause: error,
+      });
+    }
+  }
+  return createFetchPolicyError(message, {
+    name: FetchPolicyErrorName.Network,
+    cause: error,
+  });
+}
+
+/**
+ * Returns the SDK error a {@link toStellarFetchPolicyError} error wraps, or the error itself.
+ *
+ * @param error - The error thrown by `executeWithFetchPolicy` / `withEndpointFallback`.
+ * @returns The original SDK error when available.
+ */
+export function unwrapFetchPolicyError(error: unknown): unknown {
+  if (
+    error instanceof Error &&
+    ((error as FetchPolicyError).httpStatus !== undefined ||
+      error.name === FetchPolicyErrorName.Network) &&
+    error.cause !== undefined
+  ) {
+    return error.cause;
+  }
+  return error;
 }

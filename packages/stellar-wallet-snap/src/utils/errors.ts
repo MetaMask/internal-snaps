@@ -1,4 +1,5 @@
 import { createSnapErrorHandling } from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
@@ -252,8 +253,101 @@ export function isStellarSnapException(
   return error instanceof StellarSnapException;
 }
 
+/**
+ * Marks an exception as an expected, transient state (e.g. an account that has
+ * not been synchronized yet) rather than a failure: it is still thrown to the
+ * caller, but never reported to Sentry through `snap_trackError`.
+ */
+export type ExpectedStateException = StellarSnapException & {
+  readonly isExpectedState: true;
+};
+
+/**
+ * @param error - Value from a `catch` clause.
+ * @returns Whether `error` is an expected state that must not be tracked.
+ */
+export function isExpectedStateException(
+  error: unknown,
+): error is ExpectedStateException {
+  return (
+    error instanceof StellarSnapException &&
+    (error as Partial<ExpectedStateException>).isExpectedState === true
+  );
+}
+
+/**
+ * Message of the "balance not synchronized yet" expected state. It is the
+ * stable marker of that state: the keyring SDK's `handleKeyringRequest`
+ * re-creates every non-`SnapError` as a plain `Error` carrying only the
+ * message, so the class and the `isExpectedState` flag are lost before the
+ * error reaches the tracking wrapper.
+ */
+export const BALANCE_NOT_SYNCHRONIZED_MESSAGE =
+  'Account balance unavailable: the account has not been synchronized yet';
+
+/**
+ * Message of the "stored balance is out of date" expected state: the syncs have been failing
+ * since the last successful one, longer than the stale threshold. Stable marker for the same
+ * reason as {@link BALANCE_NOT_SYNCHRONIZED_MESSAGE}.
+ */
+export const BALANCE_STALE_MESSAGE =
+  'Account balance unavailable: synchronization has been failing since the last successful sync';
+
+const EXPECTED_STATE_MESSAGES = [
+  BALANCE_NOT_SYNCHRONIZED_MESSAGE,
+  BALANCE_STALE_MESSAGE,
+];
+
+const hasExpectedStateMessage = (text: string): boolean =>
+  EXPECTED_STATE_MESSAGES.some((marker) => text.includes(marker));
+
+/**
+ * Whether an error is an expected state, even after it was re-created,
+ * wrapped or serialized along the way: matches the class flag, then the
+ * stable message marker on the error, its `cause` chain or a serialized error.
+ *
+ * @param error - Value from a `catch` clause.
+ * @returns Whether `error` is (or wraps) an expected state.
+ */
+export function isExpectedStateError(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current; depth += 1) {
+    if (isExpectedStateException(current)) {
+      return true;
+    }
+    if (typeof current === 'string') {
+      return hasExpectedStateMessage(current);
+    }
+    if (typeof current !== 'object') {
+      return false;
+    }
+    const { message, cause } = current as {
+      message?: unknown;
+      cause?: unknown;
+    };
+    if (typeof message === 'string' && hasExpectedStateMessage(message)) {
+      return true;
+    }
+    current = cause;
+  }
+  return false;
+}
+
+/**
+ * Tracking filter: skips user rejections (the default) and expected states.
+ *
+ * @param error - Value from a `catch` clause.
+ * @returns Whether the error should be reported through `snap_trackError`.
+ */
+export function shouldTrackError(error: unknown): boolean {
+  return (
+    !(error instanceof UserRejectedRequestError) && !isExpectedStateError(error)
+  );
+}
+
 export const { trackError, withCatchAndThrowSnapError } =
   createSnapErrorHandling({
     getSnapProvider,
     logError: logger.error.bind(logger),
+    shouldTrack: shouldTrackError,
   });

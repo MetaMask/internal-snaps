@@ -29,7 +29,10 @@ import {
 import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountSerializableFull } from './OnChainAccountSerializable';
-import { OnChainAccountService } from './OnChainAccountService';
+import {
+  BALANCE_STALE_AFTER_MS,
+  OnChainAccountService,
+} from './OnChainAccountService';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
 
 jest.mock('../../utils/logger');
@@ -467,6 +470,171 @@ describe('OnChainAccountService', () => {
         KnownCaip2ChainId.Mainnet,
         [],
       );
+    });
+  });
+
+  describe('recordSyncOutcome / isBalanceStale (v6)', () => {
+    const ACCOUNT_A = '11111111-1111-4111-8111-111111111111';
+    const scope = KnownCaip2ChainId.Mainnet;
+
+    it('is not stale when the account was not polled yet or the syncs succeed', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+
+      expect(await onChainAccountService.isBalanceStale(ACCOUNT_A, scope)).toBe(
+        false,
+      );
+      await onChainAccountService.recordSyncOutcome(
+        { succeededIds: [ACCOUNT_A], failedIds: [] },
+        scope,
+        1_000,
+      );
+      expect(
+        await onChainAccountService.isBalanceStale(
+          ACCOUNT_A,
+          scope,
+          1_000 + 10 * BALANCE_STALE_AFTER_MS,
+        ),
+      ).toBe(false);
+    });
+
+    it('is stale once the last success is older than the threshold and the syncs since then failed', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+      await onChainAccountService.recordSyncOutcome(
+        { succeededIds: [ACCOUNT_A], failedIds: [] },
+        scope,
+        1_000,
+      );
+      await onChainAccountService.recordSyncOutcome(
+        { succeededIds: [], failedIds: [ACCOUNT_A] },
+        scope,
+        31_000,
+      );
+      await onChainAccountService.recordSyncOutcome(
+        { succeededIds: [], failedIds: [ACCOUNT_A] },
+        scope,
+        61_000,
+      );
+
+      expect(
+        await onChainAccountService.isBalanceStale(
+          ACCOUNT_A,
+          scope,
+          1_000 + BALANCE_STALE_AFTER_MS - 1,
+        ),
+      ).toBe(false);
+      expect(
+        await onChainAccountService.isBalanceStale(
+          ACCOUNT_A,
+          scope,
+          1_000 + BALANCE_STALE_AFTER_MS,
+        ),
+      ).toBe(true);
+
+      // Cleared as soon as a sync succeeds.
+      await onChainAccountService.recordSyncOutcome(
+        { succeededIds: [ACCOUNT_A], failedIds: [] },
+        scope,
+        200_000,
+      );
+      expect(
+        await onChainAccountService.isBalanceStale(ACCOUNT_A, scope, 200_001),
+      ).toBe(false);
+    });
+
+    it('counts from the first failure when no success was seen by this instance', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+      await onChainAccountService.recordSyncOutcome(
+        { succeededIds: [], failedIds: [ACCOUNT_A] },
+        scope,
+        50_000,
+      );
+
+      expect(
+        await onChainAccountService.isBalanceStale(
+          ACCOUNT_A,
+          scope,
+          50_000 + BALANCE_STALE_AFTER_MS - 1,
+        ),
+      ).toBe(false);
+      expect(
+        await onChainAccountService.isBalanceStale(
+          ACCOUNT_A,
+          scope,
+          50_000 + BALANCE_STALE_AFTER_MS,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe('markAccountsUnfunded / isConfirmedUnfunded', () => {
+    const ACCOUNT_A = '11111111-1111-4111-8111-111111111111';
+    const ACCOUNT_B = '22222222-2222-4222-8222-222222222222';
+
+    beforeEach(() => {
+      jest.mocked(snap.request).mockReset();
+    });
+
+    it('marks accounts and emits a confirmed zero native balance once', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([ACCOUNT_A]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+      expect(snap.request).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+        'notify:accountBalancesUpdated',
+      );
+      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+        ACCOUNT_A,
+      );
+
+      // Already marked: no second event.
+      await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+      expect(snap.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports never-synchronized accounts as not confirmed unfunded', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(false);
+    });
+
+    it('still records the marker when emitting the balance event fails', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+      jest
+        .mocked(snap.request)
+        .mockRejectedValueOnce(new Error('emit failed'))
+        .mockResolvedValue(null);
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_B],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([ACCOUNT_B]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
     });
   });
 });
