@@ -33,6 +33,16 @@ export const STROOPS_PER_XLM = 10_000_000;
 export const BASE_RESERVE_STROOPS = XLM_PER_BASE_RESERVE * STROOPS_PER_XLM;
 
 /**
+ * Base-reserve units reserved for the account entry itself (not subentries).
+ *
+ * Stellar minimum balance is
+ * `(2 + subentry_count + num_sponsoring − num_sponsored) × base_reserve`.
+ *
+ * @see https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/accounts#minimum-balance
+ */
+export const ACCOUNT_MINIMUM_BASE_RESERVE_UNIT = 2;
+
+/**
  * Stellar's coin type
  *
  * @see https://github.com/satoshilabs/slips/blob/master/slip-0044.md

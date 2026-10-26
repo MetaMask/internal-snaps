@@ -172,7 +172,7 @@ describe('AssetMetadataService', () => {
     const { service, saveMany } = createService({});
     mockGetAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
 
-    const result = await service.fetchAssetsByAssetIds([
+    const result = await service.fetchAndPersistAssetsByAssetIds([
       USDC_SEP41,
       TESTNET_SEP41_USDC,
     ]);
@@ -239,7 +239,7 @@ describe('AssetMetadataService', () => {
     const { service, saveMany } = createService({});
     mockGetAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
 
-    const result = await service.fetchAssetsByAssetIds([USDC_SEP41]);
+    const result = await service.fetchAndPersistAssetsByAssetIds([USDC_SEP41]);
 
     expect(result).toStrictEqual([
       expect.objectContaining({
@@ -256,24 +256,6 @@ describe('AssetMetadataService', () => {
         symbol: 'USDC',
       }),
     ]);
-  });
-
-  it('delegates getPersistedSep41AssetsMetadata to repository', async () => {
-    const sepRows: Sep41StellarAssetMetadata[] = [];
-    const getByAssetType = jest.fn().mockResolvedValue(sepRows);
-    const { service } = createService({
-      repo: { getByAssetType },
-    });
-
-    const result = await service.getPersistedSep41AssetsMetadata(
-      KnownCaip2ChainId.Mainnet,
-    );
-
-    expect(result).toBe(sepRows);
-    expect(getByAssetType).toHaveBeenCalledWith(
-      AssetType.Sep41,
-      KnownCaip2ChainId.Mainnet,
-    );
   });
 
   it('resolves mainnet classic from token API when API returns metadata', async () => {
@@ -382,7 +364,89 @@ describe('AssetMetadataService', () => {
     );
   });
 
-  describe('fetchSep41AssetsOrSyncOnce', () => {
+  describe('synchronizeIfStale', () => {
+    const sep41AssetId =
+      'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
+
+    it('synchronizes when the catalog is stale', async () => {
+      const isStale = jest.fn().mockResolvedValue(true);
+      const { service, saveMany } = createService({
+        repo: { isStale },
+      });
+      mockGetAssetsByChainId.mockResolvedValueOnce({
+        data: [
+          {
+            assetId: sep41AssetId,
+            decimals: 7,
+            name: 'Token A',
+            symbol: 'TA',
+          },
+        ],
+        count: 1,
+        totalCount: 1,
+      });
+
+      await service.synchronizeIfStale(KnownCaip2ChainId.Mainnet);
+
+      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
+        KnownCaip2ChainId.Mainnet,
+      );
+      expect(saveMany).toHaveBeenCalledWith(
+        [expect.objectContaining({ assetId: sep41AssetId })],
+        true,
+      );
+    });
+
+    it('skips synchronize when the catalog is fresh', async () => {
+      const isStale = jest.fn().mockResolvedValue(false);
+      const { service, saveMany } = createService({
+        repo: { isStale },
+      });
+
+      await service.synchronizeIfStale(KnownCaip2ChainId.Mainnet);
+
+      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
+      expect(saveMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAssetsByScopeAndType', () => {
+    it('delegates to the repository for the scope and asset type', async () => {
+      const sep41AssetId =
+        'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
+      const sepRows: Sep41StellarAssetMetadata[] = [
+        {
+          assetId: sep41AssetId,
+          assetType: AssetType.Sep41,
+          chainId: KnownCaip2ChainId.Mainnet,
+          name: 'Cached',
+          symbol: 'CCH',
+          fungible: true,
+          iconUrl: 'https://example.test/icon.png',
+          units: [{ name: 'Cached', symbol: 'CCH', decimals: 7 }],
+        },
+      ];
+      const getByAssetType = jest.fn().mockResolvedValue(sepRows);
+      const { service } = createService({
+        repo: { getByAssetType },
+      });
+
+      const result = await service.getAssetsByScopeAndType(
+        KnownCaip2ChainId.Mainnet,
+        AssetType.Sep41,
+      );
+
+      expect(result).toBe(sepRows);
+      expect(getByAssetType).toHaveBeenCalledWith(
+        AssetType.Sep41,
+        KnownCaip2ChainId.Mainnet,
+      );
+    });
+  });
+
+  describe('fetchAndPersistSep41AssetMetadata', () => {
     const sep41AssetId =
       'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
 
@@ -398,57 +462,64 @@ describe('AssetMetadataService', () => {
       persistedAt: Date.now(),
     });
 
-    it('synchronizes when the catalog is stale', async () => {
-      const sepRows = [freshCatalogRow()];
-      const isStale = jest.fn().mockResolvedValue(true);
-      const getByAssetType = jest.fn().mockResolvedValue(sepRows);
-      const { service, saveMany } = createService({
-        repo: { isStale, getByAssetType },
-      });
-      mockGetAssetsByChainId.mockResolvedValueOnce({
-        data: [
-          {
-            assetId: sep41AssetId,
-            decimals: 7,
-            name: 'Token A',
-            symbol: 'TA',
-          },
-        ],
-        count: 1,
-        totalCount: 1,
+    it('returns fetched SEP-41 rows and skips other asset types', async () => {
+      const sepRow = freshCatalogRow();
+      const { service } = createService({});
+      const fetchByIds = jest
+        .spyOn(service, 'fetchAndPersistAssetsByAssetIds')
+        .mockResolvedValue([
+          createCachedRow(MAINNET_CLASSIC_USDC, KnownCaip2ChainId.Mainnet),
+          sepRow,
+        ]);
+
+      const result = await service.fetchAndPersistSep41AssetMetadata({
+        scope: KnownCaip2ChainId.Mainnet,
+        assetIds: [sep41AssetId],
       });
 
-      const result = await service.fetchSep41AssetsOrSyncOnce(
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
-      expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
-        KnownCaip2ChainId.Mainnet,
-      );
-      expect(saveMany).toHaveBeenCalledWith(
-        [expect.objectContaining({ assetId: sep41AssetId })],
-        true,
-      );
-      expect(result).toBe(sepRows);
+      expect(fetchByIds).toHaveBeenCalledWith([sep41AssetId]);
+      expect(result).toStrictEqual([sepRow]);
     });
 
-    it('returns persisted SEP-41 assets without syncing when the catalog is fresh', async () => {
+    it('returns the persisted catalog without syncing when ids are omitted', async () => {
       const catalog = [freshCatalogRow()];
-      const isStale = jest.fn().mockResolvedValue(false);
+      const isStale = jest.fn().mockResolvedValue(true);
       const getByAssetType = jest.fn().mockResolvedValue(catalog);
       const { service, saveMany } = createService({
         repo: { isStale, getByAssetType },
       });
 
-      const result = await service.fetchSep41AssetsOrSyncOnce(
+      const result = await service.fetchAndPersistSep41AssetMetadata({
+        scope: KnownCaip2ChainId.Mainnet,
+      });
+
+      expect(getByAssetType).toHaveBeenCalledWith(
+        AssetType.Sep41,
         KnownCaip2ChainId.Mainnet,
       );
-
-      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(isStale).not.toHaveBeenCalled();
       expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
       expect(saveMany).not.toHaveBeenCalled();
       expect(result).toBe(catalog);
+    });
+
+    it('returns the persisted catalog when asset ids are empty', async () => {
+      const catalog = [freshCatalogRow()];
+      const getByAssetType = jest.fn().mockResolvedValue(catalog);
+      const { service } = createService({
+        repo: { getByAssetType },
+      });
+
+      const result = await service.fetchAndPersistSep41AssetMetadata({
+        scope: KnownCaip2ChainId.Mainnet,
+        assetIds: [],
+      });
+
+      expect(result).toBe(catalog);
+      expect(getByAssetType).toHaveBeenCalledWith(
+        AssetType.Sep41,
+        KnownCaip2ChainId.Mainnet,
+      );
     });
   });
 

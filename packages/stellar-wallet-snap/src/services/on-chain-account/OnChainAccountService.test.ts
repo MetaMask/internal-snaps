@@ -3,6 +3,8 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
+import { MAX_INT64 } from '../../constants';
+import { getSlip44AssetId } from '../../utils';
 import { bufferToUint8Array } from '../../utils/buffer';
 import {
   generateMockStellarKeyringAccounts,
@@ -12,6 +14,7 @@ import { DerivedAccountAddressMismatchException } from '../account/exceptions';
 import { AssetMetadataService } from '../asset-metadata';
 import {
   getMockSep41Assets,
+  USDC_CLASSIC,
   USDC_SEP41,
   USDT_SEP41,
 } from '../asset-metadata/__mocks__/assets.fixtures';
@@ -26,7 +29,10 @@ import {
   horizonSource,
   mockOnChainAccountService,
 } from './__mocks__/onChainAccount.fixtures';
-import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
+import {
+  OnChainAccountException,
+  OnChainAccountSep41BalanceNotFoundException,
+} from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountSerializableFull } from './OnChainAccountSerializable';
 import { OnChainAccountService } from './OnChainAccountService';
@@ -158,7 +164,7 @@ describe('OnChainAccountService', () => {
 
       const fetchSep41Spy = jest.spyOn(
         AssetMetadataService.prototype,
-        'fetchSep41AssetsOrSyncOnce',
+        'fetchAndPersistSep41AssetMetadata',
       );
       const shouldStubSep41 =
         stubSep41Catalog ||
@@ -220,7 +226,7 @@ describe('OnChainAccountService', () => {
       ).rejects.toThrow(DerivedAccountAddressMismatchException);
     });
 
-    it('binds SEP-41 balances including zero when resolveWithFullBalance is set', async () => {
+    it('binds SEP-41 balances including zero when fetchWithSep41Balances is set', async () => {
       const {
         accountAddress,
         scope,
@@ -238,7 +244,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
@@ -267,7 +273,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(result.accountId).toStrictEqual(accountAddress);
@@ -288,7 +294,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
@@ -309,7 +315,7 @@ describe('OnChainAccountService', () => {
 
       await expect(
         onChainAccountService.resolveOnChainAccount(accountAddress, scope, {
-          resolveWithFullBalance: true,
+          fetchWithSep41Balances: true,
         }),
       ).rejects.toThrow(
         new OnChainAccountSep41BalanceNotFoundException(accountAddress),
@@ -330,7 +336,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(result.getRawAsset(USDC_SEP41)).toBeUndefined();
@@ -350,7 +356,7 @@ describe('OnChainAccountService', () => {
       const result = await onChainAccountService.resolveOnChainAccount(
         accountAddress,
         scope,
-        { resolveWithFullBalance: true },
+        { fetchWithSep41Balances: true },
       );
 
       expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe('1');
@@ -365,28 +371,83 @@ describe('OnChainAccountService', () => {
 
       await expect(
         onChainAccountService.resolveOnChainAccount(accountAddress, scope, {
-          resolveWithFullBalance: true,
+          fetchWithSep41Balances: true,
         }),
       ).rejects.toThrow('Failed to load SEP-41 token balance');
     });
   });
 
-  describe('resolveOnChainAccountByKeyringAccountId', () => {
+  describe('fetchAndBindSep41Balances', () => {
+    it('binds balances resolved by fetchAndPersistAssetsByAssetIds', async () => {
+      const accountAddress = generateStellarAddress();
+      const scope = KnownCaip2ChainId.Mainnet;
+      const loadedAcc = createMockAccountWithBalances(
+        accountAddress,
+        '1',
+        DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+      );
+      const onChainAccount = new OnChainAccount(
+        loadedAcc,
+        scope,
+        horizonSource(loadedAcc, scope),
+      );
+      const { getSep41AssetBalancesSpy } = getNetworkServiceSpies();
+      const { onChainAccountService } = mockOnChainAccountService();
+      const usdcSep41 = getMockSep41Assets().find(
+        (asset) => asset.assetId === USDC_SEP41,
+      );
+      if (usdcSep41 === undefined) {
+        throw new Error('expected USDC SEP-41 metadata');
+      }
+      const fetchMetadataSpy = jest
+        .spyOn(
+          AssetMetadataService.prototype,
+          'fetchAndPersistAssetsByAssetIds',
+        )
+        .mockResolvedValue([usdcSep41]);
+      getSep41AssetBalancesSpy.mockResolvedValue({
+        [accountAddress]: {
+          [USDC_SEP41]: new BigNumber(10_000_000),
+        },
+      });
+
+      const result = await onChainAccountService.fetchAndBindSep41Balances(
+        onChainAccount,
+        scope,
+        [USDC_SEP41],
+      );
+
+      expect(fetchMetadataSpy).toHaveBeenCalledWith([USDC_SEP41]);
+      expect(getSep41AssetBalancesSpy).toHaveBeenCalledWith({
+        accounts: [accountAddress],
+        assetIds: [USDC_SEP41],
+        scope,
+      });
+      expect(result.getRawAsset(USDC_SEP41)?.balance.toFixed()).toBe(
+        '10000000',
+      );
+      expect(result.getAsset(USDC_SEP41)?.symbol).toBe('USDC');
+    });
+  });
+
+  describe('getOnChainAccountSnapshot', () => {
     it('returns null when no snapshot exists for the keyring id and scope', async () => {
       const keyringAccountId = globalThis.crypto.randomUUID();
-      const { onChainAccountService, onChainAccountRepository } =
+      const accountAddress = Keypair.random().publicKey();
+      const { onChainAccountService, onChainAccountRepository, assetsService } =
         mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
       const findByAccountIdSpy = jest.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
       );
       findByAccountIdSpy.mockResolvedValue(null);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-          keyringAccountId,
-          KnownCaip2ChainId.Mainnet,
-        );
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        accountAddress,
+        KnownCaip2ChainId.Mainnet,
+      );
 
       expect(result).toBeNull();
       expect(findByAccountIdSpy).toHaveBeenCalledWith(
@@ -408,19 +469,20 @@ describe('OnChainAccountService', () => {
         KnownCaip2ChainId.Mainnet,
       ) as OnChainAccountSerializableFull;
 
-      const { onChainAccountService, onChainAccountRepository } =
+      const { onChainAccountService, onChainAccountRepository, assetsService } =
         mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
       const findByAccountIdSpy = jest.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
       );
       findByAccountIdSpy.mockResolvedValue(binding);
 
-      const result =
-        await onChainAccountService.resolveOnChainAccountByKeyringAccountId(
-          keyringAccountId,
-          KnownCaip2ChainId.Mainnet,
-        );
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        signer.publicKey(),
+        KnownCaip2ChainId.Mainnet,
+      );
 
       expect(result).toBeInstanceOf(OnChainAccount);
       expect(result?.accountId).toStrictEqual(signer.publicKey());
@@ -428,6 +490,211 @@ describe('OnChainAccountService', () => {
         keyringAccountId,
         KnownCaip2ChainId.Mainnet,
       );
+    });
+
+    it('returns null when migration is on and AssetsController returns no holdings', async () => {
+      const keyringAccountId = globalThis.crypto.randomUUID();
+      const { onChainAccountService, assetsService, onChainAccountRepository } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      const getAccountAssetsByScopeSpy = jest
+        .spyOn(assetsService, 'getAccountAssetsByScope')
+        .mockResolvedValue([]);
+      const findByAccountIdSpy = jest.spyOn(
+        onChainAccountRepository,
+        'findByKeyringAccountId',
+      );
+
+      expect(
+        await onChainAccountService.getOnChainAccountSnapshot(
+          keyringAccountId,
+          Keypair.random().publicKey(),
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBeNull();
+      expect(getAccountAssetsByScopeSpy).toHaveBeenCalledWith(
+        KnownCaip2ChainId.Mainnet,
+        keyringAccountId,
+      );
+      expect(findByAccountIdSpy).not.toHaveBeenCalled();
+    });
+
+    it('binds native, classic, and SEP-41 holdings from AssetsController when migration is on', async () => {
+      const accountAddress = Keypair.random().publicKey();
+      const keyringAccountId = globalThis.crypto.randomUUID();
+      const usdcIssuer = USDC_CLASSIC.split('-').at(1) as string;
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      const getAccountAssetsByScopeSpy = jest
+        .spyOn(assetsService, 'getAccountAssetsByScope')
+        .mockResolvedValue([
+          {
+            id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+            chainId: KnownCaip2ChainId.Mainnet,
+            balance: {
+              amount: '5',
+              metadata: {
+                spendableBalance: '40000000',
+                minimumReserveBalance: '10000000',
+                decimal: 7,
+              },
+            },
+            metadata: { symbol: 'XLM', decimals: 7 },
+          },
+          {
+            id: USDC_CLASSIC,
+            chainId: KnownCaip2ChainId.Mainnet,
+            balance: {
+              amount: '0.1630079',
+              metadata: {
+                limit: MAX_INT64,
+                authorized: true,
+                sponsored: false,
+              },
+            },
+            metadata: { symbol: 'USDC', decimals: 7 },
+          },
+          {
+            id: USDC_SEP41,
+            chainId: KnownCaip2ChainId.Mainnet,
+            balance: { amount: '2' },
+            metadata: { symbol: 'TA', decimals: 7 },
+          },
+        ]);
+
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        accountAddress,
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(result).toBeInstanceOf(OnChainAccount);
+      const full = result?.toSerializableFull();
+      expect(full).toMatchObject({
+        accountId: accountAddress,
+        sequenceNumber: '0',
+        scope: KnownCaip2ChainId.Mainnet,
+        rawNativeBalance: '50000000',
+        meta: {
+          subentryCount: 0,
+          numSponsoring: 0,
+          numSponsored: 0,
+        },
+      });
+      expect(full?.balances).toStrictEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            assetId: USDC_CLASSIC,
+            balance: '1630079',
+            symbol: 'USDC',
+            address: usdcIssuer,
+            limit: MAX_INT64,
+            authorized: true,
+            sponsored: false,
+          }),
+          expect.objectContaining({
+            assetId: USDC_SEP41,
+            balance: '20000000',
+            symbol: 'TA',
+            decimals: 7,
+          }),
+        ]),
+      );
+      expect(getAccountAssetsByScopeSpy).toHaveBeenCalledWith(
+        KnownCaip2ChainId.Mainnet,
+        keyringAccountId,
+      );
+      expect(result?.nativeSpendableBalance.toFixed(0)).toBe('40000000');
+      expect(result?.minimumReserveBalance.toFixed(0)).toBe('10000000');
+    });
+
+    it('preserves native spendable when AssetsController reserve is below two base reserves', async () => {
+      const accountAddress = Keypair.random().publicKey();
+      const keyringAccountId = globalThis.crypto.randomUUID();
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      jest.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
+        {
+          id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          chainId: KnownCaip2ChainId.Mainnet,
+          balance: {
+            amount: '5',
+            metadata: {
+              spendableBalance: '45000000',
+              minimumReserveBalance: '5000000',
+              decimal: 7,
+            },
+          },
+          metadata: { symbol: 'XLM', decimals: 7 },
+        },
+      ]);
+
+      const result = await onChainAccountService.getOnChainAccountSnapshot(
+        keyringAccountId,
+        accountAddress,
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(result?.toSerializableFull()).toMatchObject({
+        rawNativeBalance: '50000000',
+        meta: {
+          subentryCount: 0,
+          numSponsoring: 0,
+          numSponsored: 1,
+        },
+      });
+      expect(result?.minimumReserveBalance.toFixed(0)).toBe('5000000');
+      expect(result?.nativeSpendableBalance.toFixed(0)).toBe('45000000');
+    });
+
+    it('wraps an AssetsController asset mapping failure and keeps the cause', async () => {
+      const accountAddress = Keypair.random().publicKey();
+      const keyringAccountId = globalThis.crypto.randomUUID();
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      jest.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
+        {
+          id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+          chainId: KnownCaip2ChainId.Mainnet,
+          balance: {
+            amount: '1',
+            metadata: {
+              spendableBalance: '0',
+              minimumReserveBalance: '10000000',
+              decimal: 7,
+            },
+          },
+          metadata: { symbol: 'XLM', decimals: 7 },
+        },
+      ]);
+      const cause = new Error('invalid snapshot');
+      const fromSerializableSpy = jest
+        .spyOn(OnChainAccount, 'fromSerializable')
+        .mockImplementation(() => {
+          throw cause;
+        });
+
+      let caught: unknown;
+      try {
+        await onChainAccountService.getOnChainAccountSnapshot(
+          keyringAccountId,
+          accountAddress,
+          KnownCaip2ChainId.Mainnet,
+        );
+      } catch (error: unknown) {
+        caught = error;
+      } finally {
+        fromSerializableSpy.mockRestore();
+      }
+
+      expect(caught).toBeInstanceOf(OnChainAccountException);
+      expect(caught).toMatchObject({
+        message: `Failed to map AssetsController assets for account ${accountAddress}`,
+        cause,
+      });
     });
   });
 
@@ -450,7 +717,9 @@ describe('OnChainAccountService', () => {
           ) as OnChainAccountSerializableFull,
         ),
       }));
-      const { onChainAccountService } = mockOnChainAccountService();
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
       const synchronizeSpy = jest.spyOn(
         OnChainAccountSynchronizeService.prototype,
         'synchronize',
@@ -468,6 +737,24 @@ describe('OnChainAccountService', () => {
         [],
       );
     });
+
+    it('skips persist when assets migration is on', async () => {
+      const { onChainAccountService, assetsService } =
+        mockOnChainAccountService();
+      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      const synchronizeSpy = jest.spyOn(
+        OnChainAccountSynchronizeService.prototype,
+        'synchronize',
+      );
+
+      await onChainAccountService.synchronize(
+        [],
+        KnownCaip2ChainId.Mainnet,
+        [],
+      );
+
+      expect(synchronizeSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('markAccountsUnfunded / isConfirmedUnfunded', () => {
@@ -478,8 +765,18 @@ describe('OnChainAccountService', () => {
       jest.mocked(snap.request).mockReset();
     });
 
+    const setupWithMigration = (
+      migrationEnabled: boolean,
+    ): ReturnType<typeof mockOnChainAccountService> => {
+      const mocks = mockOnChainAccountService();
+      jest
+        .spyOn(mocks.assetsService, 'isMigrationEnabled')
+        .mockResolvedValue(migrationEnabled);
+      return mocks;
+    };
+
     it('marks accounts and emits a confirmed zero native balance once', async () => {
-      const { onChainAccountService } = mockOnChainAccountService();
+      const { onChainAccountService } = setupWithMigration(false);
 
       const marked = await onChainAccountService.markAccountsUnfunded(
         [ACCOUNT_A],
@@ -510,7 +807,7 @@ describe('OnChainAccountService', () => {
     });
 
     it('reports never-synchronized accounts as not confirmed unfunded', async () => {
-      const { onChainAccountService } = mockOnChainAccountService();
+      const { onChainAccountService } = setupWithMigration(false);
 
       expect(
         await onChainAccountService.isConfirmedUnfunded(
@@ -521,7 +818,7 @@ describe('OnChainAccountService', () => {
     });
 
     it('still records the marker when emitting the balance event fails', async () => {
-      const { onChainAccountService } = mockOnChainAccountService();
+      const { onChainAccountService } = setupWithMigration(false);
       jest
         .mocked(snap.request)
         .mockRejectedValueOnce(new Error('emit failed'))
@@ -533,6 +830,31 @@ describe('OnChainAccountService', () => {
       );
 
       expect(marked).toStrictEqual([ACCOUNT_B]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+    });
+
+    it('neither records nor emits while the assets migration is on, and treats a missing snapshot as unfunded', async () => {
+      const { onChainAccountService, onChainAccountRepository } =
+        setupWithMigration(true);
+      const markUnfundedSpy = jest.spyOn(
+        onChainAccountRepository,
+        'markUnfunded',
+      );
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([]);
+      expect(markUnfundedSpy).not.toHaveBeenCalled();
+      expect(snap.request).not.toHaveBeenCalled();
+      // AssetsController owns holdings and the snap does not sync: keep the not-activated meaning.
       expect(
         await onChainAccountService.isConfirmedUnfunded(
           ACCOUNT_B,
