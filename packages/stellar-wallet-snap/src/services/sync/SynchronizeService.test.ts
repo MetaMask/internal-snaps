@@ -1,11 +1,10 @@
-import { KnownCaip2ChainId } from '../../api';
+import { AssetType, KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { BackgroundEventMethod } from '../../handlers/cronjob/api';
 import { Duration, scheduleBackgroundEvent } from '../../utils';
 import { logger } from '../../utils/logger';
 import type { StellarKeyringAccount } from '../account';
 import { generateMockStellarKeyringAccounts } from '../account/__mocks__/account.fixtures';
-import { AssetMetadataService } from '../asset-metadata';
 import {
   createMockAssetMetadataService,
   getMockSep41Assets,
@@ -60,8 +59,11 @@ describe('SynchronizeService', () => {
     const { transactionService } = createMockTransactionService();
     const { service: assetMetadataService } = createMockAssetMetadataService();
     const sep41Assets = getMockSep41Assets();
-    const fetchSep41AssetsOrSyncOnceSpy = jest
-      .spyOn(AssetMetadataService.prototype, 'fetchSep41AssetsOrSyncOnce')
+    const synchronizeIfStaleSpy = jest
+      .spyOn(assetMetadataService, 'synchronizeIfStale')
+      .mockResolvedValue(undefined);
+    const getSep41AssetsSpy = jest
+      .spyOn(assetMetadataService, 'getAssetsByScopeAndType')
       .mockResolvedValue(sep41Assets);
     const service = new SynchronizeService({
       logger,
@@ -76,7 +78,8 @@ describe('SynchronizeService', () => {
       transactionService,
       assetMetadataService,
       sep41Assets,
-      fetchSep41AssetsOrSyncOnceSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
       onChainSynchronizeSpy: jest
         .spyOn(onChainAccountService, 'synchronize')
         .mockResolvedValue(undefined),
@@ -96,13 +99,15 @@ describe('SynchronizeService', () => {
       onChainSynchronizeSpy,
       transactionSynchronizeSpy,
       resolveOnChainAccountSpy,
-      fetchSep41AssetsOrSyncOnceSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
     } = setup();
 
     await service.synchronize([]);
 
     expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
-    expect(fetchSep41AssetsOrSyncOnceSpy).not.toHaveBeenCalled();
+    expect(synchronizeIfStaleSpy).not.toHaveBeenCalled();
+    expect(getSep41AssetsSpy).not.toHaveBeenCalled();
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
   });
@@ -113,7 +118,8 @@ describe('SynchronizeService', () => {
       onChainSynchronizeSpy,
       transactionSynchronizeSpy,
       resolveOnChainAccountSpy,
-      fetchSep41AssetsOrSyncOnceSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
       sep41Assets,
     } = setup();
     const [account] = generateMockStellarKeyringAccounts(
@@ -143,7 +149,8 @@ describe('SynchronizeService', () => {
       syncTransactions: true,
     });
 
-    expect(fetchSep41AssetsOrSyncOnceSpy).toHaveBeenCalledWith(scope);
+    expect(synchronizeIfStaleSpy).toHaveBeenCalledWith(scope);
+    expect(getSep41AssetsSpy).toHaveBeenCalledWith(scope, AssetType.Sep41);
     expect(onChainSynchronizeSpy).toHaveBeenCalledWith(
       [{ keyringAccount: account, onChainAccount }],
       scope,
@@ -417,7 +424,8 @@ describe('SynchronizeService', () => {
       onChainSynchronizeSpy,
       transactionSynchronizeSpy,
       resolveOnChainAccountSpy,
-      fetchSep41AssetsOrSyncOnceSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
     } = setup();
     const [account] = generateMockStellarKeyringAccounts(
       1,
@@ -438,13 +446,12 @@ describe('SynchronizeService', () => {
       ),
     );
 
-    fetchSep41AssetsOrSyncOnceSpy.mockRejectedValue(
-      new Error('token api down'),
-    );
+    synchronizeIfStaleSpy.mockRejectedValue(new Error('token api down'));
     resolveOnChainAccountSpy.mockResolvedValue(onChainAccount);
 
     await service.synchronize([account], { scope });
 
+    expect(getSep41AssetsSpy).not.toHaveBeenCalled();
     expect(onChainSynchronizeSpy).toHaveBeenCalledWith(
       [{ keyringAccount: account, onChainAccount }],
       scope,
@@ -507,7 +514,8 @@ describe('SynchronizeService', () => {
       onChainSynchronizeSpy,
       transactionSynchronizeSpy,
       resolveOnChainAccountSpy,
-      fetchSep41AssetsOrSyncOnceSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
     } = setup();
     const [account] = generateMockStellarKeyringAccounts(
       1,
@@ -535,7 +543,8 @@ describe('SynchronizeService', () => {
 
     await service.synchronize([account], { scope });
 
-    expect(fetchSep41AssetsOrSyncOnceSpy).toHaveBeenCalledTimes(1);
+    expect(synchronizeIfStaleSpy).toHaveBeenCalledTimes(1);
+    expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
     expect(scheduleBackgroundEventMock).not.toHaveBeenCalled();
@@ -553,7 +562,8 @@ describe('SynchronizeService', () => {
       onChainSynchronizeSpy,
       transactionSynchronizeSpy,
       resolveOnChainAccountSpy,
-      fetchSep41AssetsOrSyncOnceSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
     } = setup();
     const [firstAccount, secondAccount] = generateMockStellarKeyringAccounts(
       2,
@@ -581,7 +591,8 @@ describe('SynchronizeService', () => {
 
     await service.synchronize([secondAccount], { scope });
 
-    expect(fetchSep41AssetsOrSyncOnceSpy).toHaveBeenCalledTimes(1);
+    expect(synchronizeIfStaleSpy).toHaveBeenCalledTimes(1);
+    expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
     expect(scheduleBackgroundEventMock).toHaveBeenCalledWith({
@@ -598,8 +609,12 @@ describe('SynchronizeService', () => {
   });
 
   it('schedules only accounts that are not already syncing', async () => {
-    const { service, resolveOnChainAccountSpy, fetchSep41AssetsOrSyncOnceSpy } =
-      setup();
+    const {
+      service,
+      resolveOnChainAccountSpy,
+      synchronizeIfStaleSpy,
+      getSep41AssetsSpy,
+    } = setup();
     const [firstAccount, secondAccount] = generateMockStellarKeyringAccounts(
       2,
       'sync-mutex-partial-delay-entropy',
@@ -626,7 +641,8 @@ describe('SynchronizeService', () => {
 
     await service.synchronize([firstAccount, secondAccount], { scope });
 
-    expect(fetchSep41AssetsOrSyncOnceSpy).toHaveBeenCalledTimes(1);
+    expect(synchronizeIfStaleSpy).toHaveBeenCalledTimes(1);
+    expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(scheduleBackgroundEventMock).toHaveBeenCalledWith({
       method: BackgroundEventMethod.SynchronizeAccounts,
       params: { accountIds: [secondAccount.id] },

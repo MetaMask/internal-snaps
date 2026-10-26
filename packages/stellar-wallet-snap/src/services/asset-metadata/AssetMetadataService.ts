@@ -72,36 +72,19 @@ export class AssetMetadataService {
   }
 
   /**
-   * Resolves SEP-41 metadata for ids that are not in the watched catalog.
+   * Resolves asset metadata for ids that are not in the watched catalog.
    *
    * Rows already stored in AssetsController or snap state are reused. Newly fetched
    * rows are persisted, same as {@link resolve}. Ids missing from the token API
    * are omitted.
    *
-   * @param assetIds - SEP-41 asset ids to resolve.
+   * @param assetIds - Classic or SEP-41 CAIP-19 asset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
    */
-  async fetchAssetsByAssetIds(
-    assetIds: KnownCaip19Sep41AssetId[],
+  async fetchAndPersistAssetsByAssetIds(
+    assetIds: KnownCaip19AssetId[],
   ): Promise<StellarAssetMetadata[]> {
     return this.#fetchAndPersistAssetsByAssetIds(assetIds);
-  }
-
-  /**
-   * Returns all persisted SEP-41 assets for the given chain ID.
-   *
-   * @param scope - The chain ID to look up.
-   * @returns A Promise that resolves to all persisted SEP-41 assets for the given chain ID.
-   */
-  async getPersistedSep41AssetsMetadata(
-    scope: KnownCaip2ChainId,
-  ): Promise<Sep41StellarAssetMetadata[]> {
-    const persistedAssets = await this.#assetMetadataRepository.getByAssetType(
-      AssetType.Sep41,
-      scope,
-    );
-
-    return persistedAssets;
   }
 
   /**
@@ -117,37 +100,47 @@ export class AssetMetadataService {
   }
 
   /**
-   * Returns persisted SEP-41 assets for the given scope, refreshing the token API
-   * catalog first when {@link AssetMetadataRepository.isStale} reports the last
-   * full catalog sync has expired (or never completed).
-   *
-   * Used during account / transaction sync so newly listed SEP-41 tokens are
-   * picked up without waiting for the hourly `synchronizeAssets` cron.
+   * Returns all persisted assets for the given scope and type.
    *
    * @param scope - The chain ID to look up.
-   * @returns A Promise that resolves to all SEP-41 assets for the given scope.
+   * @param assetType - The asset type to look up.
+   * @returns A Promise that resolves to all persisted assets for the given scope and type.
    */
-  async fetchSep41AssetsOrSyncOnce(
+  async getAssetsByScopeAndType<TAssetType extends AssetType>(
     scope: KnownCaip2ChainId,
-  ): Promise<Sep41StellarAssetMetadata[]> {
-    if (
-      await this.#assetMetadataRepository.isStale(
-        AppConfig.cache.ttlMilliseconds.assetMetadata,
-      )
-    ) {
-      this.#logger.debug('Asset catalog is stale, synchronizing assets', {
-        scope,
-      });
-      await this.synchronize(scope);
+    assetType: TAssetType,
+  ): Promise<Extract<StellarAssetMetadata, { assetType: TAssetType }>[]> {
+    const assetsMetadata = await this.#assetMetadataRepository.getByAssetType(
+      assetType,
+      scope,
+    );
+
+    return assetsMetadata;
+  }
+
+  /**
+   * Loads SEP-41 metadata for the requested ids, or the persisted catalog when ids are omitted.
+   * Non-SEP-41 rows are skipped.
+   *
+   * @param params - SEP-41 metadata lookup.
+   * @param params.scope - CAIP-2 network.
+   * @param params.assetIds - SEP-41 asset ids. Omit or pass an empty list to use the persisted catalog.
+   * @returns SEP-41 metadata for the requested ids, or the persisted catalog.
+   */
+  async fetchAndPersistSep41AssetMetadata(params: {
+    scope: KnownCaip2ChainId;
+    assetIds?: KnownCaip19Sep41AssetId[];
+  }): Promise<Sep41StellarAssetMetadata[]> {
+    const { scope, assetIds = [] } = params;
+    if (assetIds.length > 0) {
+      const assetsMetadata =
+        await this.fetchAndPersistAssetsByAssetIds(assetIds);
+      return assetsMetadata.filter(
+        (asset) => asset.assetType === AssetType.Sep41,
+      );
     }
 
-    const sep41Assets = await this.getPersistedSep41AssetsMetadata(scope);
-
-    this.#logger.debug('SEP-41 assets found in the state', {
-      noOfAssets: sep41Assets.length,
-    });
-
-    return sep41Assets;
+    return this.getAssetsByScopeAndType(scope, AssetType.Sep41);
   }
 
   /**
@@ -161,6 +154,24 @@ export class AssetMetadataService {
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
     const tokensMetadata = await this.#getAssetsByChainId(scope);
     await this.#assetMetadataRepository.saveMany(tokensMetadata, true);
+  }
+
+  /**
+   * Synchronizes the asset catalog if it is stale.
+   *
+   * @param scope - The chain ID to synchronize the asset catalog for.
+   */
+  async synchronizeIfStale(scope: KnownCaip2ChainId): Promise<void> {
+    if (
+      await this.#assetMetadataRepository.isStale(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      )
+    ) {
+      this.#logger.debug('Asset catalog is stale, synchronizing assets', {
+        scope,
+      });
+      await this.synchronize(scope);
+    }
   }
 
   async #fetchAndPersistAssetsByAssetIds(
