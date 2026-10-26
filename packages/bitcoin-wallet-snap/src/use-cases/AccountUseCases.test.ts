@@ -51,7 +51,12 @@ import {
   MAX_IMMEDIATE_FULL_SCANS_ON_CREATE,
   SENDER_LOOKUP_CONCURRENCY,
   SENDER_RESOLUTION_LIMIT,
+  STALE_SYNC_REQUEST_MIN_INTERVAL_MS,
 } from './AccountUseCases';
+import {
+  BALANCE_STALE_AFTER_MS,
+  SYNC_HEALTH_KEY,
+} from '../store/SyncHealthStore';
 
 describe('AccountUseCases', () => {
   const mockLogger = mock<Logger>();
@@ -2819,6 +2824,112 @@ describe('AccountUseCases', () => {
       account.listTransactions.mockReturnValue([]);
       return account;
     };
+
+    describe('stale balance after failing syncs (v6)', () => {
+      let now: number;
+      const advance = (ms: number): void => {
+        now += ms;
+      };
+      const setNow = (value: number): void => {
+        now = value;
+      };
+      let dateSpy: jest.SpyInstance<number>;
+
+      beforeEach(() => {
+        now = 10_000_000;
+        dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+        mockChain.sync.mockResolvedValue(undefined);
+      });
+
+      afterEach(() => {
+        dateSpy.mockRestore();
+        mockChain.sync.mockReset();
+      });
+
+      it('is not stale before any sync, nor while the syncs succeed', async () => {
+        const { useCases: testUseCases } = buildStatefulUseCases();
+        const account = buildAccount('a', true);
+
+        expect(await testUseCases.isBalanceStale('a')).toBe(false);
+        await testUseCases.synchronize(account, 'test');
+        advance(10 * 60_000);
+        expect(await testUseCases.isBalanceStale('a')).toBe(false);
+      });
+
+      it('becomes stale 90 s after the last success while the syncs fail, and clears on the next success', async () => {
+        const { useCases: testUseCases } = buildStatefulUseCases();
+        const account = buildAccount('a', true);
+
+        await testUseCases.synchronize(account, 'test');
+        const lastSuccessAt = now;
+
+        mockChain.sync.mockRejectedValue(new Error('Failed to fetch'));
+        advance(30_000);
+        await expect(testUseCases.synchronize(account, 'test')).rejects.toThrow(
+          'Failed to fetch',
+        );
+        advance(30_000);
+        await expect(testUseCases.synchronize(account, 'test')).rejects.toThrow(
+          'Failed to fetch',
+        );
+        setNow(lastSuccessAt + BALANCE_STALE_AFTER_MS - 1);
+        expect(await testUseCases.isBalanceStale('a')).toBe(false);
+        advance(1);
+        expect(await testUseCases.isBalanceStale('a')).toBe(true);
+
+        mockChain.sync.mockResolvedValue(undefined);
+        await testUseCases.synchronize(account, 'test');
+        expect(await testUseCases.isBalanceStale('a')).toBe(false);
+      });
+
+      it('survives a snap restart: the failure streak is persisted', async () => {
+        const { useCases: first, state } = buildStatefulUseCases();
+        const account = buildAccount('a', true);
+        mockChain.sync.mockRejectedValue(new Error('Failed to fetch'));
+        await expect(first.synchronize(account, 'test')).rejects.toThrow(
+          'Failed to fetch',
+        );
+        expect(state[SYNC_HEALTH_KEY]).toStrictEqual({
+          a: { staleSince: now },
+        });
+        mockChain.sync.mockResolvedValue(undefined);
+
+        // A new instance (restarted snap) with the same state.
+        const snapClient = mock<SnapClient>();
+        snapClient.getState.mockImplementation(async (key?: string) =>
+          key !== undefined && Object.hasOwn(state, key)
+            ? (JSON.parse(JSON.stringify(state[key])) as never)
+            : (null as never),
+        );
+        const restarted = new AccountUseCases(
+          mockLogger,
+          snapClient,
+          mockRepository,
+          mockConfirmationRepository,
+          mockChain,
+          fallbackFeeRate,
+          targetBlocksConfirmation,
+          undefined,
+        );
+        advance(BALANCE_STALE_AFTER_MS);
+        expect(await restarted.isBalanceStale('a')).toBe(true);
+      });
+
+      it('requests a sync of a stale account at most once per interval', async () => {
+        const { useCases: testUseCases, snapClient } = buildStatefulUseCases();
+
+        expect(await testUseCases.scheduleStaleRefresh('a')).toBe(true);
+        expect(await testUseCases.scheduleStaleRefresh('a')).toBe(false);
+        advance(STALE_SYNC_REQUEST_MIN_INTERVAL_MS);
+        expect(await testUseCases.scheduleStaleRefresh('a')).toBe(true);
+        expect(snapClient.scheduleBackgroundEvent).toHaveBeenCalledTimes(2);
+        expect(snapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+          duration: 'PT1S',
+          method: CronMethod.SyncSelectedAccounts,
+          params: { accountIds: ['a'] },
+        });
+      });
+    });
 
     it('reports the balance of a never-synchronized account as unknown', async () => {
       const { useCases: testUseCases } = buildStatefulUseCases();

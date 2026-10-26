@@ -25,7 +25,7 @@ import {
   ValidationError,
   WalletError,
   AssertionError,
-  isBalanceNotSynchronizedError,
+  isBalanceUnavailableError,
 } from '../entities';
 import { trackError } from '../utils/errors';
 
@@ -46,11 +46,12 @@ export class HandlerMiddleware {
     try {
       return await fn();
     } catch (error) {
-      // An account that has not synchronized yet is an expected state, not a
-      // failure: it is still returned to the caller, but not reported. Match
+      // An unavailable balance (the account has not synchronized yet, or its
+      // syncs have been failing since the last success) is an expected state,
+      // not a failure: it is still returned to the caller, but not reported. Match
       // the stable message marker, not the class: `handleKeyringRequest`
       // re-creates the error as a plain `Error` before it gets here.
-      const isExpectedState = isBalanceNotSynchronizedError(error);
+      const isExpectedState = isBalanceUnavailableError(error);
       if (!isExpectedState) {
         await trackError(error);
       }

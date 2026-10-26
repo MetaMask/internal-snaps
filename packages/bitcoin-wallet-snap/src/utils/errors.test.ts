@@ -1,6 +1,10 @@
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
-import { BalanceNotSynchronizedError, UserActionError } from '../entities';
+import {
+  BalanceNotSynchronizedError,
+  BalanceStaleError,
+  UserActionError,
+} from '../entities';
 import { shouldTrackError, trackError } from './errors';
 import logger from './logger';
 
@@ -51,6 +55,16 @@ describe('errors', () => {
         shouldTrackError({ name: 'Error', message: original.message }),
       ).toBe(false);
       expect(shouldTrackError(new Error('Failed to fetch'))).toBe(true);
+    });
+
+    it('returns false for the stale-balance state however it was wrapped (v6)', () => {
+      const original = new BalanceStaleError();
+      expect(shouldTrackError(original)).toBe(false);
+      // As re-created by the keyring SDK's handleKeyringRequest.
+      expect(shouldTrackError(new Error(original.message))).toBe(false);
+      expect(
+        shouldTrackError(new Error('Snap request failed', { cause: original })),
+      ).toBe(false);
     });
 
     it('returns true for other errors', () => {

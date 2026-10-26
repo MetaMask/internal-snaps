@@ -32,6 +32,7 @@ import snapManifest from '../../snap.manifest.json';
 import type { Logger, SnapClient } from '../entities';
 import {
   BalanceNotSynchronizedError,
+  BalanceStaleError,
   computeDisplayBalanceSats,
   FormatError,
   networkToCurrencyUnit,
@@ -289,6 +290,17 @@ export class KeyringHandler implements KeyringSnapRpc {
     if (await this.#accountsUseCases.isBalanceUnknown(account)) {
       await this.#accountsUseCases.requestFullScan(account, 'balance-request');
       throw new BalanceNotSynchronizedError({ account: id });
+    }
+
+    // The stored balance is answered without a request, so a broken
+    // connection after the account synced would keep confirming an outdated
+    // balance to the client. Once the syncs have been failing for a while,
+    // fail instead (not reported to Sentry) so the client shows it as
+    // unavailable; the request schedules a sync (rate limited), whose
+    // success clears the state and emits the balances-updated event.
+    if (await this.#accountsUseCases.isBalanceStale(account.id)) {
+      await this.#accountsUseCases.scheduleStaleRefresh(account.id);
+      throw new BalanceStaleError({ account: id });
     }
 
     const balance = Amount.from_sat(computeDisplayBalanceSats(account))

@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import {
   BalanceNotSynchronizedError,
+  BalanceStaleError,
   BaseError,
   ExternalServiceError,
 } from '../entities';
@@ -201,6 +202,25 @@ describe('HandlerMiddleware', () => {
         ).rejects.toThrow('not been synchronized yet');
 
         expect(keyring.getAccountBalances).toHaveBeenCalled();
+        expect(mockTrackError).not.toHaveBeenCalled();
+        expect(mockLogger.error).not.toHaveBeenCalled();
+      });
+
+      it('does not track the re-created stale-balance error (v6)', async () => {
+        const keyring = {
+          getAccountBalances: jest
+            .fn()
+            .mockRejectedValue(new BalanceStaleError({ account: 'account-1' })),
+        };
+
+        await expect(
+          middleware.handle(
+            async () =>
+              (await handleKeyringRequest(keyring as never, balancesRequest)) ??
+              null,
+          ),
+        ).rejects.toThrow('synchronization has been failing');
+
         expect(mockTrackError).not.toHaveBeenCalled();
         expect(mockLogger.error).not.toHaveBeenCalled();
       });

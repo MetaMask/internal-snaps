@@ -109,36 +109,98 @@ export class BalanceNotSynchronizedError extends ExternalServiceError {
 }
 
 /**
- * Whether an error is (or wraps) a {@link BalanceNotSynchronizedError}, even
+ * Message of {@link BalanceStaleError}, its stable marker (see
+ * {@link BALANCE_NOT_SYNCHRONIZED_MESSAGE}).
+ */
+export const BALANCE_STALE_MESSAGE =
+  'Account balance unavailable: synchronization has been failing since the last successful sync';
+
+/**
+ * Thrown when an account's balance is requested while its synchronization has
+ * been failing for a while (see `AccountUseCases.isBalanceStale`): the stored
+ * balance may be outdated, so it is not reported as current. Like
+ * {@link BalanceNotSynchronizedError}, an expected, transient state: the
+ * client shows the balance as unavailable, it is never reported to Sentry,
+ * and the next successful sync clears it.
+ */
+export class BalanceStaleError extends ExternalServiceError {
+  constructor(data?: Record<string, Json>) {
+    super(BALANCE_STALE_MESSAGE, data);
+    this.name = 'BalanceStaleError';
+  }
+}
+
+/**
+ * Whether an error is (or wraps) one of the given expected-state errors, even
  * after it was re-created, wrapped or serialized along the way: matches the
  * class, then the stable message marker on the error, its `cause` chain or a
  * serialized error object.
  *
  * @param error - The error to check.
- * @returns `true` for the expected "not synchronized yet" state.
+ * @param classes - The error classes.
+ * @param markers - The stable message markers.
+ * @returns `true` if the error matches.
  */
-export function isBalanceNotSynchronizedError(error: unknown): boolean {
+function matchesExpectedState(
+  error: unknown,
+  classes: (abstract new (...args: never[]) => Error)[],
+  markers: string[],
+): boolean {
+  const hasMarker = (text: string): boolean =>
+    markers.some((marker) => text.includes(marker));
   let current: unknown = error;
   for (let depth = 0; depth < 5 && current; depth += 1) {
-    if (current instanceof BalanceNotSynchronizedError) {
+    const candidate = current;
+    if (classes.some((errorClass) => candidate instanceof errorClass)) {
       return true;
     }
     if (typeof current === 'string') {
-      return current.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE);
+      return hasMarker(current);
     }
     if (typeof current !== 'object') {
       return false;
     }
-    const { message, cause } = current as { message?: unknown; cause?: unknown };
-    if (
-      typeof message === 'string' &&
-      message.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE)
-    ) {
+    const { message, cause } = current as {
+      message?: unknown;
+      cause?: unknown;
+    };
+    if (typeof message === 'string' && hasMarker(message)) {
       return true;
     }
     current = cause;
   }
   return false;
+}
+
+/**
+ * Whether an error is (or wraps) a {@link BalanceNotSynchronizedError}, even
+ * after it was re-created, wrapped or serialized along the way.
+ *
+ * @param error - The error to check.
+ * @returns `true` for the expected "not synchronized yet" state.
+ */
+export function isBalanceNotSynchronizedError(error: unknown): boolean {
+  return matchesExpectedState(
+    error,
+    [BalanceNotSynchronizedError],
+    [BALANCE_NOT_SYNCHRONIZED_MESSAGE],
+  );
+}
+
+/**
+ * Whether an error is (or wraps) an expected "balance unavailable" state:
+ * {@link BalanceNotSynchronizedError} or {@link BalanceStaleError}. These are
+ * returned to the client but never reported to Sentry.
+ *
+ * @param error - The error to check.
+ * @returns `true` for an expected balance-unavailable state.
+ */
+export function isBalanceUnavailableError(error: unknown): boolean {
+  return matchesExpectedState(
+    error,
+    [BalanceNotSynchronizedError, BalanceStaleError],
+    [BALANCE_NOT_SYNCHRONIZED_MESSAGE, BALANCE_STALE_MESSAGE],
+  );
 }
 
 /**

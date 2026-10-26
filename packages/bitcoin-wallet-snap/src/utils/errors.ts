@@ -1,7 +1,7 @@
 import { createTrackError } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
-import { isBalanceNotSynchronizedError, UserActionError } from '../entities';
+import { isBalanceUnavailableError, UserActionError } from '../entities';
 import { getSnapProvider } from '../infra/getSnapProvider';
 import logger from './logger';
 
@@ -18,7 +18,7 @@ export function shouldTrackError(error: unknown): boolean {
     }
 
     // Expected state, never a failure, however the error was wrapped.
-    if (isBalanceNotSynchronizedError(error)) {
+    if (isBalanceUnavailableError(error)) {
       return false;
     }
 

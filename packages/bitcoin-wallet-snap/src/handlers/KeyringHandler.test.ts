@@ -26,7 +26,9 @@ import { assert } from 'superstruct';
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
 import {
   AccountCapability,
+  BALANCE_STALE_MESSAGE,
   BalanceNotSynchronizedError,
+  BalanceStaleError,
   CurrencyUnit,
 } from '../entities';
 import type { AccountUseCases } from '../use-cases/AccountUseCases';
@@ -715,6 +717,32 @@ describe('KeyringHandler', () => {
       await handler.getAccountBalances(mockAccount.id);
 
       expect(mockAccounts.requestFullScan).not.toHaveBeenCalled();
+    });
+
+    it('throws the untracked BalanceStaleError and requests a sync when the syncs keep failing (v6)', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(false);
+      mockAccounts.isBalanceStale.mockResolvedValue(true);
+      mockAccounts.scheduleStaleRefresh.mockResolvedValue(true);
+
+      const promise = handler.getAccountBalances(mockAccount.id);
+      await expect(promise).rejects.toBeInstanceOf(BalanceStaleError);
+      await expect(promise).rejects.toThrow(BALANCE_STALE_MESSAGE);
+      expect(mockAccounts.isBalanceStale).toHaveBeenCalledWith(mockAccount.id);
+      expect(mockAccounts.scheduleStaleRefresh).toHaveBeenCalledWith(
+        mockAccount.id,
+      );
+    });
+
+    it('answers from the stored balance when it is not stale (v6)', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(false);
+      mockAccounts.isBalanceStale.mockResolvedValue(false);
+
+      expect(await handler.getAccountBalances(mockAccount.id)).toStrictEqual({
+        [Caip19Asset.Bitcoin]: { amount: '1', unit: 'BTC' },
+      });
+      expect(mockAccounts.scheduleStaleRefresh).not.toHaveBeenCalled();
     });
 
     it('reports the balance once it is known', async () => {

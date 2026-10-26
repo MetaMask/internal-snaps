@@ -43,6 +43,7 @@ import {
 } from '../entities';
 import { CronMethod } from '../handlers/CronHandler';
 import { FullScanQueue } from '../store/FullScanQueue';
+import { SyncHealthStore } from '../store/SyncHealthStore';
 import { resolveFeeRate } from '../utils/fee-rate';
 
 export type DiscoverAccountParams = {
@@ -266,6 +267,13 @@ export const MAX_IMMEDIATE_FULL_SCANS_ON_CREATE = 2;
 export const DISCOVERY_SCAN_REUSE_TTL_MS = 10 * 60_000;
 
 /**
+ * Minimum time between two syncs requested by balance calls on a stale
+ * account (`scheduleStaleRefresh`), so a client polling a broken connection
+ * does not schedule a sync per call.
+ */
+export const STALE_SYNC_REQUEST_MIN_INTERVAL_MS = 10_000;
+
+/**
  * Upper bound on the discovery results kept in memory for reuse.
  */
 export const MAX_REUSABLE_DISCOVERY_SCANS = 64;
@@ -368,6 +376,12 @@ export class AccountUseCases {
   /** Accounts whose last sync failed (used to detect network recovery). */
   readonly #failingSyncs = new Set<string>();
 
+  /** Failing-sync streaks per account (stale balance detection). */
+  readonly #syncHealth: SyncHealthStore;
+
+  /** When a balance call on a stale account last requested a sync. */
+  readonly #staleSyncRequestedAt = new Map<string, number>();
+
   /**
    * Recent discovery scans per network and derivation path: discovery already
    * ran a full scan of these wallets, so creating the account reuses them
@@ -407,6 +421,7 @@ export class AccountUseCases {
     this.#targetBlocksConfirmation = targetBlocksConfirmation;
     this.#metaProtocols = metaProtocols;
     this.#fullScanQueue = new FullScanQueue(snapClient);
+    this.#syncHealth = new SyncHealthStore(snapClient);
   }
 
   /**
@@ -432,6 +447,68 @@ export class AccountUseCases {
       return true;
     }
     return this.#fullScanQueue.isInitialScanPending(account.id);
+  }
+
+  /**
+   * Whether the account's stored balance may be outdated: its syncs have been
+   * failing since a successful sync more than `BALANCE_STALE_AFTER_MS` ago
+   * (see {@link SyncHealthStore}). An account that has not been synced yet,
+   * or whose latest sync succeeded, is not stale.
+   *
+   * @param id - The account ID.
+   * @returns `true` if the balance must not be reported as current.
+   */
+  async isBalanceStale(id: string): Promise<boolean> {
+    return this.#syncHealth.isStale(id);
+  }
+
+  /**
+   * Schedules a sync of a stale account right away (a balance call, such as
+   * the client's Retry, on a stale account), at most once per
+   * {@link STALE_SYNC_REQUEST_MIN_INTERVAL_MS}. A successful sync clears the
+   * stale state and emits the balances-updated event.
+   *
+   * @param id - The account ID.
+   * @returns Whether a sync was scheduled.
+   */
+  async scheduleStaleRefresh(id: string): Promise<boolean> {
+    const now = Date.now();
+    const requestedAt = this.#staleSyncRequestedAt.get(id);
+    if (
+      requestedAt !== undefined &&
+      now - requestedAt < STALE_SYNC_REQUEST_MIN_INTERVAL_MS
+    ) {
+      return false;
+    }
+    this.#staleSyncRequestedAt.set(id, now);
+    try {
+      await this.#snapClient.scheduleBackgroundEvent({
+        duration: 'PT1S',
+        method: CronMethod.SyncSelectedAccounts,
+        params: { accountIds: [id] },
+      });
+      return true;
+    } catch (error) {
+      this.#staleSyncRequestedAt.delete(id);
+      this.#logger.warn('Failed to schedule a sync of a stale account', error);
+      return false;
+    }
+  }
+
+  async #recordSyncSuccess(id: string): Promise<void> {
+    await this.#syncHealth
+      .recordSuccess(id)
+      .catch((stateError: unknown) =>
+        this.#logger.warn('Failed to record sync success', stateError),
+      );
+  }
+
+  async #recordSyncFailure(id: string): Promise<void> {
+    await this.#syncHealth
+      .recordFailure(id)
+      .catch((stateError: unknown) =>
+        this.#logger.warn('Failed to record sync failure', stateError),
+      );
   }
 
   /**
@@ -1019,6 +1096,7 @@ export class AccountUseCases {
         // the next successful sync is seen as a network recovery and runs the
         // pending full scan promptly instead of waiting for its backoff.
         this.#failingSyncs.add(account.id);
+        await this.#recordSyncFailure(account.id);
         throw error;
       }
     }
@@ -1028,9 +1106,11 @@ export class AccountUseCases {
       await this.#chain.sync(account);
     } catch (error) {
       this.#failingSyncs.add(account.id);
+      await this.#recordSyncFailure(account.id);
       throw error;
     }
     const networkRecovered = this.#failingSyncs.delete(account.id);
+    await this.#recordSyncSuccess(account.id);
     this.#syncOnlyAccounts.delete(account.id);
     const txsAfterSync = account.listTransactions();
 
@@ -1179,6 +1259,7 @@ export class AccountUseCases {
       }
     } catch (error) {
       attempt.consecutiveFailures += 1;
+      await this.#recordSyncFailure(account.id);
       await this.#fullScanQueue
         .markFailed(account.id, error)
         .catch((stateError: unknown) =>
@@ -1193,6 +1274,7 @@ export class AccountUseCases {
     await this.#repository.update(account, inscriptions);
     attempt.consecutiveFailures = 0;
     this.#failingSyncs.delete(account.id);
+    await this.#recordSyncSuccess(account.id);
     await this.#fullScanQueue
       .markSucceeded(account.id)
       .catch((stateError: unknown) =>
@@ -1221,6 +1303,12 @@ export class AccountUseCases {
     this.#logger.debug('Deleting account: %s', id);
 
     this.#syncOnlyAccounts.delete(id);
+    this.#staleSyncRequestedAt.delete(id);
+    await this.#syncHealth
+      .forget(id)
+      .catch((stateError: unknown) =>
+        this.#logger.warn('Failed to forget sync health', stateError),
+      );
     await this.#runAccountMutation(async () => {
       const account = await this.#repository.get(id);
       if (!account) {
