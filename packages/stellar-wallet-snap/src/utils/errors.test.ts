@@ -1,6 +1,9 @@
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
-import { AccountBalanceUnavailableException } from '../handlers/keyring/exceptions';
+import {
+  AccountBalanceStaleException,
+  AccountBalanceUnavailableException,
+} from '../handlers/keyring/exceptions';
 import {
   InvalidHttpRequestParamsException,
   isExpectedStateException,
@@ -29,6 +32,19 @@ describe('errors', () => {
       ).toBe(false);
       expect(shouldTrackError({ name: 'Error', message })).toBe(false);
       expect(shouldTrackError(message)).toBe(false);
+    });
+
+    it('does not track the stale-balance state, even re-created or wrapped (v6)', () => {
+      const error = new AccountBalanceStaleException('account-1');
+      expect(isExpectedStateException(error)).toBe(true);
+      expect(shouldTrackError(error)).toBe(false);
+      expect(shouldTrackError(new Error(error.message))).toBe(false);
+      expect(shouldTrackError(new Error('wrapped', { cause: error }))).toBe(
+        false,
+      );
+      expect(shouldTrackError({ name: 'Error', message: error.message })).toBe(
+        false,
+      );
     });
 
     it('does not track user rejections', () => {

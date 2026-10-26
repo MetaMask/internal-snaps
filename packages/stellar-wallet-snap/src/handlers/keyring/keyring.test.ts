@@ -38,6 +38,7 @@ import {
   Duration,
 } from '../../utils';
 import { bufferToUint8Array } from '../../utils/buffer';
+import { BALANCE_STALE_MESSAGE } from '../../utils/errors';
 import { logger } from '../../utils/logger';
 import { SyncAccountsHandler } from '../cronjob/syncAccounts';
 import {
@@ -48,6 +49,7 @@ import {
 } from './api';
 import type { IKeyringRequestHandler } from './base';
 import {
+  AccountBalanceStaleException,
   AccountBalanceUnavailableException,
   ExportAccountException,
 } from './exceptions';
@@ -634,6 +636,97 @@ describe('KeyringHandler', () => {
         mockAccountId,
         KnownCaip2ChainId.Mainnet,
       );
+    });
+
+    describe('stale balance after failing syncs (v6)', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      const setUpSyncedAccount = (): void => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(
+            createTestOnChainAccount(mockAccount.address, {
+              ...DEFAULT_MOCK_ACCOUNT_WITH_BALANCES,
+              nativeBalance: 2.000001,
+            }),
+          );
+      };
+
+      it('throws the untracked AccountBalanceStaleException and schedules a sync when the balance is stale', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        setUpSyncedAccount();
+        const staleSpy = jest
+          .spyOn(OnChainAccountService.prototype, 'isBalanceStale')
+          .mockResolvedValue(true);
+        const syncSpy = jest
+          .spyOn(SyncAccountsHandler, 'scheduleBackgroundEvent')
+          .mockResolvedValue(undefined);
+
+        const promise = keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+        ]);
+        await expect(promise).rejects.toThrow(AccountBalanceStaleException);
+        await expect(promise).rejects.toThrow(BALANCE_STALE_MESSAGE);
+        expect(staleSpy).toHaveBeenCalledWith(
+          mockAccountId,
+          KnownCaip2ChainId.Mainnet,
+        );
+        expect(syncSpy).toHaveBeenCalledWith(
+          { accountIds: [mockAccountId] },
+          Duration.OneSecond,
+        );
+      });
+
+      it('also fails for a confirmed-unfunded account whose syncs keep failing', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(null);
+        jest
+          .spyOn(OnChainAccountService.prototype, 'isConfirmedUnfunded')
+          .mockResolvedValue(true);
+        jest
+          .spyOn(OnChainAccountService.prototype, 'isBalanceStale')
+          .mockResolvedValue(true);
+        jest
+          .spyOn(SyncAccountsHandler, 'scheduleBackgroundEvent')
+          .mockResolvedValue(undefined);
+
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow(AccountBalanceStaleException);
+      });
+
+      it('answers from the snapshot when the balance is not stale', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        setUpSyncedAccount();
+        jest
+          .spyOn(OnChainAccountService.prototype, 'isBalanceStale')
+          .mockResolvedValue(false);
+        const syncSpy = jest.spyOn(
+          SyncAccountsHandler,
+          'scheduleBackgroundEvent',
+        );
+
+        const result = await keyringHandler.getAccountBalances(mockAccountId, [
+          slipId,
+        ]);
+
+        expect(result[slipId]?.amount).toBe('2.000001');
+        expect(syncSpy).not.toHaveBeenCalled();
+      });
     });
 
     describe('on-demand sync for never-synchronized accounts', () => {

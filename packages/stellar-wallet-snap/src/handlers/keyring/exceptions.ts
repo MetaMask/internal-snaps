@@ -16,6 +16,7 @@ import {
 import { HttpException } from '../../utils';
 import {
   BALANCE_NOT_SYNCHRONIZED_MESSAGE,
+  BALANCE_STALE_MESSAGE,
   StellarSnapException,
 } from '../../utils/errors';
 
@@ -37,6 +38,21 @@ export class AccountBalanceUnavailableException extends KeyringException {
 
   constructor(accountId: string) {
     super(BALANCE_NOT_SYNCHRONIZED_MESSAGE, { data: { accountId } });
+  }
+}
+
+/**
+ * Thrown by `getAccountBalances` when the stored snapshot is out of date: the syncs have been
+ * failing for longer than the stale threshold since the last successful one (e.g. the
+ * connection broke after the account was synchronized). Expected state: not tracked, and
+ * cleared by the next successful sync.
+ */
+export class AccountBalanceStaleException extends KeyringException {
+  /** An expected transient state, not a failure: never reported to Sentry. */
+  readonly isExpectedState = true as const;
+
+  constructor(accountId: string) {
+    super(BALANCE_STALE_MESSAGE, { data: { accountId } });
   }
 }
 

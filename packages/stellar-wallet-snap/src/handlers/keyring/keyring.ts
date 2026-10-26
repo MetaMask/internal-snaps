@@ -79,6 +79,7 @@ import {
 } from './api';
 import type { IKeyringRequestHandler } from './base';
 import {
+  AccountBalanceStaleException,
   AccountBalanceUnavailableException,
   ExportAccountException,
 } from './exceptions';
@@ -354,12 +355,15 @@ export class KeyringHandler implements KeyringSnapRpc {
         await this.#requestSyncForUnsyncedAccount(accountId);
         throw new AccountBalanceUnavailableException(accountId);
       }
+      await this.#assertBalanceNotStale(accountId, scope);
       const nativeAssetId = knownAssets.find(isSlip44Id);
       if (nativeAssetId !== undefined) {
         assetBalances[nativeAssetId] = getDefaultBalanceEntry();
       }
       return assetBalances;
     }
+
+    await this.#assertBalanceNotStale(accountId, scope);
 
     for (const assetId of knownAssets) {
       const asset = onChainAccount.getAsset(assetId);
@@ -498,7 +502,26 @@ export class KeyringHandler implements KeyringSnapRpc {
   }
 
   /**
-   * Schedules a background sync for an account whose balance is unknown, at most once per
+   * Fails when the stored balance is out of date (the syncs have been failing since the last
+   * successful one for longer than the stale threshold), so the client shows it as
+   * unavailable instead of a frozen value; also kicks off a (deduplicated) sync so the next
+   * successful one clears the state.
+   *
+   * @param accountId - The keyring account ID.
+   * @param scope - CAIP-2 network.
+   */
+  async #assertBalanceNotStale(
+    accountId: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<void> {
+    if (await this.#onChainAccountService.isBalanceStale(accountId, scope)) {
+      await this.#requestSyncForUnsyncedAccount(accountId);
+      throw new AccountBalanceStaleException(accountId);
+    }
+  }
+
+  /**
+   * Schedules a background sync for an account whose balance is unknown or out of date, at most once per
    * {@link UNSYNCED_ACCOUNT_SYNC_MIN_INTERVAL_MS}. Never throws: the balance request must
    * still report the account as unavailable.
    *

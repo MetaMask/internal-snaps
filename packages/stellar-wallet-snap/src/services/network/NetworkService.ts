@@ -1,9 +1,14 @@
 import type {
+  FetchPolicy,
   ICache,
   Logger,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { useCache } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  executeWithFetchPolicy,
+  useCache,
+} from '@metamask/snap-networks-utils';
 import {
   Address,
   Horizon as StellarHorizon,
@@ -51,7 +56,18 @@ import {
   baseInclusionFee,
   isAccountNotFoundError,
   sep41MulticallCellToBalance,
+  toStellarFetchPolicyError,
+  unwrapFetchPolicyError,
 } from './utils';
+
+type ReadEndpoint<Client> = {
+  client: Client;
+  policy: FetchPolicy;
+};
+
+type ReadEndpoints<Client> = {
+  primary: ReadEndpoint<Client>;
+};
 
 /**
  * Stellar network access through **Horizon** and **Soroban RPC**: base fee, account loading (full
@@ -69,6 +85,16 @@ export class NetworkService {
   >();
 
   readonly #rpcClientMap = new Map<KnownCaip2ChainId, rpc.Server>();
+
+  readonly #horizonReadEndpoints = new Map<
+    KnownCaip2ChainId,
+    ReadEndpoints<StellarHorizon.Server>
+  >();
+
+  readonly #rpcReadEndpoints = new Map<
+    KnownCaip2ChainId,
+    ReadEndpoints<rpc.Server>
+  >();
 
   constructor({
     logger,
@@ -99,6 +125,70 @@ export class NetworkService {
       this.#rpcClientMap.set(scope, client);
     }
     return client;
+  }
+
+  #getHorizonReadEndpoints(
+    scope: KnownCaip2ChainId,
+  ): ReadEndpoints<StellarHorizon.Server> {
+    let endpoints = this.#horizonReadEndpoints.get(scope);
+    if (!endpoints) {
+      endpoints = {
+        primary: {
+          client: this.#getHorizonClient(scope),
+          policy: createFetchPolicy({
+            service: 'stellar_horizon',
+            chainIdCaip: scope,
+            logger: this.#logger,
+          }),
+        },
+      };
+      this.#horizonReadEndpoints.set(scope, endpoints);
+    }
+    return endpoints;
+  }
+
+  #getRpcReadEndpoints(scope: KnownCaip2ChainId): ReadEndpoints<rpc.Server> {
+    let endpoints = this.#rpcReadEndpoints.get(scope);
+    if (!endpoints) {
+      endpoints = {
+        primary: {
+          client: this.#getRpcClient(scope),
+          policy: createFetchPolicy({
+            service: 'stellar_rpc',
+            chainIdCaip: scope,
+            logger: this.#logger,
+          }),
+        },
+      };
+      this.#rpcReadEndpoints.set(scope, endpoints);
+    }
+    return endpoints;
+  }
+
+  /**
+   * Runs an idempotent read under the endpoint's fetch policy (retry with backoff on transient
+   * failures, circuit breaker). Rethrows the original SDK error so callers keep classifying it.
+   *
+   * @param endpoints - The endpoints to read from.
+   * @param read - The read, given the client to use.
+   * @param accountAddress - The account the read is about, to recognise a confirmed 404.
+   * @returns The read result.
+   */
+  async #read<Client, Result>(
+    endpoints: ReadEndpoints<Client>,
+    read: (client: Client) => Promise<Result>,
+    accountAddress?: string,
+  ): Promise<Result> {
+    const { client, policy } = endpoints.primary;
+    try {
+      return await executeWithFetchPolicy(
+        policy,
+        async () => read(client),
+        (error) => toStellarFetchPolicyError(error, accountAddress),
+      );
+    } catch (error: unknown) {
+      throw unwrapFetchPolicyError(error);
+    }
   }
 
   #getNetworkConfig(scope: KnownCaip2ChainId): NetworkConfig {
@@ -226,11 +316,12 @@ export class NetworkService {
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccount> {
     try {
-      const client = this.#getHorizonClient(scope);
-      return OnChainAccount.fromHorizon(
-        await client.loadAccount(accountAddress),
-        scope,
+      const response = await this.#read(
+        this.#getHorizonReadEndpoints(scope),
+        async (client) => client.loadAccount(accountAddress),
+        accountAddress,
       );
+      return OnChainAccount.fromHorizon(response, scope);
     } catch (error: unknown) {
       if (isAccountNotFoundError(error, accountAddress)) {
         throw new AccountNotActivatedException(accountAddress, scope, {
@@ -338,8 +429,11 @@ export class NetworkService {
     scope: KnownCaip2ChainId,
   ): Promise<OnChainAccount> {
     try {
-      const client = this.#getRpcClient(scope);
-      const loaded = await client.getAccount(accountAddress);
+      const loaded = await this.#read(
+        this.#getRpcReadEndpoints(scope),
+        async (client) => client.getAccount(accountAddress),
+        accountAddress,
+      );
       return new OnChainAccount(loaded, scope);
     } catch (error: unknown) {
       if (isAccountNotFoundError(error, accountAddress)) {

@@ -3,6 +3,7 @@ import type { SnapConfig } from '@metamask/snaps-cli';
 import { merge } from '@metamask/snaps-cli';
 import { config as dotenv } from 'dotenv';
 import { resolve } from 'path';
+import { ProvidePlugin } from 'webpack';
 
 dotenv();
 
@@ -68,6 +69,13 @@ const config: SnapConfig = {
           eventsource: resolve(__dirname, 'src/shims/eventsource.ts'),
         },
       },
+      // `createFetchPolicy` (cockatiel) times calls with `performance.now()`,
+      // which the snap runtime doesn't provide.
+      plugins: [
+        new ProvidePlugin({
+          performance: '@metamask/snap-networks-utils/performance-shim',
+        }),
+      ],
     }),
 };
 

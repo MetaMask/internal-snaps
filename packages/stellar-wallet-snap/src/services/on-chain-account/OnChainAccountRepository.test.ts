@@ -9,7 +9,10 @@ const ACCOUNT_A = '11111111-1111-4111-8111-111111111111';
 const ACCOUNT_B = '22222222-2222-4222-8222-222222222222';
 
 const snapshot = (scope: KnownCaip2ChainId): OnChainAccountSerializableFull =>
-  ({ scope, accountId: 'GSNAPSHOT' }) as unknown as OnChainAccountSerializableFull;
+  ({
+    scope,
+    accountId: 'GSNAPSHOT',
+  }) as unknown as OnChainAccountSerializableFull;
 
 describe('OnChainAccountRepository', () => {
   const setup = (
@@ -24,6 +27,77 @@ describe('OnChainAccountRepository', () => {
     } as OnChainAccountState);
     return { state, repository: new OnChainAccountRepository(state) };
   };
+
+  describe('markSyncFailing / clearSyncFailing / getSyncFailingSince (v6)', () => {
+    it('has no failing streak by default', async () => {
+      const { repository } = setup();
+
+      expect(
+        await repository.getSyncFailingSince(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBeUndefined();
+    });
+
+    it('keeps the start of the streak and writes only on transitions', async () => {
+      const { state, repository } = setup();
+      const updateSpy = jest.spyOn(state, 'update');
+
+      await repository.markSyncFailing(
+        { [ACCOUNT_A]: 1_000 },
+        KnownCaip2ChainId.Mainnet,
+      );
+      await repository.markSyncFailing(
+        { [ACCOUNT_A]: 5_000 },
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+      expect(
+        await repository.getSyncFailingSince(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(1_000);
+      expect(
+        await repository.getSyncFailingSince(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Testnet,
+        ),
+      ).toBeUndefined();
+
+      await repository.clearSyncFailing(
+        [ACCOUNT_A, ACCOUNT_B],
+        KnownCaip2ChainId.Mainnet,
+      );
+      await repository.clearSyncFailing([ACCOUNT_A], KnownCaip2ChainId.Mainnet);
+
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+      expect(
+        await repository.getSyncFailingSince(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBeUndefined();
+      expect(await state.getKey('syncFailingSince')).toStrictEqual({});
+    });
+
+    it('ignores a malformed persisted value', async () => {
+      const { repository } = setup({
+        syncFailingSince: {
+          [ACCOUNT_A]: { [KnownCaip2ChainId.Mainnet]: 'x' as never },
+        },
+      });
+
+      expect(
+        await repository.getSyncFailingSince(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBeUndefined();
+    });
+  });
 
   describe('markUnfunded / isConfirmedUnfunded', () => {
     it('reports accounts as not confirmed unfunded by default', async () => {

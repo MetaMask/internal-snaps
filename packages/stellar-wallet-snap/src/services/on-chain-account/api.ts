@@ -34,10 +34,24 @@ export type UnfundedOnChainAccountsByKeyringId = Record<
 >;
 
 /**
+ * `syncFailingSince[keyringAccountId][scope]` → since when the balance of the account is
+ * considered out of date: the last successful sync before the current streak of failed syncs
+ * (or the first failure when no success was seen since the snap started). Written only on
+ * transitions (first failure, next success) and persisted because the snap may be restarted
+ * between two syncs.
+ */
+export type SyncFailingSinceByKeyringId = Record<
+  KeyringAccountId,
+  Partial<Record<KnownCaip2ChainId, number>>
+>;
+
+/**
  * Snap state slice for cached on-chain account snapshots (persisted under `onChainAccounts`).
  */
 export type OnChainAccountState = {
   onChainAccounts: OnChainAccountSnapshotsByKeyringId;
   /** Optional: absent in states persisted before it was introduced. */
   unfundedOnChainAccounts?: UnfundedOnChainAccountsByKeyringId;
+  /** Optional: absent in states persisted before it was introduced. */
+  syncFailingSince?: SyncFailingSinceByKeyringId;
 };

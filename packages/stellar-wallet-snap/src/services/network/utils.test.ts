@@ -1,4 +1,5 @@
-import { NotFoundError } from '@stellar/stellar-sdk';
+import { FetchPolicyErrorName } from '@metamask/snap-networks-utils';
+import { NetworkError, NotFoundError } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { AppConfig } from '../../config';
@@ -7,6 +8,8 @@ import {
   isAccountNotFoundError,
   isEmptyHttpBody,
   multiplyFee,
+  toStellarFetchPolicyError,
+  unwrapFetchPolicyError,
 } from './utils';
 
 const maxFeeThresholdInStroops = toSmallestUnit(
@@ -85,5 +88,64 @@ describe('isAccountNotFoundError', () => {
     expect(isAccountNotFoundError(new TypeError('Failed to fetch'), ADDRESS)).toBe(
       false,
     );
+  });
+});
+
+describe('toStellarFetchPolicyError', () => {
+  it('maps a confirmed missing account to a non-retryable 404', () => {
+    const original = new NotFoundError('Not Found', horizonNotFoundBody);
+
+    const mapped = toStellarFetchPolicyError(original, ADDRESS);
+
+    expect(mapped.httpStatus).toBe(404);
+    expect(mapped.cause).toBe(original);
+  });
+
+  it('maps an empty-body 404 to a network error', () => {
+    const original = new NotFoundError('Not Found', '');
+
+    const mapped = toStellarFetchPolicyError(original, ADDRESS);
+
+    expect(mapped.name).toBe(FetchPolicyErrorName.Network);
+    expect(mapped.httpStatus).toBeUndefined();
+    expect(mapped.cause).toBe(original);
+  });
+
+  it('keeps the status of a Horizon error response', () => {
+    const original = new NetworkError('Service Unavailable', {
+      status: 503,
+      title: 'Service Unavailable',
+    } as never);
+
+    const mapped = toStellarFetchPolicyError(original, ADDRESS);
+
+    expect(mapped.httpStatus).toBe(503);
+    expect(mapped.cause).toBe(original);
+  });
+
+  it('maps a bare fetch failure to a network error', () => {
+    const original = new Error('Failed to fetch');
+
+    const mapped = toStellarFetchPolicyError(original);
+
+    expect(mapped.name).toBe(FetchPolicyErrorName.Network);
+    expect(mapped.message).toBe('Failed to fetch');
+    expect(mapped.cause).toBe(original);
+  });
+});
+
+describe('unwrapFetchPolicyError', () => {
+  it('returns the original SDK error of a mapped error', () => {
+    const original = new NotFoundError('Not Found', horizonNotFoundBody);
+
+    expect(
+      unwrapFetchPolicyError(toStellarFetchPolicyError(original, ADDRESS)),
+    ).toBe(original);
+  });
+
+  it('returns other errors unchanged', () => {
+    const error = new Error('boom');
+
+    expect(unwrapFetchPolicyError(error)).toBe(error);
   });
 });

@@ -286,6 +286,22 @@ export const BALANCE_NOT_SYNCHRONIZED_MESSAGE =
   'Account balance unavailable: the account has not been synchronized yet';
 
 /**
+ * Message of the "stored balance is out of date" expected state: the syncs have been failing
+ * since the last successful one, longer than the stale threshold. Stable marker for the same
+ * reason as {@link BALANCE_NOT_SYNCHRONIZED_MESSAGE}.
+ */
+export const BALANCE_STALE_MESSAGE =
+  'Account balance unavailable: synchronization has been failing since the last successful sync';
+
+const EXPECTED_STATE_MESSAGES = [
+  BALANCE_NOT_SYNCHRONIZED_MESSAGE,
+  BALANCE_STALE_MESSAGE,
+];
+
+const hasExpectedStateMessage = (text: string): boolean =>
+  EXPECTED_STATE_MESSAGES.some((marker) => text.includes(marker));
+
+/**
  * Whether an error is an expected state, even after it was re-created,
  * wrapped or serialized along the way: matches the class flag, then the
  * stable message marker on the error, its `cause` chain or a serialized error.
@@ -300,16 +316,16 @@ export function isExpectedStateError(error: unknown): boolean {
       return true;
     }
     if (typeof current === 'string') {
-      return current.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE);
+      return hasExpectedStateMessage(current);
     }
     if (typeof current !== 'object') {
       return false;
     }
-    const { message, cause } = current as { message?: unknown; cause?: unknown };
-    if (
-      typeof message === 'string' &&
-      message.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE)
-    ) {
+    const { message, cause } = current as {
+      message?: unknown;
+      cause?: unknown;
+    };
+    if (typeof message === 'string' && hasExpectedStateMessage(message)) {
       return true;
     }
     current = cause;
