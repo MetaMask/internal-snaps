@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Retry transient Bitcoin indexer, price API, and signed transaction broadcast failures with the shared fetch policy, and treat duplicate broadcasts as successful. ([#TBD](https://github.com/MetaMask/internal-snaps/pull/TBD))
+- Retry transient Bitcoin indexer, price API, and signed transaction broadcast failures with the shared fetch policy, and treat duplicate broadcasts as successful. ([#530](https://github.com/MetaMask/internal-snaps/pull/530))
 
 ## [3.2.0]
 
