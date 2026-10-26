@@ -20,6 +20,9 @@ import type { Inscription } from './meta-protocols';
 import type { AccountStateSnapshot } from './snap';
 import type { TransactionBuilder } from './transaction';
 
+/** A BIP-32 keychain of an account: receive or change addresses. */
+export type Keychain = 'external' | 'internal';
+
 /**
  * A Bitcoin account.
  */
@@ -83,6 +86,32 @@ export type BitcoinAccount = {
   peekAddress(index: number): AddressInfo;
 
   /**
+   * Get the address at a given index of a keychain, without revealing it.
+   *
+   * @param keychain - 'external' (receive) or 'internal' (change).
+   * @param index - derivation index.
+   * @returns the address
+   */
+  peekKeychainAddress(keychain: Keychain, index: number): AddressInfo;
+
+  /**
+   * Highest derivation index of the keychain that received an output the
+   * wallet knows of (the keychain's last active index for a gap scan).
+   *
+   * @param keychain - 'external' (receive) or 'internal' (change).
+   * @returns the index, or undefined if the keychain has no known output
+   */
+  lastUsedIndex(keychain: Keychain): number | undefined;
+
+  /**
+   * Highest revealed derivation index of the keychain.
+   *
+   * @param keychain - 'external' (receive) or 'internal' (change).
+   * @returns the index, or undefined if no address is revealed
+   */
+  lastRevealedIndex(keychain: Keychain): number | undefined;
+
+  /**
    * Get the next unused address. This will reveal a new address if there is no unused address.
    * Note that the account needs to be persisted for this operation to be idempotent.
    *
@@ -125,6 +154,15 @@ export type BitcoinAccount = {
    * Apply an update to the account.
    */
   applyUpdate(update: Update): void;
+
+  /**
+   * Whether the account's wallet has applied at least one chain update (sync
+   * or full scan). A wallet that never synced still sits on the genesis
+   * checkpoint (height 0), and its zero balance means "unknown", not "empty".
+   *
+   * @returns true if the wallet has synchronized with the chain at least once
+   */
+  hasSynchronized(): boolean;
 
   /**
    * Extract the change set if it exists.

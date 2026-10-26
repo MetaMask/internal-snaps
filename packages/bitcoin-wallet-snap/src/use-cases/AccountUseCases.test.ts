@@ -823,6 +823,8 @@ describe('AccountUseCases', () => {
         receivedAmount,
       ]);
       mockAccount.listTransactions.mockReturnValue([]);
+      // A rescan of an account that already synchronized once.
+      mockAccount.hasSynchronized.mockReturnValue(true);
     });
 
     it('performs a full scan', async () => {
@@ -832,7 +834,8 @@ describe('AccountUseCases', () => {
 
       const result = await useCases.fullScan(mockAccount);
 
-      expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount);
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount, 'scan');
       expect(mockMetaProtocols.fetchInscriptions).toHaveBeenCalledWith(
         mockAccount,
       );
@@ -845,6 +848,64 @@ describe('AccountUseCases', () => {
         transactionsToNotify: mockTransactions,
         transactionSenders: undefined,
       });
+    });
+
+    it('scans an account that never synchronized with the discovery gap only, when it finds no activity', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      mockChain.fullScan.mockResolvedValue();
+
+      await useCases.fullScan(mockAccount);
+
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount, 'discovery');
+      expect(mockRepository.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('completes the initial scan to the standard gap when the discovery gap finds activity', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      mockChain.fullScan.mockImplementationOnce(async () => {
+        mockAccount.listTransactions.mockReturnValue(mockTransactions);
+      });
+      mockChain.extendDiscoveryScan.mockResolvedValueOnce();
+      mockChain.getTransactionSenders.mockResolvedValue([]);
+
+      const result = await useCases.fullScan(mockAccount);
+
+      // The discovery-gap scan is not repeated with the standard gap: only
+      // the addresses the standard gap adds are checked.
+      expect(mockChain.fullScan.mock.calls).toStrictEqual([
+        [mockAccount, 'discovery'],
+      ]);
+      expect(mockChain.extendDiscoveryScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.extendDiscoveryScan).toHaveBeenCalledWith(mockAccount);
+      expect(result.transactionsToNotify).toStrictEqual(mockTransactions);
+    });
+
+    it('does not extend an initial scan that found no activity, nor a rescan', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      await useCases.fullScan(mockAccount);
+      mockAccount.hasSynchronized.mockReturnValue(true);
+      mockAccount.listTransactions.mockReturnValue(mockTransactions);
+      mockChain.getTransactionSenders.mockResolvedValue([]);
+      await useCases.fullScan(mockAccount);
+
+      expect(mockChain.extendDiscoveryScan).not.toHaveBeenCalled();
+    });
+
+    it('fails the initial scan (to be retried) if the standard-gap completion fails', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      const error = new Error('Failed to fetch');
+      mockChain.fullScan.mockImplementationOnce(async () => {
+        mockAccount.listTransactions.mockReturnValue(mockTransactions);
+      });
+      mockChain.extendDiscoveryScan.mockRejectedValueOnce(error);
+      mockRepository.update.mockClear();
+
+      await expect(useCases.fullScan(mockAccount)).rejects.toBe(error);
+
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.extendDiscoveryScan).toHaveBeenCalledTimes(1);
+      expect(mockRepository.update).not.toHaveBeenCalled();
     });
 
     it('propagates an error if the chain full scan fails', async () => {
