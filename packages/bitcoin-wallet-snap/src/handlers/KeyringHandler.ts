@@ -279,12 +279,15 @@ export class KeyringHandler implements KeyringSnapRpc {
   ): Promise<Record<CaipAssetType, Balance>> {
     const account = await this.#accountsUseCases.get(id);
 
-    // An account that never synchronized has an unknown balance: reporting
-    // the zero of an empty wallet would show a confident 0 to the user. Fail
-    // instead (an expected state, not reported to Sentry) so the client keeps
-    // it as unavailable and retries; the next successful sync delivers the
-    // real balance.
+    // An account that never synchronized, or never completed its first full
+    // scan, has an unknown balance: reporting the zero of an empty wallet
+    // would show a confident 0 to the user. Fail instead so the client keeps
+    // it as unavailable and retries. Answering from local state alone would
+    // never recover, so the request also kicks off a full scan (deduplicated
+    // and single-flight per account, bounded backoff); its balances-updated
+    // event, or the client's next retry, then delivers the real balance.
     if (await this.#accountsUseCases.isBalanceUnknown(account)) {
+      await this.#accountsUseCases.requestFullScan(account, 'balance-request');
       throw new BalanceNotSynchronizedError({ account: id });
     }
 

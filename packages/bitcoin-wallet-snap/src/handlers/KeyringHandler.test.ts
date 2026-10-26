@@ -694,13 +694,27 @@ describe('KeyringHandler', () => {
       expect(mockAccounts.isBalanceUnknown).toHaveBeenCalledWith(mockAccount);
     });
 
-    it('throws the untracked BalanceNotSynchronizedError when the balance is unknown', async () => {
+    it('throws the untracked BalanceNotSynchronizedError and kicks off a full scan when the balance is unknown', async () => {
       mockAccounts.get.mockResolvedValue(mockAccount);
       mockAccounts.isBalanceUnknown.mockResolvedValue(true);
+      mockAccounts.requestFullScan.mockResolvedValue(true);
 
       await expect(
         handler.getAccountBalances(mockAccount.id),
       ).rejects.toBeInstanceOf(BalanceNotSynchronizedError);
+      expect(mockAccounts.requestFullScan).toHaveBeenCalledWith(
+        mockAccount,
+        'balance-request',
+      );
+    });
+
+    it('does not request a full scan when the balance is known', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(false);
+
+      await handler.getAccountBalances(mockAccount.id);
+
+      expect(mockAccounts.requestFullScan).not.toHaveBeenCalled();
     });
 
     it('reports the balance once it is known', async () => {

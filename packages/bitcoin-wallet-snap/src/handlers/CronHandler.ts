@@ -6,7 +6,7 @@ import {
   getSyncFailuresFromSettledResult,
 } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
-import { array, assert, is, object, string } from 'superstruct';
+import { array, assert, object, string } from 'superstruct';
 
 import {
   InexistentMethodError,
@@ -42,9 +42,10 @@ export const FullScanAccountRequest = object({
   accountId: string(),
 });
 
-const RescanState = object({
-  pending: array(string()),
-});
+/**
+ * Maximum number of queued full scans run per sync run.
+ */
+export const MAX_FULL_SCANS_PER_RUN = 2;
 
 export class CronHandler {
   readonly #accountsUseCases: AccountUseCases;
@@ -142,8 +143,10 @@ export class CronHandler {
     // that coalesced callers share the run's outcome, including the reported
     // synchronization failures.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
+      const allAccounts = await this.#accountsUseCases.list();
+
       try {
-        await this.#repairNextAccount();
+        await this.#runDueFullScans(allAccounts);
       } catch (error) {
         await this.#snapClient.emitTrackingError(
           new Error('Account repair scan failed', { cause: error }),
@@ -154,11 +157,9 @@ export class CronHandler {
         await getSelectedAccounts(this.#snap),
       );
 
-      const accounts = (await this.#accountsUseCases.list()).filter(
-        (account) => {
-          return selectedAccounts.has(account.id);
-        },
-      );
+      const accounts = allAccounts.filter((account) => {
+        return selectedAccounts.has(account.id);
+      });
 
       const results = await Promise.allSettled(
         accounts.map(async (account) =>
@@ -245,8 +246,10 @@ export class CronHandler {
     }
 
     // Emit one batched balance event for the accounts whose balance is
-    // known. Pushing the balance of an account that never synchronized would
-    // show a confident zero, so it is held back until a sync succeeds.
+    // known. A sync of an account whose first full scan has not succeeded
+    // only covers its revealed addresses: pushing that partial balance would
+    // show a confident (possibly zero) amount, so it is held back until the
+    // full scan succeeds.
     const knownBalanceAccounts: BitcoinAccount[] = [];
     for (const { account } of results) {
       if (!(await this.#accountsUseCases.isBalanceUnknown(account))) {
@@ -277,56 +280,70 @@ export class CronHandler {
 
   async fullScanAccount(accountId: string): Promise<void> {
     const account = await this.#accountsUseCases.get(accountId);
+    // On-demand scans (new account, balance request, network recovery) can
+    // be requested more than once; skip the ones whose purpose was already
+    // fulfilled by another scan in the meantime.
+    if (
+      !this.#accountsUseCases.isFullScanInFlight(accountId) &&
+      !(await this.#accountsUseCases.isBalanceUnknown(account))
+    ) {
+      this.#logger.debug('Full scan no longer needed: %s', accountId);
+      return;
+    }
     const result = await this.#accountsUseCases.fullScan(account);
     await this.#emitSyncEvents([result]);
   }
 
   /**
-   * Repair one previously-unwatched account per sync run. Advances the
-   * pending list only after the scan succeeds, so a scan that never runs
-   * (client locked/inactive) or fails leaves the account pending for the
-   * next sync run instead of being marked done prematurely.
+   * Runs the full scans that are due: the first full scan of new accounts,
+   * of accounts that never synchronized, and the one-off repair scan of
+   * previously-unwatched accounts.
+   *
+   * @param accounts - All live accounts.
+   *
+   * Up to {@link MAX_FULL_SCANS_PER_RUN} accounts are scanned concurrently per
+   * sync run. A failed scan moves the account to the tail of the queue and
+   * backs it off exponentially (see `FullScanQueue`), so a single failing
+   * account can no longer block every account queued behind it.
    */
-  async #repairNextAccount(): Promise<void> {
-    const stored = await this.#snapClient.getState('rescanV1');
-    if (is(stored, RescanState) && stored.pending.length === 0) {
-      return;
-    }
-
-    const accounts = await this.#accountsUseCases.list();
-    const liveIds = new Set(accounts.map((account) => account.id));
-
-    const pending = is(stored, RescanState)
-      ? stored.pending.filter((id) => liveIds.has(id))
-      : accounts.map((account) => account.id);
-
-    if (!is(stored, RescanState) || pending.length !== stored.pending.length) {
-      await this.#snapClient.setState('rescanV1', { pending });
-    }
-
-    const account = accounts.find(({ id }) => id === pending[0]);
-    if (!account) {
-      return;
-    }
-
-    const before = new Set(
-      account.listTransactions().map((tx) => tx.txid.toString()),
+  async #runDueFullScans(accounts: BitcoinAccount[]): Promise<void> {
+    const due = await this.#accountsUseCases.listDueFullScans(
+      accounts,
+      MAX_FULL_SCANS_PER_RUN,
     );
-    const result = await this.#accountsUseCases.fullScan(account);
-
-    for (const tx of account.listTransactions()) {
-      if (!before.has(tx.txid.toString())) {
-        await this.#snapClient.emitTrackingEvent(
-          TrackingSnapEvent.MissedTransactionsDiscovered,
-          account,
-          tx,
-          'cron',
-          mapToTransactionType(account, tx.tx),
-        );
-      }
+    if (due.length === 0) {
+      return;
     }
 
-    await this.#emitSyncEvents([result]);
-    await this.#snapClient.setState('rescanV1', { pending: pending.slice(1) });
+    const results = await Promise.allSettled(
+      due.map(async (account) => {
+        const before = new Set(
+          account.listTransactions().map((tx) => tx.txid.toString()),
+        );
+        const result = await this.#accountsUseCases.fullScan(account);
+
+        for (const tx of account.listTransactions()) {
+          if (!before.has(tx.txid.toString())) {
+            await this.#snapClient.emitTrackingEvent(
+              TrackingSnapEvent.MissedTransactionsDiscovered,
+              account,
+              tx,
+              'cron',
+              mapToTransactionType(account, tx.tx),
+            );
+          }
+        }
+        return result;
+      }),
+    );
+
+    await this.#finishSync(results);
+
+    const firstFailure = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    if (firstFailure) {
+      throw firstFailure.reason;
+    }
   }
 }

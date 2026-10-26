@@ -42,6 +42,7 @@ import {
   WalletError,
 } from '../entities';
 import { CronMethod } from '../handlers/CronHandler';
+import { FullScanQueue } from '../store/FullScanQueue';
 import { resolveFeeRate } from '../utils/fee-rate';
 
 export type DiscoverAccountParams = {
@@ -225,6 +226,109 @@ class SenderLookupLimiter {
   }
 }
 
+/**
+ * Minimum interval between two on-demand full scans of the same account (and
+ * between a scheduled-but-not-started scan and a new request for it).
+ */
+export const FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS = 30_000;
+
+/**
+ * Upper bound of the on-demand full scan interval while scans keep failing:
+ * client retries and successful syncs can trigger a scan at most this often,
+ * so recovery after the network comes back is bounded by it.
+ */
+export const FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS = 2 * 60_000;
+
+/**
+ * Minimum time between a failed full scan and the scan requested by the
+ * network recovery that follows it (the first successful sync after failing
+ * syncs). The failed attempt says nothing about the network now that a sync
+ * reached it, so only this short floor applies (it keeps a scan that failed
+ * an instant ago from being retried back-to-back). A recovery that arrives
+ * inside the floor schedules the scan for when it elapses instead of being
+ * dropped: the recovery is seen only once, and dropping it left the account
+ * waiting for the on-demand backoff (up to 2 minutes).
+ */
+export const FULL_SCAN_RECOVERY_MIN_INTERVAL_MS = 5_000;
+
+/**
+ * Maximum number of new accounts per `createMany` call whose first full scan
+ * is started right away; the others are picked up by the cron queue.
+ */
+export const MAX_IMMEDIATE_FULL_SCANS_ON_CREATE = 2;
+
+/**
+ * How long the result of an account-discovery scan counts as the account's
+ * first synchronization: an account created for a derivation path discovery
+ * scanned less than this long ago reuses the scanned wallet instead of
+ * running a second full scan.
+ */
+export const DISCOVERY_SCAN_REUSE_TTL_MS = 10 * 60_000;
+
+/**
+ * Upper bound on the discovery results kept in memory for reuse.
+ */
+export const MAX_REUSABLE_DISCOVERY_SCANS = 64;
+
+type DiscoveryScan = {
+  account: BitcoinAccount;
+  scannedAt: number;
+};
+
+type DiscoveryFrontier = {
+  /** Lowest account index discovery found without on-chain activity. */
+  index: number;
+  scannedAt: number;
+};
+
+/**
+ * @param req - The discovery or creation request.
+ * @returns The key identifying the request's wallet (entropy source, address
+ * type, network), shared by all its account indexes.
+ */
+function getDiscoveryFrontierKey(req: DiscoverAccountParams): string {
+  return `${req.network}|${req.addressType}|${req.entropySource}`;
+}
+
+/**
+ * Why a full scan is requested outside the cron queue.
+ * - `created`: first scan of a newly created account, started immediately so
+ * the first balance is not delayed.
+ * - `balance-request`: the client asked for the balance of an account whose
+ * balance is unknown (initial fetch, scheduled or manual retry).
+ * - `sync-succeeded`: a sync of an account whose initial scan is pending
+ * succeeded, so the network works again.
+ * - `network-recovered`: same, right after failing syncs (the network just
+ * came back): only the minimum interval applies.
+ */
+export type FullScanRequestReason =
+  | 'created'
+  | 'balance-request'
+  | 'sync-succeeded'
+  | 'network-recovered';
+
+type FullScanAttemptInfo = {
+  lastAttemptAt: number;
+  consecutiveFailures: number;
+};
+
+/**
+ * @param consecutiveFailures - Consecutive failed full scans of the account.
+ * @returns The minimum interval before the next on-demand full scan.
+ */
+export function getOnDemandFullScanIntervalMs(
+  consecutiveFailures: number,
+): number {
+  if (consecutiveFailures <= 0) {
+    return FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS;
+  }
+  return Math.min(
+    FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS *
+      2 ** Math.min(consecutiveFailures - 1, 16),
+    FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS,
+  );
+}
+
 export class AccountUseCases {
   readonly #logger: Logger;
 
@@ -246,6 +350,44 @@ export class AccountUseCases {
 
   #accountMutationQueue: Promise<void> = Promise.resolve();
 
+  readonly #fullScanQueue: FullScanQueue;
+
+  /**
+   * In-flight full scans per account (single-flight): concurrent requests
+   * (cron queue, scheduled scan, balance requests, syncs) join the running
+   * scan instead of starting another one.
+   */
+  readonly #fullScansInFlight = new Map<string, Promise<SyncResult>>();
+
+  /** Last full scan attempt and consecutive failures per account. */
+  readonly #fullScanAttempts = new Map<string, FullScanAttemptInfo>();
+
+  /** When an on-demand full scan was scheduled and has not started yet. */
+  readonly #fullScanRequestedAt = new Map<string, number>();
+
+  /** Accounts whose last sync failed (used to detect network recovery). */
+  readonly #failingSyncs = new Set<string>();
+
+  /**
+   * Recent discovery scans per network and derivation path: discovery already
+   * ran a full scan of these wallets, so creating the account reuses them
+   * (counting as its first synchronization) instead of scanning again.
+   */
+  readonly #discoveryScans = new Map<string, DiscoveryScan>();
+
+  /**
+   * Per wallet, the lowest account index discovery found without activity.
+   * Like BIP-44 account discovery, accounts above it are treated as unused:
+   * creating them needs a regular sync, not a full address-gap scan.
+   */
+  readonly #discoveryFrontiers = new Map<string, DiscoveryFrontier>();
+
+  /**
+   * New accounts that only need a regular sync to know their balance (see
+   * {@link AccountUseCases.#discoveryFrontiers}), until that sync succeeds.
+   */
+  readonly #syncOnlyAccounts = new Set<string>();
+
   constructor(
     logger: Logger,
     snapClient: SnapClient,
@@ -264,18 +406,198 @@ export class AccountUseCases {
     this.#fallbackFeeRate = fallbackFeeRate;
     this.#targetBlocksConfirmation = targetBlocksConfirmation;
     this.#metaProtocols = metaProtocols;
+    this.#fullScanQueue = new FullScanQueue(snapClient);
+  }
+
+  /**
+   * @param id - The account ID.
+   * @returns Whether the account never completed its first full scan, in
+   * which case its balance is unknown rather than zero.
+   */
+  async isInitialFullScanPending(id: string): Promise<boolean> {
+    return this.#fullScanQueue.isInitialScanPending(id);
   }
 
   /**
    * Whether the account's balance is unknown rather than zero: the wallet
-   * never synchronized with the chain (it still sits on the genesis
-   * checkpoint), so its zero balance means "unknown", not "empty".
+   * never synchronized with the chain, or its first full scan has not
+   * succeeded yet (only the revealed addresses may have been synced, so the
+   * balance can be partial).
    *
    * @param account - The account.
    * @returns `true` if the balance must not be reported as known.
    */
   async isBalanceUnknown(account: BitcoinAccount): Promise<boolean> {
-    return !account.hasSynchronized();
+    if (!account.hasSynchronized()) {
+      return true;
+    }
+    return this.#fullScanQueue.isInitialScanPending(account.id);
+  }
+
+  /**
+   * Returns the accounts due for a (re)tried full scan, in queue order.
+   *
+   * @param accounts - The live accounts.
+   * @param max - Maximum number of accounts to return.
+   * @returns The due accounts.
+   */
+  async listDueFullScans(
+    accounts: BitcoinAccount[],
+    max: number,
+  ): Promise<BitcoinAccount[]> {
+    // Accounts that never synchronized at all (genesis checkpoint) are
+    // (re)queued: before the queue existed, a failed first scan was never
+    // retried and such accounts kept reporting a zero balance forever.
+    // Fresh accounts beyond the discovery frontier only wait for a regular
+    // sync (scheduled at creation), not a full scan.
+    const neverSynchronized = accounts
+      .filter(
+        (account) =>
+          !account.hasSynchronized() && !this.#syncOnlyAccounts.has(account.id),
+      )
+      .map(({ id }) => id);
+    await this.#fullScanQueue.ensureQueued(neverSynchronized);
+
+    const dueIds = await this.#fullScanQueue.due(
+      accounts.map(({ id }) => id),
+      max,
+    );
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    // Sync-only accounts are skipped even when queued (e.g. by the one-off
+    // repair scan of every live account): discovery already covered them.
+    return dueIds
+      .filter(
+        (id) =>
+          !this.#syncOnlyAccounts.has(id) && !this.#isFullScanBusyOrRecent(id),
+      )
+      .map((id) => byId.get(id))
+      .filter((account): account is BitcoinAccount => account !== undefined);
+  }
+
+  /**
+   * @param accountId - The account ID.
+   * @returns Whether a full scan of the account is running.
+   */
+  isFullScanInFlight(accountId: string): boolean {
+    return this.#fullScansInFlight.has(accountId);
+  }
+
+  /**
+   * Whether a full scan of the account is running, scheduled to start, or
+   * was attempted less than {@link FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS} ago:
+   * the cron queue skips such accounts so scans never overlap or repeat
+   * back-to-back.
+   *
+   * @param accountId - The account ID.
+   * @returns `true` if the queue must not scan the account now.
+   */
+  #isFullScanBusyOrRecent(accountId: string): boolean {
+    if (this.#fullScansInFlight.has(accountId)) {
+      return true;
+    }
+    const now = Date.now();
+    const requestedAt = this.#fullScanRequestedAt.get(accountId);
+    if (
+      requestedAt !== undefined &&
+      now - requestedAt < FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS
+    ) {
+      return true;
+    }
+    const attempt = this.#fullScanAttempts.get(accountId);
+    return (
+      attempt !== undefined &&
+      now - attempt.lastAttemptAt < FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS
+    );
+  }
+
+  /**
+   * Requests a full scan outside the cron queue by scheduling a
+   * `FullScanAccount` background event, deduplicated per account:
+   * - never while a scan of the account is running or already scheduled;
+   * - for `balance-request` and `sync-succeeded`, at most once per
+   * {@link getOnDemandFullScanIntervalMs} (30 s, doubling per consecutive
+   * failure up to {@link FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS}), bypassing the
+   * longer persistent queue backoff;
+   * - for `network-recovered`, never dropped because of a previous attempt:
+   * after a failed scan it runs once {@link FULL_SCAN_RECOVERY_MIN_INTERVAL_MS}
+   * has elapsed since that attempt (after a successful one,
+   * {@link FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS}); a request inside that
+   * window is scheduled for when it ends.
+   *
+   * Never throws.
+   *
+   * @param account - The account.
+   * @param reason - Why the scan is requested.
+   * @returns Whether a scan was scheduled.
+   */
+  async requestFullScan(
+    account: BitcoinAccount,
+    reason: FullScanRequestReason,
+  ): Promise<boolean> {
+    const { id } = account;
+    if (this.#fullScansInFlight.has(id)) {
+      return false;
+    }
+    const now = Date.now();
+    let delayMs = 0;
+    if (reason !== 'created') {
+      const requestedAt = this.#fullScanRequestedAt.get(id);
+      if (
+        requestedAt !== undefined &&
+        now - requestedAt < FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS
+      ) {
+        // A scan is already scheduled and has not started yet.
+        return false;
+      }
+      const attempt = this.#fullScanAttempts.get(id);
+      if (attempt) {
+        const elapsed = now - attempt.lastAttemptAt;
+        if (reason === 'network-recovered') {
+          const interval =
+            attempt.consecutiveFailures > 0
+              ? FULL_SCAN_RECOVERY_MIN_INTERVAL_MS
+              : FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS;
+          delayMs = Math.max(0, interval - elapsed);
+        } else if (
+          elapsed < getOnDemandFullScanIntervalMs(attempt.consecutiveFailures)
+        ) {
+          return false;
+        }
+      }
+    }
+
+    // Marks the scan as scheduled until it starts (`#runFullScan` clears it),
+    // so the cron queue and other requests don't add a second one.
+    this.#fullScanRequestedAt.set(id, now + delayMs);
+    const duration = `PT${Math.max(1, Math.ceil(delayMs / 1000))}S`;
+    try {
+      // An account known to be fresh (beyond the discovery frontier) only
+      // needs a regular sync to know its balance.
+      await this.#snapClient.scheduleBackgroundEvent(
+        this.#syncOnlyAccounts.has(id)
+          ? {
+              duration,
+              method: CronMethod.SyncSelectedAccounts,
+              params: { accountIds: [id] },
+            }
+          : {
+              duration,
+              method: CronMethod.FullScanAccount,
+              params: { accountId: id },
+            },
+      );
+      this.#logger.debug(
+        'Full scan requested (%s, in %ss): %s',
+        reason,
+        duration.slice(2, -1),
+        id,
+      );
+      return true;
+    } catch (error) {
+      this.#fullScanRequestedAt.delete(id);
+      this.#logger.warn('Failed to schedule a full scan', error);
+      return false;
+    }
   }
 
   async list(): Promise<BitcoinAccount[]> {
@@ -340,12 +662,109 @@ export class AccountUseCases {
     // has any previous activity since later on we filter out
     // accounts with no tx history
     await this.#chain.fullScan(newAccount, 'discovery');
+    try {
+      this.#rememberDiscoveryScan(req, derivationPath, newAccount);
+    } catch (error) {
+      // Only an optimization: never fail discovery because of it.
+      this.#logger.warn('Failed to remember the discovery scan', error);
+    }
 
     this.#logger.info(
       'Bitcoin account discovered successfully. Request: %o',
       req,
     );
     return newAccount;
+  }
+
+  /**
+   * Keeps a discovery scan so that creating the same account shortly after
+   * (account alignment right after discovery) counts it as the account's
+   * first synchronization, and records the discovery frontier.
+   *
+   * @param req - The discovery request.
+   * @param derivationPath - The scanned account's derivation path.
+   * @param account - The scanned, not persisted, account.
+   */
+  #rememberDiscoveryScan(
+    req: DiscoverAccountParams,
+    derivationPath: string[],
+    account: BitcoinAccount,
+  ): void {
+    const now = Date.now();
+    this.#pruneDiscoveryScans(now);
+
+    const key = `${req.network}|${getDerivationPathKey(derivationPath)}`;
+    this.#discoveryScans.delete(key);
+    this.#discoveryScans.set(key, { account, scannedAt: now });
+    while (this.#discoveryScans.size > MAX_REUSABLE_DISCOVERY_SCANS) {
+      const oldest = this.#discoveryScans.keys().next().value as string;
+      this.#discoveryScans.delete(oldest);
+    }
+
+    const transactions = account.listTransactions() ?? [];
+    if (transactions.length === 0) {
+      const frontierKey = getDiscoveryFrontierKey(req);
+      const frontier = this.#discoveryFrontiers.get(frontierKey);
+      if (!frontier || req.index <= frontier.index) {
+        this.#discoveryFrontiers.set(frontierKey, {
+          index: req.index,
+          scannedAt: now,
+        });
+      }
+    }
+  }
+
+  #pruneDiscoveryScans(now: number): void {
+    for (const [key, { scannedAt }] of this.#discoveryScans) {
+      if (now - scannedAt >= DISCOVERY_SCAN_REUSE_TTL_MS) {
+        this.#discoveryScans.delete(key);
+      }
+    }
+    for (const [key, { scannedAt }] of this.#discoveryFrontiers) {
+      if (now - scannedAt >= DISCOVERY_SCAN_REUSE_TTL_MS) {
+        this.#discoveryFrontiers.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Takes the recent discovery scan of an account to create, if any.
+   *
+   * @param req - The creation request.
+   * @param pathKey - The account's derivation path key.
+   * @returns The scanned account, or `undefined`.
+   */
+  #takeDiscoveryScan(
+    req: CreateAccountParams,
+    pathKey: string,
+  ): BitcoinAccount | undefined {
+    const key = `${req.network}|${pathKey}`;
+    const scan = this.#discoveryScans.get(key);
+    if (!scan) {
+      return undefined;
+    }
+    this.#discoveryScans.delete(key);
+    if (
+      Date.now() - scan.scannedAt >= DISCOVERY_SCAN_REUSE_TTL_MS ||
+      scan.account.network !== req.network
+    ) {
+      return undefined;
+    }
+    return scan.account;
+  }
+
+  /**
+   * @param req - The creation request.
+   * @returns Whether discovery recently found a lower account index of the
+   * same wallet without activity, so this new account is unused.
+   */
+  #isBeyondDiscoveryFrontier(req: CreateAccountParams): boolean {
+    const frontier = this.#discoveryFrontiers.get(getDiscoveryFrontierKey(req));
+    return (
+      frontier !== undefined &&
+      Date.now() - frontier.scannedAt < DISCOVERY_SCAN_REUSE_TTL_MS &&
+      req.index > frontier.index
+    );
   }
 
   async createMany(reqs: CreateAccountParams[]): Promise<BitcoinAccount[]> {
@@ -355,132 +774,211 @@ export class AccountUseCases {
 
     const startMs = Date.now();
 
-    const { accounts, createdAccountKeys } = await this.#runAccountMutation(
-      async () => {
-        const lookupStartMs = Date.now();
-        const entries = reqs.map((req, index) => {
-          const derivationPath = getAccountDerivationPath(req);
-          return {
-            req,
-            index,
-            derivationPath,
-            pathKey: getDerivationPathKey(derivationPath),
-          };
-        });
-
-        const uniqueEntriesByPath = new Map<string, (typeof entries)[number]>();
-        for (const entry of entries) {
-          if (!uniqueEntriesByPath.has(entry.pathKey)) {
-            uniqueEntriesByPath.set(entry.pathKey, entry);
-          }
-        }
-        const uniqueEntries = [...uniqueEntriesByPath.values()];
-
-        const { accounts: existingAccounts, snapshot } =
-          await this.#repository.getByDerivationPaths(
-            uniqueEntries.map(({ derivationPath }) => derivationPath),
-          );
-        const existingAccountsByPath = new Map<string, BitcoinAccount>();
-
-        uniqueEntries.forEach((entry, index) => {
-          const account = existingAccounts[index];
-          if (account?.network === entry.req.network) {
-            existingAccountsByPath.set(entry.pathKey, account);
-          }
-        });
-
-        const entriesToCreate = uniqueEntries.filter(
-          ({ pathKey }) => !existingAccountsByPath.has(pathKey),
-        );
-        const lookupMs = Date.now() - lookupStartMs;
-
-        // Batch-create so entropy is fetched once per parent path instead of
-        // once per account; remaining per-account work is local derivation
-        // plus synchronous WASM wallet construction, so no throttling needed.
-        const deriveStartMs = Date.now();
-        const newAccounts =
-          entriesToCreate.length > 0
-            ? await this.#repository.createMany(
-                entriesToCreate.map(({ derivationPath, req }) => ({
-                  derivationPath,
-                  network: req.network,
-                  addressType: req.addressType,
-                })),
-              )
-            : [];
-
-        for (const newAccount of newAccounts) {
-          newAccount.revealNextAddress();
-        }
-        const deriveMs = Date.now() - deriveStartMs;
-
-        const persistStartMs = Date.now();
-        if (newAccounts.length > 0) {
-          // Reuse the lookup's derivation-path snapshot: account lifecycle
-          // mutations are serialized, while `insertMany` refreshes the
-          // accounts map to preserve concurrent sync updates.
-          await this.#repository.insertMany(newAccounts, snapshot);
-        }
-        const persistMs = Date.now() - persistStartMs;
-
-        // Stringified so the values survive in the console after the snap's
-        // execution environment is torn down.
-        this.#logger.info(
-          `[createMany] Phase timings ${JSON.stringify({
-            requested: reqs.length,
-            created: newAccounts.length,
-            lookupMs,
-            deriveMs,
-            persistMs,
-            totalMs: Date.now() - startMs,
-          })}`,
-        );
-
-        const newAccountsByPath = new Map(
-          entriesToCreate.map((entry, index) => [
-            entry.pathKey,
-            newAccounts[index] as BitcoinAccount,
-          ]),
-        );
-
-        const accountsInOrder = entries.map((entry) => {
-          const account =
-            existingAccountsByPath.get(entry.pathKey) ??
-            newAccountsByPath.get(entry.pathKey);
-
-          if (!account) {
-            throw new AssertionError('Failed to create account', {
-              index: entry.index,
-              derivationPath: entry.derivationPath,
-            });
-          }
-
-          return account;
-        });
-
+    const {
+      accounts,
+      createdAccountKeys,
+      discoveredAccountKeys,
+      syncOnlyAccountKeys,
+    } = await this.#runAccountMutation(async () => {
+      const lookupStartMs = Date.now();
+      const entries = reqs.map((req, index) => {
+        const derivationPath = getAccountDerivationPath(req);
         return {
-          accounts: accountsInOrder,
-          createdAccountKeys: new Set(newAccountsByPath.keys()),
+          req,
+          index,
+          derivationPath,
+          pathKey: getDerivationPathKey(derivationPath),
         };
-      },
-    );
+      });
 
-    const scheduledAccountIds = new Set<string>();
-    for (const [index, account] of accounts.entries()) {
-      const req = reqs[index] as CreateAccountParams;
-      const pathKey = getDerivationPathKey(getAccountDerivationPath(req));
-      if (
-        req.synchronize &&
-        createdAccountKeys.has(pathKey) &&
-        !scheduledAccountIds.has(account.id)
-      ) {
-        scheduledAccountIds.add(account.id);
+      const uniqueEntriesByPath = new Map<string, (typeof entries)[number]>();
+      for (const entry of entries) {
+        if (!uniqueEntriesByPath.has(entry.pathKey)) {
+          uniqueEntriesByPath.set(entry.pathKey, entry);
+        }
+      }
+      const uniqueEntries = [...uniqueEntriesByPath.values()];
+
+      const { accounts: existingAccounts, snapshot } =
+        await this.#repository.getByDerivationPaths(
+          uniqueEntries.map(({ derivationPath }) => derivationPath),
+        );
+      const existingAccountsByPath = new Map<string, BitcoinAccount>();
+
+      uniqueEntries.forEach((entry, index) => {
+        const account = existingAccounts[index];
+        if (account?.network === entry.req.network) {
+          existingAccountsByPath.set(entry.pathKey, account);
+        }
+      });
+
+      const entriesToCreate = uniqueEntries.filter(
+        ({ pathKey }) => !existingAccountsByPath.has(pathKey),
+      );
+      const lookupMs = Date.now() - lookupStartMs;
+
+      // Batch-create so entropy is fetched once per parent path instead of
+      // once per account; remaining per-account work is local derivation
+      // plus synchronous WASM wallet construction, so no throttling needed.
+      const deriveStartMs = Date.now();
+      this.#pruneDiscoveryScans(Date.now());
+      // Accounts discovery just scanned reuse that scan as their first
+      // synchronization instead of deriving and scanning them again.
+      const discoveredByPath = new Map<string, BitcoinAccount>();
+      for (const { req, pathKey } of entriesToCreate) {
+        const discovered = this.#takeDiscoveryScan(req, pathKey);
+        if (discovered) {
+          discoveredByPath.set(pathKey, discovered);
+        }
+      }
+      const entriesToDerive = entriesToCreate.filter(
+        ({ pathKey }) => !discoveredByPath.has(pathKey),
+      );
+      const derivedAccounts =
+        entriesToDerive.length > 0
+          ? await this.#repository.createMany(
+              entriesToDerive.map(({ derivationPath, req }) => ({
+                derivationPath,
+                network: req.network,
+                addressType: req.addressType,
+              })),
+            )
+          : [];
+      const derivedByPath = new Map(
+        entriesToDerive.map((entry, index) => [
+          entry.pathKey,
+          derivedAccounts[index] as BitcoinAccount,
+        ]),
+      );
+      const newAccounts = entriesToCreate.map(
+        ({ pathKey }) =>
+          (discoveredByPath.get(pathKey) ??
+            derivedByPath.get(pathKey)) as BitcoinAccount,
+      );
+
+      for (const newAccount of newAccounts) {
+        newAccount.revealNextAddress();
+      }
+      const deriveMs = Date.now() - deriveStartMs;
+
+      const persistStartMs = Date.now();
+      if (newAccounts.length > 0) {
+        // Reuse the lookup's derivation-path snapshot: account lifecycle
+        // mutations are serialized, while `insertMany` refreshes the
+        // accounts map to preserve concurrent sync updates.
+        await this.#repository.insertMany(newAccounts, snapshot);
+      }
+      const persistMs = Date.now() - persistStartMs;
+
+      // Stringified so the values survive in the console after the snap's
+      // execution environment is torn down.
+      this.#logger.info(
+        `[createMany] Phase timings ${JSON.stringify({
+          requested: reqs.length,
+          created: newAccounts.length,
+          lookupMs,
+          deriveMs,
+          persistMs,
+          totalMs: Date.now() - startMs,
+        })}`,
+      );
+
+      const newAccountsByPath = new Map(
+        entriesToCreate.map((entry, index) => [
+          entry.pathKey,
+          newAccounts[index] as BitcoinAccount,
+        ]),
+      );
+
+      const accountsInOrder = entries.map((entry) => {
+        const account =
+          existingAccountsByPath.get(entry.pathKey) ??
+          newAccountsByPath.get(entry.pathKey);
+
+        if (!account) {
+          throw new AssertionError('Failed to create account', {
+            index: entry.index,
+            derivationPath: entry.derivationPath,
+          });
+        }
+
+        return account;
+      });
+
+      return {
+        accounts: accountsInOrder,
+        createdAccountKeys: new Set(newAccountsByPath.keys()),
+        discoveredAccountKeys: new Set(discoveredByPath.keys()),
+        syncOnlyAccountKeys: new Set(
+          entriesToDerive
+            .filter(({ req }) => this.#isBeyondDiscoveryFrontier(req))
+            .map(({ pathKey }) => pathKey),
+        ),
+      };
+    });
+
+    // Every new account needs one first synchronization covering its whole
+    // address gap; until it succeeds its balance is reported as unknown:
+    // - accounts discovery just scanned already had it (reused scan);
+    // - accounts above the lowest index discovery found unused are fresh
+    //   (BIP-44 account discovery), so a regular sync is enough;
+    // - any other account needs a full scan: syncs only watch revealed
+    //   addresses. They are all queued (also those scheduled below, in case
+    //   the background event fails) so the cron retries with backoff.
+    const createdKeyByIndex = reqs.map((req) =>
+      getDerivationPathKey(getAccountDerivationPath(req)),
+    );
+    const createdAccountsByKind = (
+      predicate: (pathKey: string) => boolean,
+    ): BitcoinAccount[] => [
+      ...new Map(
+        accounts
+          .filter((_account, index) => {
+            const pathKey = createdKeyByIndex[index] as string;
+            return createdAccountKeys.has(pathKey) && predicate(pathKey);
+          })
+          .map((account) => [account.id, account]),
+      ).values(),
+    ];
+    const syncOnlyAccounts = createdAccountsByKind((pathKey) =>
+      syncOnlyAccountKeys.has(pathKey),
+    );
+    const createdAccounts = createdAccountsByKind(
+      (pathKey) =>
+        !discoveredAccountKeys.has(pathKey) &&
+        !syncOnlyAccountKeys.has(pathKey),
+    );
+    const createdAccountIds = createdAccounts.map(({ id }) => id);
+    try {
+      await this.#fullScanQueue.enqueueInitial(createdAccountIds);
+    } catch (error) {
+      this.#logger.warn('Failed to queue the initial full scan', error);
+    }
+
+    if (syncOnlyAccounts.length > 0) {
+      const syncOnlyIds = syncOnlyAccounts.map(({ id }) => id);
+      for (const id of syncOnlyIds) {
+        this.#syncOnlyAccounts.add(id);
+      }
+      try {
         await this.#snapClient.scheduleBackgroundEvent({
           duration: 'PT1S',
-          method: CronMethod.FullScanAccount,
-          params: { accountId: account.id },
+          method: CronMethod.SyncSelectedAccounts,
+          params: { accountIds: syncOnlyIds },
         });
+      } catch (error) {
+        this.#logger.warn('Failed to schedule the first sync', error);
       }
+    }
+
+    // Start the first full scan right away (deduplicated, single-flight) so
+    // the first balance is not delayed until the next cron run; the queue
+    // above is the fallback if it fails or the background event is lost.
+    for (const account of createdAccounts.slice(
+      0,
+      MAX_IMMEDIATE_FULL_SCANS_ON_CREATE,
+    )) {
+      await this.requestFullScan(account, 'created');
     }
 
     return accounts;
@@ -492,8 +990,36 @@ export class AccountUseCases {
   ): Promise<SyncResult> {
     this.#logger.debug('Synchronizing account: %s', account.id);
 
+    // A running full scan covers this sync: join it instead of fetching the
+    // same addresses concurrently. Its result carries the scanned account;
+    // its transactions are notified by the scan's own caller.
+    const inFlightScan = this.#fullScansInFlight.get(account.id);
+    if (inFlightScan) {
+      this.#logger.debug(
+        'Full scan in progress, joining it instead of syncing: %s',
+        account.id,
+      );
+      try {
+        const scanned = await inFlightScan;
+        return { account: scanned.account, transactionsToNotify: [] };
+      } catch (error) {
+        // The joined scan failed: this sync failed too. Record it, so that
+        // the next successful sync is seen as a network recovery and runs the
+        // pending full scan promptly instead of waiting for its backoff.
+        this.#failingSyncs.add(account.id);
+        throw error;
+      }
+    }
+
     const txsBeforeSync = account.listTransactions();
-    await this.#chain.sync(account);
+    try {
+      await this.#chain.sync(account);
+    } catch (error) {
+      this.#failingSyncs.add(account.id);
+      throw error;
+    }
+    const networkRecovered = this.#failingSyncs.delete(account.id);
+    this.#syncOnlyAccounts.delete(account.id);
     const txsAfterSync = account.listTransactions();
 
     // If new transactions appeared, fetch inscriptions; otherwise, just update.
@@ -569,6 +1095,16 @@ export class AccountUseCases {
 
     this.#logger.debug('Account synchronized successfully: %s', account.id);
 
+    // The sync reached the chain, so the network works: if the first full
+    // scan is still pending (e.g. it failed while the network was down and is
+    // now backing off), run it promptly instead of waiting for the backoff.
+    if (await this.isBalanceUnknown(account)) {
+      await this.requestFullScan(
+        account,
+        networkRecovered ? 'network-recovered' : 'sync-succeeded',
+      );
+    }
+
     return {
       account,
       transactionsToNotify: txsToNotify,
@@ -580,15 +1116,62 @@ export class AccountUseCases {
     };
   }
 
+  /**
+   * Performs a full scan of the account. Single-flight per account: a call
+   * made while a scan of the same account is running returns that scan's
+   * result instead of starting a concurrent one.
+   *
+   * @param account - The account.
+   * @returns The scan result.
+   */
   async fullScan(account: BitcoinAccount): Promise<SyncResult> {
+    const inFlight = this.#fullScansInFlight.get(account.id);
+    if (inFlight) {
+      this.#logger.debug('Joining in-flight full scan: %s', account.id);
+      return inFlight;
+    }
+
+    const run = this.#runFullScan(account).finally(() => {
+      this.#fullScansInFlight.delete(account.id);
+    });
+    this.#fullScansInFlight.set(account.id, run);
+    return run;
+  }
+
+  async #runFullScan(account: BitcoinAccount): Promise<SyncResult> {
     this.#logger.debug('Performing initial full scan: %s', account.id);
 
-    await this.#chain.fullScan(account);
+    this.#fullScanRequestedAt.delete(account.id);
+    const previousAttempt = this.#fullScanAttempts.get(account.id);
+    const attempt: FullScanAttemptInfo = {
+      lastAttemptAt: Date.now(),
+      consecutiveFailures: previousAttempt?.consecutiveFailures ?? 0,
+    };
+    this.#fullScanAttempts.set(account.id, attempt);
+
+    try {
+      await this.#chain.fullScan(account);
+    } catch (error) {
+      attempt.consecutiveFailures += 1;
+      await this.#fullScanQueue
+        .markFailed(account.id, error)
+        .catch((stateError: unknown) =>
+          this.#logger.warn('Failed to record full scan failure', stateError),
+        );
+      throw error;
+    }
 
     const inscriptions = this.#metaProtocols
       ? await this.#metaProtocols.fetchInscriptions(account)
       : [];
     await this.#repository.update(account, inscriptions);
+    attempt.consecutiveFailures = 0;
+    this.#failingSyncs.delete(account.id);
+    await this.#fullScanQueue
+      .markSucceeded(account.id)
+      .catch((stateError: unknown) =>
+        this.#logger.warn('Failed to record full scan success', stateError),
+      );
 
     const transactionsToNotify = account.listTransactions();
 
@@ -611,6 +1194,7 @@ export class AccountUseCases {
   async delete(id: string): Promise<void> {
     this.#logger.debug('Deleting account: %s', id);
 
+    this.#syncOnlyAccounts.delete(id);
     await this.#runAccountMutation(async () => {
       const account = await this.#repository.get(id);
       if (!account) {
