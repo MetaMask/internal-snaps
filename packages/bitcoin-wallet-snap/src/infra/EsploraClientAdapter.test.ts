@@ -1,13 +1,15 @@
-import type { FullScanRequest } from '@metamask/bitcoindevkit';
+import type { AddressInfo, FullScanRequest } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
 import { mock } from 'jest-mock-extended';
 
-import type { BitcoinAccount, ChainConfig } from '../entities';
+import type { BitcoinAccount, ChainConfig, Keychain } from '../entities';
 import {
   EsploraClientAdapter,
   FULL_SCAN_TIMEOUT_MS,
   SENDER_REQUEST_TIMEOUT_MS,
+  GAP_CHECK_REQUEST_TIMEOUT_MS,
   SYNC_TIMEOUT_MS,
+  toScripthash,
   withOperationTimeout,
 } from './EsploraClientAdapter';
 
@@ -409,6 +411,201 @@ describe('EsploraClientAdapter', () => {
       } finally {
         jest.useRealTimers();
       }
+    });
+  });
+
+  describe('extendDiscoveryScan (v5: complete a discovery-gap scan without refetching it)', () => {
+    const mockFetch = jest.fn();
+    let abortController: AbortController;
+
+    beforeEach(() => {
+      global.fetch = mockFetch;
+      abortController = new AbortController();
+      jest
+        .spyOn(AbortSignal, 'timeout')
+        .mockReturnValue(abortController.signal);
+    });
+
+    afterEach(() => {
+      mockFetch.mockReset();
+    });
+
+    const okResponse = (
+      body: unknown,
+    ): { ok: boolean; json: () => Promise<unknown> } => ({
+      ok: true,
+      json: async (): Promise<unknown> => body,
+    });
+
+    // Script bytes encode the keychain and index, so each address has a
+    // distinct script hash that the tests can map back.
+    const scriptBytes = (keychain: Keychain, index: number): Uint8Array =>
+      new Uint8Array([keychain === 'external' ? 0 : 1, index]);
+
+    const setupAccount = (
+      account: BitcoinAccount,
+      indexes: Record<Keychain, { used?: number; revealed?: number }>,
+    ): void => {
+      jest
+        .mocked(account.lastUsedIndex)
+        .mockImplementation((keychain) => indexes[keychain].used);
+      jest
+        .mocked(account.lastRevealedIndex)
+        .mockImplementation((keychain) => indexes[keychain].revealed);
+      jest.mocked(account.peekKeychainAddress).mockImplementation(
+        (keychain, index) =>
+          ({
+            address: {
+              // eslint-disable-next-line @typescript-eslint/naming-convention
+              script_pubkey: { as_bytes: () => scriptBytes(keychain, index) },
+            },
+          }) as unknown as AddressInfo,
+      );
+    };
+
+    const checkedIndexes = (account: BitcoinAccount): [Keychain, number][] =>
+      jest
+        .mocked(account.peekKeychainAddress)
+        .mock.calls.map(([keychain, index]) => [keychain, index]);
+
+    const range = (
+      keychain: Keychain,
+      first: number,
+      last: number,
+    ): [Keychain, number][] =>
+      Array.from({ length: last - first + 1 }, (_unused, offset) => [
+        keychain,
+        first + offset,
+      ]);
+
+    it('computes the Esplora script hash (reversed SHA-256)', async () => {
+      expect(await toScripthash(new Uint8Array())).toBe(
+        '55b852781b9995a44c939b64e441ae2724b96f99c8f4fb9a141cfc9842c4b0e3',
+      );
+    });
+
+    it('checks only the addresses the standard gap adds and skips the full scan when they are unused (run B-v4 account 0)', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      // Account 0 of run B-v4: activity at index 0 of both keychains (the
+      // receive keychain has one more revealed address). The discovery scan
+      // fetched up to index 5 of each keychain (last active + 5).
+      setupAccount(account, {
+        external: { used: 0, revealed: 1 },
+        internal: { used: 0, revealed: 0 },
+      });
+      mockFetch.mockResolvedValue(okResponse([]));
+
+      await adapter.extendDiscoveryScan(account);
+
+      expect(checkedIndexes(account)).toStrictEqual([
+        ...range('external', 6, 21),
+        ...range('internal', 6, 20),
+      ]);
+      expect(mockFetch).toHaveBeenCalledTimes(31);
+      // The standard-gap full scan refetched both keychains from index 0
+      // (50 requests in run B-v4).
+      expect(mockEsploraClient.full_scan).not.toHaveBeenCalled();
+      const hash = await toScripthash(scriptBytes('external', 6));
+      expect(mockFetch).toHaveBeenCalledWith(
+        `https://bitcoin.example/scripthash/${hash}/txs`,
+        { signal: abortController.signal },
+      );
+      expect(AbortSignal.timeout).toHaveBeenCalledWith(
+        GAP_CHECK_REQUEST_TIMEOUT_MS,
+      );
+      expect(account.applyUpdate).not.toHaveBeenCalled();
+    });
+
+    it('covers indexes discovery..scan-1 of a keychain without activity', async () => {
+      const { adapter, account } = setupTest();
+      setupAccount(account, {
+        external: { used: 3 },
+        internal: {},
+      });
+      mockFetch.mockResolvedValue(okResponse([]));
+
+      await adapter.extendDiscoveryScan(account);
+
+      expect(checkedIndexes(account)).toStrictEqual([
+        ...range('external', 9, 23),
+        ...range('internal', 5, 19),
+      ]);
+    });
+
+    it('runs the standard-gap full scan as soon as a checked address has history', async () => {
+      const { adapter, mockEsploraClient, account, mockRequest } = setupTest();
+      setupAccount(account, {
+        external: { used: 0, revealed: 0 },
+        internal: { used: 0, revealed: 0 },
+      });
+      const usedHash = await toScripthash(scriptBytes('external', 8));
+      mockFetch.mockImplementation(async (url: string) =>
+        okResponse(url.includes(usedHash) ? [{ txid: 'tx' }] : []),
+      );
+
+      await adapter.extendDiscoveryScan(account);
+
+      // Batches of `parallelRequests`: 6..10 holds the used index 8, so the
+      // following batches are not requested.
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledWith(
+        mockRequest,
+        20,
+        5,
+      );
+    });
+
+    it('falls back to the standard-gap full scan when the check fails', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      setupAccount(account, {
+        external: { used: 0 },
+        internal: {},
+      });
+      mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+      await adapter.extendDiscoveryScan(account);
+
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the standard-gap full scan when the addresses cannot be derived', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      jest.mocked(account.lastUsedIndex).mockImplementation(() => {
+        throw new Error('unsupported');
+      });
+
+      await adapter.extendDiscoveryScan(account);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats an unexpected response body as history', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      setupAccount(account, {
+        external: { used: 0 },
+        internal: {},
+      });
+      mockFetch.mockResolvedValue(okResponse({ error: 'unexpected' }));
+
+      await adapter.extendDiscoveryScan(account);
+
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('propagates a failure of the fallback full scan', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      setupAccount(account, {
+        external: { used: 0 },
+        internal: {},
+      });
+      mockFetch.mockResolvedValue(okResponse([{ txid: 'tx' }]));
+      mockEsploraClient.full_scan.mockRejectedValue(new Error('boom'));
+
+      await expect(adapter.extendDiscoveryScan(account)).rejects.toThrow(
+        'Failed to perform initial full scan',
+      );
     });
   });
 });

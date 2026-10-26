@@ -20,6 +20,9 @@ import type { Inscription } from './meta-protocols';
 import type { AccountStateSnapshot } from './snap';
 import type { TransactionBuilder } from './transaction';
 
+/** A BIP-32 keychain of an account: receive or change addresses. */
+export type Keychain = 'external' | 'internal';
+
 /**
  * A Bitcoin account.
  */
@@ -81,6 +84,32 @@ export type BitcoinAccount = {
    * @returns the address
    */
   peekAddress(index: number): AddressInfo;
+
+  /**
+   * Get the address at a given index of a keychain, without revealing it.
+   *
+   * @param keychain - 'external' (receive) or 'internal' (change).
+   * @param index - derivation index.
+   * @returns the address
+   */
+  peekKeychainAddress(keychain: Keychain, index: number): AddressInfo;
+
+  /**
+   * Highest derivation index of the keychain that received an output the
+   * wallet knows of (the keychain's last active index for a gap scan).
+   *
+   * @param keychain - 'external' (receive) or 'internal' (change).
+   * @returns the index, or undefined if the keychain has no known output
+   */
+  lastUsedIndex(keychain: Keychain): number | undefined;
+
+  /**
+   * Highest revealed derivation index of the keychain.
+   *
+   * @param keychain - 'external' (receive) or 'internal' (change).
+   * @returns the index, or undefined if no address is revealed
+   */
+  lastRevealedIndex(keychain: Keychain): number | undefined;
 
   /**
    * Get the next unused address. This will reveal a new address if there is no unused address.

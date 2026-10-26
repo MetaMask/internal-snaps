@@ -21,6 +21,7 @@ import type {
   AccountMetadata,
   AccountState,
   BitcoinAccount,
+  Keychain,
   TransactionBuilder,
 } from '../entities';
 
@@ -100,6 +101,18 @@ export class StoredAccountAdapter implements BitcoinAccount {
   }
 
   peekAddress(_index: number): AddressInfo {
+    return this.#unsupported();
+  }
+
+  peekKeychainAddress(_keychain: Keychain, _index: number): AddressInfo {
+    return this.#unsupported();
+  }
+
+  lastUsedIndex(_keychain: Keychain): number | undefined {
+    return this.#unsupported();
+  }
+
+  lastRevealedIndex(_keychain: Keychain): number | undefined {
     return this.#unsupported();
   }
 

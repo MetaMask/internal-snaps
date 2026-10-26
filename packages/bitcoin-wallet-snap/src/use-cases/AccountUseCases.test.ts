@@ -829,6 +829,8 @@ describe('AccountUseCases', () => {
         receivedAmount,
       ]);
       mockAccount.listTransactions.mockReturnValue([]);
+      // A rescan of an account that already synchronized once.
+      mockAccount.hasSynchronized.mockReturnValue(true);
     });
 
     it('performs a full scan', async () => {
@@ -838,7 +840,8 @@ describe('AccountUseCases', () => {
 
       const result = await useCases.fullScan(mockAccount);
 
-      expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount);
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount, 'scan');
       expect(mockMetaProtocols.fetchInscriptions).toHaveBeenCalledWith(
         mockAccount,
       );
@@ -851,6 +854,64 @@ describe('AccountUseCases', () => {
         transactionsToNotify: mockTransactions,
         transactionSenders: undefined,
       });
+    });
+
+    it('scans an account that never synchronized with the discovery gap only, when it finds no activity', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      mockChain.fullScan.mockResolvedValue();
+
+      await useCases.fullScan(mockAccount);
+
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.fullScan).toHaveBeenCalledWith(mockAccount, 'discovery');
+      expect(mockRepository.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('completes the initial scan to the standard gap when the discovery gap finds activity', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      mockChain.fullScan.mockImplementationOnce(async () => {
+        mockAccount.listTransactions.mockReturnValue(mockTransactions);
+      });
+      mockChain.extendDiscoveryScan.mockResolvedValueOnce();
+      mockChain.getTransactionSenders.mockResolvedValue([]);
+
+      const result = await useCases.fullScan(mockAccount);
+
+      // The discovery-gap scan is not repeated with the standard gap: only
+      // the addresses the standard gap adds are checked.
+      expect(mockChain.fullScan.mock.calls).toStrictEqual([
+        [mockAccount, 'discovery'],
+      ]);
+      expect(mockChain.extendDiscoveryScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.extendDiscoveryScan).toHaveBeenCalledWith(mockAccount);
+      expect(result.transactionsToNotify).toStrictEqual(mockTransactions);
+    });
+
+    it('does not extend an initial scan that found no activity, nor a rescan', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      await useCases.fullScan(mockAccount);
+      mockAccount.hasSynchronized.mockReturnValue(true);
+      mockAccount.listTransactions.mockReturnValue(mockTransactions);
+      mockChain.getTransactionSenders.mockResolvedValue([]);
+      await useCases.fullScan(mockAccount);
+
+      expect(mockChain.extendDiscoveryScan).not.toHaveBeenCalled();
+    });
+
+    it('fails the initial scan (to be retried) if the standard-gap completion fails', async () => {
+      mockAccount.hasSynchronized.mockReturnValue(false);
+      const error = new Error('Failed to fetch');
+      mockChain.fullScan.mockImplementationOnce(async () => {
+        mockAccount.listTransactions.mockReturnValue(mockTransactions);
+      });
+      mockChain.extendDiscoveryScan.mockRejectedValueOnce(error);
+      mockRepository.update.mockClear();
+
+      await expect(useCases.fullScan(mockAccount)).rejects.toBe(error);
+
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(mockChain.extendDiscoveryScan).toHaveBeenCalledTimes(1);
+      expect(mockRepository.update).not.toHaveBeenCalled();
     });
 
     it('propagates an error if the chain full scan fails', async () => {
@@ -3603,6 +3664,113 @@ describe('AccountUseCases', () => {
           params: { accountId: 'a2' },
         },
       ]);
+    });
+
+    it('reproduces the onboarding of run B-v3: accounts created before discovery get discovery-gap first scans', async () => {
+      // Run B-v3 (restored SRP with five synced account groups):
+      // 1. wallet init creates index 0;
+      // 2. the account-tree sync creates groups 1..4, whose non-EVM
+      //    post-alignment calls createAccounts(range 1..4);
+      // 3. only then discovery runs, at index 5 (the next group index).
+      // Discovery therefore never precedes the creations: no reuse and no
+      // frontier apply, and all five accounts need an initial scan.
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const funded = buildAccount('a0', { synchronized: false });
+      const empty = ['a1', 'a2', 'a3', 'a4'].map((id) =>
+        buildAccount(id, { synchronized: false }),
+      );
+      mockRepository.getByDerivationPaths.mockResolvedValueOnce({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValueOnce([funded]);
+      await testUseCases.createMany([request(0)]);
+      mockRepository.getByDerivationPaths.mockResolvedValueOnce({
+        accounts: [null, null, null, null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValueOnce(empty);
+      await testUseCases.createMany([1, 2, 3, 4].map(request));
+      await discover(testUseCases, buildAccount('d5'), 5);
+
+      // Immediate scans: index 0, then the first MAX_IMMEDIATE ones of the
+      // batch; the rest wait for the cron queue (the +26 s burst).
+      expect(
+        eventsOf(snapClient, CronMethod.FullScanAccount).map(
+          (event) => (event as { params: { accountId: string } }).params,
+        ),
+      ).toStrictEqual([
+        { accountId: 'a0' },
+        ...['a1', 'a2']
+          .slice(0, MAX_IMMEDIATE_FULL_SCANS_ON_CREATE)
+          .map((accountId) => ({ accountId })),
+      ]);
+      expect(
+        (await testUseCases.listDueFullScans([funded, ...empty], 5)).map(
+          ({ id }) => id,
+        ),
+      ).toStrictEqual(['a3', 'a4']);
+
+      // Every initial scan uses the discovery gap; only the funded account
+      // gets the standard-gap completion.
+      mockChain.fullScan.mockReset();
+      mockChain.fullScan.mockImplementation(async (account) => {
+        if (account === funded) {
+          jest
+            .mocked(funded.listTransactions)
+            .mockReturnValue([mock<WalletTx>()]);
+        }
+      });
+      stubSentAmount(funded);
+      for (const account of [funded, ...empty]) {
+        await testUseCases.fullScan(account);
+      }
+      expect(
+        mockChain.fullScan.mock.calls.map(([account, mode]) => [
+          account.id,
+          mode,
+        ]),
+      ).toStrictEqual([
+        ['a0', 'discovery'],
+        ['a1', 'discovery'],
+        ['a2', 'discovery'],
+        ['a3', 'discovery'],
+        ['a4', 'discovery'],
+      ]);
+      // B-v4: the funded account is completed to the standard gap without
+      // repeating its discovery-gap scan.
+      expect(
+        mockChain.extendDiscoveryScan.mock.calls.map(([account]) => account.id),
+      ).toStrictEqual(['a0']);
+    });
+
+    it('requests a standard-gap scan for a reused discovery scan that found activity', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const discovered = buildAccount('d1', { transactions: 3 });
+      await discover(testUseCases, discovered, 1);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+
+      await testUseCases.createMany([request(1)]);
+
+      expect(mockRepository.createMany).not.toHaveBeenCalled();
+      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toStrictEqual([
+        {
+          duration: 'PT1S',
+          method: CronMethod.FullScanAccount,
+          params: { accountId: 'd1' },
+        },
+      ]);
+      // Its balance is known from the discovery scan meanwhile.
+      expect(await testUseCases.isInitialFullScanPending('d1')).toBe(false);
+
+      // The scheduled scan uses the standard gap (the account synchronized).
+      mockChain.fullScan.mockResolvedValueOnce();
+      stubSentAmount(discovered);
+      await testUseCases.fullScan(discovered);
+      expect(mockChain.fullScan).toHaveBeenLastCalledWith(discovered, 'scan');
     });
 
     it('does not reuse discovery results older than the reuse TTL', async () => {

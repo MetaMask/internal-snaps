@@ -3,6 +3,7 @@ import type {
   ChangeSet,
   DescriptorPair,
   KeychainKind,
+  LocalOutput,
   Network,
   ScriptBuf,
   SpkIndexed,
@@ -204,6 +205,41 @@ describe('BdkAccountAdapter', () => {
       mockDescriptors,
       mockNetwork,
     );
+
+  describe('gap scan indexes (v5)', () => {
+    const output = (keychain: KeychainKind, index: number): LocalOutput =>
+      ({ keychain, derivation_index: index }) as unknown as LocalOutput;
+
+    it('returns the highest index of a keychain that received an output', () => {
+      mockWallet.list_output.mockReturnValue([
+        output('external', 2),
+        output('internal', 7),
+        output('external', 0),
+        output('external', 4),
+      ]);
+
+      expect(adapter().lastUsedIndex('external')).toBe(4);
+      expect(adapter().lastUsedIndex('internal')).toBe(7);
+    });
+
+    it('returns undefined for a keychain without outputs', () => {
+      mockWallet.list_output.mockReturnValue([output('external', 0)]);
+
+      expect(adapter().lastUsedIndex('internal')).toBeUndefined();
+    });
+
+    it('returns the last revealed index and peeks keychain addresses without revealing them', () => {
+      const info = mock<AddressInfo>();
+      mockWallet.derivation_index.mockReturnValue(3);
+      mockWallet.peek_address.mockReturnValue(info);
+
+      expect(adapter().lastRevealedIndex('internal')).toBe(3);
+      expect(mockWallet.derivation_index).toHaveBeenCalledWith('internal');
+      expect(adapter().peekKeychainAddress('internal', 9)).toBe(info);
+      expect(mockWallet.peek_address).toHaveBeenCalledWith('internal', 9);
+      expect(mockWallet.reveal_addresses_to).not.toHaveBeenCalled();
+    });
+  });
 
   describe('isChange', () => {
     it('returns true when the script belongs to the internal keychain', () => {

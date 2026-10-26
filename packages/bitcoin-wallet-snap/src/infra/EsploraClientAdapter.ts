@@ -1,6 +1,7 @@
 import type {
   FeeEstimates,
   Network,
+  ScriptBuf,
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
@@ -17,6 +18,7 @@ import type {
   BitcoinAccount,
   ChainConfig,
   BlockchainClient,
+  Keychain,
 } from '../entities';
 
 /**
@@ -57,6 +59,31 @@ function toEsploraRestUrl(url: string): string {
  * REST lookup needs an equivalent bound.
  */
 export const SENDER_REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * Upper bound on a single address history request of the standard-gap check
+ * (see `extendDiscoveryScan`), for the same reason as
+ * {@link SENDER_REQUEST_TIMEOUT_MS}.
+ */
+export const GAP_CHECK_REQUEST_TIMEOUT_MS = 10_000;
+
+const KEYCHAINS: Keychain[] = ['external', 'internal'];
+
+/**
+ * Computes the Electrum/Esplora script hash of an output script: the SHA-256
+ * of the script, byte-reversed, hex-encoded (the key of `/scripthash/:hash`).
+ *
+ * @param script - The output script bytes.
+ * @returns The script hash.
+ */
+export async function toScripthash(script: Uint8Array): Promise<string> {
+  const digest = new Uint8Array(
+    await globalThis.crypto.subtle.digest('SHA-256', script),
+  );
+  return Array.from(digest.reverse(), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
 
 /**
  * Upper bound on a whole sync (all its requests and retries).
@@ -237,6 +264,98 @@ export class EsploraClientAdapter implements BlockchainClient {
         error,
       );
     }
+  }
+
+  async extendDiscoveryScan(account: BitcoinAccount): Promise<void> {
+    let hasHistory: boolean;
+    try {
+      hasHistory = await this.#hasHistoryInGapExtension(account);
+    } catch (error) {
+      // Never leave the account with the discovery gap only: fall back to the
+      // standard-gap full scan (which surfaces its own failure).
+      this.#logger.warn(
+        `[esplora ${account.network}] standard-gap check failed, running the standard-gap scan`,
+        error,
+      );
+      hasHistory = true;
+    }
+    if (hasHistory) {
+      await this.fullScan(account, 'scan');
+    }
+  }
+
+  /**
+   * Lists, per keychain, the scripts a standard-gap full scan covers beyond
+   * the discovery-gap scan just applied to the account. A gap scan covers up
+   * to `last active index + stop gap` (indexes `0..stopGap-1` when nothing is
+   * active), so the discovery scan already fetched up to
+   * `lastUsed + discovery`. The upper bound also accounts for revealed
+   * addresses, so the check never covers less than the standard-gap scan.
+   *
+   * @param account - The account.
+   * @returns The scripts to check.
+   */
+  #gapExtensionScripts(account: BitcoinAccount): ScriptBuf[] {
+    const { discovery, scan } = this.#config.stopGap;
+    const scripts: ScriptBuf[] = [];
+    for (const keychain of KEYCHAINS) {
+      const lastUsed = account.lastUsedIndex(keychain) ?? -1;
+      const lastRevealed = account.lastRevealedIndex(keychain) ?? -1;
+      const first = lastUsed + discovery + 1;
+      const last = Math.max(lastUsed, lastRevealed) + scan;
+      for (let index = first; index <= last; index++) {
+        scripts.push(
+          account.peekKeychainAddress(keychain, index).address.script_pubkey,
+        );
+      }
+    }
+    return scripts;
+  }
+
+  async #hasHistoryInGapExtension(account: BitcoinAccount): Promise<boolean> {
+    const scripts = this.#gapExtensionScripts(account);
+    const batchSize = Math.max(1, this.#config.parallelRequests);
+    for (let start = 0; start < scripts.length; start += batchSize) {
+      const results = await Promise.all(
+        scripts
+          .slice(start, start + batchSize)
+          .map(async (script) =>
+            this.#scriptHasHistory(account.network, script),
+          ),
+      );
+      if (results.some(Boolean)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async #scriptHasHistory(
+    network: Network,
+    script: ScriptBuf,
+  ): Promise<boolean> {
+    const scripthash = await toScripthash(script.as_bytes());
+    const history = await this.#read(
+      network,
+      'restPolicy',
+      async ({ restUrl }) => {
+        const response = await fetch(
+          `${restUrl}/scripthash/${scripthash}/txs`,
+          {
+            signal: AbortSignal.timeout(GAP_CHECK_REQUEST_TIMEOUT_MS),
+          },
+        );
+        if (!response.ok) {
+          throw createFetchPolicyError(`HTTP ${response.status}`, {
+            httpStatus: response.status,
+          });
+        }
+        return (await response.json()) as unknown;
+      },
+    );
+    // Anything but an empty list counts as history: the caller then runs the
+    // standard-gap full scan.
+    return !Array.isArray(history) || history.length > 0;
   }
 
   async sync(account: BitcoinAccount): Promise<void> {
