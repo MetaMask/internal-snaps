@@ -82,12 +82,25 @@ import {
   GetAccountBalancesRequestStruct,
 } from './api';
 import type { IKeyringRequestHandler } from './base';
-import { ExportAccountException } from './exceptions';
+import {
+  AccountBalanceUnavailableException,
+  ExportAccountException,
+} from './exceptions';
 
 export const KEYRING_HANDLER_LOGGER_PREFIX = '[🔑 KeyringHandler]';
 
+/**
+ * Minimum interval between two on-demand syncs requested by `getAccountBalances` for the
+ * same never-synchronized account. Balance requests arrive in bursts (several client
+ * controllers, retries), so this keeps them to one background sync per window.
+ */
+export const UNSYNCED_ACCOUNT_SYNC_MIN_INTERVAL_MS = 30_000;
+
 export class KeyringHandler implements KeyringSnapRpc {
   readonly #logger: Logger;
+
+  /** Last time an on-demand sync was requested per never-synchronized account. */
+  readonly #unsyncedSyncRequestedAt = new Map<string, number>();
 
   readonly #accountService: AccountService;
 
@@ -380,6 +393,25 @@ export class KeyringHandler implements KeyringSnapRpc {
 
     // Unfunded accounts have no trustlines. Return native zero when it was requested.
     if (onChainAccount === null) {
+      // A live fetch returns `null` only when Horizon confirmed the account is not activated
+      // (an empty-body 404 counts as a network failure, see `isAccountNotFoundError`), so its
+      // balance is a confirmed 0. A missing snapshot is either a confirmed unfunded account or
+      // one that was never synchronized (e.g. every load failed), whose balance is unknown.
+      // Reporting 0 for the latter shows a confident zero to the user; fail instead so the
+      // client keeps the balance as unavailable and retries.
+      if (
+        !enableAssetMigration &&
+        !(await this.#onChainAccountService.isConfirmedUnfunded(
+          accountId,
+          scope,
+        ))
+      ) {
+        // Answering from local state alone would never recover: kick off a (deduplicated)
+        // sync of this account so a later balance request, or the balances-updated event
+        // emitted by the sync, returns the real balance.
+        await this.#requestSyncForUnsyncedAccount(accountId);
+        throw new AccountBalanceUnavailableException(accountId);
+      }
       const nativeAssetId = knownAssets.find(isSlip44Id);
       if (nativeAssetId !== undefined) {
         assetBalances[nativeAssetId] = getDefaultBalanceEntry();
@@ -536,6 +568,39 @@ export class KeyringHandler implements KeyringSnapRpc {
         },
         // Start immediately
         Duration.OneSecond,
+      );
+    }
+  }
+
+  /**
+   * Schedules a background sync for an account whose balance is unknown, at most once per
+   * {@link UNSYNCED_ACCOUNT_SYNC_MIN_INTERVAL_MS}. Never throws: the balance request must
+   * still report the account as unavailable.
+   *
+   * @param accountId - The keyring account ID.
+   */
+  async #requestSyncForUnsyncedAccount(accountId: string): Promise<void> {
+    const now = Date.now();
+    const lastRequestedAt = this.#unsyncedSyncRequestedAt.get(accountId);
+    if (
+      lastRequestedAt !== undefined &&
+      now - lastRequestedAt < UNSYNCED_ACCOUNT_SYNC_MIN_INTERVAL_MS
+    ) {
+      return;
+    }
+    this.#unsyncedSyncRequestedAt.set(accountId, now);
+    try {
+      await SyncAccountsHandler.scheduleBackgroundEvent(
+        { accountIds: [accountId] },
+        Duration.OneSecond,
+      );
+    } catch (error: unknown) {
+      this.#unsyncedSyncRequestedAt.delete(accountId);
+      this.#logger.warn(
+        'Failed to schedule a sync for an unsynchronized account',
+        {
+          error,
+        },
       );
     }
   }

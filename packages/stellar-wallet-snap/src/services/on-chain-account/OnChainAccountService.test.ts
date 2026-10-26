@@ -756,4 +756,111 @@ describe('OnChainAccountService', () => {
       expect(synchronizeSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('markAccountsUnfunded / isConfirmedUnfunded', () => {
+    const ACCOUNT_A = '11111111-1111-4111-8111-111111111111';
+    const ACCOUNT_B = '22222222-2222-4222-8222-222222222222';
+
+    beforeEach(() => {
+      jest.mocked(snap.request).mockReset();
+    });
+
+    const setupWithMigration = (
+      migrationEnabled: boolean,
+    ): ReturnType<typeof mockOnChainAccountService> => {
+      const mocks = mockOnChainAccountService();
+      jest
+        .spyOn(mocks.assetsService, 'isMigrationEnabled')
+        .mockResolvedValue(migrationEnabled);
+      return mocks;
+    };
+
+    it('marks accounts and emits a confirmed zero native balance once', async () => {
+      const { onChainAccountService } = setupWithMigration(false);
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([ACCOUNT_A]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+      expect(snap.request).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+        'notify:accountBalancesUpdated',
+      );
+      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+        ACCOUNT_A,
+      );
+
+      // Already marked: no second event.
+      await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+      expect(snap.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports never-synchronized accounts as not confirmed unfunded', async () => {
+      const { onChainAccountService } = setupWithMigration(false);
+
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(false);
+    });
+
+    it('still records the marker when emitting the balance event fails', async () => {
+      const { onChainAccountService } = setupWithMigration(false);
+      jest
+        .mocked(snap.request)
+        .mockRejectedValueOnce(new Error('emit failed'))
+        .mockResolvedValue(null);
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_B],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([ACCOUNT_B]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+    });
+
+    it('neither records nor emits while the assets migration is on, and treats a missing snapshot as unfunded', async () => {
+      const { onChainAccountService, onChainAccountRepository } =
+        setupWithMigration(true);
+      const markUnfundedSpy = jest.spyOn(
+        onChainAccountRepository,
+        'markUnfunded',
+      );
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([]);
+      expect(markUnfundedSpy).not.toHaveBeenCalled();
+      expect(snap.request).not.toHaveBeenCalled();
+      // AssetsController owns holdings and the snap does not sync: keep the not-activated meaning.
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+    });
+  });
 });
