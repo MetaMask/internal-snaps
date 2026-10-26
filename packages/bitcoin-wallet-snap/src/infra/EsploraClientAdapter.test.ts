@@ -1,11 +1,17 @@
-import type { FeeEstimates, FullScanRequest } from '@metamask/bitcoindevkit';
+import type {
+  FeeEstimates,
+  FullScanRequest,
+  Psbt as BdkPsbt,
+} from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
 import {
   FetchPolicyErrorName,
   Logger,
   LogLevel,
 } from '@metamask/snap-networks-utils';
+import { readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
+import { dirname, join } from 'path';
 
 import type { BitcoinAccount, ChainConfig } from '../entities';
 import { EsploraClientAdapter } from './EsploraClientAdapter';
@@ -443,6 +449,152 @@ describe('EsploraClientAdapter', () => {
         await adapter.getTransactionSenders('bitcoin', 'txid'),
       ).toStrictEqual([]);
       expect(txCallCount()).toBe(2);
+    });
+  });
+
+  describe('with the real BDK WASM client', () => {
+    const SAMPLE_PSBT =
+      'cHNidP8BAI4CAAAAAAM1gwEAAAAAACJRIORP1Ndiq325lSC/jMG0RlhATHYmuuULfXgEHUM3u5i4AAAAAAAAAAAxai8AAUSx+i9Igg4HWdcpyagCs8mzuRCklgA7nRMkm69rAAAAAAAAAAAAAQACAAAAACp2AAAAAAAAFgAUgu3FEiFNy9ZR/zSpTo9nHREjrSoAAAAAAAAAAAA=';
+
+    type RealBdkBindings = {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      __wbg_set_wasm: (exports: WebAssembly.Exports) => void;
+      EsploraClient: typeof EsploraClient;
+      Psbt: typeof BdkPsbt;
+      /* eslint-enable @typescript-eslint/naming-convention */
+    };
+
+    const mockFetch = jest.fn();
+    let realBdk: RealBdkBindings;
+
+    beforeAll(async () => {
+      const bdkDir = dirname(
+        require.resolve('@metamask/bitcoindevkit/package.json'),
+      );
+      realBdk = jest.requireActual(join(bdkDir, 'bitcoindevkit_bg.js'));
+      const wasmBytes = await readFile(join(bdkDir, 'bitcoindevkit_bg.wasm'));
+      // eslint-disable-next-line no-restricted-globals
+      const wasmModule = new WebAssembly.Module(wasmBytes);
+      // eslint-disable-next-line no-restricted-globals
+      const wasmInstance = new WebAssembly.Instance(wasmModule, {
+        './bitcoindevkit_bg.js':
+          realBdk as unknown as WebAssembly.ModuleImports,
+      });
+      realBdk.__wbg_set_wasm(wasmInstance.exports);
+    });
+
+    beforeEach(() => {
+      global.fetch = mockFetch;
+      jest
+        .mocked(EsploraClient)
+        .mockImplementation(
+          (url: string, maxRetries: number) =>
+            new realBdk.EsploraClient(url, maxRetries),
+        );
+    });
+
+    afterEach(() => {
+      mockFetch.mockReset();
+    });
+
+    const createRealAdapter = (): EsploraClientAdapter =>
+      new EsploraClientAdapter(
+        mock<ChainConfig>({
+          parallelRequests: 1,
+          stopGap: { discovery: 5, scan: 20 },
+          url: {
+            bitcoin: 'https://bitcoin.example',
+            testnet: 'https://testnet.example',
+            testnet4: 'https://testnet4.example',
+            signet: 'https://signet.example',
+            regtest: 'https://regtest.example',
+          },
+        }),
+        new Logger({ level: LogLevel.SILENT }),
+      );
+
+    const wasmResponse = (
+      status: number,
+      body: string,
+      url = 'https://bitcoin.example/tx',
+    ): Response => {
+      // eslint-disable-next-line no-restricted-globals
+      const response = new Response(body, { status });
+      Object.defineProperty(response, 'url', { value: url });
+      return response;
+    };
+
+    it('retries real WASM Reqwest and 503 errors on getFeeEstimates, and does not retry decode or 400 errors', async () => {
+      const adapter = createRealAdapter();
+      mockFetch
+        .mockRejectedValueOnce(new TypeError('fetch failed'))
+        .mockResolvedValueOnce(
+          wasmResponse(
+            503,
+            'Service Unavailable',
+            'https://bitcoin.example/fee-estimates',
+          ),
+        )
+        .mockResolvedValueOnce(
+          wasmResponse(
+            200,
+            JSON.stringify({ '1': 12.5 }),
+            'https://bitcoin.example/fee-estimates',
+          ),
+        );
+
+      const estimates = await adapter.getFeeEstimates('bitcoin');
+
+      expect(estimates.get(1)).toBe(12.5);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue(
+        wasmResponse(200, 'not-json', 'https://bitcoin.example/fee-estimates'),
+      );
+
+      await expect(adapter.getFeeEstimates('bitcoin')).rejects.toThrow(
+        'Failed to fetch fee estimates',
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue(
+        wasmResponse(
+          400,
+          'Bad Request',
+          'https://bitcoin.example/fee-estimates',
+        ),
+      );
+
+      await expect(adapter.getFeeEstimates('bitcoin')).rejects.toThrow(
+        'Failed to fetch fee estimates',
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries broadcast with the same real WASM Transaction and treats duplicate-tx responses as success', async () => {
+      const adapter = createRealAdapter();
+      const transaction = realBdk.Psbt.from_string(SAMPLE_PSBT).unsigned_tx;
+      const expectedTxid = transaction.compute_txid().toString();
+      const postedBodies: string[] = [];
+
+      mockFetch.mockImplementation(async (input: Request) => {
+        postedBodies.push(await input.text());
+        if (postedBodies.length === 1) {
+          return wasmResponse(503, 'Service Unavailable');
+        }
+        return wasmResponse(
+          400,
+          'sendrawtransaction RPC error: {"code":-27,"message":"Transaction already in block chain"}',
+        );
+      });
+
+      await adapter.broadcast('bitcoin', transaction);
+
+      expect(postedBodies).toHaveLength(2);
+      expect(postedBodies[0]).toBe(postedBodies[1]);
+      expect(transaction.compute_txid().toString()).toBe(expectedTxid);
     });
   });
 });
