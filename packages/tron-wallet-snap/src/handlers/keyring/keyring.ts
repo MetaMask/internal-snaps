@@ -185,8 +185,15 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       this.#logger.info('Getting account assets', { accountId });
 
+      // Clients call `keyring_listAccountAssets` before
+      // `keyring_getAccountBalances` on every balance refresh, including the
+      // user's Retry. It is an explicit request too: without the bypass, an
+      // open circuit fails it without a request and the balances call that
+      // would bypass the circuit is never made.
       const assetEntities =
-        await this.#assetsService.fetchAccountAssetsFromTrongrid(account);
+        await this.#assetsService.fetchAccountAssetsFromTrongrid(account, {
+          bypassOpenCircuit: true,
+        });
 
       await this.#assetsService.saveMany(assetEntities);
 
@@ -278,8 +285,14 @@ export class KeyringHandler implements KeyringSnapRpc {
 
       const account = await this.#getAccountOrThrow(accountId);
 
+      // An explicit client request (e.g. the balance Retry): it may reach the
+      // network while a fetch policy's circuit is open (rate limited), so a
+      // retry made during the 30 s open window is not answered from the
+      // circuit alone.
       const assetsList =
-        await this.#assetsService.fetchAccountAssetsFromTrongrid(account);
+        await this.#assetsService.fetchAccountAssetsFromTrongrid(account, {
+          bypassOpenCircuit: true,
+        });
 
       await this.#assetsService.saveMany(assetsList);
 
